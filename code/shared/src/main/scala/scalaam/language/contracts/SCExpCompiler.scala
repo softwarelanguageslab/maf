@@ -40,7 +40,7 @@ object SCExpCompiler {
     case SExpValue(ValueNil, _) => List()
   }
 
-  def compile_sequence(s: SExp): List[ScExp] = s match gi{
+  def compile_sequence(s: SExp): List[ScExp] = s match {
     case SExpPair(exp, cdr, _)  => compile(exp) :: compile_sequence(cdr)
     case SExpValue(ValueNil, _) => List()
   }

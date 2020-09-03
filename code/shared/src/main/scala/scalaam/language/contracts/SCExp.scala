@@ -40,8 +40,7 @@ case class ScFlatContract(expression: ScExp, idn: Identity) extends ScContract {
   override def subexpressions: List[Expression] = List(expression)
 }
 
-case class ScHigherOrderContract(domain: ScContract, range: ScContract, idn: Identity)
-    extends ScContract {
+case class ScHigherOrderContract(domain: ScExp, range: ScExp, idn: Identity) extends ScContract {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = domain.fv ++ range.fv
@@ -53,8 +52,7 @@ case class ScHigherOrderContract(domain: ScContract, range: ScContract, idn: Ide
   override def subexpressions: List[Expression] = List(domain, range)
 }
 
-case class ScDependentContract(domain: ScContract, rangeMaker: ScLambda, idn: Identity)
-    extends ScContract {
+case class ScDependentContract(domain: ScExp, rangeMaker: ScExp, idn: Identity) extends ScContract {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = domain.fv ++ rangeMaker.fv
@@ -80,7 +78,7 @@ case class ScIdentifier(name: String, idn: Identity) extends ScExp {
 
 trait ScLiterals extends ScExp
 
-case class ScLambda(variables: List[ScIdentifier], body: Expression, idn: Identity)
+case class ScLambda(variables: List[ScIdentifier], body: ScExp, idn: Identity)
     extends ScLiterals
     with ScExp {
 
@@ -119,8 +117,7 @@ case class ScValue(value: Value, idn: Identity) extends ScLiterals {
   override def subexpressions: List[Expression] = List()
 }
 
-case class ScFunctionAp(operator: Expression, operands: List[Expression], idn: Identity)
-    extends ScExp {
+case class ScFunctionAp(operator: ScExp, operands: List[ScExp], idn: Identity) extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = operator.fv ++ operands.fv
@@ -132,7 +129,7 @@ case class ScFunctionAp(operator: Expression, operands: List[Expression], idn: I
   override def subexpressions: List[Expression] = List(operator) ++ operands
 }
 
-case class ScBegin(expressions: List[Expression], idn: Identity) extends ScExp {
+case class ScBegin(expressions: List[ScExp], idn: Identity) extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = expressions.fv
@@ -141,7 +138,7 @@ case class ScBegin(expressions: List[Expression], idn: Identity) extends ScExp {
   override def label: Label = BEGIN
 
   /** Returns the list of subexpressions of the given expression. */
-  override def subexpressions: List[Expression] = expressions
+  override def subexpressions: List[ScExp] = expressions
 }
 
 case class ScSet(variable: ScIdentifier, value: ScExp, idn: Identity) extends ScExp {
