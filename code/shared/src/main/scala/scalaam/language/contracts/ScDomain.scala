@@ -3,7 +3,7 @@ package scalaam.language.contracts
 import scalaam.core.Address
 import scalaam.lattice.{BoolLattice, IntLattice}
 
-class ScCoProductLattice[I: IntLattice, B: BoolLattice, Addr: Address] {
+class ScCoProductLattice[I: IntLattice, B: BoolLattice, Addr <: Address] {
   sealed trait Value
 
   implicit val isScLattice: ScLattice[Value, Addr] = new ScLattice[Value, Addr] {

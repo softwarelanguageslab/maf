@@ -9,7 +9,7 @@ import scalaam.lattice.{BoolLattice, IntLattice}
   * should implement.
   * @tparam L the type of the elements of the lattice
   */
-trait ScLattice[L, Addr] extends Lattice[L] {
+trait ScLattice[L, Addr <: Address] extends Lattice[L] {
 
   /**
     * A representation for a primitive operation
