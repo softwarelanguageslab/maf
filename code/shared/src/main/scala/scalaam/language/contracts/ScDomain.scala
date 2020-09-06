@@ -144,5 +144,12 @@ class ScCoProductLattice[I: IntLattice, B: BoolLattice, Addr <: Address] {
     override def eql[B: BoolLattice](x: Value, y: Value): B = ???
 
     override def show(v: Value): String = v.toString
+
+    override def isPrim(value: Value): Boolean = ???
+
+    override def isClo(value: Value): Boolean = ???
+
+    override def getPrim(value: Value): Set[Prim] = ???
+    override def getClo(value: Value): Set[Clo]   = ???
   }
 }

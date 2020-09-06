@@ -47,4 +47,8 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
   def applyPrimitive(prim: Prim)(arguments: L*): L
   def isTrue(value: L): Boolean
   def isFalse(value: L): Boolean
+  def isPrim(value: L): Boolean
+  def isClo(value: L): Boolean
+  def getPrim(value: L): Set[Prim]
+  def getClo(value: L): Set[Clo]
 }

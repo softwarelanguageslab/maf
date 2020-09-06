@@ -7,6 +7,7 @@ case object FLAT_CONTRACT         extends Label
 case object HIGHER_ORDER_CONTRACT extends Label
 case object DEPENDENT_CONTRACT    extends Label
 case object MONITOR               extends Label
+case object NIL                   extends Label
 case object VALUE                 extends Label
 case object BLAME                 extends Label
 case object IDENTIFIER            extends Label
@@ -26,6 +27,18 @@ trait ScExp extends Expression {
   implicit class FreeVariablesList(list: List[Expression]) {
     def fv: Set[String] = list.foldLeft(Set[String]())((a, b) => a ++ b.fv)
   }
+
+  def or(exp: ScExp): ScExp =
+    ScFunctionAp(ScIdentifier("or", Identity.none), List(exp, this), Identity.none)
+
+  def and(exp: ScExp): ScExp =
+    ScFunctionAp(ScIdentifier("and", Identity.none), List(exp, this), Identity.none)
+
+  def not(): ScExp =
+    ScFunctionAp(ScIdentifier("not", Identity.none), List(this), Identity.none)
+
+  def app(exps: List[ScExp]): ScExp =
+    ScFunctionAp(this, exps, Identity.none)
 }
 trait ScContract extends ScExp
 case class ScFlatContract(expression: ScExp, idn: Identity) extends ScContract {
@@ -210,6 +223,18 @@ case class ScBlame(blame: Identity, idn: Identity) extends ScExp {
 
   /** A label indicating the type of an expression. */
   override def label: Label = BLAME
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = List()
+}
+
+case class ScNil(idn: Identity = Identity.none) extends ScExp {
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = Set()
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = NIL
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List()
