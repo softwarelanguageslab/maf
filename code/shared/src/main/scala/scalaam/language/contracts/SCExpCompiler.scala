@@ -86,6 +86,13 @@ object SCExpCompiler {
     case Ident("begin") :: expressions =>
       ScBegin(compile_sequence(expressions), prog.idn)
 
+    case operator :: arguments =>
+      println(arguments)
+      ScFunctionAp(compile(operator), compile_sequence(arguments), prog.idn)
+
+    case IdentWithIdentity(name, idn) =>
+      ScIdentifier(name, idn)
+
     case SExpValue(value, _) => ScValue(value, prog.idn)
   }
 }
