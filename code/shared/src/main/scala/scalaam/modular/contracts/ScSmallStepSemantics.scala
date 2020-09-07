@@ -214,7 +214,16 @@ trait ScSmallStepSemantics
         )
 
       // user defined function
-      val cloCall = lattice.getClo(operator.value).flatMap(clo => ???) // TODO
+      val cloCall = lattice
+        .getClo(operator.value)
+        .flatMap(clo => {
+          val context         = allocCtx(clo, operands.map(_.value), ???, component)
+          val called          = Call(clo.env, clo.lambda, context)
+          val calledComponent = newComponent(called)
+          val result          = call(calledComponent)
+          Set(ApplyKont(result, ScNil(), state.copy(kont = state.kont.next)))
+        })
+
       primitiveCall ++ cloCall
     }
   }

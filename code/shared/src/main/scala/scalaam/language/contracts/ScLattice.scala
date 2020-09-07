@@ -21,7 +21,7 @@ object ScLattice {
       idn: Identity,
       env: Environment[Addr],
       parameters: List[ScIdentifier],
-      body: ScExp
+      lambda: ScLambda
   )
   case class Grd[Addr](domain: Addr, rangeMaker: Addr)
 

@@ -1,7 +1,10 @@
 package scalaam.modular.contracts
 
+import java.awt.Component
+
+import scalaam.core.Position.Position
 import scalaam.core.{Address, Environment}
-import scalaam.language.contracts.{ScCoProductLattice, ScExp, ScIdentifier}
+import scalaam.language.contracts.{ScCoProductLattice, ScExp, ScIdentifier, ScLattice}
 import scalaam.modular.{GlobalStore, ModAnalysis, ReturnValue}
 import scalaam.util.benchmarks.Timeout
 
@@ -16,6 +19,16 @@ trait ScModSemantics
     */
   type AllocationContext
   def allocVar(id: ScIdentifier, cmp: Component): ScVarAddr[AllocationContext]
+
+  type ComponentContext
+  def allocCtx(
+      clo: ScLattice.Clo[Addr],
+      args: List[Value],
+      call: Position,
+      caller: Component
+  ): ComponentContext
+
+  def newComponent[Component](component: Call[ComponentContext]): Component
 
   /**
     * The environment in which the analysis is executed
@@ -52,8 +65,8 @@ trait ScModSemantics
       * @return the body of the component under analysis
       */
     def fnBody: ScExp = view(component) match {
-      case ScMain          => program
-      case Call(_, lambda) => lambda.body
+      case ScMain             => program
+      case Call(_, lambda, _) => lambda.body
     }
 
     /**
@@ -61,8 +74,8 @@ trait ScModSemantics
       * @return the body of the component under analysis
       */
     def fnEnv: Env = view(component) match {
-      case ScMain       => baseEnv
-      case Call(env, _) => env // TODO: extend environment with variable bindings
+      case ScMain          => baseEnv
+      case Call(env, _, _) => env // TODO: extend environment with variable bindings
     }
   }
 

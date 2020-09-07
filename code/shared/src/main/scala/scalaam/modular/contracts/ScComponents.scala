@@ -16,4 +16,5 @@ case object ScMain extends ScComponent
   * @param lambda the body of the lambda
   * @tparam Context the context of the call
   */
-case class Call[Context](env: Environment[Address], lambda: ScLambda) extends ScComponent
+case class Call[Context](env: Environment[Address], lambda: ScLambda, context: Context)
+    extends ScComponent
