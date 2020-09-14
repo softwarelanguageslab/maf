@@ -21,7 +21,8 @@ object ScLattice {
       idn: Identity,
       env: Environment[Addr],
       parameters: List[ScIdentifier],
-      lambda: ScLambda
+      lambda: ScLambda,
+      pc: ScExp = ScNil()
   )
   case class Grd[Addr](domain: Addr, rangeMaker: Addr)
 
@@ -32,10 +33,7 @@ object ScLattice {
   case class Opq(id: Int)
 
   /**
-    * The value representing a blame
-    *
-    * @param lr: location of the contract, in case the contract itself is to blame for its violation
-    * @param ld: location of the expression, in case the expression is to blame for the violation
+    * A monitor on a dependent contract
     */
   case class Arr[Addr](lr: Identity, ld: Identity, contract: Addr, e: Addr)
 
@@ -63,4 +61,5 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
   def isClo(value: L): Boolean
   def getPrim(value: L): Set[Prim]
   def getClo(value: L): Set[Clo[Addr]]
+  def getGrd(value: L): Set[Grd[Addr]]
 }

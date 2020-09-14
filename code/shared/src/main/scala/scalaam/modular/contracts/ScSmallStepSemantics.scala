@@ -1,13 +1,20 @@
 package scalaam.modular.contracts
-import scalaam.core.Environment
+import scalaam.core.{Environment, Identity}
 import scalaam.core.Position.Position
+import scalaam.language.contracts.ScLattice.{Arr, Grd, Prim}
 import scalaam.language.contracts.{
   ScBegin,
+  ScDependentContract,
   ScExp,
+  ScFlatContract,
   ScFunctionAp,
+  ScHigherOrderContract,
   ScIdentifier,
   ScIf,
+  ScLambda,
+  ScLattice,
   ScLetRec,
+  ScMon,
   ScNil,
   ScRaise,
   ScSet,
@@ -22,6 +29,10 @@ trait ScSmallStepSemantics
 
   override def intraAnalysis(component: Component): IntraScSmallStepSemantics
   trait IntraScSmallStepSemantics extends IntraScAnalysis with SmallstepSemanticsIntra {
+    private val primTrue  = ScLattice.Prim("true?")
+    private val primFalse = ScLattice.Prim("false?")
+    private val primProc  = ScLattice.Prim("proc?")
+    private val primDep   = ScLattice.Prim("dependent-contract?")
 
     /**
       * Read from the given address in the cache, and if there is no such element in the cache
@@ -67,8 +78,15 @@ trait ScSmallStepSemantics
     case class IfFrame(consequent: ScExp, alternative: ScExp, next: ScFrame) extends ScFrame
     case class LetrecFrame(ident: ScIdentifier, body: ScExp, env: Env, next: ScFrame)
         extends ScFrame
-    case class SeqFrame(sequence: List[ScExp], next: ScFrame) extends ScFrame
-    case class SetFrame(ident: ScIdentifier, next: ScFrame)   extends ScFrame
+    case class SeqFrame(sequence: List[ScExp], next: ScFrame)     extends ScFrame
+    case class SetFrame(ident: ScIdentifier, next: ScFrame)       extends ScFrame
+    case class EvalMonFrame(exp: ScExp, next: ScFrame)            extends ScFrame
+    case class FinishEvalMonFrame(contract: Value, next: ScFrame) extends ScFrame
+    case class EvalRangeMakerFrame(exp: ScExp, next: ScFrame)     extends ScFrame
+    case class FinishEvalDependentFrame(
+        value: ScGenericAddr[AllocationContext],
+        next: ScFrame
+    ) extends ScFrame
 
     case class EvalOperatorFrame(operands: List[ScExp], next: ScFrame) extends ScFrame
     case class EvalOperandsFrame(
@@ -139,16 +157,36 @@ trait ScSmallStepSemantics
           val (value, sym) = read(addr)
           Set(ApplyKont(value, sym, state))
 
+        case ScMon(contract, expression, _) =>
+          // first eval the contract, depending on the contract the value of mon changes
+          val k = EvalMonFrame(expression, state.kont)
+          Set(EvalState(contract, env, state.copy(kont = k)))
+
+        case ScHigherOrderContract(domain, range, idn) =>
+          // a higher order contract is evaluated the same as a dependent contract
+          // except that we need to transform the range into range maker, we can to this by thunkifying the range
+          val thunk = ScLambda(List(ScIdentifier("x", Identity.none)), range, range.idn)
+          Set(EvalState(ScDependentContract(domain, thunk, idn), env, state))
+
+        case ScDependentContract(domain, rangeMaker, _) =>
+          val k = EvalRangeMakerFrame(rangeMaker, state.kont)
+          Set(EvalState(domain, env, state.copy(kont = k)))
+
+        case ScFlatContract(contract, _) =>
+          Set(EvalState(contract, env, state))
       }
     }
+
     private def applyKont(value: Value, sym: Sym, kont: ScFrame, state: S): Set[State] = {
       implicit var cache: StoreCache = state.cache
       kont match {
         case IfFrame(consequent, alternative, next) =>
-          // TODO: use lattice to check whether the value could be true or not
-          Set(
-            EvalState(consequent, state.env, state.copy(pc = state.pc.and(sym), kont = next)),
-            EvalState(alternative, state.env, state.copy(pc = state.pc.and(sym.not()), kont = next))
+          conditional(
+            value,
+            sym,
+            state.pc,
+            pNext => Set(EvalState(consequent, state.env, state.copy(pc = pNext, kont = next))),
+            pNext => Set(EvalState(consequent, state.env, state.copy(pc = pNext, kont = next)))
           )
 
         case RestoreEnv(env, next) =>
@@ -188,6 +226,32 @@ trait ScSmallStepSemantics
           val k =
             EvalOperandsFrame(operator, symbolic(value, sym) :: collected, operands.tail, next)
           Set(EvalState(operands.head, state.env, state.copy(kont = k)))
+
+        case EvalRangeMakerFrame(rangeMaker, next) =>
+          val addr = allocGeneric(component)
+          cache = write(addr, value, sym)
+          val k = FinishEvalDependentFrame(addr, next)
+          Set(EvalState(rangeMaker, state.env, state.copy(kont = k, cache = cache)))
+
+        case FinishEvalDependentFrame(domainAddr, next) =>
+          val rangeAddr = allocGeneric(component)
+          cache = write(rangeAddr, value, sym)
+          Set(
+            ApplyKont(
+              lattice.injectGrd(Grd(domainAddr, rangeAddr)),
+              ScNil(),
+              state.copy(kont = kont.next, cache = cache)
+            )
+          )
+
+        case EvalMonFrame(expr, next) =>
+          Set(EvalState(expr, state.env, state.copy(kont = next)))
+
+        case FinishEvalMonFrame(contract, _) =>
+          // the value passed to this continuation should be either
+          // a lambda in which case we are applying a flat contract,
+          // or a Grd value, in which case we are applying a dependent contract (or a higher order contract)
+          mon(contract, value, sym, state)
       }
     }
 
@@ -200,31 +264,126 @@ trait ScSmallStepSemantics
       // handled by the `call` function
 
       // primitive function call
-      val primitiveCall = lattice
-        .getPrim(operator.value)
-        .flatMap(
-          prim =>
-            Set(
-              ApplyKont(
-                lattice.applyPrimitive(prim)(operands.map(_.value): _*),
-                operator.symbolic.app(operands.map(_.symbolic)),
-                state.copy(kont = state.kont.next)
-              )
+      val primitiveCall = applyOpPrim(operator, operands).flatMap(
+        value =>
+          Set(
+            ApplyKont(
+              value,
+              operator.symbolic.app(operands.map(_.symbolic)),
+              state.copy(kont = state.kont.next)
             )
-        )
+          )
+      )
 
       // user defined function
-      val cloCall = lattice
+      val cloCall = applyOpClo(operator, operands).flatMap(
+        result => Set(ApplyKont(result, ScNil(), state.copy(kont = state.kont.next)))
+      )
+
+      primitiveCall ++ cloCall
+    }
+
+    private def applyOpPrim(
+        operator: PostValue,
+        operands: List[PostValue]
+    ): Set[Value] = {
+      lattice
+        .getPrim(operator.value)
+        .map(lattice.applyPrimitive(_)(operands.map(_.value): _*))
+    }
+
+    private def applyOpClo(
+        operator: PostValue,
+        operands: List[PostValue]
+    ): Set[Value] = {
+      // user defined function
+      lattice
         .getClo(operator.value)
-        .flatMap(clo => {
+        .map(clo => {
           val context         = allocCtx(clo, operands.map(_.value), ???, component)
           val called          = Call(clo.env, clo.lambda, context)
           val calledComponent = newComponent(called)
           val result          = call(calledComponent)
-          Set(ApplyKont(result, ScNil(), state.copy(kont = state.kont.next)))
+          result
         })
+    }
 
-      primitiveCall ++ cloCall
+    private def applyOpResult(operator: PostValue, operands: List[PostValue]): Set[Value] =
+      applyOpPrim(operator, operands) ++ applyOpClo(operator, operands)
+
+    private def mon(contract: Value, expr: Value, sym: Sym, state: S): Set[State] = {
+      // we either have a clojure/primitive
+      val flatContract: Set[State] = feasible(primProc, state.pc, contract, ScNil()).toSet.flatMap {
+        _: PC =>
+          val result =
+            lattice.join(applyOpResult(PostValue(contract, ScNil()), List(PostValue(expr, sym))))
+          conditional(
+            result,
+            ScNil(),
+            state.pc,
+            pNext => Set(ApplyKont(expr, sym, state.copy(kont = state.kont.next, pc = pNext))),
+            pNext => ??? // generate blame
+          )
+      }
+
+      val dependentContract: Set[State] =
+        feasible(primDep, state.pc, contract, ScNil()).toSet.flatMap { _: PC =>
+          val valueAddr = allocGeneric(component)
+          val grdAddr   = allocGeneric(component)
+          var cache     = write(valueAddr, expr, sym)(state.cache)
+          cache = write(grdAddr, contract, ScNil())(cache)
+          Set(
+            ApplyKont(
+              lattice.injectArr(Arr(Identity.none, sym.idn, grdAddr, valueAddr)),
+              ScNil(),
+              state.copy(kont = state.kont.next, cache = cache)
+            )
+          )
+        }
+
+      val all = flatContract ++ dependentContract
+
+      // if `contract` was not a valid contract, then we generate a blame
+      if (all.isEmpty) ??? else all
+    }
+
+    /**
+      * Generates new states for the result of a conditional
+      * @param value the value of the condition
+      * @param sym the symbolic value of the condition
+      * @param pc the path condition upto the conditional
+      * @param t a lambda that generates new states based on the updated path condition for the true branch
+      * @param f a lambda that generates new states based on the updated path condition for the false branch
+      * @return a set of new states to execute next
+      */
+    private def conditional(
+        value: Value,
+        sym: Sym,
+        pc: PC,
+        t: PC => Set[State],
+        f: PC => Set[State]
+    ): Set[State] = {
+      // a conditional consists of a true branch and a false branch, we use the built-in predicates
+      // true? and false? to check if the true and false branch are feasible
+      feasible(primTrue, pc, value, sym).toSet.flatMap(t) ++
+        feasible(primFalse, pc, value, sym).toSet.flatMap(f)
+    }
+
+    /**
+      * Checks wether the given operation is feasible for the given path with the given value
+      * If it is it returns the path condition otherwise it returns none
+      */
+    private def feasible(op: Prim, pc: PC, value: Value, sym: Sym): Option[PC] = {
+      sym match {
+        // if operation applied on the value is not true, then the path is infeasible
+        case _ if !lattice.isTrue(lattice.applyPrimitive(op)(value)) => None
+        // we are not going to extend the path condition if we do not have any symbolic information
+        case ScNil(_) => Some(pc)
+        // otherwise we let the SMT solver decide whether the path is feasible
+        case _ =>
+          val solver = new ScSMTSolver(pc.and(sym))
+          if (solver.isSat()) Some(pc.and(sym)) else None
+      }
     }
   }
 }

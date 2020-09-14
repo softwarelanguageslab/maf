@@ -242,6 +242,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
     override def eql[Bo: BoolLattice](x: CoProductValue, y: CoProductValue): Bo = ???
 
     override def injectSymbolic(sym: Symbolic): CoProductValue = Symbolics(Set(sym.expr))
+
+    override def getGrd(value: CoProductValue): Set[Grd[Addr]] = ???
   }
 }
 
@@ -328,5 +330,6 @@ class ScProductLattice[I, B, Addr <: Address](
       private def append(x: List[Value], y: List[Value]): List[Value] =
         x.foldLeft(y)((a, b) => insert(b, a))
 
+      override def getGrd(value: ProductElements): Set[Grd[Addr]] = ???
     }
 }

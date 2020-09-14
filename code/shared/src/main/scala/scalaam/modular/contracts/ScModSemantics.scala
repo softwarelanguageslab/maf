@@ -19,6 +19,7 @@ trait ScModSemantics
     */
   type AllocationContext
   def allocVar(id: ScIdentifier, cmp: Component): ScVarAddr[AllocationContext]
+  def allocGeneric(cmp: Component): ScGenericAddr[AllocationContext]
 
   type ComponentContext
   def allocCtx(
