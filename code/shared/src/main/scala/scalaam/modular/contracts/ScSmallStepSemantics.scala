@@ -27,6 +27,9 @@ trait ScSmallStepSemantics
     with SmallstepSemantics[ScExp]
     with ScSymbolicComponents {
 
+  type SMTSolver <: ScSmtSolver
+  def newSmtSolver(program: ScExp): SMTSolver
+
   override def intraAnalysis(component: Component): IntraScSmallStepSemantics
   trait IntraScSmallStepSemantics extends IntraScAnalysis with SmallstepSemanticsIntra {
     private val primTrue  = ScLattice.Prim("true?")
@@ -381,8 +384,8 @@ trait ScSmallStepSemantics
         case ScNil(_) => Some(pc)
         // otherwise we let the SMT solver decide whether the path is feasible
         case _ =>
-          val solver = new ScSMTSolver(pc.and(sym))
-          if (solver.isSat()) Some(pc.and(sym)) else None
+          val solver = newSmtSolver(pc.and(sym))
+          if (solver.isSat) Some(pc.and(sym)) else None
       }
     }
   }
