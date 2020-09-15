@@ -81,11 +81,22 @@ trait ScSmallStepSemantics
     case class IfFrame(consequent: ScExp, alternative: ScExp, next: ScFrame) extends ScFrame
     case class LetrecFrame(ident: ScIdentifier, body: ScExp, env: Env, next: ScFrame)
         extends ScFrame
-    case class SeqFrame(sequence: List[ScExp], next: ScFrame)     extends ScFrame
-    case class SetFrame(ident: ScIdentifier, next: ScFrame)       extends ScFrame
-    case class EvalMonFrame(exp: ScExp, next: ScFrame)            extends ScFrame
-    case class FinishEvalMonFrame(contract: Value, next: ScFrame) extends ScFrame
-    case class EvalRangeMakerFrame(exp: ScExp, next: ScFrame)     extends ScFrame
+    case class SeqFrame(sequence: List[ScExp], next: ScFrame)           extends ScFrame
+    case class SetFrame(ident: ScIdentifier, next: ScFrame)             extends ScFrame
+    case class EvalMonFrame(exp: ScExp, next: ScFrame)                  extends ScFrame
+    case class FinishEvalMonFrame(contract: Value, next: ScFrame)       extends ScFrame
+    case class EvalRangeMakerFrame(exp: ScExp, next: ScFrame)           extends ScFrame
+    case class CheckRangeFrame(value: Value, sym: Sym, next: ScFrame)   extends ScFrame
+    case class CheckedRangeFrame(value: Value, sym: Sym, next: ScFrame) extends ScFrame
+
+    case class AppliedRangeMakerFrame(value: Value, value1: List[PostValue], next: ScFrame)
+        extends ScFrame
+    case class ApplyRangeMakerFrame(
+        rangeMaker: Value,
+        e: Value,
+        operands: List[PostValue],
+        next: ScFrame
+    ) extends ScFrame
     case class FinishEvalDependentFrame(
         value: ScGenericAddr[AllocationContext],
         next: ScFrame
@@ -236,6 +247,39 @@ trait ScSmallStepSemantics
           val k = FinishEvalDependentFrame(addr, next)
           Set(EvalState(rangeMaker, state.env, state.copy(kont = k, cache = cache)))
 
+        case ApplyRangeMakerFrame(rangeMaker, e, operands, next) =>
+          // the domain has been evaluated
+          conditional(
+            value,
+            sym,
+            state.pc,
+            pNext => {
+              val k = AppliedRangeMakerFrame(e, operands, next)
+              applyOp(PostValue(rangeMaker, ScNil()), operands, state.copy(kont = k, pc = pNext))
+            },
+            pNext => ??? // generate blame on the caller
+          )
+
+        case AppliedRangeMakerFrame(e, operands, next) =>
+          // TODO: check if range is a proc?, otherwise generate blame
+          val k = CheckRangeFrame(value, sym, next)
+          applyOp(PostValue(e, ScNil()), operands, state.copy(kont = k))
+
+        case CheckRangeFrame(range, symRange, next) =>
+          val k = CheckedRangeFrame(value, sym, next)
+          applyOp(PostValue(range, symRange), List(PostValue(value, sym)), state.copy(kont = k))
+
+        case CheckedRangeFrame(value, sym, next) =>
+          // if the output of the applied function does not satisfy the contract we will generate a blame
+          // on the applied function
+          conditional(
+            value,
+            sym,
+            state.pc,
+            pNext => Set(ApplyKont(value, sym, state.copy(kont = next, pc = pNext))),
+            pNext => ??? // generate blame on the lambda
+          )
+
         case FinishEvalDependentFrame(domainAddr, next) =>
           val rangeAddr = allocGeneric(component)
           cache = write(rangeAddr, value, sym)
@@ -283,7 +327,26 @@ trait ScSmallStepSemantics
         result => Set(ApplyKont(result, ScNil(), state.copy(kont = state.kont.next)))
       )
 
-      primitiveCall ++ cloCall
+      // monitored function
+      // a monitored function first applies its domain contract to the input value of the function (operands)
+      // then it passes the input to the range maker, finally, it executes the function and afterwards, it
+      // evaluates the range contract
+      val grdCall = lattice
+        .getArr(operator.value)
+        .flatMap(arr => {
+          val grds   = read(arr.contract)(state.cache)
+          val (e, _) = read(arr.e)(state.cache)
+          lattice
+            .getGrd(grds._1)
+            .flatMap(grd => {
+              val (domain, _)     = read(grd.domain)(state.cache)
+              val (rangeMaker, _) = read(grd.rangeMaker)(state.cache)
+              val k               = ApplyRangeMakerFrame(rangeMaker, e, operands, state.kont.next)
+              applyOp(PostValue(domain, ScNil()), operands, state.copy(kont = k))
+            })
+        })
+
+      primitiveCall ++ cloCall ++ grdCall
     }
 
     private def applyOpPrim(

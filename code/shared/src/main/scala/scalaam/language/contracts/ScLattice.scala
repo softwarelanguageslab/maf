@@ -60,6 +60,7 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
   def isPrim(value: L): Boolean
   def isClo(value: L): Boolean
   def getPrim(value: L): Set[Prim]
+  def getArr(value: L): Set[Arr[Addr]]
   def getClo(value: L): Set[Clo[Addr]]
   def getGrd(value: L): Set[Grd[Addr]]
 }
