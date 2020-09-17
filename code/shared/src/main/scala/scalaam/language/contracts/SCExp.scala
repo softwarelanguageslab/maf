@@ -166,7 +166,7 @@ case class ScSet(variable: ScIdentifier, value: ScExp, idn: Identity) extends Sc
   override def subexpressions: List[Expression] = List(value)
 }
 
-case class ScMon(contract: ScContract, expression: ScExp, idn: Identity) extends ScExp {
+case class ScMon(contract: ScExp, expression: ScExp, idn: Identity) extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = contract.fv ++ expression.fv

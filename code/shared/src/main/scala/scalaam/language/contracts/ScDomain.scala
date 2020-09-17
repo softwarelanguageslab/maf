@@ -170,18 +170,18 @@ trait ScDomain[I, B, Addr <: Address] {
     }
 
     def isPrim(value: Value): Boolean = value match {
-      case TopValue | Prim(_) => true
-      case _                  => false
+      case TopValue | Prims(_) => true
+      case _                   => false
     }
 
     def isClo(value: Value): Boolean = value match {
-      case TopValue | _: Clo[Addr] => true
-      case _                       => false
+      case TopValue | _: Clos => true
+      case _                  => false
     }
 
     def isBlame(value: Value): Boolean = value match {
-      case TopValue | _: Blame => true
-      case _                   => false
+      case TopValue | _: Blames => true
+      case _                    => false
     }
 
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {

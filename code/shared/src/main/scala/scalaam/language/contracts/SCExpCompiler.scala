@@ -46,16 +46,21 @@ object SCExpCompiler {
   }
 
   def compile(prog: SExp): ScExp = prog match {
-    case Ident("set") :: IdentWithIdentity(name, idn) :: exp :: SExpValue(ValueNil, _) =>
+    case Ident("set!") :: IdentWithIdentity(name, idn) :: exp :: SExpValue(ValueNil, _) =>
       ScSet(ScIdentifier(name, idn), compile(exp), prog.idn)
 
     case Ident("flat") :: expr :: ListNil(_) =>
       ScFlatContract(compile(expr), prog.idn)
 
-    case Ident("->") :: domain :: range :: ListNil(_) =>
-      val domainCompiled = compile(domain).asInstanceOf[ScContract]
-      val rangeCompiled  = compile(range).asInstanceOf[ScContract]
+    case Ident("~>") :: domain :: range :: ListNil(_) =>
+      val domainCompiled = compile(domain)
+      val rangeCompiled  = compile(range)
       ScHigherOrderContract(domainCompiled, rangeCompiled, prog.idn)
+
+    case Ident("~") :: domain :: range :: ListNil(_) =>
+      val domainCompiled = compile(domain)
+      val rangeCompiled  = compile(range)
+      ScDependentContract(domainCompiled, rangeCompiled, prog.idn)
 
     case SExpId(identifier) => ScIdentifier(identifier.name, prog.idn)
     case Ident("lambda") :: params :: expression :: ListNil(_) =>
@@ -71,7 +76,7 @@ object SCExpCompiler {
       ScLetRec(ScIdentifier(name, idn), compiledBindingExpression, compiledExpression, prog.idn)
 
     case Ident("mon") :: contract :: expression :: ListNil(_) =>
-      val compiledContract   = compile(contract).asInstanceOf[ScContract]
+      val compiledContract   = compile(contract)
       val compiledExpression = compile(expression)
       ScMon(compiledContract, compiledExpression, prog.idn)
 
@@ -80,6 +85,7 @@ object SCExpCompiler {
       val compiledConsequent  = compile(consequent)
       val compiledAlternative = compile(alternative)
       ScIf(compiledCondition, compiledConsequent, compiledAlternative, prog.idn)
+
     case Ident("raise") :: SExpValue(ValueString(str), _) =>
       ScRaise(str, prog.idn)
 

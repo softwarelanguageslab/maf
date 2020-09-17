@@ -299,7 +299,7 @@ trait ScSmallStepSemantics
             sym,
             state.pc,
             pNext => {
-              val k = AppliedRangeMakerFrame(e, operands, next)
+              val k = AppliedRangeMakerFrame(e, operands, serverIdentity, next)
               applyOp(PostValue(rangeMaker, ScNil()), operands, state.copy(kont = k, pc = pNext))
             },
             // Example:
