@@ -58,6 +58,10 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord = 8
   }
 
+  case class Blames(blames: Set[Blame]) extends Value {
+    def ord = 9
+  }
+
   /**
     * A symbolic expression
     */
@@ -94,6 +98,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Grds(a), Grds(b))            => Grds(a ++ b)
       case (Prims(a), Prims(b))          => Prims(a ++ b)
       case (Symbolics(a), Symbolics(b))  => Symbolics(a ++ b)
+      case (Blames(a), Blames(b))        => Blames(a ++ b)
       case (_, _)                        => TopValue
     }
 

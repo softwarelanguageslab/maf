@@ -14,6 +14,9 @@ trait SmallstepSemantics[Expr <: Expression] extends ModAnalysis[Expr] with Retu
       var work: WorkList[State] = LIFOWorkList()
       var visited               = Set[State]()
       var result                = lattice.bottom
+
+      work = work.add(initialState)
+
       while (work.nonEmpty) {
         val state = work.head
         work = work.tail
@@ -28,8 +31,24 @@ trait SmallstepSemantics[Expr <: Expression] extends ModAnalysis[Expr] with Retu
       writeResult(result)
     }
 
+    /**
+      * The initial state of the semantics
+      */
+    def initialState: State
+
+    /**
+      * Checks whether the given state is a final state
+      */
     def isFinalState(state: State): Boolean
+
+    /**
+      * Retrieves the result from the final state
+      */
     def finalStateResult(state: State): Value
+
+    /**
+      * Evaluates the current state to a set of next states
+      */
     def step(state: State): Set[State]
   }
 }

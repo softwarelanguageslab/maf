@@ -1,8 +1,6 @@
 package scalaam.language.contracts
 
 import scalaam.core.{Address, Environment, Identity, Lattice}
-import scalaam.lattice.Type.Bottom
-import scalaam.lattice.{BoolLattice, IntLattice}
 
 object ScLattice {
 
@@ -24,6 +22,13 @@ object ScLattice {
       lambda: ScLambda,
       pc: ScExp = ScNil()
   )
+
+  /**
+    * A guard which represents the value of a dependent contract after evaluation.
+    * <code>
+    *  (domain ~ rangeMaker)
+    * </code>
+    */
   case class Grd[Addr](domain: Addr, rangeMaker: Addr)
 
   /**
@@ -34,8 +39,15 @@ object ScLattice {
 
   /**
     * A monitor on a dependent contract
+    * <code>
+    *  (mon (domain ~ rangeMaker)/lcontract procedure/lserver)
     */
-  case class Arr[Addr](lr: Identity, ld: Identity, contract: Addr, e: Addr)
+  case class Arr[Addr](lcontract: Identity, lserver: Identity, contract: Addr, e: Addr)
+
+  /**
+    * A blame that is generated when some contract has failed to be verified as safe.
+    */
+  case class Blame(blamedPosition: Identity, blamingPosition: Identity = Identity.none)
 
   case class Symbolic(expr: ScExp)
 }
@@ -48,19 +60,94 @@ object ScLattice {
 trait ScLattice[L, Addr <: Address] extends Lattice[L] {
   import ScLattice._
 
+  /*==================================================================================================================*/
+
+  /**
+    * Inject a boolean in the abstract domain
+    */
   def injectBoolean(bool: Boolean): L
+
+  /**
+    * Inject an integer in the abstract domain
+    */
   def injectInteger(n: Int): L
+
+  /**
+    * Inject a clojure in the abstract domain
+    */
   def injectClo(clo: Clo[Addr]): L
+
+  /**
+    * Inject a guard in the abstract domain
+    */
   def injectGrd(grd: Grd[Addr]): L
+
+  /**
+    * Inject an arrow (monitors on functions) in the abstract domain
+    */
   def injectArr(arr: Arr[Addr]): L
   def injectSymbolic(sym: Symbolic): L
+
+  /**
+    * Inject a blame in the abstract domain
+    */
+  def injectBlame(blame: Blame): L
+
+  /*==================================================================================================================*/
+
   def applyPrimitive(prim: Prim)(arguments: L*): L
+
+  /*==================================================================================================================*/
+
+  /**
+    * Returns true when the abstract value is possible true
+    */
   def isTrue(value: L): Boolean
+
+  /**
+    * Returns true when the value is possibly false
+    */
   def isFalse(value: L): Boolean
+
+  /**
+    * Returns true when the value is possibly a primitive
+    */
   def isPrim(value: L): Boolean
+
+  /**
+    * Returns true if the value is possibly a closure
+    */
   def isClo(value: L): Boolean
+
+  /*==================================================================================================================*/
+
+  /**
+    * Returns true if the value is possible a blame
+    */
+  def isBlame(value: L): Boolean
+
+  /**
+    * Extract a set of primitives from the abstract value
+    */
   def getPrim(value: L): Set[Prim]
+
+  /**
+    * Extract a set of arrow (monitors on functions) from the abstract value
+    */
   def getArr(value: L): Set[Arr[Addr]]
+
+  /**
+    * Extract a set of closures from the abstract value
+    */
   def getClo(value: L): Set[Clo[Addr]]
+
+  /**
+    * Extract a set of guards from the abstract value
+    */
   def getGrd(value: L): Set[Grd[Addr]]
+
+  /**
+    * Extract a set of blames from the abstract value
+    */
+  def getBlames(value: L): Set[Blame]
 }

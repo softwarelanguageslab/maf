@@ -1,7 +1,7 @@
 package scalaam.modular.contracts
-import scalaam.core.{Environment, Identity}
+import scalaam.core.{Address, Environment, Identity}
 import scalaam.core.Position.Position
-import scalaam.language.contracts.ScLattice.{Arr, Grd, Prim}
+import scalaam.language.contracts.ScLattice.{Arr, Blame, Grd, Prim}
 import scalaam.language.contracts.{
   ScBegin,
   ScDependentContract,
@@ -36,6 +36,23 @@ trait ScSmallStepSemantics
     private val primFalse = ScLattice.Prim("false?")
     private val primProc  = ScLattice.Prim("proc?")
     private val primDep   = ScLattice.Prim("dependent-contract?")
+
+    case class ExceptionAddr(component: Component, idn: Identity) extends Address {
+      def printable: Boolean = true
+    }
+
+    def writeBlame(blame: Blame) =
+      writeAddr(ExceptionAddr(component, expr(component).idn), lattice.injectBlame(blame))
+
+    def blame(
+        state: S,
+        blamedParty: Identity,
+        blamingParty: Identity = Identity.none
+    ): Set[State] = {
+      val k = state.kont.last
+      writeBlame(Blame(blamedParty, blamingParty))
+      Set(ApplyKont(lattice.bottom, ScNil(), state.copy(kont = k)))
+    }
 
     /**
       * Read from the given address in the cache, and if there is no such element in the cache
@@ -73,30 +90,50 @@ trait ScSmallStepSemantics
     sealed trait ScState
     case class EvalState(exp: ScExp, env: Env, state: S)            extends ScState
     case class ApplyKont(value: Value, symbolic: Sym, state: S)     extends ScState
+    case class ReturnResult(value: Value, state: S)                 extends State
     case class RaiseError(message: String, pos: Position, state: S) extends ScState
 
     sealed trait ScFrame {
       def next: ScFrame
+      def last: ScFrame = this.next match {
+        case ScNilFrame => this
+        case _          => this.next.last
+      }
     }
+    case object ScNilFrame extends ScFrame {
+      def next: ScFrame = throw new Exception("at the bottom of the continuation stack")
+    }
+
     case class IfFrame(consequent: ScExp, alternative: ScExp, next: ScFrame) extends ScFrame
     case class LetrecFrame(ident: ScIdentifier, body: ScExp, env: Env, next: ScFrame)
         extends ScFrame
-    case class SeqFrame(sequence: List[ScExp], next: ScFrame)           extends ScFrame
-    case class SetFrame(ident: ScIdentifier, next: ScFrame)             extends ScFrame
-    case class EvalMonFrame(exp: ScExp, next: ScFrame)                  extends ScFrame
-    case class FinishEvalMonFrame(contract: Value, next: ScFrame)       extends ScFrame
-    case class EvalRangeMakerFrame(exp: ScExp, next: ScFrame)           extends ScFrame
-    case class CheckRangeFrame(value: Value, sym: Sym, next: ScFrame)   extends ScFrame
-    case class CheckedRangeFrame(value: Value, sym: Sym, next: ScFrame) extends ScFrame
-
-    case class AppliedRangeMakerFrame(value: Value, value1: List[PostValue], next: ScFrame)
+    case class SeqFrame(sequence: List[ScExp], next: ScFrame) extends ScFrame
+    case class SetFrame(ident: ScIdentifier, next: ScFrame)   extends ScFrame
+    case class EvalMonFrame(exp: ScExp, next: ScFrame)        extends ScFrame
+    case class FinishEvalMonFrame(contract: Value, expressionIdn: Identity, next: ScFrame)
         extends ScFrame
+
+    case class EvalRangeMakerFrame(exp: ScExp, next: ScFrame) extends ScFrame
+    case class CheckRangeFrame(value: Value, sym: Sym, serverIdentity: Identity, next: ScFrame)
+        extends ScFrame
+    case class CheckedRangeFrame(value: Value, sym: Sym, serverIdentity: Identity, next: ScFrame)
+        extends ScFrame
+
+    case class AppliedRangeMakerFrame(
+        value: Value,
+        value1: List[PostValue],
+        serverIdentity: Identity,
+        next: ScFrame
+    ) extends ScFrame
+
     case class ApplyRangeMakerFrame(
         rangeMaker: Value,
         e: Value,
         operands: List[PostValue],
+        serverIdentity: Identity,
         next: ScFrame
     ) extends ScFrame
+
     case class FinishEvalDependentFrame(
         value: ScGenericAddr[AllocationContext],
         next: ScFrame
@@ -111,6 +148,7 @@ trait ScSmallStepSemantics
     ) extends ScFrame
 
     case class RestoreEnv(env: Env, next: ScFrame) extends ScFrame
+    case class ReturnFrame(next: ScFrame)          extends ScFrame
     case object NilFrame extends ScFrame {
       def next: ScFrame = throw new Exception("No next frame for the nil frame")
     }
@@ -122,8 +160,15 @@ trait ScSmallStepSemantics
       case ApplyKont(value, sym, state @ S(k, _, _, _)) => applyKont(value, sym, k, state)
     }
 
-    override def isFinalState(state: ScState): Boolean   = ???
-    override def finalStateResult(state: ScState): Value = ???
+    override def isFinalState(state: ScState): Boolean =
+      state.isInstanceOf[ReturnResult]
+
+    override def finalStateResult(state: ScState): Value = state match {
+      case ReturnResult(value, _) => value
+    }
+
+    override def initialState: ScState =
+      EvalState(expr(component), fnEnv, S(kont = ReturnFrame(ScNilFrame), env = fnEnv))
 
     private def lookup(id: ScIdentifier, env: Env): Addr = env.lookup(id.name) match {
       case Some(addr) => addr
@@ -179,7 +224,7 @@ trait ScSmallStepSemantics
         case ScHigherOrderContract(domain, range, idn) =>
           // a higher order contract is evaluated the same as a dependent contract
           // except that we need to transform the range into range maker, we can to this by thunkifying the range
-          val thunk = ScLambda(List(ScIdentifier("x", Identity.none)), range, range.idn)
+          val thunk = ScLambda(List(ScIdentifier("\"_", Identity.none)), range, range.idn)
           Set(EvalState(ScDependentContract(domain, thunk, idn), env, state))
 
         case ScDependentContract(domain, rangeMaker, _) =>
@@ -247,7 +292,7 @@ trait ScSmallStepSemantics
           val k = FinishEvalDependentFrame(addr, next)
           Set(EvalState(rangeMaker, state.env, state.copy(kont = k, cache = cache)))
 
-        case ApplyRangeMakerFrame(rangeMaker, e, operands, next) =>
+        case ApplyRangeMakerFrame(rangeMaker, e, operands, serverIdentity, next) =>
           // the domain has been evaluated
           conditional(
             value,
@@ -257,19 +302,21 @@ trait ScSmallStepSemantics
               val k = AppliedRangeMakerFrame(e, operands, next)
               applyOp(PostValue(rangeMaker, ScNil()), operands, state.copy(kont = k, pc = pNext))
             },
+            // Example:
+            // ((mon (int? ~ (lambda (x) int?)) (lambda (x) ...)) OPQ) blame should be on the location of OPQ
             pNext => ??? // generate blame on the caller
           )
 
-        case AppliedRangeMakerFrame(e, operands, next) =>
+        case AppliedRangeMakerFrame(e, operands, serverIdentity, next) =>
           // TODO: check if range is a proc?, otherwise generate blame
-          val k = CheckRangeFrame(value, sym, next)
+          val k = CheckRangeFrame(value, sym, serverIdentity, next)
           applyOp(PostValue(e, ScNil()), operands, state.copy(kont = k))
 
-        case CheckRangeFrame(range, symRange, next) =>
-          val k = CheckedRangeFrame(value, sym, next)
+        case CheckRangeFrame(range, symRange, serverIdentity, next) =>
+          val k = CheckedRangeFrame(value, sym, serverIdentity, next)
           applyOp(PostValue(range, symRange), List(PostValue(value, sym)), state.copy(kont = k))
 
-        case CheckedRangeFrame(value, sym, next) =>
+        case CheckedRangeFrame(value, sym, serverIdentity, next) =>
           // if the output of the applied function does not satisfy the contract we will generate a blame
           // on the applied function
           conditional(
@@ -277,7 +324,8 @@ trait ScSmallStepSemantics
             sym,
             state.pc,
             pNext => Set(ApplyKont(value, sym, state.copy(kont = next, pc = pNext))),
-            pNext => ??? // generate blame on the lambda
+            pNext =>
+              blame(state.copy(kont = next, pc = pNext), serverIdentity) // generate blame on the lambda
           )
 
         case FinishEvalDependentFrame(domainAddr, next) =>
@@ -292,13 +340,14 @@ trait ScSmallStepSemantics
           )
 
         case EvalMonFrame(expr, next) =>
-          Set(EvalState(expr, state.env, state.copy(kont = next)))
+          val k = FinishEvalMonFrame(value, expr.idn, next)
+          Set(EvalState(expr, state.env, state.copy(kont = k)))
 
-        case FinishEvalMonFrame(contract, _) =>
-          // the value passed to this continuation should be either
-          // a lambda in which case we are applying a flat contract,
-          // or a Grd value, in which case we are applying a dependent contract (or a higher order contract)
-          mon(contract, value, sym, state)
+        case FinishEvalMonFrame(contract, idn, _) =>
+          mon(contract, value, sym, idn, state)
+
+        case ReturnFrame(_) =>
+          Set(ReturnResult(value, state))
       }
     }
 
@@ -331,9 +380,11 @@ trait ScSmallStepSemantics
       // a monitored function first applies its domain contract to the input value of the function (operands)
       // then it passes the input to the range maker, finally, it executes the function and afterwards, it
       // evaluates the range contract
-      val grdCall = lattice
+      val arrCall = lattice
         .getArr(operator.value)
         .flatMap(arr => {
+          //        domain  range e               operands
+          // ((mon (int? -> any?) (lambda (x) _)) OPQ)
           val grds   = read(arr.contract)(state.cache)
           val (e, _) = read(arr.e)(state.cache)
           lattice
@@ -341,12 +392,12 @@ trait ScSmallStepSemantics
             .flatMap(grd => {
               val (domain, _)     = read(grd.domain)(state.cache)
               val (rangeMaker, _) = read(grd.rangeMaker)(state.cache)
-              val k               = ApplyRangeMakerFrame(rangeMaker, e, operands, state.kont.next)
+              val k               = ApplyRangeMakerFrame(rangeMaker, e, operands, arr.lserver, state.kont.next)
               applyOp(PostValue(domain, ScNil()), operands, state.copy(kont = k))
             })
         })
 
-      primitiveCall ++ cloCall ++ grdCall
+      primitiveCall ++ cloCall ++ arrCall
     }
 
     private def applyOpPrim(
@@ -377,7 +428,17 @@ trait ScSmallStepSemantics
     private def applyOpResult(operator: PostValue, operands: List[PostValue]): Set[Value] =
       applyOpPrim(operator, operands) ++ applyOpClo(operator, operands)
 
-    private def mon(contract: Value, expr: Value, sym: Sym, state: S): Set[State] = {
+    /**
+      * Creates a monitor on the given value.
+      * (mon contract/Identity.none expr/idn)
+      */
+    private def mon(
+        contract: Value,
+        expr: Value,
+        sym: Sym,
+        eIdn: Identity,
+        state: S
+    ): Set[State] = {
       // we either have a clojure/primitive
       val flatContract: Set[State] = feasible(primProc, state.pc, contract, ScNil()).toSet.flatMap {
         _: PC =>
@@ -388,7 +449,7 @@ trait ScSmallStepSemantics
             ScNil(),
             state.pc,
             pNext => Set(ApplyKont(expr, sym, state.copy(kont = state.kont.next, pc = pNext))),
-            pNext => ??? // generate blame
+            pNext => blame(state.copy(kont = state.kont.next, pc = pNext), eIdn)
           )
       }
 
