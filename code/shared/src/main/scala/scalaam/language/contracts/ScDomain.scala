@@ -14,18 +14,30 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord: Int
   }
 
+  val TOP_VALUE    = 0
+  val BOT_VALUE    = 1
+  val BOOL_VALUE   = 2
+  val CLOS_VALUE   = 3
+  val GRDS_VALUE   = 4
+  val ARRS_VALUE   = 5
+  val NUM_VALUE    = 6
+  val OPQS_VALUE   = 7
+  val PRIMS_VALUE  = 8
+  val BLAMES_VALUE = 9
+  val SYM_VALUE    = 10
+
   case object TopValue extends Value {
-    def ord                       = 0
+    def ord                       = TOP_VALUE
     override def toString: String = "⊤"
   }
 
   case object BotValue extends Value {
-    def ord               = 1
+    def ord               = BOT_VALUE
     override def toString = "⊥"
   }
 
   case class Bool(b: B) extends Value {
-    def ord = 2
+    def ord = BOOL_VALUE
     override def toString: String = (Values.isTrue(this), Values.isFalse(this)) match {
       case (true, false)  => "true"
       case (false, true)  => "false"
@@ -35,38 +47,35 @@ trait ScDomain[I, B, Addr <: Address] {
   }
 
   case class Clos(clos: Set[Clo[Addr]]) extends Value {
-    def ord = 3
+    def ord = CLOS_VALUE
   }
 
   case class Grds(grds: Set[Grd[Addr]]) extends Value {
-    def ord = 4
+    def ord = GRDS_VALUE
   }
 
   case class Arrs(arrs: Set[Arr[Addr]]) extends Value {
-    def ord = 5
+    def ord = ARRS_VALUE
   }
 
   case class Number(i: I) extends Value {
-    def ord = 6
+    def ord = NUM_VALUE
   }
 
   case class Opqs(opqs: Set[Opq]) extends Value {
-    def ord = 7
+    def ord = OPQS_VALUE
   }
 
   case class Prims(prims: Set[Prim]) extends Value {
-    def ord = 8
+    def ord = PRIMS_VALUE
   }
 
   case class Blames(blames: Set[Blame]) extends Value {
-    def ord = 9
+    def ord = BLAMES_VALUE
   }
 
-  /**
-    * A symbolic expression
-    */
   case class Symbolics(expr: Set[ScExp]) extends Value {
-    def ord = 9
+    def ord = SYM_VALUE
   }
 
   def bool(bool: Boolean): Value = Bool(BoolLattice[B].inject(bool))
@@ -85,6 +94,9 @@ trait ScDomain[I, B, Addr <: Address] {
 
   def symbolic(expr: ScExp) =
     Symbolics(Set(expr))
+
+  def blame(b: Blame) =
+    Blames(Set(b))
 
   object Values {
     def join(a: Value, b: Value): Value = (a, b) match {
@@ -145,22 +157,31 @@ trait ScDomain[I, B, Addr <: Address] {
         case (Prim("odd?"), _)                        => BotValue
       }
 
-    /**
-      * Everything is true except for bottom `false`
-      */
     def isTrue(value: Value): Boolean = value match {
       case BotValue => false
       case Bool(b)  => BoolLattice[B].isTrue(b)
       case _        => true
     }
 
-    /**
-      * Only bottom and `false` are false
-      */
     def isFalse(value: Value): Boolean = value match {
-      case BotValue => true
+      case TopValue => true
       case Bool(b)  => BoolLattice[B].isFalse(b)
       case _        => false
+    }
+
+    def isPrim(value: Value): Boolean = value match {
+      case TopValue | Prim(_) => true
+      case _                  => false
+    }
+
+    def isClo(value: Value): Boolean = value match {
+      case TopValue | _: Clo[Addr] => true
+      case _                       => false
+    }
+
+    def isBlame(value: Value): Boolean = value match {
+      case TopValue | _: Blame => true
+      case _                   => false
     }
 
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {
@@ -173,7 +194,23 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Clos(a), Clos(b))     => b.subsetOf(a)
       case (Opqs(a), Opqs(b))     => b.subsetOf(a)
       case (Prims(a), Prims(b))   => b.subsetOf(a)
+      case (Blames(a), Blames(b)) => b.subsetOf(a)
       case (_, _)                 => false
+    }
+
+    def show(x: Value): String = x match {
+      case TopValue       => x.toString
+      case BotValue       => x.toString
+      case Number(a)      => a.toString
+      case Bool(true)     => "true"
+      case Bool(false)    => "false"
+      case Grds(grds)     => s"{${grds.map(_.toString).mkString(",")}"
+      case Arrs(arrs)     => s"{${arrs.map(_.toString).mkString(",")}"
+      case Clos(clos)     => s"{${clos.map(_.toString).mkString(",")}"
+      case Opqs(opqs)     => s"{${opqs.map(_.toString).mkString(",")}"
+      case Prims(prims)   => s"{${prims.map(_.toString).mkString(",")}"
+      case Blames(blames) => s"{${blames.map(_.toString).mkString(",")}}"
+      case _              => x.toString
     }
   }
 }
@@ -187,6 +224,12 @@ class ScCoProductLattice[I, B, Addr <: Address](
   case class CoProduct(value: Value) extends CoProductValue
   case object Top                    extends CoProductValue
   case object Bottom                 extends CoProductValue
+
+  def isPred(pred: (Value => Boolean), value: CoProductValue): Boolean = value match {
+    case Top              => true
+    case Bottom           => false
+    case CoProduct(value) => pred(value)
+  }
 
   implicit val isScLattice = new ScLattice[CoProductValue, Addr] {
     implicit def intoCoProduct(value: Value): CoProductValue = value match {
@@ -205,6 +248,10 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     override def injectArr(a: Arr[Addr]): CoProductValue = arr(a)
 
+    override def injectSymbolic(sym: Symbolic): CoProductValue = Symbolics(Set(sym.expr))
+
+    override def injectBlame(b: Blame): CoProductValue = blame(b)
+
     override def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue =
       Values.applyPrimitive(prim)(arguments.map {
         case product: CoProduct => product.value
@@ -212,23 +259,46 @@ class ScCoProductLattice[I, B, Addr <: Address](
         case Bottom             => BotValue
       }: _*)
 
-    override def isTrue(value: CoProductValue): Boolean = ???
+    override def isTrue(value: CoProductValue): Boolean = isPred(Values.isTrue, value)
 
-    override def isFalse(value: CoProductValue): Boolean = ???
+    override def isFalse(value: CoProductValue): Boolean = isPred(Values.isFalse, value)
 
-    override def isPrim(value: CoProductValue): Boolean = ???
+    override def isPrim(value: CoProductValue): Boolean = isPred(Values.isPrim, value)
 
-    override def isClo(value: CoProductValue): Boolean = ???
+    override def isClo(value: CoProductValue): Boolean = isPred(Values.isClo, value)
 
-    override def getPrim(value: CoProductValue): Set[Prim] = ???
+    override def isBlame(value: CoProductValue): Boolean = isPred(Values.isBlame, value)
 
-    override def getClo(value: CoProductValue): Set[Clo[Addr]] = ???
+    override def getPrim(value: CoProductValue): Set[Prim] = value match {
+      case CoProduct(Prims(prims)) => prims
+      case _                       => Set()
+    }
+
+    override def getClo(value: CoProductValue): Set[Clo[Addr]] = value match {
+      case CoProduct(Clos(clos)) => clos
+      case _                     => Set()
+    }
+
+    override def getGrd(value: CoProductValue): Set[Grd[Addr]] = value match {
+      case CoProduct(Grds(grds)) => grds
+      case _                     => Set()
+    }
+
+    override def getArr(value: CoProductValue): Set[Arr[Addr]] = value match {
+      case CoProduct(Arrs(arrs)) => arrs
+      case _                     => Set()
+    }
+
+    override def getBlames(value: CoProductValue): Set[Blame] = value match {
+      case CoProduct(Blames(blames)) => blames
+      case _                         => Set()
+    }
 
     /** A lattice has a bottom element */
-    override def bottom: CoProductValue = ???
+    override def bottom: CoProductValue = Bottom
 
     /** A lattice has a top element (might be undefined) */
-    override def top: CoProductValue = ???
+    override def top: CoProductValue = Top
 
     /** Elements of the lattice can be joined together */
     override def join(x: CoProductValue, y: => CoProductValue): CoProductValue = (x, y) match {
@@ -239,18 +309,22 @@ class ScCoProductLattice[I, B, Addr <: Address](
     }
 
     /** Subsumption between two elements can be checked */
-    override def subsumes(x: CoProductValue, y: => CoProductValue): Boolean = ???
+    override def subsumes(x: CoProductValue, y: => CoProductValue): Boolean = (x, y) match {
+      case (Top, _)                     => true
+      case (_, Bottom)                  => true
+      case (_, Top)                     => false
+      case (CoProduct(a), CoProduct(b)) => Values.subsumes(a, b)
+      case (_, _)                       => false
+    }
 
-    override def show(v: CoProductValue): String = ???
+    override def show(v: CoProductValue): String = v match {
+      case Top              => TopValue.toString
+      case Bottom           => BotValue.toString
+      case CoProduct(value) => Values.show(value)
+    }
 
     /** Equality check, returning an abstract result */
     override def eql[Bo: BoolLattice](x: CoProductValue, y: CoProductValue): Bo = ???
-
-    override def injectSymbolic(sym: Symbolic): CoProductValue = Symbolics(Set(sym.expr))
-
-    override def getGrd(value: CoProductValue): Set[Grd[Addr]] = ???
-
-    override def getArr(value: CoProductValue): Set[Arr[Addr]] = ???
   }
 }
 
@@ -282,31 +356,91 @@ class ScProductLattice[I, B, Addr <: Address](
       override def injectArr(a: Arr[Addr]): ProductElements =
         arr(a)
 
+      override def injectBlame(b: Blame): ProductElements =
+        blame(b)
+
       override def injectSymbolic(sym: Symbolic): ProductElements = Symbolics(Set(sym.expr))
 
-      override def applyPrimitive(prim: Prim)(arguments: ProductElements*): ProductElements = {
-        // TODO: this is wrong, fix
-        val values = for {
-          argument <- arguments
-          value    <- argument.asInstanceOf[ProductElements].elements
-        } yield (value)
-
-        Values.applyPrimitive(prim)(values: _*)
+      private def collectArgumentsList(arguments: List[ProductElements]): List[List[Value]] = {
+        val heads = arguments.map(_.elements.head)
+        val tails = arguments.map(_.elements.tail).map(ProductElements)
+        heads :: collectArgumentsList(tails)
       }
 
+      override def applyPrimitive(prim: Prim)(arguments: ProductElements*): ProductElements = {
+        val results =
+          collectArgumentsList(arguments.toList)
+            .map((args) => Values.applyPrimitive(prim)(args: _*))
+            .map((value) => ProductElements(List(value)))
+
+        results.foldLeft(bottom)((result, value) => join(result, value))
+      }
+
+      private def isPred(value: ProductElements, category: Int, pred: (Value => Boolean)): Boolean =
+        value.elements.exists(v => v.ord == category && pred(v))
+
       override def isTrue(value: ProductElements): Boolean =
-        value.elements.exists(Values.isTrue)
+        isPred(value, BOOL_VALUE, Values.isTrue)
 
       override def isFalse(value: ProductElements): Boolean =
-        value.elements.exists(Values.isFalse)
+        isPred(value, BOOL_VALUE, Values.isFalse)
 
-      override def isPrim(value: ProductElements): Boolean = ???
+      override def isPrim(value: ProductElements): Boolean =
+        isPred(value, PRIMS_VALUE, Values.isPrim)
 
-      override def isClo(value: ProductElements): Boolean = ???
+      override def isClo(value: ProductElements): Boolean =
+        isPred(value, CLOS_VALUE, Values.isClo)
 
-      override def getPrim(value: ProductElements): Set[Prim] = ???
+      override def isBlame(value: ProductElements): Boolean =
+        isPred(value, BLAMES_VALUE, Values.isBlame)
 
-      override def getClo(value: ProductElements): Set[Clo[Addr]] = ???
+      override def getPrim(value: ProductElements): Set[Prim] =
+        value.elements
+          .flatMap {
+            case p: Prims => Some(p.prims)
+            case _        => None
+          }
+          .flatten
+          .toSet
+
+      override def getClo(value: ProductElements): Set[Clo[Addr]] =
+        value.elements
+          .flatMap {
+            case c: Clos => Some(c.clos)
+            case _       => None
+          }
+          .flatten
+          .toSet
+
+      override def getGrd(value: ProductElements): Set[Grd[Addr]] =
+        value.elements
+          .flatMap {
+            case g: Grds => Some(g.grds)
+            case _       => None
+          }
+          .flatten
+          .toSet
+
+      override def getArr(value: ProductElements): Set[Arr[Addr]] =
+        value.elements
+          .flatMap {
+            case c: Arrs => Some(c.arrs)
+            case _       => None
+          }
+          .flatten
+          .toSet
+
+      /**
+        * Extract a set of blames from the abstract value
+        */
+      override def getBlames(value: ProductElements): Set[Blame] =
+        value.elements
+          .flatMap {
+            case c: Blames => Some(c.blames)
+            case _         => None
+          }
+          .flatten
+          .toSet
 
       /** A lattice has a bottom element */
       override def bottom: ProductElements = ProductElements(List())
@@ -320,12 +454,14 @@ class ScProductLattice[I, B, Addr <: Address](
       }
 
       /** Subsumption between two elements can be checked */
-      override def subsumes(x: ProductElements, y: => ProductElements): Boolean = ???
+      override def subsumes(x: ProductElements, y: => ProductElements): Boolean =
+        join(x, y) == x
 
       /** Equality check, returning an abstract result */
       override def eql[B: BoolLattice](x: ProductElements, y: ProductElements): B = ???
 
-      override def show(v: ProductElements): String = ???
+      override def show(v: ProductElements): String =
+        v.elements.map(v => s"${Values.show(v)}").mkString(" x ")
 
       private def insert(x: Value, ys: List[Value]): List[Value] = ys match {
         case Nil                       => List(x)
@@ -336,9 +472,5 @@ class ScProductLattice[I, B, Addr <: Address](
 
       private def append(x: List[Value], y: List[Value]): List[Value] =
         x.foldLeft(y)((a, b) => insert(b, a))
-
-      override def getGrd(value: ProductElements): Set[Grd[Addr]] = ???
-
-      override def getArr(value: ProductElements): Set[Arr[Addr]] = ???
     }
 }
