@@ -49,13 +49,13 @@ class ScEvalSuite extends ScTestsJVM {
 
     def safe(): Unit = analyse { machine =>
       testName.should("be safe") in {
-        machine.summary().blames shouldEqual Set()
+        machine.summary.blames shouldEqual Set()
       }
     }
 
     def unsafe(): Unit = analyse { machine =>
       testName.should("be unsafe") in {
-        assert(machine.summary().blames.nonEmpty)
+        assert(machine.summary.blames.nonEmpty)
       }
     }
 
@@ -65,7 +65,7 @@ class ScEvalSuite extends ScTestsJVM {
       }
 
     def checked(f: (Set[Blame] => Unit)): Unit =
-      analyse(machine => f(machine.summary().blames.flatMap(_._2).toSet))
+      analyse(machine => f(machine.summary.blames.flatMap(_._2).toSet))
   }
 
   case object EmptyVerifyTestBuilder extends VerifyTestBuilder {
@@ -89,23 +89,23 @@ class ScEvalSuite extends ScTestsJVM {
   def _verify(_contract: String, _expr: String): VerifyTestBuilder = EmptyVerifyTestBuilder
 
   eval("1").tested { machine =>
-    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(1))
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(1))
   }
 
   eval("(+ 1 1)").tested { machine =>
-    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(2))
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(2))
 
   }
   eval("(* 2 3)").tested { machine =>
-    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(6))
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(6))
   }
 
   eval("(/ 6 2)").tested { machine =>
-    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(3))
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(3))
 
   }
   eval("(- 3 3)").tested { machine =>
-    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(0))
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(0))
   }
 
   // An integer literal should always pass the `int?` test

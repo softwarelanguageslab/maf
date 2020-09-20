@@ -81,7 +81,7 @@ trait ScModSemantics
 
   override def intraAnalysis(component: Component): IntraScAnalysis
 
-  def summary(): ScAnalysisSummary[Value] = {
+  def summary: ScAnalysisSummary[Value] = {
     var returnValues = Map[Any, Value]()
     var blames       = Map[Any, Set[Blame]]()
 
@@ -92,5 +92,9 @@ trait ScModSemantics
     }
 
     ScAnalysisSummary(returnValues, blames)
+  }
+
+  def getReturnValue(component: Component): Option[Value] = {
+    summary.getReturnValue(component)
   }
 }
