@@ -98,6 +98,8 @@ trait ScDomain[I, B, Addr <: Address] {
   def blame(b: Blame) =
     Blames(Set(b))
 
+  def prim(p: Prim) = Prims(Set(p))
+
   object Values {
     def join(a: Value, b: Value): Value = (a, b) match {
       case (TopValue, _) | (_, TopValue) => TopValue
@@ -248,16 +250,19 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     override def injectArr(a: Arr[Addr]): CoProductValue = arr(a)
 
+    override def injectPrim(p: Prim): CoProductValue = prim(p)
+
     override def injectSymbolic(sym: Symbolic): CoProductValue = Symbolics(Set(sym.expr))
 
     override def injectBlame(b: Blame): CoProductValue = blame(b)
 
-    override def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue =
+    override def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue = {
       Values.applyPrimitive(prim)(arguments.map {
         case product: CoProduct => product.value
         case Top                => TopValue
         case Bottom             => BotValue
       }: _*)
+    }
 
     override def isTrue(value: CoProductValue): Boolean = isPred(Values.isTrue, value)
 
@@ -340,6 +345,9 @@ class ScProductLattice[I, B, Addr <: Address](
     new ScLattice[ProductElements, Addr]() {
       implicit def intoProductElements(value: Value): ProductElements =
         ProductElements(List(value))
+
+      override def injectPrim(p: Prim): ProductElements =
+        prim(p)
 
       override def injectBoolean(b: Boolean): ProductElements =
         bool(b)

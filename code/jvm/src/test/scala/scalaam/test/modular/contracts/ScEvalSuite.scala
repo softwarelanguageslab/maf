@@ -21,7 +21,9 @@ class ScEvalSuite extends ScTests {
     def checked(f: (Set[Blame] => Unit)): Unit
   }
 
-  case class SomeVerifyTestBuilder(var command: String) extends VerifyTestBuilder {
+  case class SomeVerifyTestBuilder(var command: String)
+      extends VerifyTestBuilder
+      with ScAnalysisFixture {
     private var name: String = ""
     def named(name: String): VerifyTestBuilder = {
       this.name = name
@@ -60,7 +62,7 @@ class ScEvalSuite extends ScTests {
     SomeVerifyTestBuilder(s"(mon $contract $expr)")
   }
 
-  def verify_(_contract: String, _expr: String): VerifyTestBuilder = EmptyVerifyTestBuilder
+  def _verify(_contract: String, _expr: String): VerifyTestBuilder = EmptyVerifyTestBuilder
 
   // An integer literal should always pass the `int?` test
   verify("int?", "5").named("flat_lit_int?").safe()

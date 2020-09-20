@@ -63,6 +63,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
   /*==================================================================================================================*/
 
   /**
+    * Inject a primitive in the abstract domain
+    */
+  def injectPrim(prim: Prim): L
+
+  /**
     * Inject a boolean in the abstract domain
     */
   def injectBoolean(bool: Boolean): L
@@ -86,6 +91,7 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Inject an arrow (monitors on functions) in the abstract domain
     */
   def injectArr(arr: Arr[Addr]): L
+
   def injectSymbolic(sym: Symbolic): L
 
   /**

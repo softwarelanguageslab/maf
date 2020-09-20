@@ -93,7 +93,6 @@ object SCExpCompiler {
       ScBegin(compile_sequence(expressions), prog.idn)
 
     case operator :: arguments =>
-      println(arguments)
       ScFunctionAp(compile(operator), compile_sequence(arguments), prog.idn)
 
     case IdentWithIdentity(name, idn) =>

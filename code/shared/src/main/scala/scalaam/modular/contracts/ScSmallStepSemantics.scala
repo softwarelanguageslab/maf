@@ -37,10 +37,6 @@ trait ScSmallStepSemantics
     private val primProc  = ScLattice.Prim("proc?")
     private val primDep   = ScLattice.Prim("dependent-contract?")
 
-    case class ExceptionAddr(component: Component, idn: Identity) extends Address {
-      def printable: Boolean = true
-    }
-
     def writeBlame(blame: Blame) =
       writeAddr(ExceptionAddr(component, expr(component).idn), lattice.injectBlame(blame))
 
@@ -62,7 +58,9 @@ trait ScSmallStepSemantics
       */
     def read(addr: Addr)(implicit cache: StoreCache): (Value, Sym) = cache.get(addr) match {
       case Some((value, sym)) => (value, sym)
-      case None               => (readAddr(addr), ScNil())
+      case None => {
+        (readAddr(addr), ScNil())
+      }
     }
 
     /**
@@ -279,7 +277,7 @@ trait ScSmallStepSemantics
           Set(EvalState(operands.head, state.env, state.copy(kont = k)))
 
         case EvalOperandsFrame(operator, collected, List(), _) =>
-          applyOp(operator, collected.reverse, state)
+          applyOp(operator, (symbolic(value, sym) :: collected).reverse, state)
 
         case EvalOperandsFrame(operator, collected, operands, next) =>
           val k =
@@ -361,7 +359,7 @@ trait ScSmallStepSemantics
 
       // primitive function call
       val primitiveCall = applyOpPrim(operator, operands).flatMap(
-        value =>
+        value => {
           Set(
             ApplyKont(
               value,
@@ -369,6 +367,7 @@ trait ScSmallStepSemantics
               state.copy(kont = state.kont.next)
             )
           )
+        }
       )
 
       // user defined function

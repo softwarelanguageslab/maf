@@ -31,15 +31,14 @@ trait ScTests extends AnyFlatSpec with should.Matchers {
   }
 
   trait ScAnalysisFixture extends ScLatticeFixture {
-    class ScTestAnalysis[Address](prg: ScExp)
+    class ScTestAnalysis(prg: ScExp)
         extends SimpleScSemantics(prg)
         with ScCallInsensitivity
         with ScConstantPropagationDomain {
 
       type SMTSolver = ScSmtSolver
-      override def newSmtSolver(program: PC): SMTSolver              = ???
-      override def baseEnv: Env                                      = Environment(List())
-      override var store: Map[Addr, coProductLattice.CoProductValue] = Map()
+      override def newSmtSolver(program: PC): SMTSolver =
+        throw new Exception("no SMT solver found.")
     }
   }
 

@@ -1,12 +1,10 @@
 package scalaam.modular.contracts
 
-import java.awt.Component
-
 import scalaam.core.Position.Position
 import scalaam.core.{Address, Environment}
-import scalaam.language.contracts.{ScCoProductLattice, ScExp, ScIdentifier, ScLattice}
-import scalaam.modular.{GlobalStore, ModAnalysis, ReturnValue}
-import scalaam.util.benchmarks.Timeout
+import scalaam.language.contracts.ScLattice.Blame
+import scalaam.language.contracts.{ScExp, ScIdentifier, ScLattice}
+import scalaam.modular.{GlobalStore, ModAnalysis, ReturnAddr, ReturnValue}
 
 trait ScModSemantics
     extends ModAnalysis[ScExp]
@@ -82,4 +80,17 @@ trait ScModSemantics
   }
 
   override def intraAnalysis(component: Component): IntraScAnalysis
+
+  def summary(): ScAnalysisSummary[Value] = {
+    var returnValues = Map[Any, Value]()
+    var blames       = Map[Any, Set[Blame]]()
+
+    store.foreach {
+      case (ReturnAddr(cmp, _), value)    => returnValues = returnValues.updated(cmp, value)
+      case (ExceptionAddr(cmp, _), value) => blames = blames.updated(cmp, lattice.getBlames(value))
+      case _                              => ()
+    }
+
+    ScAnalysisSummary(returnValues, blames)
+  }
 }
