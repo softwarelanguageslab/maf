@@ -29,7 +29,7 @@ trait ScModSemantics
       caller: Component
   ): ComponentContext
 
-  def newComponent[Component](component: Call[ComponentContext]): Component
+  def newComponent(component: Call[ComponentContext]): Component
 
   /**
     * The environment in which the analysis is executed
@@ -44,22 +44,23 @@ trait ScModSemantics
   /**
     * The components of this analysis are functions
     */
-  override type Component = this.type
+  type Component
 
   /**
     * For convience we define the `main` function as the initial component that must be analysed
     */
-  override def initialComponent: Component = ???
+  def initialComponent: Component
 
   /**
     * Retrieves the expression from the given component
     * @param cmp the component to extract the expression from
     * @return an expression from the soft contract language
     */
-  override def expr(cmp: Component): ScExp = ???
+  def expr(cmp: Component): ScExp
+
+  def view(component: Component): ScComponent
 
   trait IntraScAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
-    def view(component: Component): ScComponent
 
     /**
       * Compute the body of the component under analysis

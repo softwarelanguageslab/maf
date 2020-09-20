@@ -1,25 +1,11 @@
 package scalaam.test.language.contracts
 
-import org.scalatest.Matchers
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should
 import scalaam.core.Address
+import scalaam.language.contracts.ScLattice
 import scalaam.language.contracts.ScLattice.Prim
-import scalaam.language.contracts.{ScCoProductLattice, ScLattice, ScProductLattice}
+import scalaam.test.ScTests
 
-class ScLatticeTest extends AnyFlatSpec with should.Matchers {
-  trait ScLatticeFixture {
-    import scalaam.lattice.ConstantPropagation._
-    import L._
-    val scCoPrLattice: ScCoProductLattice[I, B, Address]                 = new ScCoProductLattice[I, B, Address]()
-    val scPrLattice: ScProductLattice[I, B, Address]                     = new ScProductLattice[I, B, Address]()
-    val coLattice: ScLattice[scCoPrLattice.CoProductValue, Address]      = scCoPrLattice.isScLattice
-    val proLattice: ScLattice[scPrLattice.ProductElements, Address]      = scPrLattice.isScLattice
-    def one[V, A <: Address](implicit lattice: ScLattice[V, A]): V       = n(1)
-    def n[V, A <: Address](v: Int)(implicit lattice: ScLattice[V, A]): V = lattice.injectInteger(v)
-    def withLattice[V, A <: Address](implicit lattice: ScLattice[V, A]): Unit
-  }
-
+class ScLatticeTest extends ScTests {
   "Arithmetic operations" should "preserve bottom" in new ScLatticeFixture {
     def withLattice[V, A <: Address](implicit lattice: ScLattice[V, A]): Unit = {
       Seq("*", "+", "-").foreach { op =>

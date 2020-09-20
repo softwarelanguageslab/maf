@@ -1,7 +1,7 @@
 package scalaam.modular.contracts
 
 import scalaam.core.{Address, Environment, Identifier}
-import scalaam.language.contracts.ScLambda
+import scalaam.language.contracts.{ScExp, ScLambda}
 
 sealed trait ScComponent
 
@@ -18,3 +18,19 @@ case object ScMain extends ScComponent
   */
 case class Call[Context](env: Environment[Address], lambda: ScLambda, context: Context)
     extends ScComponent
+
+trait ScStandardComponents extends ScModSemantics {
+  type Component = ScComponent
+
+  def expr(component: Component): ScExp = view(component) match {
+    case ScMain             => program
+    case Call(_, lambda, _) => lambda
+  }
+
+  def view(component: Component): ScComponent = component
+
+  def newComponent(component: Call[ComponentContext]): Component =
+    component
+
+  def initialComponent: ScComponent = ScMain
+}
