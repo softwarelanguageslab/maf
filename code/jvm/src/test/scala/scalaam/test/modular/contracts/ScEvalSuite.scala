@@ -1,11 +1,11 @@
 package scalaam.test.modular.contracts
 
 import scalaam.language.contracts.ScLattice.Blame
-import scalaam.modular.contracts.ScAnalysisSummary
+import scalaam.modular.contracts.{ScAnalysisSummary, ScMain}
 import scalaam.test.ScTestsJVM
 
 class ScEvalSuite extends ScTestsJVM {
-  trait VerifyTestBuilder extends ScLatticeFixture {
+  trait VerifyTestBuilder extends ScLatticeFixture with ScAnalysisFixtureJVM {
     def named(name: String): VerifyTestBuilder
     def applied(refinements: Set[String] = Set()): VerifyTestBuilder
 
@@ -21,38 +21,51 @@ class ScEvalSuite extends ScTestsJVM {
 
     def checked(f: (Set[Blame] => Unit)): Unit
 
-    def analyse(f: Set[Blame] => Unit): Unit
+    def analyse(f: ScTestAnalysisJVM => Unit): Unit
+
+    def tested(f: ScTestAnalysisJVM => Unit): Unit
   }
 
-  case class SomeVerifyTestBuilder(var command: String)
-      extends VerifyTestBuilder
-      with ScAnalysisFixtureJVM {
+  case class SomeVerifyTestBuilder(var command: String) extends VerifyTestBuilder {
     private var name: String = ""
     def named(name: String): VerifyTestBuilder = {
       this.name = name
       this
     }
 
+    def testName: String = if (name.isEmpty) command else name
+
     def applied(refinements: Set[String] = Set()): VerifyTestBuilder = {
       this.command = s"(${this.command} OPQ)"
       this
     }
 
-    def analyse(f: Set[Blame] => Unit): Unit = {
-      val program  = compile(command)
-      val analysis = new ScTestAnalysisJVM(program)
-      analysis.analyze()
-      println(analysis.summary())
+    def analyse(f: ScTestAnalysisJVM => Unit): Unit = {
+      val program = compile(command)
+      val machine = new ScTestAnalysisJVM(program)
+      machine.analyze()
+      f(machine)
     }
 
-    def safe(): Unit = analyse { blames =>
-      blames shouldEqual Set()
+    def safe(): Unit = analyse { machine =>
+      testName.should("be safe") in {
+        machine.summary().blames shouldEqual Set()
+      }
     }
 
-    def unsafe(): Unit = analyse { blames =>
-      assert(blames.nonEmpty)
+    def unsafe(): Unit = analyse { machine =>
+      testName.should("be unsafe") in {
+        assert(machine.summary().blames.nonEmpty)
+      }
     }
-    def checked(f: (Set[Blame] => Unit)): Unit = analyse(f)
+
+    def tested(f: ScTestAnalysisJVM => Unit): Unit =
+      testName.should("pass") in {
+        analyse(f)
+      }
+
+    def checked(f: (Set[Blame] => Unit)): Unit =
+      analyse(machine => f(machine.summary().blames.flatMap(_._2).toSet))
   }
 
   case object EmptyVerifyTestBuilder extends VerifyTestBuilder {
@@ -61,7 +74,8 @@ class ScEvalSuite extends ScTestsJVM {
     def safe(): Unit                                                 = ()
     def unsafe(): Unit                                               = ()
     def checked(f: (Set[Blame] => Unit)): Unit                       = ()
-    def analyse(f: Set[Blame] => Unit): Unit                         = ()
+    def analyse(f: ScTestAnalysisJVM => Unit): Unit                  = ()
+    def tested(f: ScTestAnalysisJVM => Unit): Unit                   = ()
   }
 
   def verify(contract: String, expr: String): VerifyTestBuilder = {
@@ -74,8 +88,25 @@ class ScEvalSuite extends ScTestsJVM {
 
   def _verify(_contract: String, _expr: String): VerifyTestBuilder = EmptyVerifyTestBuilder
 
-  eval("1").analyse(_ => ())
-  eval("(+ 1 1)").analyse(_ => ())
+  eval("1").tested { machine =>
+    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(1))
+  }
+
+  eval("(+ 1 1)").tested { machine =>
+    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(2))
+
+  }
+  eval("(* 2 3)").tested { machine =>
+    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(6))
+  }
+
+  eval("(/ 6 2)").tested { machine =>
+    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(3))
+
+  }
+  eval("(- 3 3)").tested { machine =>
+    machine.summary().returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(0))
+  }
 
   // An integer literal should always pass the `int?` test
   _verify("int?", "5").named("flat_lit_int?").safe()
