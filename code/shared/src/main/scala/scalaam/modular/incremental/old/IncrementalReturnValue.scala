@@ -1,8 +1,8 @@
-package scalaam.modular.incremental
+package maf.modular.incremental
 
 /*
-import scalaam.core.Expression
-import scalaam.modular.ReturnValue
+import maf.core.Expression
+import maf.modular.ReturnValue
 
 trait IncrementalReturnValue[Expr <: Expression] extends IncrementalGlobalStore[Expr] with ReturnValue[Expr] {
 

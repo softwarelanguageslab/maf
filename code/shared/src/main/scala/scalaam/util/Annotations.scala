@@ -1,4 +1,4 @@
-package scalaam.util
+package maf.util
 
 object Annotations {
   class unsound(reason: String = "")      extends scala.annotation.StaticAnnotation

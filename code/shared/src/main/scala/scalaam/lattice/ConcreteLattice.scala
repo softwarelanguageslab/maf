@@ -1,8 +1,8 @@
-package scalaam.lattice
+package maf.lattice
 
-import scalaam.core._
-import scalaam.util.Show
-import scalaam.util.SmartUnion._
+import maf.core._
+import maf.util.Show
+import maf.util.SmartUnion._
 
 object Concrete {
   sealed trait L[+X] {
@@ -58,10 +58,10 @@ object Concrete {
   type I   = L[Int]
   type R   = L[Double]
   type C   = L[Char]
-  /* TODO[easy]: the bool scalaam.lattice implementation could be specialized (see the old "ConcreteBoolEfficient" implementation). Whether this results in a speed improvement should be evaluated */
+  /* TODO[easy]: the bool lattice implementation could be specialized (see the old "ConcreteBoolEfficient" implementation). Whether this results in a speed improvement should be evaluated */
 
   object L {
-    import scalaam.lattice._
+    import maf.lattice._
 
     implicit class FoldMapOps[X](content: Set[X]) {
       def foldMap[Y: Lattice](f: X => Y): Y =

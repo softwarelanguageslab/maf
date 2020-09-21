@@ -1,15 +1,15 @@
-package scalaam.test.language.scheme
+package maf.test.language.scheme
 
 import org.scalatest.propspec.AnyPropSpec
-import scalaam.core._
-import scalaam.language.scheme._
-import scalaam.language.scheme.lattices.SchemeLattice
-import scalaam.language.scheme.primitives._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.modular._
-import scalaam.test.{PrimitiveTest, SchemeR5RSBenchmarks}
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.language.scheme._
+import maf.language.scheme.lattices.SchemeLattice
+import maf.language.scheme.primitives._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.modular._
+import maf.test.{PrimitiveTest, SchemeR5RSBenchmarks}
+import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 

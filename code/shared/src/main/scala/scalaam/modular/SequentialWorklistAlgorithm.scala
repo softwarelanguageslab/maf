@@ -1,7 +1,7 @@
-package scalaam.modular
+package maf.modular
 
-import scalaam.core._
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.util.benchmarks.Timeout
 import scala.collection.mutable.PriorityQueue
 
 trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {

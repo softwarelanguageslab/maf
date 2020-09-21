@@ -1,9 +1,9 @@
-package scalaam.modular.scheme.modconc
+package maf.modular.scheme.modconc
 
-import scalaam.core._
-import scalaam.util._
-import scalaam.language.scheme._
-import scalaam.language.CScheme._
+import maf.core._
+import maf.util._
+import maf.language.scheme._
+import maf.language.CScheme._
 
 // A SchemeModConcComponent represents threads
 sealed trait SchemeModConcComponent extends SmartHash with TID

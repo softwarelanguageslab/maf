@@ -1,20 +1,20 @@
-package scalaam.cli.experiments.primitives
+package maf.cli.experiments.primitives
 
-import scalaam.bench.scheme.SchemeBenchmarkPrograms
-import scalaam.cli.experiments._
-import scalaam.core.Address
-import scalaam.language.scheme._
-import scalaam.language.scheme.lattices.TypeSchemeLattice
-import scalaam.modular._
-import scalaam.modular.scheme.modf.SchemeModFCompoundSensitivities.SeparateLowHighSensitivity._
-import scalaam.modular.scheme.modf._
-import scalaam.util.benchmarks.Timeout
+import maf.bench.scheme.SchemeBenchmarkPrograms
+import maf.cli.experiments._
+import maf.core.Address
+import maf.language.scheme._
+import maf.language.scheme.lattices.TypeSchemeLattice
+import maf.modular._
+import maf.modular.scheme.modf.SchemeModFCompoundSensitivities.SeparateLowHighSensitivity._
+import maf.modular.scheme.modf._
+import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 
 object PerformanceType extends PerformanceBenchmarks {
   override def analysisTime = Timeout.start(Duration(20, MINUTES))
-  import scalaam.language.scheme.primitives._
+  import maf.language.scheme.primitives._
   abstract class AnalysisWithManualPrimitives(p: SchemeExp) extends SimpleSchemeModFAnalysis(p) with LIFOWorklistAlgorithm[SchemeExp] {
     override lazy val program = {
       val originalProgram = p

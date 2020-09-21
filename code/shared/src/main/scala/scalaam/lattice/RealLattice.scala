@@ -1,6 +1,6 @@
-package scalaam.lattice
+package maf.lattice
 
-import scalaam.core.Lattice
+import maf.core.Lattice
 
 /** A lattice for reals (i.e., floating point numbers) */
 trait RealLattice[R] extends Lattice[R] { self =>

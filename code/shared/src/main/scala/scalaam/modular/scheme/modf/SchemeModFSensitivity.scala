@@ -1,6 +1,6 @@
-package scalaam.modular.scheme.modf
+package maf.modular.scheme.modf
 
-import scalaam.core.Position._
+import maf.core.Position._
 
 // TODO: make allocCtx an abstract method of this trait
 trait SchemeModFSensitivity extends BaseSchemeModFSemantics
@@ -53,7 +53,7 @@ trait SchemeModFFullArgumentCallSiteSensitivity extends SchemeModFSensitivity {
 // TODO: do not use inner class definition
 // TODO: find a way to reuse previous sensitivities?
 object SchemeModFCompoundSensitivities {
-  import scalaam.language.scheme.primitives.SchemePrelude
+  import maf.language.scheme.primitives.SchemePrelude
 
   trait Sensitivity[Value, Component] {
     trait Context

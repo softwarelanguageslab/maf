@@ -1,4 +1,4 @@
-Scala-AM: A Framework for Static Analysis of Dynamic Languages
+MAF: A Framework for Modular Analysis of Dynamic Languages
 
 # Goal
 The goal of this artefact is to experiment with abstract machines and language
@@ -6,18 +6,18 @@ semantics. Currently, the artefact's implementation is focused towards experimen
 Additionally, semantics for R5RS Scheme are present.
 
 # Usage
-The Scala-AM framework can be used in several ways.
+The MAF framework can be used in several ways.
 
 ## Using the JavaScript visual front-end
 The framework includes a JavaScript front-end that can be used to visualise a MODF analysis in the browser.
-To run this visualisation, open the file `scalaam.html` with your browser. The visualisation provides information with
+To run this visualisation, open the file `maf.html` with your browser. The visualisation provides information with
 regard to the work list (coloured in light blue) and currently analysed component (coloured in dark blue).
 Stepping through the visualisation can be done using the space bar.
 
 If you need to compile the code first, run the command `fastOptJS` within your sbt repl.
 
 ## Analysing a program using command line
-The Scala-AM framework is built in a modular style. To run a modular analysis, you need to compose the
+The MAF framework is built in a modular style. To run a modular analysis, you need to compose the
 implementation of a specific machine and an abstract domain.
 
 To analyze a specific program, an instance of the MODF analysis class must be created. The constructor of
@@ -45,17 +45,17 @@ Currently, no explicit result is returned by the analysis. Rather, information c
 such as the final store and dependencies between components.
 
 # Running the test suite
-This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a specific subset of benchmark programs (Scala-AM tests on action). 
-In addition, the full test suite is run over night (Daily Scala-AM tests).
+This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a specific subset of benchmark programs (MAF tests on action). 
+In addition, the full test suite is run over night (Daily MAF tests).
 
 Current status:
 <!-- https://github.com/badges/shields -->
-![Latest build](https://github.com/acieroid/scala-am/workflows/Scala-AM%20tests%20on%20action/badge.svg) 
-![Nightly tests](https://github.com/acieroid/scala-am/workflows/Daily%20Scala-AM%20tests/badge.svg)
+![Latest build](https://github.com/softwarelanguageslab/maf/workflows/MAF%20tests%20on%20action/badge.svg) 
+![Nightly tests](https://github.com/softwarelanguagesalb/maf/workflows/Daily%20MAF%20tests/badge.svg)
 
-The full test suite of Scala-AM can easily be run manually using sbt:
+The full test suite of MAF can easily be run manually using sbt:
 ```sbtshell
-scalaam/test
+maf/test
 ```
 
 To allow specific tests to be run, tags have been added to the test suite. 
@@ -65,29 +65,27 @@ To allow specific tests to be run, tags have been added to the test suite.
 The `SlowTest` tag currently is only used for some of the soundness tests. When these tests are disabled, only a part of the available benchmark programs
 will be used.
 
-To run tests with a specific tag, the sbt command `scalaam/testOnly` should be used. The `-n` flag indicates test tags that should be
+To run tests with a specific tag, the sbt command `maf/testOnly` should be used. The `-n` flag indicates test tags that should be
 included from testing, whereas the `-l` flag indicates tags that should be excluded from testing.
 
 For example, to run the parser tests, the following command can be used:
 ```sbt
-scalaam/testOnly -- -n ParserTest
+maf/testOnly -- -n ParserTest
 ```
 (Note the double -- before any possible flags.)<br>
 To run all soundness tests, but only on a fast subset of benchmark programs, the command
 ```sbt
-scalaam/testOnly -- -n SoundnessTest -l SlowTest
+maf/testOnly -- -n SoundnessTest -l SlowTest
 ```
 can be executed.
 
 # References and Relevant publications
-The original idea behind Scala-AM comes from the [Abstracting Abstract Machines](http://matt.might.net/papers/vanhorn2010abstract.pdf)
-literature. Since then, the work of [Effect-Driven Flow Analysis](https://doi.org/10.1007/978-3-030-11245-5_12) has been integrated.
-
-The Scala-AM framework is described in the following publication:
+The original idea behind MAF comes from the following work on modular analysis: [Effect-Driven Flow Analysis](https://doi.org/10.1007/978-3-030-11245-5_12), and [A general method for rendering static analyses for diverse concurrency models modular](https://doi.org/10.1016/j.jss.2018.10.001).
+It is a complete rework of the Scala-AM framework, described in the following publications:
   * Scala-AM: A Modular Static Analysis Framework. SCAM 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf), [doi](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am).
   * Building a Modular Static Analysis Framework in Scala. Scala@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf), [doi](http://doi.acm.org/10.1145/2998392.3001579).
 
-Scala-AM has been used for evaluating static analysis approaches in the
+MAF and Scala-AM have been used for evaluating static analysis approaches in the
 following publications:
   * Garbage-Free Abstract Interpretation through Abstract Reference
     Counting. ECOOP 2019. [pdf](http://drops.dagstuhl.de/opus/volltexte/2019/10784/).

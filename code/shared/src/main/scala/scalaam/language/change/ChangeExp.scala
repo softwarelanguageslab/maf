@@ -1,6 +1,6 @@
-package scalaam.language.change
+package maf.language.change
 
-import scalaam.core._
+import maf.core._
 
 case object CHA extends Label // Code change
 

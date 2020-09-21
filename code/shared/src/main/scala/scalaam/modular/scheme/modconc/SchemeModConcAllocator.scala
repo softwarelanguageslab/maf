@@ -1,9 +1,9 @@
-package scalaam.modular.scheme.modconc
+package maf.modular.scheme.modconc
 
-import scalaam.core._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.language.scheme._
+import maf.core._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.language.scheme._
 
 trait StandardSchemeModConcAllocator extends SchemeModConcSemantics {
   type AllocationContext = SchemeModFComponent

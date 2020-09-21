@@ -1,8 +1,8 @@
-package scalaam.lattice
+package maf.lattice
 
-import scalaam.core.Lattice
+import maf.core.Lattice
 
-/** A scalaam.lattice for characters */
+/** A lattice for characters */
 trait CharLattice[C] extends Lattice[C] {
   def inject(c: Char): C
   def downCase(c: C): C

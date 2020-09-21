@@ -1,10 +1,10 @@
-package scalaam.cli.experiments.precision
+package maf.cli.experiments.precision
 
-import scalaam.cli.experiments._
-import scalaam.language.scheme._
-import scalaam.lattice._
-import scalaam.util._
-import scalaam.util.benchmarks._
+import maf.cli.experiments._
+import maf.language.scheme._
+import maf.lattice._
+import maf.util._
+import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 

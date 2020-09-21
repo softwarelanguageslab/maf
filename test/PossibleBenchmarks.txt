@@ -1,4 +1,4 @@
-This file lists programs that might be added to the scala-am benchmark suite in the future.
+This file lists programs that might be added to the MAF benchmark suite in the future.
 * https://github.com/darius/miasma
 * https://github.com/ekmett/scheme-monads/blob/master/curry.ss (uses macros)
 * https://github.com/VincentToups/scran (uses macros)

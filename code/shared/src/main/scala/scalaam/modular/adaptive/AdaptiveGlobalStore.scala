@@ -1,8 +1,8 @@
-package scalaam.modular.adaptive
+package maf.modular.adaptive
 
-import scalaam.core._
-import scalaam.modular._
-import scalaam.util.MonoidImplicits._
+import maf.core._
+import maf.modular._
+import maf.util.MonoidImplicits._
 
 trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
                                                  with GlobalStore[Expr] {

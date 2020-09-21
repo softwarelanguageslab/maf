@@ -1,11 +1,11 @@
-package scalaam.modular.scheme
+package maf.modular.scheme
 
-import scalaam.core._
-import scalaam.modular._
-import scalaam.lattice._
-import scalaam.language.scheme._
-import scalaam.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
-import scalaam.language.scheme.primitives._
+import maf.core._
+import maf.modular._
+import maf.lattice._
+import maf.language.scheme._
+import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
+import maf.language.scheme.primitives._
 
 trait SchemeDomain extends AbstractDomain[SchemeExp] {
   type Prim = SchemePrimitive[Value, Address]
@@ -39,7 +39,7 @@ trait ModularSchemeLatticeWrapper {
 // TYPE DOMAIN
 //
 
-/* A type scalaam.lattice for ModF */
+/* A type lattice for ModF */
 object SchemeTypeDomain extends ModularSchemeLatticeWrapper {
   // use type domains everywhere, except for booleans
   type S    = Type.S
@@ -69,7 +69,7 @@ object SchemeConstantPropagationDomain extends ModularSchemeLatticeWrapper {
   type R    = ConstantPropagation.R
   type C    = ConstantPropagation.C
   type Sym  = Concrete.Sym
-  // make the scheme scalaam.lattice
+  // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
 }
@@ -82,7 +82,7 @@ trait SchemeConstantPropagationDomain extends ModularSchemeDomain {
 // POWERSET DOMAIN
 //
 
-/* A powerset scalaam.lattice for ModF */
+/* A powerset lattice for ModF */
 object SchemePowersetDomain extends ModularSchemeLatticeWrapper {
   // use powerset domains everywhere
   type S    = Concrete.S
@@ -91,7 +91,7 @@ object SchemePowersetDomain extends ModularSchemeLatticeWrapper {
   type R    = Concrete.R
   type C    = Concrete.C
   type Sym  = Concrete.Sym
-  // make the scheme scalaam.lattice
+  // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
 }

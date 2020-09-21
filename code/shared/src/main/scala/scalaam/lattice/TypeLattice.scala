@@ -1,6 +1,6 @@
-package scalaam.lattice
+package maf.lattice
 
-import scalaam.core._
+import maf.core._
 
 object Type {
   sealed trait T {
@@ -49,7 +49,7 @@ object Type {
   type Sym = T
 
   object T {
-    import scalaam.lattice._
+    import maf.lattice._
 
     implicit val typeIsString: StringLattice[S] = new BaseInstance("Str") with StringLattice[S] {
       def inject(x: String): T = Top

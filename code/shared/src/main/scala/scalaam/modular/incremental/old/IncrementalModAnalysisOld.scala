@@ -1,12 +1,12 @@
-package scalaam.modular.incremental.old
+package maf.modular.incremental.old
 
 /*
 abstract class IncrementalModAnalysis[Expr <: Expression](var prog: Expr) extends ModAnalysis(prog)
                                                                              with SequentialWorklistAlgorithm[Expr]
                                                                              with MutableIndirectComponents[Expr] {
 
-  import scalaam.modular.components.MutableIndirectComponents
-  import scalaam.util.Annotations.mutable
+  import maf.modular.components.MutableIndirectComponents
+  import maf.util.Annotations.mutable
   import scala.concurrent.duration.Duration
 
   type OldIdn = Identity

@@ -1,8 +1,8 @@
-package scalaam.lattice
+package maf.lattice
 
-import scalaam.core.Lattice
+import maf.core.Lattice
 
-/** A scalaam.lattice for symbols */
+/** A maf.lattice for symbols */
 trait SymbolLattice[Sym] extends Lattice[Sym] {
   def inject(sym: String): Sym
   def toString[S: StringLattice](n: Sym): S

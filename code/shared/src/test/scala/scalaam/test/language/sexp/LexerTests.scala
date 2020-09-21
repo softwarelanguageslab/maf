@@ -1,9 +1,9 @@
-package scalaam.test.language.sexp
+package maf.test.language.sexp
 
 import org.scalatest._
 import org.scalatest.prop._
-import scalaam.language.sexp._
-import scalaam.test.ParserTest
+import maf.language.sexp._
+import maf.test.ParserTest
 
 abstract class SExpLexerTests extends PropSpec with TableDrivenPropertyChecks with Matchers {
   val lexical = new SExpLexer

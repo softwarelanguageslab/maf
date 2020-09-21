@@ -1,14 +1,14 @@
-package scalaam.cli.experiments.incremental
+package maf.cli.experiments.incremental
 
-import scalaam.bench.scheme.IncrementalSchemeBenchmarkPrograms
-import scalaam.core.Expression
-import scalaam.language.CScheme.CSchemeParser
-import scalaam.language.change.CodeVersion._
-import scalaam.language.scheme.SchemeExp
-import scalaam.modular.incremental.scheme.AnalysisBuilder._
-import scalaam.util.Reader
-import scalaam.util.Writer._
-import scalaam.util.benchmarks._
+import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
+import maf.core.Expression
+import maf.language.CScheme.CSchemeParser
+import maf.language.change.CodeVersion._
+import maf.language.scheme.SchemeExp
+import maf.modular.incremental.scheme.AnalysisBuilder._
+import maf.util.Reader
+import maf.util.Writer._
+import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 

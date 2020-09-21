@@ -1,17 +1,17 @@
-package scalaam.modular.scheme.modconc
+package maf.modular.scheme.modconc
 
-import scalaam.core._
-import scalaam.core.Position._
-import scalaam.language.scheme._
-import scalaam.language.scheme.primitives._
-import scalaam.language.CScheme._
-import scalaam.modular._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.modular.components.ContextSensitiveComponents
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.core.Position._
+import maf.language.scheme._
+import maf.language.scheme.primitives._
+import maf.language.CScheme._
+import maf.modular._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.modular.components.ContextSensitiveComponents
+import maf.util.benchmarks.Timeout
 
-import scalaam.modular.scheme.modf.EvalM._
+import maf.modular.scheme.modf.EvalM._
 
 trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
                                 with ReturnValue[SchemeExp]

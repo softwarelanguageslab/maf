@@ -1,9 +1,9 @@
-package scalaam.modular.components
+package maf.modular.components
 
-import scalaam.modular.components.IndirectComponents.ComponentPointer
-import scalaam.core._
-import scalaam.modular.ModAnalysis
-import scalaam.util.Annotations._
+import maf.modular.components.IndirectComponents.ComponentPointer
+import maf.core._
+import maf.modular.ModAnalysis
+import maf.util.Annotations._
 
 object IndirectComponents {
   // A component pointer just is an integer.

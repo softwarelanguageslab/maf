@@ -1,4 +1,4 @@
-package scalaam.core
+package maf.core
 
 import scala.collection.immutable.Queue
 

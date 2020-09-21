@@ -1,4 +1,4 @@
-package scalaam.util.graph
+package maf.util.graph
 
 /** A graph representation that can be saved in a .dot file for visualization
   * purposes */

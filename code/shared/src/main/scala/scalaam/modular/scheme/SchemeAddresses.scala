@@ -1,7 +1,7 @@
-package scalaam.modular.scheme
+package maf.modular.scheme
 
-import scalaam.core._
-import scalaam.language.scheme._
+import maf.core._
+import maf.language.scheme._
 
 trait SchemeAddr[+Context] extends Address
 case class VarAddr[Context](id: Identifier, ctx: Context)   extends SchemeAddr[Context] { def printable = true;  def idn: Identity =  id.idn;       override def toString: String = s"var ($id)"        }

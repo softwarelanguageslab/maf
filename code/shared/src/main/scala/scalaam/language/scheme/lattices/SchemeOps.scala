@@ -1,4 +1,4 @@
-package scalaam.language.scheme.lattices
+package maf.language.scheme.lattices
 
 object SchemeOps {
 

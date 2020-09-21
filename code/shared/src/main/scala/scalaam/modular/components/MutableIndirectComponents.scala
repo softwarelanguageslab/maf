@@ -1,8 +1,8 @@
-package scalaam.modular.components
+package maf.modular.components
 
-import scalaam.core.Expression
-import scalaam.modular.components.IndirectComponents
-import scalaam.modular.components.IndirectComponents.ComponentPointer
+import maf.core.Expression
+import maf.modular.components.IndirectComponents
+import maf.modular.components.IndirectComponents.ComponentPointer
 
 /**
  * Extends component indirection by allowing updates to component pointers.

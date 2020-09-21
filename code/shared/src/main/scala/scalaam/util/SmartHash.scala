@@ -1,4 +1,4 @@
-package scalaam.util
+package maf.util
 
 import scala.runtime.ScalaRunTime
 

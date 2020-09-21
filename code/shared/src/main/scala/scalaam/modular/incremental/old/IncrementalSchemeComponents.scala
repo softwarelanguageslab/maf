@@ -1,6 +1,6 @@
-package scalaam.modular.incremental.scheme
+package maf.modular.incremental.scheme
 
-// import scalaam.modular.incremental.scheme.IncrementalSchemeModFSemantics
+// import maf.modular.incremental.scheme.IncrementalSchemeModFSemantics
 
 /*
 trait IncrementalSchemeComponents extends IncrementalSchemeModFSemantics {

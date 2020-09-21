@@ -1,6 +1,6 @@
-package scalaam.language.scheme
+package maf.language.scheme
 
-import scalaam.core.Identifier
+import maf.core.Identifier
 
 /**
   * Object that provides a method to rename variables in a Scheme program in

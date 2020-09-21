@@ -1,6 +1,6 @@
-package scalaam.util
+package maf.util
 
-import scalaam.core._
+import maf.core._
 
 trait Show[V] {
   def show(v: V): String

@@ -1,4 +1,4 @@
-package scalaam.util.benchmarks
+package maf.util.benchmarks
 
 // Helpers to compute statistics over sets of data
 object Statistics {

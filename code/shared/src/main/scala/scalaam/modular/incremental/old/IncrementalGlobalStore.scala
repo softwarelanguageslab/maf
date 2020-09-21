@@ -1,10 +1,10 @@
-package scalaam.modular.incremental
+package maf.modular.incremental
 
 /*
-import scalaam.core._
-import scalaam.modular._
-import scalaam.modular.incremental.IncrementalModAnalysis
-import scalaam.util.Annotations.assume
+import maf.core._
+import maf.modular._
+import maf.modular.incremental.IncrementalModAnalysis
+import maf.util.Annotations.assume
 
 trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with DedicatedGlobalStore[Expr] {
 

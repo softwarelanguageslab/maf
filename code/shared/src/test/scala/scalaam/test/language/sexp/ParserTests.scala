@@ -1,8 +1,8 @@
-package scalaam.test.language.sexp
+package maf.test.language.sexp
 
-import scalaam.language.sexp._
-import scalaam.test._
-import scalaam.util._
+import maf.language.sexp._
+import maf.test._
+import maf.util._
 
 trait SExpParserTestsSpec extends SchemeBenchmarkTests {
   def onBenchmark(benchmark: Benchmark) =

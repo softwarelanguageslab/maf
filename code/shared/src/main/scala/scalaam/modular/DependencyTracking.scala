@@ -1,6 +1,6 @@
-package scalaam.modular
+package maf.modular
 
-import scalaam.core._
+import maf.core._
 
 // A common, but optional extension to ModAnalysis
 // Specifically, it keeps track of:

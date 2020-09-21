@@ -1,7 +1,7 @@
-package scalaam.modular.incremental.scheme
+package maf.modular.incremental.scheme
 
-import scalaam.language.scheme._
-import scalaam.modular.incremental.IncrementalModAnalysis
+import maf.language.scheme._
+import maf.modular.incremental.IncrementalModAnalysis
 
 trait IncrementalSchemeSemantics extends IncrementalModAnalysis[SchemeExp]
 

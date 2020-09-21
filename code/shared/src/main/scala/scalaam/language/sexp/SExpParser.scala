@@ -1,7 +1,7 @@
-package scalaam.language.sexp
+package maf.language.sexp
 
-import scalaam.core.Position._
-import scalaam.core._
+import maf.core.Position._
+import maf.core._
 
 /**
   * Implementation of a simple s-expression parser, which supports some

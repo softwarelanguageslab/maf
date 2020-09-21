@@ -2,28 +2,28 @@ import sbt.Keys.libraryDependencies
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 lazy val root = project.in(file("."))
-                       .aggregate(scalaamJS,scalaamJVM)
+                       .aggregate(mafJS,mafJVM)
 
-lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
+lazy val maf = crossProject(JVMPlatform, JSPlatform)
                       .withoutSuffixFor(JVMPlatform)
                       .crossType(CrossType.Full)
                       .in(file("code"))
                       .settings(
                         /** General settings */
-                        name := "scalaam",
-                        version := "2.2",
+                        name := "maf",
+                        version := "1.0",
                         scalaVersion := "2.13.3",
                         /** Dependencies */
                         libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "1.1.2",
                         libraryDependencies += "au.com.bytecode" % "opencsv" % "2.4",
-                        libraryDependencies += "com.typesafe.akka" %% "akka-actor-typed" % "2.6.8",
+                        libraryDependencies += "com.typesafe.akka" %% "akka-actor-typed" % "2.6.9",
                         libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
                         libraryDependencies += "com.typesafe" % "config" % "1.4.0",
                         /** Compilation options */
                         maxErrors := 5,
                         /** Configuration for running the tests */
                         logBuffered in Test := false,
-                        libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % "test",
+                        libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.0" % "test",
                         libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.3" % "test",
                         libraryDependencies += "org.scalatestplus" %% "scalacheck-1-14" % "3.1.0.0" % "test",
                         libraryDependencies += "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test,
@@ -76,15 +76,15 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
                       )
                       .jvmSettings(
                         /** General */
-                        mainClass in Compile := Some("scalaam.cli.Main")
+                        mainClass in Compile := Some("maf.cli.Main")
                       )
                       .jsSettings(
                         /** General */
-                        mainClass in Compile := Some("scalaam.web.Main"),
+                        mainClass in Compile := Some("maf.web.Main"),
                         scalaJSUseMainModuleInitializer := true,
                         /** Dependencies */
                         libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.8",
                       )
 
-lazy val scalaamJVM = scalaam.jvm
-lazy val scalaamJS = scalaam.js
+lazy val mafJVM = maf.jvm
+lazy val mafJS = maf.js

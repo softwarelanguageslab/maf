@@ -1,7 +1,7 @@
-package scalaam.language.scheme
+package maf.language.scheme
 
-import scalaam.core.Position._
-import scalaam.language.sexp._
+import maf.core.Position._
+import maf.language.sexp._
 
 object SchemeParser {
 

@@ -1,4 +1,4 @@
-package scalaam.util.benchmarks
+package maf.util.benchmarks
 
 object Timeout {
   import scala.concurrent.duration.Duration

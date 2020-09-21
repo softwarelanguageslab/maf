@@ -1,21 +1,21 @@
-package scalaam.cli
+package maf.cli
 
 import java.io.File
 
-import scalaam.language.CScheme._
-import scalaam.language.scheme._
-import scalaam.language.scheme.primitives._
-import scalaam.modular._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.modular.scheme.ssmodconc._
-import scalaam.util._
-import scalaam.util.benchmarks._
-import scalaam.language.change.CodeVersion._
-import scalaam.modular.incremental.scheme.AnalysisBuilder._
+import maf.language.CScheme._
+import maf.language.scheme._
+import maf.language.scheme.primitives._
+import maf.modular._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.modular.scheme.ssmodconc._
+import maf.util._
+import maf.util.benchmarks._
+import maf.language.change.CodeVersion._
+import maf.modular.incremental.scheme.AnalysisBuilder._
 
 import scala.concurrent.duration._
-import scalaam.cli.experiments.SchemeAnalyses
+import maf.cli.experiments.SchemeAnalyses
 
 object Main {
 

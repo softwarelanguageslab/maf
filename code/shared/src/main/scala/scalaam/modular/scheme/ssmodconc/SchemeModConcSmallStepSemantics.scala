@@ -1,17 +1,17 @@
-package scalaam.modular.scheme.ssmodconc
+package maf.modular.scheme.ssmodconc
 
-import scalaam.core._
-import scalaam.core.Position._
-import scalaam.language.CScheme._
-import scalaam.language.scheme._
-import scalaam.language.scheme.primitives._
-import scalaam.language.sexp
-import scalaam.modular._
-import scalaam.modular.scheme._
-import scalaam.modular.components.ContextSensitiveComponents
-import scalaam.util.Annotations.mutable
-import scalaam.util.SmartHash
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.core.Position._
+import maf.language.CScheme._
+import maf.language.scheme._
+import maf.language.scheme.primitives._
+import maf.language.sexp
+import maf.modular._
+import maf.modular.scheme._
+import maf.modular.components.ContextSensitiveComponents
+import maf.util.Annotations.mutable
+import maf.util.SmartHash
+import maf.util.benchmarks.Timeout
 
 /**
  * Definition of Scheme components. In ModConc, Scheme components also double as thread identifiers.
@@ -364,7 +364,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     // EVALUATION HELPERS //
     //--------------------//
 
-    // Evaluate literals by in injecting them in the scalaam.lattice.
+    // Evaluate literals by in injecting them in the lattice.
     private def evalLiteralValue(literal: sexp.Value): Value = literal match {
       case sexp.ValueBoolean(b)   => lattice.bool(b)
       case sexp.ValueCharacter(c) => lattice.char(c)

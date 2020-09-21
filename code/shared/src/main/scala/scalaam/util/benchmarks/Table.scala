@@ -1,4 +1,4 @@
-package scalaam.util.benchmarks
+package maf.util.benchmarks
 
 object Table {
   /** Create a new empty table 

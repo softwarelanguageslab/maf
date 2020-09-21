@@ -1,8 +1,8 @@
-package scalaam.language.CScheme
+package maf.language.CScheme
 
-import scalaam.core.Position._
-import scalaam.language.scheme._
-import scalaam.language.sexp._
+import maf.core.Position._
+import maf.language.scheme._
+import maf.language.sexp._
 
 object CSchemeParser {
 

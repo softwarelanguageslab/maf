@@ -1,7 +1,7 @@
-package scalaam.language.CScheme
+package maf.language.CScheme
 
-import scalaam.core.{Expression, Identity, Label}
-import scalaam.language.scheme.SchemeExp
+import maf.core.{Expression, Identity, Label}
+import maf.language.scheme.SchemeExp
 
 trait CSchemeExp extends SchemeExp
 

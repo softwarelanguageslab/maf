@@ -1,6 +1,6 @@
-package scalaam.language.CScheme
+package maf.language.CScheme
 
-import scalaam.language.scheme._
+import maf.language.scheme._
 
 object CSchemeLexicalAddresser extends BaseSchemeLexicalAddresser {
 

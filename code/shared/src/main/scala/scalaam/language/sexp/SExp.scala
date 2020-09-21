@@ -1,7 +1,7 @@
-package scalaam.language.sexp
+package maf.language.sexp
 
-import scalaam.core._
-import scalaam.language.scheme._
+import maf.core._
+import maf.language.scheme._
 
 /**
   * S-expressions and related values

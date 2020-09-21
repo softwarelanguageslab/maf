@@ -1,7 +1,7 @@
-package scalaam.modular.components
+package maf.modular.components
 
-import scalaam.core.Expression
-import scalaam.modular.ModAnalysis
+import maf.core.Expression
+import maf.modular.ModAnalysis
 
 trait ContextSensitiveComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 

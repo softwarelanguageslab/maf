@@ -1,4 +1,4 @@
-package scalaam.core
+package maf.core
 
 trait Primitive {
   def name: String

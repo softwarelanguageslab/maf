@@ -1,9 +1,9 @@
-package scalaam.modular.incremental.scheme.modconc
+package maf.modular.incremental.scheme.modconc
 
-import scalaam.modular.incremental.scheme.IncrementalSchemeSemantics
-import scalaam.modular.scheme.ssmodconc._
-import scalaam.language.change.CodeVersion._
-import scalaam.language.scheme.SchemeCodeChange
+import maf.modular.incremental.scheme.IncrementalSchemeSemantics
+import maf.modular.scheme.ssmodconc._
+import maf.language.change.CodeVersion._
+import maf.language.scheme.SchemeCodeChange
 
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
   trait IncrementalSmallStepIntra extends SmallStepIntra {

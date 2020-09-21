@@ -1,6 +1,6 @@
-package scalaam.core
+package maf.core
 
-import scalaam.util.SmartHash
+import maf.util.SmartHash
 
 case class UnboundAddress[A <: Address](a: A) extends Error
 

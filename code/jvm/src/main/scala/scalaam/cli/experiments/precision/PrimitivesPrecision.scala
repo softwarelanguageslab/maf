@@ -1,15 +1,15 @@
-package scalaam.cli.experiments.precision
+package maf.cli.experiments.precision
 
-import scalaam.bench.scheme.SchemeBenchmarkPrograms
-import scalaam.cli.experiments._
-import scalaam.language.scheme._
-import scalaam.language.scheme.primitives._
-import scalaam.lattice._
-import scalaam.modular._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.util._
-import scalaam.util.benchmarks.Timeout
+import maf.bench.scheme.SchemeBenchmarkPrograms
+import maf.cli.experiments._
+import maf.language.scheme._
+import maf.language.scheme.primitives._
+import maf.lattice._
+import maf.modular._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.util._
+import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 
@@ -41,8 +41,8 @@ object PrimitivesBenchmarks {
     standard ++
     List()
   }
-  import scalaam.core._
-  import scalaam.language.scheme._
+  import maf.core._
+  import maf.language.scheme._
 
   // Counts the number of distinct primitive usages.
   // This is not exactly the number of primitive calls, because of situations like the following:
@@ -284,7 +284,7 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
             case ((e, env), name) =>
               /* Replace the expression, but keep its position.
                This is to avoid situations where we have the same expression, but it's parsed differently due to preludation (i.e., primitives/global) */
-              val e2: SchemeLambdaExp = SchemeLambda(List(), List(SchemeValue(scalaam.language.sexp.ValueNil, e.idn)), e.idn)
+              val e2: SchemeLambdaExp = SchemeLambda(List(), List(SchemeValue(maf.language.sexp.ValueNil, e.idn)), e.idn)
               ((e2, ()), name) })
           .filter({
             /* Drops primitives are preluded */
@@ -398,8 +398,8 @@ object PrimitivesComparisonRQ1 extends PrimitivesComparison {
   }
 
 
-  import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
-  import scalaam.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.Sensitivity._
+  import maf.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity._
+  import maf.modular.scheme.CompoundSensitivities.SeparateLowHighSensitivity.Sensitivity._
 
   def analysis1(p: SchemeExp) = new cli.evaluation.primitives.PerformanceType.AnalysisWithPreludedPrimitives(p) with S_CSFA_0 {
     override def toString = "P"

@@ -1,9 +1,9 @@
-package scalaam.modular.scheme.modf
+package maf.modular.scheme.modf
 
-import scalaam.core._
-import scalaam.language.scheme._
-import scalaam.util.MonoidImplicits._
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.language.scheme._
+import maf.util.MonoidImplicits._
+import maf.util.benchmarks.Timeout
 
 trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
   // defining the intra-analysis

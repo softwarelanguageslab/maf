@@ -1,6 +1,6 @@
-package scalaam.lattice
+package maf.lattice
 
-import scalaam.core._
+import maf.core._
 
 object ConstantPropagation {
   sealed trait L[+A]

@@ -1,7 +1,7 @@
-package scalaam.bench.scheme
+package maf.bench.scheme
 
 import java.io.File
-import scalaam.util.SmartUnion
+import maf.util.SmartUnion
 import scala.util.Random
 object SchemeBenchmarkPrograms {
 

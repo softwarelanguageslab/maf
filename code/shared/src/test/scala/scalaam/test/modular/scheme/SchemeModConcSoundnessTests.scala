@@ -1,13 +1,13 @@
-package scalaam.test.modular.scheme
+package maf.test.modular.scheme
 
-import scalaam.bench.scheme.SchemeBenchmarkPrograms
-import scalaam.language.scheme._
-import scalaam.modular._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.modular.scheme.modconc._
-import scalaam.modular.scheme.ssmodconc._
-import scalaam.test._
+import maf.bench.scheme.SchemeBenchmarkPrograms
+import maf.language.scheme._
+import maf.modular._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.modular.scheme.modconc._
+import maf.modular.scheme.ssmodconc._
+import maf.test._
 
 trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModConcTest

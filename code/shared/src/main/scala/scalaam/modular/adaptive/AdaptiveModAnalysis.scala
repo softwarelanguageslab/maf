@@ -1,18 +1,18 @@
-package scalaam.modular.adaptive
+package maf.modular.adaptive
 
-import scalaam.modular.components.IndirectComponents
-import scalaam.core._
-import scalaam.modular._
-import scalaam.util._
-import scalaam.util.MonoidImplicits._
-import scalaam.util.benchmarks.Timeout
+import maf.modular.components.IndirectComponents
+import maf.core._
+import maf.modular._
+import maf.util._
+import maf.util.MonoidImplicits._
+import maf.util.benchmarks.Timeout
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) 
                                                                         with IndirectComponents[Expr]
                                                                         with SequentialWorklistAlgorithm[Expr]
                                                                         with DependencyTracking[Expr] {
 
-  import scalaam.modular.components.IndirectComponents._
+  import maf.modular.components.IndirectComponents._
 
   // after every step, the adaptive analysis gets an opportunity to reflect on (introspection) and possible change (intercession) the analysis behaviour
   // the method `adaptAnalysis` needs to be implemented to decide when and how this is carried out
@@ -21,7 +21,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
     super.step(timeout)
     adaptAnalysis()
   }
-  // the scalaam.core of the adaptive analysis: one needs to implement how components are to be "adapted"
+  // the core of the adaptive analysis: one needs to implement how components are to be "adapted"
   // the idea is that the definition/results of `adaptComponent` can change during the analysis itself ...
   def adaptComponent(cmp: ComponentData): ComponentData
   // .. and that when this happens, one needs to call `updateAnalysis`

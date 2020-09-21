@@ -1,7 +1,7 @@
-package scalaam.test
+package maf.test
 
-import scalaam.bench.scheme.{IncrementalSchemeBenchmarkPrograms, SchemeBenchmarkPrograms}
-import scalaam.util.SmartUnion
+import maf.bench.scheme.{IncrementalSchemeBenchmarkPrograms, SchemeBenchmarkPrograms}
+import maf.util.SmartUnion
 
 trait SimpleBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarkPrograms.other)

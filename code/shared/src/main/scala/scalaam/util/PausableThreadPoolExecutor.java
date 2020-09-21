@@ -1,4 +1,4 @@
-package scalaam.util;
+package maf.util;
 
 /*
  *  A thread pool with the ability to pause the threadpool 

@@ -1,4 +1,4 @@
-package scalaam.core
+package maf.core
 
 /** Mapping from variable name to addresses */
 case class Environment[A <: Address](content: Map[String,A]) {

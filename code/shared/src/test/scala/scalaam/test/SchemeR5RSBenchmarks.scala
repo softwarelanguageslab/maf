@@ -1,4 +1,4 @@
-package scalaam.test
+package maf.test
 
 object SchemeR5RSBenchmarks {
 

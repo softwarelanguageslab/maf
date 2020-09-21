@@ -1,11 +1,11 @@
-package scalaam.modular.scheme
+package maf.modular.scheme
 
-import scalaam.core._
-import scalaam.language.CScheme._
-import scalaam.language.scheme._
-import scalaam.language.scheme.primitives._
-import scalaam.modular._
-import scalaam.modular.scheme._
+import maf.core._
+import maf.language.CScheme._
+import maf.language.scheme._
+import maf.language.scheme.primitives._
+import maf.modular._
+import maf.modular.scheme._
 
 trait SchemeSetup extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
                                                  with SchemeDomain {

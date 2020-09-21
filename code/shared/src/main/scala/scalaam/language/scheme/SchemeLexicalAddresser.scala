@@ -1,6 +1,6 @@
-package scalaam.language.scheme
+package maf.language.scheme
 
-import scalaam.core.Identifier
+import maf.core.Identifier
 
 /** Lexical references can either be: */
 trait LexicalRef

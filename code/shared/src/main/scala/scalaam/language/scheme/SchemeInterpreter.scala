@@ -1,14 +1,14 @@
-package scalaam.language.scheme
+package maf.language.scheme
 
 import java.util.concurrent.TimeUnit
 
-import scalaam.core.Position.Position
-import scalaam.core._
-import scalaam.language.CScheme._
-import scalaam.language.change.CodeVersion._
-import scalaam.util._
-import scalaam.language.sexp._
-import scalaam.util.benchmarks.Timeout
+import maf.core.Position.Position
+import maf.core._
+import maf.language.CScheme._
+import maf.language.change.CodeVersion._
+import maf.util._
+import maf.language.sexp._
+import maf.util.benchmarks.Timeout
 
 import scala.concurrent.TimeoutException
 import scala.concurrent._
@@ -20,7 +20,7 @@ case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpr
 
 /**
   * This is an interpreter that runs a program and calls a callback at every evaluated value.
-  * This interpreter dictates the concrete semantics of the Scheme language analyzed by Scala-AM.
+  * This interpreter dictates the concrete semantics of the Scheme language analyzed by MAF.
  */
 class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output: Boolean = true, stack: Boolean = false) {
   import SchemeInterpreter._
@@ -573,7 +573,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
       val name = "modulo"
       def call(args: List[Value], position: Position): Value = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil if y != 0 =>
-          Value.Integer(scalaam.lattice.MathOps.modulo(x, y))
+          Value.Integer(maf.lattice.MathOps.modulo(x, y))
         case _ :: _ :: Nil => stackedException(s"$name ($position): illegal computation: modulo zero")
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
@@ -659,7 +659,7 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
     object Round extends SingleArgumentPrim("round") {
       def fun = {
         case x: Value.Integer => x
-        case Value.Real(x) => Value.Real(scalaam.lattice.MathOps.round(x))
+        case Value.Real(x) => Value.Real(maf.lattice.MathOps.round(x))
       }
     }
     object Evenp extends SingleArgumentPrim("even?") {
@@ -1258,7 +1258,7 @@ object SchemeInterpreter {
 
 
   import scala.concurrent.duration._
-  import scalaam.language.scheme.primitives._
+  import maf.language.scheme.primitives._
   val timeout = Duration(30, SECONDS)
   def main(args: Array[String]): Unit =
     if (args.size == 1) {

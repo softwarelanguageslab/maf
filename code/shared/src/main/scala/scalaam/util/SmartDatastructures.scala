@@ -1,4 +1,4 @@
-package scalaam.util
+package maf.util
 
 /**
  * When using `s1 ++ s2` with the default Scala Set implementation,

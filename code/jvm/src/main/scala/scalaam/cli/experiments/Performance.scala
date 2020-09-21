@@ -1,10 +1,10 @@
-package scalaam.cli.experiments
+package maf.cli.experiments
 
-import scalaam.language.scheme._
-import scalaam.language.CScheme._
-import scalaam.modular.ModAnalysis
-import scalaam.util._
-import scalaam.util.benchmarks._
+import maf.language.scheme._
+import maf.language.CScheme._
+import maf.modular.ModAnalysis
+import maf.util._
+import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 

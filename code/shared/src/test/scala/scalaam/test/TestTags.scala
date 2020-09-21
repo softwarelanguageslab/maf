@@ -1,4 +1,4 @@
-package scalaam.test
+package maf.test
 
 import org.scalatest.Tag
 

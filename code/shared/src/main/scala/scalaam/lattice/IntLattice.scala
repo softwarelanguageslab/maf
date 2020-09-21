@@ -1,8 +1,8 @@
-package scalaam.lattice
+package maf.lattice
 
-import scalaam.core.Lattice
+import maf.core.Lattice
 
-/** A scalaam.lattice for integers */
+/** A lattice for integers */
 trait IntLattice[I] extends Lattice[I] { self =>
   def inject(n: Int): I
   def toReal[R: RealLattice](n: I): R

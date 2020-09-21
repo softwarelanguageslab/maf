@@ -1,14 +1,14 @@
-package scalaam.test.language.scheme
+package maf.test.language.scheme
 
 import org.scalacheck.Prop.{forAll, propBoolean}
-import scalaam.core._
-import scalaam.language.scheme._
-import scalaam.language.scheme.lattices.{SchemeLattice, SchemeOps}
-import scalaam.test.lattice._
+import maf.core._
+import maf.language.scheme._
+import maf.language.scheme.lattices.{SchemeLattice, SchemeOps}
+import maf.test.lattice._
 
-// inherits the standard scalaam.lattice tests from `LatticeTest`
+// inherits the standard lattice tests from `LatticeTest`
 class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeLattice: SchemeLattice[L,_,_]) extends LatticeTest(gen) {
-    // because of higher entropy in Scheme scalaam.lattice values, verify each property with more examples!
+    // because of higher entropy in Scheme lattice values, verify each property with more examples!
     implicit override val generatorDrivenConfig: PropertyCheckConfiguration = 
         PropertyCheckConfiguration(minSuccessful = 1000)
     val schemeLaws = newProperties("Scheme") { p =>

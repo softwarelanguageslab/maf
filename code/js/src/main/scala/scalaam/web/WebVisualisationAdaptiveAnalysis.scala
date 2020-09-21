@@ -1,7 +1,7 @@
-package scalaam.web
+package maf.web
 
-import scalaam.core._
-import scalaam.modular.adaptive._
+import maf.core._
+import maf.modular.adaptive._
 
 // Scala.js-related imports
 import scala.scalajs.js

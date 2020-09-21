@@ -1,7 +1,7 @@
-package scalaam.language.scheme.primitives
+package maf.language.scheme.primitives
 
-import scalaam.core._
-import scalaam.language.scheme._
+import maf.core._
+import maf.language.scheme._
 
 object SchemePrelude {
 

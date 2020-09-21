@@ -1,10 +1,10 @@
-package scalaam.lattice
+package maf.lattice
 
-import scalaam.core._
+import maf.core._
 
 case object NotANumberString extends Error
 
-/** A scalaam.lattice for strings */
+/** A lattice for strings */
 trait StringLattice[S] extends Lattice[S] {
   def inject(s: String): S
   def length[I: IntLattice](s: S): I

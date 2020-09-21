@@ -1,11 +1,11 @@
-package scalaam.modular
+package maf.modular
 
-import scalaam.core._
+import maf.core._
 import akka.actor.typed.{Behavior => Behaviour, ActorRef, ActorSystem, DispatcherSelector}
 import akka.actor.typed.scaladsl.{Behaviors => Behaviours, Routers, PoolRouter, AskPattern}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
-import scalaam.util.benchmarks.Timeout
+import maf.util.benchmarks.Timeout
 import com.typesafe.config.ConfigFactory
 
 object ActorConfig {

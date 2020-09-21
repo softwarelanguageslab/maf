@@ -1,12 +1,12 @@
-package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
+package maf.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
-import scalaam.core._
-import scalaam.modular._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.core.Position._
-import scalaam.language.scheme._
-import scalaam.modular.adaptive.scheme._
+import maf.core._
+import maf.modular._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.core.Position._
+import maf.language.scheme._
+import maf.modular.adaptive.scheme._
 
 trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   case class ComponentContext(args: List[Value]) {

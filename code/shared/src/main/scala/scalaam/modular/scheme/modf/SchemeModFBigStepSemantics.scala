@@ -1,8 +1,8 @@
-package scalaam.modular.scheme.modf
+package maf.modular.scheme.modf
 
-import scalaam.core._
-import scalaam.language.scheme._
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.language.scheme._
+import maf.util.benchmarks.Timeout
 
 object EvalM {
   /* EvalM allows for big-step computations in "monadic" style */

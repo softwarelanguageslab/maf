@@ -1,19 +1,19 @@
-package scalaam.modular.incremental.old
+package maf.modular.incremental.old
 
 /*
 /** Semantics for an incremental Scheme MODF analysis. */
 trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] with SchemeModFSemantics {
 
-  import scalaam.core.Expression
-  import scalaam.language.change.CodeChange
-  import scalaam.language.change.CodeVersion._
-  import scalaam.modular.scheme.modf._
-  import scalaam.modular.components.MutableIndirectComponents
-  import scalaam.modular._
-  import scalaam.modular.incremental.scheme.modconc.IncrementalSchemeModConcSmallStepSemantics
-  import scalaam.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
-  import scalaam.modular.scheme.ssmodconc._
-  import scalaam.util.benchmarks.Timeout
+  import maf.core.Expression
+  import maf.language.change.CodeChange
+  import maf.language.change.CodeVersion._
+  import maf.modular.scheme.modf._
+  import maf.modular.components.MutableIndirectComponents
+  import maf.modular._
+  import maf.modular.incremental.scheme.modconc.IncrementalSchemeModConcSmallStepSemantics
+  import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
+  import maf.modular.scheme.ssmodconc._
+  import maf.util.benchmarks.Timeout
 
   // Every component holds a pointer to the corresponding lexical module.
   type ComponentData = SchemeModFComponent[ComponentContext,Addr]
@@ -64,7 +64,7 @@ trait IncrementalSchemeModFSemantics extends IncrementalModAnalysis[SchemeExp] w
    * @param newExpressions  A map from new identities to corresponding expressions.
    * @return
    */
-  def updateLocalAddress(addr: scalaam.core.Address, newIdentities: Map[OldIdn, NewIdn], newExpressions: Map[NewIdn, SchemeExp]): Option[scalaam.core.Address] = addr match {
+  def updateLocalAddress(addr: maf.core.Address, newIdentities: Map[OldIdn, NewIdn], newExpressions: Map[NewIdn, SchemeExp]): Option[maf.core.Address] = addr match {
     case VarAddr(id) =>  newIdentities.get(id.idn).map(idn => VarAddr(id.copy(idn = idn)))
     case PtrAddr(exp) => newIdentities.get(exp.idn).flatMap(idn => newExpressions.get(idn).map(PtrAddr))
     case PrmAddr(nam) => Some(PrmAddr(nam))

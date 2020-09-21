@@ -1,13 +1,13 @@
-package scalaam.cli.experiments.primitives
+package maf.cli.experiments.primitives
 
-import scalaam.bench.scheme.SchemeBenchmarkPrograms
-import scalaam.cli.experiments._
-import scalaam.language.scheme._
-import scalaam.modular._
-import scalaam.modular.scheme.modf.SchemeModFCompoundSensitivities.SeparateLowHighSensitivity._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.util.benchmarks.Timeout
+import maf.bench.scheme.SchemeBenchmarkPrograms
+import maf.cli.experiments._
+import maf.language.scheme._
+import maf.modular._
+import maf.modular.scheme.modf.SchemeModFCompoundSensitivities.SeparateLowHighSensitivity._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 

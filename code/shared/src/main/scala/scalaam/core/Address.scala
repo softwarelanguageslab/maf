@@ -1,6 +1,6 @@
-package scalaam.core
+package maf.core
 
-import scalaam.util.SmartHash
+import maf.util.SmartHash
 
 /** An address */
 trait Address extends SmartHash {

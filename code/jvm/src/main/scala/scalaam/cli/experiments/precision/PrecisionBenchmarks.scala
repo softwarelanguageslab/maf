@@ -1,16 +1,16 @@
-package scalaam.cli.experiments.precision
+package maf.cli.experiments.precision
 
-import scalaam.core._
-import scalaam.language.scheme.SchemeInterpreter.Addr
-import scalaam.language.scheme._
-import scalaam.language.scheme.lattices.ModularSchemeLattice
-import scalaam.language.scheme.primitives._
-import scalaam.lattice._
-import scalaam.modular._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.util._
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.language.scheme.SchemeInterpreter.Addr
+import maf.language.scheme._
+import maf.language.scheme.lattices.ModularSchemeLattice
+import maf.language.scheme.primitives._
+import maf.lattice._
+import maf.modular._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.util._
+import maf.util.benchmarks.Timeout
 
 abstract class PrecisionBenchmarks[
     Num: IntLattice,
@@ -36,10 +36,10 @@ abstract class PrecisionBenchmarks[
     case class PtrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<pointer $idn>" }
     
     private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
-        case scalaam.modular.scheme.VarAddr(vrb, _) => VarAddr(vrb)
-        case scalaam.modular.scheme.PtrAddr(exp, _) => PtrAddr(exp.idn)
-        case scalaam.modular.ReturnAddr(_, idn)     => RetAddr(idn)
-        case scalaam.modular.scheme.PrmAddr(nam)    => PrmAddr(nam)
+        case maf.modular.scheme.VarAddr(vrb, _) => VarAddr(vrb)
+        case maf.modular.scheme.PtrAddr(exp, _) => PtrAddr(exp.idn)
+        case maf.modular.ReturnAddr(_, idn)     => RetAddr(idn)
+        case maf.modular.scheme.PrmAddr(nam)    => PrmAddr(nam)
         case a                                      => throw new Exception(s"Cannot convert address: $a")
     }
 

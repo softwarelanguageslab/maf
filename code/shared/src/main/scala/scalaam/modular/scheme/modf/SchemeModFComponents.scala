@@ -1,8 +1,8 @@
-package scalaam.modular.scheme.modf
+package maf.modular.scheme.modf
 
-import scalaam.core._
-import scalaam.util._
-import scalaam.language.scheme._
+import maf.core._
+import maf.util._
+import maf.language.scheme._
 
 // A SchemeModFComponent represents function calls
 sealed trait SchemeModFComponent extends SmartHash
@@ -32,10 +32,10 @@ trait StandardSchemeModFComponents extends BaseSchemeModFSemantics {
 }
 
 
-/*package scalaam.scalaam.modular.scheme
+/*package maf.modular.scheme
 
-import scalaam.scalaam.core._
-import scalaam.scalaam.language.scheme._
+import maf.core._
+import maf.language.scheme._
 
 trait ModuledSchemeComponents extends SchemeModFSemantics {
 
@@ -45,7 +45,7 @@ trait ModuledSchemeComponents extends SchemeModFSemantics {
     def body: SchemeExp = program
     override def toString: String = "main"
   }
-  case class FunctionModule(nam: Option[String], clo: scalaam.lattice.Closure) extends Module {
+  case class FunctionModule(nam: Option[String], clo: maf.lattice.Closure) extends Module {
     // convenience accessors
     lazy val (lambda, parent) = clo
     lazy val body: SchemeExp = SchemeBody(lambda.body)
@@ -77,11 +77,11 @@ trait ModuledSchemeComponents extends SchemeModFSemantics {
 
   implicit def componentAsModule(component: SchemeComponent): Module = component.mod
 
-  implicit def contentOrdering: Ordering[Option[scalaam.lattice.Closure]] = new Ordering.OptionOrdering[scalaam.lattice.Closure] {
+  implicit def contentOrdering: Ordering[Option[maf.lattice.Closure]] = new Ordering.OptionOrdering[maf.lattice.Closure] {
     def optionOrdering = Ordering[(Identity,Component)].on(clo => (clo._1.idn,clo._2))
   }
 
-  type ComponentContent = Option[scalaam.lattice.Closure]
+  type ComponentContent = Option[maf.lattice.Closure]
   def content(cmp: Component) = view(cmp) match {
     case _ : MainComponent => None
     case call: CallComponent => Some(call.mod.clo)

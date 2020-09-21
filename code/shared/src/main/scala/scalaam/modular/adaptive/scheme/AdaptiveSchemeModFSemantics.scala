@@ -1,9 +1,9 @@
-package scalaam.modular.adaptive.scheme
+package maf.modular.adaptive.scheme
 
-import scalaam.modular.scheme.modf._
-import scalaam.modular.scheme._
-import scalaam.language.scheme._
-import scalaam.modular.adaptive._
+import maf.modular.scheme.modf._
+import maf.modular.scheme._
+import maf.language.scheme._
+import maf.modular.adaptive._
 
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]

@@ -1,6 +1,6 @@
-package scalaam.util
+package maf.util
 
-import scalaam.core._
+import maf.core._
 
 trait Monoid[M] {
   def append(x: M, y: => M): M

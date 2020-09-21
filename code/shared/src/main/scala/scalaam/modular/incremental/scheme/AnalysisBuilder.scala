@@ -1,12 +1,12 @@
-package scalaam.modular.incremental.scheme
+package maf.modular.incremental.scheme
 
-import scalaam.language.scheme.SchemeExp
-import scalaam.modular._
-import scalaam.modular.incremental.scheme.modconc._
-import scalaam.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
-import scalaam.modular.scheme.SchemeTypeDomain
-import scalaam.modular.scheme.modf._
-import scalaam.modular.scheme.ssmodconc._
+import maf.language.scheme.SchemeExp
+import maf.modular._
+import maf.modular.incremental.scheme.modconc._
+import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
+import maf.modular.scheme.SchemeTypeDomain
+import maf.modular.scheme.modf._
+import maf.modular.scheme.ssmodconc._
 
 object AnalysisBuilder {
 

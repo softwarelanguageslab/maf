@@ -1,14 +1,14 @@
-package scalaam.test.lattice
+package maf.test.lattice
 
 import org.scalacheck.Prop.{forAll, propBoolean}
 import org.scalacheck._
 import org.scalatest.propspec._
 import org.scalatestplus.scalacheck.Checkers
-import scalaam.core.Lattice
-import scalaam.lattice._
-import scalaam.test.LatticeTest
+import maf.core.Lattice
+import maf.lattice._
+import maf.test.LatticeTest
 
-/** TODO[medium] tests for scheme scalaam.lattice */
+/** TODO[medium] tests for scheme lattice */
 
 abstract class LatticeSpecification extends AnyPropSpec with Checkers {
   // by default, check each property for at least 100 instances
@@ -36,7 +36,7 @@ abstract class LatticeTest[L : Lattice](gen: LatticeGenerator[L]) extends Lattic
 
       /** The subsumption operation is reflexive */
       p.property("∀ a: a ⊑ a") = forAll((a: L) => subsumes(a, a))
-      /** Bottom is the lower bound of all elements in the scalaam.lattice */
+      /** Bottom is the lower bound of all elements in the lattice */
       p.property("∀ a: ⊥ ⊑ a") = forAll((a: L) => subsumes(a, bottom))
       /** The join operation is commutative */
       p.property("∀ a, b: a ⊔ b = b ⊔ a") = forAll { (a: L, b: L) => 

@@ -1,16 +1,16 @@
-package scalaam.language.scheme.primitives
+package maf.language.scheme.primitives
 
-import scalaam.core._
-import scalaam.language.scheme._
-import scalaam.language.scheme.lattices.{SchemeLattice, SchemeOps}
-import scalaam.util.Monoid
+import maf.core._
+import maf.language.scheme._
+import maf.language.scheme.lattices.{SchemeLattice, SchemeOps}
+import maf.util.Monoid
 
 /** Help code for manually implementing Scheme primitives. */
 trait PrimitiveBuildingBlocks[V, A <: Address] {
 
   val lat: SchemeLattice[V, A, SchemePrimitive[V,A]]
-  lazy val latMon: Monoid[V] = scalaam.util.MonoidInstances.latticeMonoid[V](lat)
-  lazy val mfMon: Monoid[MayFail[V, Error]] = scalaam.util.MonoidInstances.mayFail[V](latMon)
+  lazy val latMon: Monoid[V] = maf.util.MonoidInstances.latticeMonoid[V](lat)
+  lazy val mfMon: Monoid[MayFail[V, Error]] = maf.util.MonoidInstances.mayFail[V](latMon)
 
   import lat._
 

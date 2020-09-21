@@ -1,9 +1,9 @@
-package scalaam.modular.adaptive.scheme
+package maf.modular.adaptive.scheme
 
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.core.Position._
-import scalaam.language.scheme._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.core.Position._
+import maf.language.scheme._
 
 trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
     // set a limit for the maximum number of recursive calls to a component

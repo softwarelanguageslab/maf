@@ -1,7 +1,7 @@
-package scalaam.language.scheme
+package maf.language.scheme
 
-import scalaam.core._
-import scalaam.language.sexp._
+import maf.core._
+import maf.language.sexp._
 
 /**
   * Trait that provides a method to compile an s-expression into a standard Scheme expression.

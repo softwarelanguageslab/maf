@@ -1,8 +1,8 @@
-package scalaam.language.scheme
+package maf.language.scheme
 
-import scalaam.core._
-import scalaam.language.change.ChangeExp
-import scalaam.language.sexp._
+import maf.core._
+import maf.language.change.ChangeExp
+import maf.language.sexp._
 
 /**
   * Abstract syntax of Scheme programs

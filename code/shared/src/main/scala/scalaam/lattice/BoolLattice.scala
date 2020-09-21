@@ -1,6 +1,6 @@
-package scalaam.lattice
+package maf.lattice
 
-import scalaam.core.Lattice
+import maf.core.Lattice
 
 /** A lattice for booleans */
 trait BoolLattice[B] extends Lattice[B] {

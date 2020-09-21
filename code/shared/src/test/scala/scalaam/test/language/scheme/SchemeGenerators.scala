@@ -1,13 +1,13 @@
-package scalaam.test.language.scheme
+package maf.test.language.scheme
 
 import org.scalacheck._
-import scalaam.core._
-import scalaam.language.scheme._
-import scalaam.language.scheme.lattices.{ModularSchemeLattice, SchemeOps}
-import scalaam.language.scheme.primitives._
-import scalaam.language.sexp._
-import scalaam.lattice._
-import scalaam.test.lattice._
+import maf.core._
+import maf.language.scheme._
+import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeOps}
+import maf.language.scheme.primitives._
+import maf.language.sexp._
+import maf.lattice._
+import maf.test.lattice._
 
 trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
     /* unary ops */
@@ -57,7 +57,7 @@ abstract class ModularSchemeLatticeGenerator[
     }
     // we'll use the "real" primitives
     def primitives = new SchemeLatticePrimitives[modularLattice.L, SimpleAddr]
-    // the scalaam.modular scalaam.lattice that is used
+    // the modular lattice that is used
     lazy val modularLattice: ModularSchemeLattice[SimpleAddr,S,B,I,R,C,Sym] = new ModularSchemeLattice
     
     type L = modularLattice.L
@@ -72,7 +72,7 @@ abstract class ModularSchemeLatticeGenerator[
         case modularLattice.Vec(siz,els) => for {
             elsShrinked <- Shrink.shrinkContainer[Set,(I,L)].shrink(els.toSet)
         } yield modularLattice.Vec(siz,elsShrinked.toMap)
-        // TODO: Shrink other values (useful for e.g. concrete scalaam.lattice)
+        // TODO: Shrink other values (useful for e.g. concrete lattice)
         case _ => Stream.empty
     }
     implicit val shrinkBinding: Shrink[(I,L)] = Shrink[(I,L)] { case (idx,vlu) => 

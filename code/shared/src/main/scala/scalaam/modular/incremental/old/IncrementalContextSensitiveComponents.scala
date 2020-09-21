@@ -1,8 +1,8 @@
-package scalaam.modular.incremental.scheme
+package maf.modular.incremental.scheme
 
-// import scalaam.core.Expression
-// import scalaam.modular.components.ContextSensitiveComponents
-// import scalaam.modular.incremental.IncrementalModAnalysis
+// import maf.core.Expression
+// import maf.modular.components.ContextSensitiveComponents
+// import maf.modular.incremental.IncrementalModAnalysis
 
 /*
 trait IncrementalContextSensitiveComponents [Expr <: Expression] extends IncrementalModAnalysis[Expr] with ContextSensitiveComponents[Expr] {

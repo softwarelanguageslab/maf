@@ -1,6 +1,6 @@
-package scalaam.language.scheme
+package maf.language.scheme
 
-import scalaam.core._
+import maf.core._
 
 /**
   * Remove defines from a Scheme expression, replacing them by let bindings.

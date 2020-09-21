@@ -1,6 +1,6 @@
-package scalaam.modular
+package maf.modular
 
-import scalaam.core._
+import maf.core._
 
 // Dependency that is triggered when an abstract value at address 'addr' is updated
 case class AddrDependency(addr: Address) extends Dependency {

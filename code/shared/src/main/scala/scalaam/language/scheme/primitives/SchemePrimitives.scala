@@ -1,10 +1,10 @@
-package scalaam.language.scheme.primitives
+package maf.language.scheme.primitives
 
-import scalaam.core._
-import scalaam.core.Position._
-import scalaam.language.scheme._
-import scalaam.language.CScheme._
-import scalaam.language.scheme.lattices.SchemeLattice
+import maf.core._
+import maf.core.Position._
+import maf.language.scheme._
+import maf.language.CScheme._
+import maf.language.scheme.lattices.SchemeLattice
 
 trait SchemeInterpreterBridge[V, A <: Address] {
   type Closure = (SchemeLambdaExp, Environment[A])

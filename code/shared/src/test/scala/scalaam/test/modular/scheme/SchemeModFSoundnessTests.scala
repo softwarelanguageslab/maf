@@ -1,15 +1,15 @@
-package scalaam.test.modular.scheme
+package maf.test.modular.scheme
 
-import scalaam.bench.scheme.SchemeBenchmarkPrograms
-import scalaam.core.Position._
-import scalaam.language.scheme._
-import scalaam.modular._
-import scalaam.modular.adaptive._
-import scalaam.modular.adaptive.scheme._
-import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.test._
+import maf.bench.scheme.SchemeBenchmarkPrograms
+import maf.core.Position._
+import maf.language.scheme._
+import maf.modular._
+import maf.modular.adaptive._
+import maf.modular.adaptive.scheme._
+import maf.modular.adaptive.scheme.adaptiveArgumentSensitivity._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.test._
 
 trait SchemeModFSoundnessTests extends SchemeSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModFTest

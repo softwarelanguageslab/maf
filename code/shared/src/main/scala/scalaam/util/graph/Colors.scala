@@ -1,4 +1,4 @@
-package scalaam.util.graph
+package maf.util.graph
 
 case class Color(hex: String) {
   override def toString = hex

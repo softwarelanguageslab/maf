@@ -1,4 +1,4 @@
-package scalaam.core
+package maf.core
 
 /** An error that is not thrown but rather used as an erroneous value */
 trait Error

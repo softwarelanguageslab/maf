@@ -1,6 +1,6 @@
-package scalaam.modular
+package maf.modular
 
-import scalaam.core._
+import maf.core._
 
 case class ReturnAddr[Component](cmp: Component, idn: Identity) extends Address { 
   def printable = true 

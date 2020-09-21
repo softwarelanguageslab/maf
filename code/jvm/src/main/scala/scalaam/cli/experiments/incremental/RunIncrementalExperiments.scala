@@ -1,4 +1,4 @@
-package scalaam.cli.experiments.incremental
+package maf.cli.experiments.incremental
 
 object RunIncrementalExperiments {
   def main(args: Array[String]): Unit = {

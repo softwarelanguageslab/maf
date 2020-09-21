@@ -1,18 +1,18 @@
-package scalaam.test.modular.scheme
+package maf.test.modular.scheme
 
 import java.util.concurrent.TimeoutException
 
 import org.scalatest.Tag
-import scalaam.core._
-import scalaam.language.CScheme._
-import scalaam.language.scheme.SchemeInterpreter._
-import scalaam.language.scheme._
-import scalaam.language.scheme.primitives.SchemePrelude
-import scalaam.modular._
-import scalaam.modular.scheme._
-import scalaam.test._
-import scalaam.util._
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.language.CScheme._
+import maf.language.scheme.SchemeInterpreter._
+import maf.language.scheme._
+import maf.language.scheme.primitives.SchemePrelude
+import maf.modular._
+import maf.modular.scheme._
+import maf.test._
+import maf.util._
+import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 

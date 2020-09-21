@@ -1,8 +1,8 @@
-package scalaam.modular.scheme.modf
+package maf.modular.scheme.modf
 
-import scalaam.core._
-import scalaam.modular.scheme._
-import scalaam.language.scheme._
+import maf.core._
+import maf.modular.scheme._
+import maf.language.scheme._
 
 trait StandardSchemeModFAllocator extends BaseSchemeModFSemantics {
   type AllocationContext = Component

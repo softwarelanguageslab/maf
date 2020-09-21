@@ -1,4 +1,4 @@
-package scalaam.util.graph
+package maf.util.graph
 
 sealed trait GraphMetadata {
 

@@ -1,21 +1,21 @@
-package scalaam.web
+package maf.web
 
-import scalaam.core.Position._
-import scalaam.language.scheme._
-import scalaam.modular._
-import scalaam.modular.adaptive._
-import scalaam.modular.adaptive.scheme._
-import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.util.benchmarks.Timeout
+import maf.core.Position._
+import maf.language.scheme._
+import maf.modular._
+import maf.modular.adaptive._
+import maf.modular.adaptive.scheme._
+import maf.modular.adaptive.scheme.adaptiveArgumentSensitivity._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.util.benchmarks.Timeout
 
 // Scala.js-related imports
 import org.scalajs.dom
 import org.scalajs.dom.{document, html}
 
 import scala.scalajs.js
-import scalaam.modular.scheme.modf.SimpleSchemeModFAnalysis
+import maf.modular.scheme.modf.SimpleSchemeModFAnalysis
 
 // Scala.js helpers
 

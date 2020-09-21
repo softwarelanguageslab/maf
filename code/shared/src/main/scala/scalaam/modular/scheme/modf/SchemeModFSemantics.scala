@@ -1,14 +1,14 @@
-package scalaam.modular.scheme.modf
+package maf.modular.scheme.modf
 
-import scalaam.core.Position._
-import scalaam.core._
-import scalaam.language.scheme._
-import scalaam.language.scheme.primitives._
-import scalaam.language.sexp
-import scalaam.modular._
-import scalaam.modular.components.ContextSensitiveComponents
-import scalaam.modular.scheme._
-import scalaam.util._
+import maf.core.Position._
+import maf.core._
+import maf.language.scheme._
+import maf.language.scheme.primitives._
+import maf.language.sexp
+import maf.modular._
+import maf.modular.components.ContextSensitiveComponents
+import maf.modular.scheme._
+import maf.util._
 
 /**
  * Base definitions for a Scheme MODF analysis.

@@ -1,6 +1,6 @@
-package scalaam.language.CScheme
+package maf.language.CScheme
 
-import scalaam.util.SmartHash
+import maf.util.SmartHash
 
 /** Thread identifiers */
 trait TID extends SmartHash

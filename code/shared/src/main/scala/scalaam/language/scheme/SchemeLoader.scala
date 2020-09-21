@@ -1,8 +1,8 @@
-package scalaam.language.scheme
+package maf.language.scheme
 
-import scalaam.core.{Identifier, Identity, Position}
-import scalaam.language.sexp._
-import scalaam.util.Reader
+import maf.core.{Identifier, Identity, Position}
+import maf.language.sexp._
+import maf.util.Reader
 
 object SchemeLoader {
 

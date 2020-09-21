@@ -1,17 +1,17 @@
-package scalaam.test.modular.scheme.incremental
+package maf.test.modular.scheme.incremental
 
 import org.scalatest.Tag
-import scalaam.language.CScheme.CSchemeParser
-import scalaam.language.change.CodeVersion._
-import scalaam.language.scheme._
-import scalaam.modular._
-import scalaam.modular.incremental.IncrementalModAnalysis
-import scalaam.modular.incremental.scheme.AnalysisBuilder._
-import scalaam.modular.scheme._
-import scalaam.test._
-import scalaam.test.modular.scheme.SchemeSoundnessTests
-import scalaam.util.Reader
-import scalaam.util.benchmarks.Timeout
+import maf.language.CScheme.CSchemeParser
+import maf.language.change.CodeVersion._
+import maf.language.scheme._
+import maf.modular._
+import maf.modular.incremental.IncrementalModAnalysis
+import maf.modular.incremental.scheme.AnalysisBuilder._
+import maf.modular.scheme._
+import maf.test._
+import maf.test.modular.scheme.SchemeSoundnessTests
+import maf.util.Reader
+import maf.util.benchmarks.Timeout
 
 trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 

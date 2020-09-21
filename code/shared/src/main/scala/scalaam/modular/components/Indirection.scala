@@ -1,7 +1,7 @@
-/*package scalaam.scalaam.modular.components
+/*package maf.modular.components
 
-import scalaam.scalaam.modular.components.Indirection.Pointer
-import scalaam.scalaam.util.Annotations.mutable
+import maf.modular.components.Indirection.Pointer
+import maf.util.Annotations.mutable
 
 trait Indirection {
 

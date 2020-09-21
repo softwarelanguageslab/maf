@@ -1,4 +1,4 @@
-package scalaam.core
+package maf.core
 
 sealed trait MayFail[A, E] {
   def addError(err: E): MayFail[A, E] = addErrors(Set(err))

@@ -1,8 +1,8 @@
-package scalaam.language.CScheme
+package maf.language.CScheme
 
-import scalaam.core.Identifier
-import scalaam.language.scheme._
-import scalaam.language.sexp._
+import maf.core.Identifier
+import maf.language.scheme._
+import maf.language.sexp._
 
 import scala.util.control.TailCalls
 

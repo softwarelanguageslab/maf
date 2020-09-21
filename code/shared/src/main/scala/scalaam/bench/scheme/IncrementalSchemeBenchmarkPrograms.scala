@@ -1,4 +1,4 @@
-package scalaam.bench.scheme
+package maf.bench.scheme
 
 object IncrementalSchemeBenchmarkPrograms {
   lazy val threads: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/cscheme/threads",

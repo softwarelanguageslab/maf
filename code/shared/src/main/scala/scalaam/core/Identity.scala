@@ -1,8 +1,8 @@
-package scalaam.core
+package maf.core
 
-import scalaam.core.Identity._
-import scalaam.core.Position._
-import scalaam.util.SmartHash
+import maf.core.Identity._
+import maf.core.Position._
+import maf.util.SmartHash
 
 /** An identity to distinguish expressions. */
 sealed trait Identity {

@@ -1,8 +1,8 @@
-package scalaam.modular
+package maf.modular
 
-import scalaam.core._
-import scalaam.util.SmartHash
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.util.SmartHash
+import maf.util.benchmarks.Timeout
 
 // an intra-analysis of a component can read ("register") or write ("trigger") dependencies
 // a dependency represents a part of the global analysis state (such as a location in the global analysis' store)

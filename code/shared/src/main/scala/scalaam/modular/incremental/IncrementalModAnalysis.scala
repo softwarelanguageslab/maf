@@ -1,10 +1,10 @@
-package scalaam.modular.incremental
+package maf.modular.incremental
 
-import scalaam.core._
-import scalaam.language.change._
-import scalaam.language.change.CodeVersion._
-import scalaam.modular._
-import scalaam.util.benchmarks.Timeout
+import maf.core._
+import maf.language.change._
+import maf.language.change.CodeVersion._
+import maf.modular._
+import maf.util.benchmarks.Timeout
 
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] { //} with MutableIndirectComponents[Expr] { // MutableIndirectComponents are no longer needed, as there are no updates to modules (the original program already contains the changes).
 

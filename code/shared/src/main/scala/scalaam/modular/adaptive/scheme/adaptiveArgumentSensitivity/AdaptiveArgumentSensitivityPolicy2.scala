@@ -1,4 +1,4 @@
-package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
+package maf.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
 trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
   // parameterized by a simple budget

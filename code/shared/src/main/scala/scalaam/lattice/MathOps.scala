@@ -1,4 +1,4 @@
-package scalaam.lattice
+package maf.lattice
 
 /** Various implementations of mathematical utilities functions. */
 object MathOps {

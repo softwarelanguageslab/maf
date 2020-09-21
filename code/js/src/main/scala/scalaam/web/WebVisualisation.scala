@@ -1,7 +1,7 @@
-package scalaam.web
+package maf.web
 
-import scalaam.modular._
-import scalaam.util.benchmarks.Timeout
+import maf.modular._
+import maf.util.benchmarks.Timeout
 
 // Scala.js-related imports
 import org.scalajs.dom

@@ -1,8 +1,8 @@
-package scalaam.test.lattice
+package maf.test.lattice
 
 import org.scalacheck._
-import scalaam.core.Lattice
-import scalaam.lattice._
+import maf.core.Lattice
+import maf.lattice._
 
 trait LatticeGenerator[L] {
   def any: Gen[L]
@@ -20,7 +20,7 @@ object Generators {
 }
 
 class BooleanGenerator[B : BoolLattice] extends LatticeGenerator[B] {
-  /** ConcreteBool is a finite scalaam.lattice with four elements */
+  /** ConcreteBool is a finite lattice with four elements */
   val bot = BoolLattice[B].bottom
   val t = BoolLattice[B].inject(true)
   val f = BoolLattice[B].inject(false)
@@ -36,7 +36,7 @@ object ConcreteBooleanGenerator extends BooleanGenerator[Concrete.B]
 
 
 case class SetGen[A](g: Gen[A]) {
-  /*implicit val buildable = new org.scalacheck.scalaam.util.Buildable[A, Set[A]] {
+  /*implicit val buildable = new org.scalacheck.maf.util.Buildable[A, Set[A]] {
     def builder = new scala.collection.mutable.Builder[A, Set[A]] {
       var buff: Set[A] = Set.empty
       def clear() = { buff = Set.empty }
@@ -80,7 +80,7 @@ object ConcreteCharGenerator extends ConcreteGenerator[Char](Generators.char)
 object ConcreteSymbolGenerator extends ConcreteGenerator[String](Generators.sym)(Concrete.L.symConcrete)
 
 object TypeGenerator extends LatticeGenerator[Type.T] {
-  /** Type scalaam.lattice is a finite scalaam.lattice with two elements */
+  /** Type lattice is a finite lattice with two elements */
   def any = Gen.oneOf(Type.Top, Type.Bottom)
   def le(l: Type.T) = l match {
     case Type.Top => any

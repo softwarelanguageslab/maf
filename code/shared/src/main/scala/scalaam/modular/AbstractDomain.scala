@@ -1,6 +1,6 @@
-package scalaam.modular
+package maf.modular
 
-import scalaam.core._
+import maf.core._
 
 trait AbstractDomain[Expr <: Expression] extends ModAnalysis[Expr] {
     type Value

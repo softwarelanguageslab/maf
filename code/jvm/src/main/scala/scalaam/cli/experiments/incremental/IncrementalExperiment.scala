@@ -1,10 +1,10 @@
-package scalaam.cli.experiments.incremental
+package maf.cli.experiments.incremental
 
-import scalaam.core.Expression
-import scalaam.modular.GlobalStore
-import scalaam.modular.incremental.IncrementalModAnalysis
-import scalaam.util.Writer._
-import scalaam.util.benchmarks.Timeout
+import maf.core.Expression
+import maf.modular.GlobalStore
+import maf.modular.incremental.IncrementalModAnalysis
+import maf.util.Writer._
+import maf.util.benchmarks.Timeout
 
 trait IncrementalExperiment[E <: Expression] {
   // A list of programs on which the benchmark should be executed.

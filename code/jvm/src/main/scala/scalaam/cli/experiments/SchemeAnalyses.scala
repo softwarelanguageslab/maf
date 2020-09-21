@@ -1,14 +1,14 @@
-package scalaam.cli.experiments
+package maf.cli.experiments
 
-import scalaam.core.Position._
-import scalaam.language.scheme._
-import scalaam.modular._
-import scalaam.modular.adaptive._
-import scalaam.modular.adaptive.scheme._
-import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
-import scalaam.modular.scheme._
-import scalaam.modular.scheme.modf._
-import scalaam.modular.scheme.modconc._
+import maf.core.Position._
+import maf.language.scheme._
+import maf.modular._
+import maf.modular.adaptive._
+import maf.modular.adaptive.scheme._
+import maf.modular.adaptive.scheme.adaptiveArgumentSensitivity._
+import maf.modular.scheme._
+import maf.modular.scheme.modf._
+import maf.modular.scheme.modconc._
 
 object SchemeAnalyses {
 

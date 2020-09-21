@@ -1,7 +1,7 @@
-package scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity
+package maf.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
-import scalaam.modular.scheme.modf._
-import scalaam.util.MonoidImplicits._
+import maf.modular.scheme.modf._
+import maf.util.MonoidImplicits._
 
 trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
   // parameterized by a simple limit
