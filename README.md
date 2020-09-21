@@ -1,4 +1,4 @@
-MAF: A Framework for Modular Analysis of Dynamic Languages
+Modular Analysis Framework (MAF): A Framework for Modular Analysis of Dynamic Languages
 
 # Goal
 The goal of this artefact is to experiment with abstract machines and language

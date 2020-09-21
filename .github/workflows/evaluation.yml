@@ -1,4 +1,4 @@
-name: Daily Scala-AM evaluation
+name: Daily MAF evaluation
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -18,7 +18,7 @@ jobs:
       - name: Run precision benchmarks
         uses: lokkju/github-action-sbt@v0.2.2
         with:
-          commands: scalaam/runMain scalaam.cli.experiments.precision.DailyPrecisionBenchmarks
+          commands: maf/runMain maf.cli.experiments.precision.DailyPrecisionBenchmarks
       - name: Upload the benchmark results
         uses: actions/upload-artifact@v2
         with:

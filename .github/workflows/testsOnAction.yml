@@ -1,4 +1,4 @@
-name: Scala-AM tests on action
+name: MAF tests on action
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -23,4 +23,4 @@ jobs:
     - name: Run the tests
       uses: lokkju/github-action-sbt@v0.2.2
       with:
-        commands: scalaam/testOnly -- -l SlowTest
+        commands: maf/testOnly -- -l SlowTest
