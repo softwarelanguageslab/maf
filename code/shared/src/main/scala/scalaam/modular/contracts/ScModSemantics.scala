@@ -75,7 +75,7 @@ trait ScModSemantics
       */
     def fnEnv: Env = view(component) match {
       case ScMain          => baseEnv
-      case Call(env, _, _) => env // TODO: extend environment with variable bindings
+      case Call(env, lambda, _) => env.extend(lambda.variables.map(v => (v.name, allocVar(v, component))))
     }
   }
 

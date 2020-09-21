@@ -15,6 +15,7 @@ case object LAMBDA                extends Label
 case object FUNCTION_AP           extends Label
 case object RAISE                 extends Label
 case object CHECK                 extends Label
+case object OPQ extends Label
 case object LETREC                extends Label
 case object BEGIN                 extends Label
 case object IF                    extends Label
@@ -238,4 +239,15 @@ case class ScNil(idn: Identity = Identity.none) extends ScExp {
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List()
+}
+
+case class ScOpaque(idn: Identity) extends ScExp {
+  /** The set of free variables appearing in this expression. */
+  def fv: Set[String] = Set()
+
+  /** A label indicating the type of an expression. */
+  def label: Label = OPQ
+
+  /** Returns the list of subexpressions of the given expression. */
+  def subexpressions: List[Expression] = List()
 }

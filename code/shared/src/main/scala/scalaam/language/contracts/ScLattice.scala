@@ -35,7 +35,7 @@ object ScLattice {
     * An opaque value, we could add refinements to this value so that we can use those refinements
     * for further restriction of our state space
     */
-  case class Opq(id: Int)
+  case class Opq(set: Set[ScExp] = Set())
 
   /**
     * A monitor on a dependent contract
@@ -99,6 +99,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def injectBlame(blame: Blame): L
 
+  /**
+   * Inject an opaque value in the abstract domain
+   */
+  def injectOpq(opq: Opq): L
+
   /*==================================================================================================================*/
 
   def applyPrimitive(prim: Prim)(arguments: L*): L
@@ -156,4 +161,8 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Extract a set of blames from the abstract value
     */
   def getBlames(value: L): Set[Blame]
+
+  /*==================================================================================================================*/
+
+  def integerTop: L
 }

@@ -1,6 +1,5 @@
 package scalaam.test.language.contracts
 
-import com.sun.jdi.IntegerValue
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should
 import scalaam.language.contracts.{

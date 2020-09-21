@@ -1,25 +1,8 @@
 package scalaam.modular.contracts
 import scalaam.core.{Address, Environment, Identity}
 import scalaam.core.Position.Position
-import scalaam.language.contracts.ScLattice.{Arr, Blame, Grd, Prim}
-import scalaam.language.contracts.{
-  ScBegin,
-  ScDependentContract,
-  ScExp,
-  ScFlatContract,
-  ScFunctionAp,
-  ScHigherOrderContract,
-  ScIdentifier,
-  ScIf,
-  ScLambda,
-  ScLattice,
-  ScLetRec,
-  ScMon,
-  ScNil,
-  ScRaise,
-  ScSet,
-  ScValue
-}
+import scalaam.language.contracts.ScLattice.{Arr, Blame, Clo, Grd, Opq, Prim}
+import scalaam.language.contracts.{ScBegin, ScDependentContract, ScExp, ScFlatContract, ScFunctionAp, ScHigherOrderContract, ScIdentifier, ScIf, ScLambda, ScLattice, ScLetRec, ScMon, ScNil, ScOpaque, ScRaise, ScSet, ScValue}
 import scalaam.language.sexp.{ValueBoolean, ValueInteger}
 
 trait ScSmallStepSemantics
@@ -165,8 +148,9 @@ trait ScSmallStepSemantics
       case ReturnResult(value, _) => value
     }
 
-    override def initialState: ScState =
-      EvalState(expr(component), fnEnv, S(kont = ReturnFrame(ScNilFrame), env = fnEnv))
+    override def initialState: ScState = {
+      EvalState(fnBody, fnEnv, S(kont = ReturnFrame(ScNilFrame), env = fnEnv))
+    }
 
     private def lookup(id: ScIdentifier, env: Env): Addr = env.lookup(id.name) match {
       case Some(addr) => addr
@@ -219,6 +203,9 @@ trait ScSmallStepSemantics
           val k = EvalMonFrame(expression, state.kont)
           Set(EvalState(contract, env, state.copy(kont = k)))
 
+        case ScOpaque(idn) =>
+          Set(ApplyKont(lattice.injectOpq(Opq()), ScNil(), state))
+
         case ScHigherOrderContract(domain, range, idn) =>
           // a higher order contract is evaluated the same as a dependent contract
           // except that we need to transform the range into range maker, we can to this by thunkifying the range
@@ -231,6 +218,9 @@ trait ScSmallStepSemantics
 
         case ScFlatContract(contract, _) =>
           Set(EvalState(contract, env, state))
+
+        case lambda@ScLambda(params, _, idn) =>
+          Set(ApplyKont(lattice.injectClo(Clo(idn, env, params, lambda)), ScNil(), state))
       }
     }
 
@@ -243,7 +233,7 @@ trait ScSmallStepSemantics
             sym,
             state.pc,
             pNext => Set(EvalState(consequent, state.env, state.copy(pc = pNext, kont = next))),
-            pNext => Set(EvalState(consequent, state.env, state.copy(pc = pNext, kont = next)))
+            pNext => Set(EvalState(alternative, state.env, state.copy(pc = pNext, kont = next)))
           )
 
         case RestoreEnv(env, next) =>
@@ -410,15 +400,19 @@ trait ScSmallStepSemantics
 
     private def applyOpClo(
         operator: PostValue,
-        operands: List[PostValue]
+        operands: List[PostValue],
     ): Set[Value] = {
       // user defined function
       lattice
         .getClo(operator.value)
         .map(clo => {
-          val context         = allocCtx(clo, operands.map(_.value), ???, component)
+          val context         = allocCtx(clo, operands.map(_.value), clo.lambda.idn.pos, component)
           val called          = Call(clo.env, clo.lambda, context)
           val calledComponent = newComponent(called)
+          operands.zip(clo.lambda.variables.map(v => allocVar(v, calledComponent))).foreach {
+            case (value, addr) => writeAddr(addr, value.value)
+          }
+
           val result          = call(calledComponent)
           result
         })
@@ -488,12 +482,11 @@ trait ScSmallStepSemantics
         pc: PC,
         t: PC => Set[State],
         f: PC => Set[State]
-    ): Set[State] = {
+    ): Set[State] =
       // a conditional consists of a true branch and a false branch, we use the built-in predicates
       // true? and false? to check if the true and false branch are feasible
       feasible(primTrue, pc, value, sym).toSet.flatMap(t) ++
         feasible(primFalse, pc, value, sym).toSet.flatMap(f)
-    }
 
     /**
       * Checks wether the given operation is feasible for the given path with the given value

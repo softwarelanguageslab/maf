@@ -41,11 +41,16 @@ object SCExpCompiler {
   }
 
   def compile_sequence(s: SExp): List[ScExp] = s match {
-    case SExpPair(exp, cdr, _)  => compile(exp) :: compile_sequence(cdr)
+    case SExpPair(exp, cdr, _)  => {
+      compile(exp) :: compile_sequence(cdr)
+    }
     case SExpValue(ValueNil, _) => List()
   }
 
   def compile(prog: SExp): ScExp = prog match {
+    case IdentWithIdentity("OPQ", idn) =>
+      ScOpaque(idn)
+
     case Ident("set!") :: IdentWithIdentity(name, idn) :: exp :: SExpValue(ValueNil, _) =>
       ScSet(ScIdentifier(name, idn), compile(exp), prog.idn)
 
