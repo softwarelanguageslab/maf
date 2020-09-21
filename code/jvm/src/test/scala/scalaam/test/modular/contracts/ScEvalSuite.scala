@@ -104,8 +104,43 @@ class ScEvalSuite extends ScTestsJVM {
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(3))
 
   }
+
   eval("(- 3 3)").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(0))
+  }
+
+  eval("((lambda (x) x) 1)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(1))
+  }
+
+  eval("((lambda (x) (if (= x 0) x 0)) 0)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(0))
+  }
+
+  eval("((lambda (x) (if (= x 0) x 1)) 0)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(0))
+  }
+
+  eval("((lambda (x) (if (= x 0) 1 2)) OPQ)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.integerTop)
+  }
+
+  eval("(int? 5)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  // should retain type information although the final value is top
+  eval("(int? (if (= OPQ 2) 5 6))").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(int? (if (= OPQ 2) 5 OPQ))").tested { machine =>
+    // we don't know whether OPQ is an int or not
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.top)
+  }
+
+  eval("(int? (if (> 2 5) 5 OPQ))").tested { machine =>
+    machine.getReturnValue(ScMain)
   }
 
   // An integer literal should always pass the `int?` test

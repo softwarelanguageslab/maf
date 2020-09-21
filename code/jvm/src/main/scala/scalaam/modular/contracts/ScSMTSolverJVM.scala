@@ -23,7 +23,7 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     }
   }
 
-  private val prelude: String = ???
+  private val prelude: String = ""
 
   def transformExpression(exp: ScExp): String = exp match {
     case ScIdentifier(name, _) =>
@@ -62,6 +62,8 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     * @return true if the formale is satisfiable otherwise false
     */
   def isSat: Boolean = {
+    return true
+
     // transform the code
     val smtCode = prelude ++ transformed
 
