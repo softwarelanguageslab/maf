@@ -320,20 +320,6 @@ trait ScSmallStepSemantics
         case ApplyRangeMakerFrame(rangeMaker, e, operands, callerIdentity, serverIdentity, next) =>
           val k = AppliedRangeMakerFrame(e, List(symbolic(value, sym)), serverIdentity, next)
           applyOp(PostValue(rangeMaker, ScNil()), List(symbolic(value, sym)), state.copy(kont = k))
-        /* the domain has been evaluated
-          conditional(
-            value,
-            sym,
-            state.pc,
-            pNext => {
-              val k = AppliedRangeMakerFrame(e, operands, serverIdentity, next)
-              applyOp(PostValue(rangeMaker, ScNil()), operands, state.copy(kont = k, pc = pNext))
-            },
-            // Example:
-            // ((mon (int? ~ (lambda (x) int?)) (lambda (x) ...)) OPQ) blame should be on the location of OPQ
-            pNext =>
-              blame(state.copy(kont = next, pc = pNext), callerIdentity) // generate blame on the caller
-          ) */
 
         case AppliedRangeMakerFrame(e, operands, serverIdentity, next) =>
           // TODO: check if range is a proc?, otherwise generate blame
@@ -441,7 +427,6 @@ trait ScSmallStepSemantics
               } else {
                 throw new Exception("Only domains with one operand are currently allowed")
               }
-              //applyOp(PostValue(domain, ScNil()), operands, state.copy(kont = k))
             })
         })
 
