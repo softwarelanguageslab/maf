@@ -147,7 +147,7 @@ object IncrementalRun extends App {
     //"test/changes/cscheme/threads/pc.scm",
     //"test/changes/cscheme/threads/stm.scm"
    )
-  val    modFbenchmarks: List[String] = List("test/R5RS/VUB-projects/frogger.scm")
+  val    modFbenchmarks: List[String] = List("test/DEBUG.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
   modConcbenchmarks.foreach { bench =>

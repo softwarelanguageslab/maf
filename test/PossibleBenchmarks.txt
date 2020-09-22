@@ -21,7 +21,7 @@ Github scrape:
 ./macdavid313/chezure                       x
 ./crosswire/xiphos                            v Seems to contain some good code (in package `win32/festival`)
 ./abcdw/rde                                 x   Uses gnu and guix packages.
-./google/schism                               v With minor changes, code of rnrs.ss and compiler.ss seemto be combinable
+./google/schism                               v With minor changes, code of rnrs.ss and compiler.ss seem to be combinable
 ./Phantas0s/.dotfiles                       x
 ./IronScheme/IronScheme
 ./webyrd/Barliman
