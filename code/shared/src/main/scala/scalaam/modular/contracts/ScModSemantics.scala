@@ -1,7 +1,7 @@
 package scalaam.modular.contracts
 
 import scalaam.core.Position.Position
-import scalaam.core.{Address, Environment}
+import scalaam.core.{Address, Environment, Identity}
 import scalaam.language.contracts.ScLattice.Blame
 import scalaam.language.contracts.{ScExp, ScIdentifier, ScLattice}
 import scalaam.modular.{GlobalStore, ModAnalysis, ReturnAddr, ReturnValue}
@@ -17,7 +17,7 @@ trait ScModSemantics
     */
   type AllocationContext
   def allocVar(id: ScIdentifier, cmp: Component): ScVarAddr[AllocationContext]
-  def allocGeneric(cmp: Component): ScGenericAddr[AllocationContext]
+  def allocGeneric(idn: Identity, cmp: Component): ScGenericAddr[AllocationContext]
 
   type ComponentContext
   def allocCtx(
@@ -74,8 +74,9 @@ trait ScModSemantics
       * @return the body of the component under analysis
       */
     def fnEnv: Env = view(component) match {
-      case ScMain          => baseEnv
-      case Call(env, lambda, _) => env.extend(lambda.variables.map(v => (v.name, allocVar(v, component))))
+      case ScMain => baseEnv
+      case Call(env, lambda, _) =>
+        env.extend(lambda.variables.map(v => (v.name, allocVar(v, component))))
     }
   }
 

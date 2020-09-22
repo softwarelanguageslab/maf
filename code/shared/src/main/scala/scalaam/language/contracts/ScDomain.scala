@@ -28,12 +28,12 @@ trait ScDomain[I, B, Addr <: Address] {
 
   case object TopValue extends Value {
     def ord                       = TOP_VALUE
-    override def toString: String = "⊤"
+    override def toString: String = "top"
   }
 
   case object BotValue extends Value {
     def ord               = BOT_VALUE
-    override def toString = "⊥"
+    override def toString = "bottom"
   }
 
   case class Bool(b: B) extends Value {
@@ -41,8 +41,8 @@ trait ScDomain[I, B, Addr <: Address] {
     override def toString: String = (Values.isTrue(this), Values.isFalse(this)) match {
       case (true, false)  => "true"
       case (false, true)  => "false"
-      case (true, true)   => TopValue.toString
-      case (false, false) => BotValue.toString
+      case (true, true)   => s"Bool(${TopValue.toString})"
+      case (false, false) => s"Bool(${BotValue.toString})"
     }
   }
 
@@ -115,67 +115,93 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Prims(a), Prims(b))          => Prims(a ++ b)
       case (Symbolics(a), Symbolics(b))  => Symbolics(a ++ b)
       case (Blames(a), Blames(b))        => Blames(a ++ b)
+      case (Opqs(a), Opqs(b))            => Opqs(a ++ b)
       case (_, _)                        => TopValue
     }
 
     def applyPrimitive(prim: Prim)(arguments: Value*): Value =
       (prim, arguments.toList) match {
         case (Prim("+"), List(Number(a), Number(b))) => Number(IntLattice[I].plus(a, b))
-        case (Prim("+"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) => TopValue
+        case (Prim("+"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
+          TopValue
         case (Prim("+"), _) => BotValue
 
         case (Prim("-"), List(Number(a), Number(b))) => Number(IntLattice[I].minus(a, b))
-        case (Prim("-"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) => TopValue
+        case (Prim("-"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
+          TopValue
         case (Prim("-"), _) => BotValue
 
         case (Prim("*"), List(Number(a), Number(b))) => Number(IntLattice[I].times(a, b))
-        case (Prim("*"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) => TopValue
+        case (Prim("*"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
+          TopValue
         case (Prim("*"), _) => BotValue
 
         case (Prim("/"), List(Number(a), Number(b))) => Number(IntLattice[I].quotient(a, b))
-        case (Prim("/"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) => TopValue
+        case (Prim("/"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
+          Number(IntLattice[I].top)
         case (Prim("/"), _) => BotValue
 
+        case (Prim("<"), List(Number(a), Number(b))) => Bool(IntLattice[I].lt(a, b))
+        case (Prim("<"), List(Number(_) | TopValue | Opqs(_), Number(_) | TopValue | Opqs(_))) =>
+          Bool(BoolLattice[B].top)
+        case (Prim("<"), List(_, _)) => BotValue
+
         case (Prim("even?"), List(Number(a))) =>
-          val mod2 = IntLattice[I].modulo(a, IntLattice[I].inject(2))
+          val mod2         = IntLattice[I].modulo(a, IntLattice[I].inject(2))
           val possiblyEven = IntLattice[I].subsumes(mod2, IntLattice[I].inject(0))
-          val possiblyOdd = IntLattice[I].subsumes(mod2, IntLattice[I].inject(1))
+          val possiblyOdd  = IntLattice[I].subsumes(mod2, IntLattice[I].inject(1))
           (possiblyEven, possiblyOdd) match {
-            case (true, true) => TopValue
-            case (true, false) => Bool(BoolLattice[B].inject(true))
-            case (false, true) => Bool(BoolLattice[B].inject(false))
+            case (true, true)   => TopValue
+            case (true, false)  => Bool(BoolLattice[B].inject(true))
+            case (false, true)  => Bool(BoolLattice[B].inject(false))
             case (false, false) => BotValue
           }
 
+        case (Prim("proc?"), List(Clos(_) | Prims(_) | Arrs(_))) => bool(true)
+        case (Prim("proc?"), List(TopValue | Opqs(_)))           => Bool(BoolLattice[B].top)
+        case (Prim("proc?"), List(_))                            => bool(false)
+
+        case (Prim("dependent-contract?"), List(Grds(_)))            => bool(true)
+        case (Prim("dependent-contract?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
+        case (Prim("dependent-contract?"), List(_))                  => bool(false)
+
         case (Prim("even?"), List(Opqs(_) | TopValue)) => TopValue
-        case (Prim("even?"), _) => BotValue
+        case (Prim("even?"), _)                        => BotValue
 
         case (Prim("odd?"), List(Number(b))) =>
           val result = applyPrimitive(Prim("even?"))(Number(b))
           result match {
             case TopValue | BotValue => result
-            case Bool(b) => Bool(BoolLattice[B].not(b))
+            case Bool(b)             => Bool(BoolLattice[B].not(b))
           }
 
         case (Prim("odd?"), List(Opqs(_) | TopValue)) => TopValue
-        case (Prim("odd?"), _) => BotValue
+        case (Prim("odd?"), _)                        => BotValue
 
         case (Prim("="), List(Number(a), Number(b))) => Bool(IntLattice[I].eql(a, b))
-        case (Prim("="), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) => TopValue
+        case (Prim("="), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
+          TopValue
         case (Prim("="), List(_, _)) => BotValue
 
-        case (Prim("true?"), List(Bool(b))) => bool(BoolLattice[B].isTrue(b))
+        case (Prim("true?"), List(Bool(b)))            => bool(BoolLattice[B].isTrue(b))
         case (Prim("true?"), List(TopValue | Opqs(_))) => TopValue
-        case (Prim("true?"), List(BotValue)) => bool(false)
-        case (Prim("true?"), List(_)) => bool(true)
+        case (Prim("true?"), List(BotValue))           => bool(false)
+        case (Prim("true?"), List(_))                  => bool(true)
 
         case (Prim("false?"), List(TopValue | Opqs(_))) => TopValue
-        case (Prim("false?"), List(Bool(b))) => bool(BoolLattice[B].isFalse(b))
-        case (Prim("false?"), List(_)) => bool(false)
+        case (Prim("false?"), List(Bool(b)))            => bool(BoolLattice[B].isFalse(b))
+        case (Prim("false?"), List(_))                  => bool(false)
 
-        case (Prim("int?"), List(Number(n))) => bool(true)
+        case (Prim("int?"), List(Number(n)))          => bool(true)
         case (Prim("int?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
-        case (Prim("int?"), _) => bool(false)
+        case (Prim("int?"), _)                        => bool(false)
+
+        case (Prim("any?"), List(BotValue)) => BotValue
+        case (Prim("any?"), List(_))        => bool(true)
+
+        case (Prim("nonzero?"), List(Number(a))) =>
+          Bool(BoolLattice[B].not((IntLattice[I].eql(a, IntLattice[I].inject(0)))))
+        case (Prim("nonzero?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
       }
 
     def isTrue(value: Value): Boolean = value match {
@@ -253,10 +279,13 @@ class ScCoProductLattice[I, B, Addr <: Address](
   }
 
   implicit val isScLattice = new ScLattice[CoProductValue, Addr] {
-    implicit def intoCoProduct(value: Value): CoProductValue = value match {
-      case TopValue => Top
-      case BotValue => Bottom
-      case _        => CoProduct(value)
+    implicit def intoCoProduct(value: Value): CoProductValue = {
+      val result = value match {
+        case TopValue => Top
+        case BotValue => Bottom
+        case _        => CoProduct(value)
+      }
+      result
     }
 
     override def injectBoolean(b: Boolean): CoProductValue = bool(b)
@@ -324,8 +353,9 @@ class ScCoProductLattice[I, B, Addr <: Address](
     override def bottom: CoProductValue = Bottom
 
     /** A lattice has a top element (might be undefined) */
-    override def top: CoProductValue = Top
+    override def top: CoProductValue        = Top
     override def integerTop: CoProductValue = Number(IntLattice[I].top)
+    override def boolTop                    = Bool(BoolLattice[B].top)
 
     /** Elements of the lattice can be joined together */
     override def join(x: CoProductValue, y: => CoProductValue): CoProductValue = (x, y) match {
@@ -479,7 +509,8 @@ class ScProductLattice[I, B, Addr <: Address](
 
       /** A lattice has a top element (might be undefined) */
       override def top: ProductElements = throw LatticeTopUndefined
-      override def integerTop = Number(IntLattice[I].top)
+      override def integerTop           = Number(IntLattice[I].top)
+      override def boolTop              = Bool(BoolLattice[B].top)
 
       /** Elements of the lattice can be joined together */
       override def join(x: ProductElements, y: => ProductElements): ProductElements = (x, y) match {

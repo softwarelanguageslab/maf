@@ -2,7 +2,25 @@ package scalaam.modular.contracts
 import scalaam.core.{Address, Environment, Identity}
 import scalaam.core.Position.Position
 import scalaam.language.contracts.ScLattice.{Arr, Blame, Clo, Grd, Opq, Prim}
-import scalaam.language.contracts.{ScBegin, ScDependentContract, ScExp, ScFlatContract, ScFunctionAp, ScHigherOrderContract, ScIdentifier, ScIf, ScLambda, ScLattice, ScLetRec, ScMon, ScNil, ScOpaque, ScRaise, ScSet, ScValue}
+import scalaam.language.contracts.{
+  ScBegin,
+  ScDependentContract,
+  ScExp,
+  ScFlatContract,
+  ScFunctionAp,
+  ScHigherOrderContract,
+  ScIdentifier,
+  ScIf,
+  ScLambda,
+  ScLattice,
+  ScLetRec,
+  ScMon,
+  ScNil,
+  ScOpaque,
+  ScRaise,
+  ScSet,
+  ScValue
+}
 import scalaam.language.sexp.{ValueBoolean, ValueInteger}
 
 trait ScSmallStepSemantics
@@ -81,6 +99,7 @@ trait ScSmallStepSemantics
         case _          => this.next.last
       }
     }
+
     case object ScNilFrame extends ScFrame {
       def next: ScFrame = throw new Exception("at the bottom of the continuation stack")
     }
@@ -88,13 +107,17 @@ trait ScSmallStepSemantics
     case class IfFrame(consequent: ScExp, alternative: ScExp, next: ScFrame) extends ScFrame
     case class LetrecFrame(ident: ScIdentifier, body: ScExp, env: Env, next: ScFrame)
         extends ScFrame
-    case class SeqFrame(sequence: List[ScExp], next: ScFrame) extends ScFrame
-    case class SetFrame(ident: ScIdentifier, next: ScFrame)   extends ScFrame
-    case class EvalMonFrame(exp: ScExp, next: ScFrame)        extends ScFrame
-    case class FinishEvalMonFrame(contract: Value, expressionIdn: Identity, next: ScFrame)
-        extends ScFrame
+    case class SeqFrame(sequence: List[ScExp], next: ScFrame)                 extends ScFrame
+    case class SetFrame(ident: ScIdentifier, next: ScFrame)                   extends ScFrame
+    case class EvalMonFrame(exp: ScExp, contractIdn: Identity, next: ScFrame) extends ScFrame
+    case class FinishEvalMonFrame(
+        contract: Value,
+        contractIdn: Identity,
+        expressionIdn: Identity,
+        next: ScFrame
+    ) extends ScFrame
 
-    case class EvalRangeMakerFrame(exp: ScExp, next: ScFrame) extends ScFrame
+    case class EvalRangeMakerFrame(exp: ScExp, domainIdn: Identity, next: ScFrame) extends ScFrame
     case class CheckRangeFrame(value: Value, sym: Sym, serverIdentity: Identity, next: ScFrame)
         extends ScFrame
     case class CheckedRangeFrame(value: Value, sym: Sym, serverIdentity: Identity, next: ScFrame)
@@ -111,18 +134,21 @@ trait ScSmallStepSemantics
         rangeMaker: Value,
         e: Value,
         operands: List[PostValue],
+        callerIdentity: Identity,
         serverIdentity: Identity,
         next: ScFrame
     ) extends ScFrame
 
     case class FinishEvalDependentFrame(
         value: ScGenericAddr[AllocationContext],
+        rangeMakerIdentity: Identity,
         next: ScFrame
     ) extends ScFrame
 
     case class EvalOperatorFrame(operands: List[ScExp], next: ScFrame) extends ScFrame
     case class EvalOperandsFrame(
         operator: PostValue,
+        currentExp: ScExp,
         collected: List[PostValue],
         operands: List[ScExp],
         next: ScFrame
@@ -200,7 +226,7 @@ trait ScSmallStepSemantics
 
         case ScMon(contract, expression, _) =>
           // first eval the contract, depending on the contract the value of mon changes
-          val k = EvalMonFrame(expression, state.kont)
+          val k = EvalMonFrame(expression, contract.idn, state.kont)
           Set(EvalState(contract, env, state.copy(kont = k)))
 
         case ScOpaque(idn) =>
@@ -209,17 +235,17 @@ trait ScSmallStepSemantics
         case ScHigherOrderContract(domain, range, idn) =>
           // a higher order contract is evaluated the same as a dependent contract
           // except that we need to transform the range into range maker, we can to this by thunkifying the range
-          val thunk = ScLambda(List(ScIdentifier("\"_", Identity.none)), range, range.idn)
+          val thunk = ScLambda(List(ScIdentifier("\"_", range.idn)), range, range.idn)
           Set(EvalState(ScDependentContract(domain, thunk, idn), env, state))
 
         case ScDependentContract(domain, rangeMaker, _) =>
-          val k = EvalRangeMakerFrame(rangeMaker, state.kont)
+          val k = EvalRangeMakerFrame(rangeMaker, domain.idn, state.kont)
           Set(EvalState(domain, env, state.copy(kont = k)))
 
         case ScFlatContract(contract, _) =>
           Set(EvalState(contract, env, state))
 
-        case lambda@ScLambda(params, _, idn) =>
+        case lambda @ ScLambda(params, _, idn) =>
           Set(ApplyKont(lattice.injectClo(Clo(idn, env, params, lambda)), ScNil(), state))
       }
     }
@@ -259,28 +285,39 @@ trait ScSmallStepSemantics
           cache = write(addr, value, sym)
           Set(ApplyKont(value, sym, state.copy(kont = next, cache = cache)))
 
-        case EvalOperatorFrame(List(), _) =>
-          applyOp(symbolic(value, sym), List(), state)
+        case EvalOperatorFrame(List(), next) =>
+          applyOp(symbolic(value, sym), List(), state.copy(kont = next))
 
         case EvalOperatorFrame(operands, next) =>
-          val k = EvalOperandsFrame(symbolic(value, sym), List(), operands.tail, next)
-          Set(EvalState(operands.head, state.env, state.copy(kont = k)))
-
-        case EvalOperandsFrame(operator, collected, List(), _) =>
-          applyOp(operator, (symbolic(value, sym) :: collected).reverse, state)
-
-        case EvalOperandsFrame(operator, collected, operands, next) =>
           val k =
-            EvalOperandsFrame(operator, symbolic(value, sym) :: collected, operands.tail, next)
+            EvalOperandsFrame(symbolic(value, sym), operands.head, List(), operands.tail, next)
           Set(EvalState(operands.head, state.env, state.copy(kont = k)))
 
-        case EvalRangeMakerFrame(rangeMaker, next) =>
-          val addr = allocGeneric(component)
+        case EvalOperandsFrame(operator, prevExp, collected, List(), next) =>
+          applyOp(
+            operator,
+            (symbolic(value, sym, prevExp.idn) :: collected).reverse,
+            state.copy(kont = next)
+          )
+
+        case EvalOperandsFrame(operator, prevExp, collected, operands, next) =>
+          val k =
+            EvalOperandsFrame(
+              operator,
+              operands.head,
+              symbolic(value, sym, prevExp.idn) :: collected,
+              operands.tail,
+              next
+            )
+          Set(EvalState(operands.head, state.env, state.copy(kont = k)))
+
+        case EvalRangeMakerFrame(rangeMaker, domainIdn, next) =>
+          val addr = allocGeneric(domainIdn, component)
           cache = write(addr, value, sym)
-          val k = FinishEvalDependentFrame(addr, next)
+          val k = FinishEvalDependentFrame(addr, rangeMaker.idn, next)
           Set(EvalState(rangeMaker, state.env, state.copy(kont = k, cache = cache)))
 
-        case ApplyRangeMakerFrame(rangeMaker, e, operands, serverIdentity, next) =>
+        case ApplyRangeMakerFrame(rangeMaker, e, operands, callerIdentity, serverIdentity, next) =>
           // the domain has been evaluated
           conditional(
             value,
@@ -292,7 +329,8 @@ trait ScSmallStepSemantics
             },
             // Example:
             // ((mon (int? ~ (lambda (x) int?)) (lambda (x) ...)) OPQ) blame should be on the location of OPQ
-            pNext => ??? // generate blame on the caller
+            pNext =>
+              blame(state.copy(kont = next, pc = pNext), callerIdentity) // generate blame on the caller
           )
 
         case AppliedRangeMakerFrame(e, operands, serverIdentity, next) =>
@@ -304,35 +342,35 @@ trait ScSmallStepSemantics
           val k = CheckedRangeFrame(value, sym, serverIdentity, next)
           applyOp(PostValue(range, symRange), List(PostValue(value, sym)), state.copy(kont = k))
 
-        case CheckedRangeFrame(value, sym, serverIdentity, next) =>
+        case CheckedRangeFrame(result, sym, serverIdentity, next) =>
           // if the output of the applied function does not satisfy the contract we will generate a blame
           // on the applied function
           conditional(
             value,
             sym,
             state.pc,
-            pNext => Set(ApplyKont(value, sym, state.copy(kont = next, pc = pNext))),
+            pNext => Set(ApplyKont(result, sym, state.copy(kont = next, pc = pNext))),
             pNext =>
               blame(state.copy(kont = next, pc = pNext), serverIdentity) // generate blame on the lambda
           )
 
-        case FinishEvalDependentFrame(domainAddr, next) =>
-          val rangeAddr = allocGeneric(component)
+        case FinishEvalDependentFrame(domainAddr, rangeIdn, next) =>
+          val rangeAddr = allocGeneric(rangeIdn, component)
           cache = write(rangeAddr, value, sym)
           Set(
             ApplyKont(
               lattice.injectGrd(Grd(domainAddr, rangeAddr)),
               ScNil(),
-              state.copy(kont = kont.next, cache = cache)
+              state.copy(kont = next, cache = cache)
             )
           )
 
-        case EvalMonFrame(expr, next) =>
-          val k = FinishEvalMonFrame(value, expr.idn, next)
+        case EvalMonFrame(expr, contractIdn, next) =>
+          val k = FinishEvalMonFrame(value, contractIdn, expr.idn, next)
           Set(EvalState(expr, state.env, state.copy(kont = k)))
 
-        case FinishEvalMonFrame(contract, idn, _) =>
-          mon(contract, value, sym, idn, state)
+        case FinishEvalMonFrame(contract, contractIdn, expressionIdn, _) =>
+          mon(contract, value, sym, contractIdn, expressionIdn, state)
 
         case ReturnFrame(_) =>
           Set(ReturnResult(value, state))
@@ -354,7 +392,7 @@ trait ScSmallStepSemantics
             ApplyKont(
               value,
               operator.symbolic.app(operands.map(_.symbolic)),
-              state.copy(kont = state.kont.next)
+              state
             )
           )
         }
@@ -362,7 +400,7 @@ trait ScSmallStepSemantics
 
       // user defined function
       val cloCall = applyOpClo(operator, operands).flatMap(
-        result => Set(ApplyKont(result, ScNil(), state.copy(kont = state.kont.next)))
+        result => Set(ApplyKont(result, ScNil(), state))
       )
 
       // monitored function
@@ -381,7 +419,14 @@ trait ScSmallStepSemantics
             .flatMap(grd => {
               val (domain, _)     = read(grd.domain)(state.cache)
               val (rangeMaker, _) = read(grd.rangeMaker)(state.cache)
-              val k               = ApplyRangeMakerFrame(rangeMaker, e, operands, arr.lserver, state.kont.next)
+              val k = ApplyRangeMakerFrame(
+                rangeMaker,
+                e,
+                operands,
+                operands.head.idn,
+                arr.lserver,
+                state.kont
+              )
               applyOp(PostValue(domain, ScNil()), operands, state.copy(kont = k))
             })
         })
@@ -400,7 +445,7 @@ trait ScSmallStepSemantics
 
     private def applyOpClo(
         operator: PostValue,
-        operands: List[PostValue],
+        operands: List[PostValue]
     ): Set[Value] = {
       // user defined function
       lattice
@@ -413,7 +458,7 @@ trait ScSmallStepSemantics
             case (value, addr) => writeAddr(addr, value.value)
           }
 
-          val result          = call(calledComponent)
+          val result = call(calledComponent)
           result
         })
     }
@@ -423,12 +468,13 @@ trait ScSmallStepSemantics
 
     /**
       * Creates a monitor on the given value.
-      * (mon contract/Identity.none expr/idn)
+      * (mon contract/cIdn expr/idn)
       */
     private def mon(
         contract: Value,
         expr: Value,
         sym: Sym,
+        cIdn: Identity,
         eIdn: Identity,
         state: S
     ): Set[State] = {
@@ -448,13 +494,13 @@ trait ScSmallStepSemantics
 
       val dependentContract: Set[State] =
         feasible(primDep, state.pc, contract, ScNil()).toSet.flatMap { _: PC =>
-          val valueAddr = allocGeneric(component)
-          val grdAddr   = allocGeneric(component)
+          val valueAddr = allocGeneric(eIdn, component)
+          val grdAddr   = allocGeneric(cIdn, component)
           var cache     = write(valueAddr, expr, sym)(state.cache)
           cache = write(grdAddr, contract, ScNil())(cache)
           Set(
             ApplyKont(
-              lattice.injectArr(Arr(Identity.none, sym.idn, grdAddr, valueAddr)),
+              lattice.injectArr(Arr(cIdn, eIdn, grdAddr, valueAddr)),
               ScNil(),
               state.copy(kont = state.kont.next, cache = cache)
             )

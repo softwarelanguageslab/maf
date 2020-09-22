@@ -1,13 +1,13 @@
 package scalaam.test.modular.contracts
 
 import scalaam.language.contracts.ScLattice.Blame
-import scalaam.modular.contracts.{ScAnalysisSummary, ScMain}
+import scalaam.modular.contracts.ScMain
 import scalaam.test.ScTestsJVM
 
 class ScEvalSuite extends ScTestsJVM {
   trait VerifyTestBuilder extends ScLatticeFixture with ScAnalysisFixtureJVM {
     def named(name: String): VerifyTestBuilder
-    def applied(refinements: Set[String] = Set()): VerifyTestBuilder
+    def applied(refinements: Set[String] = Set(), value: String = "OPQ"): VerifyTestBuilder
 
     /**
       * Generates a test that asserts that the result of the verification contains no blames
@@ -35,8 +35,8 @@ class ScEvalSuite extends ScTestsJVM {
 
     def testName: String = if (name.isEmpty) command else name
 
-    def applied(refinements: Set[String] = Set()): VerifyTestBuilder = {
-      this.command = s"(${this.command} OPQ)"
+    def applied(refinements: Set[String] = Set(), value: String = "OPQ"): VerifyTestBuilder = {
+      this.command = s"(${this.command} $value)"
       this
     }
 
@@ -49,13 +49,16 @@ class ScEvalSuite extends ScTestsJVM {
 
     def safe(): Unit = analyse { machine =>
       testName.should("be safe") in {
-        machine.summary.blames shouldEqual Set()
+        machine.summary.blames shouldEqual Map()
       }
     }
 
     def unsafe(): Unit = analyse { machine =>
       testName.should("be unsafe") in {
         assert(machine.summary.blames.nonEmpty)
+        println("Not verified!")
+        println(command)
+        println((" " * (machine.summary.blames.values.head.head.blamedPosition.pos.col - 1)) ++ "^")
       }
     }
 
@@ -69,13 +72,13 @@ class ScEvalSuite extends ScTestsJVM {
   }
 
   case object EmptyVerifyTestBuilder extends VerifyTestBuilder {
-    def named(name: String): VerifyTestBuilder                       = this
-    def applied(refinements: Set[String] = Set()): VerifyTestBuilder = this
-    def safe(): Unit                                                 = ()
-    def unsafe(): Unit                                               = ()
-    def checked(f: (Set[Blame] => Unit)): Unit                       = ()
-    def analyse(f: ScTestAnalysisJVM => Unit): Unit                  = ()
-    def tested(f: ScTestAnalysisJVM => Unit): Unit                   = ()
+    def named(name: String): VerifyTestBuilder                                              = this
+    def applied(refinements: Set[String] = Set(), value: String = "OPQ"): VerifyTestBuilder = this
+    def safe(): Unit                                                                        = ()
+    def unsafe(): Unit                                                                      = ()
+    def checked(f: (Set[Blame] => Unit)): Unit                                              = ()
+    def analyse(f: ScTestAnalysisJVM => Unit): Unit                                         = ()
+    def tested(f: ScTestAnalysisJVM => Unit): Unit                                          = ()
   }
 
   def verify(contract: String, expr: String): VerifyTestBuilder = {
@@ -136,21 +139,95 @@ class ScEvalSuite extends ScTestsJVM {
 
   eval("(int? (if (= OPQ 2) 5 OPQ))").tested { machine =>
     // we don't know whether OPQ is an int or not
-    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.top)
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.boolTop)
   }
 
-  eval("(int? (if (> 2 5) 5 OPQ))").tested { machine =>
-    machine.getReturnValue(ScMain)
+  eval("(int? (if (< 2 5) 5 OPQ))").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(letrec (foo (lambda (x) (if (< x 1) 1 (+ (foo (+ x 1)) 1)))) (foo 42))").tested {
+    // this is a test that checks whether the abstraction mechanism works, such that this infinite recursion
+    // actually terminates in our analysis.
+    machine =>
+      machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.integerTop)
+  }
+
+  eval("(nonzero? 5)").tested { machine =>
+    machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(nonzero? 0)").tested { machine =>
+    machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(false))
+  }
+
+  eval("(nonzero? OPQ)").tested { machine =>
+    machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.boolTop)
+  }
+
+  eval("(proc? (lambda (x) x))").tested { machine =>
+    machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(proc? +)").tested { machine =>
+    machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(proc? (mon (~> any? any?) (lambda (x) x)))").tested { machine =>
+    machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(proc? 4)").tested { machine =>
+    machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(false))
+  }
+
+  eval("(proc? OPQ)").tested { machine =>
+    machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.boolTop)
+  }
+
+  eval("(dependent-contract? (~> any? any?))").tested { machine =>
+    machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
   }
 
   // An integer literal should always pass the `int?` test
-  _verify("int?", "5").named("flat_lit_int?").safe()
+  verify("int?", "5").named("flat_lit_int?").safe()
 
   // An opaque value can be different from an integer, so this should not be verified as safe
-  _verify("int?", "OPQ").named("flat_OPQ_int?").unsafe()
+  verify("int?", "OPQ").named("flat_OPQ_int?").unsafe()
 
   // A contract from any to any should always be verified as safe
-  _verify("(any? ~ any?)", "(lambda (x) x)").applied().named("id_any2any").safe()
+  verify("(~> any? any?)", "(lambda (x) x)").applied().named("id_any2any").safe()
+
+  verify("(~> any? int?)", "(lambda (x) 1)").applied().named("any2int_constant1").safe()
+
+  verify("(~> any? int?)", "(lambda (x) OPQ)").applied().named("any2int_opq").unsafe()
+
+  verify("(~> int? any?)", "(lambda (x) x)")
+    .applied()
+    .unsafe()
+
+  verify("(~> nonzero? any?)", "(lambda (x) x)")
+    .applied(value = "0")
+    .unsafe()
+
+  verify("(~> nonzero? any?)", "(lambda (x) x)")
+    .applied(value = "1")
+    .safe()
+
+  // With the input of 1 this recursive function can return a zero number
+  verify(
+    "(~> any? nonzero?)",
+    "(letrec (foo (lambda (x) (if (= x 0) 1 (- (foo (- x 1)) 1)))) foo)"
+  ).applied()
+    .unsafe()
+
+  // This is the same as above, but the abstract interpretation keeps information about the type of the value.
+  // in this case the value is Number(top) which is sufficient for int? to succeed
+  verify(
+    "(~> any? int?)",
+    "(letrec (foo (lambda (x) (if (= x 0) 1 (- (foo (- x 1)) 1)))) foo)"
+  ).applied()
+    .safe()
 
   // because we are using symbolic values with refinement sets, it should generate a blame on the domain contract
   // but not on the range contract
@@ -163,11 +240,6 @@ class ScEvalSuite extends ScTestsJVM {
     .applied(Set("int?"))
     .named("int2even_timestwo")
     .safe()
-
-  // With the input of 1 this recursive function can return a zero number
-  _verify("(any? ~ nonzero?)", "(letrec (foo (lambda (x) (if (= x 0) 1 (- (foo (- x 1)) 1)))) foo)")
-    .applied()
-    .unsafe()
 
   // The example below can only be verified if we extend our constant propagation lattice with sign information
   // the result value will always be top

@@ -100,8 +100,8 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
   def injectBlame(blame: Blame): L
 
   /**
-   * Inject an opaque value in the abstract domain
-   */
+    * Inject an opaque value in the abstract domain
+    */
   def injectOpq(opq: Opq): L
 
   /*==================================================================================================================*/
@@ -165,4 +165,5 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
   /*==================================================================================================================*/
 
   def integerTop: L
+  def boolTop: L
 }
