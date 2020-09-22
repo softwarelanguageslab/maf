@@ -318,7 +318,9 @@ trait ScSmallStepSemantics
           Set(EvalState(rangeMaker, state.env, state.copy(kont = k, cache = cache)))
 
         case ApplyRangeMakerFrame(rangeMaker, e, operands, callerIdentity, serverIdentity, next) =>
-          // the domain has been evaluated
+          val k = AppliedRangeMakerFrame(e, List(symbolic(value, sym)), serverIdentity, next)
+          applyOp(PostValue(rangeMaker, ScNil()), List(symbolic(value, sym)), state.copy(kont = k))
+        /* the domain has been evaluated
           conditional(
             value,
             sym,
@@ -331,7 +333,7 @@ trait ScSmallStepSemantics
             // ((mon (int? ~ (lambda (x) int?)) (lambda (x) ...)) OPQ) blame should be on the location of OPQ
             pNext =>
               blame(state.copy(kont = next, pc = pNext), callerIdentity) // generate blame on the caller
-          )
+          ) */
 
         case AppliedRangeMakerFrame(e, operands, serverIdentity, next) =>
           // TODO: check if range is a proc?, otherwise generate blame
@@ -427,7 +429,19 @@ trait ScSmallStepSemantics
                 arr.lserver,
                 state.kont
               )
-              applyOp(PostValue(domain, ScNil()), operands, state.copy(kont = k))
+
+              if (operands.length == 1) {
+                monFlat(
+                  domain,
+                  operands.head.value,
+                  operands.head.symbolic,
+                  operands.head.idn,
+                  state.copy(kont = k)
+                )
+              } else {
+                throw new Exception("Only domains with one operand are currently allowed")
+              }
+              //applyOp(PostValue(domain, ScNil()), operands, state.copy(kont = k))
             })
         })
 
@@ -466,6 +480,35 @@ trait ScSmallStepSemantics
     private def applyOpResult(operator: PostValue, operands: List[PostValue]): Set[Value] =
       applyOpPrim(operator, operands) ++ applyOpClo(operator, operands)
 
+    def enrich(value: Value, contract: Value): Value =
+      if (lattice.isDefinitelyOpq(value)) {
+        val opqs = lattice
+          .getOpq(value)
+          .map((opq) => Opq(opq.refinementSet ++ lattice.getPrim(contract).map(_.operation)))
+          .map(lattice.injectOpq)
+
+        opqs.foldLeft(lattice.bottom)((v, opq) => lattice.join(v, opq))
+      } else {
+        value
+      }
+
+    def monFlat(contract: Value, expr: Value, sym: Sym, eIdn: Identity, state: S): Set[State] = {
+      feasible(primProc, state.pc, contract, ScNil()).toSet.flatMap { _: PC =>
+        val result =
+          lattice.join(applyOpResult(PostValue(contract, ScNil()), List(PostValue(expr, sym))))
+        conditional(
+          result,
+          ScNil(),
+          state.pc,
+          pNext =>
+            Set(
+              ApplyKont(enrich(expr, contract), sym, state.copy(kont = state.kont, pc = pNext))
+            ),
+          pNext => blame(state.copy(kont = state.kont, pc = pNext), eIdn)
+        )
+      }
+    }
+
     /**
       * Creates a monitor on the given value.
       * (mon contract/cIdn expr/idn)
@@ -479,18 +522,7 @@ trait ScSmallStepSemantics
         state: S
     ): Set[State] = {
       // we either have a clojure/primitive
-      val flatContract: Set[State] = feasible(primProc, state.pc, contract, ScNil()).toSet.flatMap {
-        _: PC =>
-          val result =
-            lattice.join(applyOpResult(PostValue(contract, ScNil()), List(PostValue(expr, sym))))
-          conditional(
-            result,
-            ScNil(),
-            state.pc,
-            pNext => Set(ApplyKont(expr, sym, state.copy(kont = state.kont.next, pc = pNext))),
-            pNext => blame(state.copy(kont = state.kont.next, pc = pNext), eIdn)
-          )
-      }
+      val flatContract = monFlat(contract, expr, sym, eIdn, state.copy(kont = state.kont.next))
 
       val dependentContract: Set[State] =
         feasible(primDep, state.pc, contract, ScNil()).toSet.flatMap { _: PC =>

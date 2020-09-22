@@ -35,7 +35,7 @@ object ScLattice {
     * An opaque value, we could add refinements to this value so that we can use those refinements
     * for further restriction of our state space
     */
-  case class Opq(set: Set[ScExp] = Set())
+  case class Opq(refinementSet: Set[String] = Set())
 
   /**
     * A monitor on a dependent contract
@@ -130,12 +130,19 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def isClo(value: L): Boolean
 
-  /*==================================================================================================================*/
-
   /**
     * Returns true if the value is possible a blame
     */
   def isBlame(value: L): Boolean
+
+  /**
+    * Returns true if the abstract value is definitely an opaque value
+    * @param value
+    * @return
+    */
+  def isDefinitelyOpq(value: L): Boolean
+
+  /*==================================================================================================================*/
 
   /**
     * Extract a set of primitives from the abstract value
@@ -161,6 +168,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Extract a set of blames from the abstract value
     */
   def getBlames(value: L): Set[Blame]
+
+  /**
+    * Extract a set of opaque values from the abstract value
+    */
+  def getOpq(value: L): Set[Opq]
 
   /*==================================================================================================================*/
 

@@ -192,7 +192,10 @@ trait ScDomain[I, B, Addr <: Address] {
         case (Prim("false?"), List(Bool(b)))            => bool(BoolLattice[B].isFalse(b))
         case (Prim("false?"), List(_))                  => bool(false)
 
-        case (Prim("int?"), List(Number(n)))          => bool(true)
+        case (Prim("int?"), List(Number(_))) => bool(true)
+        case (Prim("int?"), List(Opqs(opqs))) if opqs.forall(_.refinementSet.contains("int?")) =>
+          bool(true)
+
         case (Prim("int?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
         case (Prim("int?"), _)                        => bool(false)
 
@@ -229,6 +232,11 @@ trait ScDomain[I, B, Addr <: Address] {
     def isBlame(value: Value): Boolean = value match {
       case TopValue | _: Blames => true
       case _                    => false
+    }
+
+    def isDefinitelyOpq(value: Value): Boolean = value match {
+      case Opqs(_) => true
+      case _       => false
     }
 
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {
@@ -324,6 +332,11 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     override def isBlame(value: CoProductValue): Boolean = isPred(Values.isBlame, value)
 
+    override def isDefinitelyOpq(value: CoProductValue): Boolean = value match {
+      case CoProduct(value) => Values.isDefinitelyOpq(value)
+      case _                => false
+    }
+
     override def getPrim(value: CoProductValue): Set[Prim] = value match {
       case CoProduct(Prims(prims)) => prims
       case _                       => Set()
@@ -347,6 +360,11 @@ class ScCoProductLattice[I, B, Addr <: Address](
     override def getBlames(value: CoProductValue): Set[Blame] = value match {
       case CoProduct(Blames(blames)) => blames
       case _                         => Set()
+    }
+
+    override def getOpq(value: CoProductValue): Set[Opq] = value match {
+      case CoProduct(Opqs(opqs)) => opqs
+      case _                     => Set()
     }
 
     /** A lattice has a bottom element */
@@ -456,6 +474,11 @@ class ScProductLattice[I, B, Addr <: Address](
       override def isBlame(value: ProductElements): Boolean =
         isPred(value, BLAMES_VALUE, Values.isBlame)
 
+      override def isDefinitelyOpq(value: ProductElements): Boolean = value match {
+        case ProductElements(elements) => elements.forall((e) => Values.isDefinitelyOpq(e))
+        case _                         => false
+      }
+
       override def getPrim(value: ProductElements): Set[Prim] =
         value.elements
           .flatMap {
@@ -500,6 +523,15 @@ class ScProductLattice[I, B, Addr <: Address](
           .flatMap {
             case c: Blames => Some(c.blames)
             case _         => None
+          }
+          .flatten
+          .toSet
+
+      override def getOpq(value: ProductElements): Set[Opq] =
+        value.elements
+          .flatMap {
+            case c: Opqs => Some(c.opqs)
+            case _       => None
           }
           .flatten
           .toSet

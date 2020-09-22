@@ -1,6 +1,6 @@
 package scalaam.test.modular.contracts
 
-import scalaam.language.contracts.ScLattice.Blame
+import scalaam.language.contracts.ScLattice.{Blame, Opq}
 import scalaam.modular.contracts.ScMain
 import scalaam.test.ScTestsJVM
 
@@ -58,7 +58,16 @@ class ScEvalSuite extends ScTestsJVM {
         assert(machine.summary.blames.nonEmpty)
         println("Not verified!")
         println(command)
-        println((" " * (machine.summary.blames.values.head.head.blamedPosition.pos.col - 1)) ++ "^")
+        val blames = machine.summary.blames.values.flatMap(_.map(_.blamedPosition.pos.col)).toList
+        for (col <- 0 to command.length) {
+          if (blames.contains(col + 1)) {
+            print("^")
+          } else {
+            print(" ")
+          }
+        }
+        println()
+        //println((" " * (machine.summary.blames.values.head.head.blamedPosition.pos.col - 1)) ++ "^")
       }
     }
 
@@ -67,8 +76,11 @@ class ScEvalSuite extends ScTestsJVM {
         analyse(f)
       }
 
-    def checked(f: (Set[Blame] => Unit)): Unit =
-      analyse(machine => f(machine.summary.blames.flatMap(_._2).toSet))
+    def checked(f: (Set[Blame] => Unit)): Unit = {
+      testName.should("be checked") in {
+        analyse(machine => f(machine.summary.blames.flatMap(_._2).toSet))
+      }
+    }
   }
 
   case object EmptyVerifyTestBuilder extends VerifyTestBuilder {
@@ -132,6 +144,10 @@ class ScEvalSuite extends ScTestsJVM {
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
   }
 
+  eval("(int? OPQ)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.boolTop)
+  }
+
   // should retain type information although the final value is top
   eval("(int? (if (= OPQ 2) 5 6))").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
@@ -189,6 +205,17 @@ class ScEvalSuite extends ScTestsJVM {
     machine.summary.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
   }
 
+  // an example of how the mon special form enriches the value it returns
+  eval("(mon int? OPQ)").tested { machine =>
+    machine.lattice.getOpq(machine.summary.getReturnValue(ScMain).get) shouldEqual Set(
+      Opq(Set("int?"))
+    )
+  }
+
+  eval("(int? (mon int? OPQ))").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
   // An integer literal should always pass the `int?` test
   verify("int?", "5").named("flat_lit_int?").safe()
 
@@ -231,8 +258,8 @@ class ScEvalSuite extends ScTestsJVM {
 
   // because we are using symbolic values with refinement sets, it should generate a blame on the domain contract
   // but not on the range contract
-  _verify("(int? -> int?)", "(lambda (x) x)").applied().named("id_int2int").checked { blames =>
-    // TODO: check if there is a blame on the domain but not on the range
+  verify("(~> int? int?)", "(lambda (x) x)").applied().checked { blames =>
+    blames.size shouldEqual 1
   }
 
   // this should be verified as safe, as the opaque value will be refined to a an even? opaque value
