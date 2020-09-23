@@ -51,7 +51,7 @@ In addition, the full test suite is run over night (Daily MAF tests).
 Current status:
 <!-- https://github.com/badges/shields -->
 ![Latest build](https://github.com/softwarelanguageslab/maf/workflows/MAF%20tests%20on%20action/badge.svg) 
-![Nightly tests](https://github.com/softwarelanguagesalb/maf/workflows/Daily%20MAF%20tests/badge.svg)
+![Nightly tests](https://github.com/softwarelanguageslab/maf/workflows/Daily%20MAF%20tests/badge.svg)
 
 The full test suite of MAF can easily be run manually using sbt:
 ```sbtshell
