@@ -10,10 +10,10 @@ trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemanti
     override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
         registerComponent(e, component)
-        Set(Eval(e, env, stack))
+        Set(Eval(e, env, stack)) // TODO: shoudn't this also be a super call?
       case SchemeCodeChange(_, e, _) if version == New =>
         registerComponent(e, component)
-        Set(Eval(e, env, stack))
+        Set(Eval(e, env, stack)) // TODO: shoudn't this also be a super call?
       case _                                           =>
         registerComponent(exp, component)
         super.evaluate(exp, env, stack)
