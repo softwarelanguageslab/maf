@@ -1,11 +1,11 @@
 package maf.test.language.sexp
 
-import org.scalatest._
 import org.scalatest.prop._
+import org.scalatest.propspec._
 import maf.language.sexp._
 import maf.test.ParserTest
 
-abstract class SExpLexerTests extends PropSpec with TableDrivenPropertyChecks with Matchers {
+abstract class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
   val lexical = new SExpLexer
   def checkExpected(parser: lexical.Parser[lexical.SExpToken])(input: String, expected: String) =
     parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray)) match {
