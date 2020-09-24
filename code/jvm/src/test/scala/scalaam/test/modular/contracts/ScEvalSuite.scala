@@ -207,6 +207,7 @@ class ScEvalSuite extends ScTestsJVM {
 
   // an example of how the mon special form enriches the value it returns
   eval("(mon int? OPQ)").tested { machine =>
+    "Opq{int?}"
     machine.lattice.getOpq(machine.summary.getReturnValue(ScMain).get) shouldEqual Set(
       Opq(Set("int?"))
     )
@@ -244,7 +245,7 @@ class ScEvalSuite extends ScTestsJVM {
   // With the input of 1 this recursive function can return a zero number
   verify(
     "(~> any? nonzero?)",
-    "(letrec (foo (lambda (x) (if (= x 0) 1 (- (foo (- x 1)) 1)))) foo)"
+    "(letrec (foo (lambda (x) (if (= x 1) 1 (- (foo (- x 1)) 1)))) foo)"
   ).applied()
     .unsafe()
 
@@ -261,6 +262,8 @@ class ScEvalSuite extends ScTestsJVM {
   verify("(~> int? int?)", "(lambda (x) x)").applied().checked { blames =>
     blames.size shouldEqual 1
   }
+
+  verify("(~> int? int?)", "(lambda (x) OPQ)").applied().unsafe()
 
   // this should be verified as safe, as the opaque value will be refined to a an even? opaque value
   _verify("(int? ~ even?)", "(lambda (x) (* x 2))")

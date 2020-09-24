@@ -1,6 +1,7 @@
 package scalaam.modular.contracts
 
 import scalaam.language.contracts.{ScExp, ScFunctionAp, ScIdentifier, ScNil, ScValue}
+import scalaam.language.sexp.{ValueBoolean, ValueInteger, ValueString}
 
 /**
   * Transforms a condition built using basic predicates from the soft contract language
@@ -23,7 +24,40 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     }
   }
 
-  private val prelude: String = ""
+  private val prelude: String =
+    """
+  (declare-datatypes ()
+    ((V (VInt  (unwrap-int Int))
+        (VBool (unwrap-bool Bool))
+        (VProc (unwrap-proc Int))
+        (VString (unwrap-string String))
+        (VPrim (unwrap-prim String)))))
+
+  (define-fun >/c ((v1 V) (v2 V)) Bool
+     (> (unwrap-int v1) (unwrap-int v2)))
+     
+  (define-fun </c ((v1 V) (v2 V)) Bool
+     (< (unwrap-int v1) (unwrap-int v2)))
+
+  (define-fun =/c ((v1 V) (v2 V)) Bool
+     (= (unwrap-int v1) (unwrap-int v2)))
+     
+  (define-fun string=?/c ((v1 V) (v2 V)) Bool
+     (= (unwrap-string v1) (unwrap-string v2)))
+     
+  (define-fun int?/c ((v1 V)) Bool
+     ((_ is VInt) v1))
+     
+  (define-fun bool?/c ((v1 V)) Bool
+     ((_ is VBool) v1))
+     
+  (define-fun string?/c ((v1 V)) Bool
+     ((_ is VString) v1))
+     
+  (define-fun proc?/c ((v1 V)) Bool
+     (or ((_ is VPrim) v1)
+         ((_ is VProc) v1)))
+    """.stripMargin
 
   def transformExpression(exp: ScExp): String = exp match {
     case ScIdentifier(name, _) =>
@@ -34,16 +68,22 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
           name
         }
       }
-    case ScValue(value, _) => value.toString
+    case ScValue(value, _) =>
+      value match {
+        case ValueString(v)  => "(VString \"" + v + "\")"
+        case ValueInteger(v) => s"(VInt $v)"
+        case ValueBoolean(v) => s"(VBool $v)"
+      }
+
     case ScFunctionAp(operator, operands, _) =>
-      s"(${transformExpression(operator)} ${operands.map(transformExpression).mkString(" ")}"
+      s"(${transformExpression(operator)} ${operands.map(transformExpression).mkString(" ")})"
   }
 
   def transform(exp: ScExp): String = exp match {
     case ScAnd(e1, e2) =>
       transform(e1) ++ transform(e2)
     case _: ScFunctionAp =>
-      s"(assert ${transformExpression(exp)})"
+      s"(assert ${transformExpression(exp)})\n"
     case _ => ""
   }
 
@@ -53,8 +93,8 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     */
   private def transformed: String = {
     val assertions = transform(condition)
-    val constants  = variables.map(v => s"(declare-const ${v} V)").mkString(" ")
-    constants ++ assertions
+    val constants  = variables.toSet.map((v: String) => s"(declare-const ${v} V)").mkString("\n")
+    constants ++ "\n" ++ assertions
   }
 
   /**
@@ -62,10 +102,9 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     * @return true if the formale is satisfiable otherwise false
     */
   def isSat: Boolean = {
-    return true
-
     // transform the code
     val smtCode = prelude ++ transformed
+    println(smtCode)
 
     // create a new context and solver
     val context = new Context()
