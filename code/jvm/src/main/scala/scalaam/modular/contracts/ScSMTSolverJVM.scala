@@ -14,6 +14,7 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
 
   import com.microsoft.z3._
   import ScSMTSolverJVM._
+  import scalaam.util.MonoidInstances._
 
   private var variables: List[String] = List()
 
@@ -57,33 +58,48 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
   (define-fun proc?/c ((v1 V)) Bool
      (or ((_ is VPrim) v1)
          ((_ is VProc) v1)))
+         
+   (define-fun nonzero?/c ((v1 V)) Bool
+     (not (= (unwrap-int v1) 0)))
+    
+   (define-fun any?/c ((v1 V)) Bool
+     true)
     """.stripMargin
 
-  def transformExpression(exp: ScExp): String = exp match {
-    case ScIdentifier(name, _) =>
-      primitives.get(name) match {
-        case Some(primitiveName) => primitiveName
-        case None => {
-          variables = name :: variables
-          name
+  def transformExpression(exp: ScExp): Option[String] = {
+    exp match {
+      case ScIdentifier(name, _) =>
+        primitives.get(name) match {
+          case Some(primitiveName) => Some(primitiveName)
+          case None => {
+            variables = name :: variables
+            Some(name)
+          }
         }
-      }
-    case ScValue(value, _) =>
-      value match {
-        case ValueString(v)  => "(VString \"" + v + "\")"
-        case ValueInteger(v) => s"(VInt $v)"
-        case ValueBoolean(v) => s"(VBool $v)"
-      }
+      case ScValue(value, _) =>
+        value match {
+          case ValueString(v)  => Some("(VString \"" + v + "\")")
+          case ValueInteger(v) => Some(s"(VInt $v)")
+          case ValueBoolean(v) => Some(s"(VBool $v)")
+        }
+      case ScFunctionAp(operator, operands, _) =>
+        for {
+          transformedOperator <- transformExpression(operator)
+          transformedOperands <- combineAllNonEmpty(operands.map(transformExpression))
+        } yield (s"($transformedOperator $transformedOperands)")
 
-    case ScFunctionAp(operator, operands, _) =>
-      s"(${transformExpression(operator)} ${operands.map(transformExpression).mkString(" ")})"
+      case ScNil(_) => None
+    }
   }
 
   def transform(exp: ScExp): String = exp match {
     case ScAnd(e1, e2) =>
       transform(e1) ++ transform(e2)
     case _: ScFunctionAp =>
-      s"(assert ${transformExpression(exp)})\n"
+      transformExpression(exp) match {
+        case Some(s) => s"(assert $s)\n"
+        case None    => ""
+      }
     case _ => ""
   }
 
@@ -104,8 +120,6 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
   def isSat: Boolean = {
     // transform the code
     val smtCode = prelude ++ transformed
-    println(smtCode)
-
     // create a new context and solver
     val context = new Context()
     val solver  = context.mkSolver()

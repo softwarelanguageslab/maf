@@ -146,6 +146,8 @@ trait ScDomain[I, B, Addr <: Address] {
           Bool(BoolLattice[B].top)
         case (Prim("<"), List(_, _)) => BotValue
 
+        case (Prim(">"), List(_, _)) => Bool(BoolLattice[B].top)
+
         case (Prim("even?"), List(Number(a))) =>
           val mod2         = IntLattice[I].modulo(a, IntLattice[I].inject(2))
           val possiblyEven = IntLattice[I].subsumes(mod2, IntLattice[I].inject(0))

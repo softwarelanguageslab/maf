@@ -15,7 +15,7 @@ case object LAMBDA                extends Label
 case object FUNCTION_AP           extends Label
 case object RAISE                 extends Label
 case object CHECK                 extends Label
-case object OPQ extends Label
+case object OPQ                   extends Label
 case object LETREC                extends Label
 case object BEGIN                 extends Label
 case object IF                    extends Label
@@ -64,6 +64,8 @@ case class ScHigherOrderContract(domain: ScExp, range: ScExp, idn: Identity) ext
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(domain, range)
+
+  override def toString: String = s"(~> $domain $range)"
 }
 
 case class ScDependentContract(domain: ScExp, rangeMaker: ScExp, idn: Identity) extends ScContract {
@@ -76,6 +78,8 @@ case class ScDependentContract(domain: ScExp, rangeMaker: ScExp, idn: Identity) 
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(domain, rangeMaker)
+
+  override def toString: String = s"(~>d $domain $rangeMaker)"
 }
 
 case class ScIdentifier(name: String, idn: Identity) extends ScExp {
@@ -88,6 +92,8 @@ case class ScIdentifier(name: String, idn: Identity) extends ScExp {
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List()
+
+  override def toString: String = name
 }
 
 trait ScLiterals extends ScExp
@@ -105,6 +111,8 @@ case class ScLambda(variables: List[ScIdentifier], body: ScExp, idn: Identity)
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(body)
+
+  override def toString: String = s"(lambda (${variables.map(_.toString).mkString(" ")}) $body)"
 }
 
 case class ScLetRec(name: ScIdentifier, binding: ScExp, body: ScExp, idn: Identity) extends ScExp {
@@ -117,6 +125,8 @@ case class ScLetRec(name: ScIdentifier, binding: ScExp, body: ScExp, idn: Identi
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(body, binding)
+
+  override def toString: String = s"(letrec ($name $binding) $body)"
 }
 
 case class ScValue(value: Value, idn: Identity) extends ScLiterals {
@@ -129,6 +139,8 @@ case class ScValue(value: Value, idn: Identity) extends ScLiterals {
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List()
+
+  override def toString: String = s"$value"
 }
 
 case class ScFunctionAp(operator: ScExp, operands: List[ScExp], idn: Identity) extends ScExp {
@@ -141,6 +153,8 @@ case class ScFunctionAp(operator: ScExp, operands: List[ScExp], idn: Identity) e
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(operator) ++ operands
+
+  override def toString: String = s"($operator ${operands.map(_.toString).mkString(" ")})"
 }
 
 case class ScBegin(expressions: List[ScExp], idn: Identity) extends ScExp {
@@ -153,6 +167,8 @@ case class ScBegin(expressions: List[ScExp], idn: Identity) extends ScExp {
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[ScExp] = expressions
+
+  override def toString: String = s"(begin ${expressions.map(_.toString).mkString(" ")})"
 }
 
 case class ScSet(variable: ScIdentifier, value: ScExp, idn: Identity) extends ScExp {
@@ -165,6 +181,8 @@ case class ScSet(variable: ScIdentifier, value: ScExp, idn: Identity) extends Sc
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(value)
+
+  override def toString: String = s"(set! $variable $value)"
 }
 
 case class ScMon(contract: ScExp, expression: ScExp, idn: Identity) extends ScExp {
@@ -177,6 +195,8 @@ case class ScMon(contract: ScExp, expression: ScExp, idn: Identity) extends ScEx
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(contract, expression)
+
+  override def toString: String = s"(mon $contract $expression)"
 }
 
 case class ScCheck(blame: Identity, expression: ScExp, returnValue: ScExp, idn: Identity)
@@ -203,6 +223,8 @@ case class ScIf(condition: ScExp, consequent: ScExp, alternative: ScExp, idn: Id
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(condition, consequent, alternative)
+
+  override def toString: String = s"(if $condition $consequent $alternative)"
 }
 
 case class ScRaise(error: String, idn: Identity) extends ScExp {
@@ -215,6 +237,8 @@ case class ScRaise(error: String, idn: Identity) extends ScExp {
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List()
+
+  override def toString: String = s"(raise $error)"
 }
 
 case class ScBlame(blame: Identity, idn: Identity) extends ScExp {
@@ -239,9 +263,12 @@ case class ScNil(idn: Identity = Identity.none) extends ScExp {
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List()
+
+  override def toString: String = "nil"
 }
 
 case class ScOpaque(idn: Identity) extends ScExp {
+
   /** The set of free variables appearing in this expression. */
   def fv: Set[String] = Set()
 
@@ -250,4 +277,6 @@ case class ScOpaque(idn: Identity) extends ScExp {
 
   /** Returns the list of subexpressions of the given expression. */
   def subexpressions: List[Expression] = List()
+
+  override def toString: String = "OPQ"
 }

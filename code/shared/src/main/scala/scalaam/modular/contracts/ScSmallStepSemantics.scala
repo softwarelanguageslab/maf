@@ -23,9 +23,20 @@ import scalaam.language.contracts.{
 }
 import scalaam.language.sexp.{ValueBoolean, ValueInteger}
 
+import scala.util.Random
+
+object ScSmallStepSemantics {
+  var r = 0
+  def genSym: String = {
+    r += 1
+    s"x$r"
+  }
+}
+
 trait ScSmallStepSemantics
     extends ScModSemantics
     with SmallstepSemantics[ScExp]
+    with ScPrimitives
     with ScSymbolicComponents {
 
   type SMTSolver <: ScSmtSolver
@@ -175,7 +186,23 @@ trait ScSmallStepSemantics
     }
 
     override def initialState: ScState = {
-      EvalState(fnBody, fnEnv, S(kont = ReturnFrame(ScNilFrame), env = fnEnv))
+      var cache: Map[Addr, (Value, ScExp)] = Map()
+      primBindings.foreach {
+        case (name, addr) =>
+          cache += addr -> (
+            lattice.injectPrim(Prim(name)),
+            ScIdentifier(name, Identity.none)
+          )
+      }
+
+      fnEnv.content.values.foreach { addr =>
+        val value = readAddr(addr)
+        if (lattice.isDefinitelyOpq(value)) {
+          cache += addr -> (value, ScIdentifier(ScSmallStepSemantics.genSym, Identity.none))
+        }
+      }
+
+      EvalState(fnBody, fnEnv, S(kont = ReturnFrame(ScNilFrame), env = fnEnv, cache = cache))
     }
 
     private def lookup(id: ScIdentifier, env: Env): Addr = env.lookup(id.name) match {
@@ -564,7 +591,10 @@ trait ScSmallStepSemantics
         // otherwise we let the SMT solver decide whether the path is feasible
         case _ =>
           val solver = newSmtSolver(pc.and(sym))
-          if (solver.isSat) Some(pc.and(sym)) else None
+          println("==============================")
+
+          val isSat = solver.isSat
+          if (isSat) Some(pc.and(sym)) else None
       }
     }
   }

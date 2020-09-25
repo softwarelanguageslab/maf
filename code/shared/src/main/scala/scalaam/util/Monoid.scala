@@ -43,6 +43,13 @@ object MonoidInstances {
       }
       def zero: MayFail[M, Error] = MayFailSuccess(monoid.zero)
     }
+
+  def combineAll[A: Monoid](list: List[A]): A =
+    list.foldLeft(Monoid[A].zero)((a, b) => Monoid[A].append(a, b))
+
+  def combineAllNonEmpty[A: Monoid](list: List[A]): A =
+    list.tail.foldLeft(list.head)((a, b) => Monoid[A].append(a, b))
+
   def setMonoid[M]: Monoid[Set[M]] = new Monoid[Set[M]] {
     def append(x: Set[M], y: => Set[M]): Set[M] = x ++ y
     def zero: Set[M]                            = Set[M]()
@@ -58,5 +65,17 @@ object MonoidInstances {
   val boolAndMonoid: Monoid[Boolean] = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x && y
     def zero: Boolean                              = true
+  }
+  implicit def optionMonoid[A: Monoid]: Monoid[Option[A]] = new Monoid[Option[A]] {
+    def append(x: Option[A], y: => Option[A]): Option[A] = (x, y) match {
+        case (Some(a), Some(b)) => Some(Monoid[A].append(a, b))
+        case (_, _) => None
+      }
+
+    def zero: Option[A] = None
+  }
+  implicit val stringMonoid: Monoid[String] = new Monoid[String] {
+    def append(x: String, y: => String): String = x ++ " " ++ y
+    def zero: String = ""
   }
 }
