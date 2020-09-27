@@ -591,7 +591,6 @@ trait ScSmallStepSemantics
         // otherwise we let the SMT solver decide whether the path is feasible
         case _ =>
           val solver = newSmtSolver(pc.and(sym))
-          println("==============================")
 
           val isSat = solver.isSat
           if (isSat) Some(pc.and(sym)) else None

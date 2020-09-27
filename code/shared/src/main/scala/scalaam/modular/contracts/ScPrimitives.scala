@@ -18,6 +18,7 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
       "proc?",
       ">",
       "<",
+      "=<",
       "dependent-contract?",
       "any?",
       "nonzero?"

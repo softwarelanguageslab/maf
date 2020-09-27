@@ -185,6 +185,31 @@ trait ScDomain[I, B, Addr <: Address] {
           TopValue
         case (Prim("="), List(_, _)) => BotValue
 
+        case (Prim("=<"), List(Number(a), Number(b))) =>
+          val diff = IntLattice[I].minus(a, b)
+          val b1   = IntLattice[I].eql(diff, IntLattice[I].inject(0))
+          val b2   = IntLattice[I].lt(a, b)
+          println(a, b)
+          println("here", b1, b2)
+          Bool(
+            (
+              BoolLattice[B].isTrue(b1),
+              BoolLattice[B].isTrue(b2),
+              BoolLattice[B].isFalse(b1),
+              BoolLattice[B].isFalse(b2)
+            ) match {
+              case (true, _, false, false) => BoolLattice[B].inject(true)
+              case (_, true, false, false) => BoolLattice[B].inject(true)
+              case _                       => BoolLattice[B].top
+            }
+          )
+
+        case (Prim("=<"), List(Number(_) | TopValue | Opqs(_), Number(_) | TopValue | Opqs(_))) =>
+          println("here", arguments)
+          Bool(BoolLattice[B].top)
+
+        case (Prim("=<"), List(_, _)) => BotValue
+
         case (Prim("true?"), List(Bool(b)))            => bool(BoolLattice[B].isTrue(b))
         case (Prim("true?"), List(TopValue | Opqs(_))) => TopValue
         case (Prim("true?"), List(BotValue))           => bool(false)

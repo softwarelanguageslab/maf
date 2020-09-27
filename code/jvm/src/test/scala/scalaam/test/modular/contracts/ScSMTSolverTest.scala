@@ -4,42 +4,33 @@ import scalaam.modular.contracts.ScSMTSolverJVM
 import scalaam.test.ScTestsJVM
 
 class ScSMTSolverTest extends ScTestsJVM {
-  private val primitives = Map(
-    ">"        -> ">/c",
-    "="        -> "=/c",
-    "<"        -> "</c",
-    "string=?" -> "string=?/c",
-    "int?"     -> "int?/c",
-    "string?"  -> "string?/c"
-  )
-
-  "(> x 0)" should "be satisfiable" in {
-    val pc     = compile("(> x 0)")
-    val solver = new ScSMTSolverJVM(pc, primitives)
-    solver.isSat shouldEqual true
+  private def test(expression: String, message: String)(f: ScSMTSolverJVM => Unit): Unit = {
+    expression.should(message).in {
+      val pc     = compile(expression)
+      val solver = new ScSMTSolverJVM(pc, primitivesMap)
+      f(solver)
+    }
   }
 
-  "Nested ands" should "parse correctly as an SMT formula" in {
-    val pc     = compile("(and (int? x) (and (> x 0) (and (< x 5) ())))")
-    val solver = new ScSMTSolverJVM(pc, primitives)
-    solver.isSat shouldEqual true
+  private def isSat(expression: String): Unit = {
+    test(expression, "be satisfiable") { solver =>
+      solver.isSat shouldEqual true
+    }
   }
 
-  "(and (> x 0) (< x 0))" should "be unsatisfiable" in {
-    val pc     = compile("(and (> x 0) (< x 0))")
-    val solver = new ScSMTSolverJVM(pc, primitives)
-    solver.isSat shouldEqual false
+  private def isUnsat(expression: String): Unit = {
+    test(expression, "be unsatisfiable") { solver =>
+      solver.isSat shouldEqual false
+    }
   }
 
-  "(string? \"abc\")" should "be satisfiable" in {
-    val pc     = compile("(string? \"abc\")")
-    val solver = new ScSMTSolverJVM(pc, primitives)
-    solver.isSat shouldEqual true
-  }
-
-  "(string? 2)" should "be unsatisfiable" in {
-    val pc     = compile("(string? 2)")
-    val solver = new ScSMTSolverJVM(pc, primitives)
-    solver.isSat shouldEqual false
-  }
+  isSat("(> x 0)")
+  isSat("(and (int? x) (and (> x 0) (and (< x 5) ())))")
+  isUnsat("(and (> x 0) (< x 0))")
+  isSat("(string? \"abc\")")
+  isUnsat("(string? 2)")
+  isSat("(nonzero? x)")
+  isUnsat("(nonzero? 0)")
+  isSat("(and (any? x) (string? x))")
+  isSat("(and (any? x) (int? x))")
 }

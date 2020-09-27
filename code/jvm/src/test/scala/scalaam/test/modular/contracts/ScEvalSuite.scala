@@ -265,6 +265,17 @@ class ScEvalSuite extends ScTestsJVM {
 
   verify("(~> int? int?)", "(lambda (x) OPQ)").applied().unsafe()
 
+  verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 1) 2))").applied().safe()
+  verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 1) 2))").applied().unsafe()
+
+  eval("""(letrec (n 0) 
+      |  (letrec (min (lambda (y) (if (< y n) y n)))
+      |     ((mon (~ int? (lambda (n) (lambda (a) (=< a n))))
+      |         (lambda (x) 
+      |          (begin 
+      |             (set! n (min x))
+      |             n))) OPQ)))""".stripMargin).unsafe()
+
   // this should be verified as safe, as the opaque value will be refined to a an even? opaque value
   _verify("(int? ~ even?)", "(lambda (x) (* x 2))")
     .applied(Set("int?"))

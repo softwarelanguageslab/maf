@@ -41,7 +41,7 @@ object SCExpCompiler {
   }
 
   def compile_sequence(s: SExp): List[ScExp] = s match {
-    case SExpPair(exp, cdr, _)  => {
+    case SExpPair(exp, cdr, _) => {
       compile(exp) :: compile_sequence(cdr)
     }
     case SExpValue(ValueNil, _) => List()
@@ -72,6 +72,8 @@ object SCExpCompiler {
       val compiledParams     = compile_params(params)
       val compiledExpression = compile(expression)
       ScLambda(compiledParams, compiledExpression, prog.idn)
+
+    case Ident("lambda") :: _ => throw new Exception(s"invalid syntax lambda at ${prog.idn.pos}")
 
     case Ident("letrec") :: (IdentWithIdentity(name, idn) :: bindingExpression :: ListNil(_)) :: expression :: ListNil(
           _
