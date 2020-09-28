@@ -81,25 +81,27 @@ can be executed.
 
 # References and Relevant publications
 The original idea behind MAF comes from the following work on modular analysis: [Effect-Driven Flow Analysis](https://doi.org/10.1007/978-3-030-11245-5_12), and [A general method for rendering static analyses for diverse concurrency models modular](https://doi.org/10.1016/j.jss.2018.10.001).
-It is a complete rework of the Scala-AM framework, described in the following publications:
-  * Scala-AM: A Modular Static Analysis Framework. SCAM 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf), [doi](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am).
-  * Building a Modular Static Analysis Framework in Scala. Scala@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf), [doi](http://doi.acm.org/10.1145/2998392.3001579).
+The MAF framework is presented in the following publication:
+  * _MAF: A Framework for Modular Static Analysis of Higher-Order Languages_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf).
+ 
+MAF is a complete rework of the Scala-AM framework, which was not focused on modular static analysis but was primarily used to experiment with AAM-style analyses. 
+Scala-AM is described in the following publications:
+  * _Scala-AM: A Modular Static Analysis Framework_. SCAM 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf), [doi](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am).
+  * _Building a Modular Static Analysis Framework in Scala_. Scala@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf), [doi](http://doi.acm.org/10.1145/2998392.3001579).
 
-MAF and Scala-AM have been used for evaluating static analysis approaches in the
-following publications:
-  * Garbage-Free Abstract Interpretation through Abstract Reference
-    Counting. ECOOP 2019. [pdf](http://drops.dagstuhl.de/opus/volltexte/2019/10784/).
-  * A general method for rendering static analyses for diverse concurrency
-    models modular. Journal of Systems and Software, Volume 149. 2019. [pdf](https://soft.vub.ac.be/~qstieven/fwo-proposal-jss.pdf), [doi](https://doi.org/10.1016/j.jss.2018.10.001).
-  * Mailbox Abstractions for Static Analysis of Actor Programs. ECOOP 2017. [pdf](http://soft.vub.ac.be/~qstieven/ecoop2017/ecoop2017actors-final.pdf), [doi](https://doi.org/10.4230/LIPIcs.ECOOP.2017.25).
-  * Employing Run-time Static Analysis to Improve Concolic
-    Execution. BENEVOL 2017. [pdf](http://ceur-ws.org/Vol-2047/BENEVOL_2017_paper_7.pdf).
-  * Incrementalizing Abstract Interpretation. BENEVOL 2017. [pdf](http://ceur-ws.org/Vol-2047/BENEVOL_2017_paper_9.pdf).
-  * Static taint analysis of event-driven scheme programs. ELS 2017. [pdf](http://soft.vub.ac.be/Publications/2017/vub-soft-tr-17-02.pdf).
-  * Improving trace-based JIT optimisation using whole-program
-    information. VMIL@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-09.pdf), [doi](http://doi.acm.org/10.1145/2998415.2998418).
-  * STRAF: A Scala Framework for Experiments in Trace-Based JIT
-    Compilation. GTTSE 2015. [pdf](http://soft.vub.ac.be/Publications/2017/vub-soft-tr-17-09.pdf), [doi](https://doi.org/10.1007/978-3-319-60074-1\_10).
+**MAF has been used for evaluating modular static analysis approaches in the following publications:**
+  * _A Parallel Worklist Algorithm for Modular Analyses_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-10.pdf)
+  * _Incremental Flow Analysis through Computational Dependency Reification_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-12.pdf)
+
+**Scala-AM has been used for evaluating static analysis approaches in the following publications:**
+  * _Garbage-Free Abstract Interpretation through Abstract Reference Counting_. ECOOP 2019. [pdf](http://drops.dagstuhl.de/opus/volltexte/2019/10784/).
+  * _A general method for rendering static analyses for diverse concurrency models modular_. Journal of Systems and Software, Volume 149. 2019. [pdf](https://www.sciencedirect.com/science/article/pii/S0164121218302206), [doi](https://doi.org/10.1016/j.jss.2018.10.001). <!-- [pdf](https://soft.vub.ac.be/~qstieven/fwo-proposal-jss.pdf) -->
+  * _Mailbox Abstractions for Static Analysis of Actor Programs_. ECOOP 2017. [pdf](http://soft.vub.ac.be/~qstieven/ecoop2017/ecoop2017actors-final.pdf), [doi](https://doi.org/10.4230/LIPIcs.ECOOP.2017.25).
+  * _Employing Run-time Static Analysis to Improve Concolic Execution_. BENEVOL 2017. [pdf](http://ceur-ws.org/Vol-2047/BENEVOL_2017_paper_7.pdf).
+  * _Incrementalizing Abstract Interpretation_. BENEVOL 2017. [pdf](http://ceur-ws.org/Vol-2047/BENEVOL_2017_paper_9.pdf).
+  * _Static taint analysis of event-driven scheme programs_. ELS 2017. [pdf](http://soft.vub.ac.be/Publications/2017/vub-soft-tr-17-02.pdf).
+  * _Improving trace-based JIT optimisation using whole-program information_. VMIL@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-09.pdf), [doi](http://doi.acm.org/10.1145/2998415.2998418).
+  * _STRAF: A Scala Framework for Experiments in Trace-Based JIT Compilation_. GTTSE 2015. [pdf](http://soft.vub.ac.be/Publications/2017/vub-soft-tr-17-09.pdf), [doi](https://doi.org/10.1007/978-3-319-60074-1\_10).
 
 # Acknowledgements
 
