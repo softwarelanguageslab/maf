@@ -4,6 +4,7 @@ import scalaam.core.Position.Position
 import scalaam.language.contracts.ScLattice.{Arr, Blame, Clo, Grd, Opq, Prim}
 import scalaam.language.contracts.{
   ScBegin,
+  ScCheck,
   ScDependentContract,
   ScExp,
   ScFlatContract,
@@ -58,7 +59,13 @@ trait ScSmallStepSemantics
         blamingParty: Identity = Identity.none
     ): Set[State] = {
       val k = state.kont.last
-      writeBlame(Blame(blamedParty, blamingParty))
+      state.blamingContexts.head match {
+        case SinglePartyWithMonContext(blamedParty, mon, Some(contract)) =>
+          partial(mon, Set(contract))
+          writeBlame(Blame(blamedParty, blamingParty))
+        case _ =>
+          writeBlame(Blame(blamedParty, blamingParty))
+      }
       Set(ApplyKont(lattice.bottom, ScNil(), state.copy(kont = k)))
     }
 
@@ -90,12 +97,29 @@ trait ScSmallStepSemantics
       }
     }
 
+    sealed trait BlamingContext
+    case object EmptyBlameContext                               extends BlamingContext
+    case class SinglePartyBlamingContext(blamedParty: Identity) extends BlamingContext
+    case class SinglePartyWithMonContext(
+        blamedParty: Identity,
+        mon: Identity,
+        contract: Option[Value] = None
+    ) extends BlamingContext
+
     case class S(
         kont: ScFrame,
         env: Env = Environment(List()),
         cache: StoreCache = Map(),
-        pc: PC = ScNil()
-    )
+        pc: PC = ScNil(),
+        blamingContexts: List[BlamingContext] = List(EmptyBlameContext)
+    ) {
+      def blamingContext: BlamingContext = blamingContexts.head
+      def popBlamingContext: S           = this.copy(blamingContexts = blamingContexts.tail)
+      def pushBlamingContext(blamingContext: BlamingContext): S =
+        this.copy(blamingContexts = blamingContext :: blamingContexts)
+      def replaceBlamingContext(blamingContext: BlamingContext): S =
+        this.copy(blamingContexts = blamingContext :: blamingContexts.tail)
+    }
 
     sealed trait ScState
     case class EvalState(exp: ScExp, env: Env, state: S)            extends ScState
@@ -115,16 +139,22 @@ trait ScSmallStepSemantics
       def next: ScFrame = throw new Exception("at the bottom of the continuation stack")
     }
 
+    case class CheckFrame(exp: ScExp, next: ScFrame)                                extends ScFrame
+    case class CheckFrameEvalReturn(contract: Value, eIdn: Identity, next: ScFrame) extends ScFrame
+    case class PopBlameContext(next: ScFrame)                                       extends ScFrame
+
     case class IfFrame(consequent: ScExp, alternative: ScExp, next: ScFrame) extends ScFrame
     case class LetrecFrame(ident: ScIdentifier, body: ScExp, env: Env, next: ScFrame)
         extends ScFrame
-    case class SeqFrame(sequence: List[ScExp], next: ScFrame)                 extends ScFrame
-    case class SetFrame(ident: ScIdentifier, next: ScFrame)                   extends ScFrame
-    case class EvalMonFrame(exp: ScExp, contractIdn: Identity, next: ScFrame) extends ScFrame
+    case class SeqFrame(sequence: List[ScExp], next: ScFrame) extends ScFrame
+    case class SetFrame(ident: ScIdentifier, next: ScFrame)   extends ScFrame
+    case class EvalMonFrame(exp: ScExp, contractIdn: Identity, monitorIdn: Identity, next: ScFrame)
+        extends ScFrame
     case class FinishEvalMonFrame(
         contract: Value,
         contractIdn: Identity,
         expressionIdn: Identity,
+        monitorIdn: Identity,
         next: ScFrame
     ) extends ScFrame
 
@@ -173,9 +203,9 @@ trait ScSmallStepSemantics
 
     type State = ScState
     override def step(state: State): Set[State] = state match {
-      case EvalState(exp, env, state)                   => eval(exp, env, state)
-      case ApplyKont(_, _, S(NilFrame, _, _, _))        => ??? // impossible
-      case ApplyKont(value, sym, state @ S(k, _, _, _)) => applyKont(value, sym, k, state)
+      case EvalState(exp, env, state)                      => eval(exp, env, state)
+      case ApplyKont(_, _, S(NilFrame, _, _, _, _))        => ??? // impossible
+      case ApplyKont(value, sym, state @ S(k, _, _, _, _)) => applyKont(value, sym, k, state)
     }
 
     override def isFinalState(state: ScState): Boolean =
@@ -202,12 +232,33 @@ trait ScSmallStepSemantics
         }
       }
 
-      EvalState(fnBody, fnEnv, S(kont = ReturnFrame(ScNilFrame), env = fnEnv, cache = cache))
+      val context = component match {
+        case ContractCall(mon, blamed, _, _, _) =>
+          SinglePartyWithMonContext(blamedParty = blamed, mon = mon)
+        case _ => EmptyBlameContext
+      }
+
+      EvalState(
+        fnBody,
+        fnEnv,
+        S(
+          kont = ReturnFrame(ScNilFrame),
+          env = fnEnv,
+          cache = cache,
+          blamingContexts = List(context)
+        )
+      )
     }
 
     private def lookup(id: ScIdentifier, env: Env): Addr = env.lookup(id.name) match {
       case Some(addr) => addr
       case None       => throw new Exception(s"undefined variable ${id.name} at ${id.idn.pos}")
+    }
+
+    private def addCheckContract(s: S, contract: Value): S = s.blamingContext match {
+      case SinglePartyWithMonContext(blamed, mon, _) =>
+        s.pushBlamingContext(SinglePartyWithMonContext(blamed, mon, Some(contract)))
+      case _ => s
     }
 
     private def eval(exp: ScExp, env: Env, state: S): Set[State] = {
@@ -251,13 +302,13 @@ trait ScSmallStepSemantics
           val (value, sym) = read(addr)
           Set(ApplyKont(value, sym, state))
 
-        case ScMon(contract, expression, _) =>
+        case ScMon(contract, expression, idn) =>
           // first eval the contract, depending on the contract the value of mon changes
-          val k = EvalMonFrame(expression, contract.idn, state.kont)
+          val k = EvalMonFrame(expression, contract.idn, idn, state.kont)
           Set(EvalState(contract, env, state.copy(kont = k)))
 
-        case ScOpaque(idn) =>
-          Set(ApplyKont(lattice.injectOpq(Opq()), ScNil(), state))
+        case ScOpaque(idn, refinements) =>
+          Set(ApplyKont(lattice.injectOpq(Opq(refinements)), ScNil(), state))
 
         case ScHigherOrderContract(domain, range, idn) =>
           // a higher order contract is evaluated the same as a dependent contract
@@ -271,6 +322,10 @@ trait ScSmallStepSemantics
 
         case ScFlatContract(contract, _) =>
           Set(EvalState(contract, env, state))
+
+        case ScCheck(contract, returnValue, idn) =>
+          val k = CheckFrame(returnValue, state.kont)
+          Set(EvalState(contract, env, state.copy(kont = k)))
 
         case lambda @ ScLambda(params, _, idn) =>
           Set(ApplyKont(lattice.injectClo(Clo(idn, env, params, lambda)), ScNil(), state))
@@ -380,12 +435,29 @@ trait ScSmallStepSemantics
             )
           )
 
-        case EvalMonFrame(expr, contractIdn, next) =>
-          val k = FinishEvalMonFrame(value, contractIdn, expr.idn, next)
+        case EvalMonFrame(expr, contractIdn, monitorIdn, next) =>
+          val k = FinishEvalMonFrame(value, contractIdn, expr.idn, monitorIdn, next)
           Set(EvalState(expr, state.env, state.copy(kont = k)))
 
-        case FinishEvalMonFrame(contract, contractIdn, expressionIdn, _) =>
-          mon(contract, value, sym, contractIdn, expressionIdn, state)
+        case FinishEvalMonFrame(contract, contractIdn, expressionIdn, monitorIdn, _) =>
+          mon(contract, value, sym, contractIdn, expressionIdn, monitorIdn, state)
+
+        case CheckFrame(returnExpression, next) =>
+          val sn = addCheckContract(state, value)
+          val k  = CheckFrameEvalReturn(value, returnExpression.idn, PopBlameContext(next))
+          Set(EvalState(returnExpression, sn.env, sn.copy(kont = k)))
+
+        case PopBlameContext(next) =>
+          Set(
+            ApplyKont(
+              value,
+              sym,
+              state.popBlamingContext.copy(kont = next)
+            )
+          )
+
+        case CheckFrameEvalReturn(contract, eIdn, next) =>
+          monFlat(contract, value, sym, eIdn, state.copy(kont = next))
 
         case ReturnFrame(_) =>
           Set(ReturnResult(value, state))
@@ -471,17 +543,20 @@ trait ScSmallStepSemantics
 
     private def applyOpClo(
         operator: PostValue,
-        operands: List[PostValue]
+        operands: List[PostValue],
+        transformer: (Call[ComponentContext]) => Call[ComponentContext] = identity
     ): Set[Value] = {
       // user defined function
       lattice
         .getClo(operator.value)
         .map(clo => {
           val context         = allocCtx(clo, operands.map(_.value), clo.lambda.idn.pos, component)
-          val called          = Call(clo.env, clo.lambda, context)
+          val called          = transformer(Call(clo.env, clo.lambda, context))
           val calledComponent = newComponent(called)
           operands.zip(clo.lambda.variables.map(v => allocVar(v, calledComponent))).foreach {
-            case (value, addr) => writeAddr(addr, value.value)
+            case (value, addr) => {
+              writeAddr(addr, value.value)
+            }
           }
 
           val result = call(calledComponent)
@@ -489,8 +564,19 @@ trait ScSmallStepSemantics
         })
     }
 
-    private def applyOpResult(operator: PostValue, operands: List[PostValue]): Set[Value] =
-      applyOpPrim(operator, operands) ++ applyOpClo(operator, operands)
+    private def applyOpResult(
+        operator: PostValue,
+        operands: List[PostValue],
+        transformed: (Call[ComponentContext] => Call[ComponentContext]) = identity
+    ): Set[Value] =
+      applyOpPrim(operator, operands) ++ applyOpClo(operator, operands, transformed)
+
+    def makeContractCall(state: S)(call: Call[ComponentContext]): Call[ComponentContext] =
+      state.blamingContext match {
+        case SinglePartyWithMonContext(blamedParty, mon, _) =>
+          ContractCall(mon, blamedParty, call.env, call.lambda, call.context)
+        case _ => call
+      }
 
     def enrich(value: Value, contract: Value): Value =
       if (lattice.isDefinitelyOpq(value)) {
@@ -507,23 +593,33 @@ trait ScSmallStepSemantics
     def monFlat(contract: Value, expr: Value, sym: Sym, eIdn: Identity, state: S): Set[State] = {
       feasible(primProc, state.pc, contract, ScNil()).toSet.flatMap { _: PC =>
         val result =
-          lattice.join(applyOpResult(PostValue(contract, ScNil()), List(PostValue(expr, sym))))
-        conditional(
-          result,
-          ScNil(),
-          state.pc,
-          pNext =>
-            Set(
-              ApplyKont(enrich(expr, contract), sym, state.copy(kont = state.kont, pc = pNext))
-            ),
-          pNext => blame(state.copy(kont = state.kont, pc = pNext), eIdn)
-        )
+          lattice.join(
+            applyOpResult(
+              PostValue(contract, ScNil()),
+              List(PostValue(expr, sym)),
+              makeContractCall(state)
+            )
+          )
+        if (lattice.bottom == result) {
+          Set(ApplyKont(expr, sym, state))
+        } else {
+          conditional(
+            result,
+            ScNil(),
+            state.pc,
+            pNext =>
+              Set(
+                ApplyKont(enrich(expr, contract), sym, state.copy(kont = state.kont, pc = pNext))
+              ),
+            pNext => blame(state.copy(kont = state.kont, pc = pNext), eIdn)
+          )
+        }
       }
     }
 
     /**
       * Creates a monitor on the given value.
-      * (mon contract/cIdn expr/idn)
+      * (mon contract/cIdn expr/idn)/mIdn
       */
     private def mon(
         contract: Value,
@@ -531,10 +627,19 @@ trait ScSmallStepSemantics
         sym: Sym,
         cIdn: Identity,
         eIdn: Identity,
+        mIdn: Identity,
         state: S
     ): Set[State] = {
       // we either have a clojure/primitive
-      val flatContract = monFlat(contract, expr, sym, eIdn, state.copy(kont = state.kont.next))
+      val flatContract = monFlat(
+        contract,
+        expr,
+        sym,
+        eIdn,
+        state
+          .copy(kont = PopBlameContext(state.kont.next))
+          .pushBlamingContext(SinglePartyWithMonContext(eIdn, mIdn))
+      )
 
       val dependentContract: Set[State] =
         feasible(primDep, state.pc, contract, ScNil()).toSet.flatMap { _: PC =>
@@ -554,7 +659,13 @@ trait ScSmallStepSemantics
       val all = flatContract ++ dependentContract
 
       // if `contract` was not a valid contract, then we generate a blame
-      if (all.isEmpty) ??? else all
+      if (all.isEmpty) {
+        if (contract == lattice.bottom) {
+          Set(ApplyKont(expr, sym, state.copy(kont = state.kont.next)))
+        } else {
+          ??? // invalid contract generate a blame
+        }
+      } else all
     }
 
     /**

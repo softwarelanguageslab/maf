@@ -78,6 +78,7 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
   )
   .jvmSettings(
     /** General */
+    libraryDependencies += "com.lihaoyi" %% "pprint" % "0.5.6",
     mainClass in Compile := Some("scalaam.cli.Main"),
     Compile / unmanagedJars += {
       baseDirectory.value / "lib" / "com.microsoft.z3.jar"

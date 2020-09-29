@@ -45,6 +45,12 @@ object ScLattice {
   case class Arr[Addr](lcontract: Identity, lserver: Identity, contract: Addr, e: Addr)
 
   /**
+    * A value that represents a flat contract, such that we can distribute blames correctly when a value
+    * of this type is applied.
+    */
+  case class Flat[Addr](contract: Addr)
+
+  /**
     * A blame that is generated when some contract has failed to be verified as safe.
     */
   case class Blame(blamedPosition: Identity, blamingPosition: Identity = Identity.none)
@@ -104,6 +110,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def injectOpq(opq: Opq): L
 
+  /**
+    * Inject a flat contract in the abstract domain
+    */
+  def injectFlat(flat: Flat[Addr]): L
+
   /*==================================================================================================================*/
 
   def applyPrimitive(prim: Prim)(arguments: L*): L
@@ -142,6 +153,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def isDefinitelyOpq(value: L): Boolean
 
+  /**
+    * Returns true if the value is possibly a flat contract
+    */
+  def isFlatContract(value: L): Boolean
+
   /*==================================================================================================================*/
 
   /**
@@ -173,6 +189,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Extract a set of opaque values from the abstract value
     */
   def getOpq(value: L): Set[Opq]
+
+  /**
+    * Extract the set of flat contracts from the abstract value
+    */
+  def getFlat(value: L): Set[Flat[Addr]]
 
   /*==================================================================================================================*/
 

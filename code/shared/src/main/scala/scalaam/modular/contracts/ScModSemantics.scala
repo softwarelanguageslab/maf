@@ -98,4 +98,25 @@ trait ScModSemantics
   def getReturnValue(component: Component): Option[Value] = {
     summary.getReturnValue(component)
   }
+
+  object VerificationResult {
+    def join(a: VerificationResult, b: => VerificationResult): VerificationResult = (a, b) match {
+      case (Unverified, _)              => Unverified
+      case (_, Unverified)              => Unverified
+      case (Partially(a), Partially(b)) => Partially(a ++ b)
+      case (Partially(_), _)            => a
+      case (_, Partially(_))            => b
+      case (Verified, _)                => Verified
+      case (_, Verified)                => Verified
+    }
+  }
+  sealed trait VerificationResult
+  case object Unverified                       extends VerificationResult
+  case class Partially(unverified: Set[Value]) extends VerificationResult
+  case object Verified                         extends VerificationResult
+  var unverified: Map[Identity, VerificationResult] = Map().withDefaultValue(Verified)
+  def unverify(idn: Identity): Unit                 = unverified += (idn -> Unverified)
+  def verify(idn: Identity): Unit                   = unverified += (idn -> Verified)
+  def partial(idn: Identity, unverifiedValues: Set[Value]): Unit =
+    unverified += (idn -> VerificationResult.join(unverified(idn), Partially(unverifiedValues)))
 }

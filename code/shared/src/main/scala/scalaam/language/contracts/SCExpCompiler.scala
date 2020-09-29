@@ -49,7 +49,12 @@ object SCExpCompiler {
 
   def compile(prog: SExp): ScExp = prog match {
     case IdentWithIdentity("OPQ", idn) =>
-      ScOpaque(idn)
+      ScOpaque(idn, Set())
+
+    case IdentWithIdentity("OPQ", idn) :: IdentWithIdentity(refinement, refinementIdn) :: ListNil(
+          _
+        ) =>
+      ScOpaque(idn, Set(refinement))
 
     case Ident("set!") :: IdentWithIdentity(name, idn) :: exp :: SExpValue(ValueNil, _) =>
       ScSet(ScIdentifier(name, idn), compile(exp), prog.idn)
@@ -98,6 +103,11 @@ object SCExpCompiler {
 
     case Ident("begin") :: expressions =>
       ScBegin(compile_sequence(expressions), prog.idn)
+
+    case Ident("check") :: contract :: expression :: ListNil(_) =>
+      val compiledContract   = compile(contract)
+      val compiledExpression = compile(expression)
+      ScCheck(compiledContract, compiledExpression, prog.idn)
 
     case operator :: arguments =>
       ScFunctionAp(compile(operator), compile_sequence(arguments), prog.idn)

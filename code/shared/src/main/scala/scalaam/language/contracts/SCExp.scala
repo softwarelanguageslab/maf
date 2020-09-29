@@ -199,17 +199,16 @@ case class ScMon(contract: ScExp, expression: ScExp, idn: Identity) extends ScEx
   override def toString: String = s"(mon $contract $expression)"
 }
 
-case class ScCheck(blame: Identity, expression: ScExp, returnValue: ScExp, idn: Identity)
-    extends ScExp {
+case class ScCheck(contract: ScExp, returnValue: ScExp, idn: Identity) extends ScExp {
 
   /** The set of free variables appearing in this expression. */
-  override def fv: Set[String] = expression.fv ++ returnValue.fv
+  override def fv: Set[String] = contract.fv ++ returnValue.fv
 
   /** A label indicating the type of an expression. */
   override def label: Label = CHECK
 
   /** Returns the list of subexpressions of the given expression. */
-  override def subexpressions: List[Expression] = List(expression, returnValue)
+  override def subexpressions: List[Expression] = List(contract, returnValue)
 }
 
 case class ScIf(condition: ScExp, consequent: ScExp, alternative: ScExp, idn: Identity)
@@ -267,7 +266,7 @@ case class ScNil(idn: Identity = Identity.none) extends ScExp {
   override def toString: String = "nil"
 }
 
-case class ScOpaque(idn: Identity) extends ScExp {
+case class ScOpaque(idn: Identity, refinement: Set[String]) extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   def fv: Set[String] = Set()

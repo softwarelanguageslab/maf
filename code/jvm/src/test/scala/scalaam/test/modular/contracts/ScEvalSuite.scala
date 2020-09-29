@@ -1,6 +1,6 @@
 package scalaam.test.modular.contracts
 
-import scalaam.language.contracts.ScLattice.{Blame, Opq}
+import scalaam.language.contracts.ScLattice.{Blame, Opq, Prim}
 import scalaam.modular.contracts.ScMain
 import scalaam.test.ScTestsJVM
 
@@ -268,6 +268,35 @@ class ScEvalSuite extends ScTestsJVM {
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 1) 2))").applied().safe()
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 1) 2))").applied().unsafe()
 
+  eval("(letrec (int?/c (lambda (x) (check int? x))) (mon int?/c OPQ))").tested { machine =>
+    println(machine.unverified)
+  }
+
+  eval("(letrec (int?/c (lambda (x) (check int? x))) (mon int?/c 5))").tested { machine =>
+    println(machine.unverified)
+  }
+
+  eval("""
+      |(letrec 
+      |  (and/c (lambda (c1 c2) (lambda (x) (and (check c1 x) (check c2 x)))))
+      |  (mon (and/c int? nonzero?) 0))
+      |""".stripMargin).tested { machine =>
+    println(machine.unverified)
+    machine.unverified.values.toList shouldEqual (List(
+      machine.Partially(
+        Set(machine.lattice.injectPrim(Prim("nonzero?")))
+      )
+    ))
+  }
+
+  eval("""
+         |(letrec 
+         |  (and/c (lambda (c1 c2) (lambda (x) (and (check c1 x) (check c2 x)))))
+         |  (mon (and/c (lambda (x) (> x 2)) nonzero?) 0))
+         |""".stripMargin).tested { machine =>
+    println(machine.unverified)
+  }
+
   eval("""(letrec (n 0) 
       |  (letrec (min (lambda (y) (if (< y n) y n)))
       |     ((mon (~ int? (lambda (n) (lambda (a) (=< a n))))
@@ -276,7 +305,7 @@ class ScEvalSuite extends ScTestsJVM {
       |             (set! n (min x))
       |             n))) OPQ)))""".stripMargin).unsafe()
 
-  verify(
+  _verify(
     "(~ int? (lambda (x) (lambda (y) (=< y x))))",
     """
     |(((lambda (min)

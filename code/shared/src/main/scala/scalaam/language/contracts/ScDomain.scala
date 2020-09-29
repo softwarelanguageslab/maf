@@ -25,6 +25,7 @@ trait ScDomain[I, B, Addr <: Address] {
   val PRIMS_VALUE  = 8
   val BLAMES_VALUE = 9
   val SYM_VALUE    = 10
+  val FLAT_VALUE   = 11
 
   case object TopValue extends Value {
     def ord                       = TOP_VALUE
@@ -78,6 +79,10 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord = SYM_VALUE
   }
 
+  case class Flats(flats: Set[Flat[Addr]]) extends Value {
+    def ord = FLAT_VALUE
+  }
+
   def bool(bool: Boolean): Value = Bool(BoolLattice[B].inject(bool))
 
   def number(n: Int): Value =
@@ -102,6 +107,8 @@ trait ScDomain[I, B, Addr <: Address] {
 
   def opq(o: Opq): Opqs = Opqs(Set(o))
 
+  def flat(f: Flat[Addr]): Flats = Flats(Set(f))
+
   object Values {
     def join(a: Value, b: Value): Value = (a, b) match {
       case (TopValue, _) | (_, TopValue) => TopValue
@@ -116,6 +123,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Symbolics(a), Symbolics(b))  => Symbolics(a ++ b)
       case (Blames(a), Blames(b))        => Blames(a ++ b)
       case (Opqs(a), Opqs(b))            => Opqs(a ++ b)
+      case (Flats(a), Flats(b))          => Flats(a ++ b)
       case (_, _)                        => TopValue
     }
 
@@ -232,6 +240,13 @@ trait ScDomain[I, B, Addr <: Address] {
         case (Prim("nonzero?"), List(Number(a))) =>
           Bool(BoolLattice[B].not((IntLattice[I].eql(a, IntLattice[I].inject(0)))))
         case (Prim("nonzero?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
+
+        case (Prim("and"), List(a, b)) =>
+          (isTrue(a), isTrue(b), isFalse(a), isFalse(b)) match {
+            case (true, true, false, false)                    => Bool(BoolLattice[B].inject(true))
+            case (true, true, true, _) | (true, true, _, true) => Bool(BoolLattice[B].top)
+            case _                                             => Bool(BoolLattice[B].inject(false))
+          }
       }
 
     def isTrue(value: Value): Boolean = value match {
@@ -264,6 +279,11 @@ trait ScDomain[I, B, Addr <: Address] {
     def isDefinitelyOpq(value: Value): Boolean = value match {
       case Opqs(_) => true
       case _       => false
+    }
+
+    def isFlat(value: Value): Boolean = value match {
+      case TopValue | _: Flats => true
+      case _                   => false
     }
 
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {
@@ -323,6 +343,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
       result
     }
 
+    /*================================================================================================================*/
+
     override def injectBoolean(b: Boolean): CoProductValue = bool(b)
 
     override def injectInteger(n: Int): CoProductValue = number(n)
@@ -341,6 +363,10 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     override def injectOpq(o: Opq): CoProductValue = opq(o)
 
+    override def injectFlat(f: Flat[Addr]): CoProductValue = flat(f)
+
+    /*================================================================================================================*/
+
     override def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue = {
       Values.applyPrimitive(prim)(arguments.map {
         case product: CoProduct => product.value
@@ -348,6 +374,7 @@ class ScCoProductLattice[I, B, Addr <: Address](
         case Bottom             => BotValue
       }: _*)
     }
+    /*================================================================================================================*/
 
     override def isTrue(value: CoProductValue): Boolean = isPred(Values.isTrue, value)
 
@@ -359,10 +386,14 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     override def isBlame(value: CoProductValue): Boolean = isPred(Values.isBlame, value)
 
+    override def isFlatContract(value: CoProductValue): Boolean = isPred(Values.isFlat, value)
+
     override def isDefinitelyOpq(value: CoProductValue): Boolean = value match {
       case CoProduct(value) => Values.isDefinitelyOpq(value)
       case _                => false
     }
+
+    /*================================================================================================================*/
 
     override def getPrim(value: CoProductValue): Set[Prim] = value match {
       case CoProduct(Prims(prims)) => prims
@@ -393,6 +424,13 @@ class ScCoProductLattice[I, B, Addr <: Address](
       case CoProduct(Opqs(opqs)) => opqs
       case _                     => Set()
     }
+
+    override def getFlat(value: CoProductValue): Set[Flat[Addr]] = value match {
+      case CoProduct(Flats(flats)) => flats
+      case _                       => Set()
+    }
+
+    /*================================================================================================================*/
 
     /** A lattice has a bottom element */
     override def bottom: CoProductValue = Bottom
@@ -468,6 +506,11 @@ class ScProductLattice[I, B, Addr <: Address](
 
       override def injectSymbolic(sym: Symbolic): ProductElements = Symbolics(Set(sym.expr))
 
+      override def injectFlat(f: Flat[Addr]): ProductElements =
+        flat(f)
+
+      /*==============================================================================================================*/
+
       private def collectArgumentsList(arguments: List[ProductElements]): List[List[Value]] = {
         val heads = arguments.map(_.elements.head)
         val tails = arguments.map(_.elements.tail).map(ProductElements)
@@ -482,6 +525,8 @@ class ScProductLattice[I, B, Addr <: Address](
 
         results.foldLeft(bottom)((result, value) => join(result, value))
       }
+
+      /*==============================================================================================================*/
 
       private def isPred(value: ProductElements, category: Int, pred: (Value => Boolean)): Boolean =
         value.elements.exists(v => v.ord == category && pred(v))
@@ -501,10 +546,15 @@ class ScProductLattice[I, B, Addr <: Address](
       override def isBlame(value: ProductElements): Boolean =
         isPred(value, BLAMES_VALUE, Values.isBlame)
 
+      override def isFlatContract(value: ProductElements): Boolean =
+        isPred(value, FLAT_VALUE, Values.isFlat)
+
       override def isDefinitelyOpq(value: ProductElements): Boolean = value match {
         case ProductElements(elements) => elements.forall((e) => Values.isDefinitelyOpq(e))
         case _                         => false
       }
+
+      /*==============================================================================================================*/
 
       override def getPrim(value: ProductElements): Set[Prim] =
         value.elements
@@ -562,6 +612,17 @@ class ScProductLattice[I, B, Addr <: Address](
           }
           .flatten
           .toSet
+
+      override def getFlat(value: ProductElements): Set[Flat[Addr]] =
+        value.elements
+          .flatMap {
+            case c: Flats => Some(c.flats)
+            case _        => None
+          }
+          .flatten
+          .toSet
+
+      /*==============================================================================================================*/
 
       /** A lattice has a bottom element */
       override def bottom: ProductElements = ProductElements(List())
