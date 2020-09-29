@@ -5,6 +5,7 @@ import org.scalatest.matchers.should
 import scalaam.language.contracts.{
   SCExpCompiler,
   ScBegin,
+  ScCheck,
   ScDependentContract,
   ScExp,
   ScHigherOrderContract,
@@ -12,10 +13,13 @@ import scalaam.language.contracts.{
   ScIf,
   ScLambda,
   ScMon,
+  ScOpaque,
   ScSet,
   ScValue
 }
 import scalaam.language.sexp.{SExpParser, ValueBoolean, ValueInteger}
+
+import scala.collection.Set
 
 class ScParserTest extends AnyFlatSpec with should.Matchers {
   private def compile(exp: String): ScExp = {
@@ -83,6 +87,24 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
   "A set!" should "parse to a ScSet" in {
     compile("(set! x 10)") should matchPattern {
       case ScSet(ScIdentifier("x", _), ScValue(ValueInteger(10), _), _) =>
+    }
+  }
+
+  "A check" should "parse to a ScCheck" in {
+    compile("(check int? 5)") should matchPattern {
+      case ScCheck(ScIdentifier("int?", _), _, _) =>
+    }
+  }
+
+  "An opaque" should "be able to have a refinement set" in {
+    compile("(OPQ int?)") should matchPattern {
+      case ScOpaque(_, refinements) if refinements.contains("int?") =>
+    }
+  }
+
+  "An opaque" should "be able to be defined without refinements" in {
+    compile("OPQ") should matchPattern {
+      case ScOpaque(_, refinements) if refinements.isEmpty =>
     }
   }
 
