@@ -34,4 +34,3 @@ jobs:
 branches:
   only:
     - master
-    - ModConcAlt

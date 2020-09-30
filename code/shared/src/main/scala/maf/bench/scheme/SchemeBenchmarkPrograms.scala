@@ -42,7 +42,7 @@ object SchemeBenchmarkPrograms {
     "ctak.scm", // Needs call-with-current-continuation.
     "fibc.scm", // Needs call-cc.
     "puzzle.scm",  // Needs call-with-current-continuation.
-    "scheme.scm", // Error in program.
+    "scheme.scm", // Error in program BUT CAN BE ANALYSED.
     "string.scm", // Needs susbtring.
     "tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
     "trav1.scm", // Needs append.
@@ -53,7 +53,7 @@ object SchemeBenchmarkPrograms {
   )
   lazy val rosetta: Set[String] = fromFolder("test/R5RS/rosetta")
   lazy val scp1: Set[String] = fromFolder("test/R5RS/scp1",
-    "circus.scm", // Vararg append nog supported by concrete interpreter.
+    "circus.scm", // Vararg append not supported by concrete interpreter.
   )
   lazy val scp1_compressed: Set[String] = fromFolder("test/R5RS/scp1-compressed")
   lazy val scp1_singleFile: Set[String] = Set("test/R5RS/scp1-compressed/all.scm")
@@ -66,15 +66,12 @@ object SchemeBenchmarkPrograms {
     "ch9.scm", // Unbound identifier: will-stop?
   )
   lazy val toplas98: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/toplas98",
-    "boyer.sch", // Uses square brackets.
     "dynamic.scm", // Uses call-with-input-file
     "graphs.scm", // Uses open-input-file.
     "handle.scm", // Uses defmacro (not standard r5rs).
     "lattice.scm", // Parser error. Uses undefined (void) function.
     "lattice-processed.scm", // Parser error. Uses undefined (void) function.
     "maze.scm", // Uses open-input-file.
-    "nbody.scm", // Parser error.
-    "nbody-processed.scm", // Parser error.
     "nucleic.sch", // Uses square brackets.
     "nucleic2.sch", // Uses macros (define-syntax).
     "splay.scm", // Uses () instead of '(), but has other issues.
@@ -91,8 +88,6 @@ object SchemeBenchmarkPrograms {
   lazy val other: Set[String] = fromFolder("test/R5RS", ".DS_Store",
     "pico.scm", // Used def-macro, no main body + need to incorporate pico.ini file.
     "quasiquoting.scm", // Uses unquote-splicing.
-    "scm2c.scm", // Uses string->list.
-    "scm2java.scm", // Uses list->string.
     "Streams.scm", // Uses define-macro.
     "callcc.scm", // call/cc not yet support in concrete interpreter
   )
@@ -111,7 +106,6 @@ object SchemeBenchmarkPrograms {
   lazy val threads: Set[String] = fromFolder("test/concurrentScheme/threads",
     "abp.scm", // Unbound reference: display-recorded.
     "lastzero2.scm", // Uses let*, but should use something like letrec*?
-    "phild.scm", // Unbound reference: bool-top
   )
   lazy val threadsVariations: Set[String] = fromFolder("test/concurrentScheme/threads/variations")
   lazy val concurrentBenchmarks: Set[String] = SmartUnion.sunionList(List(actors, futures, futuresVariations, savina, soter, threads, threadsVariations))

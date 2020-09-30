@@ -1,16 +1,18 @@
 ;
 ; a trivial implementation of property list routines
 ; get, put, remprop	oz/91
-; 
+;
+
+(define (void) 'void)
 
 (define (assq k l)
-  (cond [(null? l) #f]
-        [(eq? (caar l) k) (car l)]
-        [else (assq k (cdr l))]))
+  (cond ((null? l) #f)
+        ((eq? (caar l) k) (car l))
+        (else (assq k (cdr l)))))
 (define (member v l)
-  (cond [(null? l) #f]
-        [(eq? v (car l)) l]
-        [else (member v (cdr l))]))
+  (cond ((null? l) #f)
+        ((eq? v (car l)) l)
+        (else (member v (cdr l)))))
 
 (define *namelist* '())      ; top-level name/plst chain 
 (define *lastlook* '(xxx ())) ; look-aside cache

@@ -73,6 +73,7 @@ object Analyze extends App {
       with SchemeConstantPropagationDomain
       with SchemeModFCallSiteSensitivity
       with LIFOWorklistAlgorithm[SchemeExp]
+
     val c = b
     c.analyze(timeout())
     val r = c.finalResult
@@ -83,7 +84,7 @@ object Analyze extends App {
 
   val bench: List[String] = List(
     //"test/R5RS/SETL/setl-benchmarks/arithmetic.scm"
-    "test/DEBUG.scm"
+    "test/R5RS/gambit/scheme.scm"
   )
 
   bench.foreach({b =>
