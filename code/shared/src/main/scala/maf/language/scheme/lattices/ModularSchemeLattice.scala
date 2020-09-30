@@ -8,6 +8,7 @@ import SchemeOps._
 import maf.language.scheme._
 import maf.language.scheme.primitives.SchemePrimitive
 import maf.lattice._
+import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util.SmartUnion._
 import maf.util._
 

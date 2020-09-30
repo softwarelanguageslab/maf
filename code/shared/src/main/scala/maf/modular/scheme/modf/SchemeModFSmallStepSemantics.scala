@@ -1,6 +1,7 @@
 package maf.modular.scheme.modf
 
 import maf.core._
+import maf.core.worklist.{LIFOWorkList, WorkList}
 import maf.language.scheme._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout

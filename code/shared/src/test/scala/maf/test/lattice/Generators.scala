@@ -3,6 +3,7 @@ package maf.test.lattice
 import org.scalacheck._
 import maf.core.Lattice
 import maf.lattice._
+import maf.lattice.interfaces.BoolLattice
 
 trait LatticeGenerator[L] {
   def any: Gen[L]

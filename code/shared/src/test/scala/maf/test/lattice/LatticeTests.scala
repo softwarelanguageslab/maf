@@ -6,6 +6,7 @@ import org.scalatest.propspec._
 import org.scalatestplus.scalacheck.Checkers
 import maf.core.Lattice
 import maf.lattice._
+import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.test.LatticeTest
 
 /** TODO[medium] tests for scheme lattice */

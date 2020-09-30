@@ -2,6 +2,7 @@ package maf.modular.scheme.ssmodconc
 
 import maf.core._
 import maf.core.Position._
+import maf.core.worklist.{LIFOWorkList, WorkList}
 import maf.language.CScheme._
 import maf.language.scheme._
 import maf.language.scheme.primitives._

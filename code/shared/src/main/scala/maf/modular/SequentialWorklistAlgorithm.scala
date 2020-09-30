@@ -1,7 +1,9 @@
 package maf.modular
 
 import maf.core._
+import maf.core.worklist.{FIFOWorkList, LIFOWorkList, RandomWorkList, WorkList}
 import maf.util.benchmarks.Timeout
+
 import scala.collection.mutable.PriorityQueue
 
 trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {

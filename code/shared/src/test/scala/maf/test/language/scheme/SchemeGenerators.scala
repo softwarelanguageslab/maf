@@ -7,6 +7,7 @@ import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeOps}
 import maf.language.scheme.primitives._
 import maf.language.sexp._
 import maf.lattice._
+import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.test.lattice._
 
 trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {

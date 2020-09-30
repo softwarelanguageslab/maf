@@ -6,6 +6,7 @@ import maf.language.scheme._
 import maf.language.scheme.lattices.ModularSchemeLattice
 import maf.language.scheme.primitives._
 import maf.lattice._
+import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.modular._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._

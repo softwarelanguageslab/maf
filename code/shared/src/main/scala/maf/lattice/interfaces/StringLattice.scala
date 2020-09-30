@@ -1,4 +1,4 @@
-package maf.lattice
+package maf.lattice.interfaces
 
 import maf.core._
 

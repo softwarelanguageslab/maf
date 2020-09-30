@@ -1,6 +1,7 @@
 package maf.lattice
 
 import maf.core._
+import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, NotANumberString, RealLattice, StringLattice, SymbolLattice}
 import maf.util.Show
 import maf.util.SmartUnion._
 
