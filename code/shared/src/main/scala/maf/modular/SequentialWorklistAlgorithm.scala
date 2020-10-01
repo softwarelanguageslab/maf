@@ -38,14 +38,17 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
     }
 }
 
+/** Provides a work list with a depth-first exploration order to a modular analysis. */
 trait LIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] {
   def emptyWorkList = LIFOWorkList()
 }
 
+/** Provides a work list with a breadth-first exploration order to a modular analysis. */
 trait FIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] {
   def emptyWorkList = FIFOWorkList()
 }
 
+/** Provides a work list with a random exploration order to a modular analysis. */
 trait RandomWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] {
   def emptyWorkList = RandomWorkList()
 }
@@ -91,6 +94,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
     }
 }
 
+/** Provides a work list that prioritises nested calls by call depth to a modular analysis. */
 trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)
   lazy val ordering: Ordering[Component] = Ordering.by(depth)

@@ -9,6 +9,10 @@ import maf.util.benchmarks.Timeout
 // in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
 trait Dependency extends SmartHash
 
+/**
+ * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and
+ * provides some utility functionality.
+ **/
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
 
   // parameterized by a component representation
@@ -41,21 +45,30 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
 
   // parameterized by an 'intra-component analysis'
   def intraAnalysis(component: Component): IntraAnalysis
-  abstract class IntraAnalysis(val component: Component) { intra => 
+  abstract class IntraAnalysis(val component: Component) { intra =>
+
     // keep track of:
     // - a set R of dependencies read by this intra-analysis
     // - a set W of dependencies written by this intra-analysis
     // - a set C of components discovered by this intra-analysis
-    var R = Set[Dependency]()
-    var W = Set[Dependency]()
-    var C = Set[Component]()
+    /** Set of dependencies read by this intra-component analysis. */
+    var R: Set[Dependency] = Set()
+    /** Set of dependencies written by this intra-component analysis. */
+    var W: Set[Dependency] = Set()
+    /** Set of components discovered by this intra-component analysis. */
+    var C: Set[Component]  = Set()
+
+    /** Registers a read dependency. */
     def register(dep: Dependency): Unit = R += dep
+    /** Registers a written dependency. */
     def trigger(dep: Dependency): Unit  = W += dep
+    /** Registers a discovered component. */
     def spawn(cmp: Component): Unit     = C += cmp
-    // analyses the given component
-    // should only update *local* state and not modify the global analysis state directly
+
+    /** Performs the intra-component analysis of the given component.<br>
+     * <b>Important:</b> should only update the *local* analysis state, and must not modify the global analysis state directly. */
     def analyze(timeout: Timeout.T = Timeout.none): Unit
-    // pushes the local changes to the global analysis state
+    /** Pushes the local changes to the global analysis state. */
     def commit(): Unit = {
       R.foreach(inter.register(component, _))
       W.foreach(dep => if(commit(dep)) inter.trigger(dep))
@@ -64,7 +77,10 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
     def commit(dep: Dependency): Boolean = false  // `ModAnalysis` has no knowledge of dependencies it can commit
   }
 
-  // specific to the worklist algorithm!
+  // Specific to the worklist algorithm:
+
+  /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
   def finished(): Boolean                               // <= check if the analysis is finished
+  /** Runs the analysis with an optional timeout (default value: no timeout). Implementation should be provided by the work list algorithm. */
   def analyze(timeout: Timeout.T = Timeout.none): Unit  // <= run the analysis (with given timeout)
 }

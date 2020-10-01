@@ -7,9 +7,15 @@ import maf.language.scheme._
 import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
 import maf.language.scheme.primitives._
 
+/**
+ * The abstract domain used for Scheme analyses.
+ */
 trait SchemeDomain extends AbstractDomain[SchemeExp] {
+  /** Type of primitive functions. */
   type Prim = SchemePrimitive[Value, Address]
+  /** Contains the implementation of the primitives for the given abstract domain. */
   val primitives: SchemePrimitives[Value, Address]
+  /** Implementation of abstract values. */
   implicit val lattice: SchemeLattice[Value, Address, Prim]
 }
 

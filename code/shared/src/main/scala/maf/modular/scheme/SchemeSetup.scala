@@ -7,6 +7,14 @@ import maf.language.scheme.primitives._
 import maf.modular._
 import maf.modular.scheme._
 
+/**
+ * Prepares a modular analysis to analyse Scheme programs:
+ * <ul>
+ *   <li> Ensures the program is undefined and lexically addressed.
+ *   <li> Provides an initial lexical environment for the analysis.
+ *   <li> Sets up a global store, containing bindings for the language primitives in the provided environment.
+ * </ul>
+ **/
 trait SchemeSetup extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
                                                  with SchemeDomain {
   // Provide a global store
@@ -20,7 +28,7 @@ trait SchemeSetup extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
   lazy val initialBds: Iterable[(String,Addr,Value)] = primitives.allPrimitives.map {
     p => (p.name, PrmAddr(p.name), lattice.primitive(p)) 
   }
-  lazy val initialEnv = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
+  lazy val initialEnv: Environment[Addr] = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
   // Set up initial environment and install the primitives in the global store.
   initialBds.foreach { bnd => store += bnd._2 -> bnd._3 }
 }

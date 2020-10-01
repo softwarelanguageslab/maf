@@ -12,10 +12,10 @@ case class ReturnAddr[Component](cmp: Component, idn: Identity) extends Address 
  */
 trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
 
-  def returnAddr(cmp: Component) = ReturnAddr(cmp, expr(cmp).idn)
+  def returnAddr(cmp: Component): ReturnAddr[Component] = ReturnAddr(cmp, expr(cmp).idn)
 
   // convenience method: final program result = return-addr of the initial component
-  def finalResult = store.getOrElse(returnAddr(initialComponent), lattice.bottom)
+  def finalResult: Value = store.getOrElse(returnAddr(initialComponent), lattice.bottom)
 
   // intra-analysis can now also update and read the result of a component
   override def intraAnalysis(cmp: Component): ReturnResultIntra

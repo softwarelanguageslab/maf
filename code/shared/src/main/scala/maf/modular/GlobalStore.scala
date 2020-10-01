@@ -8,7 +8,7 @@ case class AddrDependency(addr: Address) extends Dependency {
 }
 
 /**
- * An analysis with a global store.
+ * Provides a global store to a modular analysis.
  * @tparam Expr The type of the expressions under analysis.
  */
 trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] 
