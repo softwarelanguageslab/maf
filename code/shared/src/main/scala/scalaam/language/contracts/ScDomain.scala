@@ -167,9 +167,9 @@ trait ScDomain[I, B, Addr <: Address] {
             case (false, false) => BotValue
           }
 
-        case (Prim("proc?"), List(Clos(_) | Prims(_) | Arrs(_))) => bool(true)
-        case (Prim("proc?"), List(TopValue | Opqs(_)))           => Bool(BoolLattice[B].top)
-        case (Prim("proc?"), List(_))                            => bool(false)
+        case (Prim("proc?"), List(Clos(_) | Prims(_) | Arrs(_) | Flats(_))) => bool(true)
+        case (Prim("proc?"), List(TopValue | Opqs(_)))                      => Bool(BoolLattice[B].top)
+        case (Prim("proc?"), List(_))                                       => bool(false)
 
         case (Prim("dependent-contract?"), List(Grds(_)))            => bool(true)
         case (Prim("dependent-contract?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)

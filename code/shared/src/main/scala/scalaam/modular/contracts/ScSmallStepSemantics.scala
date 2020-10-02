@@ -1,7 +1,7 @@
 package scalaam.modular.contracts
 import scalaam.core.{Address, Environment, Identity}
 import scalaam.core.Position.Position
-import scalaam.language.contracts.ScLattice.{Arr, Blame, Clo, Grd, Opq, Prim}
+import scalaam.language.contracts.ScLattice.{Arr, Blame, Clo, Flat, Grd, Opq, Prim}
 import scalaam.language.contracts.{
   ScBegin,
   ScCheck,
@@ -23,6 +23,7 @@ import scalaam.language.contracts.{
   ScValue
 }
 import scalaam.language.sexp.{ValueBoolean, ValueInteger}
+import scalaam.util.{Monoid, SingletonSet}
 
 import scala.util.Random
 
@@ -164,7 +165,7 @@ trait ScSmallStepSemantics
     case class CheckedRangeFrame(value: Value, sym: Sym, serverIdentity: Identity, next: ScFrame)
         extends ScFrame
 
-    case class AppliedRangeMakerFrame(
+    case class RangeMakerResultFrame(
         value: Value,
         value1: List[PostValue],
         serverIdentity: Identity,
@@ -179,6 +180,8 @@ trait ScSmallStepSemantics
         serverIdentity: Identity,
         next: ScFrame
     ) extends ScFrame
+
+    case class EvalFlatContractFrame(contractIdn: Identity, next: ScFrame) extends ScFrame
 
     case class FinishEvalDependentFrame(
         value: ScGenericAddr[AllocationContext],
@@ -321,7 +324,8 @@ trait ScSmallStepSemantics
           Set(EvalState(domain, env, state.copy(kont = k)))
 
         case ScFlatContract(contract, _) =>
-          Set(EvalState(contract, env, state))
+          val k = EvalFlatContractFrame(exp.idn, state.kont)
+          Set(EvalState(contract, env, state.copy(kont = k)))
 
         case ScCheck(contract, returnValue, idn) =>
           val k = CheckFrame(returnValue, state.kont)
@@ -353,6 +357,17 @@ trait ScSmallStepSemantics
           val k        = RestoreEnv(oldEnv, next)
           val newState = state.copy(cache = cache, kont = k)
           Set(EvalState(body, state.env, newState))
+
+        case EvalFlatContractFrame(flatContractIdn, next) =>
+          val contractAddr = allocGeneric(flatContractIdn, component)
+          val cache        = write(contractAddr, value, sym)(state.cache)
+          Set(
+            ApplyKont(
+              lattice.injectFlat(Flat(contractAddr)),
+              sym,
+              state.copy(kont = next, cache = cache)
+            )
+          )
 
         case SeqFrame(List(head), next) =>
           // last element in sequence
@@ -400,10 +415,10 @@ trait ScSmallStepSemantics
           Set(EvalState(rangeMaker, state.env, state.copy(kont = k, cache = cache)))
 
         case ApplyRangeMakerFrame(rangeMaker, e, operands, callerIdentity, serverIdentity, next) =>
-          val k = AppliedRangeMakerFrame(e, List(symbolic(value, sym)), serverIdentity, next)
+          val k = RangeMakerResultFrame(e, List(symbolic(value, sym)), serverIdentity, next)
           applyOp(PostValue(rangeMaker, ScNil()), List(symbolic(value, sym)), state.copy(kont = k))
 
-        case AppliedRangeMakerFrame(e, operands, serverIdentity, next) =>
+        case RangeMakerResultFrame(e, operands, serverIdentity, next) =>
           // TODO: check if range is a proc?, otherwise generate blame
           val k = CheckRangeFrame(value, sym, serverIdentity, next)
           applyOp(PostValue(e, ScNil()), operands, state.copy(kont = k))
@@ -464,31 +479,79 @@ trait ScSmallStepSemantics
       }
     }
 
-    private def applyOp(operator: PostValue, operands: List[PostValue], state: S): Set[State] = {
-      // we have two cases:
-      // 1. a primitive is applied, in which case we can extend the symbolic expression
-      // and run the operator directly
-      // 2. a user-defined function is applied, in which case we need to register a read
-      // dependency on the result of the function and add it to the work list, this is normally
-      // handled by the `call` function
-
-      // primitive function call
-      val primitiveCall = applyOpPrim(operator, operands).flatMap(
-        value => {
-          Set(
-            ApplyKont(
-              value,
-              operator.symbolic.app(operands.map(_.symbolic)),
-              state
-            )
-          )
+    private def contextSensitiveCall(
+        clo: Clo[Addr],
+        operands: List[Value],
+        createComponent: CreateCallComponent = Call.apply
+    ): Value = {
+      val context         = allocCtx(clo, operands, clo.lambda.idn.pos, component)
+      val called          = createComponent(clo.env, clo.lambda, context)
+      val calledComponent = newComponent(called)
+      operands.zip(clo.lambda.variables.map(v => allocVar(v, calledComponent))).foreach {
+        case (value, addr) => {
+          writeAddr(addr, value)
         }
-      )
+      }
+
+      val result = call(calledComponent)
+      result
+    }
+
+    private def applyPrimOp[A](
+        operator: PostValue,
+        operands: List[PostValue]
+    )(f: (Value => Set[A])): Set[A] = {
+      lattice.getPrim(operator.value).flatMap { prim =>
+        f(lattice.applyPrimitive(prim)(operands.map(_.value): _*))
+      }
+    }
+
+    private def applyClo[A](
+        operator: PostValue,
+        operands: List[PostValue],
+        createComponent: CreateCallComponent = Call.apply
+    )(f: (Value => Set[A])): Set[A] = {
+      lattice.getClo(operator.value).flatMap { clo =>
+        f(contextSensitiveCall(clo, operands.map(_.value), createComponent))
+      }
+    }
+
+    private def applyFlat[A](
+        operator: PostValue,
+        operands: List[PostValue],
+        createComponent: CreateCallComponent = Call.apply
+    )(f: (Value => Set[A])): Set[A] = {
+      lattice.getFlat(operator.value).flatMap { flat =>
+        val wrappedOperator = readAddr(flat.contract)
+        val result = applyOpResult(PostValue(wrappedOperator, ScNil()), operands, createComponent)
+          .foldLeft(lattice.bottom)((v, value) => lattice.join(v, value))
+
+        f(result)
+      }
+    }
+
+    private def applyOp(operator: PostValue, operands: List[PostValue], state: S): Set[State] = {
+      // primitive function call
+      val primitiveCall = applyPrimOp(operator, operands) { value =>
+        Set(
+          ApplyKont(
+            value,
+            operator.symbolic.app(operands.map(_.symbolic)),
+            state
+          )
+        )
+      }
 
       // user defined function
-      val cloCall = applyOpClo(operator, operands).flatMap(
-        result => Set(ApplyKont(result, ScNil(), state))
-      )
+      val cloCall = applyClo(operator, operands) { result =>
+        Set(ApplyKont(result, ScNil(), state))
+      }
+
+      // application of a flat contract
+      val flatCall = lattice.getFlat(operator.value).flatMap { flat =>
+        val (value, sym) = read(flat.contract)(state.cache)
+        applyOp(PostValue(value, sym), operands, state)
+      }
 
       // monitored function
       // a monitored function first applies its domain contract to the input value of the function (operands)
@@ -529,53 +592,25 @@ trait ScSmallStepSemantics
             })
         })
 
-      primitiveCall ++ cloCall ++ arrCall
-    }
-
-    private def applyOpPrim(
-        operator: PostValue,
-        operands: List[PostValue]
-    ): Set[Value] = {
-      lattice
-        .getPrim(operator.value)
-        .map(lattice.applyPrimitive(_)(operands.map(_.value): _*))
-    }
-
-    private def applyOpClo(
-        operator: PostValue,
-        operands: List[PostValue],
-        transformer: (Call[ComponentContext]) => Call[ComponentContext] = identity
-    ): Set[Value] = {
-      // user defined function
-      lattice
-        .getClo(operator.value)
-        .map(clo => {
-          val context         = allocCtx(clo, operands.map(_.value), clo.lambda.idn.pos, component)
-          val called          = transformer(Call(clo.env, clo.lambda, context))
-          val calledComponent = newComponent(called)
-          operands.zip(clo.lambda.variables.map(v => allocVar(v, calledComponent))).foreach {
-            case (value, addr) => {
-              writeAddr(addr, value.value)
-            }
-          }
-
-          val result = call(calledComponent)
-          result
-        })
+      primitiveCall ++ cloCall ++ arrCall ++ flatCall
     }
 
     private def applyOpResult(
         operator: PostValue,
         operands: List[PostValue],
-        transformed: (Call[ComponentContext] => Call[ComponentContext]) = identity
+        createComponent: CreateCallComponent = Call.apply
     ): Set[Value] =
-      applyOpPrim(operator, operands) ++ applyOpClo(operator, operands, transformed)
+      applyPrimOp(operator, operands)(SingletonSet.apply) ++
+        applyClo(operator, operands, createComponent)(SingletonSet.apply) ++
+        applyFlat(operator, operands, createComponent)(SingletonSet.apply)
 
-    def makeContractCall(state: S)(call: Call[ComponentContext]): Call[ComponentContext] =
+    def makeContractCall(
+        state: S
+    )(env: Env, lambda: ScLambda, context: ComponentContext): Call[ComponentContext] =
       state.blamingContext match {
         case SinglePartyWithMonContext(blamedParty, mon, _) =>
-          ContractCall(mon, blamedParty, call.env, call.lambda, call.context)
-        case _ => call
+          ContractCall(mon, blamedParty, env, lambda, context)
+        case _ => Call(env, lambda, context)
       }
 
     def enrich(value: Value, contract: Value): Value =
@@ -600,6 +635,7 @@ trait ScSmallStepSemantics
               makeContractCall(state)
             )
           )
+
         if (lattice.bottom == result) {
           Set(ApplyKont(expr, sym, state))
         } else {

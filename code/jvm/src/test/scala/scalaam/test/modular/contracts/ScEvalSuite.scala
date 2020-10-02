@@ -213,17 +213,42 @@ class ScEvalSuite extends ScTestsJVM {
     )
   }
 
+  /**
+    * Test that the OPQ value is refined to an integer
+    */
   eval("(int? (mon int? OPQ))").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
   }
 
-  // An integer literal should always pass the `int?` test
+  /**
+    * Test if the semantics when running on a valid value are the same as the wrapped value
+    */
+  eval("((flat int?) 0)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("((flat int?) OPQ)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.boolTop)
+  }
+
+  /**
+    * The application of a flat contract should also be able to generate a blame
+    */
+  verify("(flat int?)", "OPQ").unsafe()
+
+  /**
+    * An integer literal should always pass the `int?` test
+    */
   verify("int?", "5").named("flat_lit_int?").safe()
 
-  // An opaque value can be different from an integer, so this should not be verified as safe
+  /**
+    * An opaque value can be different from an integer, so this should not be verified as safe
+    */
   verify("int?", "OPQ").named("flat_OPQ_int?").unsafe()
 
-  // A contract from any to any should always be verified as safe
+  /**
+    * A contract from any to any should always be verified as safe
+    */
   verify("(~> any? any?)", "(lambda (x) x)").applied().named("id_any2any").safe()
 
   verify("(~> any? int?)", "(lambda (x) 1)").applied().named("any2int_constant1").safe()
@@ -263,7 +288,8 @@ class ScEvalSuite extends ScTestsJVM {
     blames.size shouldEqual 1
   }
 
-  verify("(~> int? int?)", "(lambda (x) OPQ)").applied().unsafe()
+  verify("(~> int? int?)", "(lambda (x) OPQ)").tested { machine =>
+  }
 
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 1) 2))").applied().safe()
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 1) 2))").applied().unsafe()
@@ -279,7 +305,7 @@ class ScEvalSuite extends ScTestsJVM {
   eval("""
       |(letrec 
       |  (and/c (lambda (c1 c2) (lambda (x) (and (check c1 x) (check c2 x)))))
-      |  (mon (and/c int? nonzero?) 0))
+      |  (mon (and/c int? nonzero?) (OPQ int?)))
       |""".stripMargin).tested { machine =>
     println(machine.unverified)
     machine.unverified.values.toList shouldEqual (List(
@@ -288,6 +314,17 @@ class ScEvalSuite extends ScTestsJVM {
       )
     ))
   }
+
+  /*
+  eval("""
+      | (letrec*
+      |   ((=/c (lambda (v) (flat (lambda (x) (= x v)
+      |    (not/c (flat (lambda (c) (lambda (x) (not (c x))))))
+      |    (and/c (lambda (c1 c2) (flat (lambda (x) (and (c1 x) (c2 x)))))
+      |    (nonzero? (lambda (x) (and/c int? (not/c (=/c 0))))
+      |   (mon nonzero? (OPQ int?)))
+      |""".stripMargin)
+   */
 
   eval("""
          |(letrec 

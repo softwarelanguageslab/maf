@@ -3,7 +3,7 @@ package scalaam.modular.contracts
 import scalaam.core.Position.Position
 import scalaam.core.{Address, Environment, Identity}
 import scalaam.language.contracts.ScLattice.Blame
-import scalaam.language.contracts.{ScExp, ScIdentifier, ScLattice}
+import scalaam.language.contracts.{ScExp, ScIdentifier, ScLambda, ScLattice}
 import scalaam.modular.{GlobalStore, ModAnalysis, ReturnAddr, ReturnValue}
 
 trait ScModSemantics
@@ -33,6 +33,11 @@ trait ScModSemantics
     * The environment in which the analysis is executed
     */
   type Env = Environment[Address]
+
+  /**
+    * The type of a call component creator
+    */
+  type CreateCallComponent = (Env, ScLambda, ComponentContext) => Call[ComponentContext]
 
   /**
     * A base environment which can be defined by implementations of this trait
