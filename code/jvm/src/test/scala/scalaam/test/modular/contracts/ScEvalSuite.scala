@@ -3,6 +3,7 @@ package scalaam.test.modular.contracts
 import scalaam.language.contracts.ScLattice.{Blame, Opq, Prim}
 import scalaam.modular.contracts.ScMain
 import scalaam.test.ScTestsJVM
+import scalaam.core.Position
 
 class ScEvalSuite extends ScTestsJVM {
   trait VerifyTestBuilder extends ScLatticeFixture with ScAnalysisFixtureJVM {
@@ -231,6 +232,10 @@ class ScEvalSuite extends ScTestsJVM {
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.boolTop)
   }
 
+  eval("(letrec (zero? (flat (lambda (x) (= x 0)))) (mon zero? 1))").tested { machine =>
+    println(machine)
+  }
+
   /**
     * The application of a flat contract should also be able to generate a blame
     */
@@ -294,6 +299,7 @@ class ScEvalSuite extends ScTestsJVM {
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 1) 2))").applied().safe()
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 1) 2))").applied().unsafe()
 
+  /*
   eval("(letrec (int?/c (lambda (x) (check int? x))) (mon int?/c OPQ))").tested { machine =>
     println(machine.unverified)
   }
@@ -301,18 +307,32 @@ class ScEvalSuite extends ScTestsJVM {
   eval("(letrec (int?/c (lambda (x) (check int? x))) (mon int?/c 5))").tested { machine =>
     println(machine.unverified)
   }
+   */
 
   eval("""
-      |(letrec 
-      |  (and/c (lambda (c1 c2) (lambda (x) (and (check c1 x) (check c2 x)))))
-      |  (mon (and/c int? nonzero?) (OPQ int?)))
+      |(letrec
+      |  (and/c (lambda (c1 c2) (lambda (x) (and (c1 x) (c2 x)))))
+      |  (mon (and/c (flat int?) (flat nonzero?)) (OPQ int?)))
       |""".stripMargin).tested { machine =>
-    println(machine.unverified)
-    machine.unverified.values.toList shouldEqual (List(
-      machine.Partially(
-        Set(machine.lattice.injectPrim(Prim("nonzero?")))
-      )
-    ))
+    // the int? flat contract should succeed
+    machine.getVerificationResults(machine.VerifiedSingle).map(_.pos) shouldEqual List(
+      Position(3, 44)
+    )
+
+    // the nonzero? should fail (an OPQ can be both zero or not, hence top)
+    machine.getVerificationResults(machine.Top).map(_.pos) shouldEqual List(Position(3, 51))
+  }
+
+  eval("""
+         |(letrec 
+         |  (and/c (lambda (c1 c2) (lambda (x) (and (c1 x) (c2 x)))))
+         |  (mon (and/c (flat (lambda (x) (> x 2))) (flat nonzero?)) 0))
+         |""".stripMargin).tested { machine =>
+    // the nonzero? obviously always fails, this means that the that contract is always
+    // unsafe as indicated by the UnverifiedSingle value.
+    machine.getVerificationResults(machine.UnverifiedSingle).map(_.pos) shouldEqual List(
+      Position(3, 51)
+    )
   }
 
   /*
@@ -325,14 +345,6 @@ class ScEvalSuite extends ScTestsJVM {
       |   (mon nonzero? (OPQ int?)))
       |""".stripMargin)
    */
-
-  eval("""
-         |(letrec 
-         |  (and/c (lambda (c1 c2) (lambda (x) (and (check c1 x) (check c2 x)))))
-         |  (mon (and/c (lambda (x) (> x 2)) nonzero?) 0))
-         |""".stripMargin).tested { machine =>
-    println(machine.unverified)
-  }
 
   eval("""(letrec (n 0) 
       |  (letrec (min (lambda (y) (if (< y n) y n)))

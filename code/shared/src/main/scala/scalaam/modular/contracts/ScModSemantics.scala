@@ -104,24 +104,64 @@ trait ScModSemantics
     summary.getReturnValue(component)
   }
 
-  object VerificationResult {
-    def join(a: VerificationResult, b: => VerificationResult): VerificationResult = (a, b) match {
-      case (Unverified, _)              => Unverified
-      case (_, Unverified)              => Unverified
-      case (Partially(a), Partially(b)) => Partially(a ++ b)
-      case (Partially(_), _)            => a
-      case (_, Partially(_))            => b
-      case (Verified, _)                => Verified
-      case (_, Verified)                => Verified
+  sealed trait SingleVerificationResult
+  object SingleVerificationResult {
+    def join(
+        a: SingleVerificationResult,
+        b: => SingleVerificationResult
+    ): SingleVerificationResult = (a, b) match {
+      case (Top, _)    => Top
+      case (_, Top)    => Top
+      case (Bottom, _) => b
+      case (_, Bottom) => a
+      case (_, _)      => Top
     }
   }
-  sealed trait VerificationResult
-  case object Unverified                       extends VerificationResult
-  case class Partially(unverified: Set[Value]) extends VerificationResult
-  case object Verified                         extends VerificationResult
-  var unverified: Map[Identity, VerificationResult] = Map().withDefaultValue(Verified)
-  def unverify(idn: Identity): Unit                 = unverified += (idn -> Unverified)
-  def verify(idn: Identity): Unit                   = unverified += (idn -> Verified)
-  def partial(idn: Identity, unverifiedValues: Set[Value]): Unit =
-    unverified += (idn -> VerificationResult.join(unverified(idn), Partially(unverifiedValues)))
+  case object Bottom           extends SingleVerificationResult
+  case object UnverifiedSingle extends SingleVerificationResult
+  case object VerifiedSingle   extends SingleVerificationResult
+  case object Top              extends SingleVerificationResult
+  var verificationResults: Map[Identity, Map[Identity, SingleVerificationResult]] =
+    Map().withDefaultValue(Map().withDefaultValue(Bottom))
+
+  def addSingleVerificationResult(
+      monIdn: Identity,
+      contractIdn: Identity,
+      value: SingleVerificationResult
+  ): Unit = {
+    val monEntry      = verificationResults(monIdn)
+    val contractEntry = monEntry(contractIdn)
+    verificationResults += (monIdn -> (monEntry + (contractIdn ->
+      SingleVerificationResult
+        .join(contractEntry, value))))
+  }
+
+  def addVerified(monIdn: Identity, contractIdn: Identity): Unit = {
+    addSingleVerificationResult(monIdn, contractIdn, VerifiedSingle)
+  }
+
+  def addUnverified(monIdn: Identity, contractIdn: Identity): Unit = {
+    addSingleVerificationResult(monIdn, contractIdn, UnverifiedSingle)
+  }
+
+  def getVerificationResults(
+      result: SingleVerificationResult,
+      context: Option[Identity] = None
+  ): List[Identity] = {
+    val results = if (context.isEmpty) {
+      verificationResults.values.flatten
+    } else {
+      verificationResults(context.get)
+    }
+
+    results
+      .filter {
+        case (_, `result`) => true
+        case _             => false
+      }
+      .map {
+        case (idn, _) => idn
+      }
+      .toList
+  }
 }

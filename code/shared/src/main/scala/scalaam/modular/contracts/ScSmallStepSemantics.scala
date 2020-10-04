@@ -26,6 +26,7 @@ import scalaam.language.sexp.{ValueBoolean, ValueInteger}
 import scalaam.util.{Monoid, SingletonSet}
 
 import scala.util.Random
+import akka.japi.pf.FI.Apply
 
 object ScSmallStepSemantics {
   var r = 0
@@ -60,10 +61,9 @@ trait ScSmallStepSemantics
         blamingParty: Identity = Identity.none
     ): Set[State] = {
       val k = state.kont.last
-      state.blamingContexts.head match {
-        case SinglePartyWithMonContext(blamedParty, mon, Some(contract)) =>
-          partial(mon, Set(contract))
-          writeBlame(Blame(blamedParty, blamingParty))
+      state.blaming.headOption match {
+        case Some(BlamingContext(blamed, _)) =>
+          writeBlame(Blame(blamed, blamingParty))
         case _ =>
           writeBlame(Blame(blamedParty, blamingParty))
       }
@@ -98,28 +98,46 @@ trait ScSmallStepSemantics
       }
     }
 
-    sealed trait BlamingContext
-    case object EmptyBlameContext                               extends BlamingContext
-    case class SinglePartyBlamingContext(blamedParty: Identity) extends BlamingContext
-    case class SinglePartyWithMonContext(
-        blamedParty: Identity,
-        mon: Identity,
-        contract: Option[Value] = None
-    ) extends BlamingContext
+    case class BlamingContext(blamed: Identity, monitor: Identity)
 
     case class S(
         kont: ScFrame,
         env: Env = Environment(List()),
         cache: StoreCache = Map(),
         pc: PC = ScNil(),
-        blamingContexts: List[BlamingContext] = List(EmptyBlameContext)
+        blaming: List[BlamingContext] = List(),
+        appIdn: Option[Identity] = None
     ) {
-      def blamingContext: BlamingContext = blamingContexts.head
-      def popBlamingContext: S           = this.copy(blamingContexts = blamingContexts.tail)
+
+      /**
+        * Get the current blaming context
+        */
+      def blamingContext: BlamingContext = blaming.head
+
+      /**
+        * Pop the blaming context from the context stack
+        */
+      def popBlamingContext: S =
+        this.copy(blaming = blaming.tail)
+
+      /**
+        * Add a new blaming context to the context stack
+        */
       def pushBlamingContext(blamingContext: BlamingContext): S =
-        this.copy(blamingContexts = blamingContext :: blamingContexts)
+        this.copy(blaming = blamingContext :: blaming)
+
+      /**
+        * Replace the current element of the blaming stack
+        */
       def replaceBlamingContext(blamingContext: BlamingContext): S =
-        this.copy(blamingContexts = blamingContext :: blamingContexts.tail)
+        this.copy(blaming = blamingContext :: blaming.tail)
+    }
+
+    object FrameS {
+      def unapply(m: Any): Option[(ScFrame)] = m match {
+        case m: S => Some(m.kont)
+        case _    => None
+      }
     }
 
     sealed trait ScState
@@ -140,9 +158,9 @@ trait ScSmallStepSemantics
       def next: ScFrame = throw new Exception("at the bottom of the continuation stack")
     }
 
-    case class CheckFrame(exp: ScExp, next: ScFrame)                                extends ScFrame
-    case class CheckFrameEvalReturn(contract: Value, eIdn: Identity, next: ScFrame) extends ScFrame
-    case class PopBlameContext(next: ScFrame)                                       extends ScFrame
+    case class CheckFrame(exp: ScExp, next: ScFrame)  extends ScFrame
+    case class FlatContractResultFrame(next: ScFrame) extends ScFrame
+    case class PopBlameContext(next: ScFrame)         extends ScFrame
 
     case class IfFrame(consequent: ScExp, alternative: ScExp, next: ScFrame) extends ScFrame
     case class LetrecFrame(ident: ScIdentifier, body: ScExp, env: Env, next: ScFrame)
@@ -206,9 +224,9 @@ trait ScSmallStepSemantics
 
     type State = ScState
     override def step(state: State): Set[State] = state match {
-      case EvalState(exp, env, state)                      => eval(exp, env, state)
-      case ApplyKont(_, _, S(NilFrame, _, _, _, _))        => ??? // impossible
-      case ApplyKont(value, sym, state @ S(k, _, _, _, _)) => applyKont(value, sym, k, state)
+      case EvalState(exp, env, state)               => eval(exp, env, state)
+      case ApplyKont(_, _, FrameS(NilFrame))        => ??? // impossible
+      case ApplyKont(value, sym, state @ FrameS(k)) => applyKont(value, sym, k, state)
     }
 
     override def isFinalState(state: ScState): Boolean =
@@ -237,8 +255,9 @@ trait ScSmallStepSemantics
 
       val context = component match {
         case ContractCall(mon, blamed, _, _, _) =>
-          SinglePartyWithMonContext(blamedParty = blamed, mon = mon)
-        case _ => EmptyBlameContext
+          List(BlamingContext(blamed, mon))
+
+        case _ => List()
       }
 
       EvalState(
@@ -248,7 +267,7 @@ trait ScSmallStepSemantics
           kont = ReturnFrame(ScNilFrame),
           env = fnEnv,
           cache = cache,
-          blamingContexts = List(context)
+          blaming = context
         )
       )
     }
@@ -258,14 +277,8 @@ trait ScSmallStepSemantics
       case None       => throw new Exception(s"undefined variable ${id.name} at ${id.idn.pos}")
     }
 
-    private def addCheckContract(s: S, contract: Value): S = s.blamingContext match {
-      case SinglePartyWithMonContext(blamed, mon, _) =>
-        s.pushBlamingContext(SinglePartyWithMonContext(blamed, mon, Some(contract)))
-      case _ => s
-    }
-
     private def eval(exp: ScExp, env: Env, state: S): Set[State] = {
-      implicit var cache: StoreCache = state.cache
+      implicit val cache: StoreCache = state.cache
       exp match {
         case ScBegin(expressions, _) =>
           val k = SeqFrame(expressions.tail, state.kont)
@@ -288,9 +301,9 @@ trait ScSmallStepSemantics
           val k = SetFrame(variable, state.kont)
           Set(EvalState(value, env, state.copy(kont = k)))
 
-        case ScFunctionAp(operator, operands, _) =>
+        case ScFunctionAp(operator, operands, idn) =>
           val k = EvalOperatorFrame(operands, state.kont)
-          Set(EvalState(operator, env, state.copy(kont = k)))
+          Set(EvalState(operator, env, state.copy(kont = k, appIdn = Some(idn))))
 
         case v @ ScValue(value, _) =>
           value match {
@@ -306,30 +319,28 @@ trait ScSmallStepSemantics
           Set(ApplyKont(value, sym, state))
 
         case ScMon(contract, expression, idn) =>
-          // first eval the contract, depending on the contract the value of mon changes
+          // (mon contract expression)/idn
           val k = EvalMonFrame(expression, contract.idn, idn, state.kont)
           Set(EvalState(contract, env, state.copy(kont = k)))
 
-        case ScOpaque(idn, refinements) =>
+        case ScOpaque(_, refinements) =>
+          // (OPQ) | (OPQ refinement)
           Set(ApplyKont(lattice.injectOpq(Opq(refinements)), ScNil(), state))
 
         case ScHigherOrderContract(domain, range, idn) =>
-          // a higher order contract is evaluated the same as a dependent contract
-          // except that we need to transform the range into range maker, we can to this by thunkifying the range
+          // (~> domain range) => (~> domain (lambda (_) range))
           val thunk = ScLambda(List(ScIdentifier("\"_", range.idn)), range, range.idn)
           Set(EvalState(ScDependentContract(domain, thunk, idn), env, state))
 
         case ScDependentContract(domain, rangeMaker, _) =>
+          // (~ domain rangeMaker)
           val k = EvalRangeMakerFrame(rangeMaker, domain.idn, state.kont)
           Set(EvalState(domain, env, state.copy(kont = k)))
 
-        case ScFlatContract(contract, _) =>
+        case ScFlatContract(expression, _) =>
+          // (flat expression)
           val k = EvalFlatContractFrame(exp.idn, state.kont)
-          Set(EvalState(contract, env, state.copy(kont = k)))
-
-        case ScCheck(contract, returnValue, idn) =>
-          val k = CheckFrame(returnValue, state.kont)
-          Set(EvalState(contract, env, state.copy(kont = k)))
+          Set(EvalState(expression, env, state.copy(kont = k)))
 
         case lambda @ ScLambda(params, _, idn) =>
           Set(ApplyKont(lattice.injectClo(Clo(idn, env, params, lambda)), ScNil(), state))
@@ -457,22 +468,27 @@ trait ScSmallStepSemantics
         case FinishEvalMonFrame(contract, contractIdn, expressionIdn, monitorIdn, _) =>
           mon(contract, value, sym, contractIdn, expressionIdn, monitorIdn, state)
 
-        case CheckFrame(returnExpression, next) =>
-          val sn = addCheckContract(state, value)
-          val k  = CheckFrameEvalReturn(value, returnExpression.idn, PopBlameContext(next))
-          Set(EvalState(returnExpression, sn.env, sn.copy(kont = k)))
-
         case PopBlameContext(next) =>
-          Set(
-            ApplyKont(
-              value,
-              sym,
-              state.popBlamingContext.copy(kont = next)
-            )
-          )
+          Set(ApplyKont(value, sym, state.copy(kont = next).popBlamingContext))
 
-        case CheckFrameEvalReturn(contract, eIdn, next) =>
-          monFlat(contract, value, sym, eIdn, state.copy(kont = next))
+        case FlatContractResultFrame(next) =>
+          val monIdn = state.blaming.headOption.map(_.monitor)
+          val appIdn = state.appIdn
+          println("flat contract result frame", monIdn, appIdn)
+
+          conditional(
+            value,
+            sym,
+            state.pc,
+            (pNext) => {
+              monIdn.zip(appIdn).foreach { case (monIdn, appIdn) => addVerified(monIdn, appIdn) }
+              Set(ApplyKont(value, sym, state.copy(pc = pNext, kont = next)))
+            },
+            (pNext) => {
+              monIdn.zip(appIdn).foreach { case (monIdn, appIdn) => addUnverified(monIdn, appIdn) }
+              Set(ApplyKont(value, sym, state.copy(pc = pNext, kont = next)))
+            }
+          )
 
         case ReturnFrame(_) =>
           Set(ReturnResult(value, state))
@@ -549,8 +565,11 @@ trait ScSmallStepSemantics
 
       // application of a flat contract
       val flatCall = lattice.getFlat(operator.value).flatMap { flat =>
-        val (value, sym) = read(flat.contract)(state.cache)
-        applyOp(PostValue(value, sym), operands, state)
+        val (value, sym) =
+          read(flat.contract)(state.cache)
+        val k = FlatContractResultFrame(state.kont)
+
+        applyOp(PostValue(value, sym), operands, state.copy(kont = k))
       }
 
       // monitored function
@@ -608,7 +627,7 @@ trait ScSmallStepSemantics
         state: S
     )(env: Env, lambda: ScLambda, context: ComponentContext): Call[ComponentContext] =
       state.blamingContext match {
-        case SinglePartyWithMonContext(blamedParty, mon, _) =>
+        case BlamingContext(blamedParty, mon) =>
           ContractCall(mon, blamedParty, env, lambda, context)
         case _ => Call(env, lambda, context)
       }
@@ -674,7 +693,7 @@ trait ScSmallStepSemantics
         eIdn,
         state
           .copy(kont = PopBlameContext(state.kont.next))
-          .pushBlamingContext(SinglePartyWithMonContext(eIdn, mIdn))
+          .pushBlamingContext(BlamingContext(eIdn, mIdn))
       )
 
       val dependentContract: Set[State] =
