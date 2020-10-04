@@ -106,7 +106,8 @@ trait ScSmallStepSemantics
         cache: StoreCache = Map(),
         pc: PC = ScNil(),
         blaming: List[BlamingContext] = List(),
-        appIdn: Option[Identity] = None
+        appIdn: Option[Identity] = None,
+        flatIdn: Option[Identity] = None
     ) {
 
       /**
@@ -472,19 +473,24 @@ trait ScSmallStepSemantics
           Set(ApplyKont(value, sym, state.copy(kont = next).popBlamingContext))
 
         case FlatContractResultFrame(next) =>
-          val monIdn = state.blaming.headOption.map(_.monitor)
-          val appIdn = state.appIdn
+          val monIdn  = state.blaming.headOption.map(_.monitor)
+          val appIdn  = state.appIdn
+          val flatIdn = state.flatIdn
 
           conditional(
             value,
             sym,
             state.pc,
             (pNext) => {
-              monIdn.zip(appIdn).foreach { case (monIdn, appIdn) => addVerified(monIdn, appIdn) }
+              monIdn.zip(appIdn.zip(flatIdn)).foreach {
+                case (monIdn, verify) => addVerified(monIdn, verify)
+              }
               Set(ApplyKont(value, sym, state.copy(pc = pNext, kont = next)))
             },
             (pNext) => {
-              monIdn.zip(appIdn).foreach { case (monIdn, appIdn) => addUnverified(monIdn, appIdn) }
+              monIdn.zip(appIdn.zip(flatIdn)).foreach {
+                case (monIdn, verify) => addUnverified(monIdn, verify)
+              }
               Set(ApplyKont(value, sym, state.copy(pc = pNext, kont = next)))
             }
           )
@@ -568,7 +574,11 @@ trait ScSmallStepSemantics
           read(flat.contract)(state.cache)
         val k = FlatContractResultFrame(state.kont)
 
-        applyOp(PostValue(value, sym), operands, state.copy(kont = k))
+        applyOp(
+          PostValue(value, sym),
+          operands,
+          state.copy(kont = k, flatIdn = Some(flat.contract.idn))
+        )
       }
 
       // monitored function

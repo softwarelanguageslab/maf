@@ -122,12 +122,14 @@ trait ScModSemantics
   case object UnverifiedSingle extends SingleVerificationResult
   case object VerifiedSingle   extends SingleVerificationResult
   case object Top              extends SingleVerificationResult
-  var verificationResults: Map[Identity, Map[Identity, SingleVerificationResult]] =
+
+  type VerifyIdentity = (Identity, Identity)
+  var verificationResults: Map[Identity, Map[VerifyIdentity, SingleVerificationResult]] =
     Map().withDefaultValue(Map().withDefaultValue(Bottom))
 
   def addSingleVerificationResult(
       monIdn: Identity,
-      contractIdn: Identity,
+      contractIdn: VerifyIdentity,
       value: SingleVerificationResult
   ): Unit = {
     val monEntry      = verificationResults(monIdn)
@@ -137,18 +139,18 @@ trait ScModSemantics
         .join(contractEntry, value))))
   }
 
-  def addVerified(monIdn: Identity, contractIdn: Identity): Unit = {
+  def addVerified(monIdn: Identity, contractIdn: VerifyIdentity): Unit = {
     addSingleVerificationResult(monIdn, contractIdn, VerifiedSingle)
   }
 
-  def addUnverified(monIdn: Identity, contractIdn: Identity): Unit = {
+  def addUnverified(monIdn: Identity, contractIdn: VerifyIdentity): Unit = {
     addSingleVerificationResult(monIdn, contractIdn, UnverifiedSingle)
   }
 
   def getVerificationResults(
       result: SingleVerificationResult,
       context: Option[Identity] = None
-  ): List[Identity] = {
+  ): List[VerifyIdentity] = {
     val results = if (context.isEmpty) {
       verificationResults.values.flatten
     } else {

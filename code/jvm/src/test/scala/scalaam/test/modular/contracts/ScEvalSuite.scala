@@ -315,12 +315,12 @@ class ScEvalSuite extends ScTestsJVM {
       |  (mon (and/c (flat int?) (flat nonzero?)) (OPQ int?)))
       |""".stripMargin).tested { machine =>
     // the int? flat contract should succeed
-    machine.getVerificationResults(machine.VerifiedSingle).map(_.pos) shouldEqual List(
+    machine.getVerificationResults(machine.VerifiedSingle).map(_._1.pos) shouldEqual List(
       Position(3, 44)
     )
 
     // the nonzero? should fail (an OPQ can be both zero or not, hence top)
-    machine.getVerificationResults(machine.Top).map(_.pos) shouldEqual List(Position(3, 51))
+    machine.getVerificationResults(machine.Top).map(_._1.pos) shouldEqual List(Position(3, 51))
   }
 
   eval("""
@@ -330,7 +330,7 @@ class ScEvalSuite extends ScTestsJVM {
          |""".stripMargin).tested { machine =>
     // the nonzero? obviously always fails, this means that the that contract is always
     // unsafe as indicated by the UnverifiedSingle value.
-    machine.getVerificationResults(machine.UnverifiedSingle).map(_.pos) shouldEqual List(
+    machine.getVerificationResults(machine.UnverifiedSingle).map(_._1.pos) shouldEqual List(
       Position(3, 51)
     )
   }
