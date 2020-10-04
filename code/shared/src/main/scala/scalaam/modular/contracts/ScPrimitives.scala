@@ -22,7 +22,8 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
       "dependent-contract?",
       "any?",
       "and",
-      "nonzero?"
+      "nonzero?",
+      "not"
     )
   def primBindings = primitives.map(p => (p, ScPrimAddr(p)))
   def baseEnv: Env = Environment(primBindings)

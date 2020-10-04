@@ -87,6 +87,9 @@ object SCExpCompiler {
       val compiledExpression        = compile(expression)
       ScLetRec(ScIdentifier(name, idn), compiledBindingExpression, compiledExpression, prog.idn)
 
+    case Ident("letrec") :: _ =>
+      throw new Exception(s"invalid syntax for letrec at ${prog.idn.pos}")
+
     case Ident("mon") :: contract :: expression :: ListNil(_) =>
       val compiledContract   = compile(contract)
       val compiledExpression = compile(expression)

@@ -474,7 +474,6 @@ trait ScSmallStepSemantics
         case FlatContractResultFrame(next) =>
           val monIdn = state.blaming.headOption.map(_.monitor)
           val appIdn = state.appIdn
-          println("flat contract result frame", monIdn, appIdn)
 
           conditional(
             value,
@@ -559,7 +558,7 @@ trait ScSmallStepSemantics
       }
 
       // user defined function
-      val cloCall = applyClo(operator, operands) { result =>
+      val cloCall = applyClo(operator, operands, makeContractCall(state)) { result =>
         Set(ApplyKont(result, ScNil(), state))
       }
 
@@ -626,8 +625,8 @@ trait ScSmallStepSemantics
     def makeContractCall(
         state: S
     )(env: Env, lambda: ScLambda, context: ComponentContext): Call[ComponentContext] =
-      state.blamingContext match {
-        case BlamingContext(blamedParty, mon) =>
+      state.blaming.headOption match {
+        case Some(BlamingContext(blamedParty, mon)) =>
           ContractCall(mon, blamedParty, env, lambda, context)
         case _ => Call(env, lambda, context)
       }

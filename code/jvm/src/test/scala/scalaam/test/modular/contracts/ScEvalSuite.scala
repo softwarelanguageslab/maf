@@ -335,16 +335,17 @@ class ScEvalSuite extends ScTestsJVM {
     )
   }
 
-  /*
   eval("""
-      | (letrec*
-      |   ((=/c (lambda (v) (flat (lambda (x) (= x v)
-      |    (not/c (flat (lambda (c) (lambda (x) (not (c x))))))
-      |    (and/c (lambda (c1 c2) (flat (lambda (x) (and (c1 x) (c2 x)))))
-      |    (nonzero? (lambda (x) (and/c int? (not/c (=/c 0))))
-      |   (mon nonzero? (OPQ int?)))
-      |""".stripMargin)
-   */
+      |   (letrec
+      |     (=/c (lambda (v) (flat (lambda (x) (= x v)))))
+      |     (letrec (not/c (lambda (c) (flat (lambda (x) (not (c x))))))
+      |       (letrec (and/c (lambda (c1 c2) (flat (lambda (x) (and (c1 x) (c2 x))))))
+      |         (letrec (int/c (flat int?))
+      |           (letrec (nonzero? (and/c int/c (not/c (=/c 0))))
+      |              (mon nonzero? (OPQ int?)))))))
+  |""".stripMargin).tested { machine =>
+    println(machine.verificationResults)
+  }
 
   eval("""(letrec (n 0) 
       |  (letrec (min (lambda (y) (if (< y n) y n)))

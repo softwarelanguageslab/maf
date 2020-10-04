@@ -247,6 +247,10 @@ trait ScDomain[I, B, Addr <: Address] {
             case (true, true, true, _) | (true, true, _, true) => Bool(BoolLattice[B].top)
             case _                                             => Bool(BoolLattice[B].inject(false))
           }
+
+        case (Prim("not"), List(Bool(a)))            => Bool(BoolLattice[B].not(a))
+        case (Prim("not"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
+        case (Prim("not"), _)                        => BotValue
       }
 
     def isTrue(value: Value): Boolean = value match {

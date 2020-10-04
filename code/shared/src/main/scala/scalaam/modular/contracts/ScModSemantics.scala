@@ -110,11 +110,12 @@ trait ScModSemantics
         a: SingleVerificationResult,
         b: => SingleVerificationResult
     ): SingleVerificationResult = (a, b) match {
-      case (Top, _)    => Top
-      case (_, Top)    => Top
-      case (Bottom, _) => b
-      case (_, Bottom) => a
-      case (_, _)      => Top
+      case (a, b) if a == b => a
+      case (Top, _)         => Top
+      case (_, Top)         => Top
+      case (Bottom, _)      => b
+      case (_, Bottom)      => a
+      case (_, _)           => Top
     }
   }
   case object Bottom           extends SingleVerificationResult
