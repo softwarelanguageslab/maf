@@ -1,6 +1,7 @@
 package scalaam.web
 
 import scalaam.core.Position._
+import scalaam.language.contracts.SCExpCompiler
 import scalaam.language.scheme._
 import scalaam.modular._
 import scalaam.modular.adaptive._
@@ -12,43 +13,78 @@ import scalaam.util.benchmarks.Timeout
 
 // Scala.js-related imports
 import org.scalajs.dom
-import org.scalajs.dom.{document, html}
+import org.scalajs.dom.{document, html, window}
 
 import scala.scalajs.js
 import scalaam.modular.scheme.modf.SimpleSchemeModFAnalysis
+import org.scalajs.dom.raw.HashChangeEvent
 
 // Scala.js helpers
 
 object FileInputElement {
   def apply(handler: String => Unit): html.Input = {
     val input = document.createElement("input").asInstanceOf[html.Input]
-    input.setAttribute("type","file")
-    input.addEventListener("change", (evtUpload: dom.Event) => {
-      val file = input.files.item(0)
-      val reader = new dom.FileReader()
-      reader.onload = (evtLoad: dom.Event) => handler(reader.result.asInstanceOf[String])
-      reader.readAsText(file)
-    }, false)
+    input.setAttribute("type", "file")
+    input.addEventListener(
+      "change",
+      (evtUpload: dom.Event) => {
+        val file   = input.files.item(0)
+        val reader = new dom.FileReader()
+        reader.onload = (evtLoad: dom.Event) => handler(reader.result.asInstanceOf[String])
+        reader.readAsText(file)
+      },
+      false
+    )
     return input
   }
 }
 
-object Main {
+trait Component {
+  def render(): dom.Element
+}
+
+trait Router {
+  private def path: String =
+    if (window.top.location.hash.isEmpty) {
+      "/"
+    } else {
+      window.top.location.hash.substring(1)
+    }
+
+  private def updateComponent(routes: Map[String, Component]): Unit = {
+    val body = document.body
+    body.innerHTML = ""
+    val currentPath = path
+    val component   = routes.get(currentPath)
+    component match {
+      case Some(c) => body.appendChild(c.render())
+      case None    => println("404 not found")
+    }
+  }
+
+  def routes(r: (String, Component)*): Unit = {
+    val routesMap = r.toMap
+    updateComponent(routesMap)
+    window.addEventListener(
+      "hashchange",
+      (change: HashChangeEvent) => updateComponent(routesMap),
+      false
+    )
+  }
+}
+
+object WebVisualisationPage extends Component {
   val input = FileInputElement(loadFile)
 
-  def main(args: Array[String]): Unit = setupUI()
-
-  def setupUI() = {
-    val body = document.body
-    body.appendChild(input)
+  def render(): dom.Element = {
+    input
   }
 
   def loadFile(text: String): Unit = {
     val program = SchemeParser.parse(text)
     val analysis = new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
-                                                         with SchemeConstantPropagationDomain
-                                                         with DependencyTracking[SchemeExp]
-                                                         with FIFOWorklistAlgorithm[SchemeExp] {
+    with SchemeConstantPropagationDomain with DependencyTracking[SchemeExp]
+    with FIFOWorklistAlgorithm[SchemeExp] {
       //override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       def key(cmp: Component) = expr(cmp).idn
       override def step(t: Timeout.T) = {
@@ -56,14 +92,42 @@ object Main {
         println(cmp)
         super.step(t)
       }
-      override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra = 
-        new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra 
+      override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra =
+        new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
     }
     val visualisation = new WebVisualisation(analysis)
     // parameters for the visualisation
-    val body = document.body
-    val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
+    val body   = document.body
+    val width  = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
     val height = js.Dynamic.global.document.documentElement.clientHeight.asInstanceOf[Int]
     visualisation.init(body, width, height)
   }
+}
+
+object ContractVerificationPage extends Component {
+  def render(): dom.Element = {
+    import scalatags.JsDom.all._
+    div(
+      div(
+        `class` := "editor",
+        textarea(),
+        br(),
+        button(
+          "Check"
+        )
+      ),
+      div(
+        `class` := "results",
+        pre(id := "resultcontent")
+      )
+    ).render
+  }
+}
+
+object Main extends Router {
+  def main(args: Array[String]): Unit = routes(
+    "/"          -> WebVisualisationPage,
+    "/contracts" -> ContractVerificationPage
+  )
+
 }
