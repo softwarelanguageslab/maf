@@ -74,6 +74,18 @@ trait SchemeLambdaExp extends SchemeExp {
   lazy val fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
   // height
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
+  def annotation: Option[(String, String)] = body match {
+    case SchemeVar(id) :: _ =>
+      if (id.name.startsWith("@")) {
+        id.name.split(':') match {
+          case Array(name, value) => Some((name, value))
+          case _ => throw new Exception(s"Invalid annotation: $id")
+        }
+      } else {
+        return None
+      }
+    case _ => None
+  }
   def label: Label = LAM
   def subexpressions: List[Expression] = args ::: body
   override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
@@ -400,6 +412,18 @@ trait SchemeDefineFunctionExp extends SchemeExp {
   val idn: Identity
   def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name)
   def subexpressions: List[Expression] = name :: args ::: body
+  def annotation: Option[(String, String)] = body match {
+    case SchemeVar(id) :: _ =>
+      if (id.name.startsWith("@")) {
+        id.name.split(':') match {
+          case Array(name, value) => Some((name, value))
+          case _ => throw new Exception(s"Invalid annotation: $id")
+        }
+      } else {
+        return None
+      }
+    case _ => None
+  }
   override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
   override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
 }

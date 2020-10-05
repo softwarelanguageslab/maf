@@ -1,5 +1,7 @@
 package maf.test.language.scheme
 
+import org.scalatest.flatspec.AnyFlatSpec
+
 import maf.core._
 import maf.language.scheme._
 import maf.test._
@@ -22,3 +24,18 @@ trait SchemeParserTestsSpec extends SchemeBenchmarkTests {
 }
 
 class SchemeParserTests extends SchemeParserTestsSpec with AllBenchmarks
+
+class AnnotationTests extends AnyFlatSpec {
+  "Annotated lambdas" should "have their annotation accessible" in {
+    val program = "(lambda (x) @annot:test x)"
+    val parsed = SchemeParser.parse(program)
+    assert(parsed.isInstanceOf[SchemeLambda])
+    assert(parsed.asInstanceOf[SchemeLambda].annotation == Some(("@annot", "test")))
+  }
+  "Annotated defines" should "have their annotation accessible" in {
+    val program = "(define (foo x) @annot:test x)"
+    val parsed = SchemeParser.parse(program)
+    assert(parsed.isInstanceOf[SchemeDefineFunction])
+    assert(parsed.asInstanceOf[SchemeDefineFunction].annotation == Some(("@annot", "test")))
+  }
+}

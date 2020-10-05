@@ -18,27 +18,26 @@ object PrimitivesBenchmarks {
 
   // Subset of SchemeBenchmarks.standard, only the interesting benchmarks
   val standard = List(
-    "test/kernighanvanwyk/ack.scm",
-    "test/rsa.scm",
-    "test/church.scm",
-    "test/mceval.scm",
-    "test/sat.scm",
-    "test/regex.scm",
-    "test/rsa.scm",
-    //"test/four-in-a-row.scm", // unsound
-    "test/sigscheme/mem.scm",
-    "test/grid.scm",
+    "test/R5RS/kernighanvanwyk/ack.scm",
+    "test/R5RS/rsa.scm",
+    "test/R5RS/church.scm",
+    "test/R5RS/mceval.scm",
+    "test/R5RS/sat.scm",
+    "test/R5RS/regex.scm",
+    "test/R5RS/rsa.scm",
+    "test/R5RS/sigscheme/mem.scm",
+    "test/R5RS/grid.scm",
     // "test/sigscheme/takr.scm", // has a tendency to result in OOM in concrete mode
   )
 
   val benchmarks = {
 //    SchemeBenchmarks.gambit ++
 //    SchemeBenchmarks.gabriel ++
-//    SchemeBenchmarks.scp1_compressed ++
-    SchemeBenchmarkPrograms.icp1 ++
+    SchemeBenchmarkPrograms.scp1_compressed ++
+//    SchemeBenchmarkPrograms.icp1 ++
     // SchemeBenchmarks.ad ++
 //    List("test/ad/all.scm") ++
-    standard ++
+//    standard ++
     List()
   }
   import maf.core._
@@ -119,12 +118,12 @@ abstract class PrimitivesComparison extends AnalysisComparison[
     (S_CS_0, "CS_0"),
     (S_2CS_0, "2CS_0"),
     (S_2AcyclicCS_0, "2AcyclicCS_0"),
-    (S_10CS_0, "10CS_0"),
-    (S_10AcyclicCS_0, "10AcyclicCS_0"),
+//    (S_10CS_0, "10CS_0"),
+//    (S_10AcyclicCS_0, "10AcyclicCS_0"),
     (S_FA_0, "FA_0"),
-    (S_2FA_0, "2FA_0"), // does not improve on FA
-    (S_10FA_0, "10FA_0"),// does not improve on FA
-    (S_CSFA_0, "CSFA_0"), // does not improve on FA, but we want to include them still
+//    (S_2FA_0, "2FA_0"), // does not improve on FA
+//    (S_10FA_0, "10FA_0"),// does not improve on FA
+//    (S_CSFA_0, "CSFA_0"), // does not improve on FA, but we want to include them still
     )
 
   def main(args: Array[String]) = runBenchmarks() // check("test/primtest.scm")
