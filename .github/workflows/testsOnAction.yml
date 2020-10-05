@@ -14,15 +14,15 @@ jobs:
     name: Compile Scala-AM
     runs-on: ubuntu-latest
     steps:
-    #- name: Notify push
-    #  id: slack
-    #  uses: voxmedia/github-action-slack-notify-build@v1
-    #  with:
-    #    channel: maf
-    #    status: STARTED
-    #    color: warning
-    #  env:
-    #    SLACK_BOT_TOKEN: softlab:56TdHAxAGnw63epRiBg52cGA
+    - name: Notify push
+      id: slack
+      uses: voxmedia/github-action-slack-notify-build@v1
+      with:
+        channel: maf
+        status: STARTED
+        color: warning
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
     - name: Checkout the repository
       uses: actions/checkout@v2
     - name: Compile Scala-AM
@@ -33,23 +33,23 @@ jobs:
       uses: lokkju/github-action-sbt@v0.2.2
       with:
         commands: maf/testOnly -- -l SlowTest
-    #- name: Notify slack success
-    #  if: success()
-    #  env:
-    #    SLACK_BOT_TOKEN: softlab:56TdHAxAGnw63epRiBg52cGA
-    #  uses: voxmedia/github-action-slack-notify-build@v1
-    #  with:
-    #    message_id: ${{ steps.slack.outputs.message_id }}
-    #    channel: maf
-    #    status: SUCCESS
-    #   color: good
-    #- name: Notify slack fail
-    #  if: failure()
-    #  env:
-    #    SLACK_BOT_TOKEN: softlab:56TdHAxAGnw63epRiBg52cGA
-    #  uses: voxmedia/github-action-slack-notify-build@v1
-    #  with:
-    #    message_id: ${{ steps.slack.outputs.message_id }}
-    #    channel: maf
-    #    status: FAILED
-    #    color: danger
+    - name: Notify slack success
+      if: success()
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      uses: voxmedia/github-action-slack-notify-build@v1
+      with:
+        message_id: ${{ steps.slack.outputs.message_id }}
+        channel: maf
+        status: SUCCESS
+       color: good
+    - name: Notify slack fail
+      if: failure()
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      uses: voxmedia/github-action-slack-notify-build@v1
+      with:
+        message_id: ${{ steps.slack.outputs.message_id }}
+        channel: maf
+        status: FAILED
+        color: danger
