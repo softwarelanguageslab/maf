@@ -1,5 +1,7 @@
 package scalaam.web
 
+import org.scalajs.dom.html.TextArea
+import org.scalajs.dom.raw.MouseEvent
 import scalaam.core.Position._
 import scalaam.language.contracts.SCExpCompiler
 import scalaam.language.scheme._
@@ -9,6 +11,7 @@ import scalaam.modular.adaptive.scheme._
 import scalaam.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import scalaam.modular.scheme._
 import scalaam.modular.scheme.modf._
+import scalaam.util.PrettyPrinter
 import scalaam.util.benchmarks.Timeout
 
 // Scala.js-related imports
@@ -40,6 +43,7 @@ object FileInputElement {
 }
 
 trait Component {
+  def afterRender(): Unit = ()
   def render(): dom.Element
 }
 
@@ -57,8 +61,11 @@ trait Router {
     val currentPath = path
     val component   = routes.get(currentPath)
     component match {
-      case Some(c) => body.appendChild(c.render())
-      case None    => println("404 not found")
+      case Some(c) => {
+        body.appendChild(c.render())
+        c.afterRender()
+      }
+      case None => println("404 not found")
     }
   }
 
@@ -105,14 +112,37 @@ object WebVisualisationPage extends Component {
 }
 
 object ContractVerificationPage extends Component {
+  private def verifyCode(event: MouseEvent): Unit = println("clicked")
+
+  override def afterRender(): Unit = {
+    val results = document.querySelector("#resultcontent")
+    val code    = document.querySelector("#code").asInstanceOf[TextArea]
+
+    document
+      .querySelector("#submitCode")
+      .addEventListener(
+        "click",
+        (click: MouseEvent) => {
+          val sc      = SCExpCompiler.read(code.value)
+          val printer = new PrettyPrinter()
+          results.innerText = {
+            sc.prettyPrint(printer)
+            printer.render
+          }
+        },
+        useCapture = false
+      )
+  }
+
   def render(): dom.Element = {
     import scalatags.JsDom.all._
     div(
       div(
         `class` := "editor",
-        textarea(),
+        textarea(id := "code"),
         br(),
         button(
+          id := "submitCode",
           "Check"
         )
       ),
