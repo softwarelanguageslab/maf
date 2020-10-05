@@ -42,7 +42,7 @@ jobs:
         message_id: ${{ steps.slack.outputs.message_id }}
         channel: maf
         status: SUCCESS
-       color: good
+        color: good
     - name: Notify slack fail
       if: failure()
       env:
