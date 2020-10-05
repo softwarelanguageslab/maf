@@ -149,7 +149,7 @@ class SExpLexer extends Lexical with SExpTokens {
     def specialInitial: Parser[Char] =
       (chr('!') | chr('$') | chr('%') | chr('&') | chr('*') | chr('/') | chr(':') | chr('<') | chr(
         '='
-      ) | chr('>') | chr('?') | chr('^') | chr('_') | chr('~')) ^^ (x => x)
+      ) | chr('>') | chr('?') | chr('^') | chr('_') | chr('~') | chr('@')) ^^ (x => x)
     def initial: Parser[Char]              = letter | specialInitial
     def specialSubsequent: Parser[Char]    = chr('+') | chr('-') | chr('.') | chr('@')
     def subsequent: Parser[Char]           = initial | digit | specialSubsequent
