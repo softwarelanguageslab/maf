@@ -31,8 +31,8 @@ abstract class PrecisionBenchmarks[
     }
 
     sealed trait BaseAddr extends Address { def printable = true }
-    case class VarAddr(vrb: Identifier) extends BaseAddr { def idn = vrb.idn ; override def toString = s"<variable $vrb>" }
-    case class PrmAddr(nam: String)     extends BaseAddr { def idn = Identity.none ; override def toString = s"<primitive $nam>" }
+    case class VarAddr(vrb: Identifier) extends BaseAddr { def idn: Identity = vrb.idn ; override def toString = s"<variable $vrb>" }
+    case class PrmAddr(nam: String)     extends BaseAddr { def idn: Identity = Identity.none ; override def toString = s"<primitive $nam>" }
     case class RetAddr(idn: Identity)   extends BaseAddr { override def toString = s"<return $idn>" }
     case class PtrAddr(idn: Identity)   extends BaseAddr { override def toString = s"<pointer $idn>" }
     
