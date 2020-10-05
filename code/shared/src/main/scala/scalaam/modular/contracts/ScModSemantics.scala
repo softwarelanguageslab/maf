@@ -118,10 +118,10 @@ trait ScModSemantics
       case (_, _)           => Top
     }
   }
-  case object Bottom           extends SingleVerificationResult
-  case object UnverifiedSingle extends SingleVerificationResult
-  case object VerifiedSingle   extends SingleVerificationResult
-  case object Top              extends SingleVerificationResult
+  case object Bottom        extends SingleVerificationResult
+  case object VerifiedFalse extends SingleVerificationResult
+  case object VerifiedTrue  extends SingleVerificationResult
+  case object Top           extends SingleVerificationResult
 
   type VerifyIdentity = (Identity, Identity)
   var verificationResults: Map[Identity, Map[VerifyIdentity, SingleVerificationResult]] =
@@ -140,11 +140,11 @@ trait ScModSemantics
   }
 
   def addVerified(monIdn: Identity, contractIdn: VerifyIdentity): Unit = {
-    addSingleVerificationResult(monIdn, contractIdn, VerifiedSingle)
+    addSingleVerificationResult(monIdn, contractIdn, VerifiedTrue)
   }
 
   def addUnverified(monIdn: Identity, contractIdn: VerifyIdentity): Unit = {
-    addSingleVerificationResult(monIdn, contractIdn, UnverifiedSingle)
+    addSingleVerificationResult(monIdn, contractIdn, VerifiedFalse)
   }
 
   def getVerificationResults(

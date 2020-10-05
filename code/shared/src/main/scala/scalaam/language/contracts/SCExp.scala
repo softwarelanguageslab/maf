@@ -2,6 +2,7 @@ package scalaam.language.contracts
 
 import scalaam.core.{Expression, Identifier, Identity, Label}
 import scalaam.language.sexp.Value
+import scalaam.util.PrettyPrinter
 
 case object FLAT_CONTRACT         extends Label
 case object HIGHER_ORDER_CONTRACT extends Label
@@ -40,6 +41,8 @@ trait ScExp extends Expression {
 
   def app(exps: List[ScExp]): ScExp =
     ScFunctionAp(this, exps, Identity.none)
+
+  def prettyPrint(printer: PrettyPrinter): Unit = printer.print(toString)
 }
 trait ScContract extends ScExp
 case class ScFlatContract(expression: ScExp, idn: Identity) extends ScContract {
@@ -52,6 +55,8 @@ case class ScFlatContract(expression: ScExp, idn: Identity) extends ScContract {
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(expression)
+
+  override def toString: String = s"(flat $expression)"
 }
 
 case class ScHigherOrderContract(domain: ScExp, range: ScExp, idn: Identity) extends ScContract {
@@ -113,6 +118,14 @@ case class ScLambda(variables: List[ScIdentifier], body: ScExp, idn: Identity)
   override def subexpressions: List[Expression] = List(body)
 
   override def toString: String = s"(lambda (${variables.map(_.toString).mkString(" ")}) $body)"
+
+  override def prettyPrint(printer: PrettyPrinter): Unit = {
+    printer.print(s"(lambda ${variables.map(_.toString).mkString(" ")}")
+    printer.newIndent()
+    body.prettyPrint(printer)
+    printer.print(")")
+    printer.exitIndent()
+  }
 }
 
 case class ScLetRec(name: ScIdentifier, binding: ScExp, body: ScExp, idn: Identity) extends ScExp {
@@ -127,6 +140,14 @@ case class ScLetRec(name: ScIdentifier, binding: ScExp, body: ScExp, idn: Identi
   override def subexpressions: List[Expression] = List(body, binding)
 
   override def toString: String = s"(letrec ($name $binding) $body)"
+
+  override def prettyPrint(printer: PrettyPrinter): Unit = {
+    printer.print(s"(letrec ($name $binding)")
+    printer.newIndent()
+    body.prettyPrint(printer)
+    printer.print(")")
+    printer.exitIndent()
+  }
 }
 
 case class ScValue(value: Value, idn: Identity) extends ScLiterals {
@@ -169,6 +190,17 @@ case class ScBegin(expressions: List[ScExp], idn: Identity) extends ScExp {
   override def subexpressions: List[ScExp] = expressions
 
   override def toString: String = s"(begin ${expressions.map(_.toString).mkString(" ")})"
+
+  override def prettyPrint(printer: PrettyPrinter): Unit = {
+    printer.print("(begin")
+    printer.newIndent()
+    for (expression <- expressions) {
+      expression.prettyPrint(printer)
+      printer.newline()
+    }
+    printer.print(")")
+    printer.exitIndent()
+  }
 }
 
 case class ScSet(variable: ScIdentifier, value: ScExp, idn: Identity) extends ScExp {
@@ -224,6 +256,15 @@ case class ScIf(condition: ScExp, consequent: ScExp, alternative: ScExp, idn: Id
   override def subexpressions: List[Expression] = List(condition, consequent, alternative)
 
   override def toString: String = s"(if $condition $consequent $alternative)"
+
+  override def prettyPrint(printer: PrettyPrinter): Unit = {
+    printer.print("(if")
+    condition.prettyPrint(printer)
+    printer.newIndent()
+    consequent.prettyPrint(printer)
+    printer.newline()
+    alternative.prettyPrint(printer)
+  }
 }
 
 case class ScRaise(error: String, idn: Identity) extends ScExp {

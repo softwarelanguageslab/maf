@@ -315,7 +315,7 @@ class ScEvalSuite extends ScTestsJVM {
       |  (mon (and/c (flat int?) (flat nonzero?)) (OPQ int?)))
       |""".stripMargin).tested { machine =>
     // the int? flat contract should succeed
-    machine.getVerificationResults(machine.VerifiedSingle).map(_._1.pos) shouldEqual List(
+    machine.getVerificationResults(machine.VerifiedTrue).map(_._1.pos) shouldEqual List(
       Position(3, 44)
     )
 
@@ -330,7 +330,7 @@ class ScEvalSuite extends ScTestsJVM {
          |""".stripMargin).tested { machine =>
     // the nonzero? obviously always fails, this means that the that contract is always
     // unsafe as indicated by the UnverifiedSingle value.
-    machine.getVerificationResults(machine.UnverifiedSingle).map(_._1.pos) shouldEqual List(
+    machine.getVerificationResults(machine.VerifiedFalse).map(_._1.pos) shouldEqual List(
       Position(3, 51)
     )
   }
@@ -354,6 +354,20 @@ class ScEvalSuite extends ScTestsJVM {
       |          (begin 
       |             (set! n (min x))
       |             n))) OPQ)))""".stripMargin).unsafe()
+
+  eval("""
+      | (letrec 
+      |     (=/c (lambda (n) (flat (lambda (x) (= x n)))))
+      |     (letrec
+      |        (not/c (lambda (c) (flat (lambda (x) (not (c x))))))
+      |        (letrec
+      |           (nonzero/c (not/c (=/c 0)))
+      |           ((mon (~> nonzero/c any?) (lambda (x) OPQ)) 1)))) 
+      |""".stripMargin).tested { machine =>
+    machine.getVerificationResults(machine.VerifiedFalse).map(_._1.pos) shouldEqual List(
+      Position(5, 52)
+    )
+  }
 
   _verify(
     "(~ int? (lambda (x) (lambda (y) (=< y x))))",

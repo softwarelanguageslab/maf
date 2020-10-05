@@ -1,7 +1,7 @@
 package scalaam.language.contracts
 
 import scalaam.core.{Identifier, Identity}
-import scalaam.language.sexp.{SExp, SExpId, SExpPair, SExpValue, ValueNil, ValueString}
+import scalaam.language.sexp.{SExp, SExpId, SExpPair, SExpParser, SExpValue, ValueNil, ValueString}
 
 /**
   * Compiles a program of S-expressions into a program of ScExp
@@ -119,5 +119,10 @@ object SCExpCompiler {
       ScIdentifier(name, idn)
 
     case SExpValue(value, _) => ScValue(value, prog.idn)
+  }
+
+  def read(s: String): ScExp = {
+    val sexprs = SExpParser.parse(s)
+    SCExpCompiler.compile(sexprs.head)
   }
 }

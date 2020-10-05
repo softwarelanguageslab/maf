@@ -597,13 +597,15 @@ trait ScSmallStepSemantics
             .flatMap(grd => {
               val (domain, _)     = read(grd.domain)(state.cache)
               val (rangeMaker, _) = read(grd.rangeMaker)(state.cache)
-              val k = ApplyRangeMakerFrame(
-                rangeMaker,
-                e,
-                operands,
-                operands.head.idn,
-                arr.lserver,
-                state.kont
+              val k = PopBlameContext(
+                ApplyRangeMakerFrame(
+                  rangeMaker,
+                  e,
+                  operands,
+                  operands.head.idn,
+                  arr.lserver,
+                  state.kont
+                )
               )
 
               if (operands.length == 1) {
@@ -612,7 +614,9 @@ trait ScSmallStepSemantics
                   operands.head.value,
                   operands.head.symbolic,
                   operands.head.idn,
-                  state.copy(kont = k)
+                  state
+                    .copy(kont = k)
+                    .pushBlamingContext(BlamingContext(operands.head.idn, state.appIdn.get))
                 )
               } else {
                 throw new Exception("Only domains with one operand are currently allowed")
