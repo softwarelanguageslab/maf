@@ -25,13 +25,13 @@ abstract class AnalysisComparison[
     def otherAnalyses(): List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 10min.)
-    def analysisTimeout() = Timeout.start(Duration(10, MINUTES)) //timeout for (non-base) analyses
-    def concreteTimeout() = Timeout.none                         //timeout for concrete interpreter
+    def analysisTimeout(): Timeout.T = Timeout.start(Duration(10, MINUTES)) //timeout for (non-base) analyses
+    def concreteTimeout(): Timeout.T = Timeout.none                         //timeout for concrete interpreter
 
     def concreteRuns() = 20
 
     // keep the results of the benchmarks in a table
-    var results = Table.empty[Option[Int]]
+    var results: Table[Option[Int]] = Table.empty[Option[Int]]
 
     /**
       * For a given benchmark, compare each analysis with the base analysis
@@ -41,7 +41,7 @@ abstract class AnalysisComparison[
       * @param path the name of / path to the benchmark program
       * @param program the Scheme expression of the benchmark program
       */
-    protected def forBenchmark(path: Benchmark, program: SchemeExp) = {
+    protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit = {
         // run the base analysis first
         val baseResult = runAnalysis(baseAnalysis, "base analysis", program, path).get // no timeout set for the base analysis!
         // run the other analyses on the benchmark

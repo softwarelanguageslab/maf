@@ -68,14 +68,14 @@ class ModularSchemeLattice[
   }
   case class Prim(prim: Set[P]) extends Value {
     def ord = 6
-    override def toString: String = prim.map(_.name).mkString("{primitives ",",","}")
+    override def toString: String = prim.map(_.name).mkString("Primitive{",", ","}")
   }
   // TODO: define `type Closure = (SchemeLambdaExp, Env, Option[String])` (maybe using a case class)
   case class Clo(closures: Set[(schemeLattice.Closure, Option[String])]) extends Value {
     def ord = 7
     override def toString: String =
       closures.map(namedClo => namedClo._2.getOrElse(s"λ@${namedClo._1._1.idn}"))
-              .mkString("{closures ",",","}")
+              .mkString("Closure{",", ","}")
   }
   case object Nil extends Value {
     def ord = 8
@@ -83,7 +83,7 @@ class ModularSchemeLattice[
   }
   case class Pointer(ptrs: Set[A]) extends Value {
     def ord = 9
-    override def toString: String = ptrs.mkString("{pointers ",",","}")
+    override def toString: String = ptrs.mkString("Pointer{",", ","}")
   }
   case class Cons(car: L, cdr: L) extends Value {
     def ord = 10
@@ -97,7 +97,7 @@ class ModularSchemeLattice[
           case (k, v) => s"$k: $v"
         })
         .mkString(", ")
-      s"Vec(size: $size, elems: {$els})"
+      s"Vector(size: $size, elems: {$els})"
     }
   }
   case class Kont(k: Set[K]) extends Value {
@@ -106,14 +106,14 @@ class ModularSchemeLattice[
   }
   case class Thread(threads: Set[TID]) extends Value {
     def ord = 13
-    override def toString: String = s"🧵$threads"
+    override def toString: String = threads.mkString("Thread{",", ","}")
   }
   // Could also store (a) Thread(s) here, but this seems to be simpler.
   // An empty set indicates the lock is not held, but a non-empty set may also indicate this... (due to the monotonicity of the analysis, threads will only increase in size).
   // This should correspond to the formalisation of ModConc and \lambda_\tau.
   case class Lock(threads: Set[TID]) extends Value {
     def ord = 14
-    override def toString: String = s"<lock $threads>"
+    override def toString: String =  threads.mkString("Lock{",", ","}")
   }
   case object Void extends Value {
     def ord = 15
