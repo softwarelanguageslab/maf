@@ -5,6 +5,7 @@ import maf.language.scheme._
 import maf.lattice._
 import maf.util._
 import maf.util.benchmarks.Timeout
+import maf.bench.scheme.SchemeBenchmarkPrograms
 
 import scala.concurrent.duration._
 
@@ -20,12 +21,12 @@ object DailyPrecisionBenchmarks extends AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis = 
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
     def otherAnalyses() = List(
-        (PrimitivesComparisonRQ3NamedFunctions.S_2CS_0, "S_2CS_0")
+        (SchemeAnalyses.callSiteContextSensitiveAnalysis, "S_2CS_0")
         //(SchemeAnalyses.adaptiveAnalysisPolicy3(_, 5), "adaptive-policy-3")
     )
 
     // benchmarks to run
-    def benchmarks = PrimitivesBenchmarks.benchmarks
+    def benchmarks = SchemeBenchmarkPrograms.gabriel
 
     // timeout configuration
     override def analysisTimeout() = Timeout.start(Duration(15, MINUTES)) //timeout for (non-base) analyses

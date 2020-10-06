@@ -50,13 +50,13 @@ trait SchemeModFFullArgumentCallSiteSensitivity extends SchemeModFSensitivity {
     ArgCallSiteContext(clo._1.idn.pos, call, args)
 }
 
-trait SchemeModFAnySensitivity extends SchemeModFSensitivity {
+trait SchemeModFUserGuidedSensitivity1 extends SchemeModFSensitivity {
   type ComponentContext = Any
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext =
     clo._1.annotation match {
       case None =>
-        println(s"WARNING: Function has no annotation: $nam ($clo), using no sensitivity")
-        ("No", ())
+        // println(s"WARNING: Function has no annotation: $nam ($clo), using FA")
+        ("FA", args)
       case Some(("@sensitivity", "1CS")) =>
         ("1CS", call)
       case Some(("@sensitivity", "2CS")) =>
@@ -70,6 +70,8 @@ trait SchemeModFAnySensitivity extends SchemeModFSensitivity {
         }
       case Some(("@sensitivity", "FA")) =>
         ("FA", args)
+      case Some(("@sensitivity", "No")) =>
+        ("No", ())
       case annot =>
         println(s"WARNING: Function has an invalid annotation: $nam ($clo), using no sensitivity instead of: $annot")
         ("No", ())
