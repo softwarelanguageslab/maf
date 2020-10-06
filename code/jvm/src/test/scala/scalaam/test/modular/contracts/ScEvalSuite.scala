@@ -369,6 +369,21 @@ class ScEvalSuite extends ScTestsJVM {
     )
   }
 
+  eval("""
+      | (letrec 
+      |     (=/c (lambda (n) (flat (lambda (x) (= x n)))))
+      |     (letrec
+      |        (not/c (lambda (c) (flat (lambda (x) (not (c x))))))
+      |        (letrec
+      |           (nonzero/c (not/c (=/c 0)))
+      |           ((mon (~> any? nonzero/c) (lambda (x) OPQ)) 1)))) 
+      |""".stripMargin).tested { machine =>
+    machine.getVerificationResults(machine.Top).map(_._1.pos) shouldEqual List(
+      Position(5, 52),
+      Position(8, 14)
+    )
+  }
+
   _verify(
     "(~ int? (lambda (x) (lambda (y) (=< y x))))",
     """

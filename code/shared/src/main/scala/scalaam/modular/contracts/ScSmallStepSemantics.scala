@@ -436,8 +436,14 @@ trait ScSmallStepSemantics
           applyOp(PostValue(e, ScNil()), operands, state.copy(kont = k))
 
         case CheckRangeFrame(range, symRange, serverIdentity, next) =>
-          val k = CheckedRangeFrame(value, sym, serverIdentity, next)
-          applyOp(PostValue(range, symRange), List(PostValue(value, sym)), state.copy(kont = k))
+          val k = PopBlameContext(CheckedRangeFrame(value, sym, serverIdentity, next))
+          applyOp(
+            PostValue(range, symRange),
+            List(PostValue(value, sym)),
+            // TODO: this can be more precise, as serverIdentity/serverIdentity is not sensitive to the location
+            // where the function is applied
+            state.copy(kont = k).pushBlamingContext(BlamingContext(serverIdentity, serverIdentity))
+          )
 
         case CheckedRangeFrame(result, sym, serverIdentity, next) =>
           // if the output of the applied function does not satisfy the contract we will generate a blame

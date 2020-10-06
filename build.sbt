@@ -89,7 +89,8 @@ lazy val scalaam = crossProject(JVMPlatform, JSPlatform)
     mainClass in Compile := Some("scalaam.web.Main"),
     scalaJSUseMainModuleInitializer := true,
     /** Dependencies */
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.8"
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.8",
+    libraryDependencies += "com.lihaoyi" %%% "scalatags" % "0.9.2"
   )
 
 lazy val scalaamJVM = scalaam.jvm

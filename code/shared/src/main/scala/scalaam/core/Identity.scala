@@ -7,7 +7,7 @@ import scalaam.util.SmartHash
 /** An identity to distinguish expressions. */
 sealed trait Identity {
   val idn: IDN
-  def pos: Position = Identity.synchronized { iMap(idn) } // Extra positional information of the element in the source code. Used for printing and during tests.
+  def pos: Position             = Identity.synchronized { iMap(idn) } // Extra positional information of the element in the source code. Used for printing and during tests.
   override def toString: String = pos.toString
 }
 
@@ -16,7 +16,7 @@ case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
 
 /** Neutral identity for to elements not in the code (constructed by the analysis). */
 case object NoCodeIdentity extends Identity {
-  val idn: IDN = Identity.newId()
+  val idn: IDN               = Identity.newId()
   override def pos: Position = Position(-1, 0)
 }
 
@@ -25,12 +25,12 @@ object Identity {
   type IDN = Long // Type name is IDN to avoid confusion with identifiers.
 
   implicit val identityOrdering: Ordering[Identity] = new Ordering[Identity] {
-    def compare(x: Identity, y: Identity): Int = (x,y) match {
+    def compare(x: Identity, y: Identity): Int = (x, y) match {
       case (NoCodeIdentity, NoCodeIdentity) => 0
-      case (NoCodeIdentity, _) => -1
-      case (_, NoCodeIdentity) => 1
+      case (NoCodeIdentity, _)              => -1
+      case (_, NoCodeIdentity)              => 1
       case (s1: SimpleIdentity, s2: SimpleIdentity) =>
-        Ordering.by[SimpleIdentity,Long](_.idn).compare(s1,s2)
+        Ordering.by[SimpleIdentity, Long](_.idn).compare(s1, s2)
     }
   }
 
@@ -44,11 +44,12 @@ object Identity {
     ctr - 1
   }
 
-  def apply(p: scala.util.parsing.input.Position, t: PTag = noTag): Identity = Identity.synchronized {
-    val idn: IDN = newId()
-    iMap = iMap + (idn -> Position(p.line, p.column, t))
-    SimpleIdentity(idn)
-  }
+  def apply(p: scala.util.parsing.input.Position, t: PTag = noTag): Identity =
+    Identity.synchronized {
+      val idn: IDN = newId()
+      iMap = iMap + (idn -> Position(p.line, p.column, t))
+      SimpleIdentity(idn)
+    }
 
   def none: Identity = NoCodeIdentity
 }
@@ -57,7 +58,7 @@ object Position {
 
   type PTag = Option[String] // Tag for positions (can e.g. be used when ASTs of multiple parsings need to be combined).
 
-  val noTag: PTag = None
+  val noTag: PTag               = None
   def newTag(tag: String): PTag = Some(tag)
 
   case class Position(line: Int, col: Int, tag: PTag = noTag) extends SmartHash {
@@ -69,3 +70,4 @@ object Position {
 
   def apply(line: Int, col: Int, tag: PTag = noTag): Position = Position(line, col, tag)
 }
+

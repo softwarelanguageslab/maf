@@ -1,31 +1,35 @@
 package scalaam.util
 
+import scalaam.core.Position
+import scalaam.core.Identity
+
 class PrettyPrinter {
+
   /**
-   * The indentation level
-   */
+    * The indentation level
+    */
   private var level: Int = 0
 
   /**
-   * THe current string builder for the pretty printer
-   */
+    * THe current string builder for the pretty printer
+    */
   private val builder: StringBuilder = new StringBuilder()
 
   /**
-   * Generate a new line on the output
-   */
+    * Generate a new line on the output
+    */
   def newline(): Unit =
     builder.append('\n')
 
   /**
-   * Generate a tab on the output
-   */
+    * Generate a tab on the output
+    */
   def newtab(): Unit =
     builder.append('\t')
 
   /**
-   * Generates a new line and advances the indentation level
-   */
+    * Generates a new line and advances the indentation level
+    */
   def newIndent(): Unit = {
     level += 1
     newline()
@@ -35,16 +39,17 @@ class PrettyPrinter {
   }
 
   /**
-   *  Exit the indentation level
-   */
+    *  Exit the indentation level
+    */
   def exitIndent(): Unit = {
     level -= 1
+    /*
     (0 to level).foreach { _ =>
       newtab()
-    }
+    }*/
   }
 
-  def print(s: String): Unit =
+  def print(s: String, position: Identity = Identity.none): Unit =
     builder.append(s)
 
   def render: String = builder.toString()

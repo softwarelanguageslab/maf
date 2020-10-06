@@ -25,11 +25,24 @@
 
       .main {
         display: flex;
-        flex-direction: row;
+        flex-direction: column;
+        margin: auto;
+        width: 100%;
+        max-width: 800px;
+      }
+
+      .main > * {
+         padding-left: 10px;
+      }
+      .main > div {
+         background-color: whitesmoke;
+         padding: 10px;
+         width: 100%;
+         margin: 10px;
       }
 
       .editor {
-        width: 50vh;
+         width: 100%;
       }
 
       .results {
@@ -38,13 +51,14 @@
 
       .editor textarea {
         width: 100%;
+        height: 100px;
       }
 
       .highlight.green {
         color: green;
       }
 
-      .hightlight.red {
+      .highlight.red {
         color: red;
       }
 
@@ -54,6 +68,10 @@
 
       .highlight.bold {
         font-weight: bold;
+      }
+
+      body {
+         font-family: sans-serif;
       }
     </style>
   </head>

@@ -3,6 +3,7 @@ package scalaam.web
 import org.scalajs.dom.html.TextArea
 import org.scalajs.dom.raw.MouseEvent
 import scalaam.core.Position._
+import scalaam.core.Identity._
 import scalaam.language.contracts.SCExpCompiler
 import scalaam.language.scheme._
 import scalaam.modular._
@@ -21,6 +22,8 @@ import org.scalajs.dom.{document, html, window}
 import scala.scalajs.js
 import scalaam.modular.scheme.modf.SimpleSchemeModFAnalysis
 import org.scalajs.dom.raw.HashChangeEvent
+import scalaam.language.contracts.ScExp
+import scalaam.core.Identity
 
 // Scala.js helpers
 
@@ -112,23 +115,67 @@ object WebVisualisationPage extends Component {
 }
 
 object ContractVerificationPage extends Component {
-  private def verifyCode(event: MouseEvent): Unit = println("clicked")
 
   override def afterRender(): Unit = {
+    import scalatags.JsDom.all._
+
     val results = document.querySelector("#resultcontent")
     val code    = document.querySelector("#code").asInstanceOf[TextArea]
+    val safety  = document.querySelector(".safety")
 
     document
       .querySelector("#submitCode")
       .addEventListener(
         "click",
         (click: MouseEvent) => {
-          val sc      = SCExpCompiler.read(code.value)
-          val printer = new PrettyPrinter()
-          results.innerText = {
-            sc.prettyPrint(printer)
+          val sc       = SCExpCompiler.read(code.value)
+          val analysis = new ScTestAnalysisWeb(sc)
+          def colorCode(code: ScExp): String = {
+            val verifiedT = analysis
+              .getVerificationResults(analysis.VerifiedTrue)
+              .flatMap((t) => List(t._1.pos, t._2.pos))
+            val verifiedF = analysis
+              .getVerificationResults(analysis.VerifiedFalse)
+              .flatMap((t) => List(t._1.pos, t._2.pos))
+            val verifiedU = analysis
+              .getVerificationResults(analysis.Top)
+              .flatMap((t) => List(t._1.pos, t._2.pos))
+
+            val monitors = analysis.verificationResults.keys.map(_.pos).toList
+
+            val printer = new PrettyPrinter() {
+              override def print(s: String, idn: Identity = Identity.none) {
+                println(verifiedT)
+                println(idn.pos)
+                if (verifiedT.contains(idn.pos)) {
+                  super.print("<span class=\"highlight green\" >" + s + "</span>", idn)
+                } else if (verifiedF.contains(idn.pos)) {
+                  super.print("<span class=\"highlight red\" >" + s + "</span>", idn)
+                } else if (verifiedU.contains(idn.pos)) {
+                  super.print("<span class=\"highlight bold\" >" + s + "</span>", idn)
+                } else if (monitors.contains(idn.pos)) {
+                  super.print("<span class=\"highlight underline\" >" + s + "</span>", idn)
+                } else {
+                  super.print(s, idn)
+                }
+
+              }
+            }
+            code.prettyPrint(printer)
             printer.render
           }
+
+          analysis.analyze()
+          safety.innerHTML = ""
+          println(analysis.verificationResults)
+          if (analysis.summary.blames.isEmpty) {
+            results.innerHTML = colorCode(sc)
+            safety.appendChild(span(`class` := "safe", "Verified as safe").render)
+          } else {
+            results.innerHTML = colorCode(sc)
+            safety.appendChild(span(`class` := "safe", "Could not verify as safe").render)
+          }
+
         },
         useCapture = false
       )
@@ -137,6 +184,8 @@ object ContractVerificationPage extends Component {
   def render(): dom.Element = {
     import scalatags.JsDom.all._
     div(
+      `class` := "main",
+      h3("Soft-Contract Verification Demo"),
       div(
         `class` := "editor",
         textarea(id := "code"),
@@ -147,8 +196,14 @@ object ContractVerificationPage extends Component {
         )
       ),
       div(
-        `class` := "results",
-        pre(id := "resultcontent")
+        `class` := "right",
+        div(
+          `class` := "results",
+          pre(id := "resultcontent")
+        ),
+        div(
+          `class` := "safety"
+        )
       )
     ).render
   }
@@ -159,5 +214,4 @@ object Main extends Router {
     "/"          -> WebVisualisationPage,
     "/contracts" -> ContractVerificationPage
   )
-
 }

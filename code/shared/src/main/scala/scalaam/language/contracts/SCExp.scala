@@ -42,7 +42,7 @@ trait ScExp extends Expression {
   def app(exps: List[ScExp]): ScExp =
     ScFunctionAp(this, exps, Identity.none)
 
-  def prettyPrint(printer: PrettyPrinter): Unit = printer.print(toString)
+  def prettyPrint(printer: PrettyPrinter): Unit = printer.print(toString, idn)
 }
 trait ScContract extends ScExp
 case class ScFlatContract(expression: ScExp, idn: Identity) extends ScContract {
@@ -57,6 +57,12 @@ case class ScFlatContract(expression: ScExp, idn: Identity) extends ScContract {
   override def subexpressions: List[Expression] = List(expression)
 
   override def toString: String = s"(flat $expression)"
+
+  override def prettyPrint(printer: PrettyPrinter): Unit = {
+    printer.print("(flat ", idn)
+    expression.prettyPrint(printer)
+    printer.print(")")
+  }
 }
 
 case class ScHigherOrderContract(domain: ScExp, range: ScExp, idn: Identity) extends ScContract {
@@ -99,6 +105,8 @@ case class ScIdentifier(name: String, idn: Identity) extends ScExp {
   override def subexpressions: List[Expression] = List()
 
   override def toString: String = name
+  override def prettyPrint(printer: PrettyPrinter): Unit =
+    printer.print(toString, idn)
 }
 
 trait ScLiterals extends ScExp
@@ -120,7 +128,7 @@ case class ScLambda(variables: List[ScIdentifier], body: ScExp, idn: Identity)
   override def toString: String = s"(lambda (${variables.map(_.toString).mkString(" ")}) $body)"
 
   override def prettyPrint(printer: PrettyPrinter): Unit = {
-    printer.print(s"(lambda ${variables.map(_.toString).mkString(" ")}")
+    printer.print(s"(lambda (${variables.map(_.toString).mkString(" ")})", idn)
     printer.newIndent()
     body.prettyPrint(printer)
     printer.print(")")
@@ -142,7 +150,11 @@ case class ScLetRec(name: ScIdentifier, binding: ScExp, body: ScExp, idn: Identi
   override def toString: String = s"(letrec ($name $binding) $body)"
 
   override def prettyPrint(printer: PrettyPrinter): Unit = {
-    printer.print(s"(letrec ($name $binding)")
+    printer.print(s"(letrec (", idn)
+    name.prettyPrint(printer)
+    printer.print(" ")
+    binding.prettyPrint(printer)
+    printer.print(")")
     printer.newIndent()
     body.prettyPrint(printer)
     printer.print(")")
@@ -176,6 +188,21 @@ case class ScFunctionAp(operator: ScExp, operands: List[ScExp], idn: Identity) e
   override def subexpressions: List[Expression] = List(operator) ++ operands
 
   override def toString: String = s"($operator ${operands.map(_.toString).mkString(" ")})"
+
+  override def prettyPrint(printer: PrettyPrinter): Unit = {
+    printer.print("(")
+    operator.prettyPrint(printer)
+    printer.print(" ")
+    for (operand <- operands.init) {
+      operand.prettyPrint(printer)
+      printer.print(" ")
+    }
+
+    if (operands.lastOption.nonEmpty) {
+      operands.last.prettyPrint(printer)
+    }
+    printer.print(")")
+  }
 }
 
 case class ScBegin(expressions: List[ScExp], idn: Identity) extends ScExp {
@@ -192,7 +219,7 @@ case class ScBegin(expressions: List[ScExp], idn: Identity) extends ScExp {
   override def toString: String = s"(begin ${expressions.map(_.toString).mkString(" ")})"
 
   override def prettyPrint(printer: PrettyPrinter): Unit = {
-    printer.print("(begin")
+    printer.print("(begin", idn)
     printer.newIndent()
     for (expression <- expressions) {
       expression.prettyPrint(printer)
@@ -258,7 +285,7 @@ case class ScIf(condition: ScExp, consequent: ScExp, alternative: ScExp, idn: Id
   override def toString: String = s"(if $condition $consequent $alternative)"
 
   override def prettyPrint(printer: PrettyPrinter): Unit = {
-    printer.print("(if")
+    printer.print("(if", idn)
     condition.prettyPrint(printer)
     printer.newIndent()
     consequent.prettyPrint(printer)
@@ -318,5 +345,6 @@ case class ScOpaque(idn: Identity, refinement: Set[String]) extends ScExp {
   /** Returns the list of subexpressions of the given expression. */
   def subexpressions: List[Expression] = List()
 
-  override def toString: String = "OPQ"
+  override def toString: String =
+    if (refinement.nonEmpty) s"(OPQ ${refinement.mkString(" ")}" else "OPQ"
 }
