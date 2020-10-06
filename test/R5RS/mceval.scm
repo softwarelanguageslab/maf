@@ -74,6 +74,7 @@
 (define (cond-else-clause? clause) (eq? (cond-predicate clause) 'else))
 (define (cond-actions clause) (cdr clause))
 (define (expand-clauses clauses)
+  @sensitivity:No
   (if (null? clauses)
       'false
       (let ((first (car clauses))
@@ -101,15 +102,18 @@
 (define (frame-variables frame) (car frame))
 (define (frame-values frame) (cdr frame))
 (define (add-binding-to-frame! var val frame)
+  @sensitivity:No
   (set-car! frame (cons var (car frame)))
   (set-cdr! frame (cons val (cdr frame))))
 (define (extend-environment vars vals base-env)
+  @sensitivity:No
   (if (= (length vars) (length vals))
       (cons (make-frame vars vals) base-env)
       (if (< (length vars) (length vals))
           (error "Too many arguments supplied" vars vals)
           (error "Too few arguments supplied" vars vals))))
 (define (lookup-variable-value var env)
+  @sensitivity:No
   (letrec ((env-loop (lambda (env)
                        (letrec ((scan (lambda (vars vals)
                                         (cond ((null? vars)
@@ -124,6 +128,7 @@
                                      (frame-values frame))))))))
     (env-loop env)))
 (define (set-variable-value! var val env)
+  @sensitivity:No
   (letrec ((env-loop (lambda (env)
                        (letrec ((scan (lambda (vars vals)
                                         (cond ((null? vars)
@@ -138,6 +143,7 @@
                                      (frame-values frame))))))))
     (env-loop env)))
 (define (define-variable! var val env)
+  @sensitivity:No
   (let ((frame (first-frame env)))
     (letrec ((scan (lambda (vars vals)
                      (cond ((null? vars)
@@ -160,6 +166,7 @@
   (map (lambda (proc) (cons 'primitive (cons (cadr proc) '())))
        primitive-procedures))
 (define (setup-environment)
+  @sensitivity:No
   (let ((initial-env
          (extend-environment (primitive-procedure-names)
                              (primitive-procedure-objects)
@@ -169,6 +176,7 @@
     initial-env))
 (define the-global-environment (setup-environment))
 (define (apply-primitive-procedure proc args)
+  @sensitivity:No
   (let ((f (primitive-implementation proc))
         (n (length args)))
     (cond ((= n 0) (f))
@@ -176,6 +184,7 @@
           ((= n 2) (f (car args) (cadr args)))
           (else (error "ERROR -- can't handle more than two arguments")))))
 (define (mceval exp env)
+  @sensitivity:No
   (letrec ((eval-sequence (lambda (exps env)
                             (cond ((last-exp? exps) (mceval (first-exp exps) env))
                                   (else (mceval (first-exp exps) env)
