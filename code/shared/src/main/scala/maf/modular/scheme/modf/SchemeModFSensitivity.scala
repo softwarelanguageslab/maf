@@ -50,6 +50,33 @@ trait SchemeModFFullArgumentCallSiteSensitivity extends SchemeModFSensitivity {
     ArgCallSiteContext(clo._1.idn.pos, call, args)
 }
 
+trait SchemeModFAnySensitivity extends SchemeModFSensitivity {
+  type ComponentContext = Any
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext =
+    clo._1.annotation match {
+      case None =>
+        println(s"WARNING: Function has no annotation: $nam ($clo), using no sensitivity")
+        ("No", ())
+      case Some(("@sensitivity", "1CS")) =>
+        ("1CS", call)
+      case Some(("@sensitivity", "2CS")) =>
+        context(caller) match {
+          case Some(("1CS", call2 : Position)) =>
+            ("2CS", call :: call2 :: Nil)
+          case Some(("2CS", calls : List[Position])) =>
+            ("2CS", (call :: calls).take(2))
+          case _ =>
+            ("2CS", call :: Nil)
+        }
+      case Some(("@sensitivity", "FA")) =>
+        ("FA", args)
+      case annot =>
+        println(s"WARNING: Function has an invalid annotation: $nam ($clo), using no sensitivity instead of: $annot")
+        ("No", ())
+
+    }
+}
+
 // TODO: do not use inner class definition
 // TODO: find a way to reuse previous sensitivities?
 object SchemeModFCompoundSensitivities {
