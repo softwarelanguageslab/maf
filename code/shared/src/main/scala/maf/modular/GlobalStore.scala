@@ -40,13 +40,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr]
     // reading addresses in the global store
     def readAddr(addr: Addr): Value = {
       register(AddrDependency(addr))
-      intra.store.get(addr) match {
-        case None => 
-          intra.store = intra.store + (addr -> lattice.bottom) // TODO: <- currently required by AdaptiveGlobalStore, but can go once fixed there
-          return lattice.bottom
-        case Some(v) => 
-          return v
-      }
+      intra.store.getOrElse(addr, lattice.bottom)
     }
     // writing addresses of the global store
     def writeAddr(addr: Addr, value: Value): Boolean = 

@@ -4,6 +4,7 @@ import maf.modular.scheme.modf._
 import maf.modular.scheme._
 import maf.language.scheme._
 import maf.modular.adaptive._
+import maf.modular.ReturnAddr
 
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
@@ -15,7 +16,6 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   type ComponentData = SchemeModFComponent
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
   def newComponent(call: Call[ComponentContext]): Component = ref(call)
-
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
     case (lambda, env) => (lambda, env.mapAddrs(updateAddr(update)))
@@ -25,6 +25,13 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     case Call(clo,nam,ctx: ComponentContext) => Call(updateClosure(update)(clo),nam,updateCtx(update)(ctx))
   }
   def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext
+  def updateAddr(update: Component => Component)(addr: Addr): Addr = addr match {
+    case ptr: PtrAddr[Component] @unchecked     => PtrAddr(ptr.exp, update(ptr.ctx))
+    case vad: VarAddr[Component] @unchecked     => VarAddr(vad.id, update(vad.ctx))
+    case ret: ReturnAddr[Component] @unchecked  => ReturnAddr(update(ret.cmp),ret.idn)
+    case pad: PrmAddr                           => pad
+    case _ => throw new Exception(s"Unhandled addr: $addr")
+  }
   def updateValue(update: Component => Component)(value: Value): Value = value match {
     case modularLatticeWrapper.modularLattice.Elements(vs)  => modularLatticeWrapper.modularLattice.Elements(vs.map(updateV(update)))
   }
