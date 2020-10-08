@@ -454,7 +454,8 @@ extends SchemeDefineFunctionExp {
 
 /**
   * Do notation: (do ((<variable1> <init1> <step1>) ...) (<test> <expression> ...) <command> ...).
-  * Desugared according to R5SR.
+  * Desugared according to R5RS, i.e., a do becomes:
+  *   (letrec ((loop (lambda (variable1 variable2 ...) (if <test> <finals> (begin <body> (loop <step1> ...)))))))
   */
 object SchemeDo {
   def apply(
@@ -465,18 +466,26 @@ object SchemeDo {
              idn: Identity
   ): SchemeExp = {
     val loopId = Identifier("__do_loop", idn)
+    val annot = commands.take(1) match {
+      case (exp @ SchemeVar(Identifier(annot, _))) :: _ if annot.startsWith("@") =>
+        Some(exp)
+      case _ =>
+        None
+    }
+    val commandsWithoutAnnot = if (annot.isDefined) { commands.drop(1) } else { commands }
     SchemeLetrec(
       List(
         (
           loopId,
           SchemeLambda(
             vars.map(_._1),
+            (if (annot.isDefined) { annot.toList } else { List[SchemeExp]() }) ++
             List(
               SchemeIf(
                 test,
                 SchemeBody(finals),
                 SchemeBody(
-                  commands :::
+                  commandsWithoutAnnot :::
                     List(SchemeFuncall(SchemeVar(loopId), vars.map({
                       case (_, _, Some(step)) => step
                       case (id, _, None)      => SchemeVar(id)
