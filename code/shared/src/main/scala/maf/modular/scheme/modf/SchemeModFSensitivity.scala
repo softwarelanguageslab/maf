@@ -56,7 +56,7 @@ trait SchemeModFUserGuidedSensitivity1 extends SchemeModFSensitivity {
     clo._1.annotation match {
       case None =>
         // println(s"WARNING: Function has no annotation: $nam ($clo), using FA")
-        ("FA", args)
+        ("No", ())
       case Some(("@sensitivity", "1CS")) =>
         ("1CS", call)
       case Some(("@sensitivity", "2CS")) =>
@@ -70,6 +70,10 @@ trait SchemeModFUserGuidedSensitivity1 extends SchemeModFSensitivity {
         }
       case Some(("@sensitivity", "FA")) =>
         ("FA", args)
+      case Some(("@sensitivity", "1A")) =>
+        ("1A", args.take(1))
+      case Some(("@sensitivity", "2A")) =>
+        ("2A", args.drop(1).take(1))
       case Some(("@sensitivity", "No")) =>
         ("No", ())
       case annot =>

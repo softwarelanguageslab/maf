@@ -7,9 +7,10 @@ import maf.util._
 import maf.util.benchmarks._
 import maf.cli.experiments._
 import maf.cli.experiments.performance._
+import maf.bench.scheme.SchemeBenchmarkPrograms
 
 object UserGuidedSensitivity1Performance extends PerformanceEvaluation {
-  def benchmarks = Set("test/R5RS/mceval.scm")
+  def benchmarks = SchemeBenchmarkPrograms.gabriel
 
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (PrecisionComparison.baseAnalysis, "base"),

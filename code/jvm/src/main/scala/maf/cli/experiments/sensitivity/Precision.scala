@@ -23,8 +23,10 @@ object PrecisionComparison extends AnalysisComparison[
     Concrete.Sym
 ] {
   val benchmarks = {
-    List("test/R5RS/gabriel.scm") ++
-    SchemeBenchmarkPrograms.gabriel
+    SchemeBenchmarkPrograms.gabriel ++
+    List(
+      "test/R5RS/mceval.scm",
+    )
   }
 
   var path: String = "<none>"
@@ -49,7 +51,7 @@ object PrecisionComparison extends AnalysisComparison[
 
   override def analysisTimeout() = Timeout.start(Duration(2, MINUTES)) // timeout for (non-base) analyses
   override def concreteTimeout() = Timeout.start(Duration(2, MINUTES))
-  override def concreteRuns() = 2
+  override def concreteRuns() = 1
 
   def main(args: Array[String]) = runBenchmarks() // check("test/primtest.scm")
 
