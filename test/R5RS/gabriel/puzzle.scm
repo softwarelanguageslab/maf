@@ -1,6 +1,7 @@
 ;;; PUZZLE -- Forest Baskett's Puzzle benchmark, originally written in Pascal.
 
 (define (my-iota n)
+  @sensitivity:FA
   (do ((n n (- n 1))
        (list '() (cons (- n 1) list)))
       ((zero? n) list)))
@@ -20,6 +21,7 @@
 (define *p* (make-vector (+ typemax 1)))
 
 (define (fit i j)
+  @sensitivity:FA
   (let ((end (vector-ref *piecemax* i)))
     (do ((k 0 (+ k 1)))
         ((or (> k end)
@@ -28,6 +30,7 @@
          (if (> k end) #t #f)))))
 
 (define (place i j)
+  @sensitivity:FA
   (let ((end (vector-ref *piecemax* i)))
     (do ((k 0 (+ k 1)))
         ((> k end))
@@ -53,6 +56,7 @@
                  (+ (vector-ref *piececount* (vector-ref *class* i)) 1))))
 
 (define (trial j)
+  @sensitivity:FA
   (let ((k 0) (return #f))
     (lambda (return)
       (do ((i 0 (+ i 1)))
@@ -71,6 +75,7 @@
              (else (puzzle-remove i j)))))))))))
 
 (define (definePiece iclass ii jj kk)
+  @sensitivity:FA
   (let ((index 0))
     (do ((i 0 (+ i 1)))
         ((> i ii))
@@ -132,7 +137,7 @@
       *kount*
       #f)))
 
-(for-each (lambda (i) (vector-set! *p* i (make-vector (+ size 1))))
+(for-each (lambda (i) @sensitivity:FA (vector-set! *p* i (make-vector (+ size 1))))
           (my-iota (+ typemax 1)))
 
 (= (start) 2005)

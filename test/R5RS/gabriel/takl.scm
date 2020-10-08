@@ -1,13 +1,16 @@
 (define (listn n)
+  @sensitivity:FA
   (if (= n 0)
       '()
       (cons n (listn (- n 1)))))
 (define (shorterp x y)
+  @sensitivity:FA
   (and (not (null? y))
        (or (null? x)
            (shorterp (cdr x)
                      (cdr y)))))
 (define (mas x y z)
+  @sensitivity:FA
   (if (not (shorterp y x))
       z
       (mas (mas (cdr x) y z)

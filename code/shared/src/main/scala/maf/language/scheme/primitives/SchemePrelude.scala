@@ -8,11 +8,13 @@ object SchemePrelude {
   val primDefs = Map(
     "@sensitivity:1CS" -> "(define @sensitivity:1CS #f)",
     "@sensitivity:FA" -> "(define @sensitivity:FA #f)",
+    "@sensitivity:1A" -> "(define @sensitivity:1A #f)",
+    "@sensitivity:2A" -> "(define @sensitivity:2A #f)",
     "@sensitivity:No" -> "(define @sensitivity:No #f)",
 
     "abs" -> "(define (abs x) @sensitivity:FA (if (< x 0) (- 0 x) x))",
     "append" -> """(define (append l1 l2)
-                  |  @sensitivity:1CS
+                  |  @sensitivity:No
                   |  (if (null? l1)
                   |      l2
                   |      (cons (car l1)
@@ -49,6 +51,7 @@ object SchemePrelude {
                   |      (let ((n (vector-length a)))
                   |        (and (= (vector-length b) n)
                   |          (letrec ((loop (lambda (i)
+                  |                           @sensitivity:FA
                   |                           (or (= i n)
                   |                             (and (equal? (vector-ref a i) (vector-ref b i))
                   |                               (loop (+ i 1)))))))
@@ -146,25 +149,26 @@ object SchemePrelude {
     "vector->list" -> """(define (vector->list v)
                         |  @sensitivity:FA
                         |  (let construct ((i (- (vector-length v) 1)) (lst '()))
+                        |    @sensitivity:FA
                         |    (if (< i 0)
                         |        lst
                         |        (construct (- i 1)
                         |                   (cons (vector-ref v i) lst)))))""".stripMargin,
     "reverse" -> """(define (reverse l)
-                   |  @sensitivity:FA
+                   |  @sensitivity:No
                    |  (if (null? l)
                    |      '()
                    |      (append (reverse (cdr l))
                    |              (list (car l)))))""".stripMargin,
     "map" ->  """(define (map f l)
-                |  @sensitivity:FA
+                |  @sensitivity:1A
                 |  (if (null? l)
                 |      '()
                 |      (if (pair? l)
                 |          (cons (f (car l)) (map f (cdr l)))
                 |          (error "Cannot map over a non-list."))))""".stripMargin,
     "for-each" -> """(define (for-each f l)
-                    |  @sensitivity:FA
+                    |  @sensitivity:1A
                     |  (if (null? l)
                     |      #t
                     |      (if (pair? l)
@@ -175,6 +179,7 @@ object SchemePrelude {
                         |  (define len (string-length string))
                         |  (let convert ((n (- len 1))
                         |                (r '()))
+                        |    @sensitivity:FA
                         |    (if (< n 0)
                         |        r
                         |        (convert (- n 1)
@@ -183,6 +188,7 @@ object SchemePrelude {
                     |  @sensitivity:FA
                     |  (and (= (string-length s1)(string-length s2))
                     |       (let loop ((i (- (string-length s1) 1)))
+                    |        @sensitivity:FA
                     |        (if (< i 0)
                     |            #t
                     |            (and (char=? (string-ref s1 i) (string-ref s2 i))
@@ -191,6 +197,7 @@ object SchemePrelude {
                        |  @sensitivity:FA
                        |  (and (= (string-length s1)(string-length s2))
                        |       (let loop ((i (- (string-length s1) 1)))
+                       |        @sensitivity:FA
                        |        (if (< i 0)
                        |            #t
                        |            (and (char-ci=? (string-ref s1 i) (string-ref s2 i))
@@ -218,7 +225,7 @@ object SchemePrelude {
     //            (foldl-aux f (f base (car lst)) (cdr lst))))"""
     // TODO: implement apply internally
     "apply" -> """(define (apply proc args)
-                 |  @sensitivity:FA
+                 |  @sensitivity:1A
                  |  (cond
                  |    ((null?                args)   (proc))
                  |    ((null?        (   cdr args))  (proc (car args)))

@@ -1,9 +1,11 @@
 ;;; DESTRUC -- Destructive operation benchmark.
 
 (define (append-to-tail! x y)
+  @sensitivity:FA
   (if (null? x)
       y
       (let loop ((a x) (b (cdr x)))
+        @sensitivity:FA
         (if (null? b)
             (begin
               (set-cdr! a y)
@@ -11,6 +13,7 @@
             (loop b (cdr b))))))
 
 (define (destructive n m)
+  @sensitivity:FA
   (let ((l (do ((i 10 (- i 1)) (a '() (cons '() a)))
              ((= i 0) a))))
     (do ((i n (- i 1)))

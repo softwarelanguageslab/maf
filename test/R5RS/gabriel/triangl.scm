@@ -26,6 +26,7 @@
 (define *answer* '())
 
 (define (attempt i depth)
+  @sensitivity:FA
   (cond ((= depth 14)
          (set! *answer*
                (cons (cdr (vector->list *sequence*)) *answer*))
@@ -46,6 +47,7 @@
         (else #f)))
 
 (define (test i depth)
+  @sensitivity:FA
   (set! *answer* '())
   (attempt i depth)
   (car *answer*))

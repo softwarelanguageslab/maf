@@ -18,6 +18,7 @@
               #f))
         #f)))
 (define (put name prop valu)
+  @sensitivity:No
   (let ((r (nameprop name)))
     (if (pair? r)
         (let ((s (assq prop (cdr r))))
@@ -40,6 +41,7 @@
 (define temp-temp 0)
 
 (define (add-lemma term)
+  @sensitivity:No
   (cond ((and (pair? term)
               (eq? (car term)
                    (quote equal))
@@ -56,6 +58,7 @@
               (add-lemma-lst (cdr lst)))))
 
 (define (apply-subst alist term)
+  @sensitivity:No
   (cond ((not (pair? term))
          (cond ((begin (set! temp-temp (assq term alist))
                        temp-temp)
@@ -65,6 +68,7 @@
                     (apply-subst-lst alist (cdr term))))))
 
 (define (apply-subst-lst alist lst)
+  @sensitivity:No
   (cond ((null? lst)
          '())
         (else (cons (apply-subst alist (car lst))
@@ -79,6 +83,7 @@
          (one-way-unify1 term1 term2)))
 
 (define (one-way-unify1 term1 term2)
+  @sensitivity:No
   (cond ((not (pair? term2))
          (cond ((begin (set! temp-temp (assq term2 unify-subst))
                        temp-temp)
@@ -104,6 +109,7 @@
         (else #f)))
 
 (define (rewrite term)
+  @sensitivity:No
   (cond ((not (pair? term))
          term)
         (else (rewrite-with-lemmas (cons (car term)
@@ -112,6 +118,7 @@
                                         (quote lemmas))))))
 
 (define (rewrite-args lst)
+  @sensitivity:No
   (cond ((null? lst)
          '())
         (else (cons (rewrite (car lst))
@@ -552,11 +559,13 @@
     ans))
 
 (define (trans-of-implies n)
+  @sensitivity:No
   (cons 'implies (cons (trans-of-implies1 n)
                        (cons (cons 'implies (cons 0 (cons n '())))
                              '()))))
 
 (define (trans-of-implies1 n)
+  @sensitivity:No
   (cond ((equal? n 1)
          (cons 'implies (cons 0 (cons 1 '()))))
         (else (cons 'and (cons (cons 'implies (cons (- n 1) (cons n '()))) (cons (trans-of-implies1 (- n 1)) '()))))))

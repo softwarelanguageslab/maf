@@ -2,7 +2,9 @@
 ;;; an AI-like data base of units.
 
 (define (lookup key table)
+  @sensitivity:FA
   (let loop ((x table))
+    @sensitivity:FA
     (if (null? x)
         #f
         (let ((pair (car x)))
@@ -13,6 +15,7 @@
 (define properties '())
 
 (define (get key1 key2)
+  @sensitivity:FA
   (let ((x (lookup key1 properties)))
     (if x
         (let ((y (lookup key2 (cdr x))))
@@ -22,6 +25,7 @@
         #f)))
 
 (define (put key1 key2 val)
+  @sensitivity:No
   (let ((x (lookup key1 properties)))
     (if x
         (let ((y (lookup key2 (cdr x))))
@@ -38,6 +42,7 @@
   (string->symbol (number->string *current-gensym*)))
 
 (define (append-to-tail! x y)
+  @sensitivity:FA
   (if (null? x)
       y
       (do ((a x b)
@@ -47,6 +52,7 @@
          x))))
 
 (define (tree-copy x)
+  @sensitivity:FA
   (if (not (pair? x))
       x
       (cons (tree-copy (car x))
@@ -60,6 +66,7 @@
 (define *rand* 21)
 
 (define (init n m npats ipats)
+  @sensitivity:FA
   (let ((ipats (tree-copy ipats)))
     (do ((p ipats (cdr p)))
       ((null? (cdr p)) (set-cdr! p ipats)))
@@ -85,10 +92,12 @@
         (put name (generate-symbol) #f)))))
 
 (define (browse-random)
+  @sensitivity:No
   (set! *rand* (remainder (* *rand* 17) 251))
   *rand*)
 
 (define (randomize l)
+  @sensitivity:FA
   (do ((a '()))
     ((null? l) a)
     (let ((n (remainder (browse-random) (length l))))
@@ -105,6 +114,7 @@
                 x)))))))
 
 (define (my-match pat dat alist)
+  @sensitivity:No
   (cond ((null? pat)
          (null? dat))
         ((null? dat) '())
@@ -167,11 +177,13 @@
                     (a a a b (b a) b a b a)))))
 
 (define (browse pats)
+  @sensitivity:No
   (investigate
    database
    pats))
 
 (define (investigate units pats)
+  @sensitivity:No
   (do ((units units (cdr units)))
     ((null? units))
     (do ((pats pats (cdr pats)))
