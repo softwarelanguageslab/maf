@@ -92,6 +92,7 @@ abstract class PrecisionBenchmarks[
     }
     private def convertConcreteValue(value: SchemeInterpreter.Value): BaseValue = value match {
         case SchemeInterpreter.Value.Nil                => baseLattice.nil
+        case SchemeInterpreter.Value.Void               => baseLattice.void
         case SchemeInterpreter.Value.Undefined(_)       => baseLattice.bottom
         case SchemeInterpreter.Value.Clo(l, _, _)       => baseLattice.closure((LambdaIdnEq(l),emptyEnv),None) // TODO: when names are added to the abstract interpreter, preserve that information here
         case SchemeInterpreter.Value.Primitive(p)       => baseLattice.primitive(StubPrimitive(p.name))
