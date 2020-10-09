@@ -15,22 +15,29 @@
 (define (destructive n m)
   @sensitivity:FA
   (let ((l (do ((i 10 (- i 1)) (a '() (cons '() a)))
-             ((= i 0) a))))
+               ((= i 0) a)
+             @sensitivity:FA)))
     (do ((i n (- i 1)))
-      ((= i 0) l)
+        ((= i 0) l)
+      @sensitivity:No ;; does not terminate with FA
       (cond ((null? (car l))
              (do ((l l (cdr l)))
-               ((null? l))
+                 ((null? l))
+               @sensitivity:FA
                (if (null? (car l)) (set-car! l (cons '() '())))
                (append-to-tail! (car l)
                                 (do ((j m (- j 1)) (a '() (cons '() a)))
-                                  ((= j 0) a)))))
+                                    ((= j 0) a)
+                                  @sensitivity:No ;; does not terminate with FA, 1A
+                                  ))))
             (else
              (do ((l1 l (cdr l1)) (l2 (cdr l) (cdr l2)))
-               ((null? l2))
+                 ((null? l2))
+               @sensitivity:FA
                (set-cdr! (do ((j (quotient (length (car l2)) 2) (- j 1))
                               (a (car l2) (cdr a)))
-                           ((zero? j) a)
+                             ((zero? j) a)
+                           @sensitivity:FA
                            (set-car! a i))
                          (let ((n (quotient (length (car l1)) 2)))
                            (cond ((= n 0)
@@ -42,6 +49,7 @@
                                      (let ((x (cdr a)))
                                        (set-cdr! a '())
                                        x))
+                                    @sensitivity:FA
                                     (set-car! a i))))))))))))
 
 (equal? (destructive 600 50)

@@ -74,8 +74,8 @@ object PrecisionComparison extends AnalysisComparison[
       runBenchmark(b)
     })
     println("Results:")
-    val columns = List("Improved")
+    val columns = List("Improved", "concrete")
     println(results.withDefaultValue(None).prettyString(columns = columns, format = _.map(_.toString()).getOrElse("TIMEOUT")))
-    println(results.withDefaultValue(None).toLatexString(columns = columns, format = _.map(_.toString()).getOrElse("--")))
+    // println(results.withDefaultValue(None).toLatexString(columns = columns, format = _.map(_.toString()).getOrElse("--")))
   }
 }

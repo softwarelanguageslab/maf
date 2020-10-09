@@ -2,6 +2,7 @@
 (define *lastlook* '(xxx ()))
 
 (define (nameprop name)
+  @sensitivity:FA
   (if (eq? name (car *lastlook*))
       *lastlook*
       (let ((pair (assq name *namelist*)))
@@ -10,6 +11,7 @@
             #f)
         pair)))
 (define (get name prop)
+  @sensitivity:FA
   (let ((r (nameprop name)))
     (if (pair? r)
         (let ((s (assq prop (cdr r))))
@@ -18,7 +20,7 @@
               #f))
         #f)))
 (define (put name prop valu)
-  @sensitivity:No
+  @sensitivity:FA
   (let ((r (nameprop name)))
     (if (pair? r)
         (let ((s (assq prop (cdr r))))
@@ -31,17 +33,19 @@
   valu)
 (define reinit-prop!
   (lambda ()
+    @sensitivity:FA
     (set! *namelist* '())
     (set! *lastlook* '(xxx ()))))
 
 (define (get-null name prop)
+  @sensitivity:FA
   (or (get name prop) '()))
 
 (define unify-subst 0)
 (define temp-temp 0)
 
 (define (add-lemma term)
-  @sensitivity:No
+  @sensitivity:No ;; does not terminate with FA
   (cond ((and (pair? term)
               (eq? (car term)
                    (quote equal))
@@ -52,13 +56,14 @@
         (else (error 'add-lemma "ADD-LEMMA did not like term:  " term))))
 
 (define (add-lemma-lst lst)
+  @sensitivity:FA
   (cond ((null? lst)
          #t)
         (else (add-lemma (car lst))
               (add-lemma-lst (cdr lst)))))
 
 (define (apply-subst alist term)
-  @sensitivity:No
+  @sensitivity:No ;; terminates with FA, but seems slower
   (cond ((not (pair? term))
          (cond ((begin (set! temp-temp (assq term alist))
                        temp-temp)
@@ -68,22 +73,24 @@
                     (apply-subst-lst alist (cdr term))))))
 
 (define (apply-subst-lst alist lst)
-  @sensitivity:No
+  @sensitivity:FA
   (cond ((null? lst)
          '())
         (else (cons (apply-subst alist (car lst))
                     (apply-subst-lst alist (cdr lst))))))
 
 (define (falsep x lst)
+  @sensitivity:FA
   (or (equal? x (quote (f)))
       (member x lst)))
 
 (define (one-way-unify term1 term2)
+  @sensitivity:FA
   (begin (set! unify-subst '())
          (one-way-unify1 term1 term2)))
 
 (define (one-way-unify1 term1 term2)
-  @sensitivity:No
+  @sensitivity:No ;; does not terminate with FA
   (cond ((not (pair? term2))
          (cond ((begin (set! temp-temp (assq term2 unify-subst))
                        temp-temp)
@@ -100,6 +107,7 @@
         (else #f)))
 
 (define (one-way-unify1-lst lst1 lst2)
+  @sensitivity:FA
   (cond ((null? lst1)
          #t)
         ((one-way-unify1 (car lst1)
@@ -109,7 +117,7 @@
         (else #f)))
 
 (define (rewrite term)
-  @sensitivity:No
+  @sensitivity:No ;; does not terminate with FA
   (cond ((not (pair? term))
          term)
         (else (rewrite-with-lemmas (cons (car term)
@@ -118,13 +126,14 @@
                                         (quote lemmas))))))
 
 (define (rewrite-args lst)
-  @sensitivity:No
+  @sensitivity:No ;; does not terminate with FA
   (cond ((null? lst)
          '())
         (else (cons (rewrite (car lst))
                     (rewrite-args (cdr lst))))))
 
 (define (rewrite-with-lemmas term lst)
+  @sensitivity:FA
   (cond ((null? lst)
          term)
         ((one-way-unify term (cadr (car lst)))
@@ -132,6 +141,7 @@
         (else (rewrite-with-lemmas term (cdr lst)))))
 
 (define (setup)
+  @sensitivity:FA
   (add-lemma-lst
    (quote ((equal (compile form)
                   (reverse (codegen (optimize form)
@@ -505,6 +515,7 @@
                       (get j mem)))))))
 
 (define (tautologyp x true-lst false-lst)
+  @sensitivity:No
   (cond ((truep x true-lst)
          #t)
         ((falsep x false-lst)
@@ -532,10 +543,12 @@
         (else #f)))
 
 (define (tautp x)
+  @sensitivity:FA
   (tautologyp (rewrite x)
               '() '()))
 
 (define (test)
+  @sensitivity:FA
   (let ((ans #f)
         (term #f))
     (set! term
@@ -559,18 +572,19 @@
     ans))
 
 (define (trans-of-implies n)
-  @sensitivity:No
+  @sensitivity:FA
   (cons 'implies (cons (trans-of-implies1 n)
                        (cons (cons 'implies (cons 0 (cons n '())))
                              '()))))
 
 (define (trans-of-implies1 n)
-  @sensitivity:No
+  @sensitivity:FA
   (cond ((equal? n 1)
          (cons 'implies (cons 0 (cons 1 '()))))
         (else (cons 'and (cons (cons 'implies (cons (- n 1) (cons n '()))) (cons (trans-of-implies1 (- n 1)) '()))))))
 
 (define (truep x lst)
+  @sensitivity:FA
   (or (equal? x (quote (t)))
       (member x lst)))
 

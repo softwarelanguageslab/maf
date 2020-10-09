@@ -4,7 +4,8 @@
   @sensitivity:FA
   (do ((n n (- n 1))
        (a '() (cons '() a)))
-    ((= n 0) a)))
+      ((= n 0) a)
+    @sensitivity:FA))
 
 (define *ll* (create-n 200))
 
@@ -12,7 +13,8 @@
   @sensitivity:FA
   (do ((l l (cddr l))
        (a '() (cons (car l) a)))
-    ((null? l) a)))
+      ((null? l) a)
+    @sensitivity:FA))
 
 (equal? (iterative-div2 *ll*)
         '(() () () () () () () () () () () () () () () () () () () ()

@@ -4,7 +4,8 @@
   @sensitivity:FA
   (do ((n n (- n 1))
        (list '() (cons (- n 1) list)))
-      ((zero? n) list)))
+      ((zero? n) list)
+    @sensitivity:FA))
 
 (define size 511)
 (define classmax 3)
@@ -27,30 +28,36 @@
         ((or (> k end)
              (and (vector-ref (vector-ref *p* i) k)
                   (vector-ref *puzzle* (+ j k))))
-         (if (> k end) #t #f)))))
+         (if (> k end) #t #f))
+      @sensitivity:No ;; does not terminate with FA
+      )))
 
 (define (place i j)
   @sensitivity:FA
   (let ((end (vector-ref *piecemax* i)))
     (do ((k 0 (+ k 1)))
         ((> k end))
-        (cond ((vector-ref (vector-ref *p* i) k)
-               (vector-set! *puzzle* (+ j k) #t)
-               #t)))
+      @sensitivity:FA
+      (cond ((vector-ref (vector-ref *p* i) k)
+             (vector-set! *puzzle* (+ j k) #t)
+             #t)))
     (vector-set! *piececount*
                  (vector-ref *class* i)
                  (- (vector-ref *piececount* (vector-ref *class* i)) 1))
     (do ((k j (+ k 1)))
         ((or (> k size) (not (vector-ref *puzzle* k)))
-         (if (> k size) 0 k)))))
+         (if (> k size) 0 k))
+      @sensitivity:FA)))
 
 (define (puzzle-remove i j)
+  @sensitivity:FA
   (let ((end (vector-ref *piecemax* i)))
     (do ((k 0 (+ k 1)))
         ((> k end))
-        (cond ((vector-ref (vector-ref *p* i) k)
-               (vector-set! *puzzle* (+ j k) #f)
-               #f)))
+      @sensitivity:FA
+      (cond ((vector-ref (vector-ref *p* i) k)
+             (vector-set! *puzzle* (+ j k) #f)
+             #f)))
     (vector-set! *piececount*
                  (vector-ref *class* i)
                  (+ (vector-ref *piececount* (vector-ref *class* i)) 1))))
@@ -61,6 +68,7 @@
     (lambda (return)
       (do ((i 0 (+ i 1)))
           ((or return (> i typemax)) (set! *kount* (+ *kount* 1)) return)
+        @sensitivity:FA
         (cond
          ((not
            (zero?
@@ -79,34 +87,44 @@
   (let ((index 0))
     (do ((i 0 (+ i 1)))
         ((> i ii))
-        (do ((j 0 (+ j 1)))
-            ((> j jj))
-            (do ((k 0 (+ k 1)))
-                ((> k kk))
-                (set! index (+ i (* *d* (+ j (* *d* k)))))
-                (vector-set! (vector-ref *p* *iii*) index  #t))))
+      @sensitivity:FA
+      (do ((j 0 (+ j 1)))
+          ((> j jj))
+        @sensitivity:FA
+        (do ((k 0 (+ k 1)))
+            ((> k kk))
+          @sensitivity:FA
+          (set! index (+ i (* *d* (+ j (* *d* k)))))
+          (vector-set! (vector-ref *p* *iii*) index  #t))))
     (vector-set! *class* *iii* iclass)
     (vector-set! *piecemax* *iii* index)
     (cond ((not (= *iii* typemax))
            (set! *iii* (+ *iii* 1))))))
 
 (define (start)
+  @sensitivity:FA
   (set! *kount* 0)
   (do ((m 0 (+ m 1)))
       ((> m size))
-      (vector-set! *puzzle* m #t))
+    @sensitivity:FA
+    (vector-set! *puzzle* m #t))
   (do ((i 1 (+ i 1)))
       ((> i 5))
-      (do ((j 1 (+ j 1)))
-          ((> j 5))
-          (do ((k 1 (+ k 1)))
-              ((> k 5))
-              (vector-set! *puzzle* (+ i (* *d* (+ j (* *d* k)))) #f))))
+    @sensitivity:FA
+    (do ((j 1 (+ j 1)))
+        ((> j 5))
+      @sensitivity:FA
+      (do ((k 1 (+ k 1)))
+          ((> k 5))
+        @sensitivity:FA
+        (vector-set! *puzzle* (+ i (* *d* (+ j (* *d* k)))) #f))))
   (do ((i 0 (+ i 1)))
       ((> i typemax))
-      (do ((m 0 (+ m 1)))
-          ((> m size))
-          (vector-set! (vector-ref *p* i) m #f)))
+    @sensitivity:FA
+    (do ((m 0 (+ m 1)))
+        ((> m size))
+      @sensitivity:FA
+      (vector-set! (vector-ref *p* i) m #f)))
   (set! *iii* 0)
   (definePiece 0 3 1 0)
   (definePiece 0 1 0 3)
