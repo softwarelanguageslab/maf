@@ -256,6 +256,14 @@ case class ScMon(contract: ScExp, expression: ScExp, idn: Identity) extends ScEx
   override def subexpressions: List[Expression] = List(contract, expression)
 
   override def toString: String = s"(mon $contract $expression)"
+
+  override def prettyPrint(printer: PrettyPrinter): Unit = {
+    printer.print("(mon ", idn)
+    contract.prettyPrint(printer)
+    printer.print(" ")
+    expression.prettyPrint(printer)
+    printer.print(")")
+  }
 }
 
 case class ScCheck(contract: ScExp, returnValue: ScExp, idn: Identity) extends ScExp {

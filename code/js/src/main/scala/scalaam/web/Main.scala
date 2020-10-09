@@ -140,6 +140,7 @@ object ContractVerificationPage extends Component {
             val verifiedU = analysis
               .getVerificationResults(analysis.Top)
               .flatMap((t) => List(t._1.pos, t._2.pos))
+            val blames = analysis.summary.blames.values.flatten
 
             val monitors = analysis.verificationResults.keys.map(_.pos).toList
 
@@ -155,6 +156,8 @@ object ContractVerificationPage extends Component {
                   super.print("<span class=\"highlight bold\" >" + s + "</span>", idn)
                 } else if (monitors.contains(idn.pos)) {
                   super.print("<span class=\"highlight underline\" >" + s + "</span>", idn)
+                } else if (blames.exists(_.blamedPosition.pos == idn.pos)) {
+                  super.print("<span class=\"highlight blame\" >" + s + "</span>", idn)
                 } else {
                   super.print(s, idn)
                 }
@@ -173,7 +176,7 @@ object ContractVerificationPage extends Component {
             safety.appendChild(span(`class` := "safe", "Verified as safe").render)
           } else {
             results.innerHTML = colorCode(sc)
-            safety.appendChild(span(`class` := "safe", "Could not verify as safe").render)
+            safety.appendChild(span(`class` := "unsafe", "Could not verify as safe").render)
           }
 
         },
