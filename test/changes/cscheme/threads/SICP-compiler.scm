@@ -1,6 +1,6 @@
 ;; Taken from "Structure and Interpratation of Computer Programs" (H. Abelson, G. J. Sussman, J. Sussman) 2nd Edition
 ;; The result should be true (#t).
-;; Adapted by translating all calls to the list primitive into calls to cons since list is not supported by SCALA-AM.
+;; Adapted by translating all calls to the list primitive into calls to cons since list is not supported by MAF.
 ;; Adapted by working around an unknown number of arguments for append-instruction-sequences.
 (define true #t)
 (define false #f)

@@ -1,7 +1,7 @@
-package scalaam.test.modular.contracts
+package maf.test.modular.contracts
 
-import scalaam.modular.contracts.ScSMTSolverJVM
-import scalaam.test.ScTestsJVM
+import maf.modular.contracts.ScSMTSolverJVM
+import maf.test.ScTestsJVM
 
 class ScSMTSolverTest extends ScTestsJVM {
   private def test(expression: String, message: String)(f: ScSMTSolverJVM => Unit): Unit = {

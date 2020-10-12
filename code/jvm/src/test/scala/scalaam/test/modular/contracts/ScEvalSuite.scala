@@ -1,9 +1,9 @@
-package scalaam.test.modular.contracts
+package maf.test.modular.contracts
 
-import scalaam.language.contracts.ScLattice.{Blame, Opq, Prim}
-import scalaam.modular.contracts.ScMain
-import scalaam.test.ScTestsJVM
-import scalaam.core.Position
+import maf.language.contracts.ScLattice.{Blame, Opq, Prim}
+import maf.modular.contracts.ScMain
+import maf.test.ScTestsJVM
+import maf.core.Position
 
 class ScEvalSuite extends ScTestsJVM {
   trait VerifyTestBuilder extends ScLatticeFixture with ScAnalysisFixtureJVM {

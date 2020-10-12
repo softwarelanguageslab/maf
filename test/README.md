@@ -1,6 +1,6 @@
-# Scala-AM benchmark suite
+# MAF benchmark suite
 
-This directory contains the Scala-AM benchmark suite. This benchmark suite currently focuses on
+This directory contains the MAF benchmark suite. This benchmark suite currently focuses on
 the R5RS Scheme language. Benchmarks are also present for an extension of this language with constructs
 for concurrency.
 
@@ -20,7 +20,7 @@ are based on/rewritten from the benchmarks from threads.
 
 ### Actors
 
-The following code is in Scheme-with-Actors. No implementation of this scalaam.language
+The following code is in Scheme-with-Actors. No implementation of this language
 exists, but it can be easily run on Racket provided the following macros:
 
 ```scheme
@@ -135,7 +135,7 @@ Additional remarks
 * tail.scm      =>  Some necessary files are not included in the test directory yet, but the test would fail inevitably because of other reasons.
 * wc.scm        =>  Some necessary files are not included in the test directory yet, but the test would fail inevitably because of other reasons.
 
-Some similar benchmarks were already included in SCALA-AM's test suite and are not included again.
+Some similar benchmarks were already included in MAF's test suite and are not included again.
 * ack.scm
 * boyer.scm
 * conform.scm
@@ -274,7 +274,7 @@ Added/adapted tests to some files. Tests should normally evaluate to #t.
 * let-loop.scm should return 20000.
 * arithint.scm should evaluate to 20001.
 
-Some similar benchmarks were already included in SCALA-AM's test suite and are not included again.
+Some similar benchmarks were already included in MAF's test suite and are not included again.
 * fib.scm
 * cpstak.scm
 

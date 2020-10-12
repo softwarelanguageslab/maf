@@ -1,4 +1,4 @@
-name: Scala-AM tests on action
+name: MAF tests on action
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -14,6 +14,15 @@ jobs:
     name: Compile Scala-AM
     runs-on: ubuntu-latest
     steps:
+    - name: Notify push
+      id: slack
+      uses: voxmedia/github-action-slack-notify-build@v1
+      with:
+        channel: maf
+        status: STARTED
+        color: warning
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
     - name: Checkout the repository
       uses: actions/checkout@v2
     - name: Compile Scala-AM
@@ -23,4 +32,24 @@ jobs:
     - name: Run the tests
       uses: lokkju/github-action-sbt@v0.2.2
       with:
-        commands: scalaam/testOnly -- -l SlowTest
+        commands: maf/testOnly -- -l SlowTest
+    - name: Notify slack success
+      if: success()
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      uses: voxmedia/github-action-slack-notify-build@v1
+      with:
+        message_id: ${{ steps.slack.outputs.message_id }}
+        channel: maf
+        status: SUCCESS
+        color: good
+    - name: Notify slack fail
+      if: failure()
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      uses: voxmedia/github-action-slack-notify-build@v1
+      with:
+        message_id: ${{ steps.slack.outputs.message_id }}
+        channel: maf
+        status: FAILED
+        color: danger

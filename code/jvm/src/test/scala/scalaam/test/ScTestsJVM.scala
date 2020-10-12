@@ -1,7 +1,7 @@
-package scalaam.test
+package maf.test
 
-import scalaam.language.contracts.ScExp
-import scalaam.modular.contracts.{ScSMTSolverJVM, ScSmtSolver}
+import maf.language.contracts.ScExp
+import maf.modular.contracts.{ScSMTSolverJVM, ScSmtSolver}
 
 trait ScTestsJVM extends ScTests {
   val primitivesMap = Map(

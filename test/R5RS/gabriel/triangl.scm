@@ -26,6 +26,7 @@
 (define *answer* '())
 
 (define (attempt i depth)
+  @sensitivity:FA
   (cond ((= depth 14)
          (set! *answer*
                (cons (cdr (vector->list *sequence*)) *answer*))
@@ -39,13 +40,15 @@
          (vector-set! *sequence* depth i)
          (do ((j 0 (+ j 1))
               (depth (+ depth 1)))
-             ((or (= j 36) (attempt j depth)) #f))
+             ((or (= j 36) (attempt j depth)) #f)
+           @sensitivity:FA)
          (vector-set! *board* (vector-ref *a* i) 1)
          (vector-set! *board* (vector-ref *b* i) 1)
          (vector-set! *board* (vector-ref *c* i) 0) #f)
         (else #f)))
 
 (define (test i depth)
+  @sensitivity:FA
   (set! *answer* '())
   (attempt i depth)
   (car *answer*))

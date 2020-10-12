@@ -1,4 +1,4 @@
-This file lists programs that might be added to the scala-am benchmark suite in the future.
+This file lists programs that might be added to the MAF benchmark suite in the future.
 * https://github.com/darius/miasma
 * https://github.com/ekmett/scheme-monads/blob/master/curry.ss (uses macros)
 * https://github.com/VincentToups/scran (uses macros)
@@ -21,7 +21,7 @@ Github scrape:
 ./macdavid313/chezure                       x
 ./crosswire/xiphos                            v Seems to contain some good code (in package `win32/festival`)
 ./abcdw/rde                                 x   Uses gnu and guix packages.
-./google/schism                               v With minor changes, code of rnrs.ss and compiler.ss seemto be combinable
+./google/schism                               v With minor changes, code of rnrs.ss and compiler.ss seem to be combinable
 ./Phantas0s/.dotfiles                       x
 ./IronScheme/IronScheme
 ./webyrd/Barliman

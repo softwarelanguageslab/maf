@@ -1,6 +1,6 @@
-# Scala-AM Incremental Benchmark Suite
+# MAF Incremental Benchmark Suite
 
-This directory contains the Scala-AM Incremental Benchmark suite.
+This directory contains the MAF Incremental Benchmark suite.
 This suite contains programs annotated with changes, originally taken from the main benchmark suite.
 
 To execute these programs in a standard Scheme interpreter, macros can be used.
