@@ -12,6 +12,16 @@ jobs:
     name: Compile MAF
     runs-on: ubuntu-latest
     steps:
+      # Send a notification to Slack.
+      - name: Notify push
+        id: slack
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          channel: maf
+          status: STARTED
+          color: warning
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
       - uses: actions/checkout@v2
       - uses: lokkju/github-action-sbt@v0.2.2
         with:
@@ -26,6 +36,17 @@ jobs:
       - uses: lokkju/github-action-sbt@v0.2.2
         with:
           commands: maf/testOnly maf.test.lattice.*
+      # If failed, update the Slack notification.
+      - name: Notify slack fail
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf
+          status: FAILED
+          color: danger
   # The test-R5RS job executes the R5RS tests.
   test-R5RS:
     name: Execute primitive tests
@@ -36,6 +57,17 @@ jobs:
       - uses: lokkju/github-action-sbt@v0.2.2
         with:
           commands: maf/testOnly maf.test.language.scheme.*
+      # If failed, update the Slack notification.
+      - name: Notify slack fail
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf
+          status: FAILED
+          color: danger
   # The test-parser job executes the parser tests.
   test-parser:
     name: Execute parser tests
@@ -46,6 +78,17 @@ jobs:
       - uses: lokkju/github-action-sbt@v0.2.2
         with:
           commands: maf/testOnly maf.test.parser.*
+      # If failed, update the Slack notification.
+      - name: Notify slack fail
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf
+          status: FAILED
+          color: danger
   # The test-soundness job executes the soundness tests.
   test-soundness:
     name: Execute soundness tests (using ${{ matrix.test_class }})
@@ -61,3 +104,30 @@ jobs:
       - uses: lokkju/github-action-sbt@v0.2.2
         with:
           commands: maf/testOnly maf.test.soundness.${{ matrix.test_class }}
+      # If failed, update the Slack notification.
+      - name: Notify slack fail
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf
+          status: FAILED
+          color: danger
+  notify-success:
+    name: Notify success
+    runs-on: ubuntu-latest
+    needs: [test-lattice, test-R5RS, test-parser, test-soundness]
+    steps:
+      # Send a notification to Slack.
+      - name: Notify slack success
+        if: success()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf
+          status: SUCCESS
+          color: good
