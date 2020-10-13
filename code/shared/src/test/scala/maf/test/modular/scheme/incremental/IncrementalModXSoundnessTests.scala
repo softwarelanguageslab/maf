@@ -13,6 +13,18 @@ import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
+/**
+ * Trait implementing soundness tests for incremental analyses.<br>
+ * Following properties are checked:
+ * <ul>
+ *   <li>The soundness of the initial analysis of the original program.</li>
+ *   <li>The soundness of the incremental update of the program.</li>
+ * </ul>
+ * The properties are checked by comparing the analysis results against the results of a concrete interpreter (run on both program versions).
+ * The comparisons are implemented in {@link SchemeSoundnessTests}.
+ *
+ * @see SchemeSoundnessTests
+ */
 trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
   type IncrementalAnalysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
@@ -63,8 +75,9 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ IncrementalTest
 }
 
+/** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
-  def name = "Incremental ModConc soundness test"
+  def name = "Incremental ModConc"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysis(b)
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
   override def isSlow(b: Benchmark): Boolean =
@@ -76,8 +89,9 @@ class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with Con
     )(b)
 }
 
+/** Implements soundness tests for an incremental ModF analysis. */
 class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
-  def name = "Incremental ModF soundness test"
+  def name = "Incremental ModF"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysis(b)
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
