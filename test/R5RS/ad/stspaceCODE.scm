@@ -88,12 +88,9 @@
                  -- create-set" m))))
     dispatch))
 
-
-
 (define (create-operator pre op) (list pre op))
 (define (precondition operator) (car operator))
-(define (operation operator) (cadr operator))
-
+(define (operation operator) (cadr operator)
 
 (define (depth-first-search start-state  operators
                             goal-reached? good-state? eq-state?
@@ -139,4 +136,3 @@
                           (loop)))))))
     ((open 'push) start-state)
     (loop)))
-
