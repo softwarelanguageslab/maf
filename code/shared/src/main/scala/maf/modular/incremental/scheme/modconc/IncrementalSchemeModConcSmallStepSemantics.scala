@@ -6,7 +6,7 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeCodeChange
 
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
-  trait IncrementalSmallStepIntra extends SmallStepIntra {
+  trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis {
     override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
         registerComponent(e, component)

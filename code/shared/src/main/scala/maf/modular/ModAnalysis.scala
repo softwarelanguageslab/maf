@@ -41,7 +41,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
   // here, we track which components depend on which effects
   var deps: Map[Dependency,Set[Component]] = Map[Dependency,Set[Component]]().withDefaultValue(Set.empty)
   def register(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))
-  def trigger(dep: Dependency) = deps(dep).foreach(addToWorkList)
+  def trigger(dep: Dependency): Unit = deps(dep).foreach(addToWorkList)
 
   // parameterized by an 'intra-component analysis'
   def intraAnalysis(component: Component): IntraAnalysis

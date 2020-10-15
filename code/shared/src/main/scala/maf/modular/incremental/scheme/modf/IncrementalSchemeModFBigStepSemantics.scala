@@ -7,7 +7,7 @@ import maf.language.change.CodeVersion._
 import maf.modular.scheme.modf.EvalM._
 
 trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {
-  trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra {
+  trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis {
     override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
         registerComponent(e, component)
