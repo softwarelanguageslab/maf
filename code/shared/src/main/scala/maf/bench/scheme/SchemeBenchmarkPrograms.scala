@@ -45,6 +45,7 @@ object SchemeBenchmarkPrograms {
     "fibc.scm", // Needs call-cc.
     "puzzle.scm",  // Needs call-with-current-continuation.
     "scheme.scm", // Error in program BUT CAN BE ANALYSED.
+    "slatex.scm", // Needs make-string.
     "string.scm", // Needs susbtring.
     "tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
     "trav1.scm", // Needs append.
