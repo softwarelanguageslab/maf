@@ -52,8 +52,8 @@ trait ScBigStepSemantics extends ScModSemantics {
       Set((context, f(context.pc)))
     })
 
-    def replacePc(pc: PC): ScEvalM[()] = ScEvalM((context) => {
-      Set((context.copy(pc = pc), ()))
+    def replacePc[X](pc: PC)(c: ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => {
+      c.run(context.copy(pc = pc))
     })
 
     def read(addr: Addr): ScEvalM[PostValue] = ???
@@ -131,24 +131,22 @@ trait ScBigStepSemantics extends ScModSemantics {
 
     def conditional(condition: PostValue, consequent: ScExp, alternative: ScExp) = {
       // execute the true branch
-      val t = for {
-        _ <- ifFeasible(primTrue, condition)
-        res <- eval(consequent)
-      } yield res
+      val t = ifFeasible(primTrue, condition) {
+        eval(consequent)
+      }
 
       // execute the false branch
-      val f = for {
-        _ <- ifFeasible(primFalse, condition)
-        res <- eval(alternative)
-      } yield res
+      val f = ifFeasible(primFalse, condition) {
+        eval(alternative)
+      }
 
       // combine them non deterministically
       nondet(t, f)
     }
 
-    def ifFeasible(op: Prim, value: PostValue): ScEvalM[()] =
+    def ifFeasible[X](op: Prim, value: PostValue)(c: ScEvalM[X]): ScEvalM[X] =
       withPc(feasible(op, value)).flatMap {
-        case Some(pc) => replacePc(pc)
+        case Some(pc) => replacePc(pc)(c)
         case None => void
       }
 
