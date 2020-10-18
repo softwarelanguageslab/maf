@@ -53,7 +53,9 @@ trait ScBigStepSemantics extends ScModSemantics {
     })
 
     def replacePc[X](pc: PC)(c: ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => {
-      c.run(context.copy(pc = pc))
+      c.run(context.copy(pc = pc)).map {
+        case (updatedContext, value) => (updatedContext.copy(pc = context.pc), value)
+      }
     })
 
     def read(addr: Addr): ScEvalM[PostValue] = ???
@@ -64,7 +66,9 @@ trait ScBigStepSemantics extends ScModSemantics {
     def extended[X](ident: ScIdentifier, component: Component)(c: Addr => ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => {
       val addr = allocVar(ident, component)
       val extendedEnv = context.env.extend(ident.name, addr)
-      c(addr).run(context.copy(env = extendedEnv))
+      c(addr).run(context.copy(env = extendedEnv)).map {
+        case (updatedContext, value) => (updatedContext.copy(env = context.env), value)
+      }
     })
   }
 
