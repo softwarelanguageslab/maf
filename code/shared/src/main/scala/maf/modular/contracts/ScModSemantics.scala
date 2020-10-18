@@ -167,4 +167,7 @@ trait ScModSemantics
       }
       .toList
   }
+
+  type SMTSolver <: ScSmtSolver
+  def newSmtSolver(program: ScExp): SMTSolver
 }

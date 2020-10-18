@@ -42,9 +42,6 @@ trait ScSmallStepSemantics
     with ScPrimitives
     with ScSymbolicComponents {
 
-  type SMTSolver <: ScSmtSolver
-  def newSmtSolver(program: ScExp): SMTSolver
-
   override def intraAnalysis(component: Component): IntraScSmallStepSemantics
   trait IntraScSmallStepSemantics extends IntraScAnalysis with SmallstepSemanticsIntra {
     private val primTrue  = ScLattice.Prim("true?")
