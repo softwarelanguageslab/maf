@@ -121,10 +121,11 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       addToCache(addr -> value)
     }
 
-    def blame[X](blamedIdentity: Identity, blamingIdentity: Identity = Identity.none): ScEvalM[X]  = {
-      writeBlame(Blame(blamedIdentity, blamingIdentity))
-      void
-    }
+    def blame[X](blamedIdentity: Identity, blamingIdentity: Identity = Identity.none): ScEvalM[X]  =
+      unit.flatMap(_ => {
+        writeBlame(Blame(blamedIdentity, blamingIdentity))
+        void
+      })
 
     /**
       * Compute the context of the current component
@@ -198,7 +199,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
           // flat contract
           val flatContract = ifFeasible(primProc, evaluatedContract) {
             applyFn(evaluatedContract, List(evaluatedExpression))
-              .flatMap(value => cond(value, pure(enrich(evaluatedContract, evaluatedExpression)), blame(expression.idn)))
+              .flatMap(value => {
+                println("evalution of flat contract done, got ", value)
+                cond(value, pure(enrich(evaluatedContract, evaluatedExpression)), blame(expression.idn))
+              })
           }
 
           // dependent contract
@@ -241,8 +245,8 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       pure((lattice.injectOpq(Opq(refinements)), ScIdentifier(ScModSemantics.genSym, Identity.none)))
 
     def evalValue(value: ScValue): ScEvalM[PostValue] = value.value match {
-      case ValueInteger(i) => result(lattice.injectInteger(i))
-      case ValueBoolean(b) => result(lattice.injectBoolean(b))
+      case ValueInteger(i) => pure((lattice.injectInteger(i), value))
+      case ValueBoolean(b) => pure((lattice.injectBoolean(b), value))
     }
 
     def evalIdentifier(identifier: ScIdentifier): ScEvalM[PostValue] =
