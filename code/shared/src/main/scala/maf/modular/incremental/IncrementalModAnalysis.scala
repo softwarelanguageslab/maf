@@ -70,12 +70,14 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
      * Removes outdated dependencies of a component, by only keeping the dependencies that were used during the latest analysis of the component.
      */
     @nonMonotonicUpdate
-    def refineDependencies(): Unit = if (version == New) { // Only do this for an incremental update.
-      // TODO: When the program is changes, this should actually only be done once for every component if the store is not refined (since updates then continue to be monotonic).
-      // TODO: However, this is a space-time trade-off probably (as we will need to store the components whose dependencies have been invalidated, this set has to be cleared upon a call to updateAnalsyis).
-      val deltaR = cachedDeps(component) -- R  // All dependencies that were previously inferred, but are no longer inferred.
-      deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
-      cachedDeps += (component -> R)           // Update the cache.
+    def refineDependencies(): Unit = {
+      if (version == New) { // Only do this for an incremental update.
+        // TODO: When the program is changes, this should actually only be done once for every component if the store is not refined (since updates then continue to be monotonic).
+        // TODO: However, this is a space-time trade-off probably (as we will need to store the components whose dependencies have been invalidated, this set has to be cleared upon a call to updateAnalsyis).
+        val deltaR = cachedDeps(component) -- R  // All dependencies that were previously inferred, but are no longer inferred.
+        deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
+      }
+      cachedDeps += (component -> R)             // Update the cache. The cache also needs to be updated when the program is initially analysed.
     }
 
     /**
