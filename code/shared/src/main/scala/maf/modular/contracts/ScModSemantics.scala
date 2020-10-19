@@ -6,6 +6,14 @@ import maf.language.contracts.ScLattice.Blame
 import maf.language.contracts.{ScExp, ScIdentifier, ScLambda, ScLattice}
 import maf.modular.{GlobalStore, ModAnalysis, ReturnAddr, ReturnValue}
 
+object ScModSemantics {
+  var r = 0
+  def genSym: String = {
+    r += 1
+    s"x$r"
+  }
+}
+
 trait ScModSemantics
     extends ModAnalysis[ScExp]
     with ScDomain
@@ -64,6 +72,8 @@ trait ScModSemantics
   def view(component: Component): ScComponent
 
   trait IntraScAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
+    def writeBlame(blame: Blame) =
+      writeAddr(ExceptionAddr(component, expr(component).idn), lattice.injectBlame(blame))
 
     /**
       * Compute the body of the component under analysis

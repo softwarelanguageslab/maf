@@ -49,8 +49,7 @@ trait ScSmallStepSemantics
     private val primProc  = ScLattice.Prim("proc?")
     private val primDep   = ScLattice.Prim("dependent-contract?")
 
-    def writeBlame(blame: Blame) =
-      writeAddr(ExceptionAddr(component, expr(component).idn), lattice.injectBlame(blame))
+
 
     def blame(
         state: S,

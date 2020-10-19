@@ -34,47 +34,52 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
         (VString (unwrap-string String))
         (VPrim (unwrap-prim String)))))
 
-  (define-fun >/c ((v1 V) (v2 V)) Bool
-     (> (unwrap-int v1) (unwrap-int v2)))
+  (define-fun >/c ((v1 V) (v2 V)) V
+     (VBool (> (unwrap-int v1) (unwrap-int v2))))
      
-  (define-fun </c ((v1 V) (v2 V)) Bool
-     (< (unwrap-int v1) (unwrap-int v2)))
+  (define-fun </c ((v1 V) (v2 V)) V
+     (VBool (< (unwrap-int v1) (unwrap-int v2))))
 
-  (define-fun =/c ((v1 V) (v2 V)) Bool
-     (= (unwrap-int v1) (unwrap-int v2)))
+  (define-fun =/c ((v1 V) (v2 V)) V
+     (VBool (= (unwrap-int v1) (unwrap-int v2))))
      
-  (define-fun string=?/c ((v1 V) (v2 V)) Bool
-     (= (unwrap-string v1) (unwrap-string v2)))
+  (define-fun string=?/c ((v1 V) (v2 V)) V
+     (VBool (= (unwrap-string v1) (unwrap-string v2))))
      
-  (define-fun int?/c ((v1 V)) Bool
-     ((_ is VInt) v1))
+  (define-fun int?/c ((v1 V)) V
+     (VBool ((_ is VInt) v1)))
      
-  (define-fun bool?/c ((v1 V)) Bool
-     ((_ is VBool) v1))
+  (define-fun bool?/c ((v1 V)) V
+     (VBool ((_ is VBool) v1)))
      
-  (define-fun string?/c ((v1 V)) Bool
-     ((_ is VString) v1))
+  (define-fun string?/c ((v1 V)) V
+     (VBool ((_ is VString) v1)))
      
   (define-fun proc?/c ((v1 V)) Bool
      (or ((_ is VPrim) v1)
          ((_ is VProc) v1)))
          
-   (define-fun nonzero?/c ((v1 V)) Bool
-     (not (= (unwrap-int v1) 0)))
-    
-   (define-fun any?/c ((v1 V)) Bool
-     true)
+   (define-fun nonzero?/c ((v1 V)) V
+     (VBool (not (= (unwrap-int v1) 0))))
+
+   (define-fun true?/c ((v1 V)) Bool
+     (unwrap-bool v1))
+
+    (define-fun false?/c ((v1 V)) Bool
+      (not (unwrap-bool v1)))
+
+   (define-fun any?/c ((v1 V)) V
+     (VBool true))
     """.stripMargin
 
-  def transformExpression(exp: ScExp): Option[String] = {
+  def transformExpression(exp: ScExp, operand: Boolean = false): Option[String] = {
     exp match {
       case ScIdentifier(name, _) =>
         primitives.get(name) match {
-          case Some(primitiveName) => Some(primitiveName)
-          case None => {
+          case Some(primitiveName) if operand => Some(primitiveName)
+          case _ =>
             variables = name :: variables
             Some(name)
-          }
         }
       case ScValue(value, _) =>
         value match {
@@ -84,8 +89,8 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
         }
       case ScFunctionAp(operator, operands, _) =>
         for {
-          transformedOperator <- transformExpression(operator)
-          transformedOperands <- combineAllNonEmpty(operands.map(transformExpression))
+          transformedOperator <- transformExpression(operator, operand = true)
+          transformedOperands <- combineAllNonEmpty(operands.map(e => transformExpression(e)))
         } yield (s"($transformedOperator $transformedOperands)")
 
       case ScNil(_) => None

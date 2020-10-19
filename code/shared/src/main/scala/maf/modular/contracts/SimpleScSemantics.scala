@@ -6,13 +6,13 @@ import maf.util.benchmarks.Timeout
 
 abstract class SimpleScSemantics(prg: ScExp)
     extends ModAnalysis(prg)
-    with ScSmallStepSemantics
+    with ScBigStepSemantics
     with ScStandardComponents
     with ScPrimitives
     with FIFOWorklistAlgorithm[ScExp] {
 
   override def intraAnalysis(component: Component) = {
     setup
-    new IntraAnalysis(component) with IntraScSmallStepSemantics
+    new IntraAnalysis(component) with IntraScBigStepSemantics
   }
 }
