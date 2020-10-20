@@ -9,7 +9,7 @@ import maf.util.Annotations.nonMonotonicUpdate
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
 
   @nonMonotonicUpdate
-  override def deleteReturnAddress(cmp: Component): Unit = store += (returnAddr(cmp) -> lattice.bottom)
+  override def deleteReturnAddress(cmp: Component): Unit = store -= returnAddr(cmp)
 
   trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis {
     override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {

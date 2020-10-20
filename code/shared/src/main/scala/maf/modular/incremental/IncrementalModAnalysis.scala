@@ -53,16 +53,13 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
   def deregister(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) - target))
 
-  // Keep track of the components that spawned the given component.
+  // Keep track of the components that spawned the given component: spawnee -> spawners.
   var componentProvenance: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
+  // Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components.
+  var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty) // TODO: just count the number of spawns.
 
-  override def spawn(cmp: Component, from: Component): Unit = {
-    // Register that cmp is spawn from from.
-    componentProvenance += (cmp -> (componentProvenance(cmp) + from))
-    super.spawn(cmp, from)
-  }
-
-  // Deletes the return value from the global store if required.
+  // Deletes the return value from the global store if required (sets it to bottom).
+  @nonMonotonicUpdate
   def deleteReturnAddress(cmp: Component): Unit = ()
 
   @nonMonotonicUpdate
@@ -73,7 +70,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     }
     // Remove the component from the visited set.
     visited = visited - cmp
+    // Remove the component's return address (set it to bottom).
     deleteReturnAddress(cmp)
+    // Delete the cache.
+    cachedSpawns -= cmp
     // Transitively check for components that have to be deleted.
     for (to <- componentProvenance(cmp)) {
       if (cmp != to) // A component may spawn itself (e.g., in case of recursion).
@@ -83,6 +83,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   @nonMonotonicUpdate
   def unspawn(cmp: Component, from: Component): Unit = {
+    // Update the provenance information.
     componentProvenance += (cmp -> (componentProvenance(cmp) - from))
     if (componentProvenance(cmp).isEmpty) {
       // Component should be deleted.
@@ -118,11 +119,23 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       cachedDeps += (component -> R)             // Update the cache. The cache also needs to be updated when the program is initially analysed.
     }
 
+    @nonMonotonicUpdate
+    def refineComponents(): Unit = {
+      val Cdiff = C - component // Subtract component to avoid circular circularities due to recursion. TODO: also avoid bigger circular spawn dependencies.
+      if (version == New) {
+        val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
+        deltaC.foreach(unspawn(_, component))
+      }
+      cachedSpawns += (component -> Cdiff) // Update the cache.
+      Cdiff.foreach(cmp => componentProvenance += (cmp -> (componentProvenance(cmp) + component))) // Don't register circularities of size 1.
+    }
+
     /**
      * First removes outdated read dependencies before performing the actual commit.
      */
     override def commit(): Unit = {
       refineDependencies()  // First, remove excess dependencies if this is a reanalysis.
+      refineComponents()    // Second, remove components that are no longer reachable (if this is a reanalysis).
       super.commit()        // Then commit and trigger dependencies.
     }
   }

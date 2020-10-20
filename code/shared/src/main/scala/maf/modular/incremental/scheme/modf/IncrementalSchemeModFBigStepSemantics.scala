@@ -10,7 +10,7 @@ import maf.util.Annotations.nonMonotonicUpdate
 trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {
 
   @nonMonotonicUpdate
-  override def deleteReturnAddress(cmp: Component): Unit = store += (returnAddr(cmp) -> lattice.bottom)
+  override def deleteReturnAddress(cmp: Component): Unit = store -= returnAddr(cmp)
 
   trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis {
     override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
