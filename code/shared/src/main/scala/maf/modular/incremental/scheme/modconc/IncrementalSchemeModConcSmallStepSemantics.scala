@@ -4,8 +4,13 @@ import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.scheme.ssmodconc._
 import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeCodeChange
+import maf.util.Annotations.nonMonotonicUpdate
 
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
+
+  @nonMonotonicUpdate
+  override def deleteReturnAddress(cmp: Component): Unit = store += (returnAddr(cmp) -> lattice.bottom)
+
   trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis {
     override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>

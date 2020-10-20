@@ -7,6 +7,7 @@ import maf.modular._
 import maf.util.Annotations.nonMonotonicUpdate
 import maf.util.benchmarks.Timeout
 
+// NOTE: this implementation is not thread-safe, and does not always use the local stores of the intra-component analyses!
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
   /* ***** Tracking: track which components depend on which expressions. ***** */
@@ -44,13 +45,50 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   /* ***** Regaining precision ***** */
 
-  // Initially: cache the dependencies of every component.
+  // Cache the dependencies of every component, to find dependencies that are no longer inferred (and hence can be removed).
   // Another strategy would be not to cache, but walk through the data structures.
   var cachedDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)
 
   @nonMonotonicUpdate
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
   def deregister(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) - target))
+
+  // Keep track of the components that spawned the given component.
+  var componentProvenance: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
+
+  override def spawn(cmp: Component, from: Component): Unit = {
+    // Register that cmp is spawn from from.
+    componentProvenance += (cmp -> (componentProvenance(cmp) + from))
+    super.spawn(cmp, from)
+  }
+
+  // Deletes the return value from the global store if required.
+  def deleteReturnAddress(cmp: Component): Unit = ()
+
+  @nonMonotonicUpdate
+  def deleteComponent(cmp: Component): Unit = {
+    // Remove all dependencies related to this component.
+    for (dep <- cachedDeps(cmp)) {
+      deregister(cmp, dep)
+    }
+    // Remove the component from the visited set.
+    visited = visited - cmp
+    deleteReturnAddress(cmp)
+    // Transitively check for components that have to be deleted.
+    for (to <- componentProvenance(cmp)) {
+      if (cmp != to) // A component may spawn itself (e.g., in case of recursion).
+        unspawn(to, cmp)
+    }
+  }
+
+  @nonMonotonicUpdate
+  def unspawn(cmp: Component, from: Component): Unit = {
+    componentProvenance += (cmp -> (componentProvenance(cmp) - from))
+    if (componentProvenance(cmp).isEmpty) {
+      // Component should be deleted.
+      deleteComponent(cmp)
+    }
+  }
 
   /* ***** Incremental update: actually perform the incremental analysis ***** */
 
