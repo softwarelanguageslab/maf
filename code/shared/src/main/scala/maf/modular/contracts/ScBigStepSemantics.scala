@@ -79,6 +79,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       c.run(context.copy(pc = pc))
     })
 
+    /**
+      * This function creates a computation that yields a single state contain the abstract value with no
+      * symbolic information.
+      */
     def result(v: Value): ScEvalM[PostValue] = pure(value(v))
 
     def extended[X](ident: ScIdentifier, component: Component)(c: Addr => ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => {
@@ -89,11 +93,26 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       }
     })
 
+    /**
+      * Given a computation that yields a value corresponding to a certain lattice, this function runs the computation
+      * on the given context, and joins all the values of the resulting states together using the join operator of the
+      * lattice.
+      */
     def merged[L: Lattice](c: ScEvalM[L])(context: Context): L = {
       c.run(context).foldLeft(Lattice[L].bottom)((acc, v) => v match {
         case (_, l) => Lattice[L].join(acc, l)
       })
     }
+
+    /**
+      * Given a computation that yields states that contain sets of values, this operator yields a single computation
+      * that gives rises to a state for every element in the given set.
+      */
+    def options[X](c: ScEvalM[Set[X]]): ScEvalM[X] = ScEvalM((context) =>
+      c.run(context).flatMap {
+        case (updatedContext, set) => set.map((updatedContext, _))
+      }
+    )
   }
 
   import ScEvalM._
@@ -198,11 +217,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         res <- {
           // flat contract
           val flatContract = ifFeasible(primProc, evaluatedContract) {
-            applyFn(evaluatedContract, List(evaluatedExpression))
-              .flatMap(value => {
-                println("evalution of flat contract done, got ", value)
-                cond(value, pure(enrich(evaluatedContract, evaluatedExpression)), blame(expression.idn))
-              })
+            monFlat(evaluatedContract, evaluatedExpression, expression.idn)
           }
 
           // dependent contract
@@ -258,13 +273,13 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     def evalFunctionAp(operator: ScExp, operands: List[ScExp]): ScEvalM[PostValue] = for {
       evaluatedOperator <- eval(operator)
       evaluatedOperands <- sequence(operands.map(eval))
-      res <- applyFn(evaluatedOperator, evaluatedOperands)
+      res <- applyFn(evaluatedOperator, evaluatedOperands, operands)
     } yield res
 
     def evalIf(condition: ScExp, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] =
       eval(condition).flatMap((value) => conditional(value, consequent, alternative))
 
-    def applyFn(operator: PostValue, operands: List[PostValue]): ScEvalM[PostValue] = {
+    def applyFn(operator: PostValue, operands: List[PostValue], syntacticOperands: List[ScExp] = List()): ScEvalM[PostValue] = {
       // we have three distinct cases
       // 1. Primitive application
       // 2. User-defined function application
@@ -289,9 +304,30 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       }
 
       // 3. Application of a monitored function (arrow)
-
-      nondets(primitiveAp ++ cloAp)
+      val arrAp = lattice.getArr(operator._1).map { arr =>
+        // TODO: also accept different contracts than flat contracts in the domain, and range
+        for {
+          contract <- options(read(arr.contract).map((c) => lattice.getGrd(c._1)))
+          domain <- read(contract.domain)
+          rangeMaker <- read(contract.rangeMaker)
+          value <- ifFeasible(primProc, domain) {
+            monFlat(domain, operands.head, syntacticOperands.head.idn)
+          }
+          rangeContract <- applyFn(rangeMaker, List(value), List(syntacticOperands.head))
+          fn <- read(arr.e)
+          resultValue <- applyFn(fn, List(value), List(syntacticOperands.head))
+          checkedResultValue <- monFlat(rangeContract, resultValue, arr.e.idn)
+        } yield checkedResultValue
+      }
+    
+      nondets(primitiveAp ++ cloAp ++ arrAp)
     }
+
+    def monFlat(contract: PostValue, value: PostValue, blamedIdentity: Identity): ScEvalM[PostValue] =
+      applyFn(contract, List(value))
+        .flatMap(value => {
+          cond(value, pure(enrich(contract, value)), blame(blamedIdentity))
+        })
 
     def cond[X](condition: PostValue, consequent: ScEvalM[X], alternative: ScEvalM[X]): ScEvalM[X] = {
       val t = ifFeasible(primTrue, condition) { consequent }
