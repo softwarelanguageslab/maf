@@ -19,7 +19,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
   def value(v: Value): PostValue = (v, ScNil())
 
   object ScEvalM {
-    def pure[X](v: X): ScEvalM[X] = ScEvalM((context) => List((context, v)).toSet)
+    def pure[X](v: => X): ScEvalM[X] = ScEvalM((context) => List((context, v)).toSet)
     def unit: ScEvalM[()] = pure(())
     def void[X]: ScEvalM[X] = ScEvalM((context) => Set[(Context, X)]())
 
@@ -284,6 +284,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       // 1. Primitive application
       // 2. User-defined function application
       // 3. Monitored function (Arr) application
+      // 4. Flat contract application
 
       // 1. Primitive application
       val primitiveAp = lattice.getPrim(operator._1).map { prim =>
@@ -319,15 +320,19 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
           checkedResultValue <- monFlat(rangeContract, resultValue, arr.e.idn)
         } yield checkedResultValue
       }
-    
-      nondets(primitiveAp ++ cloAp ++ arrAp)
+
+      // 4. Flat contract application
+      val flatAp = lattice.getFlat(operator._1).map { flat =>
+        // TODO: make the flat contract record its results in order for the residuals to be correctly computed
+        read(flat.contract).flatMap(value => applyFn(value, operands, syntacticOperands))
+      }
+
+      nondets(primitiveAp ++ cloAp ++ arrAp ++ flatAp)
     }
 
-    def monFlat(contract: PostValue, value: PostValue, blamedIdentity: Identity): ScEvalM[PostValue] =
-      applyFn(contract, List(value))
-        .flatMap(value => {
-          cond(value, pure(enrich(contract, value)), blame(blamedIdentity))
-        })
+    def monFlat(contract: PostValue, expressionValue: PostValue, blamedIdentity: Identity): ScEvalM[PostValue] =
+      applyFn(contract, List(expressionValue))
+        .flatMap(value => cond(value, pure(enrich(contract, expressionValue)), blame(blamedIdentity)))
 
     def cond[X](condition: PostValue, consequent: ScEvalM[X], alternative: ScEvalM[X]): ScEvalM[X] = {
       val t = ifFeasible(primTrue, condition) { consequent }
@@ -349,7 +354,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         case _ if !lattice.isTrue(lattice.applyPrimitive(op)(value._1)) => None
         case ScNil(_) => Some(pc)
         case _ =>
-          val newPc = pc.and(pc.and(ScFunctionAp(ScIdentifier(op.operation, Identity.none), List(value._2), Identity.none)))
+          val newPc = pc.and(ScFunctionAp(ScIdentifier(op.operation, Identity.none), List(value._2), Identity.none))
           val solver = newSmtSolver(newPc)
           if (solver.isSat) Some(newPc) else None
       }

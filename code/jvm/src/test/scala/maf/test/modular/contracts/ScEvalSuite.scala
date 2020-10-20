@@ -198,8 +198,8 @@ class ScEvalSuite extends ScTestsJVM {
   verify("(~> int? int?)", "(lambda (x) OPQ)").tested { machine =>
   }
 
-  verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 1) 2))").applied().safe()
-  verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 1) 2))").applied().unsafe()
+  verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 2) 2))").applied().safe()
+  verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 2) 2))").applied().unsafe()
 
   /*
   eval("(letrec (int?/c (lambda (x) (check int? x))) (mon int?/c OPQ))").tested { machine =>

@@ -12,6 +12,8 @@ import maf.language.sexp.{ValueBoolean, ValueInteger, ValueString}
 class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     extends ScSmtSolver {
 
+  val DEBUG_MODE = false
+
   import com.microsoft.z3._
   import ScSMTSolverJVM._
   import maf.util.MonoidInstances._
@@ -124,7 +126,14 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     */
   def isSat: Boolean = {
     // transform the code
-    val smtCode = prelude ++ transformed
+    val userCode = transformed
+
+    if (DEBUG_MODE) {
+      println(userCode)
+    }
+
+    val smtCode = prelude ++ userCode
+
     // create a new context and solver
     val context = new Context()
     val solver  = context.mkSolver()
@@ -141,7 +150,15 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     //
     // the unknown case is important as we are making an overapproximation, it would be unsound if we would ignore
     // paths that are not known with the SMT solver to be satisfiable
-    check == Status.SATISFIABLE || check == Status.UNKNOWN
+    val result = check == Status.SATISFIABLE || check == Status.UNKNOWN
+    if (DEBUG_MODE) {
+      println("SMT SOLVER CHECK", result)
+      println("Checked path ", condition)
+      println(
+        "====================================================================================================="
+      )
+    }
+    result
   }
 }
 
