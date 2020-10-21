@@ -12,6 +12,10 @@ object ScModSemantics {
     r += 1
     s"x$r"
   }
+
+  def freshIdent: ScExp = {
+    ScIdentifier(genSym, Identity.none)
+  }
 }
 
 trait ScModSemantics

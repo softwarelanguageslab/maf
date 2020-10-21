@@ -198,4 +198,6 @@ class ScBigStepSemantics extends ScTestsJVM {
 
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 2) 2))").applied().safe()
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 2) 2))").applied().unsafe()
+
+  verify("(~> (~> any? int?) int?)", "(lambda (g) (g OPQ))").applied().unsafe()
 }

@@ -195,6 +195,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def getFlat(value: L): Set[Flat[Addr]]
 
+  /**
+    * Returns the symbolic representation of the value if available
+    */
+  def getSymbolic(value: L): Option[String]
+
   /*==================================================================================================================*/
 
   def integerTop: L

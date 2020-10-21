@@ -1,6 +1,6 @@
 package maf.language.contracts
 
-import maf.core.{Address, LatticeTopUndefined}
+import maf.core.{Address, Identity, LatticeTopUndefined}
 import maf.lattice.interfaces.{BoolLattice, IntLattice}
 import maf.util.SmartHash
 
@@ -304,6 +304,12 @@ trait ScDomain[I, B, Addr <: Address] {
       case (_, _)                 => false
     }
 
+    def getSymbolic(x: Value): Option[String] = x match {
+      case (Prims(prims)) if prims.size == 1 =>
+        Some(prims.head.operation)
+      case _ => None
+    }
+
     def show(x: Value): String = x match {
       case TopValue       => x.toString
       case BotValue       => x.toString
@@ -432,6 +438,11 @@ class ScCoProductLattice[I, B, Addr <: Address](
     override def getFlat(value: CoProductValue): Set[Flat[Addr]] = value match {
       case CoProduct(Flats(flats)) => flats
       case _                       => Set()
+    }
+
+    override def getSymbolic(value: CoProductValue): Option[String] = value match {
+      case CoProduct(value) => Values.getSymbolic(value)
+      case _                => None
     }
 
     /*================================================================================================================*/
@@ -625,6 +636,12 @@ class ScProductLattice[I, B, Addr <: Address](
           }
           .flatten
           .toSet
+
+      override def getSymbolic(value: ProductElements): Option[String] =
+        value.elements match {
+          case List(value) => Values.getSymbolic(value)
+          case _           => None
+        }
 
       /*==============================================================================================================*/
 

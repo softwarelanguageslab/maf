@@ -113,6 +113,16 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         case (updatedContext, set) => set.map((updatedContext, _))
       }
     )
+
+    def debug(c: => ()): ScEvalM[()] = unit.flatMap(_ => {
+      c
+      pure(())
+    })
+
+    def trace[X]: (X => ScEvalM[X]) = { x =>
+      println("trace", x)
+      pure(x)
+    }
   }
 
   import ScEvalM._
@@ -214,24 +224,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       for {
         evaluatedContract <- eval(contract)
         evaluatedExpression <- eval(expression)
-        res <- {
-          // flat contract
-          val flatContract = ifFeasible(primProc, evaluatedContract) {
-            monFlat(evaluatedContract, evaluatedExpression, expression.idn)
-          }
-
-          // dependent contract
-          val dependentContract = ifFeasible(primDep, evaluatedContract) {
-            val aContract = allocGeneric(contract.idn, component)
-            val aExp = allocGeneric(expression.idn, component)
-            for {
-              _ <- write(aContract, evaluatedContract)
-              _ <- write(aExp, evaluatedExpression)
-            } yield value(lattice.injectArr(Arr(contract.idn, expression.idn, aContract, aExp)))
-          }
-
-          nondets(Set(flatContract, dependentContract))
-        }
+        res <- applyMon(evaluatedContract, evaluatedExpression, contract.idn, expression.idn)
       } yield res
     }
 
@@ -285,6 +278,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       // 2. User-defined function application
       // 3. Monitored function (Arr) application
       // 4. Flat contract application
+      // 5. Application of an OPQ value
 
       // 1. Primitive application
       val primitiveAp = lattice.getPrim(operator._1).map { prim =>
@@ -306,18 +300,15 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
 
       // 3. Application of a monitored function (arrow)
       val arrAp = lattice.getArr(operator._1).map { arr =>
-        // TODO: also accept different contracts than flat contracts in the domain, and range
         for {
           contract <- options(read(arr.contract).map((c) => lattice.getGrd(c._1)))
           domain <- read(contract.domain)
           rangeMaker <- read(contract.rangeMaker)
-          value <- ifFeasible(primProc, domain) {
-            monFlat(domain, operands.head, syntacticOperands.head.idn)
-          }
+          value <- applyMon(domain, operands.head, arr.contract.idn, syntacticOperands.head.idn)
           rangeContract <- applyFn(rangeMaker, List(value), List(syntacticOperands.head))
           fn <- read(arr.e)
           resultValue <- applyFn(fn, List(value), List(syntacticOperands.head))
-          checkedResultValue <- monFlat(rangeContract, resultValue, arr.e.idn)
+          checkedResultValue <- applyMon(rangeContract, resultValue, contract.rangeMaker.idn, arr.e.idn)
         } yield checkedResultValue
       }
 
@@ -327,7 +318,34 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         read(flat.contract).flatMap(value => applyFn(value, operands, syntacticOperands))
       }
 
-      nondets(primitiveAp ++ cloAp ++ arrAp ++ flatAp)
+      // 5. Application of an OPQ value, this yields simply an OPQ value
+      val opqAp = lattice.getOpq(operator._1).map { _ =>
+        pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))
+      }
+
+      nondets(primitiveAp ++ cloAp ++ arrAp ++ flatAp ++ opqAp)
+    }
+
+    def applyMon(evaluatedContract: PostValue,
+                 evaluatedExpression: PostValue,
+                 contractIdn: Identity,
+                 exprIdn: Identity): ScEvalM[PostValue] = {
+      // flat contract
+      val flatContract = ifFeasible(primProc, evaluatedContract) {
+        monFlat(evaluatedContract, evaluatedExpression, exprIdn)
+      }
+
+      // dependent contract
+      val dependentContract = ifFeasible(primDep, evaluatedContract) {
+        val aContract = allocGeneric(contractIdn, component)
+        val aExp = allocGeneric(exprIdn, component)
+        for {
+          _ <- write(aContract, evaluatedContract)
+          _ <- write(aExp, evaluatedExpression)
+        } yield value(lattice.injectArr(Arr(contractIdn, exprIdn, aContract, aExp)))
+      }
+
+      nondets(Set(flatContract, dependentContract))
     }
 
     def monFlat(contract: PostValue, expressionValue: PostValue, blamedIdentity: Identity): ScEvalM[PostValue] =
@@ -343,7 +361,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     def conditional(condition: PostValue, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] =
       cond(condition, eval(consequent), eval(alternative))
 
-    def ifFeasible[X](op: Prim, value: PostValue)(c: ScEvalM[X]): ScEvalM[X] =
+    def ifFeasible[X](op: Prim, value: PostValue)(c: => ScEvalM[X]): ScEvalM[X] =
       withPc(feasible(op, value)).flatMap {
         case Some(pc) => replacePc(pc)(c)
         case None => void
@@ -360,15 +378,21 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       }
   }
 
-  def enrich(operator: PostValue, value: PostValue): PostValue =
-      operator._2 match {
-        case ScIdentifier(name, _) if lattice.isDefinitelyOpq(value._1) =>
-          val refinedValue = lattice.getOpq(value._1)
-            .map(opq => opq.copy(refinementSet = opq.refinementSet + name))
-            .map(lattice.injectOpq)
-            .foldLeft(lattice.bottom)((acc, v) => lattice.join(acc, v))
+  def refined(name: String, value: PostValue): PostValue = {
+    val refinedValue = lattice.getOpq(value._1)
+      .map(opq => opq.copy(refinementSet = opq.refinementSet + name))
+      .map(lattice.injectOpq)
+      .foldLeft(lattice.bottom)((acc, v) => lattice.join(acc, v))
 
-          (refinedValue, value._2)
-        case _ => value
+    (refinedValue, value._2)
+  }
+
+  def enrich(operator: PostValue, value: PostValue): PostValue = operator._2 match {
+        // if we have symbolic information we can enrich the opaque value with this symbolic information,
+        case ScIdentifier(name, _) if lattice.isDefinitelyOpq(value._1) && primitives.contains(name) =>
+          refined(name, value)
+
+        // if the operator is a primitive, then we can fetch its name from its value
+        case _ => lattice.getSymbolic(operator._1).map(refined(_, value)).getOrElse(value)
       }
 }
