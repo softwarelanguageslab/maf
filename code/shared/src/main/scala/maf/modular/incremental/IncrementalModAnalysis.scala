@@ -53,10 +53,12 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
   def deregister(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) - target))
 
-  // Keep track of the components that spawned the given component: spawnee -> spawners.
-  var componentProvenance: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
+  // Keep track of the components that spawned the given component: spawnee -> spawners. // TODO: just count the number of spawns.
+  // var componentProvenance: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
+  // Keep track of the number of components that have spawned a given component (excluding possibly itself).
+  var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
   // Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components.
-  var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty) // TODO: just count the number of spawns.
+  var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
 
   // Deletes the return value from the global store if required (sets it to bottom).
   @nonMonotonicUpdate
@@ -71,21 +73,22 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     // Remove the component from the visited set.
     visited = visited - cmp
     // Remove the component's return address (set it to bottom).
-    deleteReturnAddress(cmp)
-    // Delete the cache.
-    cachedSpawns -= cmp
+    deleteReturnAddress(cmp) // TODO remove corresponding dependencies
     // Transitively check for components that have to be deleted.
-    for (to <- componentProvenance(cmp)) {
-      if (cmp != to) // A component may spawn itself (e.g., in case of recursion).
+    for (to <- cachedSpawns(cmp)) {
+      if (cmp != to) // A component may spawn itself (e.g., in case of recursion). TODO: will this test ever be false?
         unspawn(to, cmp)
     }
+    // Delete the cache.
+    cachedSpawns -= cmp
   }
 
   @nonMonotonicUpdate
   def unspawn(cmp: Component, from: Component): Unit = {
     // Update the provenance information.
-    componentProvenance += (cmp -> (componentProvenance(cmp) - from))
-    if (componentProvenance(cmp).isEmpty) {
+    countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
+    //componentProvenance += (cmp -> (componentProvenance(cmp) - from))
+    if (countedSpawns(cmp) == 0) { //(componentProvenance(cmp).isEmpty) {
       // Component should be deleted.
       deleteComponent(cmp)
     }
@@ -126,8 +129,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
         val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
         deltaC.foreach(unspawn(_, component))
       }
+      val newSpawns = Cdiff -- cachedSpawns(component) // The components not previously spawn by this component.
+      newSpawns.foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
       cachedSpawns += (component -> Cdiff) // Update the cache.
-      Cdiff.foreach(cmp => componentProvenance += (cmp -> (componentProvenance(cmp) + component))) // Don't register circularities of size 1.
+      //Cdiff.foreach(cmp => componentProvenance += (cmp -> (componentProvenance(cmp) + component))) // Don't register circularities of size 1.
     }
 
     /**
