@@ -53,8 +53,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
   def deregister(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) - target))
 
-  // Keep track of the components that spawned the given component: spawnee -> spawners. // TODO: just count the number of spawns.
-  // var componentProvenance: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
   // Keep track of the number of components that have spawned a given component (excluding possibly itself).
   var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
   // Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components.
@@ -85,13 +83,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   @nonMonotonicUpdate
   def unspawn(cmp: Component, from: Component): Unit = {
-    // Update the provenance information.
+    // Update the spawn count information.
     countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
-    //componentProvenance += (cmp -> (componentProvenance(cmp) - from))
-    if (countedSpawns(cmp) == 0) { //(componentProvenance(cmp).isEmpty) {
-      // Component should be deleted.
-      deleteComponent(cmp)
-    }
+    if (countedSpawns(cmp) == 0) deleteComponent(cmp) // Delete the component if it is no longer spawned by any other component.
   }
 
   /* ***** Incremental update: actually perform the incremental analysis ***** */
@@ -129,10 +123,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
         val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
         deltaC.foreach(unspawn(_, component))
       }
-      val newSpawns = Cdiff -- cachedSpawns(component) // The components not previously spawn by this component.
-      newSpawns.foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
+      // For each component not previously spawn by this component, increase the spawn count.
+      (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
       cachedSpawns += (component -> Cdiff) // Update the cache.
-      //Cdiff.foreach(cmp => componentProvenance += (cmp -> (componentProvenance(cmp) + component))) // Don't register circularities of size 1.
     }
 
     /**
