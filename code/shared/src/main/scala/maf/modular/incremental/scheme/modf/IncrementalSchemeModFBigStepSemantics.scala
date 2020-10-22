@@ -4,13 +4,19 @@ import maf.language.scheme.{SchemeCodeChange, SchemeExp}
 import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.scheme.modf._
 import maf.language.change.CodeVersion._
+import maf.modular.AddrDependency
 import maf.modular.scheme.modf.EvalM._
 import maf.util.Annotations.nonMonotonicUpdate
 
 trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {
 
   @nonMonotonicUpdate
-  override def deleteReturnAddress(cmp: Component): Unit = store -= returnAddr(cmp)
+  override def deleteComponent(cmp: Component): Unit = {
+    // Deletes the return value from the global store if required (sets it to bottom), as well as the corresponding dependencies.
+    store -= returnAddr(cmp)
+    deps -= AddrDependency(returnAddr(cmp))
+    super.deleteComponent(cmp)
+  }
 
   trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis {
     override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {

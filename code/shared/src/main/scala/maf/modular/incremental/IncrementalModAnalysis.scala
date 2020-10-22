@@ -7,15 +7,19 @@ import maf.modular._
 import maf.util.Annotations.nonMonotonicUpdate
 import maf.util.benchmarks.Timeout
 
-// NOTE: this implementation is not thread-safe, and does not always use the local stores of the intra-component analyses!
+// NOTE - This implementation is not thread-safe, and does not always use the local stores of the intra-component analyses!
+//        Therefore, a sequential work-list algorithm is used.
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
   /* ***** Tracking: track which components depend on which expressions. ***** */
 
-  var version: Version = Old // Keeps track of whether an incremental update is in progress or not.
-  private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set()) // Keeps track of which components depend on an expression.
+  /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
+  var version: Version = Old
+  /** Keeps track of which components depend on an expression. */
+  private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
 
-  /** Register that a component is depending on a given expression in the program.
+  /**
+   * Register that a component is depending on a given expression in the program.
    * This is needed e.g. for ModConc, where affected components cannot be determined lexically/statically.
    * This method should be called for any expression that is analysed.
    * Synchronisation should be applied when the analysis is run concurrently!
@@ -27,42 +31,28 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     case e: ChangeExp[Expr] => Set(e.old) // Assumption: change expressions are not nested.
     case e => e.subexpressions.asInstanceOf[List[Expr]].flatMap(findUpdatedExpressions).toSet
   }
-  /*
-  def findUpdatedExpressions(expr: Expr): Set[Expr] = {
-    var work: List[Expr] = List(expr)
-    var resu: List[Expr] = List()
-    while (work.nonEmpty) {
-      val fst :: rest = work
-      work = rest
-      fst match {
-        case e: ChangeExp[Expr] => resu = e.old :: resu
-        case e => work = SmartAppend.sappend(work, e.subexpressions.asInstanceOf[List[Expr]])
-      }
-    }
-    resu.toSet
-  }
-  */
 
   /* ***** Regaining precision ***** */
 
   // Cache the dependencies of every component, to find dependencies that are no longer inferred (and hence can be removed).
   // Another strategy would be not to cache, but walk through the data structures.
+  /** Caches the dependencies of every component. */
   var cachedDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)
 
   @nonMonotonicUpdate
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
   def deregister(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) - target))
 
-  // Keep track of the number of components that have spawned a given component (excluding possibly itself).
+  /** Keep track of the number of components that have spawned a given component (excluding possibly the component). */
   var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
-  // Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components.
+  /** Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components. */
   var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
 
-  // Deletes the return value from the global store if required (sets it to bottom).
   @nonMonotonicUpdate
-  def deleteReturnAddress(cmp: Component): Unit = ()
-
-  @nonMonotonicUpdate
+  /**
+   * Deletes information related to a component. May cause other components to be deleted as well if they are no longer spawned.
+   * @note If subclasses add extra analysis state (e.g., a global store with return values), then it is up to those subclasses to override this method and extend its functionality.
+   */
   def deleteComponent(cmp: Component): Unit = {
     // Remove all dependencies related to this component.
     for (dep <- cachedDeps(cmp)) {
@@ -70,18 +60,18 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     }
     // Remove the component from the visited set.
     visited = visited - cmp
-    // Remove the component's return address (set it to bottom).
-    deleteReturnAddress(cmp) // TODO remove corresponding dependencies
     // Transitively check for components that have to be deleted.
     for (to <- cachedSpawns(cmp)) {
       if (cmp != to) // A component may spawn itself (e.g., in case of recursion). TODO: will this test ever be false?
         unspawn(to, cmp)
     }
-    // Delete the cache.
+    // Delete the caches.
     cachedSpawns -= cmp
+    countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
   }
 
   @nonMonotonicUpdate
+  /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
   def unspawn(cmp: Component, from: Component): Unit = {
     // Update the spawn count information.
     countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
@@ -107,30 +97,36 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
      */
     @nonMonotonicUpdate
     def refineDependencies(): Unit = {
-      if (version == New) { // Only do this for an incremental update.
-        // TODO: When the program is changes, this should actually only be done once for every component if the store is not refined (since updates then continue to be monotonic).
-        // TODO: However, this is a space-time trade-off probably (as we will need to store the components whose dependencies have been invalidated, this set has to be cleared upon a call to updateAnalsyis).
-        val deltaR = cachedDeps(component) -- R  // All dependencies that were previously inferred, but are no longer inferred.
+      if (version == New) { // Only do this for an incremental update. Checking this condition is probably cheaper than performing the remaining things always (which would also be possible).
+        val deltaR = cachedDeps(component) -- R  // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
         deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
       }
+
       cachedDeps += (component -> R)             // Update the cache. The cache also needs to be updated when the program is initially analysed.
     }
 
+    /**
+     * Removes outdated components, and components that become transitively outdated, by keeping track of spawning dependencies.
+     */
     @nonMonotonicUpdate
     def refineComponents(): Unit = {
       val Cdiff = C - component // Subtract component to avoid circular circularities due to recursion. TODO: also avoid bigger circular spawn dependencies.
-      if (version == New) {
+
+      // For each component not previously spawn by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
+      (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
+
+      if (version == New) { // TODO Will anything within this if-block be executed when version == Old? No, but this might be cheaper. Should also only do something the first time a component is encountered, but that is covered without explicit check.
         val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
         deltaC.foreach(unspawn(_, component))
       }
-      // For each component not previously spawn by this component, increase the spawn count.
-      (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
+
       cachedSpawns += (component -> Cdiff) // Update the cache.
     }
 
     /**
      * First removes outdated read dependencies before performing the actual commit.
      */
+    @nonMonotonicUpdate
     override def commit(): Unit = {
       refineDependencies()  // First, remove excess dependencies if this is a reanalysis.
       refineComponents()    // Second, remove components that are no longer reachable (if this is a reanalysis).

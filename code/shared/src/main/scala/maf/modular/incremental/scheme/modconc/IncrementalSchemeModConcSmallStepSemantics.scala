@@ -4,12 +4,18 @@ import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.scheme.ssmodconc._
 import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeCodeChange
+import maf.modular.AddrDependency
 import maf.util.Annotations.nonMonotonicUpdate
 
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
 
   @nonMonotonicUpdate
-  override def deleteReturnAddress(cmp: Component): Unit = store -= returnAddr(cmp)
+  override def deleteComponent(cmp: Component): Unit = {
+    // Deletes the return value from the global store if required (sets it to bottom), as well as the corresponding dependencies.
+    store -= returnAddr(cmp)
+    deps -= AddrDependency(returnAddr(cmp))
+    super.deleteComponent(cmp)
+  }
 
   trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis {
     override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
