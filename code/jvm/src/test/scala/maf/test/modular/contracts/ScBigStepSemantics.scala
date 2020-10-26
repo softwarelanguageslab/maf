@@ -200,4 +200,16 @@ class ScBigStepSemantics extends ScTestsJVM {
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 2) 2))").applied().unsafe()
 
   verify("(~> (~> any? int?) int?)", "(lambda (g) (g OPQ))").applied().unsafe()
+
+  verify("(~> int? int?)", "(lambda (x) (letrec (y x) (begin (set! x #t) y)))")
+    .applied(Set("int?"))
+    .unsafe()
+
+  /**
+    * This should not be verified as safe, as the applied lambda changes x before returning it, this is to
+    * test whether the store cache is correctly invalidated if the applied lambda captures variables
+    */
+  verify("(~> int? int?)", "(lambda (x) (begin ((lambda (y) (set! x #t)) OPQ) x))")
+    .applied(Set("int?"))
+    .unsafe()
 }

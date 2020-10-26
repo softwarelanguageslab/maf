@@ -14,9 +14,9 @@ trait ScTestsJVM extends ScTests {
     "string?"  -> "string?/c",
     "nonzero?" -> "nonzero?/c",
     "any?"     -> "any?/c",
-    "true?" -> "true?/c",
-    "false?" -> "false?/c",
-    "proc?" -> "proc?/c"
+    "true?"    -> "true?/c",
+    "false?"   -> "false?/c",
+    "proc?"    -> "proc?/c"
   )
 
   trait ScAnalysisFixtureJVM extends ScAnalysisFixture {
@@ -57,7 +57,11 @@ trait ScTestsJVM extends ScTests {
     def testName: String = if (name.isEmpty) command else name
 
     def applied(refinements: Set[String] = Set(), value: String = "OPQ"): VerifyTestBuilder = {
-      this.command = s"(${this.command} $value)"
+      if (refinements.nonEmpty) {
+        this.command = s"(${this.command} ($value ${refinements.mkString(" ")}))"
+      } else {
+        this.command = s"(${this.command} $value)"
+      }
       this
     }
 
@@ -88,7 +92,7 @@ trait ScTestsJVM extends ScTests {
           }
         }
         println()
-        //println((" " * (machine.summary.blames.values.head.head.blamedPosition.pos.col - 1)) ++ "^")
+      //println((" " * (machine.summary.blames.values.head.head.blamedPosition.pos.col - 1)) ++ "^")
       }
     }
 
@@ -103,7 +107,6 @@ trait ScTestsJVM extends ScTests {
       }
     }
   }
-
 
   case object EmptyVerifyTestBuilder extends VerifyTestBuilder {
     def named(name: String): VerifyTestBuilder                                              = this
