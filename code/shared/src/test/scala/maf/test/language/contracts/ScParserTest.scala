@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should
 import maf.language.contracts.{
   SCExpCompiler,
+  ScAssume,
   ScBegin,
   ScCheck,
   ScDependentContract,
@@ -105,6 +106,12 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
   "An opaque" should "be able to be defined without refinements" in {
     compile("OPQ") should matchPattern {
       case ScOpaque(_, refinements) if refinements.isEmpty =>
+    }
+  }
+
+  "An assumption" should "be able to be parsed" in {
+    compile("(assume (x int?) (+ 1 1))") should matchPattern {
+      case ScAssume(ScIdentifier("x", _), ScIdentifier("int?", _), _, _) =>
     }
   }
 

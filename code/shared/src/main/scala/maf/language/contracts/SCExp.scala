@@ -21,6 +21,7 @@ case object LETREC                extends Label
 case object BEGIN                 extends Label
 case object IF                    extends Label
 case object SET                   extends Label
+case object ASSUME                extends Label
 
 /**
   * A language for defining software contracts
@@ -355,4 +356,26 @@ case class ScOpaque(idn: Identity, refinement: Set[String]) extends ScExp {
 
   override def toString: String =
     if (refinement.nonEmpty) s"(OPQ ${refinement.mkString(" ")}" else "OPQ"
+}
+
+/**
+  * An assumption of the form:
+  *
+  * (assume (identifier assumption) expression)
+  */
+case class ScAssume(
+    identifier: ScIdentifier,
+    assumption: ScExp,
+    expression: ScExp,
+    idn: Identity
+) extends ScExp {
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = expression.fv
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = ASSUME
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = List(expression)
 }

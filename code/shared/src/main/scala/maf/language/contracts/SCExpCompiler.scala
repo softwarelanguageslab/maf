@@ -112,6 +112,11 @@ object SCExpCompiler {
       val compiledExpression = compile(expression)
       ScCheck(compiledContract, compiledExpression, prog.idn)
 
+    case Ident("assume") :: (IdentWithIdentity(x, idn) :: assumption :: ListNil(_)) :: expression =>
+      val compiledAssumption = compile(assumption)
+      val compiledExpression = compile(expression)
+      ScAssume(ScIdentifier(x, idn), compiledAssumption, compiledExpression, prog.idn)
+
     case operator :: arguments =>
       ScFunctionAp(compile(operator), compile_sequence(arguments), prog.idn)
 
