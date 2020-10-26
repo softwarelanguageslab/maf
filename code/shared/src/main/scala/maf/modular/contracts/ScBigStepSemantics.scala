@@ -123,6 +123,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       println("trace", x)
       pure(x)
     }
+
+    def evict(addresses: List[Addr]): ScEvalM[()] = ScEvalM(context => {
+      Set((context.copy(cache = context.cache.removedAll(addresses)), ()))
+    })
   }
 
   import ScEvalM._
@@ -295,7 +299,12 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
             writeAddr(addr, value._1)
         }
 
-        result(call(calledComponent))
+        for {
+          value <- result(call(calledComponent))
+          // we need to clear out any variables that might have changed that are in our store cache
+          // those variables are the variables that are captured by the clojure we just called
+          _ <- evict(clo.capturedVariables)
+        } yield value
       }
 
       // 3. Application of a monitored function (arrow)
@@ -320,10 +329,19 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
 
       // 5. Application of an OPQ value, this yields simply an OPQ value
       val opqAp = lattice.getOpq(operator._1).map { _ =>
-        pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))
+        for {
+          // TODO: simulate the repeated application of passed lambdas (HAVOC semantics)
+          value <- pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))
+        } yield value
       }
 
-      nondets(primitiveAp ++ cloAp ++ arrAp ++ flatAp ++ opqAp)
+      for {
+        value <- nondets(primitiveAp ++ cloAp ++ arrAp ++ flatAp ++ opqAp)
+        // conservatively remove variables from lambdas passed to the called function from the store cache.
+        // this is necessary because these lambdas could be applied any number of times by the other functions
+        // hence changing the state of the variables stored in the store cache
+        _ <- sequence(operands.flatMap((o) => lattice.getClo(o._1)).map(c => evict(c.capturedVariables)))
+      } yield value
     }
 
     def applyMon(evaluatedContract: PostValue,

@@ -97,6 +97,11 @@ trait ScModSemantics
       case Call(env, lambda, _) =>
         env.extend(lambda.variables.map(v => (v.name, allocVar(v, component))))
     }
+
+    /**
+      * Computes the list of free variables of this component
+      */
+    def fv: Set[String] = expr(component).fv
   }
 
   override def intraAnalysis(component: Component): IntraScAnalysis

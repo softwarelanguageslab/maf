@@ -21,7 +21,14 @@ object ScLattice {
       parameters: List[ScIdentifier],
       lambda: ScLambda,
       pc: ScExp = ScNil()
-  )
+  ) {
+
+    /**
+      * Captured variables are free variables that are captured from the enclosing environment, we denote them here
+      * using their address in the store, such that we can evict them from the store cache when appropriate
+      */
+    val capturedVariables: List[Addr] = lambda.fv.flatMap(env.lookup).toList
+  }
 
   /**
     * A guard which represents the value of a dependent contract after evaluation.
