@@ -63,7 +63,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
   trait BigStepModFIntra extends IntraAnalysis with SchemeModFSemanticsIntra {
     // analysis entry point
     def analyze(timeout: Timeout.T = Timeout.none): Unit = // Timeout is just ignored here.
-      eval(fnBody).run(fnEnv).map(res => writeResult(res))
+      eval(fnBody).run(fnEnv).foreach(res => writeResult(res))
     // simple big-step eval
     protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
       case SchemeValue(value, _)                    => unit(evalLiteralValue(value))
@@ -79,6 +79,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
       case call@SchemeFuncall(fun, args, _)         => evalCall(call, fun, args)
       case SchemeAnd(exps, _)                       => evalAnd(exps)
       case SchemeOr(exps, _)                        => evalOr(exps)
+      case SchemeAssert(exp, _)                     => evalAssert(exp)
       case pair: SchemePair                         => evalPair(pair)
       case pair: SchemeSplicedPair                  => evalSplicedPair(pair)
       case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
@@ -159,6 +160,11 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
         res <- cond(vlu, unit(vlu), evalOr(rst))
       } yield res
     }
+    protected def evalAssert(exp: SchemeExp): EvalM[Value] = {
+      // Assertions are not evaluated by default
+      unit(lattice.void)
+    }
+
     private def evalCall(exp: SchemeFuncall, fun: SchemeExp, args: List[SchemeExp]): EvalM[Value] =
       for {
         funVal    <- eval(fun)

@@ -27,6 +27,7 @@ case object SET extends Label // Assignment
 case object SPA extends Label // Spliced pair
 case object VAL extends Label // Value
 case object VAR extends Label // Variable
+case object ASS extends Label // Assertion
 
 /*
     case SchemeLambda(args, body, idn) =>
@@ -82,7 +83,7 @@ trait SchemeLambdaExp extends SchemeExp {
           case _ => throw new Exception(s"Invalid annotation: $id")
         }
       } else {
-        return None
+        None
       }
     case _ => None
   }
@@ -308,7 +309,7 @@ object SchemeCond {
 object SchemeWhen {
   def apply(pred: SchemeExp,
             body: List[SchemeExp],
-            idn: Identity) = 
+            idn: Identity): SchemeExp =
     SchemeIf(pred, SchemeBody(body), SchemeValue(ValueBoolean(false), idn), idn)
 }
 
@@ -319,7 +320,7 @@ object SchemeWhen {
 object SchemeUnless {
   def apply(pred: SchemeExp,
             body: List[SchemeExp],
-            idn: Identity) = 
+            idn: Identity): SchemeExp =
     SchemeIf(pred, SchemeValue(ValueBoolean(false), idn), SchemeBody(body), idn)
 }
 
@@ -420,7 +421,7 @@ trait SchemeDefineFunctionExp extends SchemeExp {
           case _ => throw new Exception(s"Invalid annotation: $id")
         }
       } else {
-        return None
+        None
       }
     case _ => None
   }
@@ -525,7 +526,7 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarEx
 }
 
 case class SchemePair(car: SchemeExp, cdr: SchemeExp, idn: Identity) extends SchemeExp {
-  override def toString: String = s"`(${contentToString})"
+  override def toString: String = s"`($contentToString)"
   private def contentToString: String = cdr match {
     case SchemeValue(ValueNil,_) => printElement(car)
     case pair: SchemePair => s"${printElement(car)} ${pair.contentToString}"
@@ -533,7 +534,7 @@ case class SchemePair(car: SchemeExp, cdr: SchemeExp, idn: Identity) extends Sch
   }
   private def printElement(elm: SchemeExp): String = elm match {
     case SchemeValue(ValueSymbol(sym),_) => sym
-    case SchemeValue(v,_) => v.toString()
+    case SchemeValue(v,_) => v.toString
     case pair: SchemePair => s"(${pair.contentToString})"
     case _ => s",$elm"
   }
@@ -559,6 +560,16 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp {
   val label: Label = VAL
   def subexpressions: List[Expression] = List()
   override lazy val hash: Int = (label, value).hashCode()
+}
+
+/**
+  * An assertion (assert <exp>)
+  */
+case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp {
+  override def toString: String = s"(assert $exp)"
+  def fv: Set[String] = exp.fv
+  val label: Label = ASS
+  def subexpressions: List[Expression] = List()
 }
 
 /**
