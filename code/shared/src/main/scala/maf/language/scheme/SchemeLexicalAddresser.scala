@@ -143,6 +143,8 @@ trait BaseSchemeLexicalAddresser {
       SchemeAnd(translate(exps,scope),pos)
     case SchemeOr(exps,pos) =>
       SchemeOr(translate(exps,scope),pos)
+    case SchemeAssert(exp, pos) =>
+      SchemeAssert(translate(exp, scope), pos)
     case SchemeLet(bindings,body,pos) =>
       val (vrs,eps) = bindings.unzip
       val bdsLex = vrs.zip(eps.map(this.translate(_,scope)))

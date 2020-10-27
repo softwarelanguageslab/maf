@@ -138,6 +138,10 @@ trait BaseSchemeCompiler {
       tailcall(compileBody(args)).map(SchemeAnd(_, exp.idn))
     case SExpPair(SExpId(Identifier("or", _)), args, _) =>
       tailcall(compileBody(args)).map(SchemeOr(_, exp.idn))
+    case SExpPair(SExpId(Identifier("assert", _)), SExpPair(exp, SExpValue(ValueNil, _), _), _) =>
+      tailcall(this._compile(exp).map(SchemeAssert(_, exp.idn)))
+    case SExpPair(SExpId(Identifier("assert", _)), _, _) =>
+      throw new SchemeCompilerException(s"Invalid Scheme assert: $exp", exp.idn)
     case SExpPair(
         SExpId(Identifier("define", _)),
         SExpPair(SExpId(name), SExpPair(value, SExpValue(ValueNil, _), _), _),

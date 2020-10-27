@@ -143,6 +143,10 @@ trait BaseSchemeUndefiner {
         spliceUndef <- tailcall(undefine1(exps))
         cdrUndef <- tailcall(undefine1(cdr))
       } yield SchemeSplicedPair(spliceUndef, cdrUndef, pos)
+    case SchemeAssert(exp,pos) =>
+      for {
+        expUndef <- tailcall(undefine1(exp))
+      } yield SchemeAssert(expUndef, pos)
     case SchemeVar(id)             => done(SchemeVar(id))
     case SchemeValue(value, pos)   => done(SchemeValue(value, pos))
   }
