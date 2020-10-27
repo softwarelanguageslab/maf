@@ -45,6 +45,16 @@ case class ScPrimAddr[Context](name: String) extends ScAddresses[Context] {
   override def idn: Identity = Identity.none
 }
 
+case class OpaqueResultAddr[Component](component: Component, argumentPosition: Int, idn: Identity)
+    extends Address {
+
+  /** Should the address be included when printing an environment or store?
+    * This allows to reduce the size of the printed environment/store.
+    * Address that are not printable may for example include addresses of primitive functions.
+    */
+  override def printable: Boolean = false
+}
+
 case class ExceptionAddr[Component](component: Component, idn: Identity) extends Address {
   def printable: Boolean = true
 }

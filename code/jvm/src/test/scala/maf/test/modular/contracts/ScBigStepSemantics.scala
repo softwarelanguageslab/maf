@@ -212,4 +212,18 @@ class ScBigStepSemantics extends ScTestsJVM {
   verify("(~> int? int?)", "(lambda (x) (begin ((lambda (y) (set! x #t)) OPQ) x))")
     .applied(Set("int?"))
     .unsafe()
+
+  verify(
+    "(~> int? int?)",
+    "(lambda (x) (begin (assume (x int?) ((lambda (y) (set! x #t)) OPQ)) x))"
+  ).applied(Set("int?"))
+    .safe()
+
+  verify("(~> any? int?)", "(lambda (x) (letrec (y (OPQ int?)) (if (int? x) x y)))")
+    .applied()
+    .safe()
+
+  verify("(~> any? int?)", "(lambda (x) (letrec (y (OPQ int?)) (if (int? x) x x)))")
+    .applied()
+    .unsafe()
 }

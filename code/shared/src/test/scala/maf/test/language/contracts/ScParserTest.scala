@@ -9,6 +9,7 @@ import maf.language.contracts.{
   ScCheck,
   ScDependentContract,
   ScExp,
+  ScFunctionAp,
   ScHigherOrderContract,
   ScIdentifier,
   ScIf,
@@ -111,7 +112,12 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
 
   "An assumption" should "be able to be parsed" in {
     compile("(assume (x int?) (+ 1 1))") should matchPattern {
-      case ScAssume(ScIdentifier("x", _), ScIdentifier("int?", _), _, _) =>
+      case ScAssume(
+          ScIdentifier("x", _),
+          ScIdentifier("int?", _),
+          ScFunctionAp(ScIdentifier("+", _), _, _),
+          _
+          ) =>
     }
   }
 

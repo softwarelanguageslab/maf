@@ -71,6 +71,8 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       f(context.cache).run(context)
     })
 
+    def withContext[X](f: Context => ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => f(context).run(context))
+
     def addToCache(mapping: (Addr, PostValue)): ScEvalM[()] = ScEvalM((context) => {
       List((context.copy(cache = context.cache + mapping), ())).toSet
     })
@@ -119,6 +121,11 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       pure(())
     })
 
+    /**
+      * Executes the given action simply for its side effects
+      */
+    def effectful(c: => ()): ScEvalM[()] = debug(c)
+
     def trace[X]: (X => ScEvalM[X]) = { x =>
       println("trace", x)
       pure(x)
@@ -150,7 +157,13 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       * @param value the value to write
       */
     def write(addr: Addr, value: PostValue): ScEvalM[()] = {
-      writeAddr(addr, value._1)
+      for {
+        _ <- effectful { writeAddr(addr, value._1) }
+        _ <- writeLocal(addr, value)
+      } yield ()
+    }
+
+    def writeLocal(addr: Addr, value: PostValue): ScEvalM[()] = {
       addToCache(addr -> value)
     }
 
@@ -159,6 +172,34 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         writeBlame(Blame(blamedIdentity, blamingIdentity))
         void
       })
+
+    /**
+      * Writes the values of the arguments in the store cache to a designated address.
+      * This can be used to determine
+      */
+    def writeRefinedArguments(): ScEvalM[()] = withContext(context => effectful {
+        // TODO: add return value to the value of the opaque result, so that we can differentiate between true and false states
+        component match {
+          case Call(_, lambda, _) =>
+            lambda
+              .variables
+              .flatMap(v => context.env.lookup(v.name))
+              .flatMap(context.cache.get)
+              .filter(v => lattice.isDefinitelyOpq(v._1))
+              .map(_._1)
+              .zip(0 to lambda.variables.length)
+              .foreach {
+                case (value, pos) => writeAddr(OpaqueResultAddr(component, pos, lambda.idn), value)
+              }
+
+          case _ => ()
+        }
+    })
+
+    /**
+      * Creates a fresh identifier for the given opaque value
+      */
+    def fresh(v: Value): PostValue =  if (lattice.isDefinitelyOpq(v)) (v, ScModSemantics.freshIdent) else (v, ScNil())
 
     /**
       * Compute the context of the current component
@@ -201,6 +242,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       case ScDependentContract(domain, rangeMaker, _) => evalDependentContract(domain, rangeMaker)
       case ScFlatContract(expression, _) => evalFlatContract(expression)
       case ScLambda(params, body, idn) => evalLambda(params, body, idn)
+      case ScAssume(identifier, assumption, expression, _) => evalAssume(identifier, assumption, expression)
     }
 
     def higherOrderToDependentContract(domain: ScExp, range: ScExp, idn: Identity): ScExp =
@@ -211,6 +253,21 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       evaluatedValue <- eval(value) // TODO: check if we should not merge states here
       _ <- write(addr, evaluatedValue)
     } yield evaluatedValue
+
+    def evalAssume(identifier: ScIdentifier, assumption: ScExp, expression: ScExp): ScEvalM[PostValue] = {
+      for {
+        evaluatedAssumption <- eval(assumption)
+        evaluatedExpression <- eval(expression)
+        _ <- guardFeasible(primProc, evaluatedAssumption)
+        identifierValueAddr <- lookup(identifier.name)
+        identifierValue <- read(identifierValueAddr)
+        result <- applyFn(evaluatedAssumption, List(identifierValue))
+        // TODO: see if it is possible to extend the path condition
+        // TODO: not sure what to do here if the value already was opaque with refinements
+        // TODO: we should actually only do this when the value of the assumption is Top or Opq
+        _ <- writeLocal (identifierValueAddr, enrich(evaluatedAssumption, fresh(lattice.injectOpq(Opq()))))
+      } yield evaluatedExpression
+    }
 
     def evalDependentContract(domain: ScExp, rangeMaker: ScExp): ScEvalM[PostValue] = {
       val domainAddr = allocGeneric(domain.idn, component)
@@ -274,7 +331,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     } yield res
 
     def evalIf(condition: ScExp, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] =
-      eval(condition).flatMap((value) => conditional(value, consequent, alternative))
+      eval(condition).flatMap((value) => conditional(value, condition, consequent, alternative))
 
     def applyFn(operator: PostValue, operands: List[PostValue], syntacticOperands: List[ScExp] = List()): ScEvalM[PostValue] = {
       // we have three distinct cases
@@ -370,20 +427,37 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       applyFn(contract, List(expressionValue))
         .flatMap(value => cond(value, pure(enrich(contract, expressionValue)), blame(blamedIdentity)))
 
-    def cond[X](condition: PostValue, consequent: ScEvalM[X], alternative: ScEvalM[X]): ScEvalM[X] = {
-      val t = ifFeasible(primTrue, condition) { consequent }
-      val f = ifFeasible(primFalse, condition) { alternative }
+    def cond[X](condition: PostValue, consequent: ScEvalM[X], alternative: ScEvalM[X], mustReplacePc: Boolean = true): ScEvalM[X] = {
+      val t = ifFeasible(primTrue, condition, mustReplacePc) { consequent }
+      val f = ifFeasible(primFalse, condition, mustReplacePc) { alternative }
       nondet(t, f)
     }
 
-    def conditional(condition: PostValue, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] =
-      cond(condition, eval(consequent), eval(alternative))
+    def conditional(conditionValue: PostValue, condition: ScExp, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] = {
+      // enrich the opaque value if it is a simple predicate on an opaque value
+      // eg. (mon int? (letrec (y (OPQ int?)) (if (int? x) x y)) is safe
+      val t = isPredicateOnVariable(condition) match {
+        case Some((operator, variable)) => for {
+          opAddr <- lookup(operator)
+          varAddr <- lookup(variable)
+          opValue <- read(opAddr)
+          varValue <- read(varAddr)
+          _ <- writeLocal(varAddr, enrich(opValue, varValue))
+          result <- eval(consequent)
+        } yield result
+        case None => eval(consequent)
+      }
 
-    def ifFeasible[X](op: Prim, value: PostValue)(c: => ScEvalM[X]): ScEvalM[X] =
+      cond(conditionValue, t, eval(alternative))
+    }
+
+    def ifFeasible[X](op: Prim, value: PostValue, mustReplacePc: Boolean = true)(c: => ScEvalM[X]): ScEvalM[X] =
       withPc(feasible(op, value)).flatMap {
-        case Some(pc) => replacePc(pc)(c)
+        case Some(pc) => if (mustReplacePc) replacePc(pc)(c) else c
         case None => void
       }
+
+    def guardFeasible(op: Prim, value: PostValue): ScEvalM[()] = ifFeasible(op, value)(pure(()))
 
     private def feasible(op: Prim, value: PostValue)(pc: PC): Option[PC] =
       value._2 match {
@@ -413,4 +487,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         // if the operator is a primitive, then we can fetch its name from its value
         case _ => lattice.getSymbolic(operator._1).map(refined(_, value)).getOrElse(value)
       }
+
+
+  def isPredicateOnVariable(expr: ScExp): Option[(String, String)] = expr match {
+    case ScFunctionAp(ScIdentifier(operator, _), List(ScIdentifier(variable, _)), _) => Some((operator, variable))
+    case _ => None
+  }
 }
