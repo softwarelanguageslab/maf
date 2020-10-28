@@ -43,8 +43,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
   def deregister(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) - target))
 
-  /** Keep track of the number of components that have spawned a given component (excluding possibly the component). */
-  var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
+  ///** Keep track of the number of components that have spawned a given component (excluding possibly the component). */
+  //var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
+  /** Keep track of the components that spawned a component: spawnee -> spawners. Used to incrementally detect SCCs. */
+  var spawnedbyCache: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
   /** Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components. */
   var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
 
@@ -67,15 +69,18 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     }
     // Delete the caches.
     cachedSpawns -= cmp
-    countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
+    //countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
+    spawnedbyCache -= cmp
   }
 
   @nonMonotonicUpdate
   /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
   def unspawn(cmp: Component, from: Component): Unit = {
     // Update the spawn count information.
-    countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
-    if (countedSpawns(cmp) == 0) deleteComponent(cmp) // Delete the component if it is no longer spawned by any other component.
+    //countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
+    spawnedbyCache += (cmp -> (spawnedbyCache(cmp) + from))
+    //if (countedSpawns(cmp) == 0) deleteComponent(cmp) // Delete the component if it is no longer spawned by any other component.
+    if (spawnedbyCache(cmp).isEmpty) deleteComponent(cmp)
   }
 
   /* ***** Incremental update: actually perform the incremental analysis ***** */
@@ -113,7 +118,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       val Cdiff = C - component // Subtract component to avoid circular circularities due to recursion. TODO: also avoid bigger circular spawn dependencies.
 
       // For each component not previously spawn by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
-      (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
+      //(Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
+      (Cdiff -- cachedSpawns(component)).foreach(cmp => spawnedbyCache += (cmp -> (spawnedbyCache(cmp) + component)))
 
       if (version == New) { // TODO Will anything within this if-block be executed when version == Old? No, but this might be cheaper. Should also only do something the first time a component is encountered, but that is covered without explicit check.
         val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
