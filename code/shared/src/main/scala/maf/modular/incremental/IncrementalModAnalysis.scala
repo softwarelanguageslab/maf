@@ -4,19 +4,25 @@ import maf.core._
 import maf.language.change._
 import maf.language.change.CodeVersion._
 import maf.modular._
-import maf.util.Annotations.nonMonotonicUpdate
+import maf.util.Annotations._
+import maf.util.DisjointSet
 import maf.util.benchmarks.Timeout
 
 // NOTE - This implementation is not thread-safe, and does not always use the local stores of the intra-component analyses!
 //        Therefore, a sequential work-list algorithm is used.
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
+  /* ************************************************************************* */
   /* ***** Tracking: track which components depend on which expressions. ***** */
+  /* ************************************************************************* */
 
   /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
   var version: Version = Old
   /** Keeps track of which components depend on an expression. */
   private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
+
+  /** Keeps track of cyclic dependencies between spawned components (that hence form a Strongly Connected Component in the 'spawn graph'). */
+  @mutable val componentSCCs: DisjointSet[Component] = new DisjointSet[Component]()
 
   /**
    * Register that a component is depending on a given expression in the program.
@@ -32,7 +38,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     case e => e.subexpressions.asInstanceOf[List[Expr]].flatMap(findUpdatedExpressions).toSet
   }
 
+  /* ******************************* */
   /* ***** Regaining precision ***** */
+  /* ******************************* */
 
   // Cache the dependencies of every component, to find dependencies that are no longer inferred (and hence can be removed).
   // Another strategy would be not to cache, but walk through the data structures.
@@ -83,7 +91,41 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     if (spawnedbyCache(cmp).isEmpty) deleteComponent(cmp)
   }
 
+  /* ************************************** */
+  /* ***** Update the SCC information ***** */
+  /* ************************************** */
+
+  def updateSCC(spawner: Component, spawnee: Component): Unit = {
+    if (spawner == spawnee) return ()  // Self-loop TODO: we avoid these so this check seems not necessary.
+    val targetSCC = componentSCCs.find(spawnee)
+    var visited = Set[Component]()
+    var incomingRefs = Set[Component]() // Other SCCs referring to this SCC.
+    /**
+     * Performs a backward search for the SCC of spawnee, starting from the SCC of from.<br>
+     * If true is returned, this means the two SCCs (of spawner and spawnee) become one, as
+     * to -->* from, and there is now a new edge from --> to.
+     */
+    def reachable(current: Component): Boolean = {
+      val currentSCC = componentSCCs.find(current)
+      if (targetSCC == currentSCC) return true // We can reach spawner by current (spawner -->* current -->* from).
+      if (visited(current)) return componentSCCs.find(current) == targetSCC // We already reached this component. No need to investigate it a second time.
+      visited = visited + current
+      val refsToCurrent = spawnedbyCache(current)
+      val (reachableComponents, unreachableComponents) = refsToCurrent.partition(reachable)
+      if (reachableComponents.isEmpty) return false // There is no component C so that we can reach spawner by C (spawner -->* C -->* from).
+      componentSCCs.merge(currentSCC, targetSCC)
+      incomingRefs = incomingRefs ++ unreachableComponents
+      true
+    }
+    if (reachable(spawner)) { // Spawner can be reached by spawnee, we have a new cycle.
+      val updatedSCC = componentSCCs.find(spawnee)
+
+    }
+  }
+
+  /* ************************************************************************* */
   /* ***** Incremental update: actually perform the incremental analysis ***** */
+  /* ************************************************************************* */
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(timeout: Timeout.T): Unit = {
@@ -93,7 +135,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     analyze(timeout)
   }
 
+  /* ************************************ */
   /* ***** Intra-component analysis ***** */
+  /* ************************************ */
 
   trait IncrementalIntraAnalysis extends IntraAnalysis {
 
@@ -106,7 +150,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
         val deltaR = cachedDeps(component) -- R  // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
         deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
       }
-
       cachedDeps += (component -> R)             // Update the cache. The cache also needs to be updated when the program is initially analysed.
     }
 
@@ -123,9 +166,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
       if (version == New) { // TODO Will anything within this if-block be executed when version == Old? No, but this might be cheaper. Should also only do something the first time a component is encountered, but that is covered without explicit check.
         val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
-        deltaC.foreach(unspawn(_, component))
+        deltaC.foreach(unspawn(_, component)) // TODO: if this set is nonempty, unspawn everything and then check whether there are still unreachable components left?
       }
-
       cachedSpawns += (component -> Cdiff) // Update the cache.
     }
 
