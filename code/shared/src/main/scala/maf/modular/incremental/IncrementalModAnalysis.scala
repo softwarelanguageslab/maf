@@ -52,9 +52,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   def deregister(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) - target))
 
   ///** Keep track of the number of components that have spawned a given component (excluding possibly the component). */
-  //var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
-  /** Keep track of the components that spawned a component: spawnee -> spawners. Used to incrementally detect SCCs. */
-  var spawnedbyCache: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
+  var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
   /** Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components. */
   var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
 
@@ -73,54 +71,51 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     // Transitively check for components that have to be deleted.
     for (to <- cachedSpawns(cmp)) {
       if (cmp != to) // A component may spawn itself (e.g., in case of recursion). TODO: will this test ever be false?
-        unspawn(to, cmp)
+        unspawn(to)
     }
     // Delete the caches.
+    cachedDeps -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
     cachedSpawns -= cmp
-    //countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
-    spawnedbyCache -= cmp
+    countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
   }
 
   @nonMonotonicUpdate
   /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
-  def unspawn(cmp: Component, from: Component): Unit = {
+  def unspawn(cmp: Component): Unit = {
     // Update the spawn count information.
-    //countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
-    spawnedbyCache += (cmp -> (spawnedbyCache(cmp) + from))
-    //if (countedSpawns(cmp) == 0) deleteComponent(cmp) // Delete the component if it is no longer spawned by any other component.
-    if (spawnedbyCache(cmp).isEmpty) deleteComponent(cmp)
+    countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
+    if (countedSpawns(cmp) <= 0) deleteComponent(cmp) else deletionFlag = true // Delete the component if it is no longer spawned by any other component.
   }
 
-  /* ************************************** */
-  /* ***** Update the SCC information ***** */
-  /* ************************************** */
+  /* ********************************************** */
+  /* ***** Find and delete unreachable cycles ***** */
+  /* ********************************************** */
 
-  def updateSCC(spawner: Component, spawnee: Component): Unit = {
-    if (spawner == spawnee) return ()  // Self-loop TODO: we avoid these so this check seems not necessary.
-    val targetSCC = componentSCCs.find(spawnee)
-    var visited = Set[Component]()
-    var incomingRefs = Set[Component]() // Other SCCs referring to this SCC.
-    /**
-     * Performs a backward search for the SCC of spawnee, starting from the SCC of from.<br>
-     * If true is returned, this means the two SCCs (of spawner and spawnee) become one, as
-     * to -->* from, and there is now a new edge from --> to.
-     */
-    def reachable(current: Component): Boolean = {
-      val currentSCC = componentSCCs.find(current)
-      if (targetSCC == currentSCC) return true // We can reach spawner by current (spawner -->* current -->* from).
-      if (visited(current)) return componentSCCs.find(current) == targetSCC // We already reached this component. No need to investigate it a second time.
-      visited = visited + current
-      val refsToCurrent = spawnedbyCache(current)
-      val (reachableComponents, unreachableComponents) = refsToCurrent.partition(reachable)
-      if (reachableComponents.isEmpty) return false // There is no component C so that we can reach spawner by C (spawner -->* C -->* from).
-      componentSCCs.merge(currentSCC, targetSCC)
-      incomingRefs = incomingRefs ++ unreachableComponents
-      true
-    }
-    if (reachable(spawner)) { // Spawner can be reached by spawnee, we have a new cycle.
-      val updatedSCC = componentSCCs.find(spawnee)
+  /** Keeps track of whether a component was unspawned but not deleted. If no such component exists, then there is no chance of having unreachable components left (all are deleted). */
+  var deletionFlag: Boolean = false
 
+  /**
+   * Deletes components that are no longer 'reachable' from the Main component given a spawning relation.
+   */
+  def deleteDisconnectedComponents(): Unit = {
+    /** Computes the set of reachable components. */
+    def reachableComponents(): Set[Component] = {
+      var reachable: Set[Component] = Set()
+      var work: Set[Component] = Set(initialComponent)
+      while (work.nonEmpty) {
+        val head = work.head
+        work = work.tail
+        if (!reachable(head)) {
+          reachable += head
+          work = work ++ cachedSpawns(head)
+        }
+      }
+      reachable
     }
+    /** Computes the set of unreachable components. */
+    def unreachableComponents(): Set[Component] = visited -- reachableComponents()
+    if (deletionFlag) unreachableComponents().foreach(cmp => if (visited(cmp)) unspawn(cmp))
+    deletionFlag = false
   }
 
   /* ************************************************************************* */
@@ -161,12 +156,12 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       val Cdiff = C - component // Subtract component to avoid circular circularities due to recursion. TODO: also avoid bigger circular spawn dependencies.
 
       // For each component not previously spawn by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
-      //(Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
-      (Cdiff -- cachedSpawns(component)).foreach(cmp => spawnedbyCache += (cmp -> (spawnedbyCache(cmp) + component)))
+      (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
 
       if (version == New) { // TODO Will anything within this if-block be executed when version == Old? No, but this might be cheaper. Should also only do something the first time a component is encountered, but that is covered without explicit check.
         val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
-        deltaC.foreach(unspawn(_, component)) // TODO: if this set is nonempty, unspawn everything and then check whether there are still unreachable components left?
+        deltaC.foreach(unspawn)
+        if (deltaC.nonEmpty) deleteDisconnectedComponents() // Delete components that are no longer reachable.
       }
       cachedSpawns += (component -> Cdiff) // Update the cache.
     }
