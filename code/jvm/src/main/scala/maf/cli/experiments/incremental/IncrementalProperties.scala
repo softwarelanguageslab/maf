@@ -7,6 +7,7 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme._
 import maf.modular.incremental.scheme.AnalysisBuilder._
 import maf.modular.scheme._
+import maf.util.ListOps.Crossable
 import maf.util._
 import maf.util.Writer._
 import maf.util.benchmarks._
@@ -15,20 +16,23 @@ import scala.concurrent.duration._
 
 trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
 
-  final val in: String = " (init)"
-  final val up: String = " (incr)"
-  final val re: String = " (rean)"
+  final val in: String = " (init)"        // Initial analysis
+  final val up: String = " (incr)"        // Incremental update
+  final val re: String = " (rean)"        // Full reanalysis
 
-  final val al = List(in, up, re)
+  final val al = List(in, up, re)         // Analyses
 
-  final val co: String = "#Components"
-  final val an: String = "#Analyses"
-  final val ad: String = "|Store|"
-  final val dp: String = "#Dependencies"
+  final val co: String = "#Components"    // Number of components
+  final val an: String = "#Analyses"      // Number of intra-component analyses
+  final val ad: String = "|Store|"        // Store size
+  final val dp: String = "#Dependencies"  // Number of dependencies
 
-  final val pr = List(co, an, ad, dp)
+  final val pr = List(ad, co, dp, an)     // Properties
 
-  var results: Table[String] = Table.empty.withDefaultValue(" ")
+  final val inf: String = "∞"             // Timeout
+  final val err: String = "E"             // Error
+
+  var results: Table[String] = Table.empty.withDefaultValue("?")
 
   def onBenchmark(file: String): Unit = {
     write(s"Testing $file ")
@@ -49,11 +53,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     a1.analyze(timeOut)
     if (timeOut.reached) { // We do not use the test `a1.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
       writeln("timed out.")
-      results = results
-        .add(file, co + in, "∞")
-        .add(file, an + in, "∞")
-        .add(file, ad + in, "∞")
-        .add(file, dp + in, "∞")
+      pr.foreach(p => results = results.add(file, p + in, inf))
       return
     }
     val vis = a1.visited.size
@@ -62,7 +62,6 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     //val cnt = a1.intraCount
     results = results
       .add(file, co + in, vis.toString)
-      .add(file, an + in, "?")
       //.add(file, an + in, cnt.toString)
       .add(file, ad + in, ssi.toString)
       .add(file, dp + in, dep.toString)
@@ -73,19 +72,14 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     a1.updateAnalysis(timeOut)
     if (timeOut.reached) {
       writeln("timed out.")
-      results = results
-        .add(file, co + up, "∞")
-        .add(file, an + up, "∞")
-        .add(file, ad + up, "∞")
-        .add(file, dp + up, "∞")
+      pr.foreach(p => results = results.add(file, p + up, inf))
       return
     }
     results = results
-      .add(file, co + up, s"${a1.visited.size} (+${a1.visited.size - vis})")
-      .add(file, an + up, "?")
+      .add(file, co + up, s"${a1.visited.size}")
       //.add(file, an + up, s"${a1.intraCount - cnt}")
-      .add(file, ad + up, s"${a1.store.keySet.size} (+${a1.store.keySet.size - ssi})")
-      .add(file, dp + up, s"${a1.deps.values.map(_.size).sum} (+${a1.deps.values.map(_.size).sum - dep})")
+      .add(file, ad + up, s"${a1.store.keySet.size}")
+      .add(file, dp + up, s"${a1.deps.values.map(_.size).sum}")
 
     // Run a full reanalysis
     write(s"-> rean ")
@@ -93,24 +87,19 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     a2.analyze(timeOut)
     if (timeOut.reached) {
       write("timed out.")
-      results = results
-        .add(file, co + re, "∞")
-        .add(file, an + re, "∞")
-        .add(file, ad + re, "∞")
-        .add(file, dp + re, "∞")
+      pr.foreach(p => results = results.add(file, p + re, inf))
       return
     }
     results = results
       .add(file, co + re, a2.visited.size.toString)
-      .add(file, an + re, "?")
       //.add(file, an + re, a2.intraCount.toString)
       .add(file, ad + re, a2.store.keySet.size.toString)
       .add(file, dp + re, a2.deps.values.map(_.size).sum.toString)
   }
 
   def interestingAddress[A <: Address](a: A): Boolean
-  def reportError(file: String): Unit = pr.foreach(d => al.foreach(a => results = results.add(file, d + a, "E")))
-  def createOutput(): String = results.prettyString(columns = List(ad + in, ad + up, ad + re, co + in, co + up, co + re, dp + in, dp + up, dp + re, an + in, an + up, an + re))
+  def reportError(file: String): Unit = pr.foreach(d => al.foreach(a => results = results.add(file, d + a, err)))
+  def createOutput(): String = results.prettyString(columns = pr.cartesian(al).map(e => e._1 + e._2).toList)
 }
 
 trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {

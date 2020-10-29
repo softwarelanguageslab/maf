@@ -114,8 +114,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     }
     /** Computes the set of unreachable components. */
     def unreachableComponents(): Set[Component] = visited -- reachableComponents()
-    if (deletionFlag) unreachableComponents().foreach(cmp => if (visited(cmp)) unspawn(cmp))
-    deletionFlag = false
+    if (deletionFlag) {
+      unreachableComponents().foreach(cmp => if (visited(cmp)) unspawn(cmp)) // A component may already have been deleted. Perhaps the cheapest solution is to already check this here.
+      deletionFlag = false
+    }
   }
 
   /* ************************************************************************* */
