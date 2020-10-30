@@ -121,8 +121,11 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ***** Incremental update: actually perform the incremental analysis ***** */
   /* ************************************************************************* */
 
+  var regainPrecision: Boolean = true // Used for testing purposes.
+
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
-  def updateAnalysis(timeout: Timeout.T): Unit = {
+  def updateAnalysis(timeout: Timeout.T, regain: Boolean = true): Unit = {
+    regainPrecision = regain // Used for testing pursposes.
     version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList) // Affected should be cleared when there are multiple successive incremental analysis steps.
@@ -170,8 +173,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
      */
     @nonMonotonicUpdate
     override def commit(): Unit = {
-      refineDependencies()  // First, remove excess dependencies if this is a reanalysis.
-      refineComponents()    // Second, remove components that are no longer reachable (if this is a reanalysis).
+      if (regainPrecision) {
+        refineDependencies() // First, remove excess dependencies if this is a reanalysis.
+        refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
+      }
       super.commit()        // Then commit and trigger dependencies.
     }
   }

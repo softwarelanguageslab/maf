@@ -18,6 +18,8 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   val maxWarmupRuns = 5
   // The number of actually measured runs.
   val  measuredRuns = 30
+  // A flag indicating whether precision should be regained.
+  val regain: Boolean
 
   // The results of the evaluation.
   sealed trait Result
@@ -84,7 +86,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
       if (!incrementalTimeout) {
         System.gc()
         to = timeout()
-        val ti = Timer.timeOnly({a.updateAnalysis(to)})
+        val ti = Timer.timeOnly({a.updateAnalysis(to, regain)})
         if (to.reached) {
           incrementalTimeout = true
         }
@@ -128,6 +130,7 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
   val outputFile: String = s"ModF-performance.txt"
+  val regain = true
 }
 
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
@@ -136,11 +139,32 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
   val outputFile: String = s"ModConc-performance.txt"
+  val regain = true
+}
+
+object IncrementalSchemeModFPerformanceNoRegain extends IncrementalTime[SchemeExp] {
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
+  override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
+  override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
+  val outputFile: String = s"ModF-performance-no-regain.txt"
+  val regain = false
+}
+
+object IncrementalSchemeModConcPerformanceNoRegain extends IncrementalTime[SchemeExp] {
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.concurrent
+  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
+  override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
+  override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
+  val outputFile: String = s"ModConc-performance-no-regain.txt"
+  val regain = false
 }
 
 object IncrementalSchemeModXPerformance {
   def main(args: Array[String]): Unit = {
     IncrementalSchemeModFPerformance.main(args)
+    IncrementalSchemeModFPerformanceNoRegain.main(args)
     IncrementalSchemeModConcPerformance.main(args)
+    IncrementalSchemeModConcPerformanceNoRegain.main(args)
   }
 }
