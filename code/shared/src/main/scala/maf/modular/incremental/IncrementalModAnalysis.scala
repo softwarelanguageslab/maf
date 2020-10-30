@@ -127,7 +127,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList) // Affected should be cleared when there are multiple successive incremental analysis steps.
     analyze(timeout)
-    countedSpawns.values.foreach(cnt => if (cnt < 0) throw new Exception(s"Illegal count: $cnt")) // TODO REMOVE THIS DEBUG CODE
   }
 
   /* ************************************ */
