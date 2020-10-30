@@ -128,16 +128,17 @@ object IncrementalRun extends App {
     val a = new IncrementalSchemeModFAnalysis(text)
     a.analyze(timeout())
     val store1 = a.store
-    a.visited.foreach(println)
-    a.deps.foreach(println)
+    //a.visited.foreach(println)
+    //a.deps.foreach(println)
+    println(s"${a.visited.size} components")
 
     a.updateAnalysis(timeout())
-    val store2 = a.store
-    store2.keySet.foreach { k =>
-      val v1 = store1.getOrElse(k, a.lattice.bottom)
-      if (store2(k) != v1)
-        println(s"$k: $v1 -> ${store2(k)}")
-    }
+    //val store2 = a.store
+    //store2.keySet.foreach { k =>
+    //  val v1 = store1.getOrElse(k, a.lattice.bottom)
+    //  if (store2(k) != v1)
+    //    println(s"$k: $v1 -> ${store2(k)}")
+    //}
   }
 
   val modConcbenchmarks: List[String] = List(
@@ -147,7 +148,7 @@ object IncrementalRun extends App {
     //"test/changes/cscheme/threads/pc.scm",
     //"test/changes/cscheme/threads/stm.scm"
    )
-  val    modFbenchmarks: List[String] = List("test/DEBUG2.scm")
+  val    modFbenchmarks: List[String] = List("test/changes/scheme/icp_7_8_open_coded.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
   modConcbenchmarks.foreach { bench =>

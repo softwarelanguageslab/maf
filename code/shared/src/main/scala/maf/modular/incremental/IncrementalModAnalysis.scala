@@ -61,30 +61,26 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
    * Deletes information related to a component. May cause other components to be deleted as well if they are no longer spawned.
    * @note If subclasses add extra analysis state (e.g., a global store with return values), then it is up to those subclasses to override this method and extend its functionality.
    */
-  def deleteComponent(cmp: Component): Unit = {
+  def deleteComponent(cmp: Component): Unit = if (visited(cmp)) { // Only do this if we have not yet encountered the component. Note that this is not needed to prevent looping.
     // Remove all dependencies related to this component.
-    for (dep <- cachedDeps(cmp)) {
-      deregister(cmp, dep)
-    }
+    for (dep <- cachedDeps(cmp)) deregister(cmp, dep)
     // Remove the component from the visited set.
     visited = visited - cmp
     // Transitively check for components that have to be deleted.
-    for (to <- cachedSpawns(cmp)) {
-      if (cmp != to) // A component may spawn itself (e.g., in case of recursion). TODO: will this test ever be false?
-        unspawn(to)
-    }
+    for (to <- cachedSpawns(cmp)) unspawn(to) // Note: we avoid registering self-circularities.
     // Delete the caches.
-    cachedDeps -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
-    cachedSpawns -= cmp
+    cachedDeps    -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
+    cachedSpawns  -= cmp
     countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
   }
 
   @nonMonotonicUpdate
   /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
-  def unspawn(cmp: Component): Unit = {
+  def unspawn(cmp: Component): Unit = if (visited (cmp)) { // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
+                                                           // (Counts can go below zero if an already reclamated component is encountered here, which is possible due to the foreach in deleteDisconnectedComponents.)
     // Update the spawn count information.
     countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
-    if (countedSpawns(cmp) <= 0) deleteComponent(cmp) else deletionFlag = true // Delete the component if it is no longer spawned by any other component.
+    if (countedSpawns(cmp) == 0) deleteComponent(cmp) else deletionFlag = true // Delete the component if it is no longer spawned by any other component.
   }
 
   /* ********************************************** */
@@ -114,8 +110,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     }
     /** Computes the set of unreachable components. */
     def unreachableComponents(): Set[Component] = visited -- reachableComponents()
+    // Only perform the next steps if there was a component that was unspawned but not collected. In the other case, there can be no unreachable components left.
     if (deletionFlag) {
-      unreachableComponents().foreach(cmp => if (visited(cmp)) unspawn(cmp)) // A component may already have been deleted. Perhaps the cheapest solution is to already check this here.
+      unreachableComponents().foreach(deleteComponent) // Make sure the components are actually deleted.
       deletionFlag = false
     }
   }
@@ -130,6 +127,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList) // Affected should be cleared when there are multiple successive incremental analysis steps.
     analyze(timeout)
+    countedSpawns.values.foreach(cnt => if (cnt < 0) throw new Exception(s"Illegal count: $cnt")) // TODO REMOVE THIS DEBUG CODE
   }
 
   /* ************************************ */
@@ -155,7 +153,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
      */
     @nonMonotonicUpdate
     def refineComponents(): Unit = {
-      val Cdiff = C - component // Subtract component to avoid circular circularities due to recursion. TODO: also avoid bigger circular spawn dependencies.
+      val Cdiff = C - component // Subtract component to avoid circular circularities due to recursion.
 
       // For each component not previously spawn by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
       (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
