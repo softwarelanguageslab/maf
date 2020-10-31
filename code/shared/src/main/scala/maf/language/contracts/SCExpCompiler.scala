@@ -47,6 +47,25 @@ object SCExpCompiler {
     case SExpValue(ValueNil, _) => List()
   }
 
+  def compile_branches(exp: SExp): ScExp = exp match {
+    case ListNil(idn) => ScNil(idn)
+    case SExpPair((condition :: expression :: ListNil(_)), rest, _) =>
+      ScIf(compile(condition), compile(expression), compile_branches(rest), exp.idn)
+  }
+
+  def compile_contracts(exp: SExp): ScExp = exp match {
+    case ListNil(_) => ScProvideContracts(List(), List(), exp.idn)
+    case SExpPair((IdentWithIdentity(name, idn) :: contract :: ListNil(_)), rest, _) =>
+      compile_contracts(rest) match {
+        case ScProvideContracts(identifiers, contracts, _) =>
+          ScProvideContracts(
+            ScIdentifier(name, idn) :: identifiers,
+            compile(contract) :: contracts,
+            exp.idn
+          )
+      }
+  }
+
   def compile(prog: SExp): ScExp = prog match {
     case IdentWithIdentity("OPQ", idn) =>
       ScOpaque(idn, Set())
@@ -73,7 +92,7 @@ object SCExpCompiler {
       ScDependentContract(domainCompiled, rangeCompiled, prog.idn)
 
     case SExpId(identifier) => ScIdentifier(identifier.name, prog.idn)
-    case Ident("lambda") :: params :: expression :: ListNil(_) =>
+    case (Ident("lambda") | Ident("λ")) :: params :: expression :: ListNil(_) =>
       val compiledParams     = compile_params(params)
       val compiledExpression = compile(expression)
       ScLambda(compiledParams, compiledExpression, prog.idn)
@@ -119,6 +138,33 @@ object SCExpCompiler {
       val compiledExpression = compile(expression)
       ScAssume(ScIdentifier(x, idn), compiledAssumption, compiledExpression, prog.idn)
 
+    case Ident("define") :: IdentWithIdentity(x, idn) :: expression :: ListNil(_) =>
+      val compiledExpression = compile(expression)
+      ScDefine(ScIdentifier(x, idn), compiledExpression, prog.idn)
+
+    case Ident("define") :: (IdentWithIdentity(f, idn) :: params) :: expressions =>
+      val compiledSequence = ScBegin(compile_sequence(expressions), expressions.idn)
+      val compiledParams   = compile_params(params)
+      ScDefineFn(ScIdentifier(f, idn), compiledParams, compiledSequence, prog.idn)
+
+    case Ident("define/contract") :: (IdentWithIdentity(f, idn) :: params) :: contract :: expressions =>
+      val compiledSequence = ScBegin(compile_sequence(expressions), expressions.idn)
+      val compiledParams   = compile_params(params)
+      val compiledContract = compile(contract)
+      ScDefineAnnotatedFn(
+        ScIdentifier(f, idn),
+        compiledParams,
+        compiledContract,
+        compiledSequence,
+        prog.idn
+      )
+
+    case Ident("cond") :: branches =>
+      compile_branches(branches)
+
+    case Ident("provide/contract") :: contracts =>
+      compile_contracts(contracts)
+
     case operator :: arguments =>
       ScFunctionAp(compile(operator), compile_sequence(arguments), prog.idn)
 
@@ -130,6 +176,10 @@ object SCExpCompiler {
 
   def read(s: String): ScExp = {
     val sexprs = SExpParser.parse(s)
-    SCExpCompiler.compile(sexprs.head)
+    if (sexprs.size > 1) {
+      ScProgram(sexprs.map(SCExpCompiler.compile), sexprs.head.idn)
+    } else {
+      SCExpCompiler.compile(sexprs.head)
+    }
   }
 }

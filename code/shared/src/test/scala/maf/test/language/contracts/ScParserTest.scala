@@ -1,32 +1,13 @@
 package maf.test.language.contracts
 
+import maf.language.contracts._
+import maf.language.sexp.{SExpParser, ValueBoolean, ValueInteger}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should
-import maf.language.contracts.{
-  SCExpCompiler,
-  ScAssume,
-  ScBegin,
-  ScCheck,
-  ScDependentContract,
-  ScExp,
-  ScFunctionAp,
-  ScHigherOrderContract,
-  ScIdentifier,
-  ScIf,
-  ScLambda,
-  ScMon,
-  ScOpaque,
-  ScSet,
-  ScValue
-}
-import maf.language.sexp.{SExpParser, ValueBoolean, ValueInteger}
-
-import scala.collection.Set
 
 class ScParserTest extends AnyFlatSpec with should.Matchers {
   private def compile(exp: String): ScExp = {
-    val sexp = SExpParser.parse(exp)
-    SCExpCompiler.compile(sexp.head)
+    SCExpCompiler.read(exp)
   }
 
   "A number" should "parse to an ScValue" in {
@@ -121,4 +102,59 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
     }
   }
 
+  "A top level definition with a variable" should "be able to be parsed" in {
+    compile("(define x 10)") should matchPattern {
+      case ScDefine(ScIdentifier("x", _), _, _) =>
+    }
+  }
+
+  "A top level definition with a function" should "be able to be parsed" in {
+    compile("(define (f x) x)") should matchPattern {
+      case ScDefineFn(
+          ScIdentifier("f", _),
+          List(ScIdentifier("x", _)),
+          ScBegin(List(ScIdentifier("x", _)), _),
+          _
+          ) =>
+    }
+  }
+
+  "A top level defintion with a contract" should "be able to be parsed" in {
+    compile("(define/contract (f x) (~> int? int?) x)") should matchPattern {
+      case ScDefineAnnotatedFn(
+          ScIdentifier("f", _),
+          List(ScIdentifier("x", _)),
+          _,
+          ScBegin(List(ScIdentifier("x", _)), _),
+          _
+          ) =>
+    }
+  }
+
+  "A conditional" should "be able to be parsed" in {
+    compile("(cond (a b) (c d))") should matchPattern {
+      case ScIf(
+          ScIdentifier("a", _),
+          ScIdentifier("b", _),
+          ScIf(ScIdentifier("c", _), ScIdentifier("d", _), ScNil(_), _),
+          _
+          ) =>
+    }
+  }
+
+  "A full program" should "be able to be parsed" in {
+    compile("(define (f x) x) (define (f y) y) (define (f z) z)") should matchPattern {
+      case ScProgram(exps, _) if exps.size == 3 =>
+    }
+  }
+
+  "Contract" should "be able to be provided for arbitrary identifiers" in {
+    compile("(provide/contract (n->f (~> exact-nonnegative-integer? church/c)))") should matchPattern {
+      case ScProvideContracts(
+          List(ScIdentifier("n->f", _)),
+          List((ScHigherOrderContract(_, _, _))),
+          _
+          ) =>
+    }
+  }
 }

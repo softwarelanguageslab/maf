@@ -22,6 +22,11 @@ case object BEGIN                 extends Label
 case object IF                    extends Label
 case object SET                   extends Label
 case object ASSUME                extends Label
+case object PROGRAM               extends Label
+case object DEFINE                extends Label
+case object DEFINE_FN             extends Label
+case object DEFINE_ANNOTATED_FN   extends Label
+case object PROVIDE_CONTRACT      extends Label
 
 /**
   * A language for defining software contracts
@@ -378,4 +383,99 @@ case class ScAssume(
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(expression)
+}
+
+/**
+  * A variable definition
+  * (define x expression)
+  */
+case class ScDefine(variable: ScIdentifier, expression: ScExp, idn: Identity) extends ScExp {
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = expression.fv
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = DEFINE
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = List(expression)
+}
+
+/**
+  * A soft contract program
+  * */
+case class ScProgram(expressions: List[ScExp], idn: Identity) extends ScExp {
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = expressions.map(_.fv).fold(Set())((a, b) => a ++ b)
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = PROGRAM
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = expressions
+}
+
+/**
+  * A function definition
+  *
+  * Syntax:
+  * (define (name parameters ...) expressions ...)
+  */
+case class ScDefineFn(
+    name: ScIdentifier,
+    parameters: List[ScIdentifier],
+    expressions: ScBegin,
+    idn: Identity
+) extends ScExp {
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = expressions.fv -- parameters.map(_.name).toSet
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = DEFINE_FN
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = expressions.subexpressions
+}
+
+/**
+  * A function definition annotated with a contract
+  *
+  * Syntax:
+  * (define (name parameters ...) contract expressions ...)
+  */
+case class ScDefineAnnotatedFn(
+    name: ScIdentifier,
+    parameters: List[ScIdentifier],
+    contract: ScExp,
+    expressions: ScBegin,
+    idn: Identity
+) extends ScExp {
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = expressions.fv -- parameters.map(_.name).toSet
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = DEFINE_ANNOTATED_FN
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = expressions.subexpressions
+}
+
+case class ScProvideContracts(
+    identifiers: List[ScIdentifier],
+    contracts: List[ScExp],
+    idn: Identity
+) extends ScExp {
+  import maf.util.MonoidInstances._
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = combineAllMap((c: ScExp) => c.fv)(contracts)
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = PROVIDE_CONTRACT
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = contracts
 }

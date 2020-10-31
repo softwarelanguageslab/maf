@@ -48,13 +48,17 @@ object MonoidInstances {
   def combineAll[A: Monoid](list: List[A]): A =
     list.foldLeft(Monoid[A].zero)((a, b) => Monoid[A].append(a, b))
 
+  def combineAllMap[A, B: Monoid](f: A => B)(list: List[A]): B =
+    list.map(f).foldLeft(Monoid[B].zero)((a, b) => Monoid[B].append(a, b))
+
   def combineAllNonEmpty[A: Monoid](list: List[A]): A =
     list.tail.foldLeft(list.head)((a, b) => Monoid[A].append(a, b))
 
-  def setMonoid[M]: Monoid[Set[M]] = new Monoid[Set[M]] {
+  implicit def setMonoid[M]: Monoid[Set[M]] = new Monoid[Set[M]] {
     def append(x: Set[M], y: => Set[M]): Set[M] = x ++ y
     def zero: Set[M]                            = Set[M]()
   }
+
   def workListMonoid[M]: Monoid[WorkList[M]] = new Monoid[WorkList[M]] {
     def zero: WorkList[M] = WorkList.empty
     def append(x: WorkList[M], y: => WorkList[M]): WorkList[M] = x.addAll(y.toList)
