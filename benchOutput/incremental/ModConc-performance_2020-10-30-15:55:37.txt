@@ -1,0 +1,16 @@
++------------------------------------------------+-------------+----------+-------------+
+|                                                | init        | rean     | incr        |
++------------------------------------------------+-------------+----------+-------------+
+| test/changes/cscheme/threads/SICP-compiler.scm | 544427±4412 | ∞        | 375649±2341 |
+| test/changes/cscheme/threads/actors.scm        | 1755±30     | 1757±44  | 372±10      |
+| test/changes/cscheme/threads/crypt.scm         | 6767±155    | 6762±154 | 2688±53     |
+| test/changes/cscheme/threads/crypt2.scm        | 6157±135    | 7023±122 | 5478±82     |
+| test/changes/cscheme/threads/lastzero.scm      | 2±0         | 1±0      | 1±0         |
+| test/changes/cscheme/threads/mcarlo.scm        | 13±2        | 10±0     | 2±0         |
+| test/changes/cscheme/threads/mcarlo2.scm       | 13±1        | 31±1     | 27±1        |
+| test/changes/cscheme/threads/msort.scm         | 114±3       | 146±2    | 129±3       |
+| test/changes/cscheme/threads/pc.scm            | 20±2        | 16±2     | 11±1        |
+| test/changes/cscheme/threads/pps.scm           | 283±7       | 282±6    | 1±0         |
+| test/changes/cscheme/threads/stm.scm           | 4786±111    | 4787±120 | 672±19      |
+| test/changes/cscheme/threads/sudoku.scm        | 108±4       | 112±4    | 68±3        |
++------------------------------------------------+-------------+----------+-------------+
