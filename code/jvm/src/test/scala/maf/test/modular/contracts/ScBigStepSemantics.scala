@@ -201,6 +201,7 @@ class ScBigStepSemantics extends ScTestsJVM {
 
   verify("(~> (~> any? int?) int?)", "(lambda (g) (g OPQ))").applied().unsafe()
 
+  // TODO: this should actually be safe, but cannot be verified because of the fact that the analysis is flow insensitive
   verify("(~> int? int?)", "(lambda (x) (letrec (y x) (begin (set! x #t) y)))")
     .applied(Set("int?"))
     .unsafe()

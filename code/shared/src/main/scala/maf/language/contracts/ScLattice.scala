@@ -44,9 +44,15 @@ object ScLattice {
     */
   case class Opq(refinementSet: Set[String] = Set())
 
+  // (flat int?)
+
+  // (define z/c (and/c contract1 contract2))
+  // (OPQ z/c)
+  // (z/c OPQ) (OPQ contract1 /\ contract2)
+  // (mon contract1 (OPQ z/c))
+
   /**
     * A monitor on a dependent contract
-    * <code>
     *  (mon (domain ~ rangeMaker)/lcontract procedure/lserver)
     */
   case class Arr[Addr](lcontract: Identity, lserver: Identity, contract: Addr, e: Addr)
@@ -61,6 +67,11 @@ object ScLattice {
     * A blame that is generated when some contract has failed to be verified as safe.
     */
   case class Blame(blamedPosition: Identity, blamingPosition: Identity = Identity.none)
+
+  /**
+    * A mapping from a value (coming from a certain state) to a (possibly) refined opaque value
+    */
+  case class RefinedValueInState[+V](state: V, value: Opq)
 
   case class Symbolic(expr: ScExp)
 }
@@ -121,6 +132,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Inject a flat contract in the abstract domain
     */
   def injectFlat(flat: Flat[Addr]): L
+
+  /**
+    * Inject an opaque value from the given state in the abstract domain
+    */
+  def injectRefinedValueInState(state: L, value: Opq): L
 
   /*==================================================================================================================*/
 
@@ -206,6 +222,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Returns the symbolic representation of the value if available
     */
   def getSymbolic(value: L): Option[String]
+
+  /**
+    * Extract the set of opaque values associated with the given state
+    */
+  def getRefinedValueInState(state: L): Set[RefinedValueInState[L]]
 
   /*==================================================================================================================*/
 

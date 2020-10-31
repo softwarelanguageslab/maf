@@ -14,18 +14,19 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord: Int
   }
 
-  val TOP_VALUE    = 0
-  val BOT_VALUE    = 1
-  val BOOL_VALUE   = 2
-  val CLOS_VALUE   = 3
-  val GRDS_VALUE   = 4
-  val ARRS_VALUE   = 5
-  val NUM_VALUE    = 6
-  val OPQS_VALUE   = 7
-  val PRIMS_VALUE  = 8
-  val BLAMES_VALUE = 9
-  val SYM_VALUE    = 10
-  val FLAT_VALUE   = 11
+  val TOP_VALUE              = 0
+  val BOT_VALUE              = 1
+  val BOOL_VALUE             = 2
+  val CLOS_VALUE             = 3
+  val GRDS_VALUE             = 4
+  val ARRS_VALUE             = 5
+  val NUM_VALUE              = 6
+  val OPQS_VALUE             = 7
+  val PRIMS_VALUE            = 8
+  val BLAMES_VALUE           = 9
+  val SYM_VALUE              = 10
+  val FLAT_VALUE             = 11
+  val REFINED_VALUE_IN_STATE = 12
 
   case object TopValue extends Value {
     def ord                       = TOP_VALUE
@@ -83,6 +84,10 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord = FLAT_VALUE
   }
 
+  case class RefinedValueInStates(value: Map[Value, Set[Opq]]) extends Value {
+    def ord = REFINED_VALUE_IN_STATE
+  }
+
   def bool(bool: Boolean): Value = Bool(BoolLattice[B].inject(bool))
 
   def number(n: Int): Value =
@@ -124,7 +129,14 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Blames(a), Blames(b))        => Blames(a ++ b)
       case (Opqs(a), Opqs(b))            => Opqs(a ++ b)
       case (Flats(a), Flats(b))          => Flats(a ++ b)
-      case (_, _)                        => TopValue
+      case (RefinedValueInStates(v1), RefinedValueInStates(v2)) =>
+        RefinedValueInStates(
+          (v1.keys ++ v2.keys)
+            .map(key => key -> (v1.getOrElse(key, Set()) ++ v2.getOrElse(key, Set())))
+            .toMap
+        )
+
+      case (_, _) => TopValue
     }
 
     def applyPrimitive(prim: Prim)(arguments: Value*): Value =
@@ -197,8 +209,6 @@ trait ScDomain[I, B, Addr <: Address] {
           val diff = IntLattice[I].minus(a, b)
           val b1   = IntLattice[I].eql(diff, IntLattice[I].inject(0))
           val b2   = IntLattice[I].lt(a, b)
-          println(a, b)
-          println("here", b1, b2)
           Bool(
             (
               BoolLattice[B].isTrue(b1),
@@ -375,6 +385,12 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     override def injectFlat(f: Flat[Addr]): CoProductValue = flat(f)
 
+    override def injectRefinedValueInState(state: CoProductValue, value: Opq): CoProductValue =
+      state match {
+        case CoProduct(v) => CoProduct(RefinedValueInStates(Map(v -> Set(value))))
+        case _            => Top
+      }
+
     /*================================================================================================================*/
 
     override def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue = {
@@ -444,6 +460,19 @@ class ScCoProductLattice[I, B, Addr <: Address](
       case CoProduct(value) => Values.getSymbolic(value)
       case _                => None
     }
+
+    def getRefinedValueInState(value: CoProductValue): Set[RefinedValueInState[CoProductValue]] =
+      value match {
+        case CoProduct(value) =>
+          value match {
+            case RefinedValueInStates(m) =>
+              m.flatMap {
+                case (key, value) => value.map(RefinedValueInState(CoProduct(key), _))
+              }.toSet
+            case _ => Set()
+          }
+        case _ => Set()
+      }
 
     /*================================================================================================================*/
 
@@ -677,5 +706,18 @@ class ScProductLattice[I, B, Addr <: Address](
 
       private def append(x: List[Value], y: List[Value]): List[Value] =
         x.foldLeft(y)((a, b) => insert(b, a))
+
+      /**
+        * Inject an opaque value from the given state in the abstract domain
+        */
+      override def injectRefinedValueInState(state: ProductElements, value: Opq): ProductElements =
+        ???
+
+      /**
+        * Extract the set of opaque values associated with the given state
+        */
+      override def getRefinedValueInState(
+          state: ProductElements
+      ): Set[RefinedValueInState[ProductElements]] = ???
     }
 }
