@@ -20,7 +20,8 @@ object ScLattice {
       env: Environment[Addr],
       parameters: List[ScIdentifier],
       lambda: ScLambda,
-      pc: ScExp = ScNil()
+      pc: ScExp = ScNil(),
+      topLevel: Boolean = false
   ) {
 
     /**
@@ -33,7 +34,7 @@ object ScLattice {
   /**
     * A guard which represents the value of a dependent contract after evaluation.
     * <code>
-    *  (domain ~ rangeMaker)
+    *  (~> domain rangeMaker)
     * </code>
     */
   case class Grd[Addr](domain: Addr, rangeMaker: Addr)
@@ -44,18 +45,17 @@ object ScLattice {
     */
   case class Opq(refinementSet: Set[String] = Set())
 
-  // (flat int?)
-
-  // (define z/c (and/c contract1 contract2))
-  // (OPQ z/c)
-  // (z/c OPQ) (OPQ contract1 /\ contract2)
-  // (mon contract1 (OPQ z/c))
-
   /**
     * A monitor on a dependent contract
-    *  (mon (domain ~ rangeMaker)/lcontract procedure/lserver)
+    *  (mon (~> domain rangeMaker)/lcontract procedure/lserver)
     */
-  case class Arr[Addr](lcontract: Identity, lserver: Identity, contract: Addr, e: Addr)
+  case class Arr[Addr](
+      lcontract: Identity,
+      lserver: Identity,
+      contract: Addr,
+      e: Addr,
+      topLevel: Boolean = false
+  )
 
   /**
     * A value that represents a flat contract, such that we can distribute blames correctly when a value

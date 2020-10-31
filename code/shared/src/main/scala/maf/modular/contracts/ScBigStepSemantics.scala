@@ -1,5 +1,5 @@
 package maf.modular.contracts
-import maf.core.{Environment, Identity, Lattice}
+import maf.core.{Environment, Identity, Label, Lattice}
 import maf.language.contracts.ScLattice.{Arr, Blame, Clo, Flat, Grd, Opq, Prim}
 import maf.language.contracts.{ScExp, _}
 import maf.language.sexp.{ValueBoolean, ValueInteger}
@@ -95,6 +95,11 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       }
     })
 
+    def addBindingToEnv(ident: ScIdentifier, component: Component): ScEvalM[()] = ScEvalM((context) => {
+      val addr = allocVar(ident, component)
+      Set((context.copy(env = context.env.extend(ident.name, addr)), ()))
+    })
+
     /**
       * Given a computation that yields a value corresponding to a certain lattice, this function runs the computation
       * on the given context, and joins all the values of the resulting states together using the join operator of the
@@ -174,6 +179,14 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       })
 
     /**
+      * Returns true if we are currently at top-level (i.e., evaluating the main program)
+      */
+    def isTopLevel: Boolean = view(component) match {
+      case ScMain => true
+      case _ => false
+    }
+
+    /**
       * Writes the values of the arguments in the store cache to a designated address.
       * This can be used to determine
       */
@@ -227,6 +240,9 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       writeResult(value, component)
     }
 
+    def higherOrderToDependentContract(domain: ScExp, range: ScExp, idn: Identity): ScExp =
+      ScDependentContract(domain, ScLambda(List(ScIdentifier("\"x", Identity.none)), range, range.idn), idn)
+
     def eval(expr: ScExp): ScEvalM[PostValue] = expr match {
       case ScBegin(expressions, _) => evalSequence(expressions)
       case ScIf(condition, consequent, alternative, _) => evalIf(condition, consequent, alternative)
@@ -243,10 +259,24 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       case ScFlatContract(expression, _) => evalFlatContract(expression)
       case ScLambda(params, body, idn) => evalLambda(params, body, idn)
       case ScAssume(identifier, assumption, expression, _) => evalAssume(identifier, assumption, expression)
+      case ScProgram(expressions, _) => evalProgram(expressions)
     }
 
-    def higherOrderToDependentContract(domain: ScExp, range: ScExp, idn: Identity): ScExp =
-      ScDependentContract(domain, ScLambda(List(ScIdentifier("\"x", Identity.none)), range, range.idn), idn)
+    def evalProgram(expressions: List[ScExp]): ScEvalM[PostValue] = {
+      def addBinding(name: ScIdentifier): ScEvalM[()] = addBindingToEnv(name, component)
+
+      for {
+        // extend the environment first
+        _ <- sequence(expressions.map {
+          case ScDefineAnnotatedFn(name, _, _, _, _) => addBinding(name)
+          case ScDefine(name, _, _) => addBinding(name)
+          case ScDefineFn(name, _, _, _) => addBinding(name)
+          case _ => unit
+        })
+        // evaluate all expressions in the program
+        result <- sequence(expressions.map(eval))
+      } yield result
+    }
 
     def evalSet(variable: ScIdentifier, value: ScExp): ScEvalM[PostValue] = for {
       addr <- lookup(variable.name)
@@ -290,7 +320,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     }
 
     def evalLambda(params: List[ScIdentifier], body: ScExp, idn: Identity): ScEvalM[PostValue] = withEnv { env =>
-      result(lattice.injectClo(Clo(idn, env, params, ScLambda(params, body, idn))))
+      result(lattice.injectClo(Clo(idn, env, params, ScLambda(params, body, idn), topLevel = isTopLevel)))
     }
 
     def evalFlatContract(exp: ScExp): ScEvalM[PostValue] = for {
@@ -417,7 +447,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         for {
           _ <- write(aContract, evaluatedContract)
           _ <- write(aExp, evaluatedExpression)
-        } yield value(lattice.injectArr(Arr(contractIdn, exprIdn, aContract, aExp)))
+        } yield value(lattice.injectArr(Arr(contractIdn, exprIdn, aContract, aExp, isTopLevel)))
       }
 
       nondets(Set(flatContract, dependentContract))

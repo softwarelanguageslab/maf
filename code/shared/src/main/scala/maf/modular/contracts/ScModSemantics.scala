@@ -4,7 +4,7 @@ import maf.core.Position.Position
 import maf.core.{Address, Environment, Identity}
 import maf.language.contracts.ScLattice.Blame
 import maf.language.contracts.{ScExp, ScIdentifier, ScLambda, ScLattice}
-import maf.modular.{GlobalStore, ModAnalysis, ReturnAddr, ReturnValue}
+import maf.modular.{DestructiveStore, GlobalStore, ModAnalysis, ReturnAddr, ReturnValue}
 
 object ScModSemantics {
   var r = 0
@@ -22,11 +22,9 @@ trait ScModSemantics
     extends ModAnalysis[ScExp]
     with ScDomain
     with GlobalStore[ScExp]
-    with ReturnValue[ScExp] {
+    with ReturnValue[ScExp]
+    with DestructiveStore[ScExp] {
 
-  /**
-    * This method can be overrided to implement a different strategy for allocating addresses for variables
-    */
   type AllocationContext
   def allocVar(id: ScIdentifier, cmp: Component): ScVarAddr[AllocationContext]
   def allocGeneric(idn: Identity, cmp: Component): ScGenericAddr[AllocationContext]
@@ -75,7 +73,12 @@ trait ScModSemantics
 
   def view(component: Component): ScComponent
 
-  trait IntraScAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra {
+  trait IntraScAnalysis
+      extends IntraAnalysis
+      with GlobalStoreIntra
+      with ReturnResultIntra
+      with DestructiveStoreIntra {
+
     def writeBlame(blame: Blame) =
       writeAddr(ExceptionAddr(component, expr(component).idn), lattice.injectBlame(blame))
 
