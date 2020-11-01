@@ -92,7 +92,6 @@ trait ScTestsJVM extends ScTests {
           }
         }
         println()
-      //println((" " * (machine.summary.blames.values.head.head.blamedPosition.pos.col - 1)) ++ "^")
       }
     }
 

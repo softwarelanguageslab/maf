@@ -1,6 +1,6 @@
 package maf.test.modular.contracts
 
-import maf.language.contracts.ScLattice.Opq
+import maf.language.contracts.ScLattice.{Arr, Opq}
 import maf.modular.contracts.ScMain
 import maf.test.ScTestsJVM
 
@@ -139,6 +139,27 @@ class ScBigStepSemantics extends ScTestsJVM {
 
   eval("(letrec (zero? (flat (lambda (x) (= x 0)))) (mon zero? 1))").tested { machine =>
     println(machine)
+  }
+
+  eval(
+    "(define/contract (f x) (~> int? int?) x) f"
+  ).tested { machine =>
+    machine
+      .getReturnValue(ScMain)
+      .map(machine.lattice.getArr)
+      .flatMap(_.headOption)
+      .map(_.topLevel) shouldEqual Some(true)
+  }
+
+  eval(
+    "(define (f x) (lambda (y) x)) (f 5)"
+  ).tested { machine =>
+    // TODO: shouldn't the returned lambda be treated as a non-local function for the analysis?
+    machine
+      .getReturnValue(ScMain)
+      .map(machine.lattice.getClo)
+      .flatMap(_.headOption)
+      .map(_.topLevel) shouldEqual Some(false)
   }
 
   /**
