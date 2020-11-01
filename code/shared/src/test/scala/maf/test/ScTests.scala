@@ -43,7 +43,6 @@ trait ScTests extends AnyFlatSpec with should.Matchers {
   }
 
   protected def compile(exp: String): ScExp = {
-    val sexp = SExpParser.parse(exp)
-    SCExpCompiler.compile(sexp.head)
+    SCExpCompiler.read(exp)
   }
 }

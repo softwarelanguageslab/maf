@@ -47,7 +47,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     }
 
     def sequenceLast[X](xs: List[ScEvalM[X]]): ScEvalM[X] =
-      sequence(xs).map(_.head)
+      sequence(xs).map(_.last)
 
     def withEnv[B](f: Environment[Addr] => ScEvalM[B]): ScEvalM[B] =
         ScEvalM((context) => f(context.env).run(context))
@@ -178,6 +178,13 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       } yield ()
     }
 
+    def writeForce(addr: Addr, value: PostValue): ScEvalM[()] = {
+      for {
+        _ <- effectful { forceWrite(addr, value._1)}
+        _ <- writeLocal(addr, value)
+      } yield ()
+    }
+
     def writeLocal(addr: Addr, value: PostValue): ScEvalM[()] = {
       addToCache(addr -> value)
     }
@@ -272,10 +279,21 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       case ScProgram(expressions, _) => evalProgram(expressions)
       case ScDefine(variable, expression, _) => evalDefine(variable, expression)
       case ScDefineFn(name, parameters, body, idn) => evalDefineFn(name, parameters, body, idn)
+      case ScDefineAnnotatedFn(name, parameters, contract, expression, idn) =>
+        evalDefineAnnotatedFn(name, parameters, contract, expression, idn)
       case ScProvideContracts(variables, contracts, _) => evalProvideContracts(variables, contracts)
     }
 
-    def evalProvideContracts(variables: List[ScIdentifier], contracts: List[ScExp]): ScEvalM[PostValue] = ???
+    def evalProvideContracts(variables: List[ScIdentifier], contracts: List[ScExp]): ScEvalM[PostValue] =
+      sequenceLast(variables.zip(contracts).map {
+        case (variable, contract) => for {
+          addr <- lookup(variable.name)
+          value <- read(addr)
+          evaluatedContract <- eval(contract)
+          annotatedFn <- applyMon(evaluatedContract, value, contract.idn, variable.idn)
+          _ <- writeForce(addr, annotatedFn)
+        } yield annotatedFn
+      })
 
     def evalDefine(variable: ScIdentifier, expression: ScExp): ScEvalM[PostValue] = for {
       addr <- lookupOrDefine(variable, component)
@@ -297,7 +315,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         evaluatedContract <- eval(contract)
         monitoredFunction <- applyMon(evaluatedContract, lambda, contract.idn, idn)
         _ <- write(addr, monitoredFunction)
-      } yield lambda
+      } yield monitoredFunction
 
     def evalProgram(expressions: List[ScExp]): ScEvalM[PostValue] = {
       def addBinding(name: ScIdentifier): ScEvalM[()] = addBindingToEnv(name, component)
