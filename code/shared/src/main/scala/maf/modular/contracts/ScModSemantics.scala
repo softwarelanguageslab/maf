@@ -4,7 +4,15 @@ import maf.core.Position.Position
 import maf.core.{Address, Environment, Identity}
 import maf.language.contracts.ScLattice.Blame
 import maf.language.contracts.{ScExp, ScIdentifier, ScLambda, ScLattice}
-import maf.modular.{DestructiveStore, GlobalStore, ModAnalysis, ReturnAddr, ReturnValue}
+import maf.modular.{
+  DestructiveStore,
+  GlobalStore,
+  LocalStore,
+  ModAnalysis,
+  ReturnAddr,
+  ReturnValue,
+  TaggedMap
+}
 
 object ScModSemantics {
   var r = 0
@@ -23,7 +31,8 @@ trait ScModSemantics
     with ScDomain
     with GlobalStore[ScExp]
     with ReturnValue[ScExp]
-    with DestructiveStore[ScExp] {
+    with DestructiveStore[ScExp]
+    with LocalStore[ScExp] {
 
   type AllocationContext
   def allocVar(id: ScIdentifier, cmp: Component): ScVarAddr[AllocationContext]
@@ -38,6 +47,19 @@ trait ScModSemantics
   ): ComponentContext
 
   def newComponent(component: Call[ComponentContext]): Component
+
+  def viewStore(component: Component): Store = view(component) match {
+    case c: CallWithStore[ComponentContext, Addr, Value] => c.store.v
+    case ScMain | Call(_, _, _)                          => Map()
+  }
+
+  def instrument(component: Component, data: TaggedMap[Addr, Value]): Component =
+    view(component) match {
+      // we can only pass the store to calls of other functions
+      case c: Call[ComponentContext] => newComponent(CallWithStore(c, data))
+
+      case _ => component
+    }
 
   /**
     * The environment in which the analysis is executed
@@ -77,7 +99,8 @@ trait ScModSemantics
       extends IntraAnalysis
       with GlobalStoreIntra
       with ReturnResultIntra
-      with DestructiveStoreIntra {
+      with DestructiveStoreIntra
+      with LocalStoreIntra {
 
     def writeBlame(blame: Blame) =
       writeAddr(ExceptionAddr(component, expr(component).idn), lattice.injectBlame(blame))

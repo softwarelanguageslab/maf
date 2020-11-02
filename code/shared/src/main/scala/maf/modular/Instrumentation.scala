@@ -16,9 +16,9 @@ trait TaggedData {
   */
 trait Instrumentation[Expr <: Expression] extends ModAnalysis[Expr] with ReturnValue[Expr] {
   type T <: TaggedData
-  implicit val dataLattice: Lattice[T]
+  implicit def dataLattice: Lattice[T]
 
-  var instrumentationData: Map[Component, T] = Map().withDefaultValue(dataLattice.bottom)
+  var instrumentationData: Map[Component, T] = Map()
 
   def instrument(component: Component, data: T): Component
 
@@ -32,7 +32,11 @@ trait Instrumentation[Expr <: Expression] extends ModAnalysis[Expr] with ReturnV
     }
 
     def writeInstrumentationData(data: T): Unit = {
-      instrumentationData += component -> dataLattice.join(instrumentationData(component), data)
+      instrumentationData +=
+        component -> dataLattice.join(
+          instrumentationData.getOrElse(component, dataLattice.bottom),
+          data
+        )
       trigger(InstrDependency(component, data.tag))
     }
   }

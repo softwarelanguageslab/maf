@@ -1,6 +1,7 @@
 package maf.modular
 
 import maf.core.{Expression, Lattice}
+import maf.lattice.WrappedLattice
 import maf.util.Wrapper
 
 case object LOCAL_STORE_TAG extends InstrTag
@@ -18,10 +19,14 @@ object TaggedMap {
 }
 
 trait LocalStore[Expr <: Expression] extends Instrumentation[Expr] {
+  import maf.lattice.MapLattice._
+  import TaggedMap._
+
   type Store = Map[Addr, Value]
   type T     = TaggedMap[Addr, Value]
 
-  implicit val dataLattice: Lattice[TaggedMap[Addr, Value]] = implicitly
+  implicit def dataLattice: Lattice[TaggedMap[Addr, Value]] =
+    WrappedLattice.wrappedLattice(mapLattice[Addr, Value](lattice), taggedMapWrapper)
 
   def viewStore(c: Component): Store
 

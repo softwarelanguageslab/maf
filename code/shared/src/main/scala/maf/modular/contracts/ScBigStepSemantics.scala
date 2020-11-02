@@ -9,7 +9,9 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
   type PC = ScExp
   type PostValue = (Value, ScExp)
   type StoreCache = Map[Addr, PostValue]
-  case class Context(env: Environment[Addr], pc: PC, cache: StoreCache)
+  case class Context(env: Environment[Addr], pc: PC, cache: StoreCache) {
+    def store: Store = cache.view.mapValues(_._1).toMap
+  }
 
   private val primTrue  = ScLattice.Prim("true?")
   private val primFalse = ScLattice.Prim("false?")
@@ -115,9 +117,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       * on the given context, and joins all the values of the resulting states together using the join operator of the
       * lattice.
       */
-    def merged[L: Lattice](c: ScEvalM[L])(context: Context): L = {
-      c.run(context).foldLeft(Lattice[L].bottom)((acc, v) => v match {
-        case (_, l) => Lattice[L].join(acc, l)
+    def merged[L: Lattice](c: ScEvalM[L])(context: Context): (L, Store) = {
+      import maf.lattice.MapLattice._
+      c.run(context).foldLeft((Lattice[L].bottom, Lattice[Store].bottom))((acc, v) => v match {
+        case (context, l) => (Lattice[L].join(acc._1, l), Lattice[Store].join(acc._2, context.store))
       })
     }
 
@@ -236,7 +239,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       * @return a new context based on the environment of the component under analysis
       */
     def initialContext: Context = {
-      var storeCache = Map[Addr, PostValue]()
+      var storeCache: StoreCache = componentStore.view.mapValues(v => (v, ScNil())).toMap
       primBindings.foreach {
         case (name, addr) =>
           storeCache = storeCache + (addr -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
@@ -253,7 +256,8 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     }
 
     def analyze(_ignored_timeout: Timeout.T): Unit = {
-      val value = merged(eval(fnBody).map(_._1))(initialContext)
+      val (value, store) = merged(eval(fnBody).map(_._1))(initialContext)
+      writeReturnStore(store)
       writeResult(value, component)
     }
 
