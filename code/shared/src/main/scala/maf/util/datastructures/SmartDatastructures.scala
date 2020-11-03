@@ -1,4 +1,4 @@
-package maf.util
+package maf.util.datastructures
 
 /**
  * When using `s1 ++ s2` with the default Scala Set implementation,

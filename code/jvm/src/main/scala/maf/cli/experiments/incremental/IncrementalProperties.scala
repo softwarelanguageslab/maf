@@ -7,7 +7,7 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme._
 import maf.modular.incremental.scheme.AnalysisBuilder._
 import maf.modular.scheme._
-import maf.util.ListOps.Crossable
+import maf.util.datastructures.ListOps.Crossable
 import maf.util._
 import maf.util.Writer._
 import maf.util.benchmarks._

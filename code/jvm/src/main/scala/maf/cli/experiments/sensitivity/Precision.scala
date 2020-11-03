@@ -2,9 +2,7 @@ package maf.cli.experiments.sensitivity
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.language.scheme._
-import maf.language.scheme.primitives._
 import maf.lattice._
-import maf.modular._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.util._

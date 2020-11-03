@@ -1,4 +1,4 @@
-package maf.util
+package maf.util.datastructures
 
 object ListOps {
 

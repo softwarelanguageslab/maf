@@ -1,7 +1,9 @@
 package maf.bench.scheme
 
 import java.io.File
-import maf.util.SmartUnion
+
+import maf.util.datastructures.SmartUnion
+
 import scala.util.Random
 object SchemeBenchmarkPrograms {
 

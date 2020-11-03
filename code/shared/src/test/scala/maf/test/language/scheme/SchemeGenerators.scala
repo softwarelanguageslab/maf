@@ -3,11 +3,10 @@ package maf.test.language.scheme
 import org.scalacheck._
 import maf.core._
 import maf.language.scheme._
-import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeOps}
+import maf.language.scheme.lattices._
 import maf.language.scheme.primitives._
 import maf.language.sexp._
-import maf.lattice._
-import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
+import maf.lattice.interfaces._
 import maf.test.lattice._
 
 trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
