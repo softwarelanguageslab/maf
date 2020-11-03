@@ -1,3 +1,5 @@
+; icp_1c_multiple-dwelling-coarse
+
 ;;
 ;;toegevoegd
 ;;
@@ -558,7 +560,8 @@
       (map let-val bindings))))
 
 (define the-global-environment (setup-environment))
-(define input (list 'begin
+(define input (<change> ; <=============================================================================================
+                (list 'begin
                     '(define (require p)
                        (if (not p) (amb)))
                     '(define (distinct? items)
@@ -567,28 +570,60 @@
                          ((member (car items) (cdr items)) false)
                          (else (distinct? (cdr items)))))
 
-                    (list 'define '(multiple-dwelling)
-                      (list 'let '((baker    (amb 1 2 3 4 5))
-                                   (cooper   (amb 1 2 3 4 5))
-                                   (fletcher (amb 1 2 3 4 5))
-                                   (miller   (amb 1 2 3 4 5))
-                                   (smith    (amb 1 2 3 4 5)))
+                  (list 'define '(multiple-dwelling)
+                    (list 'let '((baker    (amb 1 2 3 4 5))
+                                  (cooper   (amb 1 2 3 4 5))
+                                  (fletcher (amb 1 2 3 4 5))
+                                  (miller   (amb 1 2 3 4 5))
+                                  (smith    (amb 1 2 3 4 5)))
                         '(require (distinct? (list baker cooper fletcher miller smith)))
-                        (list 'require (list 'not (list '= 'baker (<change> 5 4)))) ; <=================================
+                      (list 'require (list 'not (list '= 'baker 5)))
                         '(require (not (= cooper 1)))
                         '(require (not (= fletcher 5)))
                         '(require (not (= fletcher 1)))
                         '(require (> miller cooper))
-                        (list 'require (list 'not (list '= '(abs (- smith fletcher)) (<change> 1 2)))) ; <==============
+                      (list 'require (list 'not (list '= '(abs (- smith fletcher)) 1)))
                         '(require (not (= (abs (- fletcher cooper)) 1)))
-                        (<change> #t '(require (< (abs (- miller smith)) 3))) ; <=======================================
+                      #t
                         '(list (list 'baker baker)
-                               (list 'cooper cooper)
-                               (list 'fletcher fletcher)
-                               (list 'miller miller)
-                               (list 'smith smith))))
+                           (list 'cooper cooper)
+                           (list 'fletcher fletcher)
+                           (list 'miller miller)
+                           (list 'smith smith))))
 
-                    '(multiple-dwelling)))
+                    '(multiple-dwelling))
+
+                (list 'begin
+                    '(define (require p)
+                       (if (not p) (amb)))
+                    '(define (distinct? items)
+                       (cond ((null? items) true)
+                         ((null? (cdr items)) true)
+                         ((member (car items) (cdr items)) false)
+                         (else (distinct? (cdr items)))))
+
+                  (list 'define '(multiple-dwelling)
+                    (list 'let '((baker    (amb 1 2 3 4 5))
+                                  (cooper   (amb 1 2 3 4 5))
+                                  (fletcher (amb 1 2 3 4 5))
+                                  (miller   (amb 1 2 3 4 5))
+                                  (smith    (amb 1 2 3 4 5)))
+                        '(require (distinct? (list baker cooper fletcher miller smith)))
+                      (list 'require (list 'not (list '= 'baker 4)))
+                        '(require (not (= cooper 1)))
+                        '(require (not (= fletcher 5)))
+                        '(require (not (= fletcher 1)))
+                        '(require (> miller cooper))
+                      (list 'require (list 'not (list '= '(abs (- smith fletcher)) 2)))
+                        '(require (not (= (abs (- fletcher cooper)) 1)))
+                        '(require (< (abs (- miller smith)) 3))
+                        '(list (list 'baker baker)
+                           (list 'cooper cooper)
+                           (list 'fletcher fletcher)
+                           (list 'miller miller)
+                           (list 'smith smith))))
+
+                    '(multiple-dwelling))))
 
 (define next-alternative (lambda () #f))
 (define (try)
@@ -605,7 +640,7 @@
 
 (try)
 (and (next-alternative)
-     (next-alternative)
-     (next-alternative)
-     (next-alternative)
-     (next-alternative))
+  (next-alternative)
+  (next-alternative)
+  (next-alternative)
+  (next-alternative))
