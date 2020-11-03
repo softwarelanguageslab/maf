@@ -29,6 +29,9 @@ object SchemeBenchmarkPrograms {
     files(root).filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
   }
 
+  // Only include certain listed programs.
+  def toFolder(directory: String, include: String*): Set[String] = include.map(file => s"$directory/$file").toSet
+
   // SEQUENTIAL ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   lazy val ad: Set[String] = fromFolder("test/R5RS/ad",
