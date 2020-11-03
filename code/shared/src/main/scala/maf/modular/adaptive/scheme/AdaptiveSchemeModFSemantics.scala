@@ -42,7 +42,12 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     case modularLatticeWrapper.modularLattice.Vec(siz,els)      => modularLatticeWrapper.modularLattice.Vec(siz,els.view.mapValues(updateValue(update)).toMap)
     case _                              => value
   }
-
+  // adapting a component
+  def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
+    case Main => Main
+    case c: Call[ComponentContext] @unchecked => adaptCall(c)
+  }
+  protected def adaptCall(c: Call[ComponentContext]): Call[ComponentContext]
   // callback function that can adapt the analysis whenever a new component is 'discovered'
   protected def onNewComponent(cmp: Component, call: Call[ComponentContext]): Unit = ()
   // go over all new components after each step of the analysis, passing them to `onNewComponent`

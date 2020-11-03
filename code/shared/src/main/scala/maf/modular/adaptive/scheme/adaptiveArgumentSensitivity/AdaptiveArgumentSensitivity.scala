@@ -1,8 +1,6 @@
 package maf.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
 import maf.core._
-import maf.modular._
-import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.core.Position._
 import maf.language.scheme._
@@ -36,9 +34,8 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) =
     ComponentContext(adaptArgs(clo, args))
   // To adapt an existing component, we drop the argument values for parameters that have to be excluded
-  def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
-    case Main                                 => Main
-    case Call(clo,nam,ctx: ComponentContext)  => Call(clo, nam, ComponentContext(adaptArgs(clo,ctx.args)))
+  def adaptCall(call: Call[ComponentContext]): Call[ComponentContext] = call match {
+    case Call(clo,nam,ctx)  => Call(clo, nam, ComponentContext(adaptArgs(clo,ctx.args)))
   }
   // HELPER FUNCTIONS FOR `joinComponents`
   // TODO: Extract and put this somewhere else
@@ -50,11 +47,11 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     case modularLatticeWrapper.modularLattice.Clo(cs)           => cs.map(clo => ???)
     case modularLatticeWrapper.modularLattice.Cons(car,cdr)     => extractComponentRefs(car) ++ extractComponentRefs(cdr)
     case modularLatticeWrapper.modularLattice.Vec(_,els)        => els.flatMap(p => extractComponentRefs(p._2)).toSet
-    case _                              => Set.empty
+    case _                                                      => Set.empty
   }
   private def extractComponentRefs(addr: Addr): Set[Component] = ??? //TODO
   private def getClosure(cmp: Component): Option[lattice.Closure] = view(cmp) match {
-    case Main       => None
+    case Main                         => None
     case call: Call[ComponentContext] => Some(call.clo)
   }
   var toJoin = List[Set[Component]]()
