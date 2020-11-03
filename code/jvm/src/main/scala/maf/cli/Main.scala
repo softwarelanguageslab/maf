@@ -16,6 +16,7 @@ import maf.modular.incremental.scheme.AnalysisBuilder._
 
 import scala.concurrent.duration._
 import maf.cli.experiments.SchemeAnalyses
+import maf.modular.worklist.LIFOWorklistAlgorithm
 
 object Main {
 

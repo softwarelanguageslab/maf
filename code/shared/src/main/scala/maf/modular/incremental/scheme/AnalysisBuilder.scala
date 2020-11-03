@@ -7,6 +7,7 @@ import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.SchemeTypeDomain
 import maf.modular.scheme.modf._
 import maf.modular.scheme.ssmodconc._
+import maf.modular.worklist.LIFOWorklistAlgorithm
 
 /**
  * Provides instantiations of incremental analyses.

@@ -1,7 +1,8 @@
-package maf.modular
+package maf.modular.worklist
 
 import maf.core._
 import maf.core.worklist.{FIFOWorkList, LIFOWorkList, RandomWorkList, WorkList}
+import maf.modular.ModAnalysis
 import maf.util.benchmarks.Timeout
 
 import scala.collection.mutable.PriorityQueue

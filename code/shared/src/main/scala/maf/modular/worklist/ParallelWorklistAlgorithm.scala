@@ -1,7 +1,9 @@
-package maf.modular
+package maf.modular.worklist
 
 import maf.core._
+import maf.modular.{Dependency, GlobalStore, ModAnalysis}
 import maf.util.benchmarks.Timeout
+
 import scala.collection.mutable.PriorityQueue
 
 trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 

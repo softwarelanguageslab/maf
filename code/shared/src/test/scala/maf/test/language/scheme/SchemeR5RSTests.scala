@@ -8,6 +8,7 @@ import maf.language.scheme.primitives._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular._
+import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.test.{PrimitiveTest, SchemeR5RSBenchmarks}
 import maf.util.benchmarks.Timeout
 

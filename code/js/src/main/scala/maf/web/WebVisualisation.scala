@@ -1,6 +1,7 @@
 package maf.web
 
 import maf.modular._
+import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util.benchmarks.Timeout
 
 // Scala.js-related imports

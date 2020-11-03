@@ -1,12 +1,15 @@
-package maf.modular
+package maf.modular.worklist
 
-import maf.core._
-import akka.actor.typed.{Behavior => Behaviour, ActorRef, ActorSystem, DispatcherSelector}
-import akka.actor.typed.scaladsl.{Behaviors => Behaviours, Routers, PoolRouter, AskPattern}
 import java.util.concurrent.TimeUnit
-import scala.concurrent.Await
-import maf.util.benchmarks.Timeout
+
+import akka.actor.typed.scaladsl.{AskPattern, Routers, Behaviors => Behaviours}
+import akka.actor.typed.{ActorRef, ActorSystem, DispatcherSelector, Behavior => Behaviour}
 import com.typesafe.config.ConfigFactory
+import maf.core._
+import maf.modular.{Dependency, ModAnalysis}
+import maf.util.benchmarks.Timeout
+
+import scala.concurrent.Await
 
 object ActorConfig {
   val config = ConfigFactory.parseString("""

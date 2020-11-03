@@ -7,6 +7,7 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.scheme.modconc._
 import maf.modular.scheme.ssmodconc._
+import maf.modular.worklist.{LIFOWorklistAlgorithm, ParallelWorklistAlgorithm, RandomWorklistAlgorithm}
 import maf.test._
 
 trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {

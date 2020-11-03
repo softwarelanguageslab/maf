@@ -4,6 +4,7 @@ import maf.core._
 import maf.language.change._
 import maf.language.change.CodeVersion._
 import maf.modular._
+import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util.Annotations._
 import maf.util.benchmarks.Timeout
 
