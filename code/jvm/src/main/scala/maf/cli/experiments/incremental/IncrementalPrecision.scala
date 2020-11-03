@@ -100,13 +100,13 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
 }
 
 object IncrementalSchemeModFPrecision extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   val outputFile: String = s"ModF-precision.txt"
 }
 
 object IncrementalSchemeModConcPrecision extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.concurrent
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   val outputFile: String = s"ModConc-precision.txt"
 }

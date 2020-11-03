@@ -7,7 +7,7 @@ object IncrementalSchemeBenchmarkPrograms {
   )
   lazy val concurrent: Set[String] = threads
   lazy val sequential: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme",
-    "icp_4_qeval_nodup.scm", // define-syntax, force, delay
+    "qeval.scm", // define-syntax, force, delay
     "scheme.scm", // error in program
     ".DS_Store",
   )
