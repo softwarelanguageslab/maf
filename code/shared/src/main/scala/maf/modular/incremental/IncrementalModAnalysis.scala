@@ -72,9 +72,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     for (to <- cachedSpawns(cmp)) unspawn(to)         // Transitively check for components that have to be deleted.
 
     // Delete the caches.
-    cachedReadDeps    -= cmp
-    cachedSpawns  -= cmp
-    countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
+    cachedReadDeps -= cmp
+    cachedSpawns   -= cmp
+    countedSpawns  -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
   }
 
   @nonMonotonicUpdate
