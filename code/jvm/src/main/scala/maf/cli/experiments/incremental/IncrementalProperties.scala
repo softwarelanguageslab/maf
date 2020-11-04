@@ -9,7 +9,6 @@ import maf.modular.incremental.scheme.AnalysisBuilder._
 import maf.modular.scheme._
 import maf.util.datastructures.ListOps.Crossable
 import maf.util._
-import maf.util.Writer._
 import maf.util.benchmarks._
 
 import scala.concurrent.duration._

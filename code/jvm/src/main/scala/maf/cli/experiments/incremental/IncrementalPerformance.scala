@@ -7,7 +7,6 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
 import maf.modular.incremental.scheme.AnalysisBuilder._
 import maf.util.Reader
-import maf.util.Writer._
 import maf.util.benchmarks._
 
 import scala.concurrent.duration._
