@@ -46,8 +46,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /**
    * To be called upon a commit, with the join of the values written by the component to the given address.
    * Possibly updates the store and provenance information, and triggers dependencies if the store is updated.
-   * @param cmp
-   * @param addr
+   * @param cmp  The component related to the value nw written to addr.
+   * @param addr The address in the store of value nw.
+   * @param nw   The join of all values written by cmp to the store at addr.
    * @return Returns a boolean indicating whether the address was updated.
    */
   def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
