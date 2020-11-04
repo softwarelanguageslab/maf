@@ -93,22 +93,22 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
       if (!inc1Timeout) {
         System.gc()
         to = timeout()
-        val ti = Timer.timeOnly({a.updateAnalysis(to, false)}) // Do not regain precision
+        val ti1 = Timer.timeOnly({a.updateAnalysis(to, false)}) // Do not regain precision
         if (to.reached) {
           inc1Timeout = true
         }
-        timesInc1 = (ti.toDouble / 1000000) :: timesInc1
+        timesInc1 = (ti1.toDouble / 1000000) :: timesInc1
       }
 
       write(if (inc2Timeout) "x" else "*")
       if (!inc2Timeout) {
         System.gc()
         to = timeout()
-        val ti = Timer.timeOnly({aCopy.updateAnalysis(to)}) // Do regain precision
+        val ti2 = Timer.timeOnly({aCopy.updateAnalysis(to)}) // Do regain precision
         if (to.reached) {
           inc2Timeout = true
         }
-        timesInc2 = (ti.toDouble / 1000000) :: timesInc2
+        timesInc2 = (ti2.toDouble / 1000000) :: timesInc2
       }
 
       write(if (reanTimeout) "x " else "* ")

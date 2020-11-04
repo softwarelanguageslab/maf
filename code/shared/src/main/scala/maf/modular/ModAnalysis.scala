@@ -80,6 +80,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable { i
       W.foreach(dep => if(commit(dep)) inter.trigger(dep))
       C.foreach(inter.spawn(_, component))
     }
+    /** Called upon a commit for every written dependency. If true is returned, the corresponding read dependencies are triggered. */
     def commit(dep: Dependency): Boolean = false  // `ModAnalysis` has no knowledge of dependencies it can commit
   }
 
