@@ -21,7 +21,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
   var results: Table[String] = Table.empty
 
   def onBenchmark(file: String): Unit = {
-    writeln(s"Testing $file")
+    println(s"Testing $file")
     val program = parse(file)
 
     // Initial analysis: analyse + update.
@@ -34,31 +34,31 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     var timeOut: Timeout.T = Timeout.none
 
     // Run the initial analysis.
-    write(s"init ")
+    print(s"init ")
     timeOut = timeout()
     a1.analyze(timeOut)
     if (timeOut.reached) { // We do not use the test `a1.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
-      writeln("timed out.")
+      println("timed out.")
       results = results.add(file, eq, "∞").add(file, mp, "∞").add(file, lp, "∞")
       return
     }
 
     // Update the initial analysis.
-    write(s"-> incr ")
+    print(s"-> incr ")
     timeOut = timeout()
     a1.updateAnalysis(timeOut)
     if (timeOut.reached) {
-      writeln("timed out.")
+      println("timed out.")
       results = results.add(file, eq, "∞").add(file, mp, "∞").add(file, lp, "∞")
       return
     }
 
     // Run a full reanalysis
-    write(s"-> rean ")
+    print(s"-> rean ")
     timeOut = timeout()
     a2.analyze(timeOut)
     if (timeOut.reached) {
-      writeln("timed out.")
+      println("timed out.")
       results = results.add(file, eq, "∞").add(file, mp, "∞").add(file, lp, "∞")
       return
     }
@@ -102,13 +102,13 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
 object IncrementalSchemeModFPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
-  val outputFile: String = s"ModF-precision.txt"
+  val outputFile: String = s"precision/modf.txt"
 }
 
 object IncrementalSchemeModConcPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
-  val outputFile: String = s"ModConc-precision.txt"
+  val outputFile: String = s"precision/modconc.txt"
 }
 
 object IncrementalSchemeModXPrecision {

@@ -35,7 +35,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
   var results: Table[String] = Table.empty.withDefaultValue("?")
 
   def onBenchmark(file: String): Unit = {
-    write(s"Testing $file ")
+    print(s"Testing $file ")
     val program = parse(file)
 
     // Initial analysis: analyse + update.
@@ -48,11 +48,11 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     var timeOut: Timeout.T = Timeout.none
 
     // Run the initial analysis.
-    write(s"init ")
+    print(s"init ")
     timeOut = timeout()
     a1.analyze(timeOut)
     if (timeOut.reached) { // We do not use the test `a1.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
-      writeln("timed out.")
+      println("timed out.")
       pr.foreach(p => results = results.add(file, p + in, inf))
       return
     }
@@ -67,11 +67,11 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
       .add(file, dp + in, dep.toString)
 
     // Update the initial analysis.
-    write(s"-> incr ")
+    print(s"-> incr ")
     timeOut = timeout()
     a1.updateAnalysis(timeOut)
     if (timeOut.reached) {
-      writeln("timed out.")
+      println("timed out.")
       pr.foreach(p => results = results.add(file, p + up, inf))
       return
     }
@@ -82,11 +82,11 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
       .add(file, dp + up, s"${a1.deps.values.map(_.size).sum}")
 
     // Run a full reanalysis
-    write(s"-> rean ")
+    print(s"-> rean ")
     timeOut = timeout()
     a2.analyze(timeOut)
     if (timeOut.reached) {
-      write("timed out.")
+      print("timed out.")
       pr.foreach(p => results = results.add(file, p + re, inf))
       return
     }
@@ -114,14 +114,14 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
-  val outputFile: String = s"ModF-properties.txt"
+  val outputFile: String = s"properties/modf.txt"
 
 }
 
 object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
-  val outputFile: String = s"ModConc-properties.txt"
+  val outputFile: String = s"properties/modconc.txt"
 }
 
 object IncrementalSchemeModXProperties {

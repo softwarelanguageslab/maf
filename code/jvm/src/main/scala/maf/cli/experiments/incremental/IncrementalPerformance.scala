@@ -35,7 +35,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
 
   // A single program run with the analysis.
   def onBenchmark(file: String): Unit = {
-    writeln(s"Testing $file")
+    println(s"Testing $file")
     val program = parse(file)
 
     // Warm-up.
@@ -43,18 +43,18 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
     // Use the same timeout for the entire warm-up.
     var timeoutWarmup: Timeout.T = timeout()
     var analyses: List[Analysis] = List()
-    write(s"* Warm-up standard analysis (max. $maxWarmupRuns): ")
+    print(s"* Warm-up standard analysis (max. $maxWarmupRuns): ")
     for (w <- 1 to maxWarmupRuns) {
-      write(s"$w ")
+      print(s"$w ")
       System.gc()
       val a = analysis(program)
       a.analyze(timeoutWarmup)
       analyses = a :: analyses
     }
-    write(s"\n* Warm-up incremental analysis (max. ${analyses.length}): ")
+    print(s"\n* Warm-up incremental analysis (max. ${analyses.length}): ")
     timeoutWarmup = timeout()
     for (a <- analyses) {
-      write(s"* ")
+      print(s"* ")
       System.gc()
       a.updateAnalysis(timeoutWarmup) // We need an analysis that has already been (partially) run.
     }
@@ -70,18 +70,18 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
     var reanTimeout: Boolean = false
     var inc2Timeout: Boolean = false // For a second setup of the incremental analysis.
 
-    write("\n* Measuring: ")
+    print("\n* Measuring: ")
     var to: Timeout.T = Timeout.none
     for (i <- 1 to measuredRuns) {
 
-      write(s"$i")
+      print(s"$i")
       val a = analysis(program)
       System.gc()
       to = timeout()
       val tb = Timer.timeOnly({a.analyze(to)})
       if (to.reached) {
         // The base line analysis timed out. Abort.
-        writeln(" => Base analysis timed out.")
+       println(" => Base analysis timed out.")
         results = results.add(file, initS, Timedout).add(file, inc1S, NotRun).add(file, inc2S, NotRun).add(file, reanS, NotRun)
         return
       }
@@ -89,7 +89,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
 
       val aCopy = a.deepCopy()
 
-      write(if (inc1Timeout) "x" else "*")
+      print(if (inc1Timeout) "x" else "*")
       if (!inc1Timeout) {
         System.gc()
         to = timeout()
@@ -100,7 +100,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
         timesInc1 = (ti1.toDouble / 1000000) :: timesInc1
       }
 
-      write(if (inc2Timeout) "x" else "*")
+      print(if (inc2Timeout) "x" else "*")
       if (!inc2Timeout) {
         System.gc()
         to = timeout()
@@ -111,7 +111,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
         timesInc2 = (ti2.toDouble / 1000000) :: timesInc2
       }
 
-      write(if (reanTimeout) "x " else "* ")
+      print(if (reanTimeout) "x " else "* ")
       if (!reanTimeout) {
         val a = analysis(program) // Create a new analysis and set the flag to "New".
         a.version = New
@@ -137,7 +137,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
       .add(file, inc2S, if (inc2Timeout) Timedout else Finished(scala.math.round(inc2.mean), scala.math.round(inc2.stddev)))
       .add(file, reanS, if (reanTimeout) Timedout else Finished(scala.math.round(rean.mean), scala.math.round(rean.stddev)))
 
-    writeln(s"\n    => $initS: ${init.mean} - $inc1S: ${inc1.mean} - $inc2S: ${inc2.mean} - $reanS: ${rean.mean}")
+    println(s"\n    => $initS: ${init.mean} - $inc1S: ${inc1.mean} - $inc2S: ${inc2.mean} - $reanS: ${rean.mean}")
   }
 
   def reportError(file: String): Unit = results = results.add(file, initS, Errored).add(file, inc1S, Errored).add(file, inc2S, Errored).add(file, reanS, Errored)
@@ -149,7 +149,7 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-  val outputFile: String = s"ModF-performance.txt"
+  val outputFile: String = s"performance/modf.txt"
 }
 
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
@@ -157,7 +157,7 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-  val outputFile: String = s"ModConc-performance.txt"
+  val outputFile: String = s"performance/modconc.txt"
 }
 
 object IncrementalSchemeModXPerformance {
