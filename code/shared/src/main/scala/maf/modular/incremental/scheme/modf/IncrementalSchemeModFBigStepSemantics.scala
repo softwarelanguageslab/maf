@@ -1,11 +1,11 @@
 package maf.modular.incremental.scheme.modf
 
-import maf.language.scheme.{SchemeCodeChange, SchemeExp}
-import maf.modular.incremental.scheme.IncrementalSchemeSemantics
-import maf.modular.scheme.modf._
 import maf.language.change.CodeVersion._
+import maf.language.scheme.{SchemeCodeChange, SchemeExp}
 import maf.modular.AddrDependency
+import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.scheme.modf.EvalM._
+import maf.modular.scheme.modf._
 import maf.util.Annotations.nonMonotonicUpdate
 
 trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {

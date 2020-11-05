@@ -1,8 +1,8 @@
 package maf.modular.incremental
 
 import maf.core._
-import maf.language.change._
 import maf.language.change.CodeVersion._
+import maf.language.change._
 import maf.modular._
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util.Annotations._
@@ -43,8 +43,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* *********************************** */
 
 
-  /** Caches the dependencies of every component. Used to find dependencies that are no longer inferred (and hence can be removed). */
-  @mutable var cachedDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)   // Another strategy would be not to cache, but walk through the data structures.
+  /** Caches the read dependencies of every component. Used to find dependencies that are no longer inferred (and hence can be removed). */
+  @mutable var cachedReadDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)   // Another strategy would be not to cache, but walk through the data structures.
 
   @nonMonotonicUpdate
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
@@ -67,14 +67,14 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
    * @note If subclasses add extra analysis state (e.g., a global store with return values), then it is up to those subclasses to override this method and extend its functionality.
    */
   def deleteComponent(cmp: Component): Unit = if (visited(cmp)) { // Only do this if we have not yet encountered the component. Note that this is not needed to prevent looping.
-    for (dep <- cachedDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
+    for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
     visited = visited - cmp                           // Remove the component from the visited set.
     for (to <- cachedSpawns(cmp)) unspawn(to)         // Transitively check for components that have to be deleted.
 
     // Delete the caches.
-    cachedDeps    -= cmp
-    cachedSpawns  -= cmp
-    countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
+    cachedReadDeps -= cmp
+    cachedSpawns   -= cmp
+    countedSpawns  -= cmp // Deleting this cache is only useful for memory optimisations as the counter for cmp will be the default value of 0.
   }
 
   @nonMonotonicUpdate
@@ -152,10 +152,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     @nonMonotonicUpdate
     def refineDependencies(): Unit = {
       if (version == New) { // Only do this for an incremental update. Checking this condition is probably cheaper than performing the remaining things always (which would also be possible).
-        val deltaR = cachedDeps(component) -- R  // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
+        val deltaR = cachedReadDeps(component) -- R  // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
         deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
       }
-      cachedDeps += (component -> R)             // Update the cache. The cache also needs to be updated when the program is initially analysed.
+      cachedReadDeps += (component -> R)             // Update the cache. The cache also needs to be updated when the program is initially analysed.
     }
 
     /** Removes outdated components, and components that become transitively outdated, by keeping track of spawning dependencies. */

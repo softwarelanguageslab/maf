@@ -1,6 +1,6 @@
 package maf.cli.experiments.incremental
 
-object RunIncrementalExperiments {
+object RunIncrementalEvaluation {
   def main(args: Array[String]): Unit = {
     IncrementalSchemeModXPerformance.main(args)
     IncrementalSchemeModXPrecision.main(args)
