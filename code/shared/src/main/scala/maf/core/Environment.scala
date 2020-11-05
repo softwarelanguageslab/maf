@@ -22,7 +22,7 @@ case class BasicEnvironment[A <: Address](content: Map[String,A]) extends Enviro
   def extend(values: Iterable[(String, A)]): Environment[A] = this.copy(content = content ++ values)
   def mapAddrs(f: A => A): Environment[A] = this.copy(content.view.mapValues(f).toMap)
   /** Better printing. */
-  override def toString: String = s"ENV{${content.keySet.toList.filter(content(_).printable).sorted.mkString(" ")} <prims>}"
+  override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
 }
 
 object Environment {
