@@ -32,6 +32,16 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
 
   var results: Table[Result] = Table.empty.withDefaultValue(NotRun)
 
+  def runAnalysis(timedOut: Boolean, block: Timeout.T => Unit): Option[Double] = {
+    print(if (timedOut) "x" else "*")
+    if (timedOut) return None // A previous measurement already failed to complete.
+    System.gc()
+    val to = timeout()
+    val time = Timer.timeOnly(block(to))
+    if (to.reached) None
+    else Some(time.toDouble / 1000000) // Return time in ms.
+  }
+
   // A single program run with the analysis.
   def onBenchmark(file: String): Unit = {
     println(s"Testing $file")
@@ -73,18 +83,6 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
     var inc1Timeout: Boolean = false
     var inc2Timeout: Boolean = false // For a second setup of the incremental analysis.
     var reanTimeout: Boolean = false
-
-    def runAnalysis(timedOut: Boolean, block: Timeout.T => Unit): Option[Double] = {
-      print(if (timedOut) "x" else "*")
-      if (timedOut) return None // A previous measurement already failed to complete.
-      System.gc()
-      val to = timeout()
-      val time = Timer.timeOnly(block(to))
-      if (to.reached) {
-        None
-      }
-      else Some(time.toDouble / 1000000) // Return time in ms.
-    }
 
     print("\n* Measuring: ")
     for (i <- 1 to measuredRuns) {

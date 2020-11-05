@@ -16,13 +16,56 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
   final val eq: String = "Equal"        // Precision of incremental update equals the one of a full reanalysis.
   final val mp: String = "More precise" // Precision of incremental update is better than the one of a full reanalysis.
   final val lp: String = "Less precise" // Precision of incremental update is lower than the one of a full reanalysis.
+
+  final val options: List[String] = List(eq, lp, mp)
+
+  final val i1: String = "inc1"         // First incremental analysis.
+  final val i2: String = "inc2"         // Second incremental analysis.
+
+  final val analyses: List[String] = List(i1, i2)
+
+  val columns: List[String] = analyses.flatMap(a => options.map(o => s"$o ($a)"))
   
   final val inf: String = "∞"
+  final val err: String = "E"
 
-  var results: Table[String] = Table.empty
+  var results: Table[String] = Table.empty.withDefaultValue(" ")
+
+  def runAnalysis(name: String, block: Timeout.T => Unit): Boolean = {
+    print(name)
+    val timeOut = timeout()
+    block(timeOut)
+    timeOut.reached // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
+  }
+
+  def compareAnalyses(name: String, file: String, inc: Analysis, rean: Analysis): Unit = {
+    // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
+    val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
+    val rStore = rean.store.withDefaultValue(rean.lattice.bottom)
+
+    val allAddr = iStore.keySet.filter(interestingAddress) ++ rStore.keySet.filter(interestingAddress)
+    var e: Long = 0L
+    var l: Long = 0L
+    var m: Long = 0L
+    val t: Long = allAddr.size.toLong
+    allAddr.foreach({ a =>
+      val incr = iStore(a)
+      val rean = rStore(a)
+      if (incr == rean)
+        e += 1 // Both results are the same => equally precise.
+      else if (inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]))
+        l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
+      else
+        m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
+    })
+    results = results
+      .add(file, s"$eq ($name)", Formatter.withPercent(e, t))
+      .add(file, s"$lp ($name)", Formatter.withPercent(l, t))
+      .add(file, s"$mp ($name)", Formatter.withPercent(m, t))
+  }
 
   def onBenchmark(file: String): Unit = {
-    println(s"Testing $file")
+    print(s"Testing $file ")
     val program = parse(file)
 
     // Initial analysis: analyse + update.
@@ -32,58 +75,27 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     val a2 = analysis(program)
     a2.version = New
 
-    var timeOut: Timeout.T = Timeout.none
-
-    def runAnalysis(name: String, block: Timeout.T => Unit): Boolean = {
-      print(name)
-      timeOut = timeout()
-      block(timeOut)
-      if (timeOut.reached) { // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
-        println("timed out.")
-        results = results.add(file, eq, inf).add(file, mp, inf).add(file, lp, inf)
-        true // Timeout.
-      }
-      else false // No timeout.
-    }
-    
-    def compareAnalyses(inc: Analysis, rean: Analysis): Unit = {
-      // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
-      val iStore = inc.store.withDefaultValue(a1.lattice.bottom)
-      val rStore = rean.store.withDefaultValue(a2.lattice.bottom)
-
-      val allAddr = iStore.keySet.filter(interestingAddress) ++ rStore.keySet.filter(interestingAddress)
-      var e: Long = 0L
-      var l: Long = 0L
-      var m: Long = 0L
-      val t: Long = allAddr.size.toLong
-      allAddr.foreach({ a =>
-        val incr = iStore(a)
-        val rean = rStore(a)
-        if (incr == rean)
-          e += 1 // Both results are the same => equally precise.
-        else if (a1.lattice.subsumes(incr, rean.asInstanceOf[a1.Value]))
-          l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
-        else
-          m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
-      })
-      results = results.add(file, eq, Formatter.withPercent(e, t)).add(file, mp, Formatter.withPercent(m, t)).add(file, lp, Formatter.withPercent(l, t))
+    // Run the initial analysis and full reanalysis. They both need to finish.
+    if (runAnalysis("init ", {timeOut => a1.analyze(timeOut)}) || runAnalysis("-> rean ", {timeOut => a2.analyze(timeOut)})) {
+      println("timed out.")
+      columns.foreach(c => results = results.add(file, c, inf))
+      return
     }
 
-    // Run the initial analysis.
-    if (runAnalysis("init ", {timeOut => a1.analyze(timeOut)})) return
+    val a1Copy = a1.deepCopy()
 
-    // Update the initial analysis.
-    if (runAnalysis("-> inc1 ", {timeOut => a1.updateAnalysis(timeOut)})) return
+    // First incremental update.
+    if (!runAnalysis("-> inc1 ", {timeOut => a1.updateAnalysis(timeOut)})) compareAnalyses(i1, file, a1, a2)
+    else options.foreach(o => results = results.add(file, s"$o ($i1)", inf))
 
-    // Run a full reanalysis
-    if (runAnalysis("-> rean ", {timeOut => a2.analyze(timeOut)})) return
-    
-    compareAnalyses(a1, a2)
+    // Second incremental update.
+    if (!runAnalysis("-> inc2 ", {timeOut => a1Copy.updateAnalysis(timeOut)})) compareAnalyses(i2, file, a1Copy, a2)
+    else options.foreach(o => results = results.add(file, s"$o ($i2)", inf))
   }
 
   def interestingAddress[A <: Address](a: A): Boolean
-  def reportError(file: String): Unit = results = results.add(file, eq, "E").add(file, mp, "E").add(file, lp, "E")
-  def createOutput(): String = results.prettyString(columns = List(eq, lp, mp))
+  def reportError(file: String): Unit = columns.foreach(c => results = results.add(file, c, err))
+  def createOutput(): String = results.prettyString(columns = columns)
 }
 
 

@@ -32,7 +32,23 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
   final val inf: String = "∞"             // Timeout
   final val err: String = "E"             // Error
 
-  var results: Table[String] = Table.empty.withDefaultValue("?")
+  var results: Table[String] = Table.empty.withDefaultValue(" ")
+
+  def runAnalysis(name: String, file: String, analysis: Analysis, block: Timeout.T => Unit, marker: String): Unit = {
+    print(name)
+    val timeOut = timeout()
+    block(timeOut)
+    if (timeOut.reached) { // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
+      println("timed out.")
+      pr.foreach(p => results = results.add(file, p +  marker, inf))
+      return
+    }
+    results = results
+      .add(file, co + marker, s"${analysis.visited.size}")
+      //.add(file, an + marker, s"${analysis.intraCount - cnt}")
+      .add(file, ad + marker, s"${analysis.store.keySet.size}")
+      .add(file, dp + marker, s"${analysis.deps.values.map(_.size).sum}")
+  }
 
   def onBenchmark(file: String): Unit = {
     print(s"Testing $file ")
@@ -45,26 +61,8 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     val a2 = analysis(program)
     a2.version = New
 
-    var timeOut: Timeout.T = Timeout.none
-
-    def runAnalysis(name: String, analysis: Analysis, block: Timeout.T => Unit, marker: String): Unit = {
-      print(name)
-      timeOut = timeout()
-      block(timeOut)
-      if (timeOut.reached) { // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
-        println("timed out.")
-        pr.foreach(p => results = results.add(file, p +  marker, inf))
-        return
-      }
-      results = results
-        .add(file, co + marker, s"${analysis.visited.size}")
-        //.add(file, an + marker, s"${analysis.intraCount - cnt}")
-        .add(file, ad + marker, s"${analysis.store.keySet.size}")
-        .add(file, dp + marker, s"${analysis.deps.values.map(_.size).sum}")
-    }
-
     // Run the initial analysis.
-    runAnalysis("init ", a1, {timeOut => a1.analyze(timeOut)}, in)
+    runAnalysis("init ", file, a1, {timeOut => a1.analyze(timeOut)}, in)
     //val vis = a1.visited.size
     //val ssi = a1.store.keySet.size
     //val dep = a1.deps.values.map(_.size).sum
@@ -73,13 +71,13 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     val a1Copy = a1.deepCopy()
 
     // Update the initial analysis.
-    runAnalysis("-> inc1 ", a1, {timeOut => a1.updateAnalysis(timeOut, false)}, u1)
+    runAnalysis("-> inc1 ", file,  a1, {timeOut => a1.updateAnalysis(timeOut, false)}, u1)
 
     // Run the second incremental update.
-    runAnalysis("-> inc2 ", a1Copy, {timeOut => a1Copy.updateAnalysis(timeOut, true)}, u2)
+    runAnalysis("-> inc2 ", file, a1Copy, {timeOut => a1Copy.updateAnalysis(timeOut, true)}, u2)
 
     // Run a full reanalysis
-    runAnalysis("-> rean ", a2, {timeOut => a2.analyze(timeOut)}, re)
+    runAnalysis("-> rean ", file, a2, {timeOut => a2.analyze(timeOut)}, re)
   }
 
   def interestingAddress[A <: Address](a: A): Boolean
