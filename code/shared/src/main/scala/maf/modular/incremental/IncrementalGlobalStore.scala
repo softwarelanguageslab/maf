@@ -9,7 +9,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                                                     with GlobalStore[Expr] { inter =>
 
   /** Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
-  @mutable var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map())
+  @mutable var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
   /** Caches the addresses written by every component. Used to find addresses that are no longer written by a component. */
   @mutable var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
@@ -57,7 +57,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     if (old == nw) return false // Nothing changed.
     // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` are possible.
     provenance = provenance + (addr -> (provenance(addr) + (cmp -> nw)))
-    val oldJoin = inter.store(addr) // The value currently at the given address.
+    val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
     val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr) // If `old ⊏ nw` we can just use join, which is probably more efficient.
     if (oldJoin == newJoin) return false // Even with this component writing a different value to addr, the store does not change.
     inter.store = inter.store + (addr -> newJoin)

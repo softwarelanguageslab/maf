@@ -137,11 +137,18 @@ object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision {
   val outputFile: String = s"precision/modconc-CP.txt"
 }
 
+object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrecision {
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysisStoreOpt(e)
+  val outputFile: String = s"precision/modconc-CP-StoreOpt.txt"
+}
+
 object IncrementalSchemeModXPrecision {
   def main(args: Array[String]): Unit = {
-    IncrementalSchemeModFPrecision.main(args)
-    IncrementalSchemeModFCPPrecision.main(args)
-    IncrementalSchemeModConcPrecision.main(args)
+   // IncrementalSchemeModFPrecision.main(args)
+   // IncrementalSchemeModFCPPrecision.main(args)
+   // IncrementalSchemeModConcPrecision.main(args)
     IncrementalSchemeModConcCPPrecision.main(args)
+    IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
   }
 }

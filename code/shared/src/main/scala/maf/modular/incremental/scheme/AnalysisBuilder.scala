@@ -95,14 +95,13 @@ object AnalysisBuilder {
   }
 
   // With store invalidation.
-  class IncrementalSchemeModFCPAnalysisStore(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-    with StandardSchemeModFComponents
-    with SchemeModFNoSensitivity
-    with SchemeModFSemantics
+  class IncrementalModConcCPAnalysisStoreOpt(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
+    with KKallocModConc
+    with IncrementalSchemeModConcSmallStepSemantics
     with LIFOWorklistAlgorithm[SchemeExp]
     with SchemeConstantPropagationDomain
-    with IncrementalSchemeModFBigStepSemantics
     with IncrementalGlobalStore[SchemeExp] {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+    val k = 1
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
   }
 }

@@ -89,6 +89,13 @@ class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with Con
     )(b)
 }
 
+/** Implements soundness tests for an incremental ModConc analysis. */
+class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConc {
+  override def name = "Incremental ModConc CP"
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcCPAnalysis(b)
+}
+
+
 /** Implements soundness tests for an incremental ModF analysis. */
 class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
   def name = "Incremental ModF"
@@ -103,5 +110,25 @@ class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncre
       "test/changes/scheme/mceval-dynamic.scm",
       "test/changes/scheme/nboyer.scm",
       "test/changes/scheme/peval.scm",
+    )(b)
+}
+
+/** Implements soundness tests for an incremental ModF analysis. */
+class IncrementalModFCP extends IncrementalModF {
+  override def name = "Incremental ModF CP"
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFCPAnalysis(b)
+}
+
+// Soundness tests for WIP on store provenance:
+class IncrementalSmallStepModConcStoreOpt extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
+  def name = "Incremental ModConc"
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcCPAnalysisStoreOpt(b)
+  override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
+  override def isSlow(b: Benchmark): Boolean =
+    Set(
+      "test/changes/cscheme/threads/actors.scm",
+      "test/changes/cscheme/threads/crypt.scm",
+      "test/changes/cscheme/threads/crypt2.scm",
+      "test/changes/cscheme/threads/stm.scm",
     )(b)
 }
