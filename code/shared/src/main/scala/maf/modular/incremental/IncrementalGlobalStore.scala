@@ -51,14 +51,15 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @param nw   The join of all values written by cmp to the store at addr.
    * @return Returns a boolean indicating whether the address was updated.
    */
+  @nonMonotonicUpdate
   def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
     val old = provenance(addr)(cmp)
     if (old == nw) return false // Nothing changed.
     // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` are possible.
     provenance = provenance + (addr -> (provenance(addr) + (cmp -> nw)))
-    val oldJoin = inter.store(addr)
-    val newJoin = provenanceValue(addr)
-    if (oldJoin == newJoin) return false // Even with this component leading to different values, the actual store does not change.
+    val oldJoin = inter.store(addr) // The value currently at the given address.
+    val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr) // If `old ⊏ nw` we can just use join, which is probably more efficient.
+    if (oldJoin == newJoin) return false // Even with this component writing a different value to addr, the store does not change.
     inter.store = inter.store + (addr -> newJoin)
     trigger(AddrDependency(addr))
     true

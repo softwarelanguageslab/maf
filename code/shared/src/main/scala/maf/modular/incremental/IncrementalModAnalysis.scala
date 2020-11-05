@@ -129,12 +129,12 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ************************************************************************* */
 
 
-  var regainPrecision: Boolean = true // Used for testing purposes.
+  var optimisationFlag: Boolean = true // This flag can be used to enable or disable certain optimisations (for testing purposes).
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
-  def updateAnalysis(timeout: Timeout.T, regain: Boolean = true): Unit = {
-    regainPrecision = regain                                          // Used for testing pursposes.
-    version = New                                                     // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
+  def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean = true): Unit = {
+    optimisationFlag = optimisedExecution                           // Used for testing pursposes.
+    version = New                                                   // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
     analyze(timeout)
@@ -179,7 +179,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
      */
     @nonMonotonicUpdate
     override def commit(): Unit = {
-      if (regainPrecision) {
+      if (optimisationFlag) {
         refineDependencies() // First, remove excess dependencies if this is a reanalysis.
         refineComponents()   // Second, remove components that are no longer reachable (if this is a reanalysis).
       }

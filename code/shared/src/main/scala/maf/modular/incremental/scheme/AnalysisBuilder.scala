@@ -2,6 +2,7 @@ package maf.modular.incremental.scheme
 
 import maf.language.scheme._
 import maf.modular._
+import maf.modular.incremental.IncrementalGlobalStore
 import maf.modular.incremental.scheme.modconc._
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme._
@@ -91,5 +92,17 @@ object AnalysisBuilder {
                                                            with SchemeConstantPropagationDomain
                                                            with IncrementalSchemeModFBigStepSemantics {
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
+  }
+
+  // With store invalidation.
+  class IncrementalSchemeModFCPAnalysisStore(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
+    with StandardSchemeModFComponents
+    with SchemeModFNoSensitivity
+    with SchemeModFSemantics
+    with LIFOWorklistAlgorithm[SchemeExp]
+    with SchemeConstantPropagationDomain
+    with IncrementalSchemeModFBigStepSemantics
+    with IncrementalGlobalStore[SchemeExp] {
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 }
