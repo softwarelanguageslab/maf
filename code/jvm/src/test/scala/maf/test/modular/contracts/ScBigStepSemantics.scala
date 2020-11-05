@@ -27,6 +27,7 @@ class ScBigStepSemantics extends ScTestsJVM {
   }
 
   eval("((lambda (x) x) 1)").tested { machine =>
+    println(machine.getReturnValue(ScMain))
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(1))
   }
 
@@ -222,10 +223,9 @@ class ScBigStepSemantics extends ScTestsJVM {
 
   verify("(~> (~> any? int?) int?)", "(lambda (g) (g OPQ))").applied().unsafe()
 
-  // TODO: this should actually be safe, but cannot be verified because of the fact that the analysis is flow insensitive
   verify("(~> int? int?)", "(lambda (x) (letrec (y x) (begin (set! x #t) y)))")
     .applied(Set("int?"))
-    .unsafe()
+    .safeIf(machine => !machine.GLOBAL_STORE_ENABLED)
 
   /**
     * This should not be verified as safe, as the applied lambda changes x before returning it, this is to

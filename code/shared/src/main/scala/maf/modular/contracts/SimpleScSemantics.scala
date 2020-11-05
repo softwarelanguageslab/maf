@@ -2,7 +2,6 @@ package maf.modular.contracts
 
 import maf.language.contracts.ScExp
 import maf.modular.{FIFOWorklistAlgorithm, ModAnalysis}
-import maf.util.benchmarks.Timeout
 
 abstract class SimpleScSemantics(prg: ScExp)
     extends ModAnalysis(prg)
@@ -12,7 +11,7 @@ abstract class SimpleScSemantics(prg: ScExp)
     with FIFOWorklistAlgorithm[ScExp] {
 
   override def intraAnalysis(component: Component) = {
-    setup
+    setup()
     new IntraAnalysis(component) with IntraScBigStepSemantics
   }
 }

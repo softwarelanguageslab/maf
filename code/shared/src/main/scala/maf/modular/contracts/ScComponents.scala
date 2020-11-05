@@ -1,6 +1,6 @@
 package maf.modular.contracts
 
-import maf.core.{Address, Environment, Identifier, Identity}
+import maf.core.{Address, Environment, Identity}
 import maf.language.contracts.{ScExp, ScLambda}
 import maf.modular.TaggedMap
 
@@ -15,6 +15,8 @@ trait Call[Context] extends ScComponent {
   val env: Environment[Address]
   val lambda: ScLambda
   val context: Context
+
+  override def toString: String = lambda.toString
 }
 
 object Call {
@@ -27,7 +29,7 @@ object Call {
   }
 
   def unapply[Context](any: Any): Option[(Environment[Address], ScLambda, Context)] = any match {
-    case c: Call[Context] => Some(c.env, c.lambda, c.context)
+    case c: Call[Context] => Some((c.env, c.lambda, c.context))
     case _                => None
   }
 }
@@ -54,6 +56,14 @@ case class CallWithStore[Context, Addr, Value](call: Call[Context], store: Tagge
   override val env: Environment[Address] = call.env
   override val lambda: ScLambda          = call.lambda
   override val context: Context          = call.context
+
+  override def toString: String =
+    "CallWithStore {\n" +
+      s"call = ${call.lambda}\n" + s"store = ${store.v.filter {
+      case (ScPrimAddr(_), _) => false
+      case _                  => true
+    }}\n}"
+
 }
 
 trait ScStandardComponents extends ScModSemantics {

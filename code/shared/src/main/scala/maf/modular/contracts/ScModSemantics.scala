@@ -34,11 +34,20 @@ trait ScModSemantics
     with DestructiveStore[ScExp]
     with LocalStore[ScExp] {
 
+  type ComponentContext
   type AllocationContext
-  def allocVar(id: ScIdentifier, cmp: Component): ScVarAddr[AllocationContext]
+  type VarAllocationContext
+  def allocVar(id: ScIdentifier, cmp: ComponentContext): ScVarAddr[VarAllocationContext]
   def allocGeneric(idn: Identity, cmp: Component): ScGenericAddr[AllocationContext]
 
-  type ComponentContext
+  /**
+    * Returns the context of a component
+    */
+  def context(component: Component): ComponentContext
+
+  /**
+    * Allocates a new context
+    */
   def allocCtx(
       clo: ScLattice.Clo[Addr],
       args: List[Value],
@@ -46,6 +55,9 @@ trait ScModSemantics
       caller: Component
   ): ComponentContext
 
+  /**
+    * Creates a new component based on the given concrete component
+    */
   def newComponent(component: Call[ComponentContext]): Component
 
   def viewStore(component: Component): Store = view(component) match {
@@ -60,6 +72,11 @@ trait ScModSemantics
 
       case _ => component
     }
+
+  def deinstrument(component: Component): Component = component match {
+    case c: CallWithStore[ComponentContext, Addr, Value] => newComponent(c.call)
+    case _                                               => component
+  }
 
   /**
     * The environment in which the analysis is executed
@@ -93,6 +110,13 @@ trait ScModSemantics
     */
   def expr(cmp: Component): ScExp
 
+  /**
+    * Set to true if the analysis must use a global store, for all its variables.
+    * Set to false if the global store should only be used for return values and for parameter passing
+    * to top-level functions.
+    */
+  val GLOBAL_STORE_ENABLED: Boolean
+
   def view(component: Component): ScComponent
 
   trait IntraScAnalysis
@@ -121,7 +145,7 @@ trait ScModSemantics
     def fnEnv: Env = view(component) match {
       case ScMain => baseEnv
       case Call(env, lambda, _) =>
-        env.extend(lambda.variables.map(v => (v.name, allocVar(v, component))))
+        env.extend(lambda.variables.map(v => (v.name, allocVar(v, context(component)))))
     }
 
     /**

@@ -18,6 +18,9 @@ trait Instrumentation[Expr <: Expression] extends ModAnalysis[Expr] with ReturnV
   type T <: TaggedData
   implicit def dataLattice: Lattice[T]
 
+  // (f 10)
+  // CallComponent(f, store)
+  // Map(CallComponent(f, store) -> store')
   var instrumentationData: Map[Component, T] = Map()
 
   def instrument(component: Component, data: T): Component
@@ -29,6 +32,12 @@ trait Instrumentation[Expr <: Expression] extends ModAnalysis[Expr] with ReturnV
       // can be analyzed again
       register(InstrDependency(cmp, data.tag))
       call(instrument(cmp, data))
+    }
+
+    def readInstrumentationData(component: Component): T = {
+      val data = instrumentationData.getOrElse(component, dataLattice.bottom)
+      register(InstrDependency(component, data.tag))
+      data
     }
 
     def writeInstrumentationData(data: T): Unit = {

@@ -27,7 +27,7 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
     )
   def primBindings = primitives.map(p => (p, ScPrimAddr(p)))
   def baseEnv: Env = Environment(primBindings)
-  def setup: Unit = primBindings.foreach {
+  def setup(): Unit = primBindings.foreach {
     case (name, addr) => {
       store += addr -> lattice.injectPrim(Prim(name))
     }

@@ -18,7 +18,7 @@ case class ScVarAddr[Context](id: ScIdentifier, context: Context) extends ScAddr
     */
   override def idn: Identity = id.idn
 
-  override def toString: String = s"var ($id)"
+  override def toString: String = s"var $context ($id)"
 }
 
 case class ScGenericAddr[Context](idn: Identity, context: Context) extends ScAddresses[Context] {

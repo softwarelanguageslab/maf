@@ -1,6 +1,6 @@
 package maf.modular.contracts
-import maf.core.{Environment, Identity, Label, Lattice}
-import maf.language.contracts.ScLattice.{Arr, Blame, Clo, Flat, Grd, Opq, Prim}
+import maf.core.{Environment, Identity, Lattice}
+import maf.language.contracts.ScLattice._
 import maf.language.contracts.{ScExp, _}
 import maf.language.sexp.{ValueBoolean, ValueInteger}
 import maf.util.benchmarks.Timeout
@@ -60,7 +60,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
 
     def lookupOrDefine(identifier: ScIdentifier, component: Component): ScEvalM[Addr] = withEnv((env) => {
       pure(env.lookup(identifier.name).getOrElse {
-        val addr = allocVar(identifier, component)
+        val addr = allocVar(identifier, context(component))
         addr
       })
     })
@@ -89,6 +89,14 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       List((context.copy(cache = context.cache + mapping), ())).toSet
     })
 
+    def joinInCache(addr: Addr, value: Value): ScEvalM[()] = ScEvalM((context) => {
+      Set((
+        (context.copy(
+          cache = context.cache.updated(
+            addr, (lattice.join(context.store.getOrElse(addr, lattice.bottom), value), ScNil())))), ()
+      ))
+    })
+
     def replacePc[X](pc: PC)(c: ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => {
       c.run(context.copy(pc = pc))
     })
@@ -99,17 +107,17 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       */
     def result(v: Value): ScEvalM[PostValue] = pure(value(v))
 
-    def extended[X](ident: ScIdentifier, component: Component)(c: Addr => ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => {
-      val addr = allocVar(ident, component)
-      val extendedEnv = context.env.extend(ident.name, addr)
-      c(addr).run(context.copy(env = extendedEnv)).map {
-        case (updatedContext, value) => (updatedContext.copy(env = context.env), value)
+    def extended[X](ident: ScIdentifier, component: Component)(c: Addr => ScEvalM[X]): ScEvalM[X] = ScEvalM((ctx) => {
+      val addr = allocVar(ident, context(component))
+      val extendedEnv = ctx.env.extend(ident.name, addr)
+      c(addr).run(ctx.copy(env = extendedEnv)).map {
+        case (updatedContext, value) => (updatedContext.copy(env = ctx.env), value)
       }
     })
 
-    def addBindingToEnv(ident: ScIdentifier, component: Component): ScEvalM[()] = ScEvalM((context) => {
-      val addr = allocVar(ident, component)
-      Set((context.copy(env = context.env.extend(ident.name, addr)), ()))
+    def addBindingToEnv(ident: ScIdentifier, component: Component): ScEvalM[()] = ScEvalM((ctx) => {
+      val addr = allocVar(ident, context(component))
+      Set((ctx.copy(env = ctx.env.extend(ident.name, addr)), ()))
     })
 
     /**
@@ -145,12 +153,24 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     def effectful(c: => ()): ScEvalM[()] = debug(c)
 
     def trace[X]: (X => ScEvalM[X]) = { x =>
-      println("trace", x)
+      println(("trace", x))
       pure(x)
     }
 
     def evict(addresses: List[Addr]): ScEvalM[()] = ScEvalM(context => {
       Set((context.copy(cache = context.cache.removedAll(addresses)), ()))
+    })
+
+    def mergeStores(calleeStore: Store, capturedVariables: List[Addr]): ScEvalM[()] = for {
+      _ <- sequence(
+        calleeStore.view.filterKeys(capturedVariables.contains(_)).map {
+          case (addr, value)  => joinInCache(addr, value)
+        }.toList
+      )
+    } yield ()
+
+    def getStore: ScEvalM[Store] = ScEvalM(context => {
+      Set((context, context.store))
     })
   }
 
@@ -165,7 +185,11 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     def read(addr: Addr): ScEvalM[PostValue] = withStoreCache((cache) => {
       cache.get(addr) match {
         case Some(value) => pure(value)
-        case None => result(readAddr(addr))
+        case None if GLOBAL_STORE_ENABLED=> result(readAddr(addr))
+        // if we are not using a global store, then we throw an exception
+        // this should never occur, but if it does, it is much easier to track down.
+        case None =>
+          throw new Exception(s"Addr $addr is not found in store $cache while analysing $component")
       }
     })
 
@@ -176,7 +200,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       */
     def write(addr: Addr, value: PostValue): ScEvalM[()] = {
       for {
-        _ <- effectful { writeAddr(addr, value._1) }
+        _ <- effectful { if (GLOBAL_STORE_ENABLED) writeAddr(addr, value._1) }
         _ <- writeLocal(addr, value)
       } yield ()
     }
@@ -242,13 +266,13 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       var storeCache: StoreCache = componentStore.view.mapValues(v => (v, ScNil())).toMap
       primBindings.foreach {
         case (name, addr) =>
-          storeCache = storeCache + (addr -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
+          storeCache += (addr -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
       }
 
       fnEnv.content.values.foreach((addr) => {
         val value = readAddr(addr)
         if (lattice.isDefinitelyOpq(value)) {
-          storeCache += addr -> (value, ScIdentifier(ScModSemantics.genSym, Identity.none))
+          storeCache += (addr -> (value, ScIdentifier(ScModSemantics.genSym, Identity.none)))
         }
       })
 
@@ -268,7 +292,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       case ScBegin(expressions, _) => evalSequence(expressions)
       case ScIf(condition, consequent, alternative, _) => evalIf(condition, consequent, alternative)
       case ScLetRec(ident, binding, body, _) => evalLetRec(ident, binding, body)
-      case ScRaise(error, _) => ???
+      case ScRaise(_, _) => ???
       case ScSet(variable, value, _) => evalSet(variable, value)
       case ScFunctionAp(operator, operands, _) => evalFunctionAp(operator, operands)
       case v: ScValue => evalValue(v)
@@ -379,7 +403,8 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     }
 
     def evalLambda(params: List[ScIdentifier], body: ScExp, idn: Identity): ScEvalM[PostValue] = withEnv { env =>
-      result(lattice.injectClo(Clo(idn, env, params, ScLambda(params, body, idn), topLevel = isTopLevel)))
+      val clo = Clo(idn, env, params, ScLambda(params, body, idn), topLevel = isTopLevel)
+      result(lattice.injectClo(clo))
     }
 
     def evalFlatContract(exp: ScExp): ScEvalM[PostValue] = for {
@@ -405,10 +430,11 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     def evalValue(value: ScValue): ScEvalM[PostValue] = value.value match {
       case ValueInteger(i) => pure((lattice.injectInteger(i), value))
       case ValueBoolean(b) => pure((lattice.injectBoolean(b), value))
+      case _ => throw new Exception("unsupported value")
     }
 
     def evalIdentifier(identifier: ScIdentifier): ScEvalM[PostValue] =
-      lookup(identifier.name).flatMap(read)
+      lookup(identifier.name).flatMap(trace).flatMap(read).flatMap(trace)
 
     def evalSequence(expressions: List[ScExp]): ScEvalM[PostValue] =
       sequence(expressions.map(eval)).map(_.reverse.head)
@@ -437,19 +463,23 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
 
       // 2. Closure application
       val cloAp = lattice.getClo(operator._1).map { clo =>
-        val context         = allocCtx(clo, operands.map(_._1), clo.lambda.idn.pos, component)
-        val called          = Call(clo.env, clo.lambda, context)
-        val calledComponent = newComponent(called)
-        operands.zip(clo.lambda.variables.map(v => allocVar(v, calledComponent))).foreach {
-          case (value, addr) =>
-            writeAddr(addr, value._1)
-        }
-
         for {
+          calledComponent <- {
+            val context = allocCtx(clo, operands.map(_._1), clo.lambda.idn.pos, component)
+            val called = Call(clo.env, clo.lambda, context)
+            val calledComponent = newComponent(called)
+            val updateOperands = operands.zip(clo.lambda.variables.map(v => allocVar(v, context))).map {
+              case (value, addr) =>
+                write(addr, value)
+            }
+            sequence(updateOperands).map(_ => calledComponent)
+          }
+
           value <- result(call(calledComponent))
+          _ <- mergeStores(readReturnStore(calledComponent), clo.capturedVariables)
           // we need to clear out any variables that might have changed that are in our store cache
           // those variables are the variables that are captured by the clojure we just called
-          _ <- evict(clo.capturedVariables)
+          //_ <- evict(clo.capturedVariables)
         } yield value
       }
 

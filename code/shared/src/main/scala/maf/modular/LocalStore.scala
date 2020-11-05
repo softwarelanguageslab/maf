@@ -29,16 +29,24 @@ trait LocalStore[Expr <: Expression] extends Instrumentation[Expr] {
     WrappedLattice.wrappedLattice(mapLattice[Addr, Value](lattice), taggedMapWrapper)
 
   def viewStore(c: Component): Store
+  def newComponentWithStore(c: Component, store: Store): Component =
+    instrument(c, TaggedMap(store))
 
   override def intraAnalysis(component: Component): LocalStoreIntra
 
   trait LocalStoreIntra extends IntraAnalysis with InstrumentationIntraAnalsyis {
-    def callLocal(cmp: Component, store: Store): Value = {
-      callInstrumented(cmp, TaggedMap(store))
+    def callLocal(cmp: Component, store: Store): (Value, Store) = {
+      val value        = callInstrumented(cmp, TaggedMap(store))
+      val updatedStore = readReturnStore(cmp)
+      (value, updatedStore)
     }
 
     def writeReturnStore(store: Store): Unit = {
       writeInstrumentationData(TaggedMap(store))
+    }
+
+    def readReturnStore(component: Component): Store = {
+      readInstrumentationData(component).v
     }
 
     def componentStore: Store = viewStore(component)

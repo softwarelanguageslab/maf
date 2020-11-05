@@ -1,32 +1,4 @@
 package maf.modular.contracts
-import maf.core.{Address, Environment, Identity}
-import maf.core.Position.Position
-import maf.language.contracts.ScLattice.{Arr, Blame, Clo, Flat, Grd, Opq, Prim}
-import maf.language.contracts.{
-  ScBegin,
-  ScCheck,
-  ScDependentContract,
-  ScExp,
-  ScFlatContract,
-  ScFunctionAp,
-  ScHigherOrderContract,
-  ScIdentifier,
-  ScIf,
-  ScLambda,
-  ScLattice,
-  ScLetRec,
-  ScMon,
-  ScNil,
-  ScOpaque,
-  ScRaise,
-  ScSet,
-  ScValue
-}
-import maf.language.sexp.{ValueBoolean, ValueInteger}
-import maf.util.{Monoid, SingletonSet}
-
-import scala.util.Random
-import akka.japi.pf.FI.Apply
 
 object ScSmallStepSemantics {
   var r = 0
@@ -35,7 +7,7 @@ object ScSmallStepSemantics {
     s"x$r"
   }
 }
-
+/*
 trait ScSmallStepSemantics
     extends ScModSemantics
     with SmallstepSemantics[ScExp]
@@ -67,11 +39,11 @@ trait ScSmallStepSemantics
     }
 
     /**
-      * Read from the given address in the cache, and if there is no such element in the cache
-      * look it up from the store
-      * @param addr
-      * @return
-      */
+ * Read from the given address in the cache, and if there is no such element in the cache
+ * look it up from the store
+ * @param addr
+ * @return
+ */
     def read(addr: Addr)(implicit cache: StoreCache): (Value, Sym) = cache.get(addr) match {
       case Some((value, sym)) => (value, sym)
       case None => {
@@ -80,8 +52,8 @@ trait ScSmallStepSemantics
     }
 
     /**
-      * Writes both to the cache and the global store
-      */
+ * Writes both to the cache and the global store
+ */
     def write(addr: Addr, value: Value, sym: Sym)(implicit cache: StoreCache): StoreCache = {
       writeAddr(addr, value)
       cache.get(addr) match {
@@ -107,25 +79,25 @@ trait ScSmallStepSemantics
     ) {
 
       /**
-        * Get the current blaming context
-        */
+ * Get the current blaming context
+ */
       def blamingContext: BlamingContext = blaming.head
 
       /**
-        * Pop the blaming context from the context stack
-        */
+ * Pop the blaming context from the context stack
+ */
       def popBlamingContext: S =
         this.copy(blaming = blaming.tail)
 
       /**
-        * Add a new blaming context to the context stack
-        */
+ * Add a new blaming context to the context stack
+ */
       def pushBlamingContext(blamingContext: BlamingContext): S =
         this.copy(blaming = blamingContext :: blaming)
 
       /**
-        * Replace the current element of the blaming stack
-        */
+ * Replace the current element of the blaming stack
+ */
       def replaceBlamingContext(blamingContext: BlamingContext): S =
         this.copy(blaming = blamingContext :: blaming.tail)
     }
@@ -688,9 +660,9 @@ trait ScSmallStepSemantics
     }
 
     /**
-      * Creates a monitor on the given value.
-      * (mon contract/cIdn expr/idn)/mIdn
-      */
+ * Creates a monitor on the given value.
+ * (mon contract/cIdn expr/idn)/mIdn
+ */
     private def mon(
         contract: Value,
         expr: Value,
@@ -739,14 +711,14 @@ trait ScSmallStepSemantics
     }
 
     /**
-      * Generates new states for the result of a conditional
-      * @param value the value of the condition
-      * @param sym the symbolic value of the condition
-      * @param pc the path condition upto the conditional
-      * @param t a lambda that generates new states based on the updated path condition for the true branch
-      * @param f a lambda that generates new states based on the updated path condition for the false branch
-      * @return a set of new states to execute next
-      */
+ * Generates new states for the result of a conditional
+ * @param value the value of the condition
+ * @param sym the symbolic value of the condition
+ * @param pc the path condition upto the conditional
+ * @param t a lambda that generates new states based on the updated path condition for the true branch
+ * @param f a lambda that generates new states based on the updated path condition for the false branch
+ * @return a set of new states to execute next
+ */
     private def conditional(
         value: Value,
         sym: Sym,
@@ -760,9 +732,9 @@ trait ScSmallStepSemantics
         feasible(primFalse, pc, value, sym).toSet.flatMap(f)
 
     /**
-      * Checks wether the given operation is feasible for the given path with the given value
-      * If it is it returns the path condition otherwise it returns none
-      */
+ * Checks wether the given operation is feasible for the given path with the given value
+ * If it is it returns the path condition otherwise it returns none
+ */
     private def feasible(op: Prim, pc: PC, value: Value, sym: Sym): Option[PC] = {
       sym match {
         // if operation applied on the value is not true, then the path is infeasible
@@ -779,3 +751,4 @@ trait ScSmallStepSemantics
     }
   }
 }
+ */

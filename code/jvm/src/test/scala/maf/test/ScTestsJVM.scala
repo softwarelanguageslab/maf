@@ -40,6 +40,12 @@ trait ScTestsJVM extends ScTests {
       */
     def unsafe(): Unit
 
+    /**
+      * Asserts that the code should be verified as safe as long as the initial conditions
+      * of the machine satisfy some predicate, otherwise asserts that the code should be unsafe
+      */
+    def safeIf(f: ScTestAnalysisJVM => Boolean): Unit
+
     def checked(f: (Set[Blame] => Unit)): Unit
 
     def analyse(f: ScTestAnalysisJVM => Unit): Unit
@@ -70,6 +76,16 @@ trait ScTestsJVM extends ScTests {
       val machine = new ScTestAnalysisJVM(program)
       machine.analyze()
       f(machine)
+    }
+
+    def safeIf(f: ScTestAnalysisJVM => Boolean): Unit = {
+      val program = compile(command)
+      val machine = new ScTestAnalysisJVM(program)
+      if (f(machine)) {
+        this.safe()
+      } else {
+        this.unsafe()
+      }
     }
 
     def safe(): Unit = testName.should("be safe") in {
@@ -112,6 +128,7 @@ trait ScTestsJVM extends ScTests {
     def applied(refinements: Set[String] = Set(), value: String = "OPQ"): VerifyTestBuilder = this
     def safe(): Unit                                                                        = ()
     def unsafe(): Unit                                                                      = ()
+    def safeIf(f: ScTestAnalysisJVM => Boolean): Unit                                       = ()
     def checked(f: (Set[Blame] => Unit)): Unit                                              = ()
     def analyse(f: ScTestAnalysisJVM => Unit): Unit                                         = ()
     def tested(f: ScTestAnalysisJVM => Unit): Unit                                          = ()
