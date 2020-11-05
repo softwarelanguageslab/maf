@@ -51,11 +51,16 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
       analyses = a :: analyses
     }
     print(s"\n* Warm-up incremental analysis (max. ${analyses.length}): ")
-    timeoutWarmup = timeout()
-    for (a <- analyses) {
+    timeoutWarmup = timeout().map(_ * 2) // Need to run two analyses, so double the time given (no guarantees on equal division between versions).
+    for (w <- analyses.indices) {
+      val a = analyses(w) // We need an analysis that has already been (partially) run.
+      val b = a.deepCopy()
+      print(s"*")
+      System.gc()
+      a.updateAnalysis(timeoutWarmup, false)
       print(s"* ")
       System.gc()
-      a.updateAnalysis(timeoutWarmup) // We need an analysis that has already been (partially) run.
+      b.updateAnalysis(timeoutWarmup, true)
     }
 
     // Actual measurements.
@@ -66,62 +71,55 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
     var timesRean: List[Double] = List()
 
     var inc1Timeout: Boolean = false
-    var reanTimeout: Boolean = false
     var inc2Timeout: Boolean = false // For a second setup of the incremental analysis.
+    var reanTimeout: Boolean = false
+
+    def runAnalysis(timedOut: Boolean, block: Timeout.T => Unit): Option[Double] = {
+      print(if (timedOut) "x" else "*")
+      if (timedOut) return None // A previous measurement already failed to complete.
+      System.gc()
+      val to = timeout()
+      val time = Timer.timeOnly(block(to))
+      if (to.reached) {
+        None
+      }
+      else Some(time.toDouble / 1000000) // Return time in ms.
+    }
 
     print("\n* Measuring: ")
-    var to: Timeout.T = Timeout.none
     for (i <- 1 to measuredRuns) {
 
       print(s"$i")
-      val a = analysis(program)
-      System.gc()
-      to = timeout()
-      val tb = Timer.timeOnly({a.analyze(to)})
-      if (to.reached) {
-        // The base line analysis timed out. Abort.
-       println(" => Base analysis timed out.")
-        results = results.add(file, initS, Timedout).add(file, inc1S, NotRun).add(file, inc2S, NotRun).add(file, reanS, NotRun)
-        return
+      var a = analysis(program)
+
+      // Run the initial analysis.
+      runAnalysis(false, {timeOut => a.analyze(timeOut)}) match {
+        case Some(t) => timesInit = t :: timesInit
+        case None =>
+          println(" => Base analysis timed out.")
+          results = results.add(file, initS, Timedout).add(file, inc1S, NotRun).add(file, inc2S, NotRun).add(file, reanS, NotRun)
+          return
       }
-      timesInit = (tb.toDouble / 1000000) :: timesInit
 
       val aCopy = a.deepCopy()
 
-      print(if (inc1Timeout) "x" else "*")
-      if (!inc1Timeout) {
-        System.gc()
-        to = timeout()
-        val ti1 = Timer.timeOnly({a.updateAnalysis(to, false)}) // Do not regain precision
-        if (to.reached) {
-          inc1Timeout = true
-        }
-        timesInc1 = (ti1.toDouble / 1000000) :: timesInc1
+      runAnalysis(inc1Timeout, {timeOut => a.updateAnalysis(timeOut, false)}) match {
+        case Some(t) => timesInc1 = t :: timesInc1
+        case None    => inc1Timeout = true
       }
 
-      print(if (inc2Timeout) "x" else "*")
-      if (!inc2Timeout) {
-        System.gc()
-        to = timeout()
-        val ti2 = Timer.timeOnly({aCopy.updateAnalysis(to)}) // Do regain precision
-        if (to.reached) {
-          inc2Timeout = true
-        }
-        timesInc2 = (ti2.toDouble / 1000000) :: timesInc2
+      runAnalysis(inc2Timeout, {timeOut => aCopy.updateAnalysis(timeOut, true)}) match {
+        case Some(t) => timesInc2 = t :: timesInc2
+        case None    => inc2Timeout = true
       }
 
-      print(if (reanTimeout) "x " else "* ")
-      if (!reanTimeout) {
-        val a = analysis(program) // Create a new analysis and set the flag to "New".
-        a.version = New
-        System.gc()
-        to = timeout()
-        val tr = Timer.timeOnly({a.analyze(to)})
-        if (to.reached) {
-          reanTimeout = true
-        }
-        timesRean = (tr.toDouble / 1000000) :: timesRean
+      a = analysis(program) // Create a new analysis and set the flag to "New".
+      a.version = New
+      runAnalysis(reanTimeout, {timeOut => a.analyze(timeOut)}) match {
+        case Some(t) => timesRean = t :: timesRean
+        case None    => reanTimeout = true
       }
+      print(" ")
     }
 
     // Process statistics.
