@@ -143,12 +143,26 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   def createOutput(): String = results.prettyString(columns = List(initS, inc1S, inc2S, reanS))
 }
 
+
+/* ************************** */
+/* ***** Instantiations ***** */
+/* ************************** */
+
+
 object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-  val outputFile: String = s"performance/modf.txt"
+  val outputFile: String = s"performance/modf-type.txt"
+}
+
+object IncrementalSchemeModFCPPerformance extends IncrementalTime[SchemeExp] {
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysis(e)
+  override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
+  override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
+  val outputFile: String = s"performance/modf-CP.txt"
 }
 
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
@@ -156,12 +170,22 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-  val outputFile: String = s"performance/modconc.txt"
+  val outputFile: String = s"performance/modconc-type.txt"
+}
+
+object IncrementalSchemeModConcCPPerformance extends IncrementalTime[SchemeExp] {
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysis(e)
+  override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
+  override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
+  val outputFile: String = s"performance/modconc-CP.txt"
 }
 
 object IncrementalSchemeModXPerformance {
   def main(args: Array[String]): Unit = {
     IncrementalSchemeModFPerformance.main(args)
+    IncrementalSchemeModFCPPerformance.main(args)
     IncrementalSchemeModConcPerformance.main(args)
+    IncrementalSchemeModConcCPPerformance.main(args)
   }
 }
