@@ -46,7 +46,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     results = results
       .add(file, co + marker, s"${analysis.visited.size}")
       //.add(file, an + marker, s"${analysis.intraCount - cnt}")
-      .add(file, ad + marker, s"${analysis.store.keySet.size}")
+      .add(file, ad + marker, s"${analysis.store.size}")
       .add(file, dp + marker, s"${analysis.deps.values.map(_.size).sum}")
   }
 
