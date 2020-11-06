@@ -120,15 +120,11 @@ class IncrementalModFCP extends IncrementalModF {
 }
 
 // Soundness tests for WIP on store provenance:
-class IncrementalSmallStepModConcStoreOpt extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
-  def name = "Incremental ModConc"
+class IncrementalSmallStepModConcCPStoreOpt extends IncrementalSmallStepModConc {
+  override def name = "Incremental ModConc CP StoreOpt"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcCPAnalysisStoreOpt(b)
-  override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
-  override def isSlow(b: Benchmark): Boolean =
-    Set(
-      "test/changes/cscheme/threads/actors.scm",
-      "test/changes/cscheme/threads/crypt.scm",
-      "test/changes/cscheme/threads/crypt2.scm",
-      "test/changes/cscheme/threads/stm.scm",
-    )(b)
+}
+class IncrementalModFCPStoreOpt extends IncrementalModF {
+  override def name = "Incremental ModF CP StoreOpt"
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFCPAnalysisStoreOpt(b)
 }
