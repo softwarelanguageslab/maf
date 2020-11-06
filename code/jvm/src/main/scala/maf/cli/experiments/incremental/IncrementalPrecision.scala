@@ -85,13 +85,15 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     val a1Copy = a1.deepCopy()
 
     // First incremental update.
-    if (!runAnalysis("-> inc1 ", {timeOut => a1.updateAnalysis(timeOut)})) compareAnalyses(i1, file, a1, a2)
+    if (!runAnalysis("-> inc1 ", {timeOut => a1.updateAnalysis(timeOut, false)})) compareAnalyses(i1, file, a1, a2)
     else options.foreach(o => results = results.add(file, s"$o ($i1)", inf))
 
     // Second incremental update.
-    if (!runAnalysis("-> inc2 ", {timeOut => a1Copy.updateAnalysis(timeOut)})) compareAnalyses(i2, file, a1Copy, a2)
+    if (!runAnalysis("-> inc2 ", {timeOut => a1Copy.updateAnalysis(timeOut, true)})) compareAnalyses(i2, file, a1Copy, a2)
     else options.foreach(o => results = results.add(file, s"$o ($i2)", inf))
   }
+
+  // Note, we could also compare to the initial analysis. This would give us an idea on how many addresses were refined (column "More precise").
 
   def interestingAddress[A <: Address](a: A): Boolean
   def reportError(file: String): Unit = columns.foreach(c => results = results.add(file, c, err))
@@ -145,10 +147,10 @@ object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrec
 
 object IncrementalSchemeModXPrecision {
   def main(args: Array[String]): Unit = {
-   // IncrementalSchemeModFPrecision.main(args)
-   // IncrementalSchemeModFCPPrecision.main(args)
-   // IncrementalSchemeModConcPrecision.main(args)
+    IncrementalSchemeModFPrecision.main(args)
+    IncrementalSchemeModFCPPrecision.main(args)
+    IncrementalSchemeModConcPrecision.main(args)
     IncrementalSchemeModConcCPPrecision.main(args)
-    IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
+   // IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
   }
 }

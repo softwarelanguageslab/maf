@@ -20,7 +20,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   def deleteAddr(addr: Addr): Unit = {
     store = store - addr
     provenance = provenance - addr
-    if (deps(AddrDependency(addr)).nonEmpty) throw new Exception(s"Some components depend on a non-written address: $addr.")
+    // TODO: does order matter here (order of invalidation or exploration order of the worklist)? If so, then this test can just be removed?
+    //  Probably the component itself might trigger this, because it might not have been registered that it doesn't read the address anymore?
+    //if (deps(AddrDependency(addr)).nonEmpty) throw new Exception(s"The following components depend on a non-written address $addr: ${deps(AddrDependency(addr)).mkString(", ")}.")
     deps = deps - AddrDependency(addr)
   }
 
@@ -55,7 +57,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
     val old = provenance(addr)(cmp)
     if (old == nw) return false // Nothing changed.
-    // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` are possible.
+    // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
     provenance = provenance + (addr -> (provenance(addr) + (cmp -> nw)))
     val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
     val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr) // If `old ⊏ nw` we can just use join, which is probably more efficient.
