@@ -103,10 +103,10 @@ class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncre
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
     Set(
-      "test/changes/scheme/icp_1c_multiple-dwelling-coarse.scm",
-      "test/changes/scheme/icp_1c_multiple-dwelling-fine.scm",
-      "test/changes/scheme/icp_3_leval_ex_5.scm",
-      "test/changes/scheme/icp_7_8_open_coded.scm",
+      "test/changes/scheme/multiple-dwelling (coarse).scm",
+      "test/changes/scheme/multiple-dwelling (fine).scm",
+      "test/changes/scheme/leval.scm",
+      "test/changes/scheme/machine-simulator.scm",
       "test/changes/scheme/mceval-dynamic.scm",
       "test/changes/scheme/nboyer.scm",
       "test/changes/scheme/peval.scm",
