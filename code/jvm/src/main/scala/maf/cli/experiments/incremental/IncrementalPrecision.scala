@@ -77,7 +77,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
 
     // Run the initial analysis and full reanalysis. They both need to finish.
     if (runAnalysis("init ", {timeOut => a1.analyze(timeOut)}) || runAnalysis("-> rean ", {timeOut => a2.analyze(timeOut)})) {
-      println("timed out.")
+      print("timed out.")
       columns.foreach(c => results = results.add(file, c, inf))
       return
     }
@@ -86,11 +86,17 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
 
     // First incremental update.
     if (!runAnalysis("-> inc1 ", {timeOut => a1.updateAnalysis(timeOut, false)})) compareAnalyses(i1, file, a1, a2)
-    else options.foreach(o => results = results.add(file, s"$o ($i1)", inf))
+    else {
+      options.foreach(o => results = results.add(file, s"$o ($i1)", inf))
+      print("timed out")
+    }
 
     // Second incremental update.
     if (!runAnalysis("-> inc2 ", {timeOut => a1Copy.updateAnalysis(timeOut, true)})) compareAnalyses(i2, file, a1Copy, a2)
-    else options.foreach(o => results = results.add(file, s"$o ($i2)", inf))
+    else {
+      options.foreach(o => results = results.add(file, s"$o ($i2)", inf))
+      print("timed out")
+    }
   }
 
   // Note, we could also compare to the initial analysis. This would give us an idea on how many addresses were refined (column "More precise").
@@ -127,6 +133,12 @@ object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision {
   val outputFile: String = s"precision/modf-CP.txt"
 }
 
+object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecision {
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysisStoreOpt(e)
+  val outputFile: String = s"precision/modf-CP-StoreOpt.txt"
+}
+
 object IncrementalSchemeModConcPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
@@ -147,10 +159,11 @@ object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrec
 
 object IncrementalSchemeModXPrecision {
   def main(args: Array[String]): Unit = {
-    IncrementalSchemeModFPrecision.main(args)
+    //IncrementalSchemeModFPrecision.main(args)
     IncrementalSchemeModFCPPrecision.main(args)
-    IncrementalSchemeModConcPrecision.main(args)
-    IncrementalSchemeModConcCPPrecision.main(args)
-   // IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
+    IncrementalSchemeModFCPPrecisionStoreOpt.main(args)
+    //IncrementalSchemeModConcPrecision.main(args)
+    //IncrementalSchemeModConcCPPrecision.main(args)
+    //IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
   }
 }
