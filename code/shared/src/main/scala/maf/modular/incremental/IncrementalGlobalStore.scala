@@ -20,7 +20,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   def deleteAddr(addr: Addr): Unit = {
     store = store - addr
     provenance = provenance - addr
-    // TODO: does order matter here (order of invalidation or exploration order of the worklist)? If so, then this test can just be removed?
+    // TODO: does order matter here (order of invalidation or exploration order of the work list)? If so, then this test can just be removed?
     //  Probably the component itself might trigger this, because it might not have been registered that it doesn't read the address anymore?
     //if (deps(AddrDependency(addr)).nonEmpty) throw new Exception(s"The following components depend on a non-written address $addr: ${deps(AddrDependency(addr)).mkString(", ")}.")
     deps = deps - AddrDependency(addr)

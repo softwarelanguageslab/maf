@@ -13,6 +13,8 @@ import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
+import scala.concurrent.duration.{Duration, MINUTES}
+
 /**
  * Trait implementing soundness tests for incremental analyses.<br>
  * Following properties are checked:
@@ -33,6 +35,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
                                                     with IncrementalModAnalysis[SchemeExp]
                                                     
   override def analysis(b: SchemeExp): IncrementalAnalysis
+  override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
   private var version: Version = Old
 

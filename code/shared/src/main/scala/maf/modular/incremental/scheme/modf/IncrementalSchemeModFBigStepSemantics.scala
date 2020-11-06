@@ -22,10 +22,10 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
     override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
         registerComponent(e, component)
-        eval(e) // TODO: shoudn't this also be a super call?
+        eval(e) // TODO: shouldn't this also be a super call?
       case SchemeCodeChange(_, e, _) if version == New =>
         registerComponent(e, component)
-        eval(e) // TODO: shoudn't this also be a super call?
+        eval(e) // TODO: shouldn't this also be a super call?
       case _                                     =>
         registerComponent(exp, component)
         super.eval(exp)
