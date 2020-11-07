@@ -37,7 +37,7 @@ trait LocalStore[Expr <: Expression] extends Instrumentation[Expr] {
   trait LocalStoreIntra extends IntraAnalysis with InstrumentationIntraAnalsyis {
     def callLocal(cmp: Component, store: Store): (Value, Store) = {
       val value        = callInstrumented(cmp, TaggedMap(store))
-      val updatedStore = readReturnStore(cmp)
+      val updatedStore = readReturnStore(instrument(cmp, TaggedMap(store)))
       (value, updatedStore)
     }
 

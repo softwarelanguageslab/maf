@@ -36,7 +36,7 @@ trait ScTests extends AnyFlatSpec with should.Matchers {
         with ScCallInsensitivity
         with ScConstantPropagationDomain {
 
-      val GLOBAL_STORE_ENABLED = true
+      val GLOBAL_STORE_ENABLED = false
 
       type SMTSolver = ScSmtSolver
       override def newSmtSolver(program: PC): SMTSolver =

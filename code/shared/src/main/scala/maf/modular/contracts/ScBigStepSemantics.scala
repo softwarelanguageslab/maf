@@ -17,6 +17,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
   private val primFalse = ScLattice.Prim("false?")
   private val primProc  = ScLattice.Prim("proc?")
   private val primDep   = ScLattice.Prim("dependent-contract?")
+  private var totalRuns = 0
 
   def value(v: Value): PostValue = (v, ScNil())
 
@@ -89,11 +90,11 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       List((context.copy(cache = context.cache + mapping), ())).toSet
     })
 
-    def joinInCache(addr: Addr, value: Value): ScEvalM[()] = ScEvalM((context) => {
+    def joinInCache(addr: Addr, value: PostValue): ScEvalM[()] = ScEvalM((context) => {
       Set((
         (context.copy(
           cache = context.cache.updated(
-            addr, (lattice.join(context.store.getOrElse(addr, lattice.bottom), value), ScNil())))), ()
+            addr, (lattice.join(context.store.getOrElse(addr, lattice.bottom), value._1), value._2)))), ()
       ))
     })
 
@@ -161,13 +162,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       Set((context.copy(cache = context.cache.removedAll(addresses)), ()))
     })
 
-    def mergeStores(calleeStore: Store, capturedVariables: List[Addr]): ScEvalM[()] = for {
-      _ <- sequence(
-        calleeStore.view.filterKeys(capturedVariables.contains(_)).map {
-          case (addr, value)  => joinInCache(addr, value)
-        }.toList
-      )
-    } yield ()
+    def mergeStores(calleeStore: Store): ScEvalM[()] =
+      sequence(calleeStore.view.map {
+        case (addr, v)  => joinInCache(addr, value(v))
+      }.toList).flatMap(_ => unit)
 
     def getStore: ScEvalM[Store] = ScEvalM(context => {
       Set((context, context.store))
@@ -207,12 +205,16 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
 
     def writeForce(addr: Addr, value: PostValue): ScEvalM[()] = {
       for {
-        _ <- effectful { forceWrite(addr, value._1)}
-        _ <- writeLocal(addr, value)
+        _ <- effectful { if (GLOBAL_STORE_ENABLED) forceWrite(addr, value._1) }
+        _ <- writeLocalForce(addr, value)
       } yield ()
     }
 
     def writeLocal(addr: Addr, value: PostValue): ScEvalM[()] = {
+      joinInCache(addr, value)
+    }
+
+    def writeLocalForce(addr: Addr, value: PostValue): ScEvalM[()] = {
       addToCache(addr -> value)
     }
 
@@ -229,6 +231,12 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       case ScMain => true
       case _ => false
     }
+
+    def localCall(component: Component): ScEvalM[PostValue] = for {
+      store <- getStore
+      (v, updatedStore) = callLocal(component, store)
+      _ <- mergeStores(updatedStore)
+    } yield value(v)
 
     /**
       * Writes the values of the arguments in the store cache to a designated address.
@@ -258,6 +266,11 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       */
     def fresh(v: Value): PostValue =  if (lattice.isDefinitelyOpq(v)) (v, ScModSemantics.freshIdent) else (v, ScNil())
 
+    def readPure(addr: Addr, storeCache: StoreCache): Value = {
+      val (value, _) = merged(read(addr).map(_._1))(Context(env = fnEnv, cache = storeCache, pc = ScNil()))
+      value
+    }
+
     /**
       * Compute the context of the current component
       * @return a new context based on the environment of the component under analysis
@@ -270,7 +283,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       }
 
       fnEnv.content.values.foreach((addr) => {
-        val value = readAddr(addr)
+        val value = readPure(addr, storeCache)
         if (lattice.isDefinitelyOpq(value)) {
           storeCache += (addr -> (value, ScIdentifier(ScModSemantics.genSym, Identity.none)))
         }
@@ -280,7 +293,16 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     }
 
     def analyze(_ignored_timeout: Timeout.T): Unit = {
+      totalRuns += 1
+      if (totalRuns > 30) {
+        throw new Exception("Timeout exceeded")
+      }
+
+      println("================================")
+      println(s"Started analysis of $component")
       val (value, store) = merged(eval(fnBody).map(_._1))(initialContext)
+      println(s"Return store of $component is $store")
+      println(s"Return value is $value")
       writeReturnStore(store)
       writeResult(value, component)
     }
@@ -378,7 +400,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         // TODO: see if it is possible to extend the path condition
         // TODO: not sure what to do here if the value already was opaque with refinements
         // TODO: we should actually only do this when the value of the assumption is Top or Opq
-        _ <- writeLocal (identifierValueAddr, enrich(evaluatedAssumption, fresh(lattice.injectOpq(Opq()))))
+        _ <- writeForce(identifierValueAddr, enrich(evaluatedAssumption, fresh(lattice.injectOpq(Opq()))))
       } yield evaluatedExpression
     }
 
@@ -434,7 +456,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     }
 
     def evalIdentifier(identifier: ScIdentifier): ScEvalM[PostValue] =
-      lookup(identifier.name).flatMap(trace).flatMap(read).flatMap(trace)
+      lookup(identifier.name).flatMap(read)
 
     def evalSequence(expressions: List[ScExp]): ScEvalM[PostValue] =
       sequence(expressions.map(eval)).map(_.reverse.head)
@@ -475,8 +497,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
             sequence(updateOperands).map(_ => calledComponent)
           }
 
-          value <- result(call(calledComponent))
-          _ <- mergeStores(readReturnStore(calledComponent), clo.capturedVariables)
+          value <- localCall(calledComponent)
           // we need to clear out any variables that might have changed that are in our store cache
           // those variables are the variables that are captured by the clojure we just called
           //_ <- evict(clo.capturedVariables)
@@ -561,7 +582,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
           varAddr <- lookup(variable)
           opValue <- read(opAddr)
           varValue <- read(varAddr)
-          _ <- writeLocal(varAddr, enrich(opValue, varValue))
+          // a writeForce is sound and safe here, because we are either writing the same value to the varAddr, or writing
+          // a refined opaque value. Either way, the value on that address still reaches a fixpoint (safety) and is
+          // sound because we are not making something more specific which should not be made more specific.
+          _ <- writeForce(varAddr, enrich(opValue, varValue))
           result <- eval(consequent)
         } yield result
         case None => eval(consequent)
