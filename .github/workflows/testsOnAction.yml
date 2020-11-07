@@ -9,47 +9,61 @@ on:
     branches: [ master ]
 
 jobs:
-  # The compile job fetches the code and attempts to compile it.
   build:
-    name: Compile Scala-AM
+    name: Run fast tests
     runs-on: ubuntu-latest
     steps:
-    - name: Notify push
-      id: slack
-      uses: voxmedia/github-action-slack-notify-build@v1
-      with:
-        channel: maf
-        status: STARTED
-        color: warning
-      env:
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-    - name: Checkout the repository
-      uses: actions/checkout@v2
-    - name: Compile Scala-AM
-      uses: lokkju/github-action-sbt@v0.2.2
-      with:
-        commands: compile
-    - name: Run the tests
-      uses: lokkju/github-action-sbt@v0.2.2
-      with:
-        commands: maf/testOnly -- -l SlowTest
-    - name: Notify slack success
-      if: success()
-      env:
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-      uses: voxmedia/github-action-slack-notify-build@v1
-      with:
-        message_id: ${{ steps.slack.outputs.message_id }}
-        channel: maf
-        status: SUCCESS
-        color: good
-    - name: Notify slack fail
-      if: failure()
-      env:
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-      uses: voxmedia/github-action-slack-notify-build@v1
-      with:
-        message_id: ${{ steps.slack.outputs.message_id }}
-        channel: maf
-        status: FAILED
-        color: danger
+      # Send a notification to Slack.
+      - name: Notify push
+        id: slack
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          channel: maf
+          status: STARTED
+          color: warning
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      # Check out the GitHub repository.
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Compile Scala-AM
+        uses: lokkju/github-action-sbt@v0.2.2
+        with:
+          commands: compile
+      # Perform the actual tests.
+      - name: Run the tests
+        uses: lokkju/github-action-sbt@v0.2.2
+        with:
+          commands: maf/testOnly -- -l SlowTest
+      # If successful, update the Slack notification.
+      - name: Notify slack success
+        if: success()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf
+          status: SUCCESS
+          color: good
+      # If failed, update the Slack notification.
+      - name: Notify slack fail
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf
+          status: FAILED
+          color: danger
+      # Send an additional notification upon failure.
+      #- name: Stress slack fail
+      #  if: failure()
+      #  env:
+      #    SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BOT_TOKEN }}
+      #  uses: 8398a7/action-slack@v3
+      #  with:
+      #    status: ${{ job.status }}
+      #    fields: message,commit,author

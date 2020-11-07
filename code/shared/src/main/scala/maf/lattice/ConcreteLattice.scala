@@ -3,7 +3,7 @@ package maf.lattice
 import maf.core._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, NotANumberString, RealLattice, StringLattice, SymbolLattice}
 import maf.util.Show
-import maf.util.SmartUnion._
+import maf.util.datastructures.SmartUnion._
 
 object Concrete {
   sealed trait L[+X] {

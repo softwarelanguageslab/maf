@@ -9,4 +9,6 @@ object Annotations {
   class mutable                           extends scala.annotation.StaticAnnotation
 
   class assume(assumption: String = "")   extends scala.annotation.StaticAnnotation
+
+  class nonMonotonicUpdate                extends scala.annotation.StaticAnnotation
 }

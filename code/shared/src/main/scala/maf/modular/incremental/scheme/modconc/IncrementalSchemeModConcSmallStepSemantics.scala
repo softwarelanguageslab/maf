@@ -1,12 +1,23 @@
 package maf.modular.incremental.scheme.modconc
 
-import maf.modular.incremental.scheme.IncrementalSchemeSemantics
-import maf.modular.scheme.ssmodconc._
 import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeCodeChange
+import maf.modular.AddrDependency
+import maf.modular.incremental.scheme.IncrementalSchemeSemantics
+import maf.modular.scheme.ssmodconc._
+import maf.util.Annotations.nonMonotonicUpdate
 
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
-  trait IncrementalSmallStepIntra extends SmallStepIntra {
+
+  @nonMonotonicUpdate
+  override def deleteComponent(cmp: Component): Unit = { // This cannot directly go into the intra-component analysis, as the values will then again become joined when the store is committed...
+    // Deletes the return value from the global store if required (sets it to bottom), as well as the corresponding dependencies.
+    store -= returnAddr(cmp)
+    deps -= AddrDependency(returnAddr(cmp))
+    super.deleteComponent(cmp)
+  }
+
+  trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis {
     override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
         registerComponent(e, component)

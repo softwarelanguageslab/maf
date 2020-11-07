@@ -5,7 +5,6 @@ import maf.language.CScheme.TID
 import maf.language.scheme.lattices.SchemeOps._
 import maf.language.scheme.primitives._
 import maf.language.scheme._
-import maf.lattice._
 import maf.lattice.interfaces.BoolLattice
 import maf.util._
 

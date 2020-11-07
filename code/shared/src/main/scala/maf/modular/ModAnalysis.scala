@@ -13,7 +13,7 @@ trait Dependency extends SmartHash
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and
  * provides some utility functionality.
  **/
-abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
+abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable { inter =>
 
   // parameterized by a component representation
   type Component
@@ -41,7 +41,13 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
   // here, we track which components depend on which effects
   var deps: Map[Dependency,Set[Component]] = Map[Dependency,Set[Component]]().withDefaultValue(Set.empty)
   def register(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))
-  def trigger(dep: Dependency) = deps(dep).foreach(addToWorkList)
+  def trigger(dep: Dependency): Unit = deps(dep).foreach(addToWorkList)
+
+  /**
+   * Performs a deep copy of this analysis.
+   * @note If subclasses introduce mutable state, the subclasses are responsible for correctly copying that state. Also note that 'vars' are copied correctly if the corresponding data structures are immutable.
+   */
+  def deepCopy(): this.type = this.clone().asInstanceOf[this.type]
 
   // parameterized by an 'intra-component analysis'
   def intraAnalysis(component: Component): IntraAnalysis
@@ -74,6 +80,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) { inter =>
       W.foreach(dep => if(commit(dep)) inter.trigger(dep))
       C.foreach(inter.spawn(_, component))
     }
+    /** Called upon a commit for every written dependency. If true is returned, the corresponding read dependencies are triggered. */
     def commit(dep: Dependency): Boolean = false  // `ModAnalysis` has no knowledge of dependencies it can commit
   }
 

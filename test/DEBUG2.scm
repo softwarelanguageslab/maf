@@ -1,1 +1,6 @@
-`(fib ,@(list 1 2 3) ,(+ 1 2))
+(let ((square (lambda (x) (* x x)))
+       (double (lambda (x) (+ x x))))
+  (let ((a (square 10))
+         (b ((<change> double square) 20))
+         (c (square 30)))
+    (+ a b c)))

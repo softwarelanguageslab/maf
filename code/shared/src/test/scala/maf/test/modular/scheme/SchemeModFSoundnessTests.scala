@@ -9,6 +9,7 @@ import maf.modular.adaptive.scheme._
 import maf.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
+import maf.modular.worklist.{LIFOWorklistAlgorithm, ParallelWorklistAlgorithm}
 import maf.test._
 
 trait SchemeModFSoundnessTests extends SchemeSoundnessTests {

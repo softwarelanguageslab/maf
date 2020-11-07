@@ -114,6 +114,10 @@ object SchemeRenamer {
       renameList(exps, names, count) match {
         case (exps1, count1) => (SchemeOr(exps1, pos), count1)
       }
+    case SchemeAssert(exp, pos) =>
+      rename(exp, names, count) match {
+        case (exp1, count1) =>(SchemeAssert(exp1, pos), count1)
+      }
     case SchemeDefineVariable(name, value, pos) =>
       /* Keeps name untouched (maybe not correct?) */
       rename(value, names, count) match {

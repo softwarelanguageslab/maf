@@ -12,15 +12,18 @@ object SchemePrelude {
     "@sensitivity:2A" -> "(define @sensitivity:2A #f)",
     "@sensitivity:No" -> "(define @sensitivity:No #f)",
 
-    "abs" -> "(define (abs x) @sensitivity:FA (if (< x 0) (- 0 x) x))",
+    "abs" -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
     "append" -> """(define (append l1 l2)
                   |  @sensitivity:No
+                  |  (assert (list? l1))
+                  |  (assert (list? l2))
                   |  (if (null? l1)
                   |      l2
                   |      (cons (car l1)
                   |            (append (cdr l1) l2))))""".stripMargin,
     "assoc" -> """(define (assoc k l)
                  |  @sensitivity:FA
+                 |  (assert (list? l))
                  |  (if (null? l)
                  |    #f
                  |   (if (equal? (caar l) k)
@@ -28,6 +31,7 @@ object SchemePrelude {
                  |     (assoc k (cdr l)))))""".stripMargin,
     "assq" -> """(define (assq k l)
                 |  @sensitivity:FA
+                |  (assert (list? l))
                 |  (if (null? l)
                 |    #f
                 |   (if (eq? (caar l) k)
@@ -35,6 +39,7 @@ object SchemePrelude {
                 |     (assq k (cdr l)))))""".stripMargin,
     "assv" -> """(define (assv k l)
                 |  @sensitivity:FA
+                |  (assert (list? l))
                 |  (if (null? l)
                 |    #f
                 |   (if (eqv? (caar l) k)
@@ -64,16 +69,23 @@ object SchemePrelude {
     "lcm" -> "(define (lcm m n) @sensitivity:FA (/ (abs (* m n)) (gcd m n)))",
     "length" -> """(define (length l)
                   |  @sensitivity:FA
-                  |  (if (null? l)
-                  |      0
-                  |      (+ 1 (length (cdr l)))))""".stripMargin,
+                  |  (assert (list? l))
+                  |  (letrec ((rec (lambda (l)
+                  |    (if (null? l)
+                  |       0
+                  |       (+ 1 (rec (cdr l)))))))
+                  |  (rec l)))""".stripMargin,
     "list-ref" -> """(define (list-ref l index)
                     |  @sensitivity:FA
+                    |  (assert (list? l))
+                    |  (assert (number? index))
+                    |  (assert (< index (length l)))
                     |  (if (= index 0)
                     |    (car l)
                     |    (list-ref (cdr l) (- index 1))))""".stripMargin,
     "list->vector" -> """(define (list->vector l)
                         |  @sensitivity:FA
+                        |  (assert (list? l))
                         |  (let ((v (make-vector (length l))))
                         |    (let fill ((lst l) (i 0))
                         |      (if (null? lst)
@@ -81,14 +93,17 @@ object SchemePrelude {
                         |          (begin (vector-set! v i (car lst))
                         |                 (fill (cdr lst) (+ i 1)))))))""".stripMargin,
     "list-tail" -> """(define (list-tail x k)
-                     |    @sensitivity:FA
-                     |    (if (zero? k)
-                     |        x
-                     |        (list-tail (cdr x) (- k 1))))""".stripMargin, // Based on definition in R5RS specification.
+                     |  @sensitivity:FA
+                     |  (assert (list? l))
+                     |  (assert (numer? ))
+                     |  (if (zero? k)
+                     |    x
+                     |    (list-tail (cdr x) (- k 1))))""".stripMargin, // Based on definition in R5RS specification.
     "list?" -> "(define (list? l) @sensitivity:FA (or (and (pair? l) (list? (cdr l))) (null? l)))",
     //"max" -> "(define (max a b) (if (< a b) b a))", // Variadic => implemented manually.
     "member" -> """(define (member e l)
                   |  @sensitivity:FA
+                  |  (assert (list? l))
                   |  (if (null? l)
                   |    #f
                   |    (if (equal? (car l) e)
@@ -96,6 +111,7 @@ object SchemePrelude {
                   |      (member e (cdr l)))))""".stripMargin,
     "memq" -> """(define (memq e l)
                 |  @sensitivity:FA
+                |  (assert (list? l))
                 |  (if (null? l)
                 |    #f
                 |    (if (eq? (car l) e)
@@ -103,19 +119,19 @@ object SchemePrelude {
                 |      (memq e (cdr l)))))""".stripMargin,
     "memv" -> "(define (memv e l) @sensitivity:FA (memq e l))",
     //"min" -> "(define (min a b) (if (< a b) a b))", // Variadic => implemented manually.
-    "negative?" -> "(define (negative? x) @sensitivity:FA (< x 0))",
+    "negative?" -> "(define (negative? x) @sensitivity:FA (assert (number? x)) (< x 0))",
     "newline" -> "(define (newline) @sensitivity:FA #f)", // undefined
     "not" -> "(define (not x) @sensitivity:FA (if x #f #t))",
-    "odd?" -> "(define (odd? x) @sensitivity:FA (= 1 (modulo x 2)))",
-    "positive?" -> "(define (positive? x) @sensitivity:FA (> x 0))",
-    "zero?" -> "(define (zero? x) @sensitivity:FA (= x 0))",
-    "<=" -> "(define (<= x y) @sensitivity:FA (or (< x y) (= x y)))",
-    ">" -> "(define (> x y) @sensitivity:FA (not (<= x y)))",
-    ">=" -> "(define (>= x y) @sensitivity:FA (or (> x y) (= x y)))",
-    "char>?" -> "(define (char>? c1 c2) @sensitivity:FA (not (char<=? c1 c2)))",
-    "char<=?" -> "(define (char<=? c1 c2) @sensitivity:FA (or (char<? c1 c2) (char=? c1 c2)))",
-    "char>=?" -> "(define (char<=? c1 c2) @sensitivity:FA (or (char>? c1 c2) (char=? c1 c2)))",
-    "char-ci>?" -> "(define (char-ci>? c1 c2) @sensitivity:FA (not (char-ci<=? c1 c2)))",
+    "odd?" -> "(define (odd? x) @sensitivity:FA (assert (number? x)) (= 1 (modulo x 2)))",
+    "positive?" -> "(define (positive? x) @sensitivity:FA (assert (number? x)) (> x 0))",
+    "zero?" -> "(define (zero? x) @sensitivity:FA (assert (number? x)) (= x 0))",
+    "<=" -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y)))",
+    ">" -> "(define (> x y) @sensitivity:FA (assert (number? x)) (not (<= x y)))",
+    ">=" -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
+    "char>?" -> "(define (char>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char<=? c1 c2)))",
+    "char<=?" -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? x)) (or (char<? c1 c2) (char=? c1 c2)))",
+    "char>=?" -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? x)) (or (char>? c1 c2) (char=? c1 c2)))",
+    "char-ci>?" -> "(define (char-ci>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char-ci<=? c1 c2)))",
     "char-ci<=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
     "char-ci>=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
     "caar" -> "(define (caar x) @sensitivity:FA (car (car x)))",
@@ -148,6 +164,7 @@ object SchemePrelude {
     "cddddr" -> "(define (cddddr x) @sensitivity:FA (cdr (cdr (cdr (cdr x)))))",
     "vector->list" -> """(define (vector->list v)
                         |  @sensitivity:FA
+                        |  (assert (vector? v))
                         |  (let construct ((i (- (vector-length v) 1)) (lst '()))
                         |    @sensitivity:FA
                         |    (if (< i 0)
@@ -156,26 +173,29 @@ object SchemePrelude {
                         |                   (cons (vector-ref v i) lst)))))""".stripMargin,
     "reverse" -> """(define (reverse l)
                    |  @sensitivity:No
+                   |  (assert (list? l))
                    |  (if (null? l)
                    |      '()
                    |      (append (reverse (cdr l))
                    |              (list (car l)))))""".stripMargin,
     "map" ->  """(define (map f l)
                 |  @sensitivity:1A
+                |  ;(assert (proc? f)) ;; TODO
+                |  (assert (list? l))
                 |  (if (null? l)
                 |      '()
-                |      (if (pair? l)
-                |          (cons (f (car l)) (map f (cdr l)))
-                |          (error "Cannot map over a non-list."))))""".stripMargin,
+                |      (cons (f (car l)) (map f (cdr l)))))""".stripMargin,
     "for-each" -> """(define (for-each f l)
                     |  @sensitivity:1A
+                    |  ;(assert (proc? f)) ;; TODO
+                    |  (assert (list? l))
                     |  (if (null? l)
                     |      #t
                     |      (if (pair? l)
-                    |          (begin (f (car l)) (for-each f (cdr l)))
-                    |          (error "Cannot for-each over a non-list."))))""".stripMargin,
+                    |          (begin (f (car l)) (for-each f (cdr l))))))""".stripMargin,
     "string->list" -> """(define (string->list string)
                         |  @sensitivity:FA
+                        |  (assert (string? string))
                         |  (define len (string-length string))
                         |  (let convert ((n (- len 1))
                         |                (r '()))
@@ -186,6 +206,8 @@ object SchemePrelude {
                         |                 (cons (string-ref string n) r)))))""".stripMargin,
     "string=?" -> """(define (string=? s1 s2)
                     |  @sensitivity:FA
+                    |  (assert (string? s1))
+                    |  (assert (string? s2)) 
                     |  (and (= (string-length s1)(string-length s2))
                     |       (let loop ((i (- (string-length s1) 1)))
                     |        @sensitivity:FA
@@ -195,6 +217,8 @@ object SchemePrelude {
                     |                 (loop (- i 1)))))))""".stripMargin,
     "string-ci=?" -> """(define (string-ci=? s1 s2)
                        |  @sensitivity:FA
+                       |  (assert (string? s1))
+                       |  (assert (string? s2))
                        |  (and (= (string-length s1)(string-length s2))
                        |       (let loop ((i (- (string-length s1) 1)))
                        |        @sensitivity:FA
@@ -205,7 +229,7 @@ object SchemePrelude {
     "string<=?" -> "(define (string<=? s1 s2) @sensitivity:FA (or (string<? s1 s2) (string=? s1 s2)))",
     "string>?" -> "(define (string>? s1 s2) @sensitivity:FA (not (string<=? s1 s2)))",
     "string>=?" -> "(define (string<=? s1 s2) @sensitivity:FA (or (string>? s1 s2) (string=? s1 s2)))",
-    "truncate" -> "(define (truncate x) @sensitivity:FA (if (< x 0) (ceiling x) (floor x)))",
+    "truncate" -> "(define (truncate x) @sensitivity:FA (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
     //"string-fill!" -> """(define (string-fill! s c)
     //                    |  (let loop ((i (- (string-length s) 1)))
     //                    |    (if (< i 0)
@@ -226,6 +250,8 @@ object SchemePrelude {
     // TODO: implement apply internally
     "apply" -> """(define (apply proc args)
                  |  @sensitivity:1A
+                 |  ;(assert (proc? proc)) ;; TODO
+                 |  (assert (list? args))
                  |  (cond
                  |    ((null?                args)   (proc))
                  |    ((null?        (   cdr args))  (proc (car args)))

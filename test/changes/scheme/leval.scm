@@ -1,3 +1,5 @@
+; icp_3_leval_ex_5
+
 (define lazy? (<change> #f (lambda (v) (tagged-list? v 'lazy)))) ; <====================================================
 (define memo? (<change> #f (lambda (v) (tagged-list? v 'lazy-memo)))) ; <===============================================
 (define tagged-declaration? (<change> #f pair?)) ; <====================================================================

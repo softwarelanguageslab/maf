@@ -2,14 +2,12 @@ package maf.language.scheme.lattices
 
 import maf.core._
 import maf.language.CScheme.TID
-import SchemeOps.BinaryOperator.{CharacterEq, CharacterEqCI, CharacterLt, CharacterLtCI, Div, Eq, Expt, Lt, Minus, Modulo, NumEq, Plus, Quotient, Remainder, StringAppend, StringLt, StringRef, Times}
-import SchemeOps.UnaryOperator.{ACos, ASin, ATan, Ceiling, CharacterDowncase, CharacterIsLower, CharacterIsUpper, CharacterToInteger, CharacterToString, CharacterUpcase, Cos, ExactToInexact, Floor, InexactToExact, IntegerToCharacter, IsBoolean, IsChar, IsCons, IsInteger, IsLock, IsNull, IsPointer, IsProcedure, IsReal, IsString, IsSymbol, IsThread, IsVector, Log, Not, NumberToString, Random, Round, Sin, Sqrt, StringLength, StringToNumber, StringToSymbol, SymbolToString, Tan, VectorLength}
+import SchemeOps.BinaryOperator._
+import SchemeOps.UnaryOperator._
 import SchemeOps._
-import maf.language.scheme._
 import maf.language.scheme.primitives.SchemePrimitive
-import maf.lattice._
-import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
-import maf.util.SmartUnion._
+import maf.lattice.interfaces._
+import maf.util.datastructures.SmartUnion._
 import maf.util._
 
 /** Defines a Scheme lattice based on other lattices.

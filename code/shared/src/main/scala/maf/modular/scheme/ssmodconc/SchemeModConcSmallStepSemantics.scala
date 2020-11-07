@@ -257,6 +257,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case SchemeLetStar(bindings, body, _)        => evalLetStar(bindings, body, env, stack)
       case SchemeNamedLet(name, bindings, body, _) => evalNamedLet(name, bindings, body, env, stack)
       case SchemeOr(exps, _)                       => evalOr(exps, env, stack)
+      case SchemeAssert(exp, _)                    => evalAssert(exp, env, stack)
       case SchemeSplicedPair(_, _, _)              => throw new Exception("Splicing not supported.")
 
       // Multithreading.
@@ -288,6 +289,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       case Nil       => Set(Kont(lattice.bool(false), stack))
       case e :: exps => Set(Eval(e, env, extendKStore(e, OrFrame(exps, env), stack)))
     }
+
+    private def evalAssert(exp: SchemeExp, env: Env, stack: Stack): Set[State] =
+      Set(Kont(lattice.void, stack))
 
     private def evalArgs(todo: Exps, fexp: SchemeFuncall, f: Value, done: List[(Exp, Value)], env: Env, stack: Stack): Set[State] = todo match {
       case Nil             => apply(fexp, f, done.reverse, stack) // Function application.

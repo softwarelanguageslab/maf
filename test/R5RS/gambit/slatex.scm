@@ -389,41 +389,37 @@
 
 (define slatex.*max-line-length* 200)
 
-(begin
-  (define slatex.&inner-space (integer->char 7))
-  (define slatex.&quote-space (integer->char 6))
-  (define slatex.&bracket-space (integer->char 5))
-  (define slatex.&paren-space (integer->char 4))
-  (define slatex.&init-plain-space (integer->char 3))
-  (define slatex.&init-space (integer->char 2))
-  (define slatex.&plain-space (integer->char 1))
-  (define slatex.&void-space (integer->char 0)))
+(define slatex.&inner-space (integer->char 7))
+(define slatex.&quote-space (integer->char 6))
+(define slatex.&bracket-space (integer->char 5))
+(define slatex.&paren-space (integer->char 4))
+(define slatex.&init-plain-space (integer->char 3))
+(define slatex.&init-space (integer->char 2))
+(define slatex.&plain-space (integer->char 1))
+(define slatex.&void-space (integer->char 0))
 
-(begin
-  (define slatex.&plain-crg-ret (integer->char 4))
-  (define slatex.&tabbed-crg-ret (integer->char 3))
-  (define slatex.&move-tab (integer->char 2))
-  (define slatex.&set-tab (integer->char 1))
-  (define slatex.&void-tab (integer->char 0)))
+(define slatex.&plain-crg-ret (integer->char 4))
+(define slatex.&tabbed-crg-ret (integer->char 3))
+(define slatex.&move-tab (integer->char 2))
+(define slatex.&set-tab (integer->char 1))
+(define slatex.&void-tab (integer->char 0))
 
-(begin
-  (define slatex.&end-math (integer->char 8))
-  (define slatex.&mid-math (integer->char 7))
-  (define slatex.&begin-math (integer->char 6))
-  (define slatex.&end-string (integer->char 5))
-  (define slatex.&mid-string (integer->char 4))
-  (define slatex.&begin-string (integer->char 3))
-  (define slatex.&mid-comment (integer->char 2))
-  (define slatex.&begin-comment (integer->char 1))
-  (define slatex.&void-notab (integer->char 0)))
+(define slatex.&end-math (integer->char 8))
+(define slatex.&mid-math (integer->char 7))
+(define slatex.&begin-math (integer->char 6))
+(define slatex.&end-string (integer->char 5))
+(define slatex.&mid-string (integer->char 4))
+(define slatex.&begin-string (integer->char 3))
+(define slatex.&mid-comment (integer->char 2))
+(define slatex.&begin-comment (integer->char 1))
+(define slatex.&void-notab (integer->char 0))
 
-(begin
-  (define slatex.make-raw-line (lambda () (make-vector 5)))
-  (define slatex.=notab 4)
-  (define slatex.=tab 3)
-  (define slatex.=space 2)
-  (define slatex.=char 1)
-  (define slatex.=rtedge 0))
+(define slatex.make-raw-line (lambda () (make-vector 5)))
+(define slatex.=notab 4)
+(define slatex.=tab 3)
+(define slatex.=space 2)
+(define slatex.=char 1)
+(define slatex.=rtedge 0)
 
 (define slatex.make-line
   (lambda ()
@@ -451,17 +447,15 @@
 
 (define slatex.*line2* (slatex.make-line))
 
-(begin
-  (define slatex.make-case-frame (lambda () (make-vector 3)))
-  (define slatex.=in-case-exp 2)
-  (define slatex.=in-bktd-ctag-exp 1)
-  (define =in-ctag-tkn 0))
+(define slatex.make-case-frame (lambda () (make-vector 3)))
+(define slatex.=in-case-exp 2)
+(define slatex.=in-bktd-ctag-exp 1)
+(define =in-ctag-tkn 0)
 
-(begin
-  (define slatex.make-bq-frame (lambda () (make-vector 3)))
-  (define slatex.=in-bktd-bq-exp 2)
-  (define slatex.=in-bq-tkn 1)
-  (define slatex.=in-comma 0))
+(define slatex.make-bq-frame (lambda () (make-vector 3)))
+(define slatex.=in-bktd-bq-exp 2)
+(define slatex.=in-bq-tkn 1)
+(define slatex.=in-comma 0)
 
 (define slatex.*latex-paragraph-mode?* 'fwd1)
 

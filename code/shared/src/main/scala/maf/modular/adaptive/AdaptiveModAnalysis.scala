@@ -3,6 +3,7 @@ package maf.modular.adaptive
 import maf.modular.components.IndirectComponents
 import maf.core._
 import maf.modular._
+import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout

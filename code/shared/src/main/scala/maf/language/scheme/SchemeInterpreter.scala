@@ -232,6 +232,8 @@ class SchemeInterpreter(cb: (Identity, SchemeInterpreter.Value) => Unit, output:
           case Value.Bool(false) => eval(SchemeOr(exps, pos), env, timeout, version)
           case v => v
         }
+      case SchemeAssert(_, _) =>
+        Value.Void
       case SchemeDefineVariable(_, _, _) => ???
       case SchemeDefineFunction(_, _, _, _) => ???
       case SchemeDefineVarArgFunction(_, _, _, _, _) => ???

@@ -1,7 +1,9 @@
 package maf.bench.scheme
 
 import java.io.File
-import maf.util.SmartUnion
+
+import maf.util.datastructures.SmartUnion
+
 import scala.util.Random
 object SchemeBenchmarkPrograms {
 
@@ -29,11 +31,16 @@ object SchemeBenchmarkPrograms {
     files(root).filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
   }
 
+  // Only include certain listed programs.
+  def toFolder(directory: String, include: String*): Set[String] = include.map(file => s"$directory/$file").toSet
+
   // SEQUENTIAL ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   lazy val ad: Set[String] = fromFolder("test/R5RS/ad",
     "bfirst.scm", // Unbound identifier: create-graph
+    "bst.scm", // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
     "btree.scm", // Lacks a body.
+    "stspaceCODE.scm", // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
   )
   lazy val gabriel: Set[String] = fromFolder("test/R5RS/gabriel")
   lazy val gambit: Set[String] = fromFolder("test/R5RS/gambit",
@@ -43,12 +50,14 @@ object SchemeBenchmarkPrograms {
     "fibc.scm", // Needs call-cc.
     "puzzle.scm",  // Needs call-with-current-continuation.
     "scheme.scm", // Error in program BUT CAN BE ANALYSED.
+    "slatex.scm", // Needs make-string.
     "string.scm", // Needs susbtring.
     "tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
     "trav1.scm", // Needs append.
     "wc.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
   )
   lazy val icp1: Set[String] = fromFolder("test/R5RS/icp",
+    "icp_1c_ambeval.scm", // Undefined variable read.
     "icp_4_qeval.scm", // Needs define-syntax and delay.
   )
   lazy val rosetta: Set[String] = fromFolder("test/R5RS/rosetta")
@@ -64,6 +73,7 @@ object SchemeBenchmarkPrograms {
     "ch6.scm", // Commented out half of the file. Now does not parse anymore.
     "ch7.scm", // No main code (only definitions).
     "ch9.scm", // Unbound identifier: will-stop?
+    "ch10.scm", // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
   )
   lazy val toplas98: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/toplas98",
     "dynamic.scm", // Uses call-with-input-file
@@ -72,6 +82,8 @@ object SchemeBenchmarkPrograms {
     "lattice.scm", // Parser error. Uses undefined (void) function.
     "lattice-processed.scm", // Parser error. Uses undefined (void) function.
     "maze.scm", // Uses open-input-file.
+    "nbody.scm", // Apply cannot handle this apparently.
+    "nbody-processed.scm", // Apply cannot handle this apparently.
     "nucleic.sch", // Uses square brackets.
     "nucleic2.sch", // Uses macros (define-syntax).
     "splay.scm", // Uses () instead of '(), but has other issues.

@@ -1,9 +1,8 @@
 package maf.test.language.scheme
 
-import org.scalacheck.Prop.{forAll, propBoolean}
+import org.scalacheck.Prop._
 import maf.core._
-import maf.language.scheme._
-import maf.language.scheme.lattices.{SchemeLattice, SchemeOps}
+import maf.language.scheme.lattices._
 import maf.test.lattice._
 
 // inherits the standard lattice tests from `LatticeTest`

@@ -15,7 +15,7 @@ import maf.language.change.CodeVersion._
 import maf.modular.incremental.scheme.AnalysisBuilder._
 
 import scala.concurrent.duration._
-import maf.cli.experiments.SchemeAnalyses
+import maf.modular.worklist.LIFOWorklistAlgorithm
 
 object Main {
 
@@ -109,7 +109,7 @@ object IncrementalRun extends App {
   def modconcAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     println(s"***** $bench *****")
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a = new IncrementalModConcAnalysis(text)
+    val a = new IncrementalModConcCPAnalysisStoreOpt(text)
     a.analyze(timeout())
     val store1 = a.store
     a.updateAnalysis(timeout())
@@ -118,7 +118,6 @@ object IncrementalRun extends App {
       val v1 = store1.getOrElse(k, a.lattice.bottom)
       if (store2(k) != v1)
         println(s"$k: $v1 -> ${store2(k)}")
-
     }
   }
 
@@ -128,27 +127,21 @@ object IncrementalRun extends App {
     val a = new IncrementalSchemeModFAnalysis(text)
     a.analyze(timeout())
     val store1 = a.store
-    a.visited.foreach(println)
-    a.deps.foreach(println)
-    /*
+    //a.visited.foreach(println)
+    //a.deps.foreach(println)
+    println(s"${a.visited.size} components")
+
     a.updateAnalysis(timeout())
-    val store2 = a.store
-    store2.keySet.foreach { k =>
-      val v1 = store1.getOrElse(k, a.lattice.bottom)
-      if (store2(k) != v1)
-        println(s"$k: $v1 -> ${store2(k)}")
-    }
-     */
+    //val store2 = a.store
+    //store2.keySet.foreach { k =>
+    //  val v1 = store1.getOrElse(k, a.lattice.bottom)
+    //  if (store2(k) != v1)
+    //    println(s"$k: $v1 -> ${store2(k)}")
+    //}
   }
 
-  val modConcbenchmarks: List[String] = List(
-   // "test/changes/cscheme/threads/mcarlo2.scm"
-    //  "test/changes/cscheme/threads/lastzero.scm"
-    //"test/changes/cscheme/threads/sudoku.scm",
-    //"test/changes/cscheme/threads/pc.scm",
-    //"test/changes/cscheme/threads/stm.scm"
-   )
-  val    modFbenchmarks: List[String] = List("test/DEBUG.scm")
+  val modConcbenchmarks: List[String] = List("test/changes/cscheme/threads/crypt2.scm")
+  val modFbenchmarks: List[String] = List()
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
   modConcbenchmarks.foreach { bench =>
@@ -233,5 +226,32 @@ object SimpleTimingTest extends App {
       "lastzero2.scm", // Uses let*, but should use something like letrec*?
       "phild.scm", // Unbound reference: bool-top
     )
+  }
+}
+
+
+object VerifyAssertions {
+
+  def main(args: Array[String]): Unit = test(args(0))
+
+  def test(program: String): Unit = {
+    val txt = Reader.loadFile(program)
+    val prg = SchemeParser.parse(txt)
+    val analysis = new ModAnalysis(prg) with SchemeModFSemantics
+      with SchemeAssertSemantics
+      with StandardSchemeModFComponents
+      with SchemeTypeDomain
+      with SchemeModFKCallSiteSensitivity
+      with LIFOWorklistAlgorithm[SchemeExp] {
+      val k = 2
+
+      override def intraAnalysis(cmp: Component) = {
+        new IntraAnalysis(cmp) with AssertionModFIntra
+      }
+    }
+    analysis.analyze()
+    val failed = analysis.assertionsFailed
+    println(s"There are ${failed.size} violations")
+    failed.foreach(v => println(s"Violation of ${v._2} in component ${v._1}"))
   }
 }

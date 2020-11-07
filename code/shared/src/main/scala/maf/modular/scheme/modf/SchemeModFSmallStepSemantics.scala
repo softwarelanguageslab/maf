@@ -147,6 +147,8 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         evalAnd(first,rest,env,cnt)
       case SchemeOr(exps,_) =>
         evalOr(exps,env,cnt)
+      case SchemeAssert(exp, _) =>
+        evalAssert(exp,env,cnt)
       case pair: SchemePair =>
         val frm = PairCarFrm(pair,env)
         Set(EvalState(pair.car, env, frm :: cnt))
@@ -203,6 +205,8 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         val frm = OrFrame(rst, env)
         Set(EvalState(nxt, env, frm :: cnt))
       }
+    private def evalAssert(exp: SchemeExp, env: Env, cnt: Kont): Set[State] =
+      Set(KontState(lattice.void,cnt))
     // continue
     private def continue(frm: Frame, vlu: Value, cnt: Kont): Set[State] = frm match {
       case SeqFrame(exps, env) =>
