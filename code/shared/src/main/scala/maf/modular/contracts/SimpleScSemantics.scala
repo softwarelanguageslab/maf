@@ -1,7 +1,8 @@
 package maf.modular.contracts
 
 import maf.language.contracts.ScExp
-import maf.modular.{FIFOWorklistAlgorithm, ModAnalysis}
+import maf.modular.ModAnalysis
+import maf.modular.worklist.FIFOWorklistAlgorithm
 
 abstract class SimpleScSemantics(prg: ScExp)
     extends ModAnalysis(prg)

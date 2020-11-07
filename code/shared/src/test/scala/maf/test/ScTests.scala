@@ -1,23 +1,16 @@
 package maf.test
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should
-import maf.core.{Address, Environment, Position}
+import maf.core.Address
 import maf.language.contracts.ScLattice.Blame
 import maf.language.contracts._
-import maf.language.sexp.SExpParser
-import maf.modular.adaptive.AdaptiveGlobalStore
 import maf.modular.contracts.{
-  Call,
   ScCallInsensitivity,
   ScConstantPropagationDomain,
-  ScGenericAddr,
-  ScSmallStepSemantics,
   ScSmtSolver,
-  ScVarAddr,
   SimpleScSemantics
 }
-import maf.modular.{FIFOWorklistAlgorithm, GlobalStore}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should
 
 trait ScTests extends AnyFlatSpec with should.Matchers {
   trait ScLatticeFixture {
