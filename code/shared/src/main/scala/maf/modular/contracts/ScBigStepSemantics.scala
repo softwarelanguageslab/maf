@@ -232,11 +232,16 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       case _ => false
     }
 
-    def localCall(component: Component): ScEvalM[PostValue] = for {
-      store <- getStore
-      (v, updatedStore) = callLocal(component, store)
-      _ <- mergeStores(updatedStore)
-    } yield value(v)
+    def localCall(component: Component): ScEvalM[PostValue] =
+      getStore.flatMap(store => {
+        if (!GLOBAL_STORE_ENABLED) {
+          val (v, updatedStore) = callLocal(component, store)
+          mergeStores(updatedStore).flatMap(_ => result(v))
+        } else {
+          val v = call(component)
+          result(v)
+        }
+      })
 
     /**
       * Writes the values of the arguments in the store cache to a designated address.

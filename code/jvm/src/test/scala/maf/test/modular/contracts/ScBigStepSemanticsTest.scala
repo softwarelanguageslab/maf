@@ -1,10 +1,10 @@
 package maf.test.modular.contracts
 
-import maf.language.contracts.ScLattice.{Arr, Opq}
+import maf.language.contracts.ScLattice.Opq
 import maf.modular.contracts.ScMain
-import maf.test.ScTestsJVM
+import maf.test.{ScAnalysisTests, ScTests}
 
-class ScBigStepSemantics extends ScTestsJVM {
+trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   eval("(if OPQ 1 2)").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.integerTop)
   }

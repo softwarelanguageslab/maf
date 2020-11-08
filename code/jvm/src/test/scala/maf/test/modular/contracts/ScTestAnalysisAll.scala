@@ -1,0 +1,6 @@
+package maf.test.modular.contracts
+
+import maf.test.{ScTestsJVMGlobalStore, ScTestsJVMLocalStore}
+
+class ScTestAnalysisGlobalStoreTest extends ScTestsJVMGlobalStore with ScBigStepSemanticsTest
+class ScTestAnalysisLocalStoreTest  extends ScTestsJVMLocalStore with ScBigStepSemanticsTest

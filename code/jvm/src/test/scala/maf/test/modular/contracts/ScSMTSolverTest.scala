@@ -1,9 +1,9 @@
 package maf.test.modular.contracts
 
 import maf.modular.contracts.ScSMTSolverJVM
-import maf.test.ScTestsJVM
+import maf.test.{ScTestsJVM, ScTestsJVMLocalStore}
 
-class ScSMTSolverTest extends ScTestsJVM {
+class ScSMTSolverTest extends ScTestsJVMLocalStore {
   private def test(expression: String, message: String)(f: ScSMTSolverJVM => Unit): Unit = {
     expression.should(message).in {
       val pc     = compile(expression)

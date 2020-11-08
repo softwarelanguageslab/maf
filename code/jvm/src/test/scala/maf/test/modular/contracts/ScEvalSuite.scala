@@ -5,6 +5,7 @@ import maf.modular.contracts.ScMain
 import maf.test.ScTestsJVM
 import maf.core.Position
 
+/*
 class ScEvalSuite extends ScTestsJVM {
   eval("1").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(1))
@@ -117,15 +118,15 @@ class ScEvalSuite extends ScTestsJVM {
   }
 
   /**
-    * Test that the OPQ value is refined to an integer
-    */
+ * Test that the OPQ value is refined to an integer
+ */
   eval("(int? (mon int? OPQ))").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
   }
 
   /**
-    * Test if the semantics when running on a valid value are the same as the wrapped value
-    */
+ * Test if the semantics when running on a valid value are the same as the wrapped value
+ */
   eval("((flat int?) 0)").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
   }
@@ -139,23 +140,23 @@ class ScEvalSuite extends ScTestsJVM {
   }
 
   /**
-    * The application of a flat contract should also be able to generate a blame
-    */
+ * The application of a flat contract should also be able to generate a blame
+ */
   verify("(flat int?)", "OPQ").unsafe()
 
   /**
-    * An integer literal should always pass the `int?` test
-    */
+ * An integer literal should always pass the `int?` test
+ */
   verify("int?", "5").named("flat_lit_int?").safe()
 
   /**
-    * An opaque value can be different from an integer, so this should not be verified as safe
-    */
+ * An opaque value can be different from an integer, so this should not be verified as safe
+ */
   verify("int?", "OPQ").named("flat_OPQ_int?").unsafe()
 
   /**
-    * A contract from any to any should always be verified as safe
-    */
+ * A contract from any to any should always be verified as safe
+ */
   verify("(~> any? any?)", "(lambda (x) x)").applied().named("id_any2any").safe()
 
   verify("(~> any? int?)", "(lambda (x) 1)").applied().named("any2int_constant1").safe()
@@ -209,7 +210,7 @@ class ScEvalSuite extends ScTestsJVM {
   eval("(letrec (int?/c (lambda (x) (check int? x))) (mon int?/c 5))").tested { machine =>
     println(machine.unverified)
   }
-   */
+ */
 
   eval("""
       |(letrec
@@ -226,7 +227,7 @@ class ScEvalSuite extends ScTestsJVM {
   }
 
   eval("""
-         |(letrec 
+         |(letrec
          |  (and/c (lambda (c1 c2) (lambda (x) (and (c1 x) (c2 x)))))
          |  (mon (and/c (flat (lambda (x) (> x 2))) (flat nonzero?)) 0))
          |""".stripMargin).tested { machine =>
@@ -249,22 +250,22 @@ class ScEvalSuite extends ScTestsJVM {
     println(machine.verificationResults)
   }
 
-  eval("""(letrec (n 0) 
+  eval("""(letrec (n 0)
       |  (letrec (min (lambda (y) (if (< y n) y n)))
       |     ((mon (~ int? (lambda (n) (lambda (a) (=< a n))))
-      |         (lambda (x) 
-      |          (begin 
+      |         (lambda (x)
+      |          (begin
       |             (set! n (min x))
       |             n))) OPQ)))""".stripMargin).unsafe()
 
   eval("""
-      | (letrec 
+      | (letrec
       |     (=/c (lambda (n) (flat (lambda (x) (= x n)))))
       |     (letrec
       |        (not/c (lambda (c) (flat (lambda (x) (not (c x))))))
       |        (letrec
       |           (nonzero/c (not/c (=/c 0)))
-      |           ((mon (~> nonzero/c any?) (lambda (x) OPQ)) 1)))) 
+      |           ((mon (~> nonzero/c any?) (lambda (x) OPQ)) 1))))
       |""".stripMargin).tested { machine =>
     machine.getVerificationResults(machine.VerifiedFalse).map(_._1.pos) shouldEqual List(
       Position(5, 52)
@@ -272,13 +273,13 @@ class ScEvalSuite extends ScTestsJVM {
   }
 
   eval("""
-      | (letrec 
+      | (letrec
       |     (=/c (lambda (n) (flat (lambda (x) (= x n)))))
       |     (letrec
       |        (not/c (lambda (c) (flat (lambda (x) (not (c x))))))
       |        (letrec
       |           (nonzero/c (not/c (=/c 0)))
-      |           ((mon (~> any? nonzero/c) (lambda (x) OPQ)) 1)))) 
+      |           ((mon (~> any? nonzero/c) (lambda (x) OPQ)) 1))))
       |""".stripMargin).tested { machine =>
     machine.getVerificationResults(machine.Top).map(_._1.pos) shouldEqual List(
       Position(5, 52),
@@ -319,3 +320,4 @@ class ScEvalSuite extends ScTestsJVM {
     .applied()
     .unsafe()
 }
+ */
