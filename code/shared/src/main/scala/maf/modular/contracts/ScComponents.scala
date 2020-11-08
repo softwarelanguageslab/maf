@@ -2,7 +2,7 @@ package maf.modular.contracts
 
 import maf.core.{Address, Environment, Identity}
 import maf.language.contracts.{ScExp, ScLambda}
-import maf.modular.TaggedMap
+import maf.modular.LocalStoreMap
 
 sealed trait ScComponent
 
@@ -51,8 +51,10 @@ case class ContractCall[Context](
     context: Context
 ) extends Call[Context]
 
-case class CallWithStore[Context, Addr, Value](call: Call[Context], store: TaggedMap[Addr, Value])
-    extends Call[Context] {
+case class CallWithStore[Context, Addr, Value](
+    call: Call[Context],
+    store: LocalStoreMap[Addr, Value]
+) extends Call[Context] {
   override val env: Environment[Address] = call.env
   override val lambda: ScLambda          = call.lambda
   override val context: Context          = call.context

@@ -11,7 +11,7 @@ import maf.modular.{
   ModAnalysis,
   ReturnAddr,
   ReturnValue,
-  TaggedMap
+  LocalStoreMap
 }
 
 object ScModSemantics {
@@ -65,7 +65,7 @@ trait ScModSemantics
     case ScMain | Call(_, _, _)                          => Map()
   }
 
-  def instrument(component: Component, data: TaggedMap[Addr, Value]): Component =
+  def instrument(component: Component, data: LocalStoreMap[Addr, Value]): Component =
     view(component) match {
       // we can only pass the store to calls of other functions
       case c: Call[ComponentContext] => newComponent(CallWithStore(c, data))
