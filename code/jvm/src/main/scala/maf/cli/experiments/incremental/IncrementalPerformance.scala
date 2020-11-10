@@ -157,7 +157,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
 
 
 object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
@@ -165,7 +165,7 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
 }
 
 object IncrementalSchemeModFCPPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
@@ -173,7 +173,7 @@ object IncrementalSchemeModFCPPerformance extends IncrementalTime[SchemeExp] {
 }
 
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
@@ -181,7 +181,7 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
 }
 
 object IncrementalSchemeModConcCPPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))

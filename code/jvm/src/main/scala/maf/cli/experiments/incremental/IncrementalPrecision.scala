@@ -122,37 +122,37 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
 }
 
 object IncrementalSchemeModFPrecision extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   val outputFile: String = s"precision/modf-type.txt"
 }
 
 object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysis(e)
   val outputFile: String = s"precision/modf-CP.txt"
 }
 
 object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysisStoreOpt(e)
   val outputFile: String = s"precision/modf-CP-StoreOpt.txt"
 }
 
 object IncrementalSchemeModConcPrecision extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   val outputFile: String = s"precision/modconc-type.txt"
 }
 
 object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysis(e)
   val outputFile: String = s"precision/modconc-CP.txt"
 }
 
 object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysisStoreOpt(e)
   val outputFile: String = s"precision/modconc-CP-StoreOpt.txt"
 }
