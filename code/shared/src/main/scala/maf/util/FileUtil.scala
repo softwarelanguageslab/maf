@@ -111,5 +111,5 @@ object Logger {
     def close(): Unit = writer.close()
   }
 
-  def apply(msg: String = "log"): Logger = new Logger(Writer.openTimeStamped(out + msg))
+  def apply(msg: String = "log.txt"): Logger = new Logger(Writer.openTimeStamped(out + msg))
 }

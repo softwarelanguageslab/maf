@@ -12,6 +12,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
 
   @nonMonotonicUpdate
   override def deleteComponent(cmp: Component): Unit = {
+    logger.log(s"deleting* $cmp")
     // Deletes the return value from the global store if required (sets it to bottom), as well as the corresponding dependencies.
     store -= returnAddr(cmp)
     deps -= AddrDependency(returnAddr(cmp))

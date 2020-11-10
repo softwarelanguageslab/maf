@@ -34,20 +34,21 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
 
   var results: Table[String] = Table.empty.withDefaultValue(" ")
 
-  def runAnalysis(name: String, file: String, analysis: Analysis, block: Timeout.T => Unit, marker: String): Unit = {
+  def runAnalysis(name: String, file: String, analysis: Analysis, block: Timeout.T => Unit, marker: String): Boolean = {
     print(name)
     val timeOut = timeout()
     block(timeOut)
     if (timeOut.reached) { // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
-      println("timed out.")
+      print("timed out.")
       pr.foreach(p => results = results.add(file, p +  marker, inf))
-      return
+      return false
     }
     results = results
       .add(file, co + marker, s"${analysis.visited.size}")
       //.add(file, an + marker, s"${analysis.intraCount - cnt}")
       .add(file, ad + marker, s"${analysis.store.size}")
       .add(file, dp + marker, s"${analysis.deps.values.map(_.size).sum}")
+    true
   }
 
   def onBenchmark(file: String): Unit = {
@@ -62,11 +63,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     a2.version = New
 
     // Run the initial analysis.
-    runAnalysis("init ", file, a1, {timeOut => a1.analyze(timeOut)}, in)
-    //val vis = a1.visited.size
-    //val ssi = a1.store.keySet.size
-    //val dep = a1.deps.values.map(_.size).sum
-    //val cnt = a1.intraCount
+    if (!runAnalysis("init ", file, a1, {timeOut => a1.analyze(timeOut)}, in)) return
 
     val a1Copy = a1.deepCopy()
 

@@ -6,11 +6,16 @@ import maf.language.change._
 import maf.modular._
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util.Annotations._
+import maf.util.Logger
+import maf.util.Logger.Logger
 import maf.util.benchmarks.Timeout
 
 // NOTE - This implementation is not thread-safe, and does not always use the local stores of the intra-component analyses!
 //        Therefore, a sequential work-list algorithm is used.
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
+
+  var logger: Logger = Logger()
+  logger.close()
 
 
   /* ************************************************************************* */
@@ -67,6 +72,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
    * @note If subclasses add extra analysis state (e.g., a global store with return values), then it is up to those subclasses to override this method and extend its functionality.
    */
   def deleteComponent(cmp: Component): Unit = if (visited(cmp)) { // Only do this if we have not yet encountered the component. Note that this is not needed to prevent looping.
+    logger.log(s"deleting $cmp")
     for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
     visited = visited - cmp                           // Remove the component from the visited set.
     for (to <- cachedSpawns(cmp)) unspawn(to)         // Transitively check for components that have to be deleted.
@@ -81,6 +87,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
   def unspawn(cmp: Component): Unit = if (visited (cmp)) { // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
                                                            // (Counts can go below zero if an already reclaimed component is encountered here, which is possible due to the foreach in deleteDisconnectedComponents.)
+    logger.log(s"Unspawning $cmp")
     // Update the spawn count information.
     countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
     if (countedSpawns(cmp) == 0) deleteComponent(cmp) else deletionFlag = true // Delete the component if it is no longer spawned by any other component.
@@ -133,11 +140,13 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean = true): Unit = {
+    logger = Logger()
     optimisationFlag = optimisedExecution                           // Used for testing pursposes.
     version = New                                                   // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
     analyze(timeout)
+    logger.close()
   }
 
 
