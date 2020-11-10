@@ -109,6 +109,11 @@ object SCExpCompiler {
     case Ident("letrec") :: _ =>
       throw new Exception(s"invalid syntax for letrec at ${prog.idn.pos}")
 
+    case Ident("mon") :: Ident(annotation) :: contract :: expression :: ListNil(_) =>
+      val compiledContract   = compile(contract)
+      val compiledExpression = compile(expression)
+      ScMon(compiledContract, compiledExpression, prog.idn, Some(annotation))
+
     case Ident("mon") :: contract :: expression :: ListNil(_) =>
       val compiledContract   = compile(contract)
       val compiledExpression = compile(expression)
@@ -164,6 +169,9 @@ object SCExpCompiler {
 
     case Ident("provide/contract") :: contracts =>
       compile_contracts(contracts)
+
+    case Ident(annotation) :: operator :: arguments if annotation.startsWith("@") =>
+      ScFunctionAp(compile(operator), compile_sequence(arguments), prog.idn, Some(annotation))
 
     case operator :: arguments =>
       ScFunctionAp(compile(operator), compile_sequence(arguments), prog.idn)

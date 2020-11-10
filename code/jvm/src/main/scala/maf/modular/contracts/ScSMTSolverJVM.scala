@@ -22,8 +22,8 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
 
   object ScAnd {
     def unapply(exp: ScExp): Option[(ScExp, ScExp)] = exp match {
-      case ScFunctionAp(ScIdentifier("and", _), List(e1, e2), _) => Some((e1, e2))
-      case _                                                     => None
+      case ScFunctionAp(ScIdentifier("and", _), List(e1, e2), _, _) => Some((e1, e2))
+      case _                                                        => None
     }
   }
 
@@ -89,7 +89,7 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
           case ValueInteger(v) => Some(s"(VInt $v)")
           case ValueBoolean(v) => Some(s"(VBool $v)")
         }
-      case ScFunctionAp(operator, operands, _) =>
+      case ScFunctionAp(operator, operands, _, _) =>
         for {
           transformedOperator <- transformExpression(operator, operand = true)
           transformedOperands <- combineAllNonEmpty(operands.map(e => transformExpression(e)))

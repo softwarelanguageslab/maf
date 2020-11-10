@@ -2,7 +2,7 @@ package maf.language.contracts
 
 import maf.core.{Expression, Identifier, Identity, Label}
 import maf.language.sexp.Value
-import maf.util.PrettyPrinter
+import maf.util.{Monoid, PrettyPrinter}
 
 case object FLAT_CONTRACT         extends Label
 case object HIGHER_ORDER_CONTRACT extends Label
@@ -182,7 +182,14 @@ case class ScValue(value: Value, idn: Identity) extends ScLiterals {
   override def toString: String = s"$value"
 }
 
-case class ScFunctionAp(operator: ScExp, operands: List[ScExp], idn: Identity) extends ScExp {
+case class ScFunctionAp(
+    operator: ScExp,
+    operands: List[ScExp],
+    idn: Identity,
+    annotation: Option[String] = None
+) extends ScAnnotated {
+
+  override val annotatedExpression: ScExp = operands.head
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = operator.fv ++ operands.fv
@@ -250,7 +257,19 @@ case class ScSet(variable: ScIdentifier, value: ScExp, idn: Identity) extends Sc
   override def toString: String = s"(set! $variable $value)"
 }
 
-case class ScMon(contract: ScExp, expression: ScExp, idn: Identity) extends ScExp {
+trait ScAnnotated extends ScExp {
+  val annotation: Option[String]
+  val annotatedExpression: ScExp
+}
+
+case class ScMon(
+    contract: ScExp,
+    expression: ScExp,
+    idn: Identity,
+    annotation: Option[String] = None
+) extends ScAnnotated {
+
+  override val annotatedExpression: ScExp = expression
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = contract.fv ++ expression.fv
@@ -478,4 +497,35 @@ case class ScProvideContracts(
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = contracts
+}
+
+abstract class ScTraverser[T: Monoid] {
+  import maf.util.MonoidInstances._
+
+  def traverse(exp: ScExp): T =
+    combineAll(
+      exp.subexpressions
+        .filter {
+          case _: ScExp => true
+          case _        => false
+        }
+        .map(_.asInstanceOf[ScExp])
+        .map(traverse)
+    )
+}
+
+object ScTraverser {
+  def traverse[T: Monoid](exp: ScExp)(f: ScExp => Either[T, T]): T = {
+    val traverser = new ScTraverser[T] {
+      override def traverse(exp: ScExp): T = {
+        f(exp) match {
+          case Left(value) => value
+          case Right(value) => {
+            Monoid[T].append(value, super.traverse(exp))
+          }
+        }
+      }
+    }
+    traverser.traverse(exp)
+  }
 }

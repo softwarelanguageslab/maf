@@ -85,6 +85,13 @@ trait ScAnalysisTests extends ScTests {
     def analyse(f: ScTestAnalysis => Unit): Unit
 
     def tested(f: ScTestAnalysis => Unit): Unit
+
+    /**
+      * Ensures that all the annotated monitors are correctly validated.
+      *
+      * (Eg. all monitors marked as @unsafe are validated as @unsafe and all the ones that are marked as @safe are validated as such)
+      */
+    def full(): Unit
   }
 
   case class SomeVerifyTestBuilder(var command: String) extends VerifyTestBuilder {
@@ -155,6 +162,32 @@ trait ScAnalysisTests extends ScTests {
         analyse(machine => f(machine.summary.blames.flatMap(_._2).toSet))
       }
     }
+
+    def full(): Unit = {
+      import maf.util.MonoidInstances._
+      val program = compile(command)
+      val monitors: List[ScAnnotated] = ScTraverser.traverse(program) {
+        case m: ScMon if m.annotation.isDefined        => Right(List(m))
+        case f: ScFunctionAp if f.annotation.isDefined => Right(List(f))
+        case _                                         => Right(List())
+      }
+
+      testName.should("be fully checked") in {
+        analyse(machine => {
+          val blames = combineAll(machine.summary.blames.values.toList).map(_.blamedPosition.pos)
+          monitors.foreach(
+            m =>
+              assert(
+                (m.annotation.contains("@safe") && !blames
+                  .contains(m.annotatedExpression.idn.pos)) ||
+                  (m.annotation.contains("@unsafe") && blames.contains(
+                    m.annotatedExpression.idn.pos
+                  ))
+              )
+          )
+        })
+      }
+    }
   }
 
   case object EmptyVerifyTestBuilder extends VerifyTestBuilder {
@@ -166,6 +199,7 @@ trait ScAnalysisTests extends ScTests {
     def checked(f: (Set[Blame] => Unit)): Unit                                              = ()
     def analyse(f: ScTestAnalysis => Unit): Unit                                            = ()
     def tested(f: ScTestAnalysis => Unit): Unit                                             = ()
+    def full(): Unit                                                                        = ()
   }
 
   def verify(contract: String, expr: String): VerifyTestBuilder = {

@@ -8,7 +8,7 @@ import scala.io.Source
 trait FileTests extends ScTestsJVM {
   def fromFile(filename: String): String = {
     val source = Source.fromFile(filename)
-    val code   = source.getLines.mkString("")
+    val code   = source.getLines.mkString("\n")
     source.close()
     code
   }

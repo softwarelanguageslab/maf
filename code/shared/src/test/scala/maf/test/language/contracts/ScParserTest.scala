@@ -51,7 +51,7 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
 
   "A mon" should "parse to an ScMon" in {
     compile("(mon x y)") should matchPattern {
-      case ScMon(ScIdentifier("x", _), ScIdentifier("y", _), _) =>
+      case ScMon(ScIdentifier("x", _), ScIdentifier("y", _), _, _) =>
     }
   }
 
@@ -96,7 +96,7 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
       case ScAssume(
           ScIdentifier("x", _),
           ScIdentifier("int?", _),
-          ScFunctionAp(ScIdentifier("+", _), _, _),
+          ScFunctionAp(ScIdentifier("+", _), _, _, _),
           _
           ) =>
     }
@@ -155,6 +155,18 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
           List((ScHigherOrderContract(_, _, _))),
           _
           ) =>
+    }
+  }
+
+  "A monitor with annotation" should "be parsed" in {
+    compile("(mon @safe int? 10)") should matchPattern {
+      case ScMon(_, _, _, Some("@safe")) =>
+    }
+  }
+
+  "An application with annotation" should "be parsed" in {
+    compile("(@safe f 10)") should matchPattern {
+      case ScFunctionAp(_, _, _, Some("@safe")) =>
     }
   }
 }

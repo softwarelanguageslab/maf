@@ -321,10 +321,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       case ScLetRec(ident, binding, body, _) => evalLetRec(ident, binding, body)
       case ScRaise(_, _) => ???
       case ScSet(variable, value, _) => evalSet(variable, value)
-      case ScFunctionAp(operator, operands, _) => evalFunctionAp(operator, operands)
+      case ScFunctionAp(operator, operands, _, _) => evalFunctionAp(operator, operands)
       case v: ScValue => evalValue(v)
       case exp: ScIdentifier => evalIdentifier(exp)
-      case ScMon(contract, expression, idn) => evalMon(contract, expression, idn)
+      case ScMon(contract, expression, idn, _) => evalMon(contract, expression, idn)
       case ScOpaque(_, refinements) => evalOpaque(refinements)
       case ScHigherOrderContract(domain, range, idn) => eval(higherOrderToDependentContract(domain, range, idn))
       case ScDependentContract(domain, rangeMaker, _) => evalDependentContract(domain, rangeMaker)
@@ -638,7 +638,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
 
 
   def isPredicateOnVariable(expr: ScExp): Option[(String, String)] = expr match {
-    case ScFunctionAp(ScIdentifier(operator, _), List(ScIdentifier(variable, _)), _) => Some((operator, variable))
+    case ScFunctionAp(ScIdentifier(operator, _), List(ScIdentifier(variable, _)), _, _) => Some((operator, variable))
     case _ => None
   }
 }

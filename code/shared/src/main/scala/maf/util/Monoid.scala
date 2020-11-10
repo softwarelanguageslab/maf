@@ -83,4 +83,9 @@ object MonoidInstances {
     def append(x: String, y: => String): String = x ++ " " ++ y
     def zero: String = ""
   }
+
+  implicit def listMonoid[T]: Monoid[List[T]] = new Monoid[List[T]] {
+    def append(x: List[T], y: => List[T]): List[T] = x ++ y
+    def zero: List[T] = List()
+  }
 }
