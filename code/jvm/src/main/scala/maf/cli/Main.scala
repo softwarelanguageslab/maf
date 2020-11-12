@@ -112,7 +112,7 @@ object IncrementalRun extends App {
     val a = new IncrementalModConcCPAnalysisStoreOpt(text)
     a.analyze(timeout())
     val store1 = a.store
-    a.updateAnalysis(timeout())
+    a.updateAnalysis(timeout(), bench)
     val store2 = a.store
     store2.keySet.foreach { k =>
       val v1 = store1.getOrElse(k, a.lattice.bottom)
@@ -131,7 +131,7 @@ object IncrementalRun extends App {
     //a.deps.foreach(println)
     println(s"${a.visited.size} components")
 
-    a.updateAnalysis(timeout())
+    a.updateAnalysis(timeout(), bench)
     //val store2 = a.store
     //store2.keySet.foreach { k =>
     //  val v1 = store1.getOrElse(k, a.lattice.bottom)

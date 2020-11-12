@@ -70,11 +70,11 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
       val b = a.deepCopy()
       print(s"*")
       System.gc()
-      a.updateAnalysis(timeoutWarmup, false)
+      a.updateAnalysis(timeoutWarmup, file, false)
       if (multiInc) {
         print(s"* ")
         System.gc()
-        b.updateAnalysis(timeoutWarmup, true)
+        b.updateAnalysis(timeoutWarmup, file,true)
       }
     }
 
@@ -106,13 +106,13 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
 
       val aCopy = a.deepCopy()
 
-      runAnalysis(inc1Timeout, {timeOut => a.updateAnalysis(timeOut, false)}) match {
+      runAnalysis(inc1Timeout, {timeOut => a.updateAnalysis(timeOut, file,false)}) match {
         case Some(t) => timesInc1 = t :: timesInc1
         case None    => inc1Timeout = true
       }
 
       if (multiInc)
-        runAnalysis(inc2Timeout, {timeOut => aCopy.updateAnalysis(timeOut, true)}) match {
+        runAnalysis(inc2Timeout, {timeOut => aCopy.updateAnalysis(timeOut, file,true)}) match {
           case Some(t) => timesInc2 = t :: timesInc2
           case None    => inc2Timeout = true
         }
