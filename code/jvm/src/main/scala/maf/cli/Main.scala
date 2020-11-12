@@ -140,7 +140,7 @@ object IncrementalRun extends App {
     //}
   }
 
-  val modConcbenchmarks: List[String] = List("test/changes/cscheme/threads/crypt2.scm")
+  val modConcbenchmarks: List[String] = List("test/changes/cscheme/threads/mcarlo.scm")
   val modFbenchmarks: List[String] = List()
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
