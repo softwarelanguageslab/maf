@@ -1,5 +1,8 @@
 package maf.util.benchmarks
 
+import java.text.SimpleDateFormat
+import java.util._
+
 object Timeout {
   import scala.concurrent.duration.Duration
 
@@ -33,4 +36,12 @@ object Timer {
 
   @inline
   def timeOnly[A](block: => A): Long = time(block)._1
+}
+
+object Clock {
+
+  val stdFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
+
+  def now(): Date = Calendar.getInstance().getTime
+  def nowStr(): String = stdFormat.format(now())
 }

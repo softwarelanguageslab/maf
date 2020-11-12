@@ -68,10 +68,10 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     val a1Copy = a1.deepCopy()
 
     // Update the initial analysis.
-    runAnalysis("-> inc1 ", file,  a1, {timeOut => a1.updateAnalysis(timeOut, false)}, u1)
+    runAnalysis("-> inc1 ", file,  a1, {timeOut => a1.updateAnalysis(timeOut, file,false)}, u1)
 
     // Run the second incremental update.
-    runAnalysis("-> inc2 ", file, a1Copy, {timeOut => a1Copy.updateAnalysis(timeOut, true)}, u2)
+    runAnalysis("-> inc2 ", file, a1Copy, {timeOut => a1Copy.updateAnalysis(timeOut, file,true)}, u2)
 
     // Run a full reanalysis
     runAnalysis("-> rean ", file, a2, {timeOut => a2.analyze(timeOut)}, re)
@@ -110,13 +110,13 @@ object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties {
 }
 
 object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   val outputFile: String = s"properties/modconc-type.txt"
 }
 
 object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysis(e)
   val outputFile: String = s"properties/modconc-CP.txt"
 }
