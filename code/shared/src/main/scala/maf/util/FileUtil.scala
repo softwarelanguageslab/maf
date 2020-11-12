@@ -1,8 +1,9 @@
 package maf.util
 
-import java.io.{BufferedWriter, FileWriter}
-import java.text.SimpleDateFormat
-import java.util.Calendar
+import java.io._
+
+import maf.util.Writer.Writer
+import maf.util.benchmarks.Clock
 
 object Reader {
 
@@ -23,9 +24,6 @@ object Writer {
 
   type Writer = BufferedWriter
 
-  private val  calendar: Calendar         = Calendar.getInstance()
-  private val    format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
-
   private var defaultWriter: Writer = _
   var report: Boolean = false
 
@@ -34,7 +32,7 @@ object Writer {
 
   def openTimeStamped(path: String): Writer = {
     path.split("\\.") match {
-      case Array(file, ext) => open(file + "_" + format.format(calendar.getTime) + "." + ext)
+      case Array(file, ext) => open(file + "_" + Clock.nowStr() + "." + ext)
       case _                => throw new Exception(s"Illegal path: $path")
     }
   }
@@ -93,23 +91,19 @@ object Formatter {
  */
 object Logger {
 
-  private type Writer = BufferedWriter
   private val out: String = "logs/"
 
-  private val  calendar: Calendar         = Calendar.getInstance()
-  private val    format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
-
-  class Logger(private val writer: Writer) {
+  class Log(private val writer: Writer) {
     def log(string: String): Unit = {
       writer.write(string + "\n")
       writer.flush()
     }
     def logT(string: String): Unit = {
-      writer.write(s"${format.format(calendar.getTime)} : $string\n")
+      writer.write(s"${Clock.nowStr()} : $string\n")
       writer.flush()
     }
     def close(): Unit = writer.close()
   }
 
-  def apply(msg: String = "log.txt"): Logger = new Logger(Writer.openTimeStamped(out + msg))
+  def apply(msg: String = "log.txt"): Log = new Log(Writer.openTimeStamped(out + msg))
 }

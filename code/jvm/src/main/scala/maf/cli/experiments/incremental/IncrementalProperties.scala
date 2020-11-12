@@ -110,13 +110,13 @@ object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties {
 }
 
 object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   val outputFile: String = s"properties/modconc-type.txt"
 }
 
 object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysis(e)
   val outputFile: String = s"properties/modconc-CP.txt"
 }
