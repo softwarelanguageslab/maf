@@ -15,38 +15,37 @@ import maf.language.change.CodeVersion._
 import maf.modular.incremental.scheme.AnalysisBuilder._
 
 import scala.concurrent.duration._
-import maf.modular.worklist.LIFOWorklistAlgorithm
+import maf.modular.worklist._
+import maf.modular.adaptive._
+import maf.modular.adaptive.scheme._
 
 object Main {
 
   def main(args: Array[String]): Unit = test()
 
   def test(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/callcc.scm")
+    val txt = Reader.loadFile("test/R5RS/mceval.scm")
     val prg = CSchemeParser.parse(txt)
-    val analysis = new ModAnalysis(prg) with SchemeModFSemantics
-                                        with BigStepModFSemantics
-                                        with StandardSchemeModFComponents
-                                        with SchemePowersetDomain
-                                        with SchemeModFNoSensitivity
-                                        with LIFOWorklistAlgorithm[SchemeExp] {
-      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
-      override def step(t: Timeout.T) = {
+    val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
+                                                with AdaptiveContextSensitivity
+                                                with SchemeConstantPropagationDomain
+                                                with LIFOWorklistAlgorithm[SchemeExp] {
+      val budget = 100
+      override def step(timeout: Timeout.T): Unit = {
         val cmp = workList.head
-        println(cmp)
-        super.step(t)
+        println(view(cmp))  
+        super.step(timeout)
       }
     }
-    analysis.analyze()
+    analysis.analyze(Timeout.start(Duration(30,SECONDS)))
     //debugClosures(analysis)
-    debugResults(analysis, true)
+    debugResults(analysis, false)
   }
 
-  type SchemeAnalysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
-  def debugResults(machine: SchemeAnalysis, printMore: Boolean = false): Unit =
+  def debugResults(machine: AdaptiveSchemeModFSemantics, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (ReturnAddr(cmp, _), result) if cmp == machine.initialComponent || printMore =>
-        println(s"$cmp => $result")
+      case (ReturnAddr(cmp: machine.Component, _), result) if cmp == machine.initialComponent || printMore =>
+        println(s"${machine.view(cmp)} => $result")
       case _ => ()
     }
 }

@@ -1,10 +1,19 @@
 package maf.modular.adaptive.scheme
 
-import maf.modular.scheme.modf._
+import maf.core._
+import maf.modular._
 import maf.modular.scheme._
+import maf.modular.scheme.modf._
 import maf.language.scheme._
 import maf.modular.adaptive._
-import maf.modular.ReturnAddr
+
+case class WrappedEnv[A <: Address, D](env: Environment[A], data: D) extends Environment[A] {
+  def restrictTo(keys: Set[String]): Environment[A]         = this.copy(env = env.restrictTo(keys))
+  def lookup(name: String): Option[A]                       = env.lookup(name)
+  def extend(name: String, a: A): Environment[A]            = this.copy(env = env.extend(name, a))
+  def extend(values: Iterable[(String, A)]): Environment[A] = this.copy(env = env.extend(values))
+  def mapAddrs(f: A => A): Environment[A]                   = this.copy(env = env.mapAddrs(f))
+}
 
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
@@ -12,13 +21,15 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
                                     with SchemeModFSemantics
                                     with BigStepModFSemantics
                                     with ModularSchemeDomain {
+  // Environments with components
+
   // Definition of components
   type ComponentData = SchemeModFComponent
   lazy val initialComponent: Component = { init() ; ref(Main) } // Need init to initialize reference bookkeeping information.
   def newComponent(call: Call[ComponentContext]): Component = ref(call)
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
-    case (lambda, env) => (lambda, env.mapAddrs(updateAddr(update)))
+    case (lambda, env: WrappedEnv[Addr,Component] @unchecked) => (lambda, env.copy(data = update(env.data)).mapAddrs(updateAddr(update)))
   }
   def updateCmp(update: Component => Component)(cmp: ComponentData): ComponentData = cmp match {
     case Main => Main
@@ -40,7 +51,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     case modularLatticeWrapper.modularLattice.Clo(cs)           => modularLatticeWrapper.modularLattice.Clo(cs.map(clo => (updateClosure(update)(clo._1), clo._2)))
     case modularLatticeWrapper.modularLattice.Cons(car,cdr)     => modularLatticeWrapper.modularLattice.Cons(updateValue(update)(car),updateValue(update)(cdr))
     case modularLatticeWrapper.modularLattice.Vec(siz,els)      => modularLatticeWrapper.modularLattice.Vec(siz,els.view.mapValues(updateValue(update)).toMap)
-    case _                              => value
+    case _                                                      => value
   }
   // adapting a component
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
@@ -69,5 +80,15 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFIntra = new AdaptiveSchemeModFIntra(cmp)
   class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp)
                                                    with BigStepModFIntra
-                                                   with DependencyTrackingIntra
+                                                   with DependencyTrackingIntra {
+    override protected def newClosure(lambda: SchemeLambdaExp, env: Env, name: Option[String]): Value = {
+      val trimmedEnv = env.restrictTo(lambda.fv)
+      val wrappedEnv = WrappedEnv(trimmedEnv, component)
+      lattice.closure((lambda, wrappedEnv), name)
+    }
+    override protected def fnEnv: Env = super.fnEnv match {
+      case WrappedEnv(env, _)           => env
+      case base: BasicEnvironment[Addr] => base
+    }
+  }
 }

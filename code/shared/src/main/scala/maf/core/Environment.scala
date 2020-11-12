@@ -17,10 +17,10 @@ trait Environment[A <: Address] extends SmartHash {
 /** Mapping from variable name to addresses */
 case class BasicEnvironment[A <: Address](content: Map[String,A]) extends Environment[A] {
   def restrictTo(keys: Set[String]): Environment[A]         = this.copy(content = content.view.filterKeys(keys).toMap)
-  def lookup(name: String): Option[A] = content.get(name)
+  def lookup(name: String): Option[A]                       = content.get(name)
   def extend(name: String, a: A): Environment[A]            = this.copy(content = content + (name -> a))
   def extend(values: Iterable[(String, A)]): Environment[A] = this.copy(content = content ++ values)
-  def mapAddrs(f: A => A): Environment[A] = this.copy(content.view.mapValues(f).toMap)
+  def mapAddrs(f: A => A): Environment[A]                   = this.copy(content.view.mapValues(f).toMap)
   /** Better printing. */
   override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
 }
