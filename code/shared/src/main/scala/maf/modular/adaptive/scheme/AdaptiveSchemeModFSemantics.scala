@@ -7,7 +7,7 @@ import maf.modular.scheme.modf._
 import maf.language.scheme._
 import maf.modular.adaptive._
 
-case class WrappedEnv[A <: Address, D](env: Environment[A], data: D) extends Environment[A] {
+case class WrappedEnv[A <: Address, D](env: Environment[A], depth: Int, data: D) extends Environment[A] {
   def restrictTo(keys: Set[String]): Environment[A]         = this.copy(env = env.restrictTo(keys))
   def lookup(name: String): Option[A]                       = env.lookup(name)
   def extend(name: String, a: A): Environment[A]            = this.copy(env = env.extend(name, a))
@@ -77,18 +77,15 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
     super.updateAnalysisData(update)
     this.toProcess = updateSet(update)(toProcess)
   }
+  override def baseEnv = WrappedEnv(super.baseEnv, 0, initialComponent) 
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFIntra = new AdaptiveSchemeModFIntra(cmp)
   class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp)
                                                    with BigStepModFIntra
                                                    with DependencyTrackingIntra {
     override protected def newClosure(lambda: SchemeLambdaExp, env: Env, name: Option[String]): Value = {
-      val trimmedEnv = env.restrictTo(lambda.fv)
-      val wrappedEnv = WrappedEnv(trimmedEnv, component)
-      lattice.closure((lambda, wrappedEnv), name)
-    }
-    override protected def fnEnv: Env = super.fnEnv match {
-      case WrappedEnv(env, _)           => env
-      case base: BasicEnvironment[Addr] => base
+      val trimmedEnv = env.restrictTo(lambda.fv).asInstanceOf[WrappedEnv[Addr,Component]]
+      val updatedEnv = trimmedEnv.copy(depth = trimmedEnv.depth + 1, data = component)
+      lattice.closure((lambda, updatedEnv), name)
     }
   }
 }
