@@ -63,7 +63,7 @@ trait AdaptiveSchemeModFSemantics extends AdaptiveModAnalysis[SchemeExp]
   protected def onNewComponent(cmp: Component, call: Call[ComponentContext]): Unit = ()
   // go over all new components after each step of the analysis, passing them to `onNewComponent`
   // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
-  var toProcess = Set[Component]()
+  var toProcess = Set[Component]() 
   override protected def adaptAnalysis() = {
     this.toProcess = this.newComponents
     while(toProcess.nonEmpty) {

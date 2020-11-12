@@ -32,12 +32,12 @@ object Main {
                                                 with LIFOWorklistAlgorithm[SchemeExp] {
       val budget = 100
       override def step(timeout: Timeout.T): Unit = {
-        val cmp = workList.head
-        println(view(cmp))  
+        //val cmp = workList.head
+        //println(view(cmp))  
         super.step(timeout)
       }
     }
-    analysis.analyze(Timeout.start(Duration(30,SECONDS)))
+    analysis.analyze(Timeout.start(Duration(300,SECONDS)))
     //debugClosures(analysis)
     debugResults(analysis, false)
   }

@@ -1,16 +1,9 @@
 package maf.modular.adaptive.scheme
 
 import maf.language.scheme._
-import maf.util.MonoidImplicits._
 import maf.modular.scheme.modf._
 import maf.modular.adaptive.scheme._
-import maf.util.Monoid
-import maf.util.MonoidImplicits
-import maf.modular.scheme._
-import maf.modular._
-import maf.core._
 import maf.core.Position._
-import maf.modular.components.IndirectComponents
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   /*
@@ -41,38 +34,39 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
    * keep track of components per function
    */
   var cmpsPerFn = Map[SchemeLambdaExp, Set[Component]]()
+  var toAdapt = Set[(SchemeLambdaExp,Int)]()
   override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = {
+    // bookkeeping: register every new component with the corresponding lambda
     val lambda = call.clo._1
     val lambdaCmps = cmpsPerFn.getOrElse(lambda, Set.empty)
     val lambdaCmpsUpdated = lambdaCmps + cmp
     cmpsPerFn += lambda -> lambdaCmpsUpdated
+    // if more components than allowed: adapt the analysis
+    if(lambdaCmpsUpdated.size > budget) {
+      val depth = call.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].depth
+      toAdapt += (lambda -> depth)
+    }
   }
   override protected def adaptAnalysis(): Unit = {
+    toAdapt = Set.empty
     super.adaptAnalysis()
-    // check if we need to adapt
-    if(visited.size > budget) {
-      val (lambda, cmps) = cmpsPerFn.maxBy(_._2.size) // TODO: optimise this operation
-      if(cmps.size == 1) { throw new Exception("Budget could not be satified") } // TODO: just increase the budget?
-      val target = Math.max(1, cmps.size - (visited.size - budget))
-      adaptFunction(lambda, cmps, target)
+    toAdapt.toList.sortBy((_._2)).foreach { case (lambda, _) =>
+      val cmps = cmpsPerFn.getOrElse(lambda, Set.empty)
+      adaptFunction(lambda, cmps)
       updateAnalysis()
     }
   }
-  private def adaptFunction(lambda: SchemeLambdaExp, cmps: Set[Component], target: Int): Unit = {
+  private def adaptFunction(lambda: SchemeLambdaExp, cmps: Set[Component]): Unit = {
     // find a fitting k
     var calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
     var k = calls.maxBy(_.ctx.length).ctx.length
-    while(calls.size > target && k > 0) {
+    while(calls.size > budget) { // TODO: replace with binary search?
+      //assert(k > 0)
       k = k - 1
       calls = calls.map(cll => cll.copy(ctx = cll.ctx.take(k)))
     } 
+    //println(s"$lambda -> $k")
     kPerFn += lambda -> k  // register the new k
-    // if lowering context does not work => adapt parent components
-    if(calls.size > target) {
-      val parentCmps = calls.map(cll => cll.clo._2.asInstanceOf[WrappedEnv[Addr,Component]].data)
-      val parentLambda = view(parentCmps.head).asInstanceOf[Call[ComponentContext]].clo._1
-      adaptFunction(parentLambda, parentCmps, target)
-    }
   }
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)
