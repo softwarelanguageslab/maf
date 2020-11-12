@@ -13,6 +13,8 @@ import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
+import scala.concurrent.duration.{Duration, MINUTES}
+
 /**
  * Trait implementing soundness tests for incremental analyses.<br>
  * Following properties are checked:
@@ -33,6 +35,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
                                                     with IncrementalModAnalysis[SchemeExp]
                                                     
   override def analysis(b: SchemeExp): IncrementalAnalysis
+  override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
   private var version: Version = Old
 
@@ -89,6 +92,13 @@ class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with Con
     )(b)
 }
 
+/** Implements soundness tests for an incremental ModConc analysis. */
+class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConc {
+  override def name = "Incremental ModConc CP"
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcCPAnalysis(b)
+}
+
+
 /** Implements soundness tests for an incremental ModF analysis. */
 class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
   def name = "Incremental ModF"
@@ -96,12 +106,28 @@ class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncre
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
     Set(
-      "test/changes/scheme/icp_1c_multiple-dwelling-coarse.scm",
-      "test/changes/scheme/icp_1c_multiple-dwelling-fine.scm",
-      "test/changes/scheme/icp_3_leval_ex_5.scm",
-      "test/changes/scheme/icp_7_8_open_coded.scm",
+      "test/changes/scheme/multiple-dwelling (coarse).scm",
+      "test/changes/scheme/multiple-dwelling (fine).scm",
+      "test/changes/scheme/leval.scm",
+      "test/changes/scheme/machine-simulator.scm",
       "test/changes/scheme/mceval-dynamic.scm",
       "test/changes/scheme/nboyer.scm",
       "test/changes/scheme/peval.scm",
     )(b)
+}
+
+/** Implements soundness tests for an incremental ModF analysis. */
+class IncrementalModFCP extends IncrementalModF {
+  override def name = "Incremental ModF CP"
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFCPAnalysis(b)
+}
+
+// Soundness tests for WIP on store provenance:
+class IncrementalSmallStepModConcCPStoreOpt extends IncrementalSmallStepModConc {
+  override def name = "Incremental ModConc CP StoreOpt"
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcCPAnalysisStoreOpt(b)
+}
+class IncrementalModFCPStoreOpt extends IncrementalModF {
+  override def name = "Incremental ModF CP StoreOpt"
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFCPAnalysisStoreOpt(b)
 }

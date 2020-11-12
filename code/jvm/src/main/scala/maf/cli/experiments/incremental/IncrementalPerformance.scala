@@ -18,6 +18,9 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   // The number of actually measured runs.
   val  measuredRuns = 30
 
+  // Indicate whether there is one or 2 incremental set-ups. Note that the setup must also be changed for warm-up.
+  val multiInc = true
+
   // The results of the evaluation.
   sealed trait Result
   case class Finished(mean: Long, stddev: Long) extends Result { override def toString: String = s"$mean±$stddev" }
@@ -61,16 +64,18 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
       analyses = a :: analyses
     }
     print(s"\n* Warm-up incremental analysis (max. ${analyses.length}): ")
-    timeoutWarmup = timeout().map(_ * 2) // Need to run two analyses, so double the time given (no guarantees on equal division between versions).
+    timeoutWarmup = timeout().map(_ * (if (multiInc) 2 else 1)) // Need to run two analyses, so double the time given (no guarantees on equal division between versions).
     for (w <- analyses.indices) {
       val a = analyses(w) // We need an analysis that has already been (partially) run.
       val b = a.deepCopy()
       print(s"*")
       System.gc()
       a.updateAnalysis(timeoutWarmup, false)
-      print(s"* ")
-      System.gc()
-      b.updateAnalysis(timeoutWarmup, true)
+      if (multiInc) {
+        print(s"* ")
+        System.gc()
+        b.updateAnalysis(timeoutWarmup, true)
+      }
     }
 
     // Actual measurements.
@@ -106,10 +111,11 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
         case None    => inc1Timeout = true
       }
 
-      runAnalysis(inc2Timeout, {timeOut => aCopy.updateAnalysis(timeOut, true)}) match {
-        case Some(t) => timesInc2 = t :: timesInc2
-        case None    => inc2Timeout = true
-      }
+      if (multiInc)
+        runAnalysis(inc2Timeout, {timeOut => aCopy.updateAnalysis(timeOut, true)}) match {
+          case Some(t) => timesInc2 = t :: timesInc2
+          case None    => inc2Timeout = true
+        }
 
       a = analysis(program) // Create a new analysis and set the flag to "New".
       a.version = New
@@ -129,13 +135,18 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
     results = results
       .add(file, initS, Finished(scala.math.round(init.mean), scala.math.round(init.stddev)))
       .add(file, inc1S, if (inc1Timeout) Timedout else Finished(scala.math.round(inc1.mean), scala.math.round(inc1.stddev)))
-      .add(file, inc2S, if (inc2Timeout) Timedout else Finished(scala.math.round(inc2.mean), scala.math.round(inc2.stddev)))
       .add(file, reanS, if (reanTimeout) Timedout else Finished(scala.math.round(rean.mean), scala.math.round(rean.stddev)))
+
+    if (multiInc)
+      results = results.add(file, inc2S, if (inc2Timeout) Timedout else Finished(scala.math.round(inc2.mean), scala.math.round(inc2.stddev)))
 
     println(s"\n    => $initS: ${init.mean} - $inc1S: ${inc1.mean} - $inc2S: ${inc2.mean} - $reanS: ${rean.mean}")
   }
 
-  def reportError(file: String): Unit = results = results.add(file, initS, Errored).add(file, inc1S, Errored).add(file, inc2S, Errored).add(file, reanS, Errored)
+  def reportError(file: String): Unit = {
+    results = results.add(file, initS, Errored).add(file, inc1S, Errored).add(file, reanS, Errored)
+    if (multiInc) results = results.add(file, inc2S, Errored)
+  }
   def createOutput(): String = results.prettyString(columns = List(initS, inc1S, inc2S, reanS))
 }
 
@@ -146,7 +157,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
 
 
 object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
@@ -154,7 +165,7 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
 }
 
 object IncrementalSchemeModFCPPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
@@ -162,7 +173,7 @@ object IncrementalSchemeModFCPPerformance extends IncrementalTime[SchemeExp] {
 }
 
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
@@ -170,7 +181,7 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
 }
 
 object IncrementalSchemeModConcCPPerformance extends IncrementalTime[SchemeExp] {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysis(e)
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))

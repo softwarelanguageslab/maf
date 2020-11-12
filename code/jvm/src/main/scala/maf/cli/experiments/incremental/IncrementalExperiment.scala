@@ -46,7 +46,7 @@ trait IncrementalExperiment[E <: Expression] {
         case e: VirtualMachineError => writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
           reportError(file)
       }
-      writeln()
+      println()
     }
 
   def main(args: Array[String]): Unit = {

@@ -12,6 +12,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
 
   @nonMonotonicUpdate
   override def deleteComponent(cmp: Component): Unit = {
+    logger.log(s"deleting* $cmp")
     // Deletes the return value from the global store if required (sets it to bottom), as well as the corresponding dependencies.
     store -= returnAddr(cmp)
     deps -= AddrDependency(returnAddr(cmp))
@@ -22,10 +23,10 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
     override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
         registerComponent(e, component)
-        eval(e) // TODO: shoudn't this also be a super call?
+        eval(e) // TODO: shouldn't this also be a super call?
       case SchemeCodeChange(_, e, _) if version == New =>
         registerComponent(e, component)
-        eval(e) // TODO: shoudn't this also be a super call?
+        eval(e) // TODO: shouldn't this also be a super call?
       case _                                     =>
         registerComponent(exp, component)
         super.eval(exp)

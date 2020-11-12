@@ -2,6 +2,7 @@ package maf.modular.incremental.scheme
 
 import maf.language.scheme._
 import maf.modular._
+import maf.modular.incremental.IncrementalGlobalStore
 import maf.modular.incremental.scheme.modconc._
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme._
@@ -91,5 +92,27 @@ object AnalysisBuilder {
                                                            with SchemeConstantPropagationDomain
                                                            with IncrementalSchemeModFBigStepSemantics {
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
+  }
+
+  // With store invalidation.
+  class IncrementalModConcCPAnalysisStoreOpt(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
+    with KKallocModConc
+    with IncrementalSchemeModConcSmallStepSemantics
+    with LIFOWorklistAlgorithm[SchemeExp]
+    with SchemeConstantPropagationDomain
+    with IncrementalGlobalStore[SchemeExp] {
+    val k = 1
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
+  }
+
+  class IncrementalSchemeModFCPAnalysisStoreOpt(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
+    with StandardSchemeModFComponents
+    with SchemeModFNoSensitivity
+    with SchemeModFSemantics
+    with LIFOWorklistAlgorithm[SchemeExp]
+    with SchemeConstantPropagationDomain
+    with IncrementalSchemeModFBigStepSemantics
+    with IncrementalGlobalStore[SchemeExp] {
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 }

@@ -58,3 +58,12 @@ jobs:
           channel: maf
           status: FAILED
           color: danger
+      # Send an additional notification upon failure.
+      #- name: Stress slack fail
+      #  if: failure()
+      #  env:
+      #    SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BOT_TOKEN }}
+      #  uses: 8398a7/action-slack@v3
+      #  with:
+      #    status: ${{ job.status }}
+      #    fields: message,commit,author

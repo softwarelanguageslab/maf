@@ -9,7 +9,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                                                     with GlobalStore[Expr] { inter =>
 
   /** Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
-  @mutable var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map())
+  @mutable var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
   /** Caches the addresses written by every component. Used to find addresses that are no longer written by a component. */
   @mutable var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
@@ -20,7 +20,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   def deleteAddr(addr: Addr): Unit = {
     store = store - addr
     provenance = provenance - addr
-    if (deps(AddrDependency(addr)).nonEmpty) throw new Exception(s"Some components depend on a non-written address: $addr.")
+    // TODO: does order matter here (order of invalidation or exploration order of the work list)? If so, then this test can just be removed?
+    //  Probably the component itself might trigger this, because it might not have been registered that it doesn't read the address anymore?
+    //if (deps(AddrDependency(addr)).nonEmpty) throw new Exception(s"The following components depend on a non-written address $addr: ${deps(AddrDependency(addr)).mkString(", ")}.")
     deps = deps - AddrDependency(addr)
   }
 
@@ -51,16 +53,17 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @param nw   The join of all values written by cmp to the store at addr.
    * @return Returns a boolean indicating whether the address was updated.
    */
+  @nonMonotonicUpdate
   def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
     val old = provenance(addr)(cmp)
     if (old == nw) return false // Nothing changed.
-    // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` are possible.
+    // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
     provenance = provenance + (addr -> (provenance(addr) + (cmp -> nw)))
-    val oldJoin = inter.store(addr)
-    val newJoin = provenanceValue(addr)
-    if (oldJoin == newJoin) return false // Even with this component leading to different values, the actual store does not change.
+    val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
+    val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr) // If `old ⊏ nw` we can just use join, which is probably more efficient.
+    if (oldJoin == newJoin) return false // Even with this component writing a different value to addr, the store does not change.
     inter.store = inter.store + (addr -> newJoin)
-    trigger(AddrDependency(addr))
+    trigger(AddrDependency(addr)) // TODO SHOULd this be treiggered here
     true
   }
 
