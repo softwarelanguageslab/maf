@@ -67,16 +67,12 @@ object AnalysisComparison1 extends AnalysisComparison[
 ] {
     def baseAnalysis(prg: SchemeExp): Analysis = 
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
-    def otherAnalyses() = List(
-        (SchemeAnalyses.adaptiveAnalysisPolicy3(_, 5), "adaptive-policy-3")
-        //(SchemeAnalyses.fullArgContextSensitiveAnalysis, "full-arg")
-        //SchemeAnalyses.adaptiveCallerSensitivity(prg,10)
-        //SchemeAnalyses.adaptiveAnalysisPolicy1(prg, 5),
-        //SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 10)
-    )
+    def otherAnalyses() = List(1,2,4,8,16,32,64).map { k =>
+        (SchemeAnalyses.adaptiveAnalysis(_, k), s"adaptive (k = $k)")
+    }
 
     def main(args: Array[String]) = runBenchmarks(Set(
-        "test/icp/icp_2_aeval.scm"
+        "test/R5RS/mceval.scm"
     ))
 
     def check(path: Benchmark) = {
