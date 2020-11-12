@@ -111,14 +111,7 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new IncrementalModConcCPAnalysisStoreOpt(text)
     a.analyze(timeout())
-    val store1 = a.store
-    a.updateAnalysis(timeout(), bench)
-    val store2 = a.store
-    store2.keySet.foreach { k =>
-      val v1 = store1.getOrElse(k, a.lattice.bottom)
-      if (store2(k) != v1)
-        println(s"$k: $v1 -> ${store2(k)}")
-    }
+    a.updateAnalysis(timeout(), bench, true)
   }
 
   def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
@@ -126,21 +119,10 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new IncrementalSchemeModFAnalysis(text)
     a.analyze(timeout())
-    val store1 = a.store
-    //a.visited.foreach(println)
-    //a.deps.foreach(println)
-    println(s"${a.visited.size} components")
-
     a.updateAnalysis(timeout(), bench)
-    //val store2 = a.store
-    //store2.keySet.foreach { k =>
-    //  val v1 = store1.getOrElse(k, a.lattice.bottom)
-    //  if (store2(k) != v1)
-    //    println(s"$k: $v1 -> ${store2(k)}")
-    //}
   }
 
-  val modConcbenchmarks: List[String] = List("test/changes/cscheme/threads/mcarlo.scm")
+  val modConcbenchmarks: List[String] = List("test/changes/cscheme/threads/pc.scm")
   val modFbenchmarks: List[String] = List()
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 

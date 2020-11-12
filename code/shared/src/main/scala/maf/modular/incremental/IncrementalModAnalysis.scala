@@ -16,6 +16,7 @@ import maf.util.datastructures.SmartUnion.sunion
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
   var logger: Log = _
+  var log = false
 
 
   /* ************************************************************************* */
@@ -140,6 +141,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(timeout: Timeout.T, name: String, optimisedExecution: Boolean = true): Unit = {
     logger = Logger()
+    log = true
     logger.log(name)
     optimisationFlag = optimisedExecution                           // Used for testing pursposes.
     version = New                                                   // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
