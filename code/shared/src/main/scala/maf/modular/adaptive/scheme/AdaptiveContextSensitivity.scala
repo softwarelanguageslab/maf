@@ -62,7 +62,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     var k = calls.maxBy(_.ctx.length).ctx.length
     while(calls.size > budget) { // TODO: replace with binary search?
       //assert(k > 0)
-      k = k - 1
+      k = Math.floor(k / 2).toInt
       calls = calls.map(cll => cll.copy(ctx = cll.ctx.take(k)))
     } 
     //println(s"$lambda -> $k")
