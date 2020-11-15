@@ -69,7 +69,22 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
 
     (define-fun false?/c ((v1 V)) Bool
       (not (unwrap-bool v1)))
-
+      
+    (define-fun -/c ((v1 V) (v2 V)) V
+      (VInt (- (unwrap-int v1) (unwrap-int v2))))
+    
+    (define-fun +/c ((v1 V) (v2 V)) V
+      (VInt (- (unwrap-int v1) (unwrap-int v2))))
+      
+    (define-fun */c ((v1 V) (v2 V)) V
+      (VInt (- (unwrap-int v1) (unwrap-int v2))))
+      
+    (define-fun //c ((v1 V) (v2 V)) V
+      (VInt (- (unwrap-int v1) (unwrap-int v2))))
+      
+    (define-fun bool?/c ((v1 Bool)) V
+     (VBool true))
+         
    (define-fun any?/c ((v1 V)) V
      (VBool true))
     """.stripMargin
@@ -131,7 +146,6 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     if (DEBUG_MODE) {
       println(userCode)
     }
-
     val smtCode = prelude ++ userCode
 
     // create a new context and solver

@@ -50,6 +50,10 @@ trait ScAnalysisTests extends ScTests {
     ">"        -> ">/c",
     "="        -> "=/c",
     "<"        -> "</c",
+    "-"        -> "-/c",
+    "+"        -> "+/c",
+    "*"        -> "*/c",
+    "/"        -> "//c",
     "string=?" -> "string=?/c",
     "int?"     -> "int?/c",
     "string?"  -> "string?/c",
@@ -57,7 +61,8 @@ trait ScAnalysisTests extends ScTests {
     "any?"     -> "any?/c",
     "true?"    -> "true?/c",
     "false?"   -> "false?/c",
-    "proc?"    -> "proc?/c"
+    "proc?"    -> "proc?/c",
+    "bool?"    -> "bool?/c"
   )
 
   trait VerifyTestBuilder extends ScLatticeFixture {

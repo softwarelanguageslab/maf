@@ -37,7 +37,7 @@ object ScLattice {
     *  (~> domain rangeMaker)
     * </code>
     */
-  case class Grd[Addr](domain: Addr, rangeMaker: Addr)
+  case class Grd[Addr](domain: List[Addr], rangeMaker: Addr)
 
   /**
     * An opaque value, we could add refinements to this value so that we can use those refinements
@@ -72,6 +72,14 @@ object ScLattice {
     * A mapping from a value (coming from a certain state) to a (possibly) refined opaque value
     */
   case class RefinedValueInState[+V](state: V, value: Opq)
+
+  /**
+    * A thunk is a parameterless lambda that simply returns the given value when
+    * evaluated.
+    *
+    * (lambda () value)
+    */
+  case class Thunk[Addr <: Address](value: Addr)
 
   case class Symbolic(expr: ScExp)
 }
@@ -134,6 +142,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
   def injectFlat(flat: Flat[Addr]): L
 
   /**
+    * Inject a thunk in the abstract domain
+    */
+  def injectThunk(thunk: Thunk[Addr]): L
+
+  /**
     * Inject an opaque value from the given state in the abstract domain
     */
   def injectRefinedValueInState(state: L, value: Opq): L
@@ -181,6 +194,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def isFlatContract(value: L): Boolean
 
+  /**
+    * Returns true if the value is possibly a thunk
+    */
+  def isThunk(value: L): Boolean
+
   /*==================================================================================================================*/
 
   /**
@@ -227,6 +245,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Extract the set of opaque values associated with the given state
     */
   def getRefinedValueInState(state: L): Set[RefinedValueInState[L]]
+
+  /**
+    * Extracts the set of thunks from the abstract domain
+    */
+  def getThunk(value: L): Set[Thunk[Addr]]
 
   /*==================================================================================================================*/
 

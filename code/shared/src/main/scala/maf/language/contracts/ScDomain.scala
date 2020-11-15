@@ -27,6 +27,7 @@ trait ScDomain[I, B, Addr <: Address] {
   val SYM_VALUE              = 10
   val FLAT_VALUE             = 11
   val REFINED_VALUE_IN_STATE = 12
+  val THUNK_VALUE            = 13
 
   case object TopValue extends Value {
     def ord                       = TOP_VALUE
@@ -88,6 +89,10 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord = REFINED_VALUE_IN_STATE
   }
 
+  case class Thunks(thunk: Set[Thunk[Addr]]) extends Value {
+    def ord: Int = THUNK_VALUE
+  }
+
   def bool(bool: Boolean): Value = Bool(BoolLattice[B].inject(bool))
 
   def number(n: Int): Value =
@@ -114,6 +119,8 @@ trait ScDomain[I, B, Addr <: Address] {
 
   def flat(f: Flat[Addr]): Flats = Flats(Set(f))
 
+  def thunk(t: Thunk[Addr]): Thunks = Thunks(Set(t))
+
   object Values {
     def join(a: Value, b: Value): Value = (a, b) match {
       case (TopValue, _) | (_, TopValue) => TopValue
@@ -129,6 +136,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Blames(a), Blames(b))        => Blames(a ++ b)
       case (Opqs(a), Opqs(b))            => Opqs(a ++ b)
       case (Flats(a), Flats(b))          => Flats(a ++ b)
+      case (Thunks(a), Thunks(b))        => Thunks(a ++ b)
       case (RefinedValueInStates(v1), RefinedValueInStates(v2)) =>
         RefinedValueInStates(
           (v1.keys ++ v2.keys)
@@ -139,6 +147,9 @@ trait ScDomain[I, B, Addr <: Address] {
       case (_, _) => TopValue
     }
 
+    def isRefinedTo(b: Set[Opq], refinement: String): Boolean =
+      b.exists(_.refinementSet.contains(refinement))
+
     def applyPrimitive(prim: Prim)(arguments: Value*): Value =
       (prim, arguments.toList) match {
         case (Prim("+"), List(Number(a), Number(b))) => Number(IntLattice[I].plus(a, b))
@@ -147,6 +158,16 @@ trait ScDomain[I, B, Addr <: Address] {
         case (Prim("+"), _) => BotValue
 
         case (Prim("-"), List(Number(a), Number(b))) => Number(IntLattice[I].minus(a, b))
+        case (Prim("-"), List(Opqs(a), Number(_))) if isRefinedTo(a, "int?") =>
+          opq(Opq(Set("int?")))
+
+        case (Prim("-"), List(Number(_), Opqs(b))) if isRefinedTo(b, "int?") =>
+          opq(Opq(Set("int?")))
+
+        case (Prim("-"), List(Opqs(a), Opqs(b)))
+            if (isRefinedTo(a, "int?") && isRefinedTo(b, "int?")) =>
+          opq(Opq(Set("int?")))
+
         case (Prim("-"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
           TopValue
         case (Prim("-"), _) => BotValue
@@ -237,6 +258,7 @@ trait ScDomain[I, B, Addr <: Address] {
         case (Prim("false?"), List(Bool(b)))            => bool(BoolLattice[B].isFalse(b))
         case (Prim("false?"), List(_))                  => bool(false)
 
+        case (Prim("int?"), List(BotValue))  => Bool(BoolLattice[B].bottom)
         case (Prim("int?"), List(Number(_))) => bool(true)
         case (Prim("int?"), List(Opqs(opqs))) if opqs.forall(_.refinementSet.contains("int?")) =>
           bool(true)
@@ -261,6 +283,10 @@ trait ScDomain[I, B, Addr <: Address] {
         case (Prim("not"), List(Bool(a)))            => Bool(BoolLattice[B].not(a))
         case (Prim("not"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
         case (Prim("not"), _)                        => BotValue
+
+        case (Prim("bool?"), List(Bool(_)))            => Bool(BoolLattice[B].inject(true))
+        case (Prim("bool?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
+        case (Prim("bool?"), _)                        => BotValue
       }
 
     def isTrue(value: Value): Boolean = value match {
@@ -298,6 +324,11 @@ trait ScDomain[I, B, Addr <: Address] {
     def isFlat(value: Value): Boolean = value match {
       case TopValue | _: Flats => true
       case _                   => false
+    }
+
+    def isThunk(value: Value): Boolean = value match {
+      case TopValue | Thunks(_) => true
+      case _                    => false
     }
 
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {
@@ -391,6 +422,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
         case _            => Top
       }
 
+    def injectThunk(t: Thunk[Addr]): CoProductValue = thunk(t)
+
     /*================================================================================================================*/
 
     override def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue = {
@@ -418,6 +451,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
       case CoProduct(value) => Values.isDefinitelyOpq(value)
       case _                => false
     }
+
+    def isThunk(value: CoProductValue): Boolean = isPred(Values.isThunk, value)
 
     /*================================================================================================================*/
 
@@ -473,6 +508,11 @@ class ScCoProductLattice[I, B, Addr <: Address](
           }
         case _ => Set()
       }
+
+    def getThunk(value: CoProductValue): Set[Thunk[Addr]] = value match {
+      case CoProduct(Thunks(t)) => t
+      case _                    => Set()
+    }
 
     /*================================================================================================================*/
 
@@ -719,5 +759,20 @@ class ScProductLattice[I, B, Addr <: Address](
       override def getRefinedValueInState(
           state: ProductElements
       ): Set[RefinedValueInState[ProductElements]] = ???
+
+      /**
+        * Inject a thunk in the abstract domain
+        */
+      override def injectThunk(thunk: Thunk[Addr]): ProductElements = ???
+
+      /**
+        * Returns true if the value is possibly a thunk
+        */
+      override def isThunk(value: ProductElements): Boolean = ???
+
+      /**
+        * Extracts the set of thunks from the abstract domain
+        */
+      override def getThunk(value: ProductElements): Set[Thunk[Addr]] = ???
     }
 }

@@ -206,7 +206,7 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   verify(
     "(~> any? int?)",
     "(letrec (foo (lambda (x) (if (= x 0) 1 (- (foo (- x 1)) 1)))) foo)"
-  ).applied()
+  ).applied(Set("int?"))
     .safe()
 
   // because we are using symbolic values with refinement sets, it should generate a blame on the domain contract
@@ -218,7 +218,10 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   verify("(~> int? int?)", "(lambda (x) OPQ)").tested { machine =>
   }
 
-  verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 2) 2))").applied().safe()
+  verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 2) 2))")
+    .applied(Set("int?"))
+    .safe()
+
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 2) 2))").applied().unsafe()
 
   verify("(~> (~> any? int?) int?)", "(lambda (g) (g OPQ))").applied().unsafe()
@@ -235,11 +238,13 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
     .applied(Set("int?"))
     .unsafe()
 
+  /*
   verify(
     "(~> int? int?)",
     "(lambda (x) (begin (assume (x int?) ((lambda (y) (set! x #t)) OPQ)) x))"
   ).applied(Set("int?"))
     .safe()
+   */
 
   verify("(~> any? int?)", "(lambda (x) (letrec (y (OPQ int?)) (if (int? x) x y)))")
     .applied()

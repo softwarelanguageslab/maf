@@ -189,7 +189,7 @@ case class ScFunctionAp(
     annotation: Option[String] = None
 ) extends ScAnnotated {
 
-  override val annotatedExpression: ScExp = operands.head
+  override def annotatedExpression: ScExp = operands.head
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = operator.fv ++ operands.fv
@@ -259,7 +259,7 @@ case class ScSet(variable: ScIdentifier, value: ScExp, idn: Identity) extends Sc
 
 trait ScAnnotated extends ScExp {
   val annotation: Option[String]
-  val annotatedExpression: ScExp
+  def annotatedExpression: ScExp
 }
 
 case class ScMon(
@@ -269,7 +269,7 @@ case class ScMon(
     annotation: Option[String] = None
 ) extends ScAnnotated {
 
-  override val annotatedExpression: ScExp = expression
+  override def annotatedExpression: ScExp = expression
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = contract.fv ++ expression.fv

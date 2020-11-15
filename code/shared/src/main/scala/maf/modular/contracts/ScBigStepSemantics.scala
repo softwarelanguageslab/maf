@@ -284,7 +284,9 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       var storeCache: StoreCache = componentStore.view.mapValues(v => (v, ScNil())).toMap
       primBindings.foreach {
         case (name, addr) =>
-          storeCache += (addr -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
+          val value = storeCache(addr)._1
+          storeCache = storeCache +  (addr -> ((value, ScIdentifier(name, Identity.none))))
+          storeCache = storeCache + (ScPrimAddr(name) -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
       }
 
       fnEnv.content.values.foreach((addr) => {
@@ -299,14 +301,12 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
 
     def analyze(_ignored_timeout: Timeout.T): Unit = {
       totalRuns += 1
-      if (totalRuns > 30) {
+      if (totalRuns > 10) {
         throw new Exception("Timeout exceeded")
       }
 
       println("================================")
-      println(s"Started analysis of $component")
       val (value, store) = merged(eval(fnBody).map(_._1))(initialContext)
-      println(s"Return store of $component is $store")
       println(s"Return value is $value")
       writeReturnStore(store)
       writeResult(value, component)
@@ -417,7 +417,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         evaluatedRangeMaker <- eval(rangeMaker)
         _ <- write(domainAddr, evaluatedDomain)
         _ <- write(rangeAddr, evaluatedRangeMaker)
-      } yield (lattice.injectGrd(Grd(domainAddr, rangeAddr)), ScNil())
+      } yield (lattice.injectGrd(Grd(List(domainAddr), rangeAddr)), ScNil())
     }
 
     def evalMon(contract: ScExp, expression: ScExp, identity: Identity): ScEvalM[PostValue] = {
@@ -513,12 +513,17 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       val arrAp = lattice.getArr(operator._1).map { arr =>
         for {
           contract <- options(read(arr.contract).map((c) => lattice.getGrd(c._1)))
-          domain <- read(contract.domain)
+          values <- sequence {
+            contract.domain.map(read).zip(operands.zip(syntacticOperands)).map {
+              case (domain, (value, syn)) =>
+                domain.flatMap(d => applyMon(d, value, arr.contract.idn, syn.idn))
+            }
+          }
+
           rangeMaker <- read(contract.rangeMaker)
-          value <- applyMon(domain, operands.head, arr.contract.idn, syntacticOperands.head.idn)
-          rangeContract <- applyFn(rangeMaker, List(value), List(syntacticOperands.head))
+          rangeContract <- applyFn(rangeMaker, values, syntacticOperands)
           fn <- read(arr.e)
-          resultValue <- applyFn(fn, List(value), List(syntacticOperands.head))
+          resultValue <- applyFn(fn, values, syntacticOperands)
           checkedResultValue <- applyMon(rangeContract, resultValue, contract.rangeMaker.idn, arr.e.idn)
         } yield checkedResultValue
       }
@@ -537,8 +542,13 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
         } yield value
       }
 
+      // 6. Application of thunk
+      val thunk = lattice.getThunk(operator._1).map( t =>
+        read(t.value)
+      )
+
       for {
-        value <- nondets(primitiveAp ++ cloAp ++ arrAp ++ flatAp ++ opqAp)
+        value <- nondets(primitiveAp ++ cloAp ++ arrAp ++ flatAp ++ opqAp ++ thunk)
         // conservatively remove variables from lambdas passed to the called function from the store cache.
         // this is necessary because these lambdas could be applied any number of times by the other functions
         // hence changing the state of the variables stored in the store cache
@@ -569,8 +579,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
     }
 
     def monFlat(contract: PostValue, expressionValue: PostValue, blamedIdentity: Identity): ScEvalM[PostValue] =
-      applyFn(contract, List(expressionValue))
-        .flatMap(value => cond(value, pure(enrich(contract, expressionValue)), blame(blamedIdentity)))
+      applyFn(contract, List(expressionValue), List(expressionValue._2))
+        .flatMap(value => {
+          cond(value, pure(enrich(contract, expressionValue)), blame(blamedIdentity))
+        })
 
     def cond[X](condition: PostValue, consequent: ScEvalM[X], alternative: ScEvalM[X], mustReplacePc: Boolean = true): ScEvalM[X] = {
       val t = ifFeasible(primTrue, condition, mustReplacePc) { consequent }
@@ -633,7 +645,8 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
           refined(name, value)
 
         // if the operator is a primitive, then we can fetch its name from its value
-        case _ => lattice.getSymbolic(operator._1).map(refined(_, value)).getOrElse(value)
+        case _ if lattice.isDefinitelyOpq(value._1) => lattice.getSymbolic(operator._1).map(refined(_, value)).getOrElse(value)
+        case _ => value
       }
 
 
