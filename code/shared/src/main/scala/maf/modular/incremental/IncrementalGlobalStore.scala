@@ -19,7 +19,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
   /** Delete an address if it is never written anymore. */
   def deleteAddr(addr: Addr): Unit = {
-    logger.log(s"Deleting: $addr")
+    if (log) logger.log(s"Deleting: $addr")
     store = store - addr
     provenance = provenance - addr
     // TODO: does order matter here (order of invalidation or exploration order of the work list)? If so, then this test can just be removed?
@@ -36,7 +36,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    */
   @nonMonotonicUpdate
   def deleteProvenance(cmp: Component, addr: Addr): Unit = {
-    logger.log(s"Deleting provenance: $cmp -> $addr")
+    if (log) logger.log(s"Deleting provenance: $cmp -> $addr")
     // Delete the provenance information corresponding to this component.
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store. Remove the address if it is never written anymore.
