@@ -95,7 +95,7 @@ object SchemePrelude {
     "list-tail" -> """(define (list-tail x k)
                      |  @sensitivity:FA
                      |  (assert (list? l))
-                     |  (assert (numer? ))
+                     |  (assert (number? ))
                      |  (if (zero? k)
                      |    x
                      |    (list-tail (cdr x) (- k 1))))""".stripMargin, // Based on definition in R5RS specification.
