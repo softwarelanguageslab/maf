@@ -28,11 +28,12 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
           storeCache = storeCache + (ScPrimAddr(name) -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
       }
 
-      fnEnv.content.values.foreach((addr) => {
+      fnEnv.mapAddrs((addr) => {
         val value = readPure(addr, storeCache)
         if (lattice.isDefinitelyOpq(value)) {
           storeCache += (addr -> (value, ScIdentifier(ScModSemantics.genSym, Identity.none)))
         }
+        addr
       })
 
       Context(env = fnEnv, cache = storeCache, pc = ScNil())
