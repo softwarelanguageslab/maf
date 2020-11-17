@@ -2,17 +2,17 @@ package maf.modular.incremental
 
 import maf.core.Expression
 import maf.language.change.CodeVersion._
-import maf.modular.{AddrDependency, Dependency, GlobalStore}
-import maf.util.Annotations.{mutable, nonMonotonicUpdate}
+import maf.modular._
+import maf.util.Annotations._
 
 trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr]
                                                     with GlobalStore[Expr] { inter =>
 
   /**
    * Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
-  @mutable var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
+  var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
   /** Caches the addresses written by every component. Used to find addresses that are no longer written by a component. */
-  @mutable var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
+  var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
   /** Computes the value that should reside at a given address according to the provenance information. */
   def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
@@ -25,7 +25,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     // TODO: does order matter here (order of invalidation or exploration order of the work list)? If so, then this test can just be removed?
     //  Probably the component itself might trigger this, because it might not have been registered that it doesn't read the address anymore?
     //if (deps(AddrDependency(addr)).nonEmpty) throw new Exception(s"The following components depend on a non-written address $addr: ${deps(AddrDependency(addr)).mkString(", ")}.")
-    deps = deps - AddrDependency(addr)
+    deps = deps - AddrDependency(addr) // TODO: should this address be triggered first?
   }
 
   /**

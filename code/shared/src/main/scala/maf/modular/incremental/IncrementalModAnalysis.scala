@@ -25,9 +25,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
 
   /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
-  @mutable var version: Version = Old
+  var version: Version = Old
   /** Keeps track of which components depend on an expression. */
-  @mutable private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
+  private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
 
   /**
    * Register that a component is depending on a given expression in the program.
@@ -50,7 +50,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
 
   /** Caches the read dependencies of every component. Used to find dependencies that are no longer inferred (and hence can be removed). */
-  @mutable var cachedReadDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)   // Another strategy would be not to cache, but walk through the data structures.
+  var cachedReadDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)   // Another strategy would be not to cache, but walk through the data structures.
 
   @nonMonotonicUpdate
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
@@ -63,9 +63,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
 
   /** Keep track of the number of components that have spawned a given component (excluding possibly the component). */
-  @mutable var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
+  var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
   /** Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components. */
-  @mutable var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
+  var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
 
   @nonMonotonicUpdate
   /**
