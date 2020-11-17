@@ -50,14 +50,14 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       // Check soundness on the original version of the program.
       version = Old
       val (cResultOld, cPosResultsOld) = evalConcrete(program,benchmark)
-      val anlOld = runAnalysis(program,benchmark)
+      val anlOld = runAnalysis(program, benchmark)
       compareResult(anlOld, cResultOld)
       compareIdentities(anlOld, cPosResultsOld)
 
       // Check soundness on the updated version of the program.
       version = New
       val (cResultNew, cPosResultsNew) = evalConcrete(program,benchmark)
-      val anlNew = updateAnalysis(program,benchmark)
+      val anlNew = updateAnalysis(program, benchmark)
       compareResult(anlNew, cResultNew)
       compareIdentities(anlNew, cPosResultsNew)
     }

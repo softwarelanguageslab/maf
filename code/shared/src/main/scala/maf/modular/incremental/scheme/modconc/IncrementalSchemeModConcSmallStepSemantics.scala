@@ -12,7 +12,7 @@ trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemanti
   @nonMonotonicUpdate
   override def deleteComponent(cmp: Component): Unit = { // This cannot directly go into the intra-component analysis, as the values will then again become joined when the store is committed...
     // Deletes the return value from the global store if required (sets it to bottom), as well as the corresponding dependencies.
-    logger.log(s"deleting* $cmp")
+    if (log) logger.log(s"deleting* $cmp")
     store -= returnAddr(cmp)
     deps -= AddrDependency(returnAddr(cmp))
     super.deleteComponent(cmp)

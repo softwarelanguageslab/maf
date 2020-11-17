@@ -3,7 +3,6 @@ package maf.modular.components
 import maf.modular.components.IndirectComponents.ComponentPointer
 import maf.core._
 import maf.modular.ModAnalysis
-import maf.util.Annotations._
 
 object IndirectComponents {
   // A component pointer just is an integer.
@@ -23,9 +22,9 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
   type ComponentData
 
   // Keep a mapping from component pointer addresses to actual component data.
-  @mutable private var count: Address = _ // Next free address.
-  @mutable protected var cMap : Map[Address, ComponentData] = _
-  @mutable protected var cMapR: Map[ComponentData, Address] = _
+  private var count: Address = _ // Next free address.
+  protected var cMap : Map[Address, ComponentData] = _
+  protected var cMapR: Map[ComponentData, Address] = _
 
   // Needed due to the initialisation order of Scala.
   protected def init(): Unit = {
