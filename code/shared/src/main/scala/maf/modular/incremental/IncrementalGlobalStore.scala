@@ -2,28 +2,30 @@ package maf.modular.incremental
 
 import maf.core.Expression
 import maf.language.change.CodeVersion._
-import maf.modular.{AddrDependency, Dependency, GlobalStore}
-import maf.util.Annotations.{mutable, nonMonotonicUpdate}
+import maf.modular._
+import maf.util.Annotations._
 
 trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr]
                                                     with GlobalStore[Expr] { inter =>
 
-  /** Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
-  @mutable var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
+  /**
+   * Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
+  var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
   /** Caches the addresses written by every component. Used to find addresses that are no longer written by a component. */
-  @mutable var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
+  var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
   /** Computes the value that should reside at a given address according to the provenance information. */
   def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
 
   /** Delete an address if it is never written anymore. */
   def deleteAddr(addr: Addr): Unit = {
+    if (log) logger.log(s"Deleting: $addr")
     store = store - addr
     provenance = provenance - addr
-    // TODO: does order matter here (order of invalidation or exploration order of the worklist)? If so, then this test can just be removed?
+    // TODO: does order matter here (order of invalidation or exploration order of the work list)? If so, then this test can just be removed?
     //  Probably the component itself might trigger this, because it might not have been registered that it doesn't read the address anymore?
     //if (deps(AddrDependency(addr)).nonEmpty) throw new Exception(s"The following components depend on a non-written address $addr: ${deps(AddrDependency(addr)).mkString(", ")}.")
-    deps = deps - AddrDependency(addr)
+    deps = deps - AddrDependency(addr) // TODO: should this address be triggered first?
   }
 
   /**
@@ -34,6 +36,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    */
   @nonMonotonicUpdate
   def deleteProvenance(cmp: Component, addr: Addr): Unit = {
+    if (log) logger.log(s"Deleting provenance: $cmp -> $addr")
     // Delete the provenance information corresponding to this component.
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store. Remove the address if it is never written anymore.
@@ -51,19 +54,21 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @param cmp  The component related to the value nw written to addr.
    * @param addr The address in the store of value nw.
    * @param nw   The join of all values written by cmp to the store at addr.
-   * @return Returns a boolean indicating whether the address was updated.
+   * @return Returns a boolean indicating whether the address was updated,
+   *         and hence whether the corresponding dependency should be triggered.
    */
   @nonMonotonicUpdate
   def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
+    if (log) logger.log(s"Updating address $addr -> $nw ($cmp)")
     val old = provenance(addr)(cmp)
     if (old == nw) return false // Nothing changed.
     // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
     provenance = provenance + (addr -> (provenance(addr) + (cmp -> nw)))
     val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
-    val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr) // If `old ⊏ nw` we can just use join, which is probably more efficient.
+    // If `old ⊏ nw` we can just use join, which is probably more efficient.
+    val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr)
     if (oldJoin == newJoin) return false // Even with this component writing a different value to addr, the store does not change.
     inter.store = inter.store + (addr -> newJoin)
-    trigger(AddrDependency(addr))
     true
   }
 
@@ -88,7 +93,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
      */
     override def commit(dep: Dependency): Boolean = dep match {
       case AddrDependency(addr) =>
-        // There is no need to use the updateAddr function, as the store is updated by updateAddrInc. Also, this would not work, as updateAddr only performs monotonic updates.
+        // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
+        // Also, this would not work, as updateAddr only performs monotonic updates.
         updateAddrInc(component, addr, intraProvenance(addr))
       case _ => super.commit(dep)
     }

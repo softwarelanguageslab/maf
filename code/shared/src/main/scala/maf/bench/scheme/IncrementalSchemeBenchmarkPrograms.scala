@@ -9,6 +9,7 @@ object IncrementalSchemeBenchmarkPrograms {
   lazy val sequential: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme",
     "qeval.scm", // define-syntax, force, delay
     "scheme.scm", // error in program
+    "machine-simulator.scm", // map with three arguments
     ".DS_Store",
   )
 

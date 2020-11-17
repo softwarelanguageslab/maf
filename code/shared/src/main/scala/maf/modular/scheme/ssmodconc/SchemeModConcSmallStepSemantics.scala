@@ -10,7 +10,6 @@ import maf.language.sexp
 import maf.modular._
 import maf.modular.scheme._
 import maf.modular.components.ContextSensitiveComponents
-import maf.util.Annotations.mutable
 import maf.util.SmartHash
 import maf.util.benchmarks.Timeout
 
@@ -101,9 +100,9 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
         case ThreadComponent(exp, env, _) => Eval(exp, env, KEmpty)
       }
 
-      @mutable var work: WorkList[State] = LIFOWorkList[State](initialState)
-      @mutable var visited = Set[State]()
-      @mutable var result  = lattice.bottom
+      var work: WorkList[State] = LIFOWorkList[State](initialState)
+      var visited = Set[State]()
+      var result  = lattice.bottom
 
       // Step states until a fixpoint/timeout is reached.
       while(work.nonEmpty && !timeout.reached) {
@@ -145,7 +144,7 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
       env.lookup(id.name).getOrElse(throw new NoSuchElementException(s"$id in $env"))
 
     // Tracks changes to the global store.
-    @mutable private var storeChanged: Boolean = false
+    private var storeChanged: Boolean = false
 
     /** Defines a new variable: extends the store and environment. */
     private def define(variable: Identifier, vl: Value, env: Env): Env = {
@@ -181,8 +180,8 @@ trait SmallStepModConcSemantics extends ModAnalysis[SchemeExp]
     private case class K(frame: Frame, cc: KA)
     private type KStore = Map[KA, Set[K]]
 
-    @mutable private var ks: KStore = Map() // KStore private to this component!
-    @mutable private var kstoreChanged: Boolean = false // Tracks changes to the continuation store.
+    private var ks: KStore = Map() // KStore private to this component!
+    private var kstoreChanged: Boolean = false // Tracks changes to the continuation store.
 
     // Operations on continuation store.
     private def lookupKStore(cc: KA): Set[K] = ks.getOrElse(cc, Set())

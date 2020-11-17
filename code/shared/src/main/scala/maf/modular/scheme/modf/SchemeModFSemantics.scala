@@ -204,7 +204,7 @@ trait BaseSchemeModFSemantics extends ModAnalysis[SchemeExp]
 trait SchemeModFSemantics extends BaseSchemeModFSemantics
                              with StandardSchemeModFAllocator
                              with SchemeSetup {
-  lazy val baseEnv = initialEnv
+  def baseEnv = initialEnv
 }
 
 // for convenience, since most Scheme analyses don't need this much parameterization

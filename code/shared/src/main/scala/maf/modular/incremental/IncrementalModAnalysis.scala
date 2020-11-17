@@ -6,11 +6,17 @@ import maf.language.change._
 import maf.modular._
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util.Annotations._
+import maf.util.Logger
+import maf.util.Logger.Log
 import maf.util.benchmarks.Timeout
+import maf.util.datastructures.SmartUnion.sunion
 
 // NOTE - This implementation is not thread-safe, and does not always use the local stores of the intra-component analyses!
 //        Therefore, a sequential work-list algorithm is used.
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
+
+  var logger: Log = _
+  var log = false
 
 
   /* ************************************************************************* */
@@ -19,9 +25,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
 
   /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
-  @mutable var version: Version = Old
+  var version: Version = Old
   /** Keeps track of which components depend on an expression. */
-  @mutable private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
+  private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
 
   /**
    * Register that a component is depending on a given expression in the program.
@@ -44,7 +50,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
 
   /** Caches the read dependencies of every component. Used to find dependencies that are no longer inferred (and hence can be removed). */
-  @mutable var cachedReadDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)   // Another strategy would be not to cache, but walk through the data structures.
+  var cachedReadDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)   // Another strategy would be not to cache, but walk through the data structures.
 
   @nonMonotonicUpdate
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
@@ -57,19 +63,21 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
 
   /** Keep track of the number of components that have spawned a given component (excluding possibly the component). */
-  @mutable var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
+  var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
   /** Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components. */
-  @mutable var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
+  var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
 
   @nonMonotonicUpdate
   /**
    * Deletes information related to a component. May cause other components to be deleted as well if they are no longer spawned.
-   * @note If subclasses add extra analysis state (e.g., a global store with return values), then it is up to those subclasses to override this method and extend its functionality.
+   * @note If subclasses add extra analysis state (e.g., a global store with return values),
+   *       then it is up to those subclasses to override this method and extend its functionality.
    */
   def deleteComponent(cmp: Component): Unit = if (visited(cmp)) { // Only do this if we have not yet encountered the component. Note that this is not needed to prevent looping.
+    if (log) logger.log(s"deleting $cmp")
     for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
-    visited = visited - cmp                           // Remove the component from the visited set.
-    for (to <- cachedSpawns(cmp)) unspawn(to)         // Transitively check for components that have to be deleted.
+    visited = visited - cmp                               // Remove the component from the visited set.
+    for (to <- cachedSpawns(cmp)) unspawn(to)             // Transitively check for components that have to be deleted.
 
     // Delete the caches.
     cachedReadDeps -= cmp
@@ -81,6 +89,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
   def unspawn(cmp: Component): Unit = if (visited (cmp)) { // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
                                                            // (Counts can go below zero if an already reclaimed component is encountered here, which is possible due to the foreach in deleteDisconnectedComponents.)
+    if (log) logger.log(s"Unspawning $cmp")
     // Update the spawn count information.
     countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
     if (countedSpawns(cmp) == 0) deleteComponent(cmp) else deletionFlag = true // Delete the component if it is no longer spawned by any other component.
@@ -104,7 +113,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       work = work.tail
       if (!reachable(head)) {
         reachable += head
-        work = work ++ cachedSpawns(head)
+        work = sunion(work, cachedSpawns(head)) // Perform a "smart union".
       }
     }
     reachable
@@ -115,12 +124,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   @nonMonotonicUpdate
   /** Deletes components that are no longer 'reachable' from the Main component given a spawning relation. */
-  def deleteDisconnectedComponents(): Unit = {
-    // Only perform the next steps if there was a component that was unspawned but not collected. In the other case, there can be no unreachable components left.
-    //if (deletionFlag) { // Now checked in refineComponents().
-      unreachableComponents().foreach(deleteComponent) // Make sure the components are actually deleted.
-      deletionFlag = false
-    //}
+  def deleteDisconnectedComponents(): Unit = if (deletionFlag) { // Only perform the next steps if there was a component that was unspawned but not collected.
+                                                                 // In the other case, there can be no unreachable components left.
+    unreachableComponents().foreach(deleteComponent) // Make sure the components are actually deleted.
+    deletionFlag = false
   }
 
 
@@ -132,12 +139,16 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   var optimisationFlag: Boolean = true // This flag can be used to enable or disable certain optimisations (for testing purposes).
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
-  def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean = true): Unit = {
+  def updateAnalysis(timeout: Timeout.T, name: String, optimisedExecution: Boolean = true): Unit = {
+    //logger = Logger()
+    //log = true
+    //logger.log(name)
     optimisationFlag = optimisedExecution                           // Used for testing pursposes.
     version = New                                                   // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
     analyze(timeout)
+    //logger.close()
   }
 
 
@@ -151,9 +162,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     /** Removes outdated dependencies of a component, by only keeping the dependencies that were used during the latest analysis of the component. */
     @nonMonotonicUpdate
     def refineDependencies(): Unit = {
-      if (version == New) { // Only do this for an incremental update. Checking this condition is probably cheaper than performing the remaining things always (which would also be possible).
+      if (version == New) { // Check for efficiency.
         val deltaR = cachedReadDeps(component) -- R  // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
-        deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
+        deltaR.foreach(deregister(component, _))     // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
+        if (log) deltaR.foreach(d => logger.log(s"Deregistering $component to $d"))
       }
       cachedReadDeps += (component -> R)             // Update the cache. The cache also needs to be updated when the program is initially analysed.
     }
@@ -166,10 +178,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       // For each component not previously spawn by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
       (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
 
-      if (version == New) { // TODO Will anything within this if-block be executed when version == Old? No, but this might be cheaper. Should also only do something the first time a component is encountered, but that is covered without explicit check.
+      if (version == New) { // Check for efficiency.
         val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
         deltaC.foreach(unspawn)
-        if (deletionFlag /*deltaC.nonEmpty*/) deleteDisconnectedComponents() // Delete components that are no longer reachable.
+        deleteDisconnectedComponents() // Delete components that are no longer reachable.
       }
       cachedSpawns += (component -> Cdiff) // Update the cache.
     }

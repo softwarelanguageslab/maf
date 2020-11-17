@@ -34,20 +34,21 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
 
   var results: Table[String] = Table.empty.withDefaultValue(" ")
 
-  def runAnalysis(name: String, file: String, analysis: Analysis, block: Timeout.T => Unit, marker: String): Unit = {
+  def runAnalysis(name: String, file: String, analysis: Analysis, block: Timeout.T => Unit, marker: String): Boolean = {
     print(name)
     val timeOut = timeout()
     block(timeOut)
     if (timeOut.reached) { // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
-      println("timed out.")
+      print("timed out.")
       pr.foreach(p => results = results.add(file, p +  marker, inf))
-      return
+      return false
     }
     results = results
       .add(file, co + marker, s"${analysis.visited.size}")
       //.add(file, an + marker, s"${analysis.intraCount - cnt}")
       .add(file, ad + marker, s"${analysis.store.size}")
       .add(file, dp + marker, s"${analysis.deps.values.map(_.size).sum}")
+    true
   }
 
   def onBenchmark(file: String): Unit = {
@@ -62,19 +63,15 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
     a2.version = New
 
     // Run the initial analysis.
-    runAnalysis("init ", file, a1, {timeOut => a1.analyze(timeOut)}, in)
-    //val vis = a1.visited.size
-    //val ssi = a1.store.keySet.size
-    //val dep = a1.deps.values.map(_.size).sum
-    //val cnt = a1.intraCount
+    if (!runAnalysis("init ", file, a1, {timeOut => a1.analyze(timeOut)}, in)) return
 
     val a1Copy = a1.deepCopy()
 
     // Update the initial analysis.
-    runAnalysis("-> inc1 ", file,  a1, {timeOut => a1.updateAnalysis(timeOut, false)}, u1)
+    runAnalysis("-> inc1 ", file,  a1, {timeOut => a1.updateAnalysis(timeOut, file,false)}, u1)
 
     // Run the second incremental update.
-    runAnalysis("-> inc2 ", file, a1Copy, {timeOut => a1Copy.updateAnalysis(timeOut, true)}, u2)
+    runAnalysis("-> inc2 ", file, a1Copy, {timeOut => a1Copy.updateAnalysis(timeOut, file,true)}, u2)
 
     // Run a full reanalysis
     runAnalysis("-> rean ", file, a2, {timeOut => a2.analyze(timeOut)}, re)
@@ -101,25 +98,25 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {
 }
 
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
   val outputFile: String = s"properties/modf-type.txt"
 }
 
 object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModF
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysis(e)
   val outputFile: String = s"properties/modf-CP.txt"
 }
 
 object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
   val outputFile: String = s"properties/modconc-type.txt"
 }
 
 object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.scam2020ModConc
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysis(e)
   val outputFile: String = s"properties/modconc-CP.txt"
 }

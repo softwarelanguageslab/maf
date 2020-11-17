@@ -13,6 +13,8 @@ import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
+import scala.concurrent.duration.{Duration, MINUTES}
+
 /**
  * Trait implementing soundness tests for incremental analyses.<br>
  * Following properties are checked:
@@ -33,6 +35,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
                                                     with IncrementalModAnalysis[SchemeExp]
                                                     
   override def analysis(b: SchemeExp): IncrementalAnalysis
+  override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
   private var version: Version = Old
 
@@ -47,14 +50,14 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       // Check soundness on the original version of the program.
       version = Old
       val (cResultOld, cPosResultsOld) = evalConcrete(program,benchmark)
-      val anlOld = runAnalysis(program,benchmark)
+      val anlOld = runAnalysis(program, benchmark)
       compareResult(anlOld, cResultOld)
       compareIdentities(anlOld, cPosResultsOld)
 
       // Check soundness on the updated version of the program.
       version = New
       val (cResultNew, cPosResultsNew) = evalConcrete(program,benchmark)
-      val anlNew = updateAnalysis(program,benchmark)
+      val anlNew = updateAnalysis(program, benchmark)
       compareResult(anlNew, cResultNew)
       compareIdentities(anlNew, cPosResultsNew)
     }
@@ -63,7 +66,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     try {
       val anl: IncrementalAnalysis = analysis(program)
       val timeout = analysisTimeout(benchmark)
-      anl.updateAnalysis(timeout)
+      anl.updateAnalysis(timeout, benchmark)
       assume(anl.finished(), "Reanalysis timed out.")
       anl
     } catch {
@@ -103,10 +106,10 @@ class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncre
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
     Set(
-      "test/changes/scheme/icp_1c_multiple-dwelling-coarse.scm",
-      "test/changes/scheme/icp_1c_multiple-dwelling-fine.scm",
-      "test/changes/scheme/icp_3_leval_ex_5.scm",
-      "test/changes/scheme/icp_7_8_open_coded.scm",
+      "test/changes/scheme/multiple-dwelling (coarse).scm",
+      "test/changes/scheme/multiple-dwelling (fine).scm",
+      "test/changes/scheme/leval.scm",
+      "test/changes/scheme/machine-simulator.scm",
       "test/changes/scheme/mceval-dynamic.scm",
       "test/changes/scheme/nboyer.scm",
       "test/changes/scheme/peval.scm",

@@ -6,6 +6,7 @@ import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util._
 import maf.util.benchmarks._
+import maf.bench.scheme.SchemeBenchmarkPrograms
 
 import scala.concurrent.duration._
 
@@ -24,9 +25,9 @@ abstract class AnalysisComparison[
     def baseAnalysis(prg: SchemeExp): Analysis
     def otherAnalyses(): List[(SchemeExp => Analysis, String)]
 
-    // and can, optionally, be configured in its timeouts (default: 10min.)
-    def analysisTimeout(): Timeout.T = Timeout.start(Duration(10, MINUTES)) //timeout for (non-base) analyses
-    def concreteTimeout(): Timeout.T = Timeout.none                         //timeout for concrete interpreter
+    // and can, optionally, be configured in its timeouts (default: 5min.)
+    def analysisTimeout(): Timeout.T = Timeout.start(Duration(5, MINUTES)) //timeout for (non-base) analyses
+    def concreteTimeout(): Timeout.T = Timeout.none                        //timeout for concrete interpreter
 
     def concreteRuns() = 20
 
@@ -67,17 +68,17 @@ object AnalysisComparison1 extends AnalysisComparison[
 ] {
     def baseAnalysis(prg: SchemeExp): Analysis = 
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
-    def otherAnalyses() = List(
-        (SchemeAnalyses.adaptiveAnalysisPolicy3(_, 5), "adaptive-policy-3")
-        //(SchemeAnalyses.fullArgContextSensitiveAnalysis, "full-arg")
-        //SchemeAnalyses.adaptiveCallerSensitivity(prg,10)
-        //SchemeAnalyses.adaptiveAnalysisPolicy1(prg, 5),
-        //SchemeAnalyses.adaptiveAnalysisPolicy3(prg, 10)
-    )
+    def otherAnalyses() =
+    // run some regular k-cfa analyses
+    List(0,1,2,3,4,5,7,10).map { k =>
+        (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
+    } ++
+    // run the adaptive analyses 
+    List(1,2,5,10,15,20,25,30).map { k =>
+        (SchemeAnalyses.adaptiveAnalysis(_, k), s"adaptive (k = $k)")
+    } 
 
-    def main(args: Array[String]) = runBenchmarks(Set(
-        "test/icp/icp_2_aeval.scm"
-    ))
+    def main(args: Array[String]) = runBenchmarks(SchemeBenchmarkPrograms.gabriel)
 
     def check(path: Benchmark) = {
         val txt = Reader.loadFile(path)
@@ -98,6 +99,9 @@ object AnalysisComparison1 extends AnalysisComparison[
     def runBenchmarks(benchmarks: Set[Benchmark]) = {
         benchmarks.foreach(runBenchmark)
         println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
+        Writer.setDefaultWriter(Writer.open("benchOutput/precision/precision-benchmarks.csv"))
+        Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
+        Writer.closeDefaultWriter()
     }
 }
 

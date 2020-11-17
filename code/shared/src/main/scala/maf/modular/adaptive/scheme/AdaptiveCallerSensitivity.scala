@@ -17,9 +17,8 @@ trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
     def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) =
         adaptCaller(clo, caller, call)
     override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = ???
-    def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
-        case Main                                   => Main
-        case Call(clo,nam,ctx: ComponentContext)    => Call(clo, nam, adaptCaller(clo,ctx._1,ctx._2))
+    protected def adaptCall(cmp: Call[ComponentContext]): Call[ComponentContext] = cmp match {
+        case Call(clo,nam,ctx) => Call(clo, nam, adaptCaller(clo,ctx._1,ctx._2))
     }
     def registerCall(source: (Component, Position), target: Component) = ???
     // we need to update the `calledBy` data structure whenever the analysis is adapted

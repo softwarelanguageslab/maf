@@ -1238,7 +1238,7 @@ object SchemeInterpreter {
     case class Clo(lambda: SchemeLambdaExp, env: Env, name: Option[String] = None) extends Value { override def toString: String = name.map(n => s"#$n ${lambda.idn.pos}").getOrElse(s"<#clo ${lambda.idn.pos}>") }
     case class Primitive(p: Prim) extends Value { override def toString: String = s"<#prim ${p.name}>" }
     case class Str(str: String) extends Value { override def toString: String = str }
-    case class Symbol(sym: String) extends Value { override def toString: String = s"'$sym'" }
+    case class Symbol(sym: String) extends Value { override def toString: String = s"'$sym" }
     case class Integer(n: Int) extends Value { override def toString: String = n.toString }
     case class Real(r: Double) extends Value { override def toString: String = r.toString }
     case class Bool(b: Boolean) extends Value { override def toString: String = if (b) "#t" else "#f" }
@@ -1250,7 +1250,7 @@ object SchemeInterpreter {
         case c => s"#\\$c"
       }
     }
-    case object Nil extends Value { override def toString: String = "'())'" }
+    case object Nil extends Value { override def toString: String = "'()" }
     case class Cons(car: Value, cdr: Value) extends Value { override def toString: String = s"<#cons $car $cdr>" }
     case class Vector(size: Int, elems: Map[Int,Value], init: Value) extends Value { override def toString: String = s"<#vector[$size]>" }
     case class Thread(fut: Future[Value]) extends Value { override def toString: String = s"<thread>"}

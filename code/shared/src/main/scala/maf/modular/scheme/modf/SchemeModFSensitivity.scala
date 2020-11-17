@@ -28,7 +28,7 @@ trait SchemeModFKCallSiteSensitivity extends SchemeModFSensitivity {
   val k: Int
   type ComponentContext = CallSiteContext
   def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = context(caller) match {
-    case None                           => CallSiteContext(List(call))
+    case None                           => CallSiteContext(List(call).take(k))
     case Some(CallSiteContext(callers)) => CallSiteContext((call :: callers).take(k))
   }
 }
