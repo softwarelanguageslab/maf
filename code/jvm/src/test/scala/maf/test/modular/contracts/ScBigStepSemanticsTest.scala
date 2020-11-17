@@ -190,6 +190,13 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   }
 
   /**
+    * We should be able to define a function with variable number of arguments
+    */
+  eval("(define (list . args) args) (car (cdr (list 1 2 3)))").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(2))
+  }
+
+  /**
     * An integer literal should always pass the `int?` test
     */
   verify("int?", "5").named("flat_lit_int?").safe()

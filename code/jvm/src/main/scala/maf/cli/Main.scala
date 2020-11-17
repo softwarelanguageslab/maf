@@ -9,6 +9,7 @@ import maf.modular._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.scheme.ssmodconc._
+import maf.language.sexp.SExpParser
 import maf.util._
 import maf.util.benchmarks._
 import maf.language.change.CodeVersion._
@@ -253,5 +254,12 @@ object VerifyAssertions {
     val failed = analysis.assertionsFailed
     println(s"There are ${failed.size} violations")
     failed.foreach(v => println(s"Violation of ${v._2} in component ${v._1}"))
+  }
+}
+
+object SoftContractVerification {
+  def main(args: Array[String]): Unit = {
+    val pai = SExpParser.parse("(define (f a b . args) args)")
+    println(pai)
   }
 }
