@@ -5,176 +5,79 @@ import maf.language.contracts.{ScExp, _}
 import maf.language.sexp.{ValueBoolean, ValueInteger}
 import maf.util.benchmarks.Timeout
 
-trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
-  type PC = ScExp
-  type PostValue = (Value, ScExp)
-  type StoreCache = Map[Addr, PostValue]
-  case class Context(env: Environment[Addr], pc: PC, cache: StoreCache) {
-    def store: Store = cache.view.mapValues(_._1).toMap
-  }
-
+trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanticsMonad {
   private val primTrue  = ScLattice.Prim("true?")
   private val primFalse = ScLattice.Prim("false?")
   private val primProc  = ScLattice.Prim("proc?")
   private val primDep   = ScLattice.Prim("dependent-contract?")
   private var totalRuns = 0
 
-  def value(v: Value): PostValue = (v, ScNil())
-
-  object ScEvalM {
-    def pure[X](v: => X): ScEvalM[X] = ScEvalM((context) => List((context, v)).toSet)
-    def unit: ScEvalM[()] = pure(())
-    def void[X]: ScEvalM[X] = ScEvalM((context) => Set[(Context, X)]())
-
-    case class ScEvalM[X](run: Context => Set[(Context, X)]) {
-      def map[Y](f: X => Y): ScEvalM[Y] = ScEvalM((context) => {
-        run(context).map {
-          case (updatedContext, value) => (updatedContext, f(value))
-        }
-      })
-
-      def flatMap[Y](f: X => ScEvalM[Y]): ScEvalM[Y] = ScEvalM((context) =>
-        run(context).flatMap {
-          case (updatedContext, value) => f(value).run(updatedContext)
-        }
-      )
-    }
-
-    def sequence[X](xs: List[ScEvalM[X]]): ScEvalM[List[X]] = xs match {
-      case List() => pure(List())
-      case _ =>
-        for {
-          result <- xs.head
-          results <- sequence(xs.tail)
-        } yield (result :: results)
-    }
-
-    def sequenceLast[X](xs: List[ScEvalM[X]]): ScEvalM[X] =
-      sequence(xs).map(_.last)
-
-    def withEnv[B](f: Environment[Addr] => ScEvalM[B]): ScEvalM[B] =
-        ScEvalM((context) => f(context.env).run(context))
-
-    def lookup(identifier: String): ScEvalM[Addr] = withEnv((env) => {
-      pure(env.lookup(identifier).getOrElse(throw new Exception(s"variable ${identifier} not found")))
-    })
-
-    def lookupOrDefine(identifier: ScIdentifier, component: Component): ScEvalM[Addr] = withEnv((env) => {
-      pure(env.lookup(identifier.name).getOrElse {
-        val addr = allocVar(identifier, context(component))
-        addr
-      })
-    })
-
-    def nondet[X](t: ScEvalM[X], f: ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => {
-        val resF = f.run(context)
-        val resT = t.run(context)
-        resF ++ resT
-    })
-
-    def nondets[X](s: Set[ScEvalM[X]]): ScEvalM[X] = ScEvalM((context) => {
-      s.flatMap(_.run(context))
-    })
-
-    def withPc[X](f: PC => X): ScEvalM[X] = ScEvalM((context) => {
-      Set((context, f(context.pc)))
-    })
-
-    def withStoreCache[X](f: StoreCache => ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => {
-      f(context.cache).run(context)
-    })
-
-    def withContext[X](f: Context => ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => f(context).run(context))
-
-    def addToCache(mapping: (Addr, PostValue)): ScEvalM[()] = ScEvalM((context) => {
-      List((context.copy(cache = context.cache + mapping), ())).toSet
-    })
-
-    def joinInCache(addr: Addr, value: PostValue): ScEvalM[()] = ScEvalM((context) => {
-      Set((
-        (context.copy(
-          cache = context.cache.updated(
-            addr, (lattice.join(context.store.getOrElse(addr, lattice.bottom), value._1), value._2)))), ()
-      ))
-    })
-
-    def replacePc[X](pc: PC)(c: ScEvalM[X]): ScEvalM[X] = ScEvalM((context) => {
-      c.run(context.copy(pc = pc))
-    })
-
-    /**
-      * This function creates a computation that yields a single state contain the abstract value with no
-      * symbolic information.
-      */
-    def result(v: Value): ScEvalM[PostValue] = pure(value(v))
-
-    def extended[X](ident: ScIdentifier, component: Component)(c: Addr => ScEvalM[X]): ScEvalM[X] = ScEvalM((ctx) => {
-      val addr = allocVar(ident, context(component))
-      val extendedEnv = ctx.env.extend(ident.name, addr)
-      c(addr).run(ctx.copy(env = extendedEnv)).map {
-        case (updatedContext, value) => (updatedContext.copy(env = ctx.env), value)
-      }
-    })
-
-    def addBindingToEnv(ident: ScIdentifier, component: Component): ScEvalM[()] = ScEvalM((ctx) => {
-      val addr = allocVar(ident, context(component))
-      Set((ctx.copy(env = ctx.env.extend(ident.name, addr)), ()))
-    })
-
-    /**
-      * Given a computation that yields a value corresponding to a certain lattice, this function runs the computation
-      * on the given context, and joins all the values of the resulting states together using the join operator of the
-      * lattice.
-      */
-    def merged[L: Lattice](c: ScEvalM[L])(context: Context): (L, Store) = {
-      import maf.lattice.MapLattice._
-      c.run(context).foldLeft((Lattice[L].bottom, Lattice[Store].bottom))((acc, v) => v match {
-        case (context, l) => (Lattice[L].join(acc._1, l), Lattice[Store].join(acc._2, context.store))
-      })
-    }
-
-    /**
-      * Given a computation that yields states that contain sets of values, this operator yields a single computation
-      * that gives rises to a state for every element in the given set.
-      */
-    def options[X](c: ScEvalM[Set[X]]): ScEvalM[X] = ScEvalM((context) =>
-      c.run(context).flatMap {
-        case (updatedContext, set) => set.map((updatedContext, _))
-      }
-    )
-
-    def debug(c: => ()): ScEvalM[()] = unit.flatMap(_ => {
-      c
-      pure(())
-    })
-
-    /**
-      * Executes the given action simply for its side effects
-      */
-    def effectful(c: => ()): ScEvalM[()] = debug(c)
-
-    def trace[X]: (X => ScEvalM[X]) = { x =>
-      println(("trace", x))
-      pure(x)
-    }
-
-    def evict(addresses: List[Addr]): ScEvalM[()] = ScEvalM(context => {
-      Set((context.copy(cache = context.cache.removedAll(addresses)), ()))
-    })
-
-    def mergeStores(calleeStore: Store): ScEvalM[()] =
-      sequence(calleeStore.view.map {
-        case (addr, v)  => joinInCache(addr, value(v))
-      }.toList).flatMap(_ => unit)
-
-    def getStore: ScEvalM[Store] = ScEvalM(context => {
-      Set((context, context.store))
-    })
-  }
-
   import ScEvalM._
 
   trait IntraScBigStepSemantics extends IntraScAnalysis {
+    /**
+      * Compute the context of the current component
+      * @return a new context based on the environment of the component under analysis
+      */
+    def initialContext: Context = {
+      var storeCache: StoreCache = componentStore.view.mapValues(v => (v, ScNil())).toMap
+      primBindings.foreach {
+        case (name, addr) =>
+          val value = storeCache(addr)._1
+          storeCache = storeCache +  (addr -> ((value, ScIdentifier(name, Identity.none))))
+          storeCache = storeCache + (ScPrimAddr(name) -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
+      }
+
+      fnEnv.content.values.foreach((addr) => {
+        val value = readPure(addr, storeCache)
+        if (lattice.isDefinitelyOpq(value)) {
+          storeCache += (addr -> (value, ScIdentifier(ScModSemantics.genSym, Identity.none)))
+        }
+      })
+
+      Context(env = fnEnv, cache = storeCache, pc = ScNil())
+    }
+
+    def analyze(_ignored_timeout: Timeout.T): Unit = {
+      totalRuns += 1
+      if (totalRuns > 10) {
+        throw new Exception("Timeout exceeded")
+      }
+
+      println("================================")
+      val (value, store) = merged(eval(fnBody).map(_._1))(initialContext)
+      println(s"Return value is $value")
+      writeReturnStore(store)
+      writeResult(value, component)
+    }
+
+    def eval(expr: ScExp): ScEvalM[PostValue] = expr match {
+      case ScBegin(expressions, _) => evalSequence(expressions)
+      case ScIf(condition, consequent, alternative, _) => evalIf(condition, consequent, alternative)
+      case ScLetRec(ident, binding, body, _) => evalLetRec(ident, binding, body)
+      case ScRaise(_, _) => ???
+      case ScSet(variable, value, _) => evalSet(variable, value)
+      case ScFunctionAp(operator, operands, _, _) => evalFunctionAp(operator, operands)
+      case v: ScValue => evalValue(v)
+      case exp: ScIdentifier => evalIdentifier(exp)
+      case ScMon(contract, expression, idn, _) => evalMon(contract, expression, idn)
+      case ScOpaque(_, refinements) => evalOpaque(refinements)
+      case ScHigherOrderContract(domain, range, idn) => eval(higherOrderToDependentContract(domain, range, idn))
+      case ScDependentContract(domain, rangeMaker, _) => evalDependentContract(domain, rangeMaker)
+      case ScFlatContract(expression, _) => evalFlatContract(expression)
+      case ScLambda(params, body, idn) => evalLambda(params, body, idn)
+      case ScAssume(identifier, assumption, expression, _) => evalAssume(identifier, assumption, expression)
+      case ScProgram(expressions, _) => evalProgram(expressions)
+      case ScDefine(variable, expression, _) => evalDefine(variable, expression)
+      case ScDefineFn(name, parameters, body, idn) => evalDefineFn(name, parameters, body, idn)
+      case ScDefineAnnotatedFn(name, parameters, contract, expression, idn) =>
+        evalDefineAnnotatedFn(name, parameters, contract, expression, idn)
+      case ScProvideContracts(variables, contracts, _) => evalProvideContracts(variables, contracts)
+      case ScCons(car, cdr, _) => evalCons(car, cdr)
+      case ScCar(pai, _) => evalCar(pai)
+      case ScCdr(pai, _) => evalCdr(pai)
+    }
+
     /**
       * Read a value from the store cache, if it is not in the store cache, retrieve it from the global store
       * @param addr the addres to read from
@@ -276,68 +179,30 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives {
       value
     }
 
-    /**
-      * Compute the context of the current component
-      * @return a new context based on the environment of the component under analysis
-      */
-    def initialContext: Context = {
-      var storeCache: StoreCache = componentStore.view.mapValues(v => (v, ScNil())).toMap
-      primBindings.foreach {
-        case (name, addr) =>
-          val value = storeCache(addr)._1
-          storeCache = storeCache +  (addr -> ((value, ScIdentifier(name, Identity.none))))
-          storeCache = storeCache + (ScPrimAddr(name) -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
-      }
-
-      fnEnv.content.values.foreach((addr) => {
-        val value = readPure(addr, storeCache)
-        if (lattice.isDefinitelyOpq(value)) {
-          storeCache += (addr -> (value, ScIdentifier(ScModSemantics.genSym, Identity.none)))
-        }
-      })
-
-      Context(env = fnEnv, cache = storeCache, pc = ScNil())
-    }
-
-    def analyze(_ignored_timeout: Timeout.T): Unit = {
-      totalRuns += 1
-      if (totalRuns > 10) {
-        throw new Exception("Timeout exceeded")
-      }
-
-      println("================================")
-      val (value, store) = merged(eval(fnBody).map(_._1))(initialContext)
-      println(s"Return value is $value")
-      writeReturnStore(store)
-      writeResult(value, component)
-    }
-
     def higherOrderToDependentContract(domain: ScExp, range: ScExp, idn: Identity): ScExp =
       ScDependentContract(domain, ScLambda(List(ScIdentifier("\"x", Identity.none)), range, range.idn), idn)
 
-    def eval(expr: ScExp): ScEvalM[PostValue] = expr match {
-      case ScBegin(expressions, _) => evalSequence(expressions)
-      case ScIf(condition, consequent, alternative, _) => evalIf(condition, consequent, alternative)
-      case ScLetRec(ident, binding, body, _) => evalLetRec(ident, binding, body)
-      case ScRaise(_, _) => ???
-      case ScSet(variable, value, _) => evalSet(variable, value)
-      case ScFunctionAp(operator, operands, _, _) => evalFunctionAp(operator, operands)
-      case v: ScValue => evalValue(v)
-      case exp: ScIdentifier => evalIdentifier(exp)
-      case ScMon(contract, expression, idn, _) => evalMon(contract, expression, idn)
-      case ScOpaque(_, refinements) => evalOpaque(refinements)
-      case ScHigherOrderContract(domain, range, idn) => eval(higherOrderToDependentContract(domain, range, idn))
-      case ScDependentContract(domain, rangeMaker, _) => evalDependentContract(domain, rangeMaker)
-      case ScFlatContract(expression, _) => evalFlatContract(expression)
-      case ScLambda(params, body, idn) => evalLambda(params, body, idn)
-      case ScAssume(identifier, assumption, expression, _) => evalAssume(identifier, assumption, expression)
-      case ScProgram(expressions, _) => evalProgram(expressions)
-      case ScDefine(variable, expression, _) => evalDefine(variable, expression)
-      case ScDefineFn(name, parameters, body, idn) => evalDefineFn(name, parameters, body, idn)
-      case ScDefineAnnotatedFn(name, parameters, contract, expression, idn) =>
-        evalDefineAnnotatedFn(name, parameters, contract, expression, idn)
-      case ScProvideContracts(variables, contracts, _) => evalProvideContracts(variables, contracts)
-    }
+    def evalCons(car: ScExp, cdr: ScExp): ScEvalM[PostValue] = for {
+      evaluatedCar <- eval(car)
+      evaluatedCdr <- eval(cdr)
+      carAddr = allocGeneric(car.idn, component)
+      cdrAddr = allocGeneric(cdr.idn, component)
+      _ <- write(carAddr, evaluatedCar)
+      _ <- write(cdrAddr, evaluatedCdr)
+    } yield value(lattice.injectCons(Cons(carAddr, cdrAddr)))
+
+    def evalCar(pai: ScExp): ScEvalM[PostValue] =
+      eval(pai).flatMap((pai) => {
+        val topValue = if (lattice.top == pai) { Set(result(lattice.top)) } else { Set() }
+        nondets(lattice.getCons(pai._1).map(p => read(p.car)) ++ topValue)
+      })
+
+    def evalCdr(pai: ScExp): ScEvalM[PostValue] =
+      eval(pai).flatMap((pai) => {
+        val topValue = if (lattice.top == pai) { Set(result(lattice.top)) } else { Set() }
+        nondets(lattice.getCons(pai._1).map(p => read(p.cdr)) ++ topValue)
+      })
+
 
     def evalProvideContracts(variables: List[ScIdentifier], contracts: List[ScExp]): ScEvalM[PostValue] =
       sequenceLast(variables.zip(contracts).map {

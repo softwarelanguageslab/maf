@@ -164,6 +164,23 @@ object SCExpCompiler {
         prog.idn
       )
 
+    case Ident("cons") :: car :: cdr :: ListNil(_) =>
+      val compiledCar = compile(car)
+      val compiledCdr = compile(cdr)
+      ScCons(
+        compiledCar,
+        compiledCdr,
+        prog.idn
+      )
+
+    case Ident("car") :: pai :: ListNil(_) =>
+      val compiledPai = compile(pai)
+      ScCar(compiledPai, prog.idn)
+
+    case Ident("cdr") :: pai :: ListNil(_) =>
+      val compiledPai = compile(pai)
+      ScCdr(compiledPai, prog.idn)
+
     case Ident("cond") :: branches =>
       compile_branches(branches)
 

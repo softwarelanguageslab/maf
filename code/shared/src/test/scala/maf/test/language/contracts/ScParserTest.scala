@@ -169,4 +169,22 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
       case ScFunctionAp(_, _, _, Some("@safe")) =>
     }
   }
+
+  "A cons" should "be parsed to ScCons" in {
+    compile("(cons a b)") should matchPattern {
+      case ScCons(ScIdentifier("a", _), ScIdentifier("b", _), _) =>
+    }
+  }
+
+  "A car" should "be parsed to ScCar" in {
+    compile("(car a)") should matchPattern {
+      case ScCar(ScIdentifier("a", _), _) =>
+    }
+  }
+
+  "A cdr" should "be parsed to ScCdr" in {
+    compile("(cdr a)") should matchPattern {
+      case ScCdr(ScIdentifier("a", _), _) =>
+    }
+  }
 }

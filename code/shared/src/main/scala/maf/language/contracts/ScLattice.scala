@@ -81,6 +81,11 @@ object ScLattice {
     */
   case class Thunk[Addr <: Address](value: Addr)
 
+  /**
+    * A cons pair consisting of a car and a cdr
+    */
+  case class Cons[Addr <: Address](car: Addr, cdr: Addr)
+
   case class Symbolic(expr: ScExp)
 }
 
@@ -151,6 +156,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def injectRefinedValueInState(state: L, value: Opq): L
 
+  /**
+    * Inject a cons value in the abstract domain
+    */
+  def injectCons(cons: Cons[Addr]): L
+
   /*==================================================================================================================*/
 
   def applyPrimitive(prim: Prim)(arguments: L*): L
@@ -198,6 +208,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Returns true if the value is possibly a thunk
     */
   def isThunk(value: L): Boolean
+
+  /**
+    * Returns true if the value is possibly a cons pair
+    */
+  def isCons(value: L): Boolean
 
   /*==================================================================================================================*/
 
@@ -250,6 +265,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Extracts the set of thunks from the abstract domain
     */
   def getThunk(value: L): Set[Thunk[Addr]]
+
+  /**
+    * Extracts the set of cons pairs from the abstract value
+    */
+  def getCons(value: L): Set[Cons[Addr]]
 
   /*==================================================================================================================*/
 

@@ -28,6 +28,7 @@ trait ScDomain[I, B, Addr <: Address] {
   val FLAT_VALUE             = 11
   val REFINED_VALUE_IN_STATE = 12
   val THUNK_VALUE            = 13
+  val CONS_VALUE             = 14
 
   case object TopValue extends Value {
     def ord                       = TOP_VALUE
@@ -93,6 +94,10 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord: Int = THUNK_VALUE
   }
 
+  case class Conses(cons: Set[Cons[Addr]]) extends Value {
+    def ord: Int = CONS_VALUE
+  }
+
   def bool(bool: Boolean): Value = Bool(BoolLattice[B].inject(bool))
 
   def number(n: Int): Value =
@@ -121,6 +126,8 @@ trait ScDomain[I, B, Addr <: Address] {
 
   def thunk(t: Thunk[Addr]): Thunks = Thunks(Set(t))
 
+  def cons(c: Cons[Addr]): Conses = Conses(Set(c))
+
   object Values {
     def join(a: Value, b: Value): Value = (a, b) match {
       case (TopValue, _) | (_, TopValue) => TopValue
@@ -137,6 +144,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Opqs(a), Opqs(b))            => Opqs(a ++ b)
       case (Flats(a), Flats(b))          => Flats(a ++ b)
       case (Thunks(a), Thunks(b))        => Thunks(a ++ b)
+      case (Conses(a), Conses(b))        => Conses(a ++ b)
       case (RefinedValueInStates(v1), RefinedValueInStates(v2)) =>
         RefinedValueInStates(
           (v1.keys ++ v2.keys)
@@ -331,6 +339,11 @@ trait ScDomain[I, B, Addr <: Address] {
       case _                    => false
     }
 
+    def isCons(value: Value): Boolean = value match {
+      case TopValue | Conses(_) => true
+      case _                    => false
+    }
+
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {
       case (_, _) if x == y       => true
       case (TopValue, _)          => true
@@ -342,6 +355,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Opqs(a), Opqs(b))     => b.subsetOf(a)
       case (Prims(a), Prims(b))   => b.subsetOf(a)
       case (Blames(a), Blames(b)) => b.subsetOf(a)
+      case (Conses(a), Conses(b)) => b.subsetOf(a)
       case (_, _)                 => false
     }
 
@@ -424,6 +438,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     def injectThunk(t: Thunk[Addr]): CoProductValue = thunk(t)
 
+    def injectCons(c: Cons[Addr]): CoProductValue = cons(c)
+
     /*================================================================================================================*/
 
     override def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue = {
@@ -453,6 +469,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
     }
 
     def isThunk(value: CoProductValue): Boolean = isPred(Values.isThunk, value)
+
+    def isCons(value: CoProductValue): Boolean = isPred(Values.isCons, value)
 
     /*================================================================================================================*/
 
@@ -511,6 +529,11 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     def getThunk(value: CoProductValue): Set[Thunk[Addr]] = value match {
       case CoProduct(Thunks(t)) => t
+      case _                    => Set()
+    }
+
+    def getCons(value: CoProductValue): Set[Cons[Addr]] = value match {
+      case CoProduct(Conses(c)) => c
       case _                    => Set()
     }
 
@@ -774,5 +797,20 @@ class ScProductLattice[I, B, Addr <: Address](
         * Extracts the set of thunks from the abstract domain
         */
       override def getThunk(value: ProductElements): Set[Thunk[Addr]] = ???
+
+      /**
+        * Inject a cons value in the abstract domain
+        */
+      override def injectCons(cons: Cons[Addr]): ProductElements = ???
+
+      /**
+        * Returns true if the value is possibly a cons pair
+        */
+      override def isCons(value: ProductElements): Boolean = ???
+
+      /**
+        * Extracts the set of cons pairs from the abstract value
+        */
+      override def getCons(value: ProductElements): Set[Cons[Addr]] = ???
     }
 }

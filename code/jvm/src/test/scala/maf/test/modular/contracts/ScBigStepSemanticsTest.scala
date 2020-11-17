@@ -164,6 +164,32 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   }
 
   /**
+    * A cons should evaluate to a cons pair
+    */
+  eval("(cons 1 2)").tested { machine =>
+    assert(
+      machine
+        .getReturnValue(ScMain)
+        .map(machine.lattice.getCons)
+        .isDefined
+    )
+  }
+
+  /**
+    * We should be able to get the car of a cons pair
+    */
+  eval("(car (cons 1 2))").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(1))
+  }
+
+  /**
+    * We should be able to get the cdr of a cons pair
+    */
+  eval("(cdr (cons 1 2))").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(2))
+  }
+
+  /**
     * An integer literal should always pass the `int?` test
     */
   verify("int?", "5").named("flat_lit_int?").safe()

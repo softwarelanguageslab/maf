@@ -27,6 +27,9 @@ case object DEFINE                extends Label
 case object DEFINE_FN             extends Label
 case object DEFINE_ANNOTATED_FN   extends Label
 case object PROVIDE_CONTRACT      extends Label
+case object CONS                  extends Label
+case object CAR                   extends Label
+case object CDR                   extends Label
 
 /**
   * A language for defining software contracts
@@ -480,6 +483,42 @@ case class ScDefineAnnotatedFn(
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = expressions.subexpressions
+}
+
+case class ScCons(car: ScExp, cdr: ScExp, idn: Identity) extends ScExp {
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = car.fv ++ cdr.fv
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = CONS
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = List(car, cdr)
+}
+
+case class ScCar(pai: ScExp, idn: Identity) extends ScExp {
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = pai.fv
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = CAR
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = List(pai)
+}
+
+case class ScCdr(pai: ScExp, idn: Identity) extends ScExp {
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = pai.fv
+
+  /** A label indicating the type of an expression. */
+  override def label: Label = CDR
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = List(pai)
 }
 
 case class ScProvideContracts(
