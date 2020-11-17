@@ -29,6 +29,7 @@ trait ScDomain[I, B, Addr <: Address] {
   val REFINED_VALUE_IN_STATE = 12
   val THUNK_VALUE            = 13
   val CONS_VALUE             = 14
+  val NIL_VALUE              = 15
 
   case object TopValue extends Value {
     def ord                       = TOP_VALUE
@@ -98,6 +99,10 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord: Int = CONS_VALUE
   }
 
+  case object Nils extends Value {
+    def ord: Int = NIL_VALUE
+  }
+
   def bool(bool: Boolean): Value = Bool(BoolLattice[B].inject(bool))
 
   def number(n: Int): Value =
@@ -145,6 +150,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Flats(a), Flats(b))          => Flats(a ++ b)
       case (Thunks(a), Thunks(b))        => Thunks(a ++ b)
       case (Conses(a), Conses(b))        => Conses(a ++ b)
+      case (Nils, Nils)                  => Nils
       case (RefinedValueInStates(v1), RefinedValueInStates(v2)) =>
         RefinedValueInStates(
           (v1.keys ++ v2.keys)
@@ -344,6 +350,11 @@ trait ScDomain[I, B, Addr <: Address] {
       case _                    => false
     }
 
+    def isNil(value: Value): Boolean = value match {
+      case Nils => true
+      case _    => false
+    }
+
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {
       case (_, _) if x == y       => true
       case (TopValue, _)          => true
@@ -440,6 +451,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     def injectCons(c: Cons[Addr]): CoProductValue = cons(c)
 
+    def injectNil: CoProductValue = Nils
+
     /*================================================================================================================*/
 
     override def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue = {
@@ -471,6 +484,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
     def isThunk(value: CoProductValue): Boolean = isPred(Values.isThunk, value)
 
     def isCons(value: CoProductValue): Boolean = isPred(Values.isCons, value)
+
+    def isNil(value: CoProductValue): Boolean = isPred(Values.isNil, value)
 
     /*================================================================================================================*/
 
@@ -616,6 +631,8 @@ class ScProductLattice[I, B, Addr <: Address](
       override def injectFlat(f: Flat[Addr]): ProductElements =
         flat(f)
 
+      override def injectNil: ProductElements = ???
+
       /*==============================================================================================================*/
 
       private def collectArgumentsList(arguments: List[ProductElements]): List[List[Value]] = {
@@ -660,6 +677,8 @@ class ScProductLattice[I, B, Addr <: Address](
         case ProductElements(elements) => elements.forall((e) => Values.isDefinitelyOpq(e))
         case _                         => false
       }
+
+      override def isNil(value: ProductElements): Boolean = ???
 
       /*==============================================================================================================*/
 
@@ -761,7 +780,7 @@ class ScProductLattice[I, B, Addr <: Address](
         v.elements.map(v => s"${Values.show(v)}").mkString(" x ")
 
       private def insert(x: Value, ys: List[Value]): List[Value] = ys match {
-        case Nil                       => List(x)
+        case List()                    => List(x)
         case z :: zs if x.ord == z.ord => Values.join(x, z) :: zs
         case z :: _ if z.ord < x.ord   => x :: ys
         case z :: zs                   => z :: insert(x, zs)

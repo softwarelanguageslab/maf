@@ -185,10 +185,15 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
     def evalCons(car: ScExp, cdr: ScExp): ScEvalM[PostValue] = for {
       evaluatedCar <- eval(car)
       evaluatedCdr <- eval(cdr)
-      carAddr = allocGeneric(car.idn, component)
-      cdrAddr = allocGeneric(cdr.idn, component)
-      _ <- write(carAddr, evaluatedCar)
-      _ <- write(cdrAddr, evaluatedCdr)
+      consValue <- allocCons(evaluatedCar, evaluatedCdr, car.idn, cdr.idn)
+    } yield consValue
+
+    def allocCons(car: PostValue, cdr: PostValue, carIdn: Identity, cdrIdn: Identity): ScEvalM[PostValue] = for {
+      _ <- unit
+      carAddr = allocGeneric(carIdn, component)
+      cdrAddr = allocGeneric(cdrIdn, component)
+      _ <- write(carAddr, car)
+      _ <- write(cdrAddr, cdr)
     } yield value(lattice.injectCons(Cons(carAddr, cdrAddr)))
 
     def evalCar(pai: ScExp): ScEvalM[PostValue] =
@@ -221,14 +226,14 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       _ <- write(addr, value)
     } yield value
 
-    def evalDefineFn(name: ScIdentifier, parameters: List[ScIdentifier], body: ScExp, idn: Identity): ScEvalM[PostValue] =
+    def evalDefineFn(name: ScIdentifier, parameters: List[ScParam], body: ScExp, idn: Identity): ScEvalM[PostValue] =
       for {
         addr <- lookupOrDefine(name, component)
         lambda <- eval(ScLambda(parameters, body, idn))
         _ <- write(addr, lambda)
       } yield lambda
 
-    def evalDefineAnnotatedFn(name: ScIdentifier, parameters: List[ScIdentifier], contract: ScExp, body: ScExp, idn: Identity): ScEvalM[PostValue] =
+    def evalDefineAnnotatedFn(name: ScIdentifier, parameters: List[ScParam], contract: ScExp, body: ScExp, idn: Identity): ScEvalM[PostValue] =
       for {
         addr <- lookupOrDefine(name, component)
         lambda <- eval(ScLambda(parameters, body, idn))
@@ -294,8 +299,8 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       } yield res
     }
 
-    def evalLambda(params: List[ScIdentifier], body: ScExp, idn: Identity): ScEvalM[PostValue] = withEnv { env =>
-      val clo = Clo(idn, env, params, ScLambda(params, body, idn), topLevel = isTopLevel)
+    def evalLambda(params: List[ScParam], body: ScExp, idn: Identity): ScEvalM[PostValue] = withEnv { env =>
+      val clo = Clo(idn, env, params.map(toScIdentifier), ScLambda(params, body, idn), topLevel = isTopLevel)
       result(lattice.injectClo(clo))
     }
 
@@ -340,6 +345,35 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
     def evalIf(condition: ScExp, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] =
       eval(condition).flatMap((value) => conditional(value, condition, consequent, alternative))
 
+    def allocList(values: List[PostValue], idns: List[Identity]): ScEvalM[PostValue] = values match {
+      case List() => result(lattice.injectNil)
+      case v :: values => for {
+        cdr <- allocList(values, idns.tail)
+        carAddr = allocGeneric(idns.head, component)
+        cdrAddr = ScCdrAddr(carAddr)
+        _ <- write(carAddr, v)
+        _ <- write(cdrAddr, cdr)
+      } yield value(lattice.injectCons(Cons(carAddr, cdrAddr)))
+    }
+
+    def bindArgs(operands: List[PostValue], params: List[ScParam], syntacticOperands: List[ScExp], context: ComponentContext): ScEvalM[()] =
+      (operands, params) match {
+        case (List(), List()) => unit
+        case (values, List(param@ScVarArgIdentifier(name, idn))) =>
+          for {
+            listedValues <- allocList(values, syntacticOperands.map(_.idn))
+            _ <- write(allocVar(param, context), listedValues)
+          } yield ()
+
+        case (value :: values, param :: params) =>
+          for {
+            _ <- write(allocVar(param, context), value)
+            _ <- bindArgs(values, params, syntacticOperands.tail, context)
+          } yield ()
+
+        case (_, _) => throw new Exception("Invalid closure application")
+      }
+
     def applyFn(operator: PostValue, operands: List[PostValue], syntacticOperands: List[ScExp] = List()): ScEvalM[PostValue] = {
       // we have three distinct cases
       // 1. Primitive application
@@ -360,11 +394,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
             val context = allocCtx(clo, operands.map(_._1), clo.lambda.idn.pos, component)
             val called = Call(clo.env, clo.lambda, context)
             val calledComponent = newComponent(called)
-            val updateOperands = operands.zip(clo.lambda.variables.map(v => allocVar(v, context))).map {
-              case (value, addr) =>
-                write(addr, value)
-            }
-            sequence(updateOperands).map(_ => calledComponent)
+            bindArgs(operands, clo.lambda.variables, syntacticOperands, context).map(_ => calledComponent)
           }
 
           value <- localCall(calledComponent)

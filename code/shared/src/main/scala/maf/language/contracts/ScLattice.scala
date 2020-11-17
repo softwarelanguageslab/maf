@@ -86,6 +86,11 @@ object ScLattice {
     */
   case class Cons[Addr <: Address](car: Addr, cdr: Addr)
 
+  /**
+    * Nil
+    */
+  case object Nil
+
   case class Symbolic(expr: ScExp)
 }
 
@@ -161,6 +166,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def injectCons(cons: Cons[Addr]): L
 
+  /**
+    * Inject nil in the abstract domain
+    */
+  def injectNil: L
+
   /*==================================================================================================================*/
 
   def applyPrimitive(prim: Prim)(arguments: L*): L
@@ -213,6 +223,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Returns true if the value is possibly a cons pair
     */
   def isCons(value: L): Boolean
+
+  /**
+    * Returns true if the value is possibly nil
+    */
+  def isNil(value: L): Boolean
 
   /*==================================================================================================================*/
 

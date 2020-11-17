@@ -30,6 +30,7 @@ case object PROVIDE_CONTRACT      extends Label
 case object CONS                  extends Label
 case object CAR                   extends Label
 case object CDR                   extends Label
+case object VARARG_IDENTIFIER     extends Label
 
 /**
   * A language for defining software contracts
@@ -102,7 +103,11 @@ case class ScDependentContract(domain: ScExp, rangeMaker: ScExp, idn: Identity) 
   override def toString: String = s"(~>d $domain $rangeMaker)"
 }
 
-case class ScIdentifier(name: String, idn: Identity) extends ScExp {
+trait ScParam extends ScExp {
+  def name: String
+}
+
+case class ScIdentifier(name: String, idn: Identity) extends ScExp with ScParam {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = Set(name)
@@ -118,9 +123,19 @@ case class ScIdentifier(name: String, idn: Identity) extends ScExp {
     printer.print(toString, idn)
 }
 
+case class ScVarArgIdentifier(name: String, idn: Identity) extends ScExp with ScParam {
+  override def label: Label = VARARG_IDENTIFIER
+
+  /** The set of free variables appearing in this expression. */
+  override def fv: Set[String] = Set(name)
+
+  /** Returns the list of subexpressions of the given expression. */
+  override def subexpressions: List[Expression] = List()
+}
+
 trait ScLiterals extends ScExp
 
-case class ScLambda(variables: List[ScIdentifier], body: ScExp, idn: Identity)
+case class ScLambda(variables: List[ScParam], body: ScExp, idn: Identity)
     extends ScLiterals
     with ScExp {
 
@@ -446,7 +461,7 @@ case class ScProgram(expressions: List[ScExp], idn: Identity) extends ScExp {
   */
 case class ScDefineFn(
     name: ScIdentifier,
-    parameters: List[ScIdentifier],
+    parameters: List[ScParam],
     expressions: ScBegin,
     idn: Identity
 ) extends ScExp {
@@ -469,7 +484,7 @@ case class ScDefineFn(
   */
 case class ScDefineAnnotatedFn(
     name: ScIdentifier,
-    parameters: List[ScIdentifier],
+    parameters: List[ScParam],
     contract: ScExp,
     expressions: ScBegin,
     idn: Identity

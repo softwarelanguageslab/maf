@@ -3,15 +3,15 @@ package maf.modular.contracts
 import maf.core.Position.Position
 import maf.core.{Address, Environment, Identity}
 import maf.language.contracts.ScLattice.Blame
-import maf.language.contracts.{ScExp, ScIdentifier, ScLambda, ScLattice}
+import maf.language.contracts.{ScExp, ScIdentifier, ScLambda, ScLattice, ScParam}
 import maf.modular.{
   DestructiveStore,
   GlobalStore,
   LocalStore,
+  LocalStoreMap,
   ModAnalysis,
   ReturnAddr,
-  ReturnValue,
-  LocalStoreMap
+  ReturnValue
 }
 
 object ScModSemantics {
@@ -123,6 +123,9 @@ trait ScModSemantics
   val GLOBAL_STORE_ENABLED: Boolean
 
   def view(component: Component): ScComponent
+
+  implicit def toScIdentifier(p: ScParam): ScIdentifier =
+    ScIdentifier(p.name, p.idn)
 
   trait IntraScAnalysis
       extends IntraAnalysis

@@ -34,7 +34,10 @@ object SCExpCompiler {
 
   case class SCExpCompilerException(message: String) extends Exception
 
-  def compile_params(s: SExp): List[ScIdentifier] = s match {
+  def compile_params(s: SExp): List[ScParam] = s match {
+    case IdentWithIdentity(args, args_idn) =>
+      List(ScVarArgIdentifier(args, args_idn))
+
     case SExpPair(IdentWithIdentity(name, idn), cdr, _) =>
       ScIdentifier(name, idn) :: compile_params(cdr)
     case SExpValue(ValueNil, _) => List()
