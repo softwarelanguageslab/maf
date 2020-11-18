@@ -1,1304 +1,648 @@
-; icp_7_8_open_coded
-
-(define make-arg-target
-  (<change> #f
-    (lambda (targ-num)
-      (string->symbol (string-append "val" (number->string targ-num))))))
-(define make-arg-targets
-  (<change> #f
-    (lambda (from to)
-      (if (< from to)
-        (cons (make-arg-target from)
-          (make-arg-targets (+ from 1) to))
-          '()))))
-(define open-coded?
-  (<change> #f ; <======================================================================================================
-    (lambda (exp)
-      (and (application? exp)
-        (member (operator exp) '(+ - * =))))))
-(define spread-args
-  (<change> #f ; <======================================================================================================
-    (lambda (arg-exps call-code)
-      (let* ((targets  (make-arg-targets 0 (length arg-exps)))
-              (arg-codes (map (lambda (exp target)
-                                (compile exp target 'next))
-                           arg-exps
-                           targets)))
-        (let loop ((arg-codes arg-codes)
-                    (targets targets)
-                    (to-preserve '(env)))
-
-          (if (null? arg-codes)
-            call-code
-            (preserving to-preserve
-              (car arg-codes)
-              (loop (cdr arg-codes)
-                (cdr targets)
-                (cons (car targets)
-                  to-preserve)))))))))
-(define compile-open-coded
-  (<change> #f ; <======================================================================================================
-    (lambda (exp target linkage)
-      (let* ((op (operator exp))
-              (arg-exps (operands exp))
-              (arg-count  (length arg-exps))
-              (targets (make-arg-targets 0 arg-count))
-              (target-regs (map (lambda (target) `(reg ,target))
-                             targets)))
-        (end-with-linkage
-          linkage
-          (spread-args arg-exps
-            (make-instruction-sequence
-              targets
-              (list target)
-              ;`((assign ,target (op ,op) ,@target-regs))
-              (list (append (list 'assign target (list 'op op)) target-regs))
-            )))))))
-
-;;
-;;toegevoegd
-;;
-(define true #t)
-(define false #f)
-
-(define (expand-clauses clauses)
-  (if (null? clauses)
-      'false
-    (let ((first (car clauses))
-           (rest (cdr clauses)))
-      (if (cond-else-clause? first)
-        (if (null? rest)
-          (sequence->exp (cond-actions first))
-          (error "ELSE clause isn't last -- COND->IF"
-          ))
-        (make-if (cond-predicate first)
-          (sequence->exp (cond-actions first))
-          (expand-clauses rest))))))
-
-(define (sequence->exp seq)
-  (cond ((null? seq) seq)
-    ((last-exp? seq) (first-exp seq))
-    (else (make-begin seq))))
-
-(define (make-if predicate consequent alternative)
-  (list 'if predicate consequent alternative))
-
-(define (make-begin seq) (cons 'begin seq))
-
-
-(define (primitive-implementation proc) (cadr proc))
-(define (cond->if exp)
-  (expand-clauses (cond-clauses exp)))
-
-
-;;
-;; zie deel 1.1 p52
-;;
-(define (apply-in-underlying-scheme op args)
-  (cond
-    ((null? args) (op))
-    ((null? (cdr args)) (op (car args)))
-    ((null? (cddr args)) (op (car args) (cadr args)))
-    (else (error "apply"))))
-
-;;
-;; zie deel 1.1 p24
-;;
-(define (true? x)
-  (not (eq? x false)))
-
-;;
-;; zie deel 1.1 p18
-;;
-(define (self-evaluating? exp)
-  (cond ((number? exp) true)
-    ((string? exp) true)
-    (else false)))
-
-;;
-;; zie deel 1.1 p19
-;;
-(define (tagged-list? exp tag)
-  (if (pair? exp)
-    (eq? (car exp) tag)
-    false))
-
-(define (quoted? exp)
-  (tagged-list? exp 'quote))
-
-(define (text-of-quotation exp) (cadr exp))
-
-;;
-;; zie deel 1.1 p18
-;;
-(define (variable? exp) (symbol? exp))
-
-;;
-;; zie deel 1.1 p21
-;;
-(define (assignment? exp)
-  (tagged-list? exp 'set!))
-
-(define (assignment-variable exp) (cadr exp))
-
-(define (assignment-value exp) (caddr exp))
-
-;;
-;; zie deel 1.1 p22
-;;
-(define (definition? exp)
-  (tagged-list? exp 'define))
-
-(define (definition-variable exp)
-  (if (symbol? (cadr exp))
-    (cadr exp)
-    (caadr exp)))
-
-(define (definition-value exp)
-  (if (symbol? (cadr exp))
-    (caddr exp)
-    (make-lambda (cdadr exp)
-      (cddr exp))))
-
-;;
-;; zie deel 1.1 p24
-;;
-(define (if? exp) (tagged-list? exp 'if))
-
-(define (if-predicate exp) (cadr exp))
-
-(define (if-consequent exp) (caddr exp))
-
-(define (if-alternative exp)
-  (if (not (null? (cdddr exp)))
-    (cadddr exp)
-      'false))
-
-(define (cond? exp) (tagged-list? exp 'cond))
-
-(define (cond-clauses exp) (cdr exp))
-
-(define (cond-else-clause? clause)
-  (eq? (cond-predicate clause) 'else))
-
-(define (cond-predicate clause) (car clause))
-
-(define (cond-actions clause) (cdr clause))
-
-;;
-;; zie deel 1.1 p28
-;;
-(define (lambda? exp) (tagged-list? exp 'lambda))
-
-(define (lambda-parameters exp) (cadr exp))
-(define (lambda-body exp) (cddr exp))
-
-(define (make-lambda parameters body)
-  (cons 'lambda (cons parameters body)))
-
-;;
-;; zie deel 1.1 p42
-;;
-(define (begin? exp) (tagged-list? exp 'begin))
-
-(define (begin-actions exp) (cdr exp))
-
-(define (last-exp? seq) (null? (cdr seq)))
-
-(define (first-exp seq) (car seq))
-
-(define (rest-exps seq) (cdr seq))
-
-;;
-;; zie deel 1.1 p32
-;;
-(define (application? exp) (pair? exp))
-
-(define (operator exp) (car exp))
-
-(define (operands exp) (cdr exp))
-
-(define (no-operands? ops) (null? ops))
-
-(define (first-operand ops) (car ops))
-
-(define (rest-operands ops) (cdr ops))
-
-;;
-;; zie deel 1.1 p44
-;;
-(define (enclosing-environment env) (cdr env))
-
-(define (first-frame env) (car env))
-
-(define the-empty-environment '())
-
-;;
-;; zie deel 1.1 p45
-;;
-(define (extend-environment vars vals base-env)
-  (if (= (length vars) (length vals))
-    (cons (make-frame vars vals) base-env)
-    (if (< (length vars) (length vals))
-      (error "Too many arguments supplied" vars vals)
-      (error "Too few arguments supplied" vars vals))))
-
-;;
-;; zie deel 1.1 p44
-;;
-(define (make-frame variables values)
-  (cons variables values))
-
-(define (frame-variables frame) (car frame))
-(define (frame-values frame) (cdr frame))
-
-(define (add-binding-to-frame! var val frame)
-  (set-car! frame (cons var (car frame)))
-  (set-cdr! frame (cons val (cdr frame))))
-
-;;
-;; zie deel 1.1 p46
-;;
-(define (lookup-variable-value var env)
-  (define (env-loop env)
-    (define (scan vars vals)
-      (cond ((null? vars)
-              (env-loop (enclosing-environment env)))
-        ((eq? var (car vars))
-          (car vals))
-        (else (scan (cdr vars) (cdr vals)))))
-    (if (eq? env the-empty-environment)
-      (error "Unbound variable" var)
-      (let ((frame (first-frame env)))
-        (scan (frame-variables frame)
-          (frame-values frame)))))
-  (env-loop env))
-
-;;
-;; zie deel 1.1 p48
-;;
-(define (set-variable-value! var val env)
-  (define (env-loop env)
-    (define (scan vars vals)
-      (cond ((null? vars)
-              (env-loop (enclosing-environment env)))
-        ((eq? var (car vars))
-          (set-car! vals val))
-        (else (scan (cdr vars) (cdr vals)))))
-    (if (eq? env the-empty-environment)
-      (error "Unbound variable -- SET!" var)
-      (let ((frame (first-frame env)))
-        (scan (frame-variables frame)
-          (frame-values frame)))))
-  (env-loop env))
-
-;;
-;; zie deel 1.1 p49
-;;
-(define (define-variable! var val env)
-  (let ((frame (first-frame env)))
-    (define (scan vars vals)
-      (cond ((null? vars)
-              (add-binding-to-frame! var val frame))
-        ((eq? var (car vars))
-          (set-car! vals val))
-        (else (scan (cdr vars) (cdr vals)))))
-    (scan (frame-variables frame)
-      (frame-values frame))))
-
-;;
-;; zie deel 1.1 p52
-;;
-
-
-(define (apply-primitive-procedure proc args)
-  (apply-in-underlying-scheme
-    (primitive-implementation proc) args))
-
-
-
-;; =======================
-;; begin van compiler code
-;; =======================
-
-
-
-;;
-;; zie deel 8 p3
-;;
-(define (compile exp target linkage)
-  (<change> ; <=========================================================================================================
-    (cond ((self-evaluating? exp)
-            (compile-self-evaluating exp target linkage))
-      ((quoted? exp) (compile-quoted exp target linkage))
-      ((variable? exp)
-        (compile-variable exp target linkage))
-      ((assignment? exp)
-        (compile-assignment exp target linkage))
-      ((definition? exp)
-        (compile-definition exp target linkage))
-      ((if? exp)
-        (compile-if exp target linkage))
-      ((lambda? exp)
-        (compile-lambda exp target linkage))
-      ((begin? exp)
-        (compile-sequence (begin-actions exp) target linkage))
-      ((cond? exp) (compile (cond->if exp) target linkage))
-      ((application? exp)
-        (compile-application exp target linkage))
+;;; PEVAL -- A simple partial evaluator for Scheme, written by Marc Feeley.
+
+;------------------------------------------------------------------------------
+
+; Utilities
+
+(define (every? pred? l)
+  (or (null? l) (and (pred? (car l)) (every? pred? (cdr l)))))
+
+(define (some? pred? l)
+  (if (null? l)
+    #f
+    (or (pred? (car l)) (some? pred? (cdr l)))))
+
+(define (map2 f l1 l2)
+  (if (pair? l1)
+    (cons (f (car l1) (car l2))
+      (map2 f (cdr l1) (cdr l2)))
+      '()))
+
+(define (get-last-pair l)
+  (let ((x (cdr l)))
+    (if (pair? x)
+      (get-last-pair x)
+      l)))
+
+(define tagged-list? (<change> #f (lambda (l tag) (eq? (car l) tag)))) ; <==============================================
+
+;------------------------------------------------------------------------------
+;
+; The partial evaluator.
+
+(define (partial-evaluate proc args)
+  (peval (alphatize proc '()) args))
+
+(define (alphatize exp env) ; return a copy of 'exp' where each bound var has
+  (define (alpha exp)       ; been renamed (to prevent aliasing problems)
+    (cond ((const-expr? exp)
+            (quot (const-value exp)))
+      ((symbol? exp)
+        (let ((x (assq exp env))) (if x (cdr x) exp)))
+      ((or (<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <================================================
+         (<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin))) ; <=========================================
+        (cons (car exp) (map alpha (cdr exp))))
+      ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <==============================================
+         (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <=======================================
+        (let ((new-env (new-variables (map car (cadr exp)) env)))
+          (list (car exp)
+            (map (lambda (x)
+                   (list (cdr (assq (car x) new-env))
+                     (if (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <=========================
+                       (alpha (cadr x))
+                       (alphatize (cadr x) new-env))))
+              (cadr exp))
+            (alphatize (caddr exp) new-env))))
+      ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <============================================
+        (let ((new-env (new-variables (cadr exp) env)))
+          (list 'lambda
+            (map (lambda (x) (cdr (assq x new-env))) (cadr exp))
+            (alphatize (caddr exp) new-env))))
       (else
-        (error "Unknown expression type -- COMPILE" exp)))
-    (cond ((self-evaluating? exp)
-            (compile-self-evaluating exp target linkage))
-      ((open-coded? exp)
-        (compile-open-coded exp target linkage))
-      ((quoted? exp) (compile-quoted exp target linkage))
-      ((variable? exp)
-        (compile-variable exp target linkage))
-      ((assignment? exp)
-        (compile-assignment exp target linkage))
-      ((definition? exp)
-        (compile-definition exp target linkage))
-      ((if? exp)
-        (compile-if exp target linkage))
-      ((lambda? exp)
-        (compile-lambda exp target linkage))
-      ((begin? exp)
-        (compile-sequence (begin-actions exp) target linkage))
-      ((cond? exp) (compile (cond->if exp) target linkage))
-      ((application? exp)
-        (compile-application exp target linkage))
-      (else
-        (error "Unknown expression type -- COMPILE" exp)))))
+        (map alpha exp))))
+  (alpha exp))
 
-;;
-;; zie deel 8 p6
-;;
-(define (make-instruction-sequence needs modifies statements)
-  (list needs modifies statements))
+(define (const-expr? expr) ; is 'expr' a constant expression?
+  (and (not (symbol? expr))
+    (or (not (pair? expr))
+      (eq? (car expr) 'quote))))
 
-(define (empty-instruction-sequence)
-  (make-instruction-sequence '() '() '()))
+(define (const-value expr) ; return the value of a constant expression
+  (if (pair? expr) ; then it must be a quoted constant
+    (cadr expr)
+    expr))
 
-;;
-;; zie deel 8 p4
-;;
-(define (compile-linkage linkage)
-  (cond ((eq? linkage 'return)
-          (make-instruction-sequence
-              '(continue) '()
-              '((goto (reg continue)))))
-    ((eq? linkage 'next)
-      (empty-instruction-sequence))
-    (else
-      (make-instruction-sequence
-          '() '()
-          `((goto (label ,linkage)))))))
+(define (quot val) ; make a quoted constant whose value is 'val'
+  (list 'quote val))
 
-(define (end-with-linkage linkage instruction-sequence)
-  (preserving '(continue)
-    instruction-sequence
-    (compile-linkage linkage)))
+(define (new-variables parms env)
+  (append (map (lambda (x) (cons x (new-variable x))) parms) env))
 
-;;
-;; zie deel 8 p13
-;;
-(define (compile-self-evaluating exp target linkage)
-  (end-with-linkage linkage
-    (make-instruction-sequence
-        '() (list target)
-        `((assign ,target (const ,exp))))))
+(define *current-num* 0)
 
-(define (compile-quoted exp target linkage)
-  (end-with-linkage linkage
-    (make-instruction-sequence
-        '() (list target)
-        `((assign ,target (const ,(text-of-quotation exp)))))))
-
-(define (compile-variable exp target linkage)
-  (end-with-linkage linkage
-    (make-instruction-sequence
-        '(env) (list target)
-        `((assign ,target (op lookup-variable-value)
-            (const ,exp) (reg env))))))
-
-;;
-;; zie deel 8 p15
-;;
-(define (compile-assignment exp target linkage)
-  (let ((var (assignment-variable exp))
-         (get-value-code
-           (compile (assignment-value exp) 'val 'next)))
-    (end-with-linkage linkage
-      (preserving '(env)
-        get-value-code
-        (make-instruction-sequence
-            '(env val) (list target)
-            `((perform (op set-variable-value!)
-                (const ,var)
-                (reg val)
-                (reg env))
-               (assign ,target (const ok))))))))
-
-;;
-;; zie deel 8 p17
-;;
-(define (compile-definition exp target linkage)
-  (let ((var (definition-variable exp))
-         (get-value-code
-           (compile (definition-value exp) 'val 'next)))
-    (end-with-linkage linkage
-      (preserving '(env)
-        get-value-code
-        (make-instruction-sequence
-            '(env val) (list target)
-            `((perform (op define-variable!)
-                (const ,var)
-                (reg val)
-                (reg env))
-               (assign ,target (const ok))))))))
-
-;;
-;; zie deel 8 p21
-;;
-(define label-counter 0)
-
-(define (new-label-number)
-  (set! label-counter (+ 1 label-counter))
-  label-counter)
-
-(define (make-label name)
+(define (new-variable name)
+  (set! *current-num* (+ *current-num* 1))
   (string->symbol
     (string-append (symbol->string name)
-      (number->string (new-label-number)))))
-;;
-;; zie deel 8 p19
-;;
-(define (compile-if exp target linkage)
-  (let ((t-branch (make-label 'true-branch))
-         (f-branch (make-label 'false-branch))
-         (after-if (make-label 'after-if)))
-    (let ((consequent-linkage
-            (if (eq? linkage 'next) after-if linkage)))
-      (let ((p-code (compile (if-predicate exp) 'val 'next))
-             (c-code
-               (compile
-                 (if-consequent exp) target consequent-linkage))
-             (a-code
-               (compile (if-alternative exp) target linkage)))
-        (preserving '(env continue)
-          p-code
-          (append-instruction-sequences
-            (make-instruction-sequence
-                '(val) '()
-                `((test (op false?) (reg val))
-                   (branch (label ,f-branch))))
-            (parallel-instruction-sequences
-              (append-instruction-sequences t-branch c-code)
-              (append-instruction-sequences f-branch a-code))
-            after-if))))))
+      "_"
+      (number->string *current-num*))))
 
-;;
-;; zie deel 8 p24
-;;
-(define (compile-sequence seq target linkage)
-  (if (last-exp? seq)
-    (compile (first-exp seq) target linkage)
-    (preserving '(env continue)
-      (compile (first-exp seq) target 'next)
-      (compile-sequence (rest-exps seq) target linkage))))
+;------------------------------------------------------------------------------
+;
+; (peval proc args) will transform a procedure that is known to be called
+; with constants as some of its arguments into a specialized procedure that
+; is 'equivalent' but accepts only the non-constant parameters.  'proc' is the
+; list representation of a lambda-expression and 'args' is a list of values,
+; one for each parameter of the lambda-expression.  A special value (i.e.
+; 'not-constant') is used to indicate an argument that is not a constant.
+; The returned procedure is one that has as parameters the parameters of the
+; original procedure which are NOT passed constants.  Constants will have been
+; substituted for the constant parameters that are referenced in the body
+; of the procedure.
+;
+; For example:
+;
+;   (peval
+;     '(lambda (x y z) (f z x y)) ; the procedure
+;     (list 1 not-constant #t))   ; the knowledge about x, y and z
+;
+; will return: (lambda (y) (f '#t '1 y))
 
-;;
-;; zie deel 8 p26
-;;
-(define (compile-lambda exp target linkage)
-  (let ((proc-entry (make-label 'entry))
-         (after-lambda (make-label 'after-lambda)))
-    (let ((lambda-linkage
-            (if (eq? linkage 'next) after-lambda linkage)))
-      (append-instruction-sequences
-        (tack-on-instruction-sequence
-          (end-with-linkage lambda-linkage
-            (make-instruction-sequence
-                '(env) (list target)
-                `((assign ,target (op make-compiled-procedure)
-                    (label ,proc-entry) (reg env)))))
-          (compile-lambda-body exp proc-entry))
-        after-lambda))))
+(define (peval proc args)
+  (simplify!
+    (let ((parms (cadr proc))  ; get the parameter list
+           (body (caddr proc))) ; get the body of the procedure
+      (list 'lambda
+        (remove-constant parms args) ; remove the constant parameters
+        (beta-subst ; in the body, replace variable refs to the constant
+          body      ; parameters by the corresponding constant
+          (map2 (lambda (x y) (if (not-constant? y) '(()) (cons x (quot y))))
+            parms
+            args))))))
 
-;;
-;; zie deel 8 p28
-;;
-(define (compile-lambda-body exp proc-entry)
-  (let ((formals (lambda-parameters exp)))
-    (append-instruction-sequences
-      (make-instruction-sequence
-          '(env proc argl) '(env)
-          `(,proc-entry
-             (assign env (op compiled-procedure-env) (reg proc))
-             (assign env (op extend-environment)
-               (const ,formals) (reg argl) (reg env))))
-      (compile-sequence (lambda-body exp) 'val 'return))))
+(define not-constant (list '?)) ; special value indicating non-constant parms.
 
-;;
-;; zie deel 8 p30
-;;
-(define (compile-application exp target linkage)
-  (let ((proc-code (compile (operator exp) 'proc 'next))
-         (operand-codes
-           (map (lambda (operand) (compile operand 'val 'next))
-             (operands exp))))
-    (preserving '(env continue)
-      proc-code
-      (preserving '(proc continue)
-        (construct-arglist operand-codes)
-        (compile-procedure-call target linkage)))))
+(define (not-constant? x) (eq? x not-constant))
 
-;;
-;; zie deel 8 p31
-;;
-(define (construct-arglist operand-codes)
-  (let ((operand-codes (reverse operand-codes)))
-    (if (null? operand-codes)
-      (make-instruction-sequence '() '(argl)
-          '((assign argl (const ()))))
-      (let ((code-to-get-last-arg
-              (append-instruction-sequences
-                (car operand-codes)
-                (make-instruction-sequence
-                    '(val) '(argl)
-                    '((assign argl (op list) (reg val)))))))
-        (if (null? (cdr operand-codes))
-          code-to-get-last-arg
-          (preserving '(env)
-            code-to-get-last-arg
-            (code-to-get-rest-args
-              (cdr operand-codes))))))))
-;;
-;; zie deel 8 p32
-;;
-(define (code-to-get-rest-args operand-codes)
-  (let ((code-for-next-arg
-          (preserving '(argl)
-            (car operand-codes)
-            (make-instruction-sequence
-                '(val argl) '(argl)
-                '((assign argl
-                    (op cons) (reg val) (reg argl)))))))
-    (if (null? (cdr operand-codes))
-      code-for-next-arg
-      (preserving '(env)
-        code-for-next-arg
-        (code-to-get-rest-args (cdr operand-codes))))))
+(define (remove-constant l a) ; remove from list 'l' all elements whose
+  (cond ((null? l)            ; corresponding element in 'a' is a constant
+            '())
+    ((not-constant? (car a))
+      (cons (car l) (remove-constant (cdr l) (cdr a))))
+    (else
+      (remove-constant (cdr l) (cdr a)))))
 
-;;
-;; zie deel 8 p34
-;;
-(define (compile-procedure-call target linkage)
-  (let ((primitive-branch (make-label 'primitive-branch))
-         (compiled-branch (make-label 'compiled-branch))
-         (after-call (make-label 'after-call)))
-    (let ((compiled-linkage
-            (if (eq? linkage 'next) after-call linkage)))
-      (append-instruction-sequences
-        (make-instruction-sequence
-            '(proc) '()
-            `((test (op primitive-procedure?) (reg proc))
-               (branch (label ,primitive-branch))))
-        (parallel-instruction-sequences
-          (append-instruction-sequences
-            compiled-branch
-            (compile-proc-appl target compiled-linkage))
-          (append-instruction-sequences
-            primitive-branch
-            (end-with-linkage linkage
-              (make-instruction-sequence
-                  '(proc argl)
-                (list target)
-                  `((assign ,target (op apply-primitive-procedure)
-                      (reg proc) (reg argl)))))))
-        after-call))))
+(define (extract-constant l a) ; extract from list 'l' all elements whose
+  (cond ((null? l)             ; corresponding element in 'a' is a constant
+            '())
+    ((not-constant? (car a))
+      (extract-constant (cdr l) (cdr a)))
+    (else
+      (cons (car l) (extract-constant (cdr l) (cdr a))))))
 
-;;
-;; zie deel 8 p36
-;;
-(define (compile-proc-appl target linkage)
-  (cond ((and (eq? target 'val) (not (eq? linkage 'return)))
-          (make-instruction-sequence
-              '(proc) all-regs
-              `((assign continue (label ,linkage))
-                 (assign val (op compiled-procedure-entry) (reg proc))
-                 (goto (reg val)))))
-    ((and (not (eq? target 'val))
-       (not (eq? linkage 'return)))
-      (let ((proc-return (make-label 'proc-return)))
-        (make-instruction-sequence
-            '(proc) all-regs
-            `((assign continue (label ,proc-return))
-               (assign val (op compiled-procedure-entry) (reg proc))
-               (goto (reg val))
-               ,proc-return
-               (assign ,target (reg val))
-               (goto (label ,linkage))))))
-    ((and (eq? target 'val) (eq? linkage 'return))
-      (make-instruction-sequence
-          '(proc continue) all-regs
-          '((assign val (op compiled-procedure-entry) (reg proc))
-             (goto (reg val)))))
-    ((and (not (eq? target 'val)) (eq? linkage 'return))
-      (error "return linkage, target not val -- COMPILE" target))))
+(define (beta-subst exp env) ; return a modified 'exp' where each var named in
+  (define (bs exp)           ; 'env' is replaced by the corresponding expr (it
+    (cond ((const-expr? exp) ; is assumed that the code has been alphatized)
+            (quot (const-value exp)))
+      ((symbol? exp)
+        (let ((x (assq exp env)))
+          (if x (cdr x) exp)))
+      ((or (<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <================================================
+         (<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin))) ; <=========================================
+        (cons (car exp) (map bs (cdr exp))))
+      ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <==============================================
+         (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <=======================================
+        (list (car exp)
+          (map (lambda (x) (list (car x) (bs (cadr x)))) (cadr exp))
+          (bs (caddr exp))))
+      ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <============================================
+        (list 'lambda
+          (cadr exp)
+          (bs (caddr exp))))
+      (else
+        (map bs exp))))
+  (bs exp))
 
-(define all-regs '(env proc val argl continue))
+;------------------------------------------------------------------------------
+;
+; The expression simplifier.
 
-;;
-;; zie deel 8 p7
-;;
-(define (registers-needed s)
-  (if (symbol? s) '() (car s)))
+(define (simplify! exp)     ; simplify the expression 'exp' destructively (it
+  ; is assumed that the code has been alphatized)
+  (define (simp! where env)
 
-(define (registers-modified s)
-  (if (symbol? s) '() (cadr s)))
+    (define (s! where)
+      (let ((exp (car where)))
 
-(define (statements s)
-  (if (symbol? s) (list s) (caddr s)))
+        (cond ((const-expr? exp))  ; leave constants the way they are
 
-(define (needs-register? seq reg)
-  (memq reg (registers-needed seq)))
+          ((symbol? exp))      ; leave variable references the way they are
 
-(define (modifies-register? seq reg)
-  (memq reg (registers-modified seq)))
+          ((<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <================================================
+            (s! (cdr exp))      ; simplify the predicate
+            (if (const-expr? (cadr exp)) ; is the predicate a constant?
+              (begin
+                (set-car! where
+                  (if (memq (const-value (cadr exp)) '(#f ())) ; false?
+                    (if (= (length exp) 3) ''() (cadddr exp))
+                    (caddr exp)))
+                (s! where))
+              (for-each! s! (cddr exp)))) ; simplify consequent and alt.
 
-;;
-;; zie deel 8 p10
-;;
-(define (append-instruction-sequences . seqs)
-  (define (append-2-sequences seq1 seq2)
-    (make-instruction-sequence
-      (list-union (registers-needed seq1)
-        (list-difference (registers-needed seq2)
-          (registers-modified seq1)))
-      (list-union (registers-modified seq1)
-        (registers-modified seq2))
-      (append (statements seq1) (statements seq2))))
-  (define (append-seq-list seqs)
-    (if (null? seqs)
-      (empty-instruction-sequence)
-      (append-2-sequences (car seqs)
-        (append-seq-list (cdr seqs)))))
-  (append-seq-list seqs))
+          ((<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin)) ; <==========================================
+            (for-each! s! (cdr exp))
+            (let loop ((exps exp)) ; remove all useless expressions
+              (if (not (null? (cddr exps))) ; not last expression?
+                (let ((x (cadr exps)))
+                  (loop (if (or (const-expr? x)
+                              (symbol? x)
+                              (and (pair? x) (<change> (eq? (car x) 'lambda) (tagged-list? x 'lambda)))) ; <=======
+                          (begin (set-cdr! exps (cddr exps)) exps)
+                          (cdr exps))))))
+            (if (null? (cddr exp)) ; only one expression in the begin?
+              (set-car! where (cadr exp))))
 
-;;
-;; zie deel 8 p11
-;;
-(define (list-union s1 s2)
-  (cond ((null? s1) s2)
-    ((memq (car s1) s2) (list-union (cdr s1) s2))
-    (else (cons (car s1) (list-union (cdr s1) s2)))))
+          ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <==========================================
+             (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <===================================
+            (let ((new-env (cons exp env)))
+              (define (keep i)
+                (if (>= i (length (cadar where)))
+                    '()
+                  (let* ((var (car (list-ref (cadar where) i)))
+                          (val (cadr (assq var (cadar where))))
+                          (refs (ref-count (car where) var))
+                          (self-refs (ref-count val var))
+                          (total-refs (- (car refs) (car self-refs)))
+                          (oper-refs (- (cadr refs) (cadr self-refs))))
+                    (cond ((= total-refs 0)
+                            (keep (+ i 1)))
+                      ((or (const-expr? val)
+                         (symbol? val)
+                         (and (pair? val)
+                           (<change> (eq? (car val) 'lambda) (tagged-list? val 'lambda)) ; <================
+                           (= total-refs 1)
+                           (= oper-refs 1)
+                           (= (car self-refs) 0))
+                         (and (caddr refs)
+                           (= total-refs 1)))
+                        (set-car! where
+                          (beta-subst (car where)
+                            (list (cons var val))))
+                        (keep (+ i 1)))
+                      (else
+                        (cons var (keep (+ i 1))))))))
+              (simp! (cddr exp) new-env)
+              (for-each! (lambda (x) (simp! (cdar x) new-env)) (cadr exp))
+              (let ((to-keep (keep 0)))
+                (if (< (length to-keep) (length (cadar where)))
+                  (begin
+                    (if (null? to-keep)
+                      (set-car! where (caddar where))
+                      (set-car! (cdar where)
+                        (map (lambda (v) (assq v (cadar where))) to-keep)))
+                    (s! where))
+                  (if (null? to-keep)
+                    (set-car! where (caddar where)))))))
 
-(define (list-difference s1 s2)
-  (cond ((null? s1) '())
-    ((memq (car s1) s2) (list-difference (cdr s1) s2))
-    (else (cons (car s1)
-            (list-difference (cdr s1) s2)))))
+          ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <========================================
+            (simp! (cddr exp) (cons exp env)))
 
-;;
-;; zie deel 8 p8
-;;
-(define (preserving regs seq1 seq2)
-  (if (null? regs)
-    (append-instruction-sequences seq1 seq2)
-    (let ((first-reg (car regs)))
-      (if (and (needs-register? seq2 first-reg)
-            (modifies-register? seq1 first-reg))
-        (preserving (cdr regs)
-          (make-instruction-sequence
-            (list-union (list first-reg)
-              (registers-needed seq1))
-            (list-difference (registers-modified seq1)
-              (list first-reg))
-            (append `((save ,first-reg))
-              (append (statements seq1)
-                  `((restore ,first-reg)))))
-          seq2)
-        (preserving (cdr regs) seq1 seq2)))))
+          (else
+            (for-each! s! exp)
+            (cond ((symbol? (car exp)) ; is the operator position a var ref?
+                    (let ((frame (binding-frame (car exp) env)))
+                      (if frame ; is it a bound variable?
+                        (let ((proc (bound-expr (car exp) frame)))
+                          (if (and (pair? proc)
+                                (<change> (eq? (car proc) 'lambda) (tagged-list? proc 'lambda)) ; <================
+                                (some? const-expr? (cdr exp)))
+                            (let* ((args (arg-pattern (cdr exp)))
+                                    (new-proc (peval proc args))
+                                    (new-args (remove-constant (cdr exp) args)))
+                              (set-car! where
+                                (cons (add-binding new-proc frame (car exp))
+                                  new-args)))))
+                        (set-car! where
+                          (constant-fold-global (car exp) (cdr exp))))))
+              ((not (pair? (car exp))))
+              ((<change> (eq? (caar exp) 'lambda) (tagged-list? (car exp) 'lambda)) ; <==========================
+                (set-car! where
+                  (list 'let
+                    (map2 list (cadar exp) (cdr exp))
+                    (caddar exp)))
+                (s! where)))))))
 
-;;
-;; zie deel 8 p22
-;;
-(define (tack-on-instruction-sequence seq body-seq)
-  (make-instruction-sequence
-    (registers-needed seq)
-    (registers-modified seq)
-    (append (statements seq) (statements body-seq))))
+    (s! where))
 
-(define (parallel-instruction-sequences seq1 seq2)
-  (make-instruction-sequence
-    (list-union (registers-needed seq1)
-      (registers-needed seq2))
-    (list-union (registers-modified seq1)
-      (registers-modified seq2))
-    (append (statements seq1) (statements seq2))))
+  (define (remove-empty-calls! where env)
 
+    (define (rec! where)
+      (let ((exp (car where)))
 
-(define (make-compiled-procedure entry env)
-  (list 'compiled-procedure entry env))
-(define (compiled-procedure? proc)
-  (tagged-list? proc 'compiled-procedure))
-(define (compiled-procedure-entry c-proc)
-  (cadr c-proc))
-(define (compiled-procedure-env c-proc)
-  (caddr c-proc))
+        (cond ((const-expr? exp))
+          ((symbol? exp))
+          ((<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <================================================
+            (rec! (cdr exp))
+            (rec! (cddr exp))
+            (rec! (cdddr exp)))
+          ((<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin)) ; <==========================================
+            (for-each! rec! (cdr exp)))
+          ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <==========================================
+             (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <===================================
+            (let ((new-env (cons exp env)))
+              (remove-empty-calls! (cddr exp) new-env)
+              (for-each! (lambda (x) (remove-empty-calls! (cdar x) new-env))
+                (cadr exp))))
+          ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <========================================
+            (rec! (cddr exp)))
+          (else
+            (for-each! rec! (cdr exp))
+            (if (and (null? (cdr exp)) (symbol? (car exp)))
+              (let ((frame (binding-frame (car exp) env)))
+                (if frame ; is it a bound variable?
+                  (let ((proc (bound-expr (car exp) frame)))
+                    (if (and (pair? proc)
+                          (<change> (eq? (car proc) 'lambda) (tagged-list? proc 'lambda))) ; <====================
+                      (begin
+                        (set! changed? #t)
+                        (set-car! where (caddr proc))))))))))))
 
+    (rec! where))
 
-;; =======================
-;; einde van compiler code
-;; =======================
+  (define changed? #f)
 
-;;
-;; zie deel 1.1 p29
-;;
-(define (make-procedure parameters body env)
-  (list 'procedure parameters body env))
+  (let ((x (list exp)))
+    (let loop ()
+      (set! changed? #f)
+      (simp! x '())
+      (remove-empty-calls! x '())
+      (if changed? (loop) (car x)))))
 
-(define (compound-procedure? p)
-  (tagged-list? p 'procedure))
-
-(define (procedure-parameters p) (cadr p))
-
-(define (procedure-body p) (caddr p))
-
-(define (procedure-environment p) (cadddr p))
-
-;;
-;; zie deel 1.1 p50
-;;
-(define (setup-environment)
-  (let ((initial-env
-          (extend-environment (primitive-procedure-names)
-            (primitive-procedure-objects)
-            the-empty-environment)))
-    (define-variable! 'true true initial-env)
-    (define-variable! 'false false initial-env)
-    initial-env))
-
-;;
-;; zie deel 1.1 p51
-;;
-(define (primitive-procedure? proc)
-  (tagged-list? proc 'primitive))
-
-(define primitive-procedures
-  (list (list 'car car)
-    (list 'cdr cdr)
-    (list 'cons cons)
-    (list 'null? null?)
-    (list '+ +)
-    (list '* *)
-    (list '= =)
-    (list '- -)
-    (list '< <)
-    (list '> >)
-    ;; more primitives
-  ))
-
-(define (primitive-procedure-names)
-  (map car
-    primitive-procedures))
-
-(define (primitive-procedure-objects)
-  (map (lambda (proc) (list 'primitive (cadr proc)))
-    primitive-procedures))
-
-;;
-;; zie deel 1.1 p52
-;;
-
-(define (user-print object)
-  (if (compound-procedure? object)
-    (display (list 'compound-procedure
-               (procedure-parameters object)
-               (procedure-body object)
-                 '<procedure-env>))
-    (display object)))
-
-(define the-global-environment (setup-environment))
-
-(define (make-machine register-names ops controller-text)
-  (let ((machine (make-new-machine)))
-    (for-each (lambda (register-name)
-                ((machine 'allocate-register) register-name))
-      register-names)
-    ((machine 'install-operations) ops)
-    ((machine 'install-instruction-sequence)
-      (assemble controller-text machine))
-    machine))
-
-(define (make-register name)
-  (let ((contents '*unassigned*))
-    (define (dispatch message)
-      (cond ((eq? message 'get) contents)
-        ((eq? message 'set)
-          (lambda (value) (set! contents value)))
-        (else
-          (error "Unknown request -- REGISTER" message))))
-    dispatch))
-
-(define (get-contents register)
-  (register 'get))
-
-(define (set-contents! register value)
-  ((register 'set) value))
-
-;;; Simulation of new machine operations needed by
-;;;  eceval machine (not used by compiled code)
-
-;;; From section 5.4.1 footnote
-(define (empty-arglist) '())
-(define (adjoin-arg arg arglist)
-  (append arglist (list arg)))
-(define (last-operand? ops)
-  (null? (cdr ops)))
-
-;;; From section 5.4.2 footnote, for non-tail-recursive sequences
-(define (no-more-exps? seq) (null? seq))
-
-;;; From section 5.4.4 footnote
-(define (get-global-environment)
-  the-global-environment)
-;; will do following when ready to run, not when load this file
-;;(define the-global-environment (setup-environment))
-
-
-;;; Simulation of new machine operations needed for compiled code
-;;;  and eceval/compiler interface (not used by plain eceval machine)
-;;; From section 5.5.2 footnote
-
-(define (pop stack)
-  (stack 'pop))
-
-(define (push stack value)
-  ((stack 'push) value))
-
-;;**monitored version from section 5.2.4
-(define (make-stack)
-  (let ((s '())
-         (number-pushes 0)
-         (max-depth 0)
-         (current-depth 0))
-    (define (push x)
-      (set! s (cons x s))
-      (set! number-pushes (+ 1 number-pushes))
-      (set! current-depth (+ 1 current-depth))
-      (set! max-depth (max current-depth max-depth)))
-    (define (pop)
-      (if (null? s)
-        (error "Empty stack -- POP")
-        (let ((top (car s)))
-          (set! s (cdr s))
-          (set! current-depth (- current-depth 1))
-          top)))
-    (define (initialize)
-      (set! s '())
-      (set! number-pushes 0)
-      (set! max-depth 0)
-      (set! current-depth 0)
-        'done)
-    (define (print-statistics)
-      (newline)
-      (display (list 'total-pushes  '= number-pushes
-                   'maximum-depth '= max-depth)))
-    (define (dispatch message)
-      (cond ((eq? message 'push) push)
-        ((eq? message 'pop) (pop))
-        ((eq? message 'initialize) (initialize))
-        ((eq? message 'print-statistics)
-          (print-statistics))
-        (else
-          (error "Unknown request -- STACK" message))))
-    dispatch))
-
-(define (make-new-machine)
-  (let ((pc (make-register 'pc))
-         (flag (make-register 'flag))
-         (stack (make-stack))
-         (the-instruction-sequence '()))
-    (let ((the-ops
-            (list (list 'initialize-stack
-                    (lambda () (stack 'initialize)))
-              ;;**next for monitored stack (as in section 5.2.4)
-              ;;  -- comment out if not wanted
-              (list 'print-stack-statistics
-                (lambda () (stack 'print-statistics)))))
-           (register-table
-             (list (list 'pc pc) (list 'flag flag))))
-      (define (allocate-register name)
-        (if (assoc name register-table)
-          (error "Multiply defined register: " name)
-          (set! register-table
-            (cons (list name (make-register name))
-              register-table)))
-          'register-allocated)
-      (define (lookup-register name)
-        (let ((val (assoc name register-table)))
-          (if val
-            (cadr val)
-            (error "Unknown register:" name))))
-      (define (execute)
-        (let ((insts (get-contents pc)))
-          (if (null? insts)
-              'done
+(define (ref-count exp var) ; compute how many references to variable 'var'
+  (let ((total 0)           ; are contained in 'exp'
+         (oper 0)
+         (always-evaled #t))
+    (define (rc exp ae)
+      (cond ((const-expr? exp))
+        ((symbol? exp)
+          (if (eq? exp var)
             (begin
-              ((instruction-execution-proc (car insts)))
-              (execute)))))
-      (define (dispatch message)
-        (cond ((eq? message 'start)
-                (set-contents! pc the-instruction-sequence)
-                (execute))
-          ((eq? message 'install-instruction-sequence)
-            (lambda (seq) (set! the-instruction-sequence seq)))
-          ((eq? message 'allocate-register) allocate-register)
-          ((eq? message 'get-register) lookup-register)
-          ((eq? message 'install-operations)
-            (lambda (ops) (set! the-ops (append the-ops ops))))
-          ((eq? message 'stack) stack)
-          ((eq? message 'operations) the-ops)
-          (else (error "Unknown request -- MACHINE" message))))
-      dispatch)))
+              (set! total (+ total 1))
+              (set! always-evaled (and ae always-evaled)))))
+        ((<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <==================================================
+          (rc (cadr exp) ae)
+          (for-each (lambda (x) (rc x #f)) (cddr exp)))
+        ((<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin)) ; <============================================
+          (for-each (lambda (x) (rc x ae)) (cdr exp)))
+        ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <============================================
+           (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <=====================================
+          (for-each (lambda (x) (rc (cadr x) ae)) (cadr exp))
+          (rc (caddr exp) ae))
+        ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <==========================================
+          (rc (caddr exp) #f))
+        (else
+          (for-each (lambda (x) (rc x ae)) exp)
+          (if (symbol? (car exp))
+            (if (eq? (car exp) var) (set! oper (+ oper 1)))))))
+    (rc exp #t)
+    (list total oper always-evaled)))
 
-
-(define (start machine)
-  (machine 'start))
-
-(define (get-register-contents machine register-name)
-  (get-contents (get-register machine register-name)))
-
-(define (set-register-contents! machine register-name value)
-  (set-contents! (get-register machine register-name) value)
-    'done)
-
-(define (get-register machine reg-name)
-  ((machine 'get-register) reg-name))
-
-(define (assemble controller-text machine)
-  (extract-labels controller-text
-    (lambda (insts labels)
-      (update-insts! insts labels machine)
-      insts)))
-
-(define (extract-labels text receive)
-  (if (null? text)
-    (receive '() '())
-    (extract-labels (cdr text)
-      (lambda (insts labels)
-        (let ((next-inst (car text)))
-          (if (symbol? next-inst)
-            (receive insts
-              (cons (make-label-entry next-inst
-                      insts)
-                labels))
-            (receive (cons (make-instruction next-inst)
-                       insts)
-              labels)))))))
-
-(define (update-insts! insts labels machine)
-  (let ((pc (get-register machine 'pc))
-         (flag (get-register machine 'flag))
-         (stack (machine 'stack))
-         (ops (machine 'operations)))
-    (for-each
-      (lambda (inst)
-        (set-instruction-execution-proc!
-          inst
-          (make-execution-procedure
-            (instruction-text inst) labels machine
-            pc flag stack ops)))
-      insts)))
-
-(define (make-instruction text)
-  (cons text '()))
-
-(define (instruction-text inst)
-  (car inst))
-
-(define (instruction-execution-proc inst)
-  (cdr inst))
-
-(define (set-instruction-execution-proc! inst proc)
-  (set-cdr! inst proc))
-
-(define (make-label-entry label-name insts)
-  (cons label-name insts))
-
-(define (lookup-label labels label-name)
-  (let ((val (assoc label-name labels)))
-    (if val
-      (cdr val)
-      (error "Undefined label -- ASSEMBLE" label-name))))
-
-
-(define (make-execution-procedure inst labels machine
-          pc flag stack ops)
-  (cond ((eq? (car inst) 'assign)
-          (make-assign inst machine labels ops pc))
-    ((eq? (car inst) 'test)
-      (make-test inst machine labels ops flag pc))
-    ((eq? (car inst) 'branch)
-      (make-branch inst machine labels flag pc))
-    ((eq? (car inst) 'goto)
-      (make-goto inst machine labels pc))
-    ((eq? (car inst) 'save)
-      (make-save inst machine stack pc))
-    ((eq? (car inst) 'restore)
-      (make-restore inst machine stack pc))
-    ((eq? (car inst) 'perform)
-      (make-perform inst machine labels ops pc))
+(define (binding-frame var env)
+  (cond ((null? env) #f)
+    ((or (<change> (eq? (caar env) 'let) (tagged-list? (car env) 'let)) ; <=========================================
+       (<change> (eq? (caar env) 'letrec) (tagged-list? (car env) 'letrec))) ; <==================================
+      (if (assq var (cadar env)) (car env) (binding-frame var (cdr env))))
+    ((<change> (eq? (caar env) 'lambda) (tagged-list? (car env) 'lambda)) ; <=======================================
+      (if (memq var (cadar env)) (car env) (binding-frame var (cdr env))))
     (else
-      (display inst)
-      (error "Unknown instruction type -- ASSEMBLE"
-        inst))))
+      (error "ill-formed environment"))))
 
-
-(define (make-assign inst machine labels operations pc)
-  (let ((target
-          (get-register machine (assign-reg-name inst)))
-         (value-exp (assign-value-exp inst)))
-    (let ((value-proc
-            (if (operation-exp? value-exp)
-              (make-operation-exp
-                value-exp machine labels operations)
-              (make-primitive-exp
-                (car value-exp) machine labels))))
-      (lambda ()                ; execution procedure for assign
-        (set-contents! target (value-proc))
-        (advance-pc pc)))))
-
-(define (assign-reg-name assign-instruction)
-  (cadr assign-instruction))
-
-(define (assign-value-exp assign-instruction)
-  (cddr assign-instruction))
-
-(define (advance-pc pc)
-  (set-contents! pc (cdr (get-contents pc))))
-
-(define (make-test inst machine labels operations flag pc)
-  (let ((condition (test-condition inst)))
-    (if (operation-exp? condition)
-      (let ((condition-proc
-              (make-operation-exp
-                condition machine labels operations)))
-        (lambda ()
-          (set-contents! flag (condition-proc))
-          (advance-pc pc)))
-      (error "Bad TEST instruction -- ASSEMBLE" inst))))
-
-(define (test-condition test-instruction)
-  (cdr test-instruction))
-
-
-(define (make-branch inst machine labels flag pc)
-  (let ((dest (branch-dest inst)))
-    (if (label-exp? dest)
-      (let ((insts
-              (lookup-label labels (label-exp-label dest))))
-        (lambda ()
-          (if (get-contents flag)
-            (set-contents! pc insts)
-            (advance-pc pc))))
-      (error "Bad BRANCH instruction -- ASSEMBLE" inst))))
-
-(define (branch-dest branch-instruction)
-  (cadr branch-instruction))
-
-
-(define (make-goto inst machine labels pc)
-  (let ((dest (goto-dest inst)))
-    (cond ((label-exp? dest)
-            (let ((insts
-                    (lookup-label labels
-                      (label-exp-label dest))))
-              (lambda () (set-contents! pc insts))))
-      ((register-exp? dest)
-        (let ((reg
-                (get-register machine
-                  (register-exp-reg dest))))
-          (lambda ()
-            (set-contents! pc (get-contents reg)))))
-      (else (error "Bad GOTO instruction -- ASSEMBLE"
-              inst)))))
-
-(define (goto-dest goto-instruction)
-  (cadr goto-instruction))
-
-(define (make-save inst machine stack pc)
-  (let ((reg (get-register machine
-               (stack-inst-reg-name inst))))
-    (lambda ()
-      (push stack (get-contents reg))
-      (advance-pc pc))))
-
-(define (make-restore inst machine stack pc)
-  (let ((reg (get-register machine
-               (stack-inst-reg-name inst))))
-    (lambda ()
-      (set-contents! reg (pop stack))
-      (advance-pc pc))))
-
-(define (stack-inst-reg-name stack-instruction)
-  (cadr stack-instruction))
-
-(define (make-perform inst machine labels operations pc)
-  (let ((action (perform-action inst)))
-    (if (operation-exp? action)
-      (let ((action-proc
-              (make-operation-exp
-                action machine labels operations)))
-        (lambda ()
-          (action-proc)
-          (advance-pc pc)))
-      (error "Bad PERFORM instruction -- ASSEMBLE" inst))))
-
-(define (perform-action inst) (cdr inst))
-
-(define (make-primitive-exp exp machine labels)
-  (cond ((constant-exp? exp)
-          (let ((c (constant-exp-value exp)))
-            (lambda () c)))
-    ((label-exp? exp)
-      (let ((insts
-              (lookup-label labels
-                (label-exp-label exp))))
-        (lambda () insts)))
-    ((register-exp? exp)
-      (let ((r (get-register machine
-                 (register-exp-reg exp))))
-        (lambda () (get-contents r))))
+(define (bound-expr var frame)
+  (cond ((or (<change> (eq? (car frame) 'let) (tagged-list? frame 'let)) ; <============================================
+           (<change> (eq? (car frame) 'letrec) (tagged-list? frame 'letrec))) ; <=====================================
+          (cadr (assq var (cadr frame))))
+    ((<change> (eq? (car frame) 'lambda) (tagged-list? frame 'lambda)) ; <==========================================
+      not-constant)
     (else
-      (error "Unknown expression type -- ASSEMBLE" exp))))
+      (error "ill-formed frame"))))
 
-(define (register-exp? exp) (tagged-list? exp 'reg))
+(define (add-binding val frame name)
+  (define (find-val val bindings)
+    (cond ((null? bindings) #f)
+      ((equal? val (cadar bindings)) ; *kludge* equal? is not exactly what
+        (caar bindings))              ; we want...
+      (else
+        (find-val val (cdr bindings)))))
+  (or (find-val val (cadr frame))
+    (let ((var (new-variable name)))
+      (set-cdr! (get-last-pair (cadr frame)) (list (list var val)))
+      var)))
 
-(define (register-exp-reg exp) (cadr exp))
+(define (for-each! proc! l) ; call proc! on each CONS CELL in the list 'l'
+  (if (not (null? l))
+    (begin (proc! l) (for-each! proc! (cdr l)))))
 
-(define (constant-exp? exp) (tagged-list? exp 'const))
+(define (arg-pattern exps) ; return the argument pattern (i.e. the list of
+  (if (null? exps)         ; constants in 'exps' but with the not-constant
+      '()                    ; value wherever the corresponding expression in
+    (cons (if (const-expr? (car exps)) ; 'exps' is not a constant)
+            (const-value (car exps))
+            not-constant)
+      (arg-pattern (cdr exps)))))
 
-(define (constant-exp-value exp) (cadr exp))
+;------------------------------------------------------------------------------
+;
+; Knowledge about primitive procedures.
 
-(define (label-exp? exp) (tagged-list? exp 'label))
-
-(define (label-exp-label exp) (cadr exp))
-
-
-(define (make-operation-exp exp machine labels operations)
-  (let ((op (lookup-prim (operation-exp-op exp) operations))
-         (aprocs
-           (map (lambda (e)
-                  (make-primitive-exp e machine labels))
-             (operation-exp-operands exp))))
-    (lambda ()
-      (apply op (map (lambda (p) (p)) aprocs)))))
-
-(define (operation-exp? exp)
-  (and (pair? exp) (tagged-list? (car exp) 'op)))
-(define (operation-exp-op operation-exp)
-  (cadr (car operation-exp)))
-(define (operation-exp-operands operation-exp)
-  (cdr operation-exp))
-
-
-(define (lookup-prim symbol operations)
-  (let ((val (assoc symbol operations)))
-    (if val
-      (cadr val)
-      (begin (display symbol) (error "Unknown operation -- ASSEMBLE" symbol)))))
-
-;; from 4.1
-(define eceval-operations
+(define *primitives*
   (list
-    ;;primitive Scheme operations
-    (list 'null? null?)
-
-    (list '+ +)
-    (list '- -)
-    (list '* *)
-    (list '= =)
-
-    (list 'false? (lambda (exp) (not exp)))
-    (list 'list list)
-    (list 'cons cons)
-
-    ;;operations in syntax.scm
-    (list 'self-evaluating? self-evaluating?)
-    (list 'quoted? quoted?)
-    (list 'text-of-quotation text-of-quotation)
-    (list 'variable? variable?)
-    (list 'assignment? assignment?)
-    (list 'assignment-variable assignment-variable)
-    (list 'assignment-value assignment-value)
-    (list 'definition? definition?)
-    (list 'definition-variable definition-variable)
-    (list 'definition-value definition-value)
-    (list 'lambda? lambda?)
-    (list 'lambda-parameters lambda-parameters)
-    (list 'lambda-body lambda-body)
-    (list 'if? if?)
-    (list 'if-predicate if-predicate)
-    (list 'if-consequent if-consequent)
-    (list 'if-alternative if-alternative)
-    (list 'begin? begin?)
-    (list 'begin-actions begin-actions)
-    (list 'last-exp? last-exp?)
-    (list 'first-exp first-exp)
-    (list 'rest-exps rest-exps)
-    (list 'application? application?)
-    (list 'operator operator)
-    (list 'operands operands)
-    (list 'no-operands? no-operands?)
-    (list 'first-operand first-operand)
-    (list 'rest-operands rest-operands)
-
-    ;;operations in eceval-support.scm
-    (list 'true? true?)
-    (list 'make-procedure make-procedure)
-    (list 'compound-procedure? compound-procedure?)
-    (list 'procedure-parameters procedure-parameters)
-    (list 'procedure-body procedure-body)
-    (list 'procedure-environment procedure-environment)
-    (list 'extend-environment extend-environment)
-    (list 'lookup-variable-value lookup-variable-value)
-    (list 'set-variable-value! set-variable-value!)
-    (list 'define-variable! define-variable!)
-    (list 'primitive-procedure? primitive-procedure?)
-    (list 'apply-primitive-procedure apply-primitive-procedure)
-    (list 'empty-arglist empty-arglist)
-    (list 'adjoin-arg adjoin-arg)
-    (list 'last-operand? last-operand?)
-    (list 'no-more-exps? no-more-exps?)	;for non-tail-recursive machine
-    (list 'get-global-environment get-global-environment)
-
-    ;;for compiled code (also in eceval-support.scm)
-    (list 'make-compiled-procedure make-compiled-procedure)
-    (list 'compiled-procedure? compiled-procedure?)
-    (list 'compiled-procedure-entry compiled-procedure-entry)
-    (list 'compiled-procedure-env compiled-procedure-env))
+    (cons 'car (lambda (args)
+                 (and (= (length args) 1)
+                   (pair? (car args))
+                   (quot (car (car args))))))
+    (cons 'cdr (lambda (args)
+                 (and (= (length args) 1)
+                   (pair? (car args))
+                   (quot (cdr (car args))))))
+    (cons '+ (lambda (args)
+               (and (every? number? args)
+                 (quot (sum args 0)))))
+    (cons '* (lambda (args)
+               (and (every? number? args)
+                 (quot (product args 1)))))
+    (cons '- (lambda (args)
+               (and (> (length args) 0)
+                 (every? number? args)
+                 (quot (if (null? (cdr args))
+                         (- (car args))
+                         (- (car args) (sum (cdr args) 0)))))))
+    (cons '/ (lambda (args)
+               (and (> (length args) 1)
+                 (every? number? args)
+                 (quot (if (null? (cdr args))
+                         (/ (car args))
+                         (/ (car args) (product (cdr args) 1)))))))
+    (cons '< (lambda (args)
+               (and (= (length args) 2)
+                 (every? number? args)
+                 (quot (< (car args) (cadr args))))))
+    (cons '= (lambda (args)
+               (and (= (length args) 2)
+                 (every? number? args)
+                 (quot (= (car args) (cadr args))))))
+    (cons '> (lambda (args)
+               (and (= (length args) 2)
+                 (every? number? args)
+                 (quot (> (car args) (cadr args))))))
+    (cons 'eq? (lambda (args)
+                 (and (= (length args) 2)
+                   (quot (eq? (car args) (cadr args))))))
+    (cons 'not (lambda (args)
+                 (and (= (length args) 1)
+                   (quot (not (car args))))))
+    (cons 'null? (lambda (args)
+                   (and (= (length args) 1)
+                     (quot (null? (car args))))))
+    (cons 'pair? (lambda (args)
+                   (and (= (length args) 1)
+                     (quot (pair? (car args))))))
+    (cons 'symbol? (lambda (args)
+                     (and (= (length args) 1)
+                       (quot (symbol? (car args))))))
+  )
 )
 
-(define faculty
-  (make-machine
-    (<change> '(exp env val proc argl continue unev) ; <================================================================
-        '(exp env val proc argl continue unev
-           val0 val1 val2 val3 val4 val5 val6 val7 val8 val9
-           compapp))
-    eceval-operations
-    (cons '(assign env (op get-global-environment))
-      (caddr (compile
-                 '(begin (define (fac n)
-                           (if (= n 0)
-                             1
-                             (* n (fac (- n 1)))))
-                    (fac 5))
-                 'val
-                 'next)))))
+(define (sum lst n)
+  (if (null? lst)
+    n
+    (sum (cdr lst) (+ n (car lst)))))
 
-(start faculty)
-(= (get-register-contents faculty 'val) 120)
+(define (product lst n)
+  (if (null? lst)
+    n
+    (product (cdr lst) (* n (car lst)))))
+
+(define (reduce-global name args)
+  (let ((x (assq name *primitives*)))
+    (and x ((cdr x) args))))
+
+(define (constant-fold-global name exprs)
+
+  (define (flatten args op)
+    (cond ((null? args)
+              '())
+      ((and (pair? (car args)) (eq? (caar args) op))
+        (append (flatten (cdar args) op) (flatten (cdr args) op)))
+      (else
+        (cons (car args) (flatten (cdr args) op)))))
+
+  (let ((args (if (or (eq? name '+) (eq? name '*)) ; associative ops
+                (flatten exprs name)
+                exprs)))
+    (or (and (every? const-expr? args)
+          (reduce-global name (map const-value args)))
+      (let ((pattern (arg-pattern args)))
+        (let ((non-const (remove-constant args pattern))
+               (const (map const-value (extract-constant args pattern))))
+          (cond ((eq? name '+) ; + is commutative
+                  (let ((x (reduce-global '+ const)))
+                    (if x
+                      (let ((y (const-value x)))
+                        (cons '+
+                          (if (= y 0) non-const (cons x non-const))))
+                      (cons name args))))
+            ((eq? name '*) ; * is commutative
+              (let ((x (reduce-global '* const)))
+                (if x
+                  (let ((y (const-value x)))
+                    (cons '*
+                      (if (= y 1) non-const (cons x non-const))))
+                  (cons name args))))
+            ((eq? name 'cons)
+              (cond ((and (const-expr? (cadr args))
+                       (null? (const-value (cadr args))))
+                      (list 'list (car args)))
+                ((and (pair? (cadr args))
+                   (eq? (car (cadr args)) 'list))
+                  (cons 'list (cons (car args) (cdr (cadr args)))))
+                (else
+                  (cons name args))))
+            (else
+              (cons name args))))))))
+
+;------------------------------------------------------------------------------
+;
+; Examples:
+
+(define (try-peval proc args)
+  (partial-evaluate proc args))
+
+; . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+(define example1
+    '(lambda (a b c)
+       (if (null? a) b (+ (car a) c))))
+
+;(try-peval example1 (list '(10 11) not-constant '1))
+
+; . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+(define example2
+    '(lambda (x y)
+       (let ((q (lambda (a b) (if (< a 0) b (- 10 b)))))
+         (if (< x 0) (q (- y) (- x)) (q y x)))))
+
+;(try-peval example2 (list not-constant '1))
+
+; . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+(define example3
+    '(lambda (l n)
+       (letrec ((add-list
+                  (lambda (l n)
+                    (if (null? l)
+                        '()
+                      (cons (+ (car l) n) (add-list (cdr l) n))))))
+         (add-list l n))))
+
+;(try-peval example3 (list not-constant '1))
+
+;(try-peval example3 (list '(1 2 3) not-constant))
+
+; . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+(define example4
+    '(lambda (exp env)
+       (letrec ((eval
+                  (lambda (exp env)
+                    (letrec ((eval-list
+                               (lambda (l env)
+                                 (if (null? l)
+                                     '()
+                                   (cons (eval (car l) env)
+                                     (eval-list (cdr l) env))))))
+                      (if (symbol? exp) (lookup exp env)
+                        (if (not (pair? exp)) exp
+                          (if (eq? (car exp) 'quote) (car (cdr exp))
+                            (apply (eval (car exp) env)
+                              (eval-list (cdr exp) env)))))))))
+         (eval exp env))))
+
+;(try-peval example4 (list 'x not-constant))
+
+;(try-peval example4 (list '(f 1 2 3) not-constant))
+
+; . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+(define example5
+    '(lambda (a b)
+       (letrec ((funct
+                  (lambda (x)
+                    (+ x b (if (< x 1) 0 (funct (- x 1)))))))
+         (funct a))))
+
+;(try-peval example5 (list '5 not-constant))
+
+; . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+(define example6
+    '(lambda ()
+       (letrec ((fib
+                  (lambda (x)
+                    (if (< x 2) x (+ (fib (- x 1)) (fib (- x 2)))))))
+         (fib 10))))
+
+;(try-peval example6 '())
+
+; . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+(define example7
+    '(lambda (input)
+       (letrec ((copy (lambda (in)
+                        (if (pair? in)
+                          (cons (copy (car in))
+                            (copy (cdr in)))
+                          in))))
+         (copy input))))
+
+;(try-peval example7 (list '(a b c d e f g h i j k l m n o p q r s t u v w x y z)))
+
+; . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+(define example8
+    '(lambda (input)
+       (letrec ((reverse (lambda (in result)
+                           (if (pair? in)
+                             (reverse (cdr in) (cons (car in) result))
+                             result))))
+         (reverse input '()))))
+
+;(try-peval example8 (list '(a b c d e f g h i j k l m n o p q r s t u v w x y z)))
+
+; . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+(define (test)
+  (set! *current-num* 0)
+  (list (try-peval example1 (list '(10 11) not-constant '1))
+    (try-peval example2 (list not-constant '1))
+    (try-peval example3 (list not-constant '1))
+    (try-peval example3 (list '(1 2 3) not-constant))
+    (try-peval example4 (list 'x not-constant))
+    (try-peval example4 (list '(f 1 2 3) not-constant))
+    (try-peval example5 (list '5 not-constant))
+    (try-peval example6 '())
+    (try-peval
+      example7
+      (list '(a b c d e f g h i j k l m n o p q r s t u v w x y z)))
+    (try-peval
+      example8
+      (list '(a b c d e f g h i j k l m n o p q r s t u v w x y z)))))
+
+
+(let ((result (test)))
+  (and (list? result)
+    (= (length result) 10)
+    (equal? (list-ref result 9)
+        '(lambda ()
+           (list 'z 'y 'x 'w 'v 'u 't 's 'r 'q 'p 'o 'n
+               'm 'l 'k 'j 'i 'h 'g 'f 'e 'd 'c 'b 'a)))))
