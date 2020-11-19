@@ -3,7 +3,8 @@ package maf.modular
 import maf.core._
 
 case class ReturnAddr[Component](cmp: Component, idn: Identity) extends Address { 
-  def printable = true 
+  def printable = true
+  override def toString: String = s"ret ($cmp)"
 } 
 
 /**
