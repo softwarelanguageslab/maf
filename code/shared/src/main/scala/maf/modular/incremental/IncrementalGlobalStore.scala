@@ -18,6 +18,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
 
   /** Delete an address if it is never written anymore. */
+  // Not needed: an address that is never written, is never read (exceptions might be return addresses when bottom is encountered during an intra-component analysis).
+  // Hence, there will be no dependendies, and the corresponding value will be bottom.
   def deleteAddr(addr: Addr): Unit = {
     if (log) logger.log(s"DELAD $addr")
     store = store - addr
@@ -38,12 +40,12 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     // Delete the provenance information corresponding to this component.
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store. Remove the address if it is never written anymore.
-    if (provenance(addr).isEmpty) deleteAddr(addr)
-    else {
+    //if (provenance(addr).isEmpty) deleteAddr(addr)
+    //else {
       val value: Value = provenanceValue(addr)
-      if (value != inter.store(addr)) trigger(AddrDependency(addr))
+      if (value != inter.store.getOrElse(addr, lattice.bottom)) trigger(AddrDependency(addr))
       inter.store = inter.store + (addr -> value)
-    }
+    //}
   }
 
   /**
@@ -79,6 +81,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     var intraProvenance: Map[Addr, Value] = Map().withDefaultValue(lattice.bottom)
 
     override def writeAddr(addr: Addr, value: Value): Boolean = {
+      if (log) logger.log(s"$component writes $addr ($value, old: ${store.getOrElse(addr, lattice.bottom)})")
       // Update the intra-provenance: for every address, keep the join of the values written to the address.
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
       super.writeAddr(addr, value) // Ensure the intra-store is updated so it can be used.
@@ -103,6 +106,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       val recentWrites = intraProvenance.keySet // Writes performed during this intra-component analysis. Important: this only works when the entire component is reanalysed!
       if (version == New) {
         val deltaW = cachedWrites(component) -- recentWrites // The addresses previously written to by this component, but that are no longer written by this component.
+        if (log) logger.log(s"$component no longer writes $deltaW")
         deltaW.foreach(deleteProvenance(component, _))
       }
       cachedWrites = cachedWrites + (component -> recentWrites)

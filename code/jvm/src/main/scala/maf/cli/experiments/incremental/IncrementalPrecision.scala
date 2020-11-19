@@ -55,8 +55,10 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
         e += 1 // Both results are the same => equally precise.
       else if (inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]))
         l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
-      else
+      else {
+        println(s"$a: $incr < $rean")
         m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
+      }
     })
     results = results
       .add(file, s"$eq ($name)", Formatter.withPercent(e, t))
@@ -85,11 +87,11 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     val a1Copy = a1.deepCopy()
 
     // First incremental update.
-    if (!runAnalysis("-> inc1 ", {timeOut => a1.updateAnalysis(timeOut, file, false)})) compareAnalyses(i1, file, a1, a2)
+   /* if (!runAnalysis("-> inc1 ", {timeOut => a1.updateAnalysis(timeOut, file, false)})) compareAnalyses(i1, file, a1, a2)
     else {
       options.foreach(o => results = results.add(file, s"$o ($i1)", inf))
       print("timed out")
-    }
+    } */
 
     // Second incremental update.
     if (!runAnalysis("-> inc2 ", {timeOut => a1Copy.updateAnalysis(timeOut, file,true)})) compareAnalyses(i2, file, a1Copy, a2)
@@ -124,37 +126,37 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
 object IncrementalSchemeModFPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
-  val outputFile: String = s"precision/modf-type.txt"
+  val outputFile: String = "precision/modf-type.txt"
 }
 
 object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysis(e)
-  val outputFile: String = s"precision/modf-CP.txt"
+  val outputFile: String = "precision/modf-CP.txt"
 }
 
 object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysisStoreOpt(e)
-  val outputFile: String = s"precision/modf-CP-StoreOpt.txt"
+  val outputFile: String = "precision/modf-CP-StoreOpt.txt"
 }
 
 object IncrementalSchemeModConcPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
-  val outputFile: String = s"precision/modconc-type.txt"
+  val outputFile: String = "precision/modconc-type.txt"
 }
 
 object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysis(e)
-  val outputFile: String = s"precision/modconc-CP.txt"
+  val outputFile: String = "precision/modconc-CP.txt"
 }
 
 object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
   override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysisStoreOpt(e)
-  val outputFile: String = s"precision/modconc-CP-StoreOpt.txt"
+  val outputFile: String = "precision/modconc-CP-StoreOpt.txt"
 }
 
 object IncrementalSchemeModXPrecision {
