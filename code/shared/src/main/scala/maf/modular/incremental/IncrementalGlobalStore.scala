@@ -17,20 +17,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /** Computes the value that should reside at a given address according to the provenance information. */
   def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
 
-  /** Delete an address if it is never written anymore. */
-  // Not needed: an address that is never written, is never read (exceptions might be return addresses when bottom is encountered during an intra-component analysis).
-  // Hence, there will be no dependendies, and the corresponding value will be bottom.
-  def deleteAddr(addr: Addr): Unit = {
-    if (log) logger.log(s"DELAD $addr")
-    store = store - addr
-    provenance = provenance - addr
-    //trigger(AddrDependency(addr)) // TODO: is this trigger necessary? (Normally, an address that is not written cannot be read...)
-    deps = deps - AddrDependency(addr)
-  }
-
   /**
    * To be called when a write dependency is deleted. Possibly updates the store with a new value for the given address.
-   * Deletes the address entirely if no component writes it anymore.
+   * An address that is no longer written will be set to bottom.
    * @param cmp  The component from which the write dependency is deleted.
    * @param addr The address corresponding to the deleted write dependency.
    */
@@ -39,13 +28,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     if (log) logger.log(s"DELPR $cmp w-/-> $addr")
     // Delete the provenance information corresponding to this component.
     provenance = provenance + (addr -> (provenance(addr) - cmp))
-    // Compute the new value for the address and update it in the store. Remove the address if it is never written anymore.
-    //if (provenance(addr).isEmpty) deleteAddr(addr)
-    //else {
-      val value: Value = provenanceValue(addr)
-      if (value != inter.store.getOrElse(addr, lattice.bottom)) trigger(AddrDependency(addr))
-      inter.store = inter.store + (addr -> value)
-    //}
+    // Compute the new value for the address and update it in the store.
+    val value: Value = provenanceValue(addr)
+    if (value != inter.store.getOrElse(addr, lattice.bottom)) trigger(AddrDependency(addr))
+    inter.store = inter.store + (addr -> value)
   }
 
   /**
