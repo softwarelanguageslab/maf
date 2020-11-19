@@ -74,7 +74,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
    *       then it is up to those subclasses to override this method and extend its functionality.
    */
   def deleteComponent(cmp: Component): Unit = if (visited(cmp)) { // Only do this if we have not yet encountered the component. Note that this is not needed to prevent looping.
-    if (log) logger.log(s"deleting $cmp")
+    if (log) logger.log(s"RMCMP $cmp")
     for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
     visited = visited - cmp                               // Remove the component from the visited set.
     for (to <- cachedSpawns(cmp)) unspawn(to)             // Transitively check for components that have to be deleted.
@@ -89,9 +89,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
   def unspawn(cmp: Component): Unit = if (visited (cmp)) { // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
                                                            // (Counts can go below zero if an already reclaimed component is encountered here, which is possible due to the foreach in deleteDisconnectedComponents.)
-    if (log) logger.log(s"Unspawning $cmp")
     // Update the spawn count information.
     countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
+    if (log) logger.log(s"USPWN $cmp (new count: ${countedSpawns(cmp)})")
     if (countedSpawns(cmp) == 0) deleteComponent(cmp) else deletionFlag = true // Delete the component if it is no longer spawned by any other component.
   }
 
@@ -140,9 +140,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(timeout: Timeout.T, name: String, optimisedExecution: Boolean = true): Unit = {
-    logger = Logger()
+    logger = Logger(name.split("/").last.dropRight(4))
     log = true
-    logger.log(name)
     optimisationFlag = optimisedExecution                           // Used for testing pursposes.
     version = New                                                   // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
@@ -165,7 +164,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       if (version == New) { // Check for efficiency.
         val deltaR = cachedReadDeps(component) -- R  // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
         deltaR.foreach(deregister(component, _))     // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
-        if (log) deltaR.foreach(d => logger.log(s"Deregistering $component to $d"))
+        if (log) deltaR.foreach(d => logger.log(s"DEREG $component -/-> $d"))
       }
       cachedReadDeps += (component -> R)             // Update the cache. The cache also needs to be updated when the program is initially analysed.
     }
@@ -177,13 +176,15 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
       // For each component not previously spawn by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
       (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
+      (Cdiff -- cachedSpawns(component)).foreach(cmp => if (log) logger.log(s"SPAWN $component --> $cmp (new count: ${countedSpawns(cmp)})"))
 
       if (version == New) { // Check for efficiency.
         val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
         deltaC.foreach(unspawn)
-        deleteDisconnectedComponents() // Delete components that are no longer reachable.
+        deltaC.foreach(cmp => if (log) logger.log(s"USPWN $component -/-> $cmp finished"))
       }
       cachedSpawns += (component -> Cdiff) // Update the cache.
+      if (version == New) deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
     }
 
     /**
@@ -191,6 +192,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
      */
     @nonMonotonicUpdate
     override def commit(): Unit = {
+      if (log) logger.log(s"COMMI $component")
       if (optimisationFlag) {
         refineDependencies() // First, remove excess dependencies if this is a reanalysis.
         refineComponents()   // Second, remove components that are no longer reachable (if this is a reanalysis).

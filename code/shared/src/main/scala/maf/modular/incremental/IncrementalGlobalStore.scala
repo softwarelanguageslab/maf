@@ -19,13 +19,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
   /** Delete an address if it is never written anymore. */
   def deleteAddr(addr: Addr): Unit = {
-    if (log) logger.log(s"Deleting: $addr")
+    if (log) logger.log(s"DELAD $addr")
     store = store - addr
     provenance = provenance - addr
-    // TODO: does order matter here (order of invalidation or exploration order of the work list)? If so, then this test can just be removed?
-    //  Probably the component itself might trigger this, because it might not have been registered that it doesn't read the address anymore?
-    //if (deps(AddrDependency(addr)).nonEmpty) throw new Exception(s"The following components depend on a non-written address $addr: ${deps(AddrDependency(addr)).mkString(", ")}.")
-    deps = deps - AddrDependency(addr) // TODO: should this address be triggered first?
+    //trigger(AddrDependency(addr)) // TODO: is this trigger necessary? (Normally, an address that is not written cannot be read...)
+    deps = deps - AddrDependency(addr)
   }
 
   /**
@@ -36,7 +34,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    */
   @nonMonotonicUpdate
   def deleteProvenance(cmp: Component, addr: Addr): Unit = {
-    if (log) logger.log(s"Deleting provenance: $cmp -> $addr")
+    if (log) logger.log(s"DELPR $cmp w-/-> $addr")
     // Delete the provenance information corresponding to this component.
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store. Remove the address if it is never written anymore.
@@ -59,7 +57,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    */
   @nonMonotonicUpdate
   def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
-    if (log) logger.log(s"Updating address $addr -> $nw ($cmp)")
+    //if (log) logger.log(s"WRITE $addr -> $nw ($cmp)")
     val old = provenance(addr)(cmp)
     if (old == nw) return false // Nothing changed.
     // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
