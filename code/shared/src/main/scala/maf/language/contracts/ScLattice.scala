@@ -1,6 +1,7 @@
 package maf.language.contracts
 
 import maf.core.{Address, Environment, Identity, Lattice}
+import maf.lattice.interfaces.IntLattice
 
 object ScLattice {
 
@@ -171,6 +172,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def injectNil: L
 
+  /**
+    * Inject an address in the abstract domain
+    */
+  def injectPointer(a: Addr): L
+
   /*==================================================================================================================*/
 
   def applyPrimitive(prim: Prim)(arguments: L*): L
@@ -229,6 +235,16 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def isNil(value: L): Boolean
 
+  /**
+    * Returns true if the value is possibly a vector
+    */
+  def isVec(value: L): Boolean
+
+  /**
+    * Returns true if the the value is a wrapped pointer
+    */
+  def isPointer(value: L): Boolean
+
   /*==================================================================================================================*/
 
   /**
@@ -286,8 +302,29 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     */
   def getCons(value: L): Set[Cons[Addr]]
 
+  /**
+    * Extract the pointers contained within the value from the abstract domain.
+    */
+  def getPointers(value: L): Set[Addr]
+
   /*==================================================================================================================*/
 
   def integerTop: L
   def boolTop: L
+
+  /**
+    * Create a vector from a length represented as an abstract value
+    * and with the default abstract value of `L`
+    */
+  def vector(length: L, init: L): L
+
+  /**
+    * Change the value of the vector `vector` on index `index` to value `value`
+    */
+  def vectorSet(vector: L, index: L, value: L): L
+
+  /**
+    * Retrieve a value on index `index` from  the vector
+    */
+  def vectorRef(vector: L, index: L): L
 }

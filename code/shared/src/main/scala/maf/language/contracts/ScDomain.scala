@@ -30,6 +30,7 @@ trait ScDomain[I, B, Addr <: Address] {
   val THUNK_VALUE            = 13
   val CONS_VALUE             = 14
   val NIL_VALUE              = 15
+  val VEC_VALUE              = 16
 
   case object TopValue extends Value {
     def ord                       = TOP_VALUE
@@ -103,6 +104,10 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord: Int = NIL_VALUE
   }
 
+  case class Vec(size: I, elements: Map[I, Value]) extends Value {
+    def ord: Int = VEC_VALUE
+  }
+
   def bool(bool: Boolean): Value = Bool(BoolLattice[B].inject(bool))
 
   def number(n: Int): Value =
@@ -123,6 +128,9 @@ trait ScDomain[I, B, Addr <: Address] {
   def blame(b: Blame) =
     Blames(Set(b))
 
+  def vec(length: I, default: Value) =
+    Vec(length, Map().withDefaultValue(default))
+
   def prim(p: Prim) = Prims(Set(p))
 
   def opq(o: Opq): Opqs = Opqs(Set(o))
@@ -135,22 +143,23 @@ trait ScDomain[I, B, Addr <: Address] {
 
   object Values {
     def join(a: Value, b: Value): Value = (a, b) match {
-      case (TopValue, _) | (_, TopValue) => TopValue
-      case (BotValue, _)                 => a
-      case (_, BotValue)                 => b
-      case (Number(a), Number(b))        => Number(IntLattice[I].join(a, b))
-      case (Bool(a), Bool(b))            => Bool(BoolLattice[B].join(a, b))
-      case (Clos(a), Clos(b))            => Clos(a ++ b)
-      case (Arrs(a), Arrs(b))            => Arrs(a ++ b)
-      case (Grds(a), Grds(b))            => Grds(a ++ b)
-      case (Prims(a), Prims(b))          => Prims(a ++ b)
-      case (Symbolics(a), Symbolics(b))  => Symbolics(a ++ b)
-      case (Blames(a), Blames(b))        => Blames(a ++ b)
-      case (Opqs(a), Opqs(b))            => Opqs(a ++ b)
-      case (Flats(a), Flats(b))          => Flats(a ++ b)
-      case (Thunks(a), Thunks(b))        => Thunks(a ++ b)
-      case (Conses(a), Conses(b))        => Conses(a ++ b)
-      case (Nils, Nils)                  => Nils
+      case (TopValue, _) | (_, TopValue)                  => TopValue
+      case (BotValue, _)                                  => a
+      case (_, BotValue)                                  => b
+      case (Number(a), Number(b))                         => Number(IntLattice[I].join(a, b))
+      case (Bool(a), Bool(b))                             => Bool(BoolLattice[B].join(a, b))
+      case (Clos(a), Clos(b))                             => Clos(a ++ b)
+      case (Arrs(a), Arrs(b))                             => Arrs(a ++ b)
+      case (Grds(a), Grds(b))                             => Grds(a ++ b)
+      case (Prims(a), Prims(b))                           => Prims(a ++ b)
+      case (Symbolics(a), Symbolics(b))                   => Symbolics(a ++ b)
+      case (Blames(a), Blames(b))                         => Blames(a ++ b)
+      case (Opqs(a), Opqs(b))                             => Opqs(a ++ b)
+      case (Flats(a), Flats(b))                           => Flats(a ++ b)
+      case (Thunks(a), Thunks(b))                         => Thunks(a ++ b)
+      case (Conses(a), Conses(b))                         => Conses(a ++ b)
+      case (Nils, Nils)                                   => Nils
+      case (Vec(size1, elements1), Vec(size2, elements2)) => ???
       case (RefinedValueInStates(v1), RefinedValueInStates(v2)) =>
         RefinedValueInStates(
           (v1.keys ++ v2.keys)
@@ -353,6 +362,11 @@ trait ScDomain[I, B, Addr <: Address] {
     def isNil(value: Value): Boolean = value match {
       case Nils => true
       case _    => false
+    }
+
+    def isVec(value: Value): Boolean = value match {
+      case Vec(_, _) => true
+      case _         => false
     }
 
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {
@@ -587,6 +601,46 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     /** Equality check, returning an abstract result */
     override def eql[Bo: BoolLattice](x: CoProductValue, y: CoProductValue): Bo = ???
+
+    /**
+      * Inject an address in the abstract domain
+      */
+    override def injectPointer(a: Addr): CoProductValue = ???
+
+    /**
+      * Returns true if the value is possibly a vector
+      */
+    override def isVec(value: CoProductValue): Boolean = ???
+
+    /**
+      * Returns true if the the value is a wrapped pointer
+      */
+    override def isPointer(value: CoProductValue): Boolean = ???
+
+    /**
+      * Extract the pointers contained within the value from the abstract domain.
+      */
+    override def getPointers(value: CoProductValue): Set[Addr] = ???
+
+    /**
+      * Create a vector from a length represented as an abstract value
+      * and with the default abstract value of `L`
+      */
+    override def vector(length: CoProductValue, init: CoProductValue): CoProductValue = ???
+
+    /**
+      * Change the value of the vector `vector` on index `index` to value `value`
+      */
+    override def vectorSet(
+        vector: CoProductValue,
+        index: CoProductValue,
+        value: CoProductValue
+    ): CoProductValue = ???
+
+    /**
+      * Retrieve a value on index `index` from  the vector
+      */
+    override def vectorRef(vector: CoProductValue, index: CoProductValue): CoProductValue = ???
   }
 }
 
@@ -831,5 +885,45 @@ class ScProductLattice[I, B, Addr <: Address](
         * Extracts the set of cons pairs from the abstract value
         */
       override def getCons(value: ProductElements): Set[Cons[Addr]] = ???
+
+      /**
+        * Inject an address in the abstract domain
+        */
+      override def injectPointer(a: Addr): ProductElements = ???
+
+      /**
+        * Returns true if the value is possibly a vector
+        */
+      override def isVec(value: ProductElements): Boolean = ???
+
+      /**
+        * Returns true if the the value is a wrapped pointer
+        */
+      override def isPointer(value: ProductElements): Boolean = ???
+
+      /**
+        * Extract the pointers contained within the value from the abstract domain.
+        */
+      override def getPointers(value: ProductElements): Set[Addr] = ???
+
+      /**
+        * Create a vector from a length represented as an abstract value
+        * and with the default abstract value of `L`
+        */
+      override def vector(length: ProductElements, init: ProductElements): ProductElements = ???
+
+      /**
+        * Change the value of the vector `vector` on index `index` to value `value`
+        */
+      override def vectorSet(
+          vector: ProductElements,
+          index: ProductElements,
+          value: ProductElements
+      ): ProductElements = ???
+
+      /**
+        * Retrieve a value on index `index` from  the vector
+        */
+      override def vectorRef(vector: ProductElements, index: ProductElements): ProductElements = ???
     }
 }
