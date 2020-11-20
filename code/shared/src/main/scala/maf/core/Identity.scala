@@ -7,7 +7,9 @@ import maf.util.SmartHash
 /** An identity to distinguish expressions. */
 sealed trait Identity {
   val idn: IDN
-  def pos: Position             = Identity.synchronized { iMap(idn) } // Extra positional information of the element in the source code. Used for printing and during tests.
+
+  def pos: Position =
+    idn // Extra positional information of the element in the source code. Used for printing and during tests.
   override def toString: String = pos.toString
 }
 
@@ -16,13 +18,14 @@ case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
 
 /** Neutral identity for to elements not in the code (constructed by the analysis). */
 case object NoCodeIdentity extends Identity {
-  val idn: IDN               = Identity.newId()
-  override def pos: Position = Position(-1, 0)
+  val idn: IDN = Identity.newId(Position(-1, 0))
 }
 
-object Identity {
-
+/*
+trait UniqueIdentity {
   type IDN = Long // Type name is IDN to avoid confusion with identifiers.
+
+  implicit def toPosition(idn: IDN): Position = iMap(idn)
 
   implicit val identityOrdering: Ordering[Identity] = new Ordering[Identity] {
     def compare(x: Identity, y: Identity): Int = (x, y) match {
@@ -39,18 +42,29 @@ object Identity {
 
   /** Contains the last unused identity. ALL ACCESSES TO ctr HAVE TO BE SYNCHRONISED ON THE Identity OBJECT. */
   private var ctr: Long = 0
-  def newId(): IDN = Identity.synchronized {
+  def newId(pos: Position): IDN = Identity.synchronized {
     ctr = ctr + 1
     ctr - 1
   }
 
-  def apply(p: scala.util.parsing.input.Position, t: PTag = noTag): Identity =
-    Identity.synchronized {
-      val idn: IDN = newId()
-      iMap = iMap + (idn -> Position(p.line, p.column, t))
-      SimpleIdentity(idn)
-    }
+  def apply(p: scala.util.parsing.input.Position, t: PTag = noTag): Identity = Identity.synchronized {
+    val pos: Position = Position(p.line, p.column, t)
+    val idn: IDN = newId(pos)
+    iMap = iMap + (idn -> pos)
+    SimpleIdentity(idn)
+  }
+}
+ */
 
+trait PositionalIdentity {
+  type IDN = Position
+  def apply(p: scala.util.parsing.input.Position, t: PTag = noTag): Identity =
+    SimpleIdentity(Position(p.line, p.column, t))
+  def newId(pos: Position): IDN = pos
+}
+
+// To go back to the other identity implementation, comment out PositionalIdentity, reinstate UniqueIdentity and change the inheritance below.
+object Identity extends PositionalIdentity {
   def none: Identity = NoCodeIdentity
 }
 
