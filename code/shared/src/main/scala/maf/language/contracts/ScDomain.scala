@@ -31,6 +31,7 @@ trait ScDomain[I, B, Addr <: Address] {
   val CONS_VALUE             = 14
   val NIL_VALUE              = 15
   val VEC_VALUE              = 16
+  val PTR_VALUE              = 17
 
   case object TopValue extends Value {
     def ord                       = TOP_VALUE
@@ -108,6 +109,10 @@ trait ScDomain[I, B, Addr <: Address] {
     def ord: Int = VEC_VALUE
   }
 
+  case class Ptr(addrs: Set[Addr]) extends Value {
+    def ord: Int = PTR_VALUE
+  }
+
   def bool(bool: Boolean): Value = Bool(BoolLattice[B].inject(bool))
 
   def number(n: Int): Value =
@@ -141,6 +146,8 @@ trait ScDomain[I, B, Addr <: Address] {
 
   def cons(c: Cons[Addr]): Conses = Conses(Set(c))
 
+  def ptr(c: Addr): Ptr = Ptr(Set(c))
+
   object Values {
     def join(a: Value, b: Value): Value = (a, b) match {
       case (TopValue, _) | (_, TopValue)                  => TopValue
@@ -160,6 +167,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Conses(a), Conses(b))                         => Conses(a ++ b)
       case (Nils, Nils)                                   => Nils
       case (Vec(size1, elements1), Vec(size2, elements2)) => ???
+      case (Ptr(a1), Ptr(a2))                             => Ptr(a1 ++ a2)
       case (RefinedValueInStates(v1), RefinedValueInStates(v2)) =>
         RefinedValueInStates(
           (v1.keys ++ v2.keys)
@@ -173,143 +181,98 @@ trait ScDomain[I, B, Addr <: Address] {
     def isRefinedTo(b: Set[Opq], refinement: String): Boolean =
       b.exists(_.refinementSet.contains(refinement))
 
-    def applyPrimitive(prim: Prim)(arguments: Value*): Value =
-      (prim, arguments.toList) match {
-        case (Prim("+"), List(Number(a), Number(b))) => Number(IntLattice[I].plus(a, b))
-        case (Prim("+"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
-          TopValue
-        case (Prim("+"), _) => BotValue
+    private def arith(op: (I, I) => I)(a: Value, b: Value): Value = (a, b) match {
+      case (Number(a), Number(b)) => Number(op(a, b))
+      case (Number(_), Opqs(b)) if isRefinedTo(b, "int?") =>
+        opq(Opq(Set("int?")))
 
-        case (Prim("-"), List(Number(a), Number(b))) => Number(IntLattice[I].minus(a, b))
-        case (Prim("-"), List(Opqs(a), Number(_))) if isRefinedTo(a, "int?") =>
-          opq(Opq(Set("int?")))
+      case (Opqs(b), Number(_)) if isRefinedTo(b, "int?") =>
+        opq(Opq(Set("int?")))
 
-        case (Prim("-"), List(Number(_), Opqs(b))) if isRefinedTo(b, "int?") =>
-          opq(Opq(Set("int?")))
+      case (Opqs(a), Opqs(b)) if isRefinedTo(a, "int?") && isRefinedTo(b, "int?") =>
+        opq(Opq(Set("int?")))
 
-        case (Prim("-"), List(Opqs(a), Opqs(b)))
-            if (isRefinedTo(a, "int?") && isRefinedTo(b, "int?")) =>
-          opq(Opq(Set("int?")))
+      case (TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_)) => TopValue
+      case (_, _)                                                           => BotValue
+    }
 
-        case (Prim("-"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
-          TopValue
-        case (Prim("-"), _) => BotValue
+    private def cmp(op: (I, I) => B)(a: Value, b: Value): Value = (a, b) match {
+      case (Number(a), Number(b))                                           => Bool(op(a, b))
+      case (TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_)) => TopValue
+      case (_, _)                                                           => BotValue
+    }
 
-        case (Prim("*"), List(Number(a), Number(b))) => Number(IntLattice[I].times(a, b))
-        case (Prim("*"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
-          TopValue
-        case (Prim("*"), _) => BotValue
+    private def bUnOp(op: (B => B))(a: Value): Value = a match {
+      case (Bool(a))                      => Bool(op(a))
+      case (TopValue | Bool(_) | Opqs(_)) => TopValue
+      case _                              => BotValue
+    }
 
-        case (Prim("/"), List(Number(a), Number(b))) => Number(IntLattice[I].quotient(a, b))
-        case (Prim("/"), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
-          Number(IntLattice[I].top)
-        case (Prim("/"), _) => BotValue
-
-        case (Prim("<"), List(Number(a), Number(b))) => Bool(IntLattice[I].lt(a, b))
-        case (Prim("<"), List(Number(_) | TopValue | Opqs(_), Number(_) | TopValue | Opqs(_))) =>
-          Bool(BoolLattice[B].top)
-        case (Prim("<"), List(_, _)) => BotValue
-
-        case (Prim(">"), List(_, _)) => Bool(BoolLattice[B].top)
-
-        case (Prim("even?"), List(Number(a))) =>
-          val mod2         = IntLattice[I].modulo(a, IntLattice[I].inject(2))
-          val possiblyEven = IntLattice[I].subsumes(mod2, IntLattice[I].inject(0))
-          val possiblyOdd  = IntLattice[I].subsumes(mod2, IntLattice[I].inject(1))
-          (possiblyEven, possiblyOdd) match {
-            case (true, true)   => TopValue
-            case (true, false)  => Bool(BoolLattice[B].inject(true))
-            case (false, true)  => Bool(BoolLattice[B].inject(false))
-            case (false, false) => BotValue
-          }
-
-        case (Prim("proc?"), List(Clos(_) | Prims(_) | Arrs(_) | Flats(_))) => bool(true)
-        case (Prim("proc?"), List(TopValue | Opqs(_)))                      => Bool(BoolLattice[B].top)
-        case (Prim("proc?"), List(_))                                       => bool(false)
-
-        case (Prim("dependent-contract?"), List(Grds(_)))            => bool(true)
-        case (Prim("dependent-contract?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
-        case (Prim("dependent-contract?"), List(_))                  => bool(false)
-
-        case (Prim("even?"), List(Opqs(_) | TopValue)) => TopValue
-        case (Prim("even?"), _)                        => BotValue
-
-        case (Prim("odd?"), List(Number(b))) =>
-          val result = applyPrimitive(Prim("even?"))(Number(b))
-          result match {
-            case TopValue | BotValue => result
-            case Bool(b)             => Bool(BoolLattice[B].not(b))
-          }
-
-        case (Prim("odd?"), List(Opqs(_) | TopValue)) => TopValue
-        case (Prim("odd?"), _)                        => BotValue
-
-        case (Prim("="), List(Number(a), Number(b))) => Bool(IntLattice[I].eql(a, b))
-        case (Prim("="), List(TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_))) =>
-          TopValue
-        case (Prim("="), List(_, _)) => BotValue
-
-        case (Prim("=<"), List(Number(a), Number(b))) =>
-          val diff = IntLattice[I].minus(a, b)
-          val b1   = IntLattice[I].eql(diff, IntLattice[I].inject(0))
-          val b2   = IntLattice[I].lt(a, b)
-          Bool(
-            (
-              BoolLattice[B].isTrue(b1),
-              BoolLattice[B].isTrue(b2),
-              BoolLattice[B].isFalse(b1),
-              BoolLattice[B].isFalse(b2)
-            ) match {
-              case (true, _, false, false) => BoolLattice[B].inject(true)
-              case (_, true, false, false) => BoolLattice[B].inject(true)
-              case _                       => BoolLattice[B].top
-            }
-          )
-
-        case (Prim("=<"), List(Number(_) | TopValue | Opqs(_), Number(_) | TopValue | Opqs(_))) =>
-          println("here", arguments)
-          Bool(BoolLattice[B].top)
-
-        case (Prim("=<"), List(_, _)) => BotValue
-
-        case (Prim("true?"), List(Bool(b)))            => bool(BoolLattice[B].isTrue(b))
-        case (Prim("true?"), List(TopValue | Opqs(_))) => TopValue
-        case (Prim("true?"), List(BotValue))           => bool(false)
-        case (Prim("true?"), List(_))                  => bool(true)
-
-        case (Prim("false?"), List(TopValue | Opqs(_))) => TopValue
-        case (Prim("false?"), List(Bool(b)))            => bool(BoolLattice[B].isFalse(b))
-        case (Prim("false?"), List(_))                  => bool(false)
-
-        case (Prim("int?"), List(BotValue))  => Bool(BoolLattice[B].bottom)
-        case (Prim("int?"), List(Number(_))) => bool(true)
-        case (Prim("int?"), List(Opqs(opqs))) if opqs.forall(_.refinementSet.contains("int?")) =>
+    def pred(b: PartialFunction[Value, Unit], refinement: Option[String] = None)(v: Value): Value =
+      v match {
+        case v if b.isDefinedAt(v) => bool(true)
+        case Opqs(s)
+            if refinement.isDefined && s.forall(_.refinementSet.contains(refinement.get)) =>
           bool(true)
+        case TopValue | Opqs(_) => Bool(BoolLattice[B].top)
+        case BotValue           => BotValue
+        case _                  => bool(false)
+      }
 
-        case (Prim("int?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
-        case (Prim("int?"), _)                        => bool(false)
+    def pred(b: PartialFunction[Value, Unit], refinement: String): (Value => Value) =
+      pred(b, Some(refinement))
 
-        case (Prim("any?"), List(BotValue)) => BotValue
-        case (Prim("any?"), List(_))        => bool(true)
+    def constantBin(v: Value)(a: Value, b: Value): Value = v
 
-        case (Prim("nonzero?"), List(Number(a))) =>
-          Bool(BoolLattice[B].not((IntLattice[I].eql(a, IntLattice[I].inject(0)))))
-        case (Prim("nonzero?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
+    val binPrimitives: Map[String, (Value, Value) => Value] = Map(
+      "+"  -> arith(IntLattice[I].plus),
+      "-"  -> arith(IntLattice[I].minus),
+      "*"  -> arith(IntLattice[I].times),
+      "/"  -> arith(IntLattice[I].quotient),
+      "<"  -> cmp(IntLattice[I].lt[B]),
+      ">"  -> constantBin(TopValue),
+      "=<" -> ((a, b) => ???),
+      ">=" -> ((a, b) => ???),
+      "="  -> cmp(IntLattice[I].eql[B]),
+      "and" -> (
+          (
+              a,
+              b
+          ) =>
+            (isTrue(a), isTrue(b), isFalse(a), isFalse(b)) match {
+              case (true, true, false, false)                    => Bool(BoolLattice[B].inject(true))
+              case (true, true, true, _) | (true, true, _, true) => Bool(BoolLattice[B].top)
+              case _                                             => Bool(BoolLattice[B].inject(false))
+            }
+        )
+    )
 
-        case (Prim("and"), List(a, b)) =>
-          (isTrue(a), isTrue(b), isFalse(a), isFalse(b)) match {
-            case (true, true, false, false)                    => Bool(BoolLattice[B].inject(true))
-            case (true, true, true, _) | (true, true, _, true) => Bool(BoolLattice[B].top)
-            case _                                             => Bool(BoolLattice[B].inject(false))
-          }
+    def unaryPrim: Map[String, (Value) => Value] = Map(
+      "even?"               -> (a => ???),
+      "odd?"                -> (a => ???),
+      "proc?"               -> pred { case Clos(_) | Prims(_) | Arrs(_) | Flats(_) => },
+      "dependent-contract?" -> pred({ case Grds(_) => }, "dependent-contract?"),
+      "true?"               -> pred({ case Bool(b) if BoolLattice[B].isTrue(b) => }, "true?"),
+      "false?"              -> pred({ case Bool(b) if BoolLattice[B].isFalse(b) => }, "false?"),
+      "int?"                -> pred({ case Number(_) => }, "int?"),
+      "any?"                -> pred { case a if a != BotValue => },
+      "nonzero?" -> (
+          (value) =>
+            value match {
+              case Number(a) =>
+                Bool(BoolLattice[B].not((IntLattice[I].eql(a, IntLattice[I].inject(0)))))
+              case TopValue | Opqs(_) => Bool(BoolLattice[B].top)
+            }
+        ),
+      "bool?" -> pred { case Bool(_) => },
+      "not"   -> bUnOp(BoolLattice[B].not)
+    )
 
-        case (Prim("not"), List(Bool(a)))            => Bool(BoolLattice[B].not(a))
-        case (Prim("not"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
-        case (Prim("not"), _)                        => BotValue
-
-        case (Prim("bool?"), List(Bool(_)))            => Bool(BoolLattice[B].inject(true))
-        case (Prim("bool?"), List(TopValue | Opqs(_))) => Bool(BoolLattice[B].top)
-        case (Prim("bool?"), _)                        => BotValue
+    def applyPrimitive(prim: Prim)(arguments: Value*): Value =
+      if (arguments.size == 1) {
+        unaryPrim(prim.operation).apply(arguments.head)
+      } else {
+        binPrimitives(prim.operation).apply(arguments.head, arguments.tail.head)
       }
 
     def isTrue(value: Value): Boolean = value match {
@@ -369,6 +332,11 @@ trait ScDomain[I, B, Addr <: Address] {
       case _         => false
     }
 
+    def isPtr(value: Value): Boolean = value match {
+      case Ptr(_) => true
+      case _      => false
+    }
+
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {
       case (_, _) if x == y       => true
       case (TopValue, _)          => true
@@ -402,6 +370,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case Opqs(opqs)     => s"{${opqs.map(_.toString).mkString(",")}"
       case Prims(prims)   => s"{${prims.map(_.toString).mkString(",")}"
       case Blames(blames) => s"{${blames.map(_.toString).mkString(",")}}"
+      case Ptr(addr)      => s"ptr[$addr]"
       case _              => x.toString
     }
   }
@@ -500,6 +469,10 @@ class ScCoProductLattice[I, B, Addr <: Address](
     def isCons(value: CoProductValue): Boolean = isPred(Values.isCons, value)
 
     def isNil(value: CoProductValue): Boolean = isPred(Values.isNil, value)
+
+    def isVec(value: CoProductValue): Boolean = isPred(Values.isVec, value)
+
+    def isPointer(value: CoProductValue): Boolean = ???
 
     /*================================================================================================================*/
 
@@ -606,16 +579,6 @@ class ScCoProductLattice[I, B, Addr <: Address](
       * Inject an address in the abstract domain
       */
     override def injectPointer(a: Addr): CoProductValue = ???
-
-    /**
-      * Returns true if the value is possibly a vector
-      */
-    override def isVec(value: CoProductValue): Boolean = ???
-
-    /**
-      * Returns true if the the value is a wrapped pointer
-      */
-    override def isPointer(value: CoProductValue): Boolean = ???
 
     /**
       * Extract the pointers contained within the value from the abstract domain.
