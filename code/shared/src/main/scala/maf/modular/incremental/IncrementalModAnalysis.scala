@@ -18,6 +18,11 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   var logger: Log = _
   var log = false
 
+  override def trigger(dep: Dependency): Unit = {
+    if (log) logger.log(s"TRIGG $dep")
+    super.trigger(dep)
+  }
+
 
   /* ************************************************************************* */
   /* ***** Tracking: track which components depend on which expressions. ***** */
@@ -147,6 +152,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
     analyze(timeout)
+    if (log) deps.keySet.foreach(dep => logger.log(s"DEPEN ${dep} <- ${deps(dep)}"))
     logger.close()
   }
 

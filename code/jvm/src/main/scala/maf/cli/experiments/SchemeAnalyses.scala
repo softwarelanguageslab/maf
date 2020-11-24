@@ -11,6 +11,8 @@ import maf.modular.worklist._
 
 object SchemeAnalyses {
 
+  // Incremental analyses in maf.modular.incremental.scheme.SchemeAnalyses
+
     def contextInsensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
                                                         with SchemeModFNoSensitivity
                                                         with SchemeConstantPropagationDomain

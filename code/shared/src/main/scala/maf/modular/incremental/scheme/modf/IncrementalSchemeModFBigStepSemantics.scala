@@ -11,9 +11,8 @@ import maf.util.Annotations.nonMonotonicUpdate
 trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {
 
   @nonMonotonicUpdate
-  override def deleteComponent(cmp: Component): Unit = {
+  override def deleteComponent(cmp: Component): Unit = { // This cannot directly go into the intra-component analysis, as the values will then again become joined when the store is committed...
     if (log) logger.log(s"RMCM* $cmp")
-    // Deletes the return value from the global store if required (sets it to bottom), as well as the corresponding dependencies.
     store -= returnAddr(cmp)
     deps -= AddrDependency(returnAddr(cmp))
     super.deleteComponent(cmp)

@@ -5,7 +5,7 @@ import maf.core._
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme._
-import maf.modular.incremental.scheme.AnalysisBuilder._
+import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme._
 import maf.util._
 import maf.util.benchmarks._

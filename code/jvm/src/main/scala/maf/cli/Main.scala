@@ -12,7 +12,7 @@ import maf.modular.scheme.ssmodconc._
 import maf.util._
 import maf.util.benchmarks._
 import maf.language.change.CodeVersion._
-import maf.modular.incremental.scheme.AnalysisBuilder._
+import maf.modular.incremental.scheme.SchemeAnalyses._
 
 import scala.concurrent.duration._
 import maf.modular.worklist._

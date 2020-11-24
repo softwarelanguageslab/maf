@@ -2,7 +2,7 @@ package maf.modular.incremental.scheme
 
 import maf.language.scheme._
 import maf.modular._
-import maf.modular.incremental.IncrementalGlobalStore
+import maf.modular.incremental.{IncrementalGlobalStore, IncrementalReturnValue}
 import maf.modular.incremental.scheme.modconc._
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme._
@@ -14,7 +14,7 @@ import maf.modular.worklist.LIFOWorklistAlgorithm
  * Provides instantiations of incremental analyses.
  * @note By having instantiations listed here, it is ensured that no changes break the instantiation of incremental analyses.
  */
-object AnalysisBuilder {
+object SchemeAnalyses {
 
   /**
    * Builds an incremental ModConc Analysis for the given Scheme program with the following properties:
@@ -101,7 +101,7 @@ object AnalysisBuilder {
                                                                 with LIFOWorklistAlgorithm[SchemeExp]
                                                                 with SchemeConstantPropagationDomain
                                                                 with IncrementalGlobalStore[SchemeExp] {
-                                                                val k = 1
+                                                                val k = 1 // TODO Perhaps make a parameter of the class.
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
@@ -112,7 +112,7 @@ object AnalysisBuilder {
                                                                    with LIFOWorklistAlgorithm[SchemeExp]
                                                                    with SchemeConstantPropagationDomain
                                                                    with IncrementalSchemeModFBigStepSemantics
-                                                                   with IncrementalGlobalStore[SchemeExp] {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+                                                                   with IncrementalReturnValue[SchemeExp] {
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis
   }
 }
