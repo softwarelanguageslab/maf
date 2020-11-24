@@ -10,8 +10,13 @@ import maf.util.{Reader, Writer}
   * An auxiliary trait for benchmark soft contract verification programs
   */
 trait Benchmarks {
+
+  import maf.cli.experiments.ScAnalyses._
+
   type Benchmark = String
   type Program   = ScExp
+  val configurations: List[ScExp => ScJVMAnalysis] =
+    List(localStoreCallInsensitiveAnalysis, globalStoreCallInsensitiveAnalysis)
 
   /**
     * Create a benchmark from file
@@ -82,8 +87,6 @@ trait Benchmarks {
   }
 
   def runAll(benchmarks: List[Benchmark], out: String): Unit = {
-    import maf.cli.experiments.ScAnalyses._
-    runBenchmarks(localStoreCallInsensitiveAnalysis)(benchmarks, s"${out}_local_store")
-    runBenchmarks(localStoreCallInsensitiveAnalysis)(benchmarks, s"${out}_global_store")
+    configurations.foreach(c => runBenchmarks(c)(benchmarks, s"${out}_$c"))
   }
 }

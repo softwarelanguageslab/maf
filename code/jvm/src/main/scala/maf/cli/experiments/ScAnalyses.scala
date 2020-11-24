@@ -8,9 +8,13 @@ object ScAnalyses {
 
   def localStoreCallInsensitiveAnalysis(prg: ScExp): ScJVMAnalysis =
     new ScBaseAnalysis(prg) with ScCallInsensitivity with ScConstantPropagationDomain
-    with ScLocalStoreAnalysis
+    with ScLocalStoreAnalysis {
+      override def toString = "sc_insensitive_local_store"
+    }
 
   def globalStoreCallInsensitiveAnalysis(prg: ScExp): ScJVMAnalysis =
     new ScBaseAnalysis(prg) with ScCallInsensitivity with ScConstantPropagationDomain
-    with ScGlobalStoreAnalysis
+    with ScGlobalStoreAnalysis {
+      override def toString = "sc_insensitive_global_store"
+    }
 }
