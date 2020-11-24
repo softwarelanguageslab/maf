@@ -166,7 +166,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Thunks(a), Thunks(b))                         => Thunks(a ++ b)
       case (Conses(a), Conses(b))                         => Conses(a ++ b)
       case (Nils, Nils)                                   => Nils
-      case (Vec(size1, elements1), Vec(size2, elements2)) => ???
+      case (Vec(size1, elements1), Vec(size2, elements2)) => ??? // TODO
       case (Ptr(a1), Ptr(a2))                             => Ptr(a1 ++ a2)
       case (RefinedValueInStates(v1), RefinedValueInStates(v2)) =>
         RefinedValueInStates(
@@ -404,27 +404,27 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     /*================================================================================================================*/
 
-    override def injectBoolean(b: Boolean): CoProductValue = bool(b)
+    def injectBoolean(b: Boolean): CoProductValue = bool(b)
 
-    override def injectInteger(n: Int): CoProductValue = number(n)
+    def injectInteger(n: Int): CoProductValue = number(n)
 
-    override def injectClo(c: Clo[Addr]): CoProductValue = clo(c)
+    def injectClo(c: Clo[Addr]): CoProductValue = clo(c)
 
-    override def injectGrd(g: Grd[Addr]): CoProductValue = grd(g)
+    def injectGrd(g: Grd[Addr]): CoProductValue = grd(g)
 
-    override def injectArr(a: Arr[Addr]): CoProductValue = arr(a)
+    def injectArr(a: Arr[Addr]): CoProductValue = arr(a)
 
-    override def injectPrim(p: Prim): CoProductValue = prim(p)
+    def injectPrim(p: Prim): CoProductValue = prim(p)
 
-    override def injectSymbolic(sym: Symbolic): CoProductValue = Symbolics(Set(sym.expr))
+    def injectSymbolic(sym: Symbolic): CoProductValue = Symbolics(Set(sym.expr))
 
-    override def injectBlame(b: Blame): CoProductValue = blame(b)
+    def injectBlame(b: Blame): CoProductValue = blame(b)
 
-    override def injectOpq(o: Opq): CoProductValue = opq(o)
+    def injectOpq(o: Opq): CoProductValue = opq(o)
 
-    override def injectFlat(f: Flat[Addr]): CoProductValue = flat(f)
+    def injectFlat(f: Flat[Addr]): CoProductValue = flat(f)
 
-    override def injectRefinedValueInState(state: CoProductValue, value: Opq): CoProductValue =
+    def injectRefinedValueInState(state: CoProductValue, value: Opq): CoProductValue =
       state match {
         case CoProduct(v) => CoProduct(RefinedValueInStates(Map(v -> Set(value))))
         case _            => Top
@@ -434,11 +434,23 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     def injectCons(c: Cons[Addr]): CoProductValue = cons(c)
 
+    def injectPointer(a: Addr): CoProductValue = ptr(a)
+
     def injectNil: CoProductValue = Nils
+
+    def vector(length: CoProductValue, init: CoProductValue): CoProductValue = ???
+
+    def vectorSet(
+        vector: CoProductValue,
+        index: CoProductValue,
+        value: CoProductValue
+    ): CoProductValue = ???
+
+    def vectorRef(vector: CoProductValue, index: CoProductValue): CoProductValue = ???
 
     /*================================================================================================================*/
 
-    override def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue = {
+    def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue = {
       Values.applyPrimitive(prim)(arguments.map {
         case product: CoProduct => product.value
         case Top                => TopValue
@@ -447,19 +459,19 @@ class ScCoProductLattice[I, B, Addr <: Address](
     }
     /*================================================================================================================*/
 
-    override def isTrue(value: CoProductValue): Boolean = isPred(Values.isTrue, value)
+    def isTrue(value: CoProductValue): Boolean = isPred(Values.isTrue, value)
 
-    override def isFalse(value: CoProductValue): Boolean = isPred(Values.isFalse, value)
+    def isFalse(value: CoProductValue): Boolean = isPred(Values.isFalse, value)
 
-    override def isPrim(value: CoProductValue): Boolean = isPred(Values.isPrim, value)
+    def isPrim(value: CoProductValue): Boolean = isPred(Values.isPrim, value)
 
-    override def isClo(value: CoProductValue): Boolean = isPred(Values.isClo, value)
+    def isClo(value: CoProductValue): Boolean = isPred(Values.isClo, value)
 
-    override def isBlame(value: CoProductValue): Boolean = isPred(Values.isBlame, value)
+    def isBlame(value: CoProductValue): Boolean = isPred(Values.isBlame, value)
 
-    override def isFlatContract(value: CoProductValue): Boolean = isPred(Values.isFlat, value)
+    def isFlatContract(value: CoProductValue): Boolean = isPred(Values.isFlat, value)
 
-    override def isDefinitelyOpq(value: CoProductValue): Boolean = value match {
+    def isDefinitelyOpq(value: CoProductValue): Boolean = value match {
       case CoProduct(value) => Values.isDefinitelyOpq(value)
       case _                => false
     }
@@ -476,44 +488,59 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     /*================================================================================================================*/
 
-    override def getPrim(value: CoProductValue): Set[Prim] = value match {
+    def getPrim(value: CoProductValue): Set[Prim] = value match {
       case CoProduct(Prims(prims)) => prims
       case _                       => Set()
     }
 
-    override def getClo(value: CoProductValue): Set[Clo[Addr]] = value match {
+    def getClo(value: CoProductValue): Set[Clo[Addr]] = value match {
       case CoProduct(Clos(clos)) => clos
       case _                     => Set()
     }
 
-    override def getGrd(value: CoProductValue): Set[Grd[Addr]] = value match {
+    def getGrd(value: CoProductValue): Set[Grd[Addr]] = value match {
       case CoProduct(Grds(grds)) => grds
       case _                     => Set()
     }
 
-    override def getArr(value: CoProductValue): Set[Arr[Addr]] = value match {
+    def getArr(value: CoProductValue): Set[Arr[Addr]] = value match {
       case CoProduct(Arrs(arrs)) => arrs
       case _                     => Set()
     }
 
-    override def getBlames(value: CoProductValue): Set[Blame] = value match {
+    def getBlames(value: CoProductValue): Set[Blame] = value match {
       case CoProduct(Blames(blames)) => blames
       case _                         => Set()
     }
 
-    override def getOpq(value: CoProductValue): Set[Opq] = value match {
+    def getOpq(value: CoProductValue): Set[Opq] = value match {
       case CoProduct(Opqs(opqs)) => opqs
       case _                     => Set()
     }
 
-    override def getFlat(value: CoProductValue): Set[Flat[Addr]] = value match {
+    def getFlat(value: CoProductValue): Set[Flat[Addr]] = value match {
       case CoProduct(Flats(flats)) => flats
       case _                       => Set()
     }
 
-    override def getSymbolic(value: CoProductValue): Option[String] = value match {
+    def getSymbolic(value: CoProductValue): Option[String] = value match {
       case CoProduct(value) => Values.getSymbolic(value)
       case _                => None
+    }
+
+    def getThunk(value: CoProductValue): Set[Thunk[Addr]] = value match {
+      case CoProduct(Thunks(t)) => t
+      case _                    => Set()
+    }
+
+    def getCons(value: CoProductValue): Set[Cons[Addr]] = value match {
+      case CoProduct(Conses(c)) => c
+      case _                    => Set()
+    }
+
+    def getPointers(value: CoProductValue): Set[Addr] = value match {
+      case CoProduct(Ptr(ptr)) => ptr
+      case _                   => Set()
     }
 
     def getRefinedValueInState(value: CoProductValue): Set[RefinedValueInState[CoProductValue]] =
@@ -529,28 +556,18 @@ class ScCoProductLattice[I, B, Addr <: Address](
         case _ => Set()
       }
 
-    def getThunk(value: CoProductValue): Set[Thunk[Addr]] = value match {
-      case CoProduct(Thunks(t)) => t
-      case _                    => Set()
-    }
-
-    def getCons(value: CoProductValue): Set[Cons[Addr]] = value match {
-      case CoProduct(Conses(c)) => c
-      case _                    => Set()
-    }
-
     /*================================================================================================================*/
 
     /** A lattice has a bottom element */
-    override def bottom: CoProductValue = Bottom
+    def bottom: CoProductValue = Bottom
 
     /** A lattice has a top element (might be undefined) */
-    override def top: CoProductValue        = Top
-    override def integerTop: CoProductValue = Number(IntLattice[I].top)
-    override def boolTop                    = Bool(BoolLattice[B].top)
+    def top: CoProductValue        = Top
+    def integerTop: CoProductValue = Number(IntLattice[I].top)
+    def boolTop                    = Bool(BoolLattice[B].top)
 
     /** Elements of the lattice can be joined together */
-    override def join(x: CoProductValue, y: => CoProductValue): CoProductValue = (x, y) match {
+    def join(x: CoProductValue, y: => CoProductValue): CoProductValue = (x, y) match {
       case (Top, _) | (_, Top)          => Top
       case (Bottom, _)                  => y
       case (_, Bottom)                  => x
@@ -558,7 +575,7 @@ class ScCoProductLattice[I, B, Addr <: Address](
     }
 
     /** Subsumption between two elements can be checked */
-    override def subsumes(x: CoProductValue, y: => CoProductValue): Boolean = (x, y) match {
+    def subsumes(x: CoProductValue, y: => CoProductValue): Boolean = (x, y) match {
       case (Top, _)                     => true
       case (_, Bottom)                  => true
       case (_, Top)                     => false
@@ -566,44 +583,14 @@ class ScCoProductLattice[I, B, Addr <: Address](
       case (_, _)                       => false
     }
 
-    override def show(v: CoProductValue): String = v match {
+    def show(v: CoProductValue): String = v match {
       case Top              => TopValue.toString
       case Bottom           => BotValue.toString
       case CoProduct(value) => Values.show(value)
     }
 
     /** Equality check, returning an abstract result */
-    override def eql[Bo: BoolLattice](x: CoProductValue, y: CoProductValue): Bo = ???
-
-    /**
-      * Inject an address in the abstract domain
-      */
-    override def injectPointer(a: Addr): CoProductValue = ???
-
-    /**
-      * Extract the pointers contained within the value from the abstract domain.
-      */
-    override def getPointers(value: CoProductValue): Set[Addr] = ???
-
-    /**
-      * Create a vector from a length represented as an abstract value
-      * and with the default abstract value of `L`
-      */
-    override def vector(length: CoProductValue, init: CoProductValue): CoProductValue = ???
-
-    /**
-      * Change the value of the vector `vector` on index `index` to value `value`
-      */
-    override def vectorSet(
-        vector: CoProductValue,
-        index: CoProductValue,
-        value: CoProductValue
-    ): CoProductValue = ???
-
-    /**
-      * Retrieve a value on index `index` from  the vector
-      */
-    override def vectorRef(vector: CoProductValue, index: CoProductValue): CoProductValue = ???
+    def eql[Bo: BoolLattice](x: CoProductValue, y: CoProductValue): Bo = ???
   }
 }
 
