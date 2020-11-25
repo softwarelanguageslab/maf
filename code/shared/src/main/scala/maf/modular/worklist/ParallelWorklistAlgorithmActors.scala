@@ -153,8 +153,8 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
   def intraAnalysis(component: Component): ParallelIntra
   trait ParallelIntra extends IntraAnalysis { intra =>
     val depVersion = inter.depVersion
-    override def commit(dep: Dependency): Boolean =
-      if (super.commit(dep)) {
+    override def doWrite(dep: Dependency): Boolean =
+      if (super.doWrite(dep)) {
         inter.depVersion += dep -> (inter.depVersion(dep) + 1)
         true
       } else {

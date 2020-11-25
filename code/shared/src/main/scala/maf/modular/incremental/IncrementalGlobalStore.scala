@@ -77,12 +77,12 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
      * @note This function should be overridden to avoid the functionality of GlobalStore to be used.
      *       Even though this function could be merged into refineWrites.
      */
-    override def commit(dep: Dependency): Boolean = dep match {
+    override def doWrite(dep: Dependency): Boolean = dep match {
       case AddrDependency(addr) =>
         // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
         // Also, this would not work, as updateAddr only performs monotonic updates.
         updateAddrInc(component, addr, intraProvenance(addr))
-      case _ => super.commit(dep)
+      case _ => super.doWrite(dep)
     }
 
     /** Refines values in the store that are no longer written to by a component. */

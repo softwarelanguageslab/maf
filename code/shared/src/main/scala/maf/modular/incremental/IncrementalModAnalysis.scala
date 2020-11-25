@@ -145,15 +145,15 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(timeout: Timeout.T, name: String, optimisedExecution: Boolean = true): Unit = {
-    logger = Logger(name.split("/").last.dropRight(4))
     log = true
+    if (log) logger = Logger(name.split("/").last.dropRight(4))
     optimisationFlag = optimisedExecution                           // Used for testing pursposes.
     version = New                                                   // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
     analyze(timeout)
     if (log) deps.keySet.foreach(dep => logger.log(s"DEPEN ${dep} <- ${deps(dep)}"))
-    logger.close()
+    if (log) logger.close()
   }
 
 
