@@ -183,7 +183,10 @@ object ScPrelude {
     "string<=?"    -> "(define (string<=? s1 s2) (or (string<? s1 s2) (string=? s1 s2)))",
     "string>?"     -> "(define (string>? s1 s2) (not (string<=? s1 s2)))",
     "string>=?"    -> "(define (string<=? s1 s2) (or (string>? s1 s2) (string=? s1 s2)))",
-    "truncate"     -> "(define (truncate x) (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))"
+    "truncate"     -> "(define (truncate x) (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
+    "or/c"         -> "(define (or/c a b) (lambda (v) (or (a v) (b v))))",
+    "and/c"        -> "(define (and/c a b) (lambda (v) (and (a v) (b v))))",
+    "else"         -> "(define else #t)"
   )
 
   val prelude: List[ScExp] = preludeFunctions.values.map(SCExpCompiler.read).toList

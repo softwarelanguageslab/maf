@@ -176,6 +176,73 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   }
 
   /**
+    * Tests on conditions
+    */
+  eval("(and #t #f)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(false))
+  }
+
+  eval("(and #f #t)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(false))
+  }
+
+  eval("(and #t #t)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(and OPQ OPQ)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.boolTop)
+  }
+
+  eval("(or #t #f)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(or #f #t)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(or #f #f)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(false))
+  }
+
+  eval("(or #f 4)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(4))
+  }
+
+  eval("(or 4 5)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(4))
+  }
+
+  eval("(or OPQ #t)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(or #t OPQ)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(or OPQ OPQ)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.boolTop)
+  }
+
+  eval("(or #t #t)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(not #t)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(false))
+  }
+
+  eval("(not #f)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
+  }
+
+  eval("(not OPQ)").tested { machine =>
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.top)
+  }
+
+  /**
     * We should be able to get the car of a cons pair
     */
   eval("(car (cons 1 2))").tested { machine =>

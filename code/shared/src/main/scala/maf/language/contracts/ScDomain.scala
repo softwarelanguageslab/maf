@@ -224,27 +224,31 @@ trait ScDomain[I, B, Addr <: Address] {
 
     def constantBin(v: Value)(a: Value, b: Value): Value = v
 
+    def primOr(a: Value, b: Value): Value = (isTrue(a), isTrue(b), isFalse(a), isFalse(b)) match {
+      case (true, _, false, _)        => a /** (or 4 #f) = 4 **/
+      case (_, true, _, false)        => b /** (or #f 4) = 4 */
+      case (false, false, true, true) => Bool(BoolLattice[B].inject(false))
+      case _                          => Bool(BoolLattice[B].top)
+    }
+
+    def primAnd(a: Value, b: Value): Value = (isTrue(a), isTrue(b), isFalse(a), isFalse(b)) match {
+      case (true, true, false, false)                    => b
+      case (true, true, true, _) | (true, true, _, true) => Bool(BoolLattice[B].top)
+      case _                                             => Bool(BoolLattice[B].inject(false))
+    }
+
     val binPrimitives: Map[String, (Value, Value) => Value] = Map(
-      "+"  -> arith(IntLattice[I].plus),
-      "-"  -> arith(IntLattice[I].minus),
-      "*"  -> arith(IntLattice[I].times),
-      "/"  -> arith(IntLattice[I].quotient),
-      "<"  -> cmp(IntLattice[I].lt[B]),
-      ">"  -> constantBin(TopValue),
-      "=<" -> ((a, b) => ???),
-      ">=" -> ((a, b) => ???),
-      "="  -> cmp(IntLattice[I].eql[B]),
-      "and" -> (
-          (
-              a,
-              b
-          ) =>
-            (isTrue(a), isTrue(b), isFalse(a), isFalse(b)) match {
-              case (true, true, false, false)                    => Bool(BoolLattice[B].inject(true))
-              case (true, true, true, _) | (true, true, _, true) => Bool(BoolLattice[B].top)
-              case _                                             => Bool(BoolLattice[B].inject(false))
-            }
-        )
+      "+"   -> arith(IntLattice[I].plus),
+      "-"   -> arith(IntLattice[I].minus),
+      "*"   -> arith(IntLattice[I].times),
+      "/"   -> arith(IntLattice[I].quotient),
+      "<"   -> cmp(IntLattice[I].lt[B]),
+      ">"   -> constantBin(TopValue),
+      "=<"  -> ((a, b) => ???),
+      ">="  -> ((a, b) => ???),
+      "="   -> cmp(IntLattice[I].eql[B]),
+      "or"  -> primOr,
+      "and" -> primAnd
     )
 
     def unaryPrim: Map[String, (Value) => Value] = Map(
@@ -282,9 +286,9 @@ trait ScDomain[I, B, Addr <: Address] {
     }
 
     def isFalse(value: Value): Boolean = value match {
-      case TopValue => true
-      case Bool(b)  => BoolLattice[B].isFalse(b)
-      case _        => false
+      case TopValue | Opqs(_) => true
+      case Bool(b)            => BoolLattice[B].isFalse(b)
+      case _                  => false
     }
 
     def isPrim(value: Value): Boolean = value match {

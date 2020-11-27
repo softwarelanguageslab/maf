@@ -28,7 +28,10 @@ abstract class SimpleScSemantics(prg: ScExp)
     "true?"    -> "true?/c",
     "false?"   -> "false?/c",
     "proc?"    -> "proc?/c",
-    "bool?"    -> "bool?/c"
+    "bool?"    -> "bool?/c",
+    "and"      -> "and/c",
+    "or"       -> "or/c",
+    "not"      -> "not/c"
   )
 
   override def intraAnalysis(component: Component) = {

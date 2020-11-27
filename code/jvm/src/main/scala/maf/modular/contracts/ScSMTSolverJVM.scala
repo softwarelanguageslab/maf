@@ -64,9 +64,16 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
    (define-fun nonzero?/c ((v1 V)) V
      (VBool (not (= (unwrap-int v1) 0))))
 
+   ;; everything is true except false
    (define-fun true?/c ((v1 V)) Bool
-     (unwrap-bool v1))
+     (or ((_ is VInt) v1)
+         ((_ is VProc) v1)
+         ((_ is VPrim) v1)
+         ((_ is VString) v1)
+         (and ((_ is VBool) v1)
+              (unwrap-bool v1))))
 
+    ;; only false is false
     (define-fun false?/c ((v1 V)) Bool
       (not (unwrap-bool v1)))
       
@@ -81,6 +88,15 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
       
     (define-fun //c ((v1 V) (v2 V)) V
       (VInt (- (unwrap-int v1) (unwrap-int v2))))
+      
+    (define-fun or/c ((v1 V) (v2 V)) V
+      (VBool (or (true?/c v1) (true?/c v2)))) 
+      
+    (define-fun and/c ((v1 V) (v2 V)) V
+      (VBool (and (true?/c v1) (true?/c v2))))
+      
+    (define-fun not/c ((v1 V)) V
+      (VBool (not (true?/c v1))))
       
     (define-fun bool?/c ((v1 Bool)) V
      (VBool true))

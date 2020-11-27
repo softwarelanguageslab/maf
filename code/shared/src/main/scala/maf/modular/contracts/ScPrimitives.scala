@@ -57,6 +57,7 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
       "dependent-contract?" -> ("any?" ~> "bool?"),
       "any?"                -> ("any?" ~> "bool?"),
       "and"                 -> ("any?" ~> "any?" ~> "any?"),
+      "or"                  -> ("any?" ~> "any?" ~> "any?"),
       "nonzero?"            -> ("int?" ~> "bool?"),
       "not"                 -> ("any?" ~> "bool?") // TODO: add some tests for this
     )
