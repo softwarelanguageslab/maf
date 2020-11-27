@@ -59,13 +59,7 @@ case class CallWithStore[Context, Addr, Value](
   override val lambda: ScLambda          = call.lambda
   override val context: Context          = call.context
 
-  override def toString: String =
-    "CallWithStore {\n" +
-      s"call = ${call.lambda}\n" + s"store = ${store.v.filter {
-      case (ScPrimAddr(_), _) => false
-      case _                  => true
-    }}\n}"
-
+  override def toString: String = s"with_store${call.lambda}"
 }
 
 trait ScStandardComponents extends ScModSemantics {

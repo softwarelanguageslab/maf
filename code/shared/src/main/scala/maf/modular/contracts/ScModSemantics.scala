@@ -63,11 +63,12 @@ trait ScModSemantics
   def viewStore(component: Component): Store = view(component) match {
     case c: CallWithStore[ComponentContext, Addr, Value] => c.store.v
     case ScMain | Call(_, _, _) =>
-      store.view.filterKeys {
-        case _: ReturnAddr[Component] | _: ExceptionAddr[Component] => false
-        case _                                                      => true
-
-      }.toMap
+      if (GLOBAL_STORE_ENABLED) Map()
+      else
+        store.view.filterKeys {
+          case _: ReturnAddr[Component] | _: ExceptionAddr[Component] => false
+          case _                                                      => true
+        }.toMap
   }
 
   def instrument(component: Component, data: LocalStoreMap[Addr, Value]): Component =

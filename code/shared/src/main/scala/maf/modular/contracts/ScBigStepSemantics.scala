@@ -23,7 +23,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       var storeCache: StoreCache = componentStore.view.mapValues(v => (v, ScNil())).toMap
       primBindings.foreach {
         case (name, addr) =>
-          val value = storeCache(addr)._1
+          val value = readPure(addr, storeCache)
           storeCache = storeCache +  (addr -> ((value, ScIdentifier(name, Identity.none))))
           storeCache = storeCache + (ScPrimAddr(name) -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
       }
@@ -46,6 +46,8 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       }
 
       println("================================")
+      println(s"Analyzing component $component")
+
       val (value, store) = merged(eval(fnBody).map(_._1))(initialContext)
       println(s"Return value is $value")
       writeReturnStore(store)
