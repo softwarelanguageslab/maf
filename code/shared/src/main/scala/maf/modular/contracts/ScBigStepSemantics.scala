@@ -201,6 +201,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
 
     def evalCar(pai: ScExp): ScEvalM[PostValue] =
       eval(pai).flatMap((pai) => {
+        println(pai)
         val topValue = if (lattice.top == pai) { Set(result(lattice.top)) } else { Set() }
         nondets(lattice.getCons(pai._1).map(p => read(p.car)) ++ topValue)
       })
@@ -246,14 +247,21 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       } yield monitoredFunction
 
     def evalProgram(expressions: List[ScExp]): ScEvalM[PostValue] = {
-      def addBinding(name: ScIdentifier): ScEvalM[()] = addBindingToEnv(name, component)
+      def addBinding(name: ScIdentifier): ScEvalM[()] = 
+        addBindingToEnv(name, component) >> lookupOrDefine(name, component) >> unit
 
       for {
         // extend the environment first
         _ <- sequence(expressions.map {
-          case ScDefineAnnotatedFn(name, _, _, _, _) => addBinding(name)
-          case ScDefine(name, _, _) => addBinding(name)
-          case ScDefineFn(name, _, _, _) => addBinding(name)
+          case ScDefineAnnotatedFn(name, _, _, _, _) => 
+            addBinding(name) 
+
+          case ScDefine(name, _, _) => 
+            addBinding(name)  
+
+          case ScDefineFn(name, _, _, _) => 
+            addBinding(name) 
+
           case _ => unit
         })
         // evaluate all expressions in the program

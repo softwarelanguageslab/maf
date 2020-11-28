@@ -33,6 +33,12 @@ trait ScSemanticsMonad extends ScModSemantics {
           case (updatedContext, value) => f(value).run(updatedContext)
         }
       )
+
+      def >>=[B](f: X => ScEvalM[B]): ScEvalM[B] = 
+        flatMap(f)
+
+      def >>[B](f: => ScEvalM[B]): ScEvalM[B] = 
+        flatMap(_ => f) 
     }
 
     def sequence[X](xs: List[ScEvalM[X]]): ScEvalM[List[X]] = xs match {
@@ -43,6 +49,7 @@ trait ScSemanticsMonad extends ScModSemantics {
           results <- sequence(xs.tail)
         } yield (result :: results)
     }
+
 
     def sequenceLast[X](xs: List[ScEvalM[X]]): ScEvalM[X] =
       sequence(xs).map(_.last)
