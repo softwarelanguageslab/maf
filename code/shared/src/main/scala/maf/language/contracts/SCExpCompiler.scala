@@ -69,6 +69,33 @@ object SCExpCompiler {
       }
   }
 
+  /**
+    * Compiles a named letrec to a normal letrec
+    * @param functionName the name of the recursive function
+    * @param paramNames the names of the parameters, these will be bound in the environment of the body
+    * @param values the values to which to initially bind the parameters (as expressions)
+    * @param body the uncompiled body of the letrec
+    * @param idn an identity that the translated version of the letrec can assume
+    * @return a function application of the recursive function defined by the letrec
+    *         Example: (letrec loop ((x 10)) (loop (+ x 1))) becomes
+    *         ((letrec loop (lambda (x) (loop (+ x 1))) loop) 10)
+    */
+  def named_letrec_compile(
+      functionName: SExpId,
+      paramNames: List[SExpId],
+      values: List[SExp],
+      body: SExp,
+      idn: Identity
+  ): ScExp = {
+    val compiledBindings   = values.map(compile)
+    val compiledBody       = compile(body)
+    val fnName             = ScIdentifier(functionName.id.name, functionName.idn)
+    val compiledParamNames = paramNames.map(n => ScIdentifier(n.id.name, n.idn))
+    val lambda             = ScLambda(compiledParamNames, compiledBody, idn)
+    val letrec             = ScLetRec(fnName, lambda, fnName, idn)
+    ScFunctionAp(letrec, compiledBindings, idn)
+  }
+
   def compile(prog: SExp): ScExp = prog match {
     case IdentWithIdentity("OPQ", idn) =>
       ScOpaque(idn, Set())
@@ -108,6 +135,11 @@ object SCExpCompiler {
       val compiledBindingExpression = compile(bindingExpression)
       val compiledExpression        = compile(expression)
       ScLetRec(ScIdentifier(name, idn), compiledBindingExpression, compiledExpression, prog.idn)
+
+    case Ident("letrec") :: ((fnName: SExpId) :: (varName: SExpId) :: bindingExpression :: ListNil(
+          _
+        )) :: expression :: ListNil(_) =>
+      named_letrec_compile(fnName, List(varName), List(bindingExpression), expression, prog.idn)
 
     case Ident("letrec") :: _ =>
       throw new Exception(s"invalid syntax for letrec at ${prog.idn.pos}")
