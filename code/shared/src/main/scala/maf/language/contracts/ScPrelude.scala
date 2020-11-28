@@ -4,9 +4,6 @@ object ScPrelude {
   val preludeFunctions = Map(
     "abs"     -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
     "append"  -> """(define (append l1 l2)
-                |  @sensitivity:No
-                |  (assert (list? l1))
-                |  (assert (list? l2))
                 |  (if (null? l1)
                 |      l2
                 |      (cons (car l1)
@@ -35,44 +32,45 @@ object ScPrelude {
                 |    (and (null? a) (null? b))
                 |    (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
                 |    (and (vector? a) (vector? b)
-                |      (let ((n (vector-length a)))
+                |      (letrec (n (vector-length a))
                 |        (and (= (vector-length b) n)
-                |          (letrec ((loop (lambda (i)
-                |                           @sensitivity:FA
+                |          (letrec (loop (lambda (i)
                 |                           (or (= i n)
                 |                             (and (equal? (vector-ref a i) (vector-ref b i))
-                |                               (loop (+ i 1)))))))
+                |                               (loop (+ i 1))))))
                 |            (loop 0)))))))""".stripMargin,
     "eqv?"    -> "(define/contract (eqv? x y) (~> (any? any?) bool?) (eq? x y))",
     "even?"   -> "(define/contract (even? x) (~> number? bool?) (= 0 (modulo x 2)))",
     // TODO: expt // TODO isn't this a primop (easier to handle real exponents).
     // TODO: exp
-    "gcd"          -> "(define/contract (gcd a b) (~> (number? number?) number?) (if (= b 0) a (gcd b (modulo a b))))",
-    "lcm"          -> "(define/contract (lcm m n) (~> (number? number?) number?) (/ (abs (* m n)) (gcd m n)))",
+    "gcd" -> "(define/contract (gcd a b) (~> (number? number?) number?) (if (= b 0) a (gcd b (modulo a b))))",
+    "lcm" -> "(define/contract (lcm m n) (~> (number? number?) number?) (/ (abs (* m n)) (gcd m n)))",
+    /*
     "length"       -> """(define/contract (length l) (~> list? number?)
                 |  (letrec ((rec (lambda (l)
                 |    (if (null? l)
                 |       0
                 |       (+ 1 (rec (cdr l)))))))
-                |  (rec l)))""".stripMargin,
-    "list-ref"     -> """(define/contract (list-ref l index) (~> (list? number?) any?)
+                |  (rec l)))""".stripMargin, */
+    "list-ref" -> """(define/contract (list-ref l index) (~> (list? number?) any?)
                   |  (if (= index 0)
                   |    (car l)
                   |    (list-ref (cdr l) (- index 1))))""".stripMargin,
-    "list->vector" -> """(define/contract (list->vector l) 
+    /*
+    "list->vector" -> """(define/contract (list->vector l)
                       |  (~> list? vector?)
                       |  (let ((v (make-vector (length l))))
                       |    (let fill ((lst l) (i 0))
                       |      (if (null? lst)
                       |          v
                       |          (begin (vector-set! v i (car lst))
-                      |                 (fill (cdr lst) (+ i 1)))))))""".stripMargin,
-    "list-tail"    -> """(define/contract (list-tail x k)
+                      |                 (fill (cdr lst) (+ i 1)))))))""".stripMargin, */
+    "list-tail" -> """(define/contract (list-tail x k)
                    |  (~> (list? number?) list?)
                    |  (if (zero? k)
                    |    x
                    |    (list-tail (cdr x) (- k 1))))""".stripMargin, // Based on definition in R5RS specification.
-    "list?"        -> "(define (list? l) @sensitivity:FA (or (and (pair? l) (list? (cdr l))) (null? l)))",
+    "list?"     -> "(define (list? l) @sensitivity:FA (or (and (pair? l) (list? (cdr l))) (null? l)))",
     //"max" -> "(define (max a b) (if (< a b) b a))", // Variadic => implemented manually.
     "member" -> """(define/contract (member e l)
                 |  (~> (any? list?) any?)
@@ -91,24 +89,20 @@ object ScPrelude {
     "memv"   -> "(define/contract (memv e l) (~> (any? list?) any?) (memq e l))",
     //"min" -> "(define (min a b) (if (< a b) a b))", // Variadic => implemented manually.
     "negative?"    -> "(define/contract (negative? x) (~> number? bool?) (< x 0))",
-    "newline"      -> "(define (newline) @sensitivity:FA #f)", // undefined
-    "not"          -> "(define (not x) @sensitivity:FA (if x #f #t))",
-    "odd?"         -> "(define (odd? x) @sensitivity:FA (assert (number? x)) (= 1 (modulo x 2)))",
-    "positive?"    -> "(define (positive? x) @sensitivity:FA (assert (number? x)) (> x 0))",
-    "zero?"        -> "(define (zero? x) @sensitivity:FA (assert (number? x)) (= x 0))",
-    "<="           -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y)))",
-    ">"            -> "(define (> x y) @sensitivity:FA (assert (number? x)) (not (<= x y)))",
-    ">="           -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
-    "char>?"       -> "(define (char>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char<=? c1 c2)))",
-    "char<=?"      -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? x)) (or (char<? c1 c2) (char=? c1 c2)))",
-    "char>=?"      -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? x)) (or (char>? c1 c2) (char=? c1 c2)))",
-    "char-ci>?"    -> "(define (char-ci>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char-ci<=? c1 c2)))",
-    "char-ci<=?"   -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
-    "char-ci>=?"   -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
-    "caar"         -> "(define (caar x) @sensitivity:FA (car (car x)))",
-    "cadr"         -> "(define (cadr x) @sensitivity:FA (car (cdr x)))",
-    "cdar"         -> "(define (cdar x) @sensitivity:FA (cdr (car x)))",
-    "cddr"         -> "(define (cddr x) @sensitivity:FA (cdr (cdr x)))",
+    "newline"      -> "(define (newline) #f)", // undefined
+    "<="           -> "(define/contract (<= x y) (~> number? bool?) (or (< x y) (= x y)))",
+    ">"            -> "(define/contract (> x y) (~> number? bool?) (not (<= x y)))",
+    ">="           -> "(define/contract (>= x y) (~> number? bool?) (or (> x y) (= x y)))",
+    "char>?"       -> "(define/contract (char>? c1 c2) (~> char? bool?)  (not (char<=? c1 c2)))",
+    "char<=?"      -> "(define/contract (char<=? c1 c2) (~> char? bool?)  (or (char<? c1 c2) (char=? c1 c2)))",
+    "char>=?"      -> "(define/contract (char<=? c1 c2) (~> char? bool?) (or (char>? c1 c2) (char=? c1 c2)))",
+    "char-ci>?"    -> "(define/contract (char-ci>? c1 c2) (~> char? bool?) (assert (char? x)) (not (char-ci<=? c1 c2)))",
+    "char-ci<=?"   -> "(define/contract (char-ci<=? c1 c2) (~> char? bool?) (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
+    "char-ci>=?"   -> "(define/contract (char-ci<=? c1 c2) (~> char? bool?) (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
+    "caar"         -> "(define/contract (caar x) (~> pair? any?) (car (car x)))",
+    "cadr"         -> "(define/contract (cadr x) (~> pair? any?) (car (cdr x)))",
+    "cdar"         -> "(define/contract (cdar x) (~> pair? any?) (cdr (car x)))",
+    "cddr"         -> "(define/contract (cddr x) (~> pair? any?) (cdr (cdr x)))",
     "caaar"        -> "(define/contract (caaar x) (~> pair? any?)  (car (car (car x))))",
     "caadr"        -> "(define/contract (caadr x) (~> pair? any?)  (car (car (cdr x))))",
     "cadar"        -> "(define/contract (cadar x) (~> pair? any?)  (car (cdr (car x))))",
@@ -157,7 +151,6 @@ object ScPrelude {
                       |  (define len (string-length string))
                       |  (let convert ((n (- len 1))
                       |                (r '()))
-                      |    @sensitivity:FA
                       |    (if (< n 0)
                       |        r
                       |        (convert (- n 1)
