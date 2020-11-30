@@ -260,6 +260,13 @@ trait ScDomain[I, B, Addr <: Address] {
       "false?"              -> pred({ case Bool(b) if BoolLattice[B].isFalse(b) => }, "false?"),
       "int?"                -> pred({ case Number(_) => }, "int?"),
       "any?"                -> pred { case a if a != BotValue => },
+      "pair?"               -> pred { case Conses(_) => },
+      "bool?"               -> pred { case Bool(_) => },
+      "number?"             -> pred({ case Number(_) => }, "int?"),
+      "char?"               -> (_ => TopValue), // TODO
+      "vector?"             -> (_ => TopValue), // TODO
+      "string?"             -> (_ => TopValue), // TODO
+      "not"                 -> bUnOp(BoolLattice[B].not),
       "nonzero?" -> (
           (value) =>
             value match {
@@ -267,9 +274,7 @@ trait ScDomain[I, B, Addr <: Address] {
                 Bool(BoolLattice[B].not((IntLattice[I].eql(a, IntLattice[I].inject(0)))))
               case TopValue | Opqs(_) => Bool(BoolLattice[B].top)
             }
-        ),
-      "bool?" -> pred { case Bool(_) => },
-      "not"   -> bUnOp(BoolLattice[B].not)
+        )
     )
 
     def applyPrimitive(prim: Prim)(arguments: Value*): Value =

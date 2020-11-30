@@ -59,7 +59,12 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
       "and"                 -> ("any?" ~> "any?" ~> "any?"),
       "or"                  -> ("any?" ~> "any?" ~> "any?"),
       "nonzero?"            -> ("int?" ~> "bool?"),
-      "not"                 -> ("any?" ~> "bool?") // TODO: add some tests for this
+      "pair?"               -> ("any?" ~> "bool?"),
+      "number?"             -> ("any?" ~> "bool?"),
+      "not"                 -> ("any?" ~> "bool?"),
+      "char?"               -> ("any?" ~> "bool?"),
+      "vector?"             -> ("any?" ~> "bool?"),
+      "string?"             -> ("any?" ~> "bool?")
     )
 
   /**
@@ -84,6 +89,7 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
 
   def baseEnv: Env = Environment(primBindings)
   def setup(): Unit = {
+    println("Setting up analysis")
     setupMonitoredPrimitives()
   }
 }

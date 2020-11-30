@@ -36,6 +36,8 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
         (VString (unwrap-string String))
         (VPrim (unwrap-prim String)))))
 
+  (declare-fun char/c (V) V)
+
   (define-fun >/c ((v1 V) (v2 V)) V
      (VBool (> (unwrap-int v1) (unwrap-int v2))))
      
