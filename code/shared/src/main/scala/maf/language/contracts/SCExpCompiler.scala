@@ -267,6 +267,6 @@ object SCExpCompiler {
     */
   def preludedRead(s: String): ScExp = {
     import ScPrelude._
-    read(preludeString ++ s)
+    read(preludeString ++ s"\n$s")
   }
 }
