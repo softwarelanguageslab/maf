@@ -155,8 +155,10 @@ class SExpLexer extends Lexical with SExpTokens {
     def subsequent: Parser[Char]           = initial | digit | specialSubsequent
     def peculiarIdentifier: Parser[String] =
       // R5RS specifies + | - | ..., not clear what ... is supposed to be
-      ((chr('+') | chr('-')) ^^ (_.toString)) |
-        ((chr('1') ~ chr('+') | chr('1') ~ chr('-')) ^^ { case c1 ~ c2 => s"$c1$c2" })
+      ((chr('-') ~ chr('>')) ^^ (_ => "->")) | ((chr('+') | chr('-')) ^^ (_.toString)) |
+        ((chr('1') ~ chr('+') | chr('1') ~ chr('-')) ^^ {
+          case c1 ~ c2 => s"$c1$c2"
+        })
     (initial ~ rep(subsequent) ^^ { case i ~ s => s"$i${s.mkString}" }
       | peculiarIdentifier) <~ guard(delimiter) ^^ (s => TIdentifier(s))
   }
@@ -170,7 +172,8 @@ class SExpLexer extends Lexical with SExpTokens {
   def dot: Parser[SExpToken]             = chr('.') <~ guard(delimiter) ^^^ TDot()
   def real: Parser[SExpToken] =
     sign ~ rep(digit) ~ opt('.' ~ rep1(digit)) ~ opt('e' ~ integer) <~ guard(delimiter) ^? {
-      case s ~ pre ~ post ~ exp if (exp.isDefined || post.isDefined) && (pre.nonEmpty || post.isDefined) =>
+      case s ~ pre ~ post ~ exp
+          if (exp.isDefined || post.isDefined) && (pre.nonEmpty || post.isDefined) =>
         val signstr = s.map(_.toString).getOrElse("")
         val poststr = post.map({ case _ ~ digits => s".${digits.mkString}" }).getOrElse("")
         val expstr = exp
@@ -223,19 +226,20 @@ object SExpParser extends TokenParsers {
 
   def identifier(tag: PTag): Parser[SExp] = Parser { in =>
     elem("identifier", _.isInstanceOf[TIdentifier])(in) match {
-      case Success(TIdentifier(s), in1) => Success(SExpId(Identifier(s, Identity(in.pos, tag))), in1)
-      case Success(v, in1)              => Failure(s"Expected identifier, got $v", in1)
-      case ns: NoSuccess                => ns
+      case Success(TIdentifier(s), in1) =>
+        Success(SExpId(Identifier(s, Identity(in.pos, tag))), in1)
+      case Success(v, in1) => Failure(s"Expected identifier, got $v", in1)
+      case ns: NoSuccess   => ns
     }
   }
 
-  def leftParen       = elem("left parenthesis",  _.isInstanceOf[TLeftParen])
+  def leftParen       = elem("left parenthesis", _.isInstanceOf[TLeftParen])
   def rightParen      = elem("right parenthesis", _.isInstanceOf[TRightParen])
-  def dot             = elem("dot",               _.isInstanceOf[TDot])
-  def quote           = elem("quote",             _.isInstanceOf[TQuote])
-  def quasiquote      = elem("quasiquote",        _.isInstanceOf[TBackquote])
-  def unquote         = elem("unquote",           _.isInstanceOf[TUnquote])
-  def unquoteSplicing = elem("unquote-splicing",  _.isInstanceOf[TUnquoteSplicing])
+  def dot             = elem("dot", _.isInstanceOf[TDot])
+  def quote           = elem("quote", _.isInstanceOf[TQuote])
+  def quasiquote      = elem("quasiquote", _.isInstanceOf[TBackquote])
+  def unquote         = elem("unquote", _.isInstanceOf[TUnquote])
+  def unquoteSplicing = elem("unquote-splicing", _.isInstanceOf[TUnquoteSplicing])
 
   def list(tag: PTag): Parser[SExp] = Parser { in =>
     (leftParen ~> rep1(exp(tag)) ~ opt(dot ~> exp(tag)) <~ rightParen)(in) match {
@@ -254,13 +258,17 @@ object SExpParser extends TokenParsers {
     }
   }
 
-  def quoted(tag: PTag)           : Parser[SExp] = withQuote(tag)(quote,           SExpQuoted(_,_))
-  def quasiquoted(tag: PTag)      : Parser[SExp] = withQuote(tag)(quasiquote,      SExpQuasiquoted(_,_))
-  def unquoted(tag: PTag)         : Parser[SExp] = withQuote(tag)(unquote,         SExpUnquoted(_,_))
-  def unquotedSplicing(tag: PTag) : Parser[SExp] = withQuote(tag)(unquoteSplicing, SExpUnquotedSplicing(_,_))
+  def quoted(tag: PTag): Parser[SExp]      = withQuote(tag)(quote, SExpQuoted(_, _))
+  def quasiquoted(tag: PTag): Parser[SExp] = withQuote(tag)(quasiquote, SExpQuasiquoted(_, _))
+  def unquoted(tag: PTag): Parser[SExp]    = withQuote(tag)(unquote, SExpUnquoted(_, _))
+  def unquotedSplicing(tag: PTag): Parser[SExp] =
+    withQuote(tag)(unquoteSplicing, SExpUnquotedSplicing(_, _))
 
-  def exp(tag: PTag)     : Parser[SExp]       = value(tag) | identifier(tag) | list(tag) | quoted(tag) | quasiquoted(tag) | unquoted(tag) | unquotedSplicing(tag)
-  def expList(tag: PTag) : Parser[List[SExp]] = rep1(exp(tag))
+  def exp(tag: PTag): Parser[SExp] =
+    value(tag) | identifier(tag) | list(tag) | quoted(tag) | quasiquoted(tag) | unquoted(tag) | unquotedSplicing(
+      tag
+    )
+  def expList(tag: PTag): Parser[List[SExp]] = rep1(exp(tag))
 
   def parse(s: String, tag: PTag = noTag): List[SExp] = expList(tag)(new lexical.Scanner(s)) match {
     case Success(res, next) if next.atEnd => res
@@ -268,7 +276,9 @@ object SExpParser extends TokenParsers {
       throw new Exception(
         s"cannot fully parse expression, stopped at ${next.pos} after parsing $res"
       )
-    case Failure(msg, next) => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
-    case Error(msg, next)   => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
+    case Failure(msg, next) =>
+      throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
+    case Error(msg, next) =>
+      throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
   }
 }

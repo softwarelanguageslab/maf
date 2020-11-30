@@ -37,7 +37,7 @@ trait ScTests extends AnyFlatSpec with should.Matchers {
   }
 
   protected def compile(exp: String): ScExp = {
-    SCExpCompiler.read(exp)
+    SCExpCompiler.preludedRead(exp)
   }
 
 }

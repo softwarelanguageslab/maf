@@ -126,10 +126,12 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
   }
 
-  eval("(define (test a) (cadr a)) (define (cadr x) (car (cdr x))) (cadr (cons 1 (cons 2 3)))").tested {
-    machine =>
+  eval("(define (test a) (cadr a)) (cadr (cons 1 (cons 2 3)))")
+    .tested { machine =>
       machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(2))
-  }
+    }
+
+  eval("(define/contract (f a) (~> int? int?) (+ a 1)) (f 5)").safe()
 
   /**
     * Test if the semantics when running on a valid value are the same as the wrapped value

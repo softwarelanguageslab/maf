@@ -48,10 +48,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       println("================================")
       println(s"Analyzing component $component")
 
-      val (value, store) = merged(eval(fnBody).map(_._1))(initialContext)
-      println(s"Return value is $value")
-      writeReturnStore(store)
+      val (value, sstore) = merged(eval(fnBody).map(_._1))(initialContext)
+      writeReturnStore(sstore)
       writeResult(value, component)
+      println("==================================")
     }
 
     def eval(expr: ScExp): ScEvalM[PostValue] = expr match {
@@ -66,7 +66,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       case ScMon(contract, expression, idn, _) => evalMon(contract, expression, idn)
       case ScOpaque(_, refinements) => evalOpaque(refinements)
       case ScHigherOrderContract(domain, range, idn) => eval(higherOrderToDependentContract(domain, range, idn))
-      case ScDependentContract(domain, rangeMaker, _) => evalDependentContract(domain, rangeMaker)
+      case ScDependentContract(domains, rangeMaker, _) => evalDependentContract(domains, rangeMaker)
       case ScFlatContract(expression, _) => evalFlatContract(expression)
       case ScLambda(params, body, idn) => evalLambda(params, body, idn)
       case ScAssume(identifier, assumption, expression, _) => evalAssume(identifier, assumption, expression)
@@ -183,7 +183,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
     }
 
     def higherOrderToDependentContract(domain: ScExp, range: ScExp, idn: Identity): ScExp =
-      ScDependentContract(domain, ScLambda(List(ScIdentifier("\"x", Identity.none)), range, range.idn), idn)
+      ScDependentContract(List(domain), ScLambda(List(ScIdentifier("\"x", Identity.none)), range, range.idn), idn)
 
     def evalCons(car: ScExp, cdr: ScExp): ScEvalM[PostValue] = for {
       evaluatedCar <- eval(car)
@@ -201,7 +201,6 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
 
     def evalCar(pai: ScExp): ScEvalM[PostValue] =
       eval(pai).flatMap((pai) => {
-        println(pai)
         val topValue = if (lattice.top == pai) { Set(result(lattice.top)) } else { Set() }
         nondets(lattice.getCons(pai._1).map(p => read(p.car)) ++ topValue)
       })
@@ -290,15 +289,19 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       } yield evaluatedExpression
     }
 
-    def evalDependentContract(domain: ScExp, rangeMaker: ScExp): ScEvalM[PostValue] = {
-      val domainAddr = allocGeneric(domain.idn, component)
+    def evalDependentContract(domains: List[ScExp], rangeMaker: ScExp): ScEvalM[PostValue] = {
+      val domainAddrs = domains.map(domain => allocGeneric(domain.idn, component))
       val rangeAddr  = allocGeneric(rangeMaker.idn, component)
       for {
-        evaluatedDomain <- eval(domain)
+        evaluatedDomains <- sequence(domains.zip(domainAddrs).map {
+          case (domain, addr) => for {
+            evaluated <- eval(domain)
+            _ <- write(addr, evaluated)
+          } yield addr
+        })
         evaluatedRangeMaker <- eval(rangeMaker)
-        _ <- write(domainAddr, evaluatedDomain)
         _ <- write(rangeAddr, evaluatedRangeMaker)
-      } yield (lattice.injectGrd(Grd(List(domainAddr), rangeAddr)), ScNil())
+      } yield (lattice.injectGrd(Grd(evaluatedDomains, rangeAddr)), ScNil())
     }
 
     def evalMon(contract: ScExp, expression: ScExp, identity: Identity): ScEvalM[PostValue] = {
@@ -466,8 +469,9 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
                  evaluatedExpression: PostValue,
                  contractIdn: Identity,
                  exprIdn: Identity): ScEvalM[PostValue] = {
+
       // flat contract
-      val flatContract = ifFeasible(primProc, evaluatedContract) {
+      val flatContract = ifFeasible(primProc, evaluatedContract) { 
         monFlat(evaluatedContract, evaluatedExpression, exprIdn)
       }
 

@@ -63,7 +63,7 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
 
   "A dependent contract" should "parse to a ScDependentContract" in {
     compile("(~ x y)") should matchPattern {
-      case ScDependentContract(ScIdentifier("x", _), ScIdentifier("y", _), _) =>
+      case ScDependentContract(List(ScIdentifier("x", _)), ScIdentifier("y", _), _) =>
     }
   }
 
@@ -185,6 +185,18 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
   "A cdr" should "be parsed to ScCdr" in {
     compile("(cdr a)") should matchPattern {
       case ScCdr(ScIdentifier("a", _), _) =>
+    }
+  }
+
+  "A contract with mumtiple arrows" should "be parsed into a contract with multiple domains" in {
+    compile("(-> x y z)") should matchPattern {
+      case ScDependentContract(List(ScIdentifier("x", _), ScIdentifier("y", _)), _, _) =>
+    }
+  }
+
+  "A contract with arrow" should "be parsed" in {
+    compile("(-> x y)") should matchPattern {
+      case ScHigherOrderContract(ScIdentifier("x", _), ScIdentifier("y", _), _) =>
     }
   }
 }

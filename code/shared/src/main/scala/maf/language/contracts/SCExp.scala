@@ -89,18 +89,19 @@ case class ScHigherOrderContract(domain: ScExp, range: ScExp, idn: Identity) ext
   override def toString: String = s"(~> $domain $range)"
 }
 
-case class ScDependentContract(domain: ScExp, rangeMaker: ScExp, idn: Identity) extends ScContract {
+case class ScDependentContract(domains: List[ScExp], rangeMaker: ScExp, idn: Identity)
+    extends ScContract {
 
   /** The set of free variables appearing in this expression. */
-  override def fv: Set[String] = domain.fv ++ rangeMaker.fv
+  override def fv: Set[String] = domains.flatMap(_.fv).toSet ++ rangeMaker.fv
 
   /** A label indicating the type of an expression. */
   override def label: Label = DEPENDENT_CONTRACT
 
   /** Returns the list of subexpressions of the given expression. */
-  override def subexpressions: List[Expression] = List(domain, rangeMaker)
+  override def subexpressions: List[Expression] = rangeMaker :: domains
 
-  override def toString: String = s"(~>d $domain $rangeMaker)"
+  override def toString: String = s"(~>d ${domains.map(_.toString)} $rangeMaker)"
 }
 
 trait ScParam extends ScExp {

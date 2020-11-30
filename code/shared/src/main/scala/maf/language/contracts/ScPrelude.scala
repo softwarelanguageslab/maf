@@ -1,20 +1,21 @@
 package maf.language.contracts
 
 object ScPrelude {
-  val preludeFunctions = Map(
-    "abs"     -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
-    "append"  -> """(define (append l1 l2)
+  val preludeFunctions = List(
+    "list?"  -> "(define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l)))",
+    "abs"    -> "(define/contract (abs x) (~> int? int?) (if (< x 0) (- 0 x) x))",
+    "append" -> """(define (append l1 l2)
                 |  (if (null? l1)
                 |      l2
                 |      (cons (car l1)
                 |            (append (cdr l1) l2))))""".stripMargin,
-    "assoc"   -> """(define/contract (assoc k l) (~> list? any?)
+    /*"assoc"  -> """(define/contract (assoc k l) (~> list? any?)
                |  (if (null? l)
                |    #f
                |   (if (equal? (caar l) k)
                |     (car l)
-               |     (assoc k (cdr l)))))""".stripMargin,
-    "assq"    -> """(define/contract (assq k l) (~> list? any?)
+               |     (assoc k (cdr l)))))""".stripMargin, V*/
+    "assq"    -> """(define/contract (assq k l) (-> list? any?)
               |  (if (null? l)
               |    #f
               |   (if (eq? (caar l) k)
@@ -39,20 +40,19 @@ object ScPrelude {
                 |                             (and (equal? (vector-ref a i) (vector-ref b i))
                 |                               (loop (+ i 1))))))
                 |            (loop 0)))))))""".stripMargin,
-    "eqv?"    -> "(define/contract (eqv? x y) (~> (any? any?) bool?) (eq? x y))",
-    "even?"   -> "(define/contract (even? x) (~> number? bool?) (= 0 (modulo x 2)))",
+    "eqv?"    -> "(define/contract (eqv? x y) (-> any? any? bool?) (eq? x y))",
+    "even?"   -> "(define/contract (even? x) (-> number? bool?) (= 0 (modulo x 2)))",
     // TODO: expt // TODO isn't this a primop (easier to handle real exponents).
     // TODO: exp
-    "gcd" -> "(define/contract (gcd a b) (~> (number? number?) number?) (if (= b 0) a (gcd b (modulo a b))))",
-    "lcm" -> "(define/contract (lcm m n) (~> (number? number?) number?) (/ (abs (* m n)) (gcd m n)))",
-    /*
-    "length"       -> """(define/contract (length l) (~> list? number?)
-                |  (letrec ((rec (lambda (l)
+    "gcd"      -> "(define/contract (gcd a b) (-> number? number? number?) (if (= b 0) a (gcd b (modulo a b))))",
+    "lcm"      -> "(define/contract (lcm m n) (-> number? number? number?) (/ (abs (* m n)) (gcd m n)))",
+    "length"   -> """(define/contract (length l) (-> list? number?)
+                |  (letrec (rec (lambda (l)
                 |    (if (null? l)
                 |       0
-                |       (+ 1 (rec (cdr l)))))))
-                |  (rec l)))""".stripMargin, */
-    "list-ref" -> """(define/contract (list-ref l index) (~> (list? number?) any?)
+                |       (+ 1 (rec (cdr l))))))
+                |  (rec l)))""".stripMargin,
+    "list-ref" -> """(define/contract (list-ref l index) (-> list? number? any?)
                   |  (if (= index 0)
                   |    (car l)
                   |    (list-ref (cdr l) (- index 1))))""".stripMargin,
@@ -66,32 +66,31 @@ object ScPrelude {
                       |          (begin (vector-set! v i (car lst))
                       |                 (fill (cdr lst) (+ i 1)))))))""".stripMargin, */
     "list-tail" -> """(define/contract (list-tail x k)
-                   |  (~> (list? number?) list?)
+                   |  (-> list? number? list?)
                    |  (if (zero? k)
                    |    x
                    |    (list-tail (cdr x) (- k 1))))""".stripMargin, // Based on definition in R5RS specification.
-    "list?"     -> "(define (list? l) @sensitivity:FA (or (and (pair? l) (list? (cdr l))) (null? l)))",
     //"max" -> "(define (max a b) (if (< a b) b a))", // Variadic => implemented manually.
     "member" -> """(define/contract (member e l)
-                |  (~> (any? list?) any?)
+      |  (->  any? list? any?)
                 |  (if (null? l)
                 |    #f
                 |    (if (equal? (car l) e)
                 |      l
                 |      (member e (cdr l)))))""".stripMargin,
     "memq"   -> """(define/contract (memq e l)
-              |  (~> (any? list?) any?)
+              |  (-> any? list? any?)
               |  (if (null? l)
               |    #f
               |    (if (eq? (car l) e)
               |      l
               |      (memq e (cdr l)))))""".stripMargin,
-    "memv"   -> "(define/contract (memv e l) (~> (any? list?) any?) (memq e l))",
+    "memv"   -> "(define/contract (memv e l) (-> any? list? any?) (memq e l))",
     //"min" -> "(define (min a b) (if (< a b) a b))", // Variadic => implemented manually.
-    "negative?"    -> "(define/contract (negative? x) (~> number? bool?) (< x 0))",
-    "newline"      -> "(define (newline) #f)", // undefined
-    "<="           -> "(define/contract (<= x y) (~> number? bool?) (or (< x y) (= x y)))",
-    ">"            -> "(define/contract (> x y) (~> number? bool?) (not (<= x y)))",
+    "negative?" -> "(define/contract (negative? x) (~> number? bool?) (< x 0))",
+    "newline"   -> "(define (newline) #f)", // undefined
+    "<="        -> "(define/contract (<= x y) (~> number? bool?) (or (< x y) (= x y)))",
+    //">"            -> "(define/contract (> x y) (~> number? bool?) (not (<= x y)))",
     ">="           -> "(define/contract (>= x y) (~> number? bool?) (or (> x y) (= x y)))",
     "char>?"       -> "(define/contract (char>? c1 c2) (~> char? bool?)  (not (char<=? c1 c2)))",
     "char<=?"      -> "(define/contract (char<=? c1 c2) (~> char? bool?)  (or (char<? c1 c2) (char=? c1 c2)))",
@@ -138,11 +137,11 @@ object ScPrelude {
                  |      '()
                  |      (append (reverse (cdr l))
                  |              (list (car l)))))""".stripMargin,
-    "map"          -> """(define/contract (map f l) (~> (proc? list?) list?)
+    "map"          -> """(define/contract (map f l) (~> proc? list? list?)
               |  (if (null? l)
               |      '()
               |      (cons (f (car l)) (map f (cdr l)))))""".stripMargin,
-    "for-each"     -> """(define/contract (for-each f l) (~> (proc? list?) list?)
+    "for-each"     -> """(define/contract (for-each f l) (~> proc? list? list?)
                   |  (if (null? l)
                   |      #t
                   |      (if (pair? l)
@@ -155,7 +154,7 @@ object ScPrelude {
                       |        r
                       |        (convert (- n 1)
                       |                 (cons (string-ref string n) r)))))""".stripMargin,
-    "string=?"     -> """(define/contract (string=? s1 s2) 
+    "string=?"     -> """(define/contract (string=? s1 s2)
                   |   (~> (string? string?) bool?)
                   |  (and (= (string-length s1)(string-length s2))
                   |       (let loop ((i (- (string-length s1) 1)))
@@ -182,5 +181,6 @@ object ScPrelude {
     "else"         -> "(define else #t)"
   )
 
-  val prelude: List[ScExp] = preludeFunctions.values.map(SCExpCompiler.read).toList
+  val prelude: List[ScExp]  = preludeFunctions.map(_._2).map(SCExpCompiler.read).toList
+  val preludeString: String = preludeFunctions.map(_._2).mkString("\n")
 }

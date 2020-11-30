@@ -50,7 +50,6 @@ trait ScSemanticsMonad extends ScModSemantics {
         } yield (result :: results)
     }
 
-
     def sequenceLast[X](xs: List[ScEvalM[X]]): ScEvalM[X] =
       sequence(xs).map(_.last)
 
@@ -159,6 +158,16 @@ trait ScSemanticsMonad extends ScModSemantics {
       println(("trace", x))
       pure(x)
     }
+
+    /**
+     * Action that prints the current store as a table
+     * to the screen. Useful for debugging.
+     */
+    def printStore: ScEvalM[()] = withStoreCache(store => {
+      import maf.util.StoreUtil._
+      println(store.asTable.prettyString())
+      unit
+    })
 
     def evict(addresses: List[Addr]): ScEvalM[()] = ScEvalM(context => {
       Set((context.copy(cache = context.cache.removedAll(addresses)), ()))

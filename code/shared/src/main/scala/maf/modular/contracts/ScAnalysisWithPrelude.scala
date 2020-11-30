@@ -8,8 +8,8 @@ trait ScAnalysisWithPrelude extends ScModSemantics {
   override def program: ScExp = {
     val prg = super.program
     prg match {
-      case ScProgram(expressions, idn) => ScProgram(expressions ++ prelude, idn)
-      case e                           => ScProgram(List(e) ++ prelude, Identity.none)
+      case ScProgram(expressions, idn) => ScProgram(prelude ++ expressions, idn)
+      case e                           => ScProgram(prelude ++ List(e), Identity.none)
     }
   }
 }

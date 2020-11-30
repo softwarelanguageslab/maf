@@ -96,6 +96,14 @@ object SCExpCompiler {
     ScFunctionAp(letrec, compiledBindings, idn)
   }
 
+  def compile_fn_contracts(exp: SExp): List[ScExp] = exp match {
+    case ListNil(_) => List()
+    case contract :: contracts =>
+      val compiledContract  = compile(contract)
+      val compiledContracts = compile_fn_contracts(contracts)
+      compiledContract :: compiledContracts
+  }
+
   def compile(prog: SExp): ScExp = prog match {
     case IdentWithIdentity("OPQ", idn) =>
       ScOpaque(idn, Set())
@@ -111,15 +119,24 @@ object SCExpCompiler {
     case Ident("flat") :: expr :: ListNil(_) =>
       ScFlatContract(compile(expr), prog.idn)
 
-    case Ident("~>") :: domain :: range :: ListNil(_) =>
+    case (Ident("~>") | Ident("->")) :: domain :: range :: ListNil(_) =>
       val domainCompiled = compile(domain)
       val rangeCompiled  = compile(range)
       ScHigherOrderContract(domainCompiled, rangeCompiled, prog.idn)
 
+    case (Ident("~>") | Ident("->")) :: contracts =>
+      val compiledContracts = compile_fn_contracts(contracts)
+      val domainContracts   = compiledContracts.init
+      val rangeContract     = compiledContracts.last
+      val rangeMaker =
+        ScLambda(List(ScVarArgIdentifier("0args", Identity.none)), rangeContract, rangeContract.idn)
+
+      ScDependentContract(domainContracts, rangeMaker, prog.idn)
+
     case Ident("~") :: domain :: range :: ListNil(_) =>
       val domainCompiled = compile(domain)
       val rangeCompiled  = compile(range)
-      ScDependentContract(domainCompiled, rangeCompiled, prog.idn)
+      ScDependentContract(List(domainCompiled), rangeCompiled, prog.idn)
 
     case SExpId(identifier) => ScIdentifier(identifier.name, prog.idn)
     case (Ident("lambda") | Ident("λ")) :: params :: expression :: ListNil(_) =>
@@ -241,5 +258,15 @@ object SCExpCompiler {
     } else {
       SCExpCompiler.compile(sexprs.head)
     }
+  }
+
+  /**
+    * Prepends the prelude to the beginning of the program
+    * @param s the program to read and compile into the an AST of the contract language
+    * @return an AST of the contract language
+    */
+  def preludedRead(s: String): ScExp = {
+    import ScPrelude._
+    read(preludeString ++ s)
   }
 }
