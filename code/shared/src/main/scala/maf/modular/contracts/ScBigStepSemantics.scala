@@ -4,6 +4,7 @@ import maf.language.contracts.ScLattice._
 import maf.language.contracts.{ScExp, _}
 import maf.language.sexp.{ValueBoolean, ValueInteger}
 import maf.util.benchmarks.Timeout
+import maf.util.benchmarks.Timer
 
 trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanticsMonad {
   private val primTrue  = ScLattice.Prim("true?")
@@ -21,6 +22,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       */
     def initialContext: Context = {
       var storeCache: StoreCache = componentStore.view.mapValues(v => (v, ScNil())).toMap
+
       primBindings.foreach {
         case (name, addr) =>
           val value = readPure(addr, storeCache)
@@ -35,7 +37,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
         }
         addr
       })
-
+    
       Context(env = fnEnv, cache = storeCache, pc = ScNil())
     }
 
@@ -96,6 +98,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
           throw new Exception(s"Addr $addr is not found in store $cache while analysing $component")
       }
     })
+
 
     /**
       * Write a value to both the store cache and the global store

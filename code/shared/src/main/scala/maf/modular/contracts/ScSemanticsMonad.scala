@@ -129,9 +129,16 @@ trait ScSemanticsMonad extends ScModSemantics {
       */
     def merged[L: Lattice](c: ScEvalM[L])(context: Context): (L, Store) = {
       import maf.lattice.MapLattice._
-      c.run(context).foldLeft((Lattice[L].bottom, Lattice[Store].bottom))((acc, v) => v match {
-        case (context, l) => (Lattice[L].join(acc._1, l), Lattice[Store].join(acc._2, context.store))
-      })
+      val result = c.run(context)
+      // optimisation: if the number of output states is one, then we don't need to merge anything
+      if (result.size == 1) {
+        val (context, v) = result.head
+        (v, context.store)
+      } else {
+        result.foldLeft((Lattice[L].bottom, Lattice[Store].bottom))((acc, v) => v match {
+          case (context, l) => (Lattice[L].join(acc._1, l), Lattice[Store].join(acc._2, context.store))
+        })
+      }
     }
 
     /**
