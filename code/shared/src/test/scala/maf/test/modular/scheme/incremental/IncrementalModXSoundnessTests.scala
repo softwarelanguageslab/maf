@@ -6,7 +6,7 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme._
 import maf.modular._
 import maf.modular.incremental.IncrementalModAnalysis
-import maf.modular.incremental.scheme.AnalysisBuilder._
+import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme._
 import maf.test._
 import maf.test.modular.scheme.SchemeSoundnessTests

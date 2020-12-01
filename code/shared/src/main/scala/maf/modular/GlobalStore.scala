@@ -54,12 +54,12 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
         })
         .isDefined
 
-    override def commit(dep: Dependency): Boolean = dep match {
+    override def doWrite(dep: Dependency): Boolean = dep match {
       case AddrDependency(addr) =>
         updateAddr(inter.store, addr, intra.store(addr))
           .map(updated => inter.store = updated)
           .isDefined
-      case _ => super.commit(dep)
+      case _ => super.doWrite(dep)
     }
     // An adapter for the "old" store interface
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...

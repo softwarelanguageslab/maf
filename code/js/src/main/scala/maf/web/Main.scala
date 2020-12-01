@@ -17,10 +17,14 @@ import maf.util.benchmarks.Timeout
 import maf.core.Position._
 import maf.language.scheme._
 import maf.modular._
+import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
-import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.modular.worklist._
 import maf.util.benchmarks.Timeout
+import maf.language.change.CodeVersion._
+
+import scala.concurrent.duration._
 
 // Scala.js-related imports
 import org.scalajs.dom
@@ -98,9 +102,8 @@ object WebVisualisationPage extends Component {
     input
   }
 
-  def loadFile(text: String): Unit = {
-    val program = SchemeParser.parse(text)
-    val analysis = new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
+  def standardAnalysis(program: SchemeExp) =
+    new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
     with SchemeConstantPropagationDomain with DependencyTracking[SchemeExp]
     with FIFOWorklistAlgorithm[SchemeExp] {
       //override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
@@ -113,7 +116,25 @@ object WebVisualisationPage extends Component {
       override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
     }
-    val visualisation = new WebVisualisation(analysis)
+
+  def incrementalReanalysis(program: SchemeExp) =
+    new IncrementalSchemeModFCPAnalysis(program) with DependencyTracking[SchemeExp] {
+      override def intraAnalysis(cmp: SchemeModFComponent) =
+        new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with DependencyTrackingIntra
+      analyze(Timeout.start(Duration(5, MINUTES)))
+      version = New
+      optimisationFlag = true
+      findUpdatedExpressions(program).flatMap(mapping).foreach(addToWorkList)
+    }
+
+  // Select the analysis to be used by the web visualisation.
+  val analysis
+      : SchemeExp => ModAnalysis[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_] =
+    standardAnalysis
+
+  def loadFile(text: String): Unit = {
+    val program       = SchemeParser.parse(text)
+    val visualisation = new WebVisualisation(analysis(program))
     // parameters for the visualisation
     val body   = document.body
     val width  = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]

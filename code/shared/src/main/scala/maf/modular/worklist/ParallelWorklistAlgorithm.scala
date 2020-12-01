@@ -165,8 +165,8 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]
     val (latestStore, depVersion, deps, visited) = latest
     store = latestStore
     var toCheck = Set[Dependency]()
-    override def commit(dep: Dependency): Boolean =
-      if (super.commit(dep)) {
+    override def doWrite(dep: Dependency): Boolean =
+      if (super.doWrite(dep)) {
         inter.depVersion += dep -> (inter.depVersion(dep) + 1)
         true
       } else {

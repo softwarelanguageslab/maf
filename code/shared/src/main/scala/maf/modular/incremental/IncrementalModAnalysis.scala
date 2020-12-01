@@ -18,6 +18,11 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   var logger: Log = _
   var log = false
 
+  override def trigger(dep: Dependency): Unit = {
+    if (log) logger.log(s"TRIGG $dep")
+    super.trigger(dep)
+  }
+
 
   /* ************************************************************************* */
   /* ***** Tracking: track which components depend on which expressions. ***** */
@@ -27,7 +32,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
   var version: Version = Old
   /** Keeps track of which components depend on an expression. */
-  private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
+  var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
 
   /**
    * Register that a component is depending on a given expression in the program.
@@ -140,14 +145,15 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(timeout: Timeout.T, name: String, optimisedExecution: Boolean = true): Unit = {
-    logger = Logger(name.split("/").last.dropRight(4))
     log = true
+    if (log) logger = Logger(name.split("/").last.dropRight(4))
     optimisationFlag = optimisedExecution                           // Used for testing pursposes.
     version = New                                                   // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
     analyze(timeout)
-    logger.close()
+    if (log) deps.keySet.foreach(dep => logger.log(s"DEPEN ${dep} <- ${deps(dep)}"))
+    if (log) logger.close()
   }
 
 
