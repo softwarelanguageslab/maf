@@ -206,7 +206,7 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   }
 
   eval("(and OPQ OPQ)").tested { machine =>
-    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.boolTop)
+    machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.top)
   }
 
   eval("(or #t #f)").tested { machine =>
@@ -385,5 +385,19 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
 
   verify("(~> any? int?)", "(lambda (x) (letrec (y (OPQ int?)) (if (int? x) x x)))")
     .applied()
+    .unsafe()
+
+  /**
+    * Test whether refined works on a both with an and in it
+    */
+  verify("(-> any? any? int?)", "(lambda (x y) (if (and (int? x) (int? y)) (+ x y) 0))")
+    .applied2()
+    .safe()
+
+  /**
+    * Test whether refined works on a both with an and in it
+    */
+  verify("(-> any? any? int?)", "(lambda (x y) (if (and (int? x) #t) (+ x y) 0))")
+    .applied2()
     .unsafe()
 }

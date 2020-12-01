@@ -1,13 +1,20 @@
-#lang racket
-(require soft-contract/fake-contract)
+;; OK  but changed even? to meven? and odd? to modd?
+;; TODO check why defining odd? and even? do not work
+;; (1) allow redefinition of primitives or
+;; (2) throw an error when the user redfines a function
+;; (3) check what racket does and implement that
 
-(define (even? n)
-  (if (zero? n) #t (odd? (sub1 n))))
+(define (meven? n)
+  (if (zero? n) #t (modd? (sub1 n))))
 
-(define (odd? n)
-  (if (zero? n) #f (even? (sub1 n))))
+(define (modd? n)
+  (if (zero? n) #f (meven? (sub1 n))))
 
 
 (provide/contract
- [even? (integer? . -> . boolean?)]
- [odd? (integer? . -> . boolean?)])
+ (meven? (-> int?  bool?))
+ (modd? (-> int? bool?)))
+
+(@unchecked meven? OPQ)
+(@unchecked modd? OPQ)
+(safe)

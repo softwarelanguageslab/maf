@@ -2,6 +2,7 @@ package maf.modular.contracts
 
 import maf.core.{Environment, Lattice}
 import maf.language.contracts.{ScExp, ScIdentifier, ScNil}
+import maf.core.Identity
 
 /**
   * This trait provides a monad that aids with defining a big step semantics for soft contract verification
@@ -10,7 +11,7 @@ trait ScSemanticsMonad extends ScModSemantics {
   type PC = ScExp
   type PostValue = (Value, ScExp)
   type StoreCache = Map[Addr, PostValue]
-  case class Context(env: Environment[Addr], pc: PC, cache: StoreCache) {
+  case class Context(env: Environment[Addr], pc: PC, cache: StoreCache, ignoredIdn: List[Identity] = List()) {
     def store: Store = cache.view.mapValues(_._1).toMap
   }
 
@@ -49,6 +50,14 @@ trait ScSemanticsMonad extends ScModSemantics {
           results <- sequence(xs.tail)
         } yield (result :: results)
     }
+
+    def withIgnoredIdentities(f: List[Identity] => Unit): ScEvalM[()] = 
+      withContext(context => effectful(f(context.ignoredIdn)))
+
+    def addIgnored(idns: Iterable[Identity]): ScEvalM[()] = ScEvalM((context) => {
+        List((context.copy(ignoredIdn = context.ignoredIdn ++ idns), ())).toSet
+    })
+
 
     def sequenceLast[X](xs: List[ScEvalM[X]]): ScEvalM[X] =
       sequence(xs).map(_.last)
@@ -136,7 +145,9 @@ trait ScSemanticsMonad extends ScModSemantics {
         (v, context.store)
       } else {
         result.foldLeft((Lattice[L].bottom, Lattice[Store].bottom))((acc, v) => v match {
-          case (context, l) => (Lattice[L].join(acc._1, l), Lattice[Store].join(acc._2, context.store))
+          case (context, l) => {
+            (Lattice[L].join(acc._1, l), Lattice[Store].join(acc._2, context.store))
+          }
         })
       }
     }
@@ -160,6 +171,11 @@ trait ScSemanticsMonad extends ScModSemantics {
       * Executes the given action simply for its side effects
       */
     def effectful(c: => ()): ScEvalM[()] = debug(c)
+
+    def trace[X](m: String): (X => ScEvalM[X]) = { x =>
+      println(s"trace $m $x")
+      pure(x)
+    }
 
     def trace[X]: (X => ScEvalM[X]) = { x =>
       println(("trace", x))

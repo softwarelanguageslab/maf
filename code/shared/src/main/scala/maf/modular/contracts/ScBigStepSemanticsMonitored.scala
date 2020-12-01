@@ -41,16 +41,14 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemantics {
         if (summary.blames.nonEmpty) {
           println("Warning:")
           println("Got non-empty blames map, program is not validated as safe!")
+          println(summary.blames.values)
         }
         pure(value(lattice.injectNil))
 
       case ScFunctionAp(_, args, _, annotation) if annotation == Some("@unchecked") =>
-        super
-          .eval(expr)
-          .map(res => {
-            args.map(_.idn).foreach(i => removeBlame(component, i))
-            res
-          })
+        addIgnored(args.map(_.idn)) >>
+          super
+            .eval(expr)
 
       case _ => super.eval(expr)
     }

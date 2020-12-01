@@ -30,6 +30,8 @@ object ScLattice {
       * using their address in the store, such that we can evict them from the store cache when appropriate
       */
     val capturedVariables: List[Addr] = lambda.fv.flatMap(env.lookup).toList
+
+    override def toString: String = s"Clo($idn, $parameters, $lambda, $pc, $topLevel)"
   }
 
   /**

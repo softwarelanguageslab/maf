@@ -1,5 +1,4 @@
-#lang racket
-(require soft-contract/fake-contract)
+;; OK 
 
 (define (factorial n)
   (factorial-acc n 1))
@@ -9,4 +8,7 @@
       (factorial-acc (sub1 n) (* n acc))))
 
 (provide/contract
- [factorial (integer? . -> . integer?)])
+ (factorial (-> int? int?)))
+
+(@unchecked factorial OPQ)
+(safe)

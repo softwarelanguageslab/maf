@@ -106,6 +106,8 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
       
     (define-fun and/c ((v1 V) (v2 V)) V
       (VBool (and (true?/c v1) (true?/c v2))))
+
+    (declare-fun string-length (V) V)
       
     (define-fun not/c ((v1 V)) V
       (VBool (not (true?/c v1))))

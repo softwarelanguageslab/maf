@@ -1,8 +1,12 @@
-#lang racket
+;; OK
 
 (define (f x y)
-  (if (if (number? x) (string? y) #f)
+  (if (if (int? x) (string? y) #f)
       (+ x (string-length y))
       0))
 
-(provide/contract [f (any/c any/c . -> . number?)])
+(provide/contract 
+  (f (-> any? any? int?)))
+
+(@unchecked f OPQ OPQ)
+(safe)

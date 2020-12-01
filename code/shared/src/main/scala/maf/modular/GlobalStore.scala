@@ -8,11 +8,10 @@ case class AddrDependency(addr: Address) extends Dependency {
 }
 
 /**
- * Provides a global store to a modular analysis.
- * @tparam Expr The type of the expressions under analysis.
- */
-trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] 
-                                        with AbstractDomain[Expr] { inter =>
+  * Provides a global store to a modular analysis.
+  * @tparam Expr The type of the expressions under analysis.
+  */
+trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDomain[Expr] { inter =>
 
   // TODO: should we parameterize this for more type-safety, or do we not care about that for addresses?
   type Addr = Address
@@ -20,10 +19,14 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr]
   // parameterized by some store that can be accessed and modified
   var store: Map[Addr, Value]
 
-  private def updateAddr(store: Map[Addr,Value], addr: Addr, value: Value): Option[Map[Addr,Value]] = 
+  private def updateAddr(
+      store: Map[Addr, Value],
+      addr: Addr,
+      value: Value
+  ): Option[Map[Addr, Value]] =
     store.get(addr) match {
       case None if value == lattice.bottom => None
-      case None => Some(store + (addr -> value))
+      case None                            => Some(store + (addr -> value))
       case Some(oldValue) =>
         val newValue = lattice.join(oldValue, value)
         if (newValue == oldValue) {
@@ -34,7 +37,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr]
     }
 
   override def intraAnalysis(cmp: Component): GlobalStoreIntra
-  trait GlobalStoreIntra extends IntraAnalysis { intra => 
+  trait GlobalStoreIntra extends IntraAnalysis { intra =>
     // local copy of the global store
     var store = inter.store
     // reading addresses in the global store
@@ -43,7 +46,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr]
       intra.store.getOrElse(addr, lattice.bottom)
     }
     // writing addresses of the global store
-    def writeAddr(addr: Addr, value: Value): Boolean = 
+    def writeAddr(addr: Addr, value: Value): Boolean =
       updateAddr(intra.store, addr, value)
         .map(updated => {
           intra.store = updated
@@ -52,7 +55,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr]
         .isDefined
 
     override def commit(dep: Dependency): Boolean = dep match {
-      case AddrDependency(addr) => 
+      case AddrDependency(addr) =>
         updateAddr(inter.store, addr, intra.store(addr))
           .map(updated => inter.store = updated)
           .isDefined
@@ -60,9 +63,9 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr]
     }
     // An adapter for the "old" store interface
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
-    case object StoreAdapter extends Store[Addr,Value] {
-      def lookup(a: Addr): Option[Value] = Some(readAddr(a))
-      def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a,v) ; this }
+    case object StoreAdapter extends Store[Addr, Value] {
+      def lookup(a: Addr): Option[Value]                = Some(readAddr(a))
+      def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a, v); this }
     }
   }
 }

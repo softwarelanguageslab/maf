@@ -5,6 +5,8 @@ import java.io.File
 import maf.language.contracts.{SCExpCompiler, ScExp}
 import maf.modular.contracts.ScJVMAnalysis
 import maf.util.{Reader, Writer}
+import maf.util.benchmarks.Timer
+import maf.util.benchmarks.Table
 
 /**
   * An auxiliary trait for benchmark soft contract verification programs
@@ -15,8 +17,11 @@ trait Benchmarks {
 
   type Benchmark = String
   type Program   = ScExp
-  val configurations: List[ScExp => ScJVMAnalysis] =
-    List(localStoreCallInsensitiveAnalysis, globalStoreCallInsensitiveAnalysis)
+  val configurations: Map[String, ScExp => ScJVMAnalysis] =
+    Map(
+      //"localStore"  -> localStoreCallInsensitiveAnalysis,
+      "globalStore" -> globalStoreCallInsensitiveAnalysis
+    )
 
   /**
     * Create a benchmark from file
@@ -51,17 +56,26 @@ trait Benchmarks {
   )(benchmark: Benchmark): BenchmarkResult = {
     println("================================================================================")
     println(s"Starting benchmark: ${benchmark}")
-    val t0 = System.nanoTime()
 
-    val source   = Reader.loadFile(benchmark)
-    val program  = SCExpCompiler.read(source)
-    val analysis = createAnalysis(program)
-    analysis.analyze()
+    val (elapsedTime, analysis) = Timer.time {
+      val source   = Reader.loadFile(benchmark)
+      val program  = SCExpCompiler.preludedRead(source)
+      val analysis = createAnalysis(program)
+      analysis.analyze()
+      analysis
+    }
 
-    val t1          = System.nanoTime()
-    val elapsedTime = t1 - t0
-    println(s"Finished benchmark in ${elapsedTime / 1000} ms")
-    val result = BenchmarkResult(elapsedTime, analysis.contractApplications)
+    println(s"Finished benchmark in ${elapsedTime / (1000000)} ms")
+    println(analysis.summary.blames)
+    val result = BenchmarkResult(
+      benchmark,
+      elapsedTime,
+      analysis.contractApplications,
+      analysis.analysedComponents,
+      // if the program is not marked as safe, then the analysis must not produce
+      // that it is safe. This is useful for generating a report on false positives.
+      !analysis.allSafe || (analysis.allSafe && analysis.summary.blames.isEmpty)
+    )
     result
   }
 
@@ -79,14 +93,21 @@ trait Benchmarks {
     val results = benchmarks.map(runBenchmark(createAnalysis))
     val writer  = Writer.open(s"$out.csv")
 
-    results.foreach { result =>
-      writer.write(s"${result.elapsedTime};${result.numberOfChecks}")
-    }
+    val outTable = results.foldRight(Table.empty[String]) { _.addToTable(_) }
 
+    writer.write(outTable.toCSVString())
     writer.close()
   }
 
+  /**
+    * Run the given list of benchmarks on all available configurations
+    *
+    * @param benchmarks the benchmarks to run
+    * @param out the prefix of the filename in which the results should be stored (as CSV)
+    */
   def runAll(benchmarks: List[Benchmark], out: String): Unit = {
-    configurations.foreach(c => runBenchmarks(c)(benchmarks, s"${out}_$c"))
+    configurations.foreach { case (name, c) => runBenchmarks(c)(benchmarks, s"${out}_$name") }
   }
+
+  def run(): Unit
 }

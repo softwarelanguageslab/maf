@@ -178,7 +178,10 @@ object ScPrelude {
     "truncate"     -> "(define (truncate x) (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
     "or/c"         -> "(define (or/c a b) (lambda (v) (or (a v) (b v))))",
     "and/c"        -> "(define (and/c a b) (lambda (v) (and (a v) (b v))))",
-    "else"         -> "(define else #t)"
+    "else"         -> "(define else #t)",
+    "zero?"        -> "(define/contract (zero? x) (-> int? bool?) (= x 0))",
+    "sub1"         -> "(define/contract (sub1 x) (-> int? int?) (- x 1))",
+    "add1"         -> "(define/contract (add1 x) (-> int? int?) (+ x 1))"
   )
 
   val prelude: List[ScExp]  = preludeFunctions.map(_._2).map(SCExpCompiler.read).toList

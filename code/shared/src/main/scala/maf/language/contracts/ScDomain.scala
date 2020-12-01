@@ -150,9 +150,13 @@ trait ScDomain[I, B, Addr <: Address] {
 
   object Values {
     def join(a: Value, b: Value): Value = (a, b) match {
-      case (TopValue, _) | (_, TopValue)                  => TopValue
-      case (BotValue, _)                                  => a
-      case (_, BotValue)                                  => b
+      case (TopValue, _) | (_, TopValue) => TopValue
+      case (BotValue, _)                 => a
+      case (_, BotValue)                 => b
+      case (Number(_), Opqs(opqs)) if opqs.forall(_.refinementSet.contains("int?")) =>
+        Opqs(opqs)
+      case (Opqs(opqs), Number(_)) if opqs.forall(_.refinementSet.contains("int?")) =>
+        Opqs(opqs)
       case (Number(a), Number(b))                         => Number(IntLattice[I].join(a, b))
       case (Bool(a), Bool(b))                             => Bool(BoolLattice[B].join(a, b))
       case (Clos(a), Clos(b))                             => Clos(a ++ b)
@@ -197,9 +201,10 @@ trait ScDomain[I, B, Addr <: Address] {
     }
 
     private def cmp(op: (I, I) => B)(a: Value, b: Value): Value = (a, b) match {
-      case (Number(a), Number(b))                                           => Bool(op(a, b))
-      case (TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_)) => TopValue
-      case (_, _)                                                           => BotValue
+      case (Number(a), Number(b)) => Bool(op(a, b))
+      case (TopValue | Number(_) | Opqs(_), TopValue | Number(_) | Opqs(_)) =>
+        Bool(BoolLattice[B].top)
+      case (_, _) => BotValue
     }
 
     private def bUnOp(op: (B => B))(a: Value): Value = a match {
@@ -263,10 +268,11 @@ trait ScDomain[I, B, Addr <: Address] {
       "pair?"               -> pred { case Conses(_) => },
       "bool?"               -> pred { case Bool(_) => },
       "number?"             -> pred({ case Number(_) => }, "int?"),
-      "char?"               -> (_ => TopValue), // TODO
-      "vector?"             -> (_ => TopValue), // TODO
-      "string?"             -> (_ => TopValue), // TODO
+      "char?"               -> (_ => Bool(BoolLattice[B].top)), // TODO
+      "vector?"             -> (_ => Bool(BoolLattice[B].top)), // TODO
+      "string?"             -> (_ => Bool(BoolLattice[B].top)), // TODO
       "not"                 -> bUnOp(BoolLattice[B].not),
+      "string-length"       -> (_ => Number(IntLattice[I].top)),
       "nonzero?" -> (
           (value) =>
             value match {

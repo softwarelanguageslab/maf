@@ -43,7 +43,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
 
     def analyze(_ignored_timeout: Timeout.T): Unit = {
       totalRuns += 1
-      if (totalRuns > 10) {
+      if (totalRuns > 100) {
         throw new Exception("Timeout exceeded")
       }
 
@@ -53,6 +53,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       val (value, sstore) = merged(eval(fnBody).map(_._1))(initialContext)
       writeReturnStore(sstore)
       writeResult(value, component)
+      println(s"Return value $value")
       println("==================================")
     }
 
@@ -62,6 +63,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       case ScLetRec(ident, binding, body, _) => evalLetRec(ident, binding, body)
       case ScRaise(_, _) => ???
       case ScSet(variable, value, _) => evalSet(variable, value)
+      case ScFunctionAp(ScIdentifier("and", _), operands, _, _) => evalAnd(operands)
       case ScFunctionAp(operator, operands, _, _) => evalFunctionAp(operator, operands)
       case v: ScValue => evalValue(v)
       case exp: ScIdentifier => evalIdentifier(exp)
@@ -81,6 +83,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       case ScCons(car, cdr, _) => evalCons(car, cdr)
       case ScCar(pai, _) => evalCar(pai)
       case ScCdr(pai, _) => evalCdr(pai)
+      case ScNil(_) => result(lattice.injectNil)
     }
 
     /**
@@ -127,11 +130,12 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       addToCache(addr -> value)
     }
 
-    def blame[X](blamedIdentity: Identity, blamingIdentity: Identity = Identity.none): ScEvalM[X]  =
-      unit.flatMap(_ => {
-        writeBlame(Blame(blamedIdentity, blamingIdentity))
-        void
-      })
+    def blame[X](blamedIdentity: Identity, blamingIdentity: Identity = Identity.none): ScEvalM[X]  = 
+      withIgnoredIdentities(ignored => {
+        if (!ignored.contains(blamedIdentity)) {
+          writeBlame(Blame(blamedIdentity, blamingIdentity))
+        }
+      }) >> void
 
     /**
       * Returns true if we are currently at top-level (i.e., evaluating the main program)
@@ -185,8 +189,15 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       value
     }
 
+    // TODO: this is included in the compiler as well, so this can be removed
     def higherOrderToDependentContract(domain: ScExp, range: ScExp, idn: Identity): ScExp =
       ScDependentContract(List(domain), ScLambda(List(ScIdentifier("\"x", Identity.none)), range, range.idn), idn)
+
+    def evalAnd(operands: List[ScExp]): ScEvalM[PostValue] = operands match {
+      case List(expr) => eval(expr)
+      case expr :: exprs => eval(expr).flatMap(value => 
+          cond(value, enrichOpaqueInStore(expr, evalAnd(exprs)), result(lattice.injectBoolean(false))))
+    }
 
     def evalCons(car: ScExp, cdr: ScExp): ScEvalM[PostValue] = for {
       evaluatedCar <- eval(car)
@@ -205,13 +216,15 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
     def evalCar(pai: ScExp): ScEvalM[PostValue] =
       eval(pai).flatMap((pai) => {
         val topValue = if (lattice.top == pai) { Set(result(lattice.top)) } else { Set() }
-        nondets(lattice.getCons(pai._1).map(p => read(p.car)) ++ topValue)
+        val opqValue = if (lattice.isDefinitelyOpq(pai._1)) { Set(pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))) } else { Set() }
+        nondets(lattice.getCons(pai._1).map(p => read(p.car)) ++ topValue ++ opqValue)
       })
 
     def evalCdr(pai: ScExp): ScEvalM[PostValue] =
       eval(pai).flatMap((pai) => {
         val topValue = if (lattice.top == pai) { Set(result(lattice.top)) } else { Set() }
-        nondets(lattice.getCons(pai._1).map(p => read(p.cdr)) ++ topValue)
+        val opqValue = if (lattice.isDefinitelyOpq(pai._1)) { Set(pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))) } else { Set() }
+        nondets(lattice.getCons(pai._1).map(p => read(p.cdr)) ++ topValue ++ opqValue)
       })
 
 
@@ -236,7 +249,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       for {
         addr <- lookupOrDefine(name, component)
         lambda <- eval(ScLambda(parameters, body, idn))
-        _ <- write(addr, lambda)
+        _ <- write(addr, (lambda._1, name))
       } yield lambda
 
     def evalDefineAnnotatedFn(name: ScIdentifier, parameters: List[ScParam], contract: ScExp, body: ScExp, idn: Identity): ScEvalM[PostValue] =
@@ -245,7 +258,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
         lambda <- eval(ScLambda(parameters, body, idn))
         evaluatedContract <- eval(contract)
         monitoredFunction <- applyMon(evaluatedContract, lambda, contract.idn, idn)
-        _ <- write(addr, monitoredFunction)
+        _ <- write(addr, (monitoredFunction._1, name))
       } yield monitoredFunction
 
     def evalProgram(expressions: List[ScExp]): ScEvalM[PostValue] = {
@@ -359,7 +372,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       res <- applyFn(evaluatedOperator, evaluatedOperands, operands)
     } yield res
 
-    def evalIf(condition: ScExp, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] =
+    def evalIf(condition: ScExp, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] = 
       eval(condition).flatMap((value) => conditional(value, condition, consequent, alternative))
 
     def allocList(values: List[PostValue], idns: List[Identity]): ScEvalM[PostValue] = values match {
@@ -392,7 +405,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       }
 
     def applyFn(operator: PostValue, operands: List[PostValue], syntacticOperands: List[ScExp] = List()): ScEvalM[PostValue] = {
-      // we have three distinct cases
+      // we have five distinct cases
       // 1. Primitive application
       // 2. User-defined function application
       // 3. Monitored function (Arr) application
@@ -401,7 +414,8 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
 
       // 1. Primitive application
       val primitiveAp = lattice.getPrim(operator._1).map { prim =>
-        pure((lattice.applyPrimitive(prim)(operands.map(_._1) : _*), operator._2.app(operands.map(_._2))))
+        val result = lattice.applyPrimitive(prim)(operands.map(_._1) : _*)
+        pure((result, operator._2.app(operands.map(_._2))))
       }
 
       // 2. Closure application
@@ -494,7 +508,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
     def monFlat(contract: PostValue, expressionValue: PostValue, blamedIdentity: Identity): ScEvalM[PostValue] =
       applyFn(contract, List(expressionValue), List(expressionValue._2))
         .flatMap(value => {
-          cond(value, pure(enrich(contract, expressionValue)), blame(blamedIdentity))
+          cond(value, pure(enrich(contract, expressionValue)), debug { println(s"blame $contract $blamedIdentity") }.flatMap(_ => blame(blamedIdentity)))
         })
 
     def cond[X](condition: PostValue, consequent: ScEvalM[X], alternative: ScEvalM[X], mustReplacePc: Boolean = true): ScEvalM[X] = {
@@ -503,10 +517,16 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       nondet(t, f)
     }
 
+
     def conditional(conditionValue: PostValue, condition: ScExp, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] = {
+      val t = enrichOpaqueInStore(condition, eval(consequent))
+      cond(conditionValue, t, eval(alternative))
+    }
+
+    def enrichOpaqueInStore(condition: ScExp, consequent: => ScEvalM[PostValue]): ScEvalM[PostValue] = 
       // enrich the opaque value if it is a simple predicate on an opaque value
       // eg. (mon int? (letrec (y (OPQ int?)) (if (int? x) x y)) is safe
-      val t = isPredicateOnVariable(condition) match {
+      isPredicateOnVariable(condition) match {
         case Some((operator, variable)) => for {
           opAddr <- lookup(operator)
           varAddr <- lookup(variable)
@@ -516,13 +536,11 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
           // a refined opaque value. Either way, the value on that address still reaches a fixpoint (safety) and is
           // sound because we are not making something more specific which should not be made more specific.
           _ <- writeForce(varAddr, enrich(opValue, varValue))
-          result <- eval(consequent)
+          result <- consequent
         } yield result
-        case None => eval(consequent)
-      }
 
-      cond(conditionValue, t, eval(alternative))
-    }
+        case None => consequent
+      }
 
     def ifFeasible[X](op: Prim, value: PostValue, mustReplacePc: Boolean = true)(c: => ScEvalM[X]): ScEvalM[X] =
       withPc(feasible(op, value)).flatMap {
