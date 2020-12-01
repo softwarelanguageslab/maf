@@ -30,8 +30,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store.
     val value: Value = provenanceValue(addr)
-    if (value != inter.store.getOrElse(addr, lattice.bottom)) trigger(AddrDependency(addr))
-    inter.store = inter.store + (addr -> value)
+    if (value != inter.store.getOrElse(addr, lattice.bottom)) {
+      trigger(AddrDependency(addr))
+      inter.store = inter.store + (addr -> value)
+    }
   }
 
   /**
@@ -69,7 +71,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       if (log) logger.log(s"$component writes $addr ($value, old: ${store.getOrElse(addr, lattice.bottom)})")
       // Update the intra-provenance: for every address, keep the join of the values written to the address.
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
-      super.writeAddr(addr, value) // Ensure the intra-store is updated so it can be used.
+      super.writeAddr(addr, value) // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (working on the intra-store)?
     }
 
     /**

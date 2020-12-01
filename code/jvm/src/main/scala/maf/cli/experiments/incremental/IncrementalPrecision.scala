@@ -136,7 +136,7 @@ object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision {
 }
 
 object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] = Set("test/changes/scheme/fib-loop.scm") // IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysisStoreOpt(e)
   val outputFile: String = "precision/modf-CP-StoreOpt.txt"
 }
@@ -162,10 +162,10 @@ object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrec
 object IncrementalSchemeModXPrecision {
   def main(args: Array[String]): Unit = {
     //IncrementalSchemeModFPrecision.main(args)
-    IncrementalSchemeModFCPPrecision.main(args)
+    //IncrementalSchemeModFCPPrecision.main(args)
     IncrementalSchemeModFCPPrecisionStoreOpt.main(args)
     //IncrementalSchemeModConcPrecision.main(args)
     //IncrementalSchemeModConcCPPrecision.main(args)
-    //IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
+    IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
   }
 }

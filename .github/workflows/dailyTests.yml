@@ -19,7 +19,7 @@ jobs:
       hours=$(( ( $(date --utc +%s) - $timestamp ) / 3600 ))
       rm -f $HOME/latest-commit.json
       if [$hours -le 25]
-        echo ::set-env name=MAF_REPO_ALIVE::true
+        echo ::set-env name=MAF_REPO_ACTIVE::true
       fi
     shell: bash
   # The compile job fetches the code and attempts to compile it.
