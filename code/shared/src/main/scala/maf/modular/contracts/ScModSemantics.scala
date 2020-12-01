@@ -178,6 +178,26 @@ trait ScModSemantics
     ScAnalysisSummary(returnValues, blames)
   }
 
+  /**
+    * Remove a blame of a certain component from the store
+    */
+  def removeBlame(component: Component, idn: Identity): Unit = {
+    store = store
+      .map {
+        case (ex @ ExceptionAddr(`component`, _), value) =>
+          (
+            ex,
+            lattice
+              .getBlames(value)
+              .filter(_.blamedPosition != idn)
+              .map(lattice.injectBlame(_))
+              .foldLeft(lattice.bottom)((a, b) => lattice.join(a, b))
+          )
+        case v => v
+      }
+      .filter(e => lattice.getBlames(e._2).nonEmpty)
+  }
+
   def getReturnValue(component: Component): Option[Value] = {
     summary.getReturnValue(component)
   }

@@ -134,6 +134,14 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   eval("(define/contract (f a) (~> int? int?) (+ a 1)) (f 5)").safe()
 
   /**
+    * Unchecked does removes blame from the arguments of the function,
+    * this should mostly be used for running tests or benchmarks where
+    * we want to check whether f has the correct return value, but that
+    * we assume that the input values are correct
+    */
+  eval("(define/contract (f x) (-> int? int?) x) (@unchecked f OPQ)").safe()
+
+  /**
     * Test if the semantics when running on a valid value are the same as the wrapped value
     */
   eval("((flat int?) 0)").tested { machine =>
@@ -271,6 +279,17 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   }
 
   /**
+    * Testing whether provide contract works
+    */
+  eval("(define (f x) 5) (provide/contract (f (-> any? number?)))(f 5)").tested { machine =>
+    assert(machine.summary.blames.isEmpty)
+  }
+
+  eval("(define (f x) #t) (provide/contract (f (-> any? number?))) (f 5)").tested { machine =>
+    assert(machine.summary.blames.nonEmpty)
+  }
+
+  /**
     * An integer literal should always pass the `int?` test
     */
   verify("int?", "5").named("flat_lit_int?").safe()
@@ -279,6 +298,13 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
     * An opaque value can be different from an integer, so this should not be verified as safe
     */
   verify("int?", "OPQ").named("flat_OPQ_int?").unsafe()
+
+  /**
+    * Higher order contracts verification
+    */
+  verify("(or/c int? pair?)", "5").safe()
+
+  verify("(or/c int? pair?)", "#t").unsafe()
 
   /**
     * A contract from any to any should always be verified as safe
