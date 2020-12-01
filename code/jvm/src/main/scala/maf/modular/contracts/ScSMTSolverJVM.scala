@@ -33,6 +33,7 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     ((V (VInt  (unwrap-int Int))
         (VBool (unwrap-bool Bool))
         (VProc (unwrap-proc Int))
+        (VPai  (car V) (cdr V))
         (VString (unwrap-string String))
         (VPrim (unwrap-prim String)))))
 
@@ -79,6 +80,15 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
     (define-fun false?/c ((v1 V)) Bool
       (not (unwrap-bool v1)))
       
+   (define-fun pair?/c ((v1 V)) V
+     (VBool ((_ is VPai) v1)))
+
+   (define-fun car/c ((v1 V)) V
+     (car v1))
+
+   (define-fun cdr/c ((v1 V)) V
+     (cdr v1))
+
     (define-fun -/c ((v1 V) (v2 V)) V
       (VInt (- (unwrap-int v1) (unwrap-int v2))))
     

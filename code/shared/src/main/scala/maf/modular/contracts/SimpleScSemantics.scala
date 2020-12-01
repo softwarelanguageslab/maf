@@ -34,7 +34,8 @@ abstract class SimpleScSemantics(prg: ScExp)
     "or"       -> "or/c",
     "not"      -> "not/c",
     "number?"  -> "int?/c",
-    "char?"    -> "char?/c"
+    "char?"    -> "char?/c",
+    "pair?"    -> "pair?/c"
   )
 
   override def analyze(timeout: Timeout.T): Unit = {
