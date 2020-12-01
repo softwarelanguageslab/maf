@@ -32,7 +32,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
   var version: Version = Old
   /** Keeps track of which components depend on an expression. */
-  private var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
+  var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
 
   /**
    * Register that a component is depending on a given expression in the program.
