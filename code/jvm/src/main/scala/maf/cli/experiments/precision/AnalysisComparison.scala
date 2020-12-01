@@ -29,7 +29,7 @@ abstract class AnalysisComparison[
     def analysisTimeout(): Timeout.T = Timeout.start(Duration(5, MINUTES)) //timeout for (non-base) analyses
     def concreteTimeout(): Timeout.T = Timeout.none                        //timeout for concrete interpreter
 
-    def concreteRuns() = 20
+    def concreteRuns() = 5
 
     // keep the results of the benchmarks in a table
     var results: Table[Option[Int]] = Table.empty[Option[Int]]
@@ -70,12 +70,12 @@ object AnalysisComparison1 extends AnalysisComparison[
         SchemeAnalyses.contextInsensitiveAnalysis(prg)
     def otherAnalyses() =
     // run some regular k-cfa analyses
-    List(0,1,2,3,4,5,7,10).map { k =>
+    List(0,1,2,3).map { k =>
         (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
     } ++
     // run the adaptive analyses 
-    List(1,2,5,10,15,20,25,30).map { k =>
-        (SchemeAnalyses.adaptiveAnalysis(_, k), s"adaptive (k = $k)")
+    List(100,500,1000).map { b =>
+        (SchemeAnalyses.adaptiveAnalysis(_, b), s"adaptive (b = $b)")
     } 
 
     def main(args: Array[String]) = runBenchmarks(SchemeBenchmarkPrograms.gabriel)
