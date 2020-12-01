@@ -267,7 +267,7 @@ object SExpParser extends TokenParsers {
   def exp(tag: PTag): Parser[SExp] =
     value(tag) | identifier(tag) | list(tag) | quoted(tag) | quasiquoted(tag) | unquoted(tag) | unquotedSplicing(
       tag
-    )
+    ) | failure("invalid syntax")
   def expList(tag: PTag): Parser[List[SExp]] = rep1(exp(tag))
 
   def parse(s: String, tag: PTag = noTag): List[SExp] = expList(tag)(new lexical.Scanner(s)) match {
