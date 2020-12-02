@@ -6,9 +6,13 @@ import maf.core.Position._
 trait SchemeModFSensitivity extends BaseSchemeModFSemantics
 
 /* Simplest (and most imprecise): no context-sensitivity */
+case object NoContext {
+  override def toString: String = "ε" // Mostly for the web visualisation that otherwise prints "undefined".
+}
+
 trait SchemeModFNoSensitivity extends SchemeModFSensitivity {
-  type ComponentContext = Unit
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = ()
+  type ComponentContext = NoContext.type
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext = NoContext
 }
 
 /* Full argument sensitivity for ModF */
