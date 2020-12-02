@@ -12,16 +12,18 @@ jobs:
   #              * https://github.com/rotators/Fo1in2/blob/33b3f45a9fd69757c8e8a5e698197cccadf8a1ae/.github/workflows/schedule.yml#L22-L65
   activity-check:
     name: Activity check
-    run: |
-      curl -sL https://api.github.com/repos/$GITHUB_REPOSITORY/commits | jq -r '[.[]][0]' > $HOME/latest-commit.json
-      date="$(jq -r '.commit.author.date' $HOME/latest-commit.json)"
-      timestamp=$(date --utc -d "$date" +%s)
-      hours=$(( ( $(date --utc +%s) - $timestamp ) / 3600 ))
-      rm -f $HOME/latest-commit.json
-      if [$hours -le 25]
-        echo ::set-env name=MAF_REPO_ACTIVE::true
-      fi
-    shell: bash
+    steps:
+      - name: Activity check
+        run: |
+          curl -sL https://api.github.com/repos/$GITHUB_REPOSITORY/commits | jq -r '[.[]][0]' > $HOME/latest-commit.json
+          date="$(jq -r '.commit.author.date' $HOME/latest-commit.json)"
+          timestamp=$(date --utc -d "$date" +%s)
+          hours=$(( ( $(date --utc +%s) - $timestamp ) / 3600 ))
+          rm -f $HOME/latest-commit.json
+          if [$hours -le 25]
+            echo ::set-env name=MAF_REPO_ACTIVE::true
+          fi
+        shell: bash
   # The compile job fetches the code and attempts to compile it.
   compile:
     name: Compile MAF
@@ -43,7 +45,7 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v2
       # Compile the code.
-      - name: Compile Scala-AM
+      - name: Compile MAF
         uses: lokkju/github-action-sbt@v0.2.2
         with:
           commands: compile
