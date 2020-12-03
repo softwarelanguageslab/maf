@@ -83,20 +83,11 @@ object Main {
     }
   }
 
-  /**
-   * Parses the program and builds the modular analysis.
-   * @note Used to easily select the analysis to be used by the web visualisation.
-   */
-  val analysis: String => ModAnalysis[SchemeExp] with SequentialWorklistAlgorithm[SchemeExp] with DependencyTracking[SchemeExp] = newIncrementalReanalysis
-
-  /**
-   * Creates a web visualisation given an analysis.
-   */
-  // TODO (Maybe): collaps into val analysis.
-  def createVisualisation(analysis: ModAnalysis[SchemeExp] with SequentialWorklistAlgorithm[SchemeExp] with DependencyTracking[SchemeExp]) = new WebVisualisation(analysis)
+  def createVisualisation(text: String) = new WebVisualisation(newStandardAnalysis(text))
+  def createIncrementalVisualisation(text: String) = new WebVisualisationIncremental(newIncrementalReanalysis(text))
 
   def loadFile(text: String): Unit = {
-    val visualisation = createVisualisation(analysis(text))
+    val visualisation = createIncrementalVisualisation(text)
     // parameters for the visualisation
     val body = document.body
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
