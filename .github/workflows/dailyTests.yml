@@ -12,6 +12,7 @@ jobs:
   #              * https://github.com/rotators/Fo1in2/blob/33b3f45a9fd69757c8e8a5e698197cccadf8a1ae/.github/workflows/schedule.yml#L22-L65
   activity-check:
     name: Activity check
+    runs-on: ubuntu-latest
     steps:
       - name: Activity check
         run: |
