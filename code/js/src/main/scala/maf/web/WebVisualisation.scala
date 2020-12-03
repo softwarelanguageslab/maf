@@ -256,7 +256,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   //
 
   def keyHandler: PartialFunction[String,Unit] = {
-    case "n" | "N" => stepAnalysis()
+    case "n" | "N" | " " => stepAnalysis()
   }
 
   def onClick() = stepAnalysis()
