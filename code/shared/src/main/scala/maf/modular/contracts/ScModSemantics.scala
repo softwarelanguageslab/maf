@@ -13,6 +13,8 @@ import maf.modular.{
   ReturnAddr,
   ReturnValue
 }
+import maf.core.Lattice
+import maf.lattice.interfaces.BoolLattice
 
 object ScModSemantics {
   var r = 0
@@ -219,6 +221,33 @@ trait ScModSemantics
       case (_, _)           => Top
     }
   }
+
+  implicit def singleVerificationResultLattice = new Lattice[SingleVerificationResult] {
+    type L = SingleVerificationResult
+
+    /** A lattice has a bottom element */
+    def bottom: L = Bottom
+
+    /** A lattice has a top element (might be undefined) */
+    def top: L = Top
+
+    /** Elements of the lattice can be joined together */
+    def join(x: L, y: => L): L = SingleVerificationResult.join(x, y)
+
+    /** Subsumption between two elements can be checked */
+    def subsumes(x: L, y: => L): Boolean = ???
+
+    /** Equality check, returning an abstract result */
+    def eql[B: BoolLattice](x: L, y: L): B = ???
+
+    def show(v: SingleVerificationResult): String = v match {
+      case Top           => "top"
+      case Bottom        => "bottom"
+      case VerifiedFalse => "#f"
+      case VerifiedTrue  => "#t"
+    }
+  }
+
   case object Bottom        extends SingleVerificationResult
   case object VerifiedFalse extends SingleVerificationResult
   case object VerifiedTrue  extends SingleVerificationResult

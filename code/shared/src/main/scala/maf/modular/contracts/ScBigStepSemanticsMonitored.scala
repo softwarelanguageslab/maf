@@ -17,6 +17,11 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemantics {
   var contractApplications: Int = 0
 
   /**
+    * Keeps track of how many disctinct contracts were checked
+    */
+  var distinctContractApplications: Map[Identity, SingleVerificationResult] = Map()
+
+  /**
     * Keeps track of the number of components
     * that where analysed.
     */
@@ -56,10 +61,27 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemantics {
     override def monFlat(
         contract: (Value, PC),
         expressionValue: (Value, PC),
-        blamedIdentity: Identity
+        blamedIdentity: Identity,
+        blamingIdentity: Identity = Identity.none
     ): ScEvalM.ScEvalM[(Value, PC)] = {
+      import maf.util.MapUtil._
+
       contractApplications += 1
+      distinctContractApplications =
+        distinctContractApplications.weakPut(blamingIdentity, VerifiedTrue)
+
       super.monFlat(contract, expressionValue, blamedIdentity)
+    }
+
+    override def blame[X](
+        blamedIdentity: Identity,
+        blamingIdentity: Identity
+    ): ScEvalM.ScEvalM[X] = {
+      import maf.util.MapUtil._
+      distinctContractApplications =
+        distinctContractApplications.weakPut(blamingIdentity, VerifiedFalse)
+
+      super.blame(blamedIdentity, blamingIdentity)
     }
   }
 

@@ -489,7 +489,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
 
       // flat contract
       val flatContract = ifFeasible(primProc, evaluatedContract) { 
-        monFlat(evaluatedContract, evaluatedExpression, exprIdn)
+        monFlat(evaluatedContract, evaluatedExpression, exprIdn, contractIdn)
       }
 
       // dependent contract
@@ -505,10 +505,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       nondets(Set(flatContract, dependentContract))
     }
 
-    def monFlat(contract: PostValue, expressionValue: PostValue, blamedIdentity: Identity): ScEvalM[PostValue] =
+    def monFlat(contract: PostValue, expressionValue: PostValue, blamedIdentity: Identity, blamingIdentity: Identity = Identity.none): ScEvalM[PostValue] =
       applyFn(contract, List(expressionValue), List(expressionValue._2))
         .flatMap(value => {
-          cond(value, pure(enrich(contract, expressionValue)), debug { println(s"blame $contract $blamedIdentity") }.flatMap(_ => blame(blamedIdentity)))
+          cond(value, pure(enrich(contract, expressionValue)), blame(blamedIdentity, blamingIdentity))
         })
 
     def cond[X](condition: PostValue, consequent: ScEvalM[X], alternative: ScEvalM[X], mustReplacePc: Boolean = true): ScEvalM[X] = {
