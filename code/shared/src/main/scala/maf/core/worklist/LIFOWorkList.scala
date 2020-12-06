@@ -13,6 +13,7 @@ case class LIFOWorkList[X](lst: List[X], set: Set[X]) extends WorkList[X] {
   def toSet: Set[X]                               = set
   def filter(f: X => Boolean): LIFOWorkList[X]    = LIFOWorkList(lst.filter(f), set.filter(f))
   def filterNot(f: X => Boolean): LIFOWorkList[X] = LIFOWorkList(lst.filterNot(f), set.filterNot(f))
+  def contains(x: X): Boolean                     = set.contains(x)
 }
 
 object LIFOWorkList {

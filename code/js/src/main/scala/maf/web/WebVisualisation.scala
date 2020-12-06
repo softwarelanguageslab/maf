@@ -122,7 +122,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     refresh()
   }
 
-  private def setupMarker(svg: JsAny) = {
+  def setupMarker(svg: JsAny) = {
     // adapted from http://bl.ocks.org/fancellu/2c782394602a93921faff74e594d1bb1
     val marker = svg.append("defs").append("marker")
                                     .attr("id",__SVG_ARROW_ID__)
@@ -232,18 +232,11 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     nodes.select("text")
          .text((node: Node) => displayText(node.component))
     nodesUpdate.exit().remove()
-    nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.workList.toSet.contains(node.component))
-         .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
-         .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.workList.toList.headOption == Some(node.component))
-         //.style("fill", (node: Node) => colorFor(node.component))
+    classifyNodes()
     // update the edges
     val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.component,e.target.component))
-    edges = edgesUpdate.enter().append("path")
-                               .attr("stroke","black")
-                               .attr("stroke-width",2)
-                               .attr("fill","none")
-                               .attr("marker-end",s"url(#${__SVG_ARROW_ID__})")
-                               .merge(edgesUpdate)
+    edges = edgesUpdate.enter().append("path").merge(edgesUpdate)
+    classifyEdges()
     edgesUpdate.exit().remove()
     // update the simulation
     simulation.nodes(nodesData)
@@ -251,12 +244,23 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     simulation.alpha(1).restart()
   }
 
+  /** Classifies every node based on its role in the analysis, so the node can be coloured correctly. */
+  def classifyNodes(): Unit = {
+    nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.workList.toSet.contains(node.component))
+      .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
+      .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.workList.toList.headOption == Some(node.component))
+    //.style("fill", (node: Node) => colorFor(node.component))
+  }
+
+  /** Classifies every edge based on its role in the analysis, so the edge can be coloured correctly. */
+  def classifyEdges(): Unit = ()
+
   //
   // INPUT HANDLING
   //
 
   def keyHandler: PartialFunction[String,Unit] = {
-    case "n" | "N" => stepAnalysis()
+    case "n" | "N" | " " => stepAnalysis()
   }
 
   def onClick() = stepAnalysis()

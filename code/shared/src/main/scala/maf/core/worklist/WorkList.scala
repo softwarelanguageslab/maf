@@ -25,6 +25,8 @@ trait WorkList[X] {
   def  isEmpty: Boolean
   /** Predicate that returns true if the current work list is non-empty. */
   def nonEmpty: Boolean
+  /** Predicate that returns true if the work list contains the given node. */
+  def contains(x: X): Boolean
 
   /** Returns a list containing all elements currently in this work list. */
   def toList: List[X]
