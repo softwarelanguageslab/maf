@@ -4,7 +4,7 @@ name: Daily MAF tests
 # events but only for the master branch
 on:
   schedule:
-    - cron: '00 23 * * *' # Executes every night at 23:00.
+    - cron: '15 08 * * *' # Executes every night at 23:00.
 
 jobs:
   # Checks whether the repository was updated within the last 25 hours (provide some overlap) and sets an environment flag.
@@ -30,7 +30,7 @@ jobs:
     name: Compile MAF
     runs-on: ubuntu-latest
     needs: activity-check
-    if: env.MAF_REPO_ACTIVE == 'true'
+    if: ${{ env.MAF_REPO_ACTIVE == 'true' }}
     steps:
       # Send a notification to Slack.
       - name: Notify push
