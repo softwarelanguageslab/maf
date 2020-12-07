@@ -30,7 +30,7 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Inc
 
   override def setupMarker(svg: JsAny): js.Dynamic = {
     super.setupMarker(svg)
-    val marker = svg.select("defs").append("markerInc")
+    val marker = svg.select("defs").append("marker")
                                    .attr("id",__SVG_DELETED_ARROW__)
                                    .attr("viewBox","-0 -5 10 10")
                                    .attr("refX",0)
