@@ -4,7 +4,7 @@ name: Daily MAF tests
 # events but only for the master branch
 on:
   schedule:
-    - cron: '15 08 * * *' # Executes every night at 23:00.
+    - cron: '41 06 * * *' # Executes every night at 23:00 (time: UTC).
 
 jobs:
   # Checks whether the repository was updated within the last 25 hours (provide some overlap) and sets an environment flag.
