@@ -52,25 +52,18 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable { i
   // parameterized by an 'intra-component analysis'
   def intraAnalysis(component: Component): IntraAnalysis
   abstract class IntraAnalysis(val component: Component) { intra =>
-
-    // keep track of:
-    // - a set R of dependencies read by this intra-analysis
-    // - a set W of dependencies written by this intra-analysis
-    // - a set C of components discovered by this intra-analysis
     /** Set of dependencies read by this intra-component analysis. */
     var R: Set[Dependency] = Set()
     /** Set of dependencies written (triggered) by this intra-component analysis. */
     var W: Set[Dependency] = Set()
     /** Set of components discovered by this intra-component analysis. */
     var C: Set[Component]  = Set()
-
     /** Registers a read dependency. */
     def register(dep: Dependency): Unit = R += dep
-    /** Registers a written dependency. */
+    /** Triggers a written dependency. */
     def trigger(dep: Dependency): Unit  = W += dep
-    /** Registers a discovered component. */
+    /** Spawns a discovered component. */
     def spawn(cmp: Component): Unit     = C += cmp
-
     /** Performs the intra-component analysis of the given component.<br>
      * <b>Important:</b> should only update the *local* analysis state, and must not modify the global analysis state directly. */
     def analyze(timeout: Timeout.T = Timeout.none): Unit
@@ -80,14 +73,14 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable { i
       W.foreach(dep => if(doWrite(dep)) inter.trigger(dep))
       C.foreach(inter.spawn(_, component))
     }
-    /** Called upon a commit for every written dependency. Returns a boolean indicating whether the store was modified. */
+    /** Called upon a commit for every written dependency. Returns a boolean indicating whether the global analysis state was modified. */
     def doWrite(dep: Dependency): Boolean = false  // `ModAnalysis` has no knowledge of dependencies it can commit.
   }
 
   // Specific to the worklist algorithm:
 
   /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
-  def finished(): Boolean                               // <= check if the analysis is finished
+  def finished(): Boolean                              
   /** Runs the analysis with an optional timeout (default value: no timeout). Implementation should be provided by the work list algorithm. */
-  def analyze(timeout: Timeout.T = Timeout.none): Unit  // <= run the analysis (with given timeout)
+  def analyze(timeout: Timeout.T = Timeout.none): Unit
 }
