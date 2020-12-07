@@ -137,16 +137,41 @@ trait ScSemanticsMonad extends ScModSemantics {
       * lattice.
       */
     def merged[L: Lattice](c: ScEvalM[L])(context: Context): (L, Store) = {
+      val (v, store, _) = mergedPC(c)(context)
+      (v, store)
+    }
+
+    def mergedPC[L: Lattice](c: ScEvalM[L])(context: Context): (L, Store, PC) = {
       import maf.lattice.MapLattice._
       val result = c.run(context)
       // optimisation: if the number of output states is one, then we don't need to merge anything
       if (result.size == 1) {
         val (context, v) = result.head
-        (v, context.store)
+        (v, context.store, context.pc)
       } else {
-        result.foldLeft((Lattice[L].bottom, Lattice[Store].bottom))((acc, v) => v match {
+        result.foldLeft[(L, Store, PC)]((Lattice[L].bottom, Lattice[Store].bottom, ScNil()))((acc, v) => v match {
           case (context, l) => {
-            (Lattice[L].join(acc._1, l), Lattice[Store].join(acc._2, context.store))
+            (Lattice[L].join(acc._1, l), Lattice[Store].join(acc._2, context.store),
+              acc._3.or(context.pc))
+          }
+        })
+      }
+    }
+
+    def compute(c: ScEvalM[PostValue])(context: Context): (Value, Store, List[ScExp]) = {
+      // TODO: this looks a lot like mergedPC, see if we can abstract this away a bit
+    
+      import maf.lattice.MapLattice._
+      val result = c.run(context)
+      // optimisation: if the number of output states is one, then we don't need to merge anything
+      if (result.size == 1) {
+        val (context, (v, s)) = result.head
+        (v, context.store, List(s))
+      } else {
+        result.foldLeft[(Value, Store, List[ScExp])]((lattice.bottom, Lattice[Store].bottom, List()))((acc, v) => v match {
+          case (context, (l, s)) => {
+            (lattice.join(acc._1, l), Lattice[Store].join(acc._2, context.store),
+              s :: acc._3)
           }
         })
       }

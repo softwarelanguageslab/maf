@@ -6,7 +6,12 @@ import maf.language.sexp.{ValueBoolean, ValueInteger}
 import maf.util.benchmarks.Timeout
 import maf.util.benchmarks.Timer
 
-trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanticsMonad {
+trait ScBigStepSemantics 
+  extends ScModSemantics 
+  with ScPrimitives 
+  with ScSemanticsMonad 
+  with FunctionSummary {
+
   private val primTrue  = ScLattice.Prim("true?")
   private val primFalse = ScLattice.Prim("false?")
   private val primProc  = ScLattice.Prim("proc?")
@@ -15,7 +20,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
 
   import ScEvalM._
 
-  trait IntraScBigStepSemantics extends IntraScAnalysis {
+  trait IntraScBigStepSemantics extends IntraScAnalysis with IntraFunctionAnalysis {
     /**
       * Compute the context of the current component
       * @return a new context based on the environment of the component under analysis
@@ -27,13 +32,13 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
         case (name, addr) =>
           val value = readPure(addr, storeCache)
           storeCache = storeCache +  (addr -> ((value, ScIdentifier(name, Identity.none))))
-          storeCache = storeCache + (ScPrimAddr(name) -> (lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none)))
+          storeCache += (ScPrimAddr(name) -> ((lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none))))
       }
 
       fnEnv.mapAddrs((addr) => {
         val value = readPure(addr, storeCache)
         if (lattice.isDefinitelyOpq(value)) {
-          storeCache += (addr -> (value, ScIdentifier(ScModSemantics.genSym, Identity.none)))
+          storeCache += (addr -> ((value, ScIdentifier(ScModSemantics.genSym, Identity.none))))
         }
         addr
       })
@@ -50,9 +55,11 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       println("================================")
       println(s"Analyzing component $component")
 
-      val (value, sstore) = merged(eval(fnBody).map(_._1))(initialContext)
+      val (value, sstore, symbolicReturnValues) = compute(eval(fnBody))(initialContext)
       writeReturnStore(sstore)
       writeResult(value, component)
+      finishSummary(symbolicReturnValues)
+    
       println(s"Return value $value")
       println("==================================")
     }
