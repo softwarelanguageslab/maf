@@ -21,7 +21,7 @@ jobs:
           timestamp=$(date --utc -d "$date" +%s)
           hours=$(( ( $(date --utc +%s) - $timestamp ) / 3600 ))
           rm -f $HOME/latest-commit.json
-          if [$hours -le 25]
+          if [$hours -le 25]; then
             echo ::set-env name=MAF_REPO_ACTIVE::true
           fi
         shell: bash
