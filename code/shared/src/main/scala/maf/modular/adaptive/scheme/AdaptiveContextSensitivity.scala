@@ -48,6 +48,12 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     val lambdaCmpsUpdated = lambdaCmps + cmp
     cmpsPerFn += lambda -> lambdaCmpsUpdated
   }
+  // correctly updating the analysis data
+  override def updateAnalysisData(update: Component => Component) = {
+    super.updateAnalysisData(update)
+    this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)
+    this.triggeredBy = updateMap(updateSet(updateDep(update)))(triggeredBy)
+  }
   /*
    * contexts are call-site strings
    * after adaptation, certain strings get trimmed
@@ -100,12 +106,5 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       val parentLambda = view(parentCmps.head).asInstanceOf[Call[ComponentContext]].clo._1
       adaptFunction(parentLambda, parentCmps, target)
     }
-  }
-  /**
-    * Updating the analysis data
-    */
-  override def updateAnalysisData(update: Component => Component) = {
-    super.updateAnalysisData(update)
-    this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)
   }
 }
