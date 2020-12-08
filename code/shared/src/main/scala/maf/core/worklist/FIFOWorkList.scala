@@ -15,6 +15,8 @@ case class FIFOWorkList[X](queue: Queue[X], set: Set[X]) extends WorkList[X] {
   def toSet: Set[X]                               = set
   def filter(f: X => Boolean): FIFOWorkList[X]    = FIFOWorkList(queue.filter(f), set.filter(f))
   def filterNot(f: X => Boolean): FIFOWorkList[X] = FIFOWorkList(queue.filterNot(f), set.filterNot(f))
+  def contains(x: X): Boolean                     = set.contains(x)
+  def -(x: X): FIFOWorkList[X]                    = FIFOWorkList(queue.filter(_ != x), set - x)
 }
 
 object FIFOWorkList {

@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Scala-AM</title>
+    <title>MAF Component Visualisation</title>
     <style>
       .nodes {
         fill: white;
@@ -16,11 +16,27 @@
         fill: darkblue;
       }
       .nodes .not_visited {
-        stroke: none;
+        stroke: red;
+      }
+      .nodes .node_deleted {
+        stroke: darkgray;
       }
       .nodes text {
         fill: black;
         stroke: none;
+      }
+      .nodes .node_deleted text {
+        fill: darkgray;
+      }
+      .links {
+        stroke: black;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#endarrow);
+      }
+      .links .edge_deleted {
+        stroke: darkgray;
+        marker-end: url(#endarrow_deleted);
       }
     </style>
   </head>

@@ -1,5 +1,7 @@
 package maf.web
 
+import maf.core.Identity
+import maf.language.CScheme.CSchemeParser
 import maf.language.scheme._
 import maf.modular._
 import maf.modular.incremental.scheme.SchemeAnalyses._
@@ -13,7 +15,7 @@ import scala.concurrent.duration._
 
 // Scala.js-related imports
 import org.scalajs.dom
-import org.scalajs.dom.{document, html}
+import org.scalajs.dom._
 
 import scala.scalajs.js
 import maf.modular.scheme.modf.SimpleSchemeModFAnalysis
@@ -44,35 +46,48 @@ object Main {
     body.appendChild(input)
   }
 
-  def standardAnalysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
-    with SchemeConstantPropagationDomain
-    with DependencyTracking[SchemeExp]
-    with FIFOWorklistAlgorithm[SchemeExp] {
-    //override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
-    def key(cmp: Component) = expr(cmp).idn
-    override def step(t: Timeout.T) = {
-      val cmp = workList.head
-      println(cmp)
-      super.step(t)
+  def newStandardAnalysis(text: String) = {
+    val program = SchemeParser.parse(text)
+    new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
+      with SchemeConstantPropagationDomain
+      with DependencyTracking[SchemeExp]
+      with FIFOWorklistAlgorithm[SchemeExp] {
+      //override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
+      def key(cmp: Component): Identity = expr(cmp).idn
+      override def step(t: Timeout.T) = {
+        val cmp = workList.head
+        println(cmp)
+        super.step(t)
+      }
+      override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra =
+        new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
     }
-    override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra =
-      new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
   }
 
-  def incrementalReanalysis(program: SchemeExp) = new IncrementalSchemeModFCPAnalysis(program) with DependencyTracking[SchemeExp] {
-    override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with DependencyTrackingIntra
-    analyze(Timeout.start(Duration(5, MINUTES)))
-    version = New
-    optimisationFlag = true
-    findUpdatedExpressions(program).flatMap(mapping).foreach(addToWorkList)
+  def newIncrementalReanalysis(text: String): IncrementalSchemeModFCPAnalysisStoreOpt with DependencyTracking[SchemeExp] = {
+    val program: SchemeExp = CSchemeParser.parse(text)
+    new IncrementalSchemeModFCPAnalysisStoreOpt(program) with DependencyTracking[SchemeExp] {
+      override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis with DependencyTrackingIntra
+      try {
+        println("Starting initial analysis.") // Will be logged to console.
+        analyze(Timeout.start(Duration(5, MINUTES)))
+        println("Finished initial analysis. Preparing for reanalysis.")
+        version = New
+        optimisationFlag = true
+        findUpdatedExpressions(program).flatMap(mapping).foreach(addToWorkList)
+        println("Preparation finished. Starting reanalysis.")
+      } catch {
+        case t: Throwable => System.err.println(t.getMessage) // Will display an error in the console.
+          throw t
+      }
+    }
   }
 
-  // Select the analysis to be used by the web visualisation.
-  val analysis: SchemeExp => ModAnalysis[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_] = standardAnalysis
+  def createVisualisation(text: String) = new WebVisualisation(newStandardAnalysis(text))
+  def createIncrementalVisualisation(text: String) = new WebVisualisationIncremental(newIncrementalReanalysis(text))
 
   def loadFile(text: String): Unit = {
-    val program = SchemeParser.parse(text)
-    val visualisation = new WebVisualisation(analysis(program))
+    val visualisation = createIncrementalVisualisation(text)
     // parameters for the visualisation
     val body = document.body
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
