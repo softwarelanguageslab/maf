@@ -1,8 +1,12 @@
-;; 1421368695192
-
-#lang racket
-(require soft-contract/fake-contract)
+;; NOT OK: f does not satisfy its output contract, although it can never
+;; be called with a valid value. 
+;;
+;; not sure how this can be fixed
 
 (define (f x) 5)
 
-(provide (contract-out [f ((and/c integer? string?) . -> . string?)]))
+(provide/contract
+  (f (-> (and/c int? string?) string?)))
+
+(@unchecked f OPQ)
+(safe)

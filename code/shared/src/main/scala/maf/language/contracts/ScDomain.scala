@@ -32,6 +32,7 @@ trait ScDomain[I, B, Addr <: Address] {
   val NIL_VALUE              = 15
   val VEC_VALUE              = 16
   val PTR_VALUE              = 17
+  val SYMBOL_VALUE           = 18
 
   case object TopValue extends Value {
     def ord                       = TOP_VALUE
@@ -83,6 +84,10 @@ trait ScDomain[I, B, Addr <: Address] {
 
   case class Symbolics(expr: Set[ScExp]) extends Value {
     def ord = SYM_VALUE
+  }
+
+  case class Symbols(symbols: Set[Symbol]) extends Value {
+    def ord = SYMBOL_VALUE
   }
 
   case class Flats(flats: Set[Flat[Addr]]) extends Value {
@@ -148,6 +153,8 @@ trait ScDomain[I, B, Addr <: Address] {
 
   def ptr(c: Addr): Ptr = Ptr(Set(c))
 
+  def symbol(s: Symbol): Symbols = Symbols(Set(s))
+
   object Values {
     def join(a: Value, b: Value): Value = (a, b) match {
       case (TopValue, _) | (_, TopValue) => TopValue
@@ -169,6 +176,7 @@ trait ScDomain[I, B, Addr <: Address] {
       case (Flats(a), Flats(b))                           => Flats(a ++ b)
       case (Thunks(a), Thunks(b))                         => Thunks(a ++ b)
       case (Conses(a), Conses(b))                         => Conses(a ++ b)
+      case (Symbols(a), Symbols(b))                       => Symbols(a ++ b)
       case (Nils, Nils)                                   => Nils
       case (Vec(size1, elements1), Vec(size2, elements2)) => ??? // TODO
       case (Ptr(a1), Ptr(a2))                             => Ptr(a1 ++ a2)
@@ -257,6 +265,7 @@ trait ScDomain[I, B, Addr <: Address] {
     )
 
     def unaryPrim: Map[String, (Value) => Value] = Map(
+      "symbol?"             -> pred({ case Symbols(_) => }, "symbol?"),
       "even?"               -> (a => ???),
       "odd?"                -> (a => ???),
       "proc?"               -> pred { case Clos(_) | Prims(_) | Arrs(_) | Flats(_) => },
@@ -322,6 +331,11 @@ trait ScDomain[I, B, Addr <: Address] {
       case _       => false
     }
 
+    def isSymbol(value: Value): Boolean = value match {
+      case Symbols(_) => true
+      case _          => false
+    }
+
     def isFlat(value: Value): Boolean = value match {
       case TopValue | _: Flats => true
       case _                   => false
@@ -353,18 +367,19 @@ trait ScDomain[I, B, Addr <: Address] {
     }
 
     def subsumes(x: Value, y: Value): Boolean = (x, y) match {
-      case (_, _) if x == y       => true
-      case (TopValue, _)          => true
-      case (Number(a), Number(b)) => IntLattice[I].subsumes(a, b)
-      case (Bool(a), Bool(b))     => BoolLattice[B].subsumes(a, b)
-      case (Grds(a), Grds(b))     => b.subsetOf(a)
-      case (Arrs(a), Arrs(b))     => b.subsetOf(a)
-      case (Clos(a), Clos(b))     => b.subsetOf(a)
-      case (Opqs(a), Opqs(b))     => b.subsetOf(a)
-      case (Prims(a), Prims(b))   => b.subsetOf(a)
-      case (Blames(a), Blames(b)) => b.subsetOf(a)
-      case (Conses(a), Conses(b)) => b.subsetOf(a)
-      case (_, _)                 => false
+      case (_, _) if x == y         => true
+      case (TopValue, _)            => true
+      case (Number(a), Number(b))   => IntLattice[I].subsumes(a, b)
+      case (Bool(a), Bool(b))       => BoolLattice[B].subsumes(a, b)
+      case (Grds(a), Grds(b))       => b.subsetOf(a)
+      case (Arrs(a), Arrs(b))       => b.subsetOf(a)
+      case (Clos(a), Clos(b))       => b.subsetOf(a)
+      case (Opqs(a), Opqs(b))       => b.subsetOf(a)
+      case (Prims(a), Prims(b))     => b.subsetOf(a)
+      case (Blames(a), Blames(b))   => b.subsetOf(a)
+      case (Conses(a), Conses(b))   => b.subsetOf(a)
+      case (Symbols(a), Symbols(b)) => b.subsetOf(a)
+      case (_, _)                   => false
     }
 
     def getSymbolic(x: Value): Option[String] = x match {
@@ -455,6 +470,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     def vector(length: CoProductValue, init: CoProductValue): CoProductValue = ???
 
+    def injectSymbol(s: Symbol): CoProductValue = symbol(s)
+
     def vectorSet(
         vector: CoProductValue,
         index: CoProductValue,
@@ -498,6 +515,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
     def isNil(value: CoProductValue): Boolean = isPred(Values.isNil, value)
 
     def isVec(value: CoProductValue): Boolean = isPred(Values.isVec, value)
+
+    def isSymbol(value: CoProductValue): Boolean = isPred(Values.isSymbol, value)
 
     def isPointer(value: CoProductValue): Boolean = ???
 
@@ -570,6 +589,11 @@ class ScCoProductLattice[I, B, Addr <: Address](
           }
         case _ => Set()
       }
+
+    def getSymbols(value: CoProductValue): Set[Symbol] = value match {
+      case CoProduct(Symbols(s)) => s
+      case _                     => Set()
+    }
 
     /*================================================================================================================*/
 
@@ -652,6 +676,8 @@ class ScProductLattice[I, B, Addr <: Address](
 
       override def injectNil: ProductElements = ???
 
+      override def injectSymbol(s: Symbol): ProductElements = ???
+
       /*==============================================================================================================*/
 
       private def collectArgumentsList(arguments: List[ProductElements]): List[List[Value]] = {
@@ -698,6 +724,8 @@ class ScProductLattice[I, B, Addr <: Address](
       }
 
       override def isNil(value: ProductElements): Boolean = ???
+
+      override def isSymbol(value: ProductElements): Boolean = ???
 
       /*==============================================================================================================*/
 
@@ -757,6 +785,8 @@ class ScProductLattice[I, B, Addr <: Address](
           }
           .flatten
           .toSet
+
+      override def getSymbols(value: ProductElements): Set[Symbol] = ???
 
       override def getFlat(value: ProductElements): Set[Flat[Addr]] =
         value.elements

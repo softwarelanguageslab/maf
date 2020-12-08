@@ -1,6 +1,9 @@
-#lang racket
-
 (define (f p)
-  (if (number? (car p)) (add1 (car p)) 7))
+  (if (int? (car p)) (add1 (car p)) 7))
 
-(provide/contract [f (cons? . -> . number?)])
+(provide/contract
+  (f (-> pair? int?)))
+
+; (provide/contract [f (cons? . -> . int?)])
+(@unchecked f OPQ)
+(safe)

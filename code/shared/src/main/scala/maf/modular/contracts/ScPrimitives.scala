@@ -65,7 +65,10 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
       "char?"               -> ("any?" ~> "bool?"),
       "vector?"             -> ("any?" ~> "bool?"),
       "string?"             -> ("any?" ~> "bool?"),
-      "string-length"       -> ("string?" ~> "int?")
+      "string-length"       -> ("string?" ~> "int?"),
+      "symbol?"             -> ("any?" ~> "bool?"),
+      "true?"               -> ("any?" ~> "bool?"),
+      "false?"              -> ("any?" ~> "bool?")
     )
 
   /**

@@ -181,7 +181,11 @@ object ScPrelude {
     "else"         -> "(define else #t)",
     "zero?"        -> "(define/contract (zero? x) (-> int? bool?) (= x 0))",
     "sub1"         -> "(define/contract (sub1 x) (-> int? int?) (- x 1))",
-    "add1"         -> "(define/contract (add1 x) (-> int? int?) (+ x 1))"
+    "add1"         -> "(define/contract (add1 x) (-> int? int?) (+ x 1))",
+    "any/c"        -> "(define (any/c a) #t)",
+    "not/c"        -> "(define (not/c contract) (lambda (v) (not (contract v))))",
+    ">=/c"         -> "(define (>=/c v) (lambda (w) (>= w v)))",
+    "=/c"          -> "(define (=/c v) (lambda (w) (= v w)))"
   )
 
   val prelude: List[ScExp]  = preludeFunctions.map(_._2).map(SCExpCompiler.read).toList

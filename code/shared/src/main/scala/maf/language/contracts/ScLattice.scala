@@ -90,6 +90,11 @@ object ScLattice {
   case class Cons[Addr <: Address](car: Addr, cdr: Addr)
 
   /**
+    * A scheme symbol
+    */
+  case class Symbol(value: String)
+
+  /**
     * Nil
     */
   case object Nil
@@ -136,6 +141,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Inject an arrow (monitors on functions) in the abstract domain
     */
   def injectArr(arr: Arr[Addr]): L
+
+  /**
+    * Inject a scheme symbol in the abstract domain
+    */
+  def injectSymbol(symbol: Symbol): L
 
   def injectSymbolic(sym: Symbolic): L
 
@@ -223,6 +233,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
   def isFlatContract(value: L): Boolean
 
   /**
+    * Returns true if the value is possibly a scheme symbol
+    */
+  def isSymbol(value: L): Boolean
+
+  /**
     * Returns true if the value is possibly a thunk
     */
   def isThunk(value: L): Boolean
@@ -308,6 +323,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
     * Extract the pointers contained within the value from the abstract domain.
     */
   def getPointers(value: L): Set[Addr]
+
+  /**
+    * Extracts the set of symbols from the abstract value
+    */
+  def getSymbols(value: L): Set[Symbol]
 
   /*==================================================================================================================*/
 

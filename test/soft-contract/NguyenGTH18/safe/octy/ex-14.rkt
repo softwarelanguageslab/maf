@@ -1,12 +1,13 @@
-#lang racket
-
 (define (f input extra)
   (cond
-   [(and (number? input) (number? (car extra)))
-    (+ input (car extra))]
-   [(number? (car extra))
-    (+ (string-length input) (car extra))]
-   [else 0]))
+   ((and (int? input) (int? (car extra)))
+    (+ input (car extra)))
+   ((int? (car extra))
+    (+ (string-length input) (car extra)))
+   (else 0)))
 
 (provide/contract
- [f ([or/c number? string?] cons? . -> . number?)])
+ (f (-> (or/c int? string?) pair? int?)))
+
+(@unchecked f OPQ OPQ)
+(safe)

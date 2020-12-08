@@ -2,6 +2,7 @@ package maf.language.contracts
 
 import maf.core.{Identifier, Identity}
 import maf.language.sexp.{SExp, SExpId, SExpPair, SExpParser, SExpValue, ValueNil, ValueString}
+import maf.language.sexp.ValueSymbol
 
 /**
   * Compiles a program of S-expressions into a program of ScExp
@@ -238,6 +239,9 @@ object SCExpCompiler {
 
     case Ident("provide/contract") :: contracts =>
       compile_contracts(contracts)
+
+    case Ident("quote") :: IdentWithIdentity(s, idn) :: ListNil(_) =>
+      ScValue(ValueSymbol(s), idn)
 
     case Ident(annotation) :: operator :: arguments if annotation.startsWith("@") =>
       ScFunctionAp(compile(operator), compile_sequence(arguments), prog.idn, Some(annotation))
