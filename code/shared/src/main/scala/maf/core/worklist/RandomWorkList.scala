@@ -14,6 +14,7 @@ case class RandomWorkList[X](set: Set[X]) extends WorkList[X] {
   def filter(f: X => Boolean): RandomWorkList[X]    = RandomWorkList(set.filter(f))
   def filterNot(f: X => Boolean): RandomWorkList[X] = RandomWorkList(set.filterNot(f))
   def contains(x: X): Boolean                       = set.contains(x)
+  def -(x: X): RandomWorkList[X]                    = RandomWorkList(set - x)
 }
 
 object RandomWorkList {

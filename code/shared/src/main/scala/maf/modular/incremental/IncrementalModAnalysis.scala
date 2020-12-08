@@ -82,6 +82,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     if (log) logger.log(s"RMCMP $cmp")
     for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
     visited = visited - cmp                               // Remove the component from the visited set.
+    workList = workList - cmp                             // Remove the component from the work list, as it may be present there.
     for (to <- cachedSpawns(cmp)) unspawn(to)             // Transitively check for components that have to be deleted.
 
     // Delete the caches.

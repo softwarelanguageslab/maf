@@ -12,7 +12,10 @@ trait WorkList[X] {
   /** Returns a work list that contains all elements currently in this work list, as well as the new, given elements. */
   def addAll(xs: Iterable[X]): WorkList[X]
   /** Returns a work list that contains all elements currently in this work list, as well as the new, given elements. */
-  def  ++(xs: Iterable[X]): WorkList[X] = addAll(xs)
+  def     ++(xs: Iterable[X]): WorkList[X] = addAll(xs)
+
+  /** Returns a work list that contains all elements currently in this work list, except the specified element. */
+  def -(x: X): WorkList[X]
 
   /** Returns a work list that results from mapping the given function over all elements in the current work list. */
   def map[Y]   (f: X =>       Y): WorkList[Y]
