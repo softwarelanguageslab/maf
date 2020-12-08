@@ -9,6 +9,8 @@ trait WorkList[X] {
 
   /** Returns a work list that contains all elements currently in this work list, as well as the new, given element. */
   def add(x: X): WorkList[X]
+  /** Returns a work list that contains all elements currently in this work list, as well as the new, given element. */
+  def   +(x: X): WorkList[X] = add(x)
   /** Returns a work list that contains all elements currently in this work list, as well as the new, given elements. */
   def addAll(xs: Iterable[X]): WorkList[X]
   /** Returns a work list that contains all elements currently in this work list, as well as the new, given elements. */
@@ -35,6 +37,9 @@ trait WorkList[X] {
   def toList: List[X]
   /** Returns a set containing all elements currently in this work list. */
   def toSet:   Set[X]
+
+  /** Returns a string representation of the worklist. */
+  override def toString: String = toList.mkString("{", ", ", "}")
 }
 
 // Default implementation used in worklistMonoid.
