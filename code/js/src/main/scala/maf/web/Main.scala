@@ -15,7 +15,7 @@ import scala.concurrent.duration._
 
 // Scala.js-related imports
 import org.scalajs.dom
-import org.scalajs.dom.{document, html}
+import org.scalajs.dom._
 
 import scala.scalajs.js
 import maf.modular.scheme.modf.SimpleSchemeModFAnalysis

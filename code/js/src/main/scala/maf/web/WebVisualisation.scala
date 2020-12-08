@@ -96,7 +96,8 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   var nodes, edges: JsAny   = null                    // will be used to keep selections of nodes/edges in the visualisation
   val simulation: JsAny     = d3.forceSimulation()    // create a d3 force simulation
 
-  def init(parent: dom.Node, width: Int, height: Int) = {
+  def init(parent: dom.Node, width: Int, height: Int): Unit = {
+    d3.select(parent).selectAll("svg").remove()
     // setup the svg
     val svg = d3.select(parent).append("svg").attr("width",width).attr("height",height)
     val outerContainer = svg.append("g")
