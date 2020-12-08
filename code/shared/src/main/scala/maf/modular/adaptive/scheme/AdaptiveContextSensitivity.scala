@@ -4,12 +4,50 @@ import maf.language.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.adaptive.scheme._
 import maf.core.Position._
+import maf.modular.Dependency
+import maf.util.benchmarks.Timeout
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   /*
-   * configured by some "budget" (= max number of components in the analysis) 
+   * configured by some "budget" (which determines how quickly a function will adapt its components)
    */
   val budget: Int
+  /*
+   * keep track of:
+   * - the number of times a function has been analysed
+   * - through which dependencies the analysis of a function was triggered
+   * - which components correspond to a given function
+   */
+  var counts: Map[SchemeExp, Int] = Map.empty
+  var triggeredBy: Map[SchemeExp, Set[Dependency]] = Map.empty
+  var cmpsPerFn: Map[SchemeLambdaExp, Set[Component]] = Map.empty
+  private def incCount(cmp: Component): Unit = incCount(expr(cmp))
+  private def incCount(fn: SchemeExp): Unit = {
+    val updated = counts.getOrElse(fn, 0) + 1
+    counts += fn -> updated
+    if (updated > budget) {
+      toAdapt += fn
+    } 
+  }
+  override def trigger(dep: Dependency): Unit = {
+    // increase the count and register the triggered dependency
+    deps.getOrElse(dep, Set.empty).foreach { cmp => 
+      val fn = expr(cmp)
+      incCount(fn)
+      triggeredBy += fn -> (triggeredBy.getOrElse(fn, Set.empty) + dep)
+    }
+    // trigger the dependency
+    super.trigger(dep)
+  }
+  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = {
+    // increase the count
+    incCount(cmp)
+    // bookkeeping: register every new component with the corresponding lambda
+    val lambda = call.clo._1
+    val lambdaCmps = cmpsPerFn.getOrElse(lambda, Set.empty)
+    val lambdaCmpsUpdated = lambdaCmps + cmp
+    cmpsPerFn += lambda -> lambdaCmpsUpdated
+  }
   /*
    * contexts are call-site strings
    * after adaptation, certain strings get trimmed
@@ -30,17 +68,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       case Some(k)  => ctx.take(k)
     }
   def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext = ctx
-  /*
-   * keep track of components per function
-   */
-  var cmpsPerFn = Map[SchemeLambdaExp, Set[Component]]()
-  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = {
-    // bookkeeping: register every new component with the corresponding lambda
-    val lambda = call.clo._1
-    val lambdaCmps = cmpsPerFn.getOrElse(lambda, Set.empty)
-    val lambdaCmpsUpdated = lambdaCmps + cmp
-    cmpsPerFn += lambda -> lambdaCmpsUpdated
-  }
+  /**
+    * Adapting the analysis
+    */
+  var toAdapt: Set[SchemeExp] = Set.empty
   override protected def adaptAnalysis(): Unit = {
     super.adaptAnalysis()
     while(visited.size > Math.max(budget, cmpsPerFn.size)) {
@@ -70,6 +101,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       adaptFunction(parentLambda, parentCmps, target)
     }
   }
+  /**
+    * Updating the analysis data
+    */
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)
     this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)
