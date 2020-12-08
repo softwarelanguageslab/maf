@@ -543,6 +543,12 @@ trait ScBigStepSemantics
           // a refined opaque value. Either way, the value on that address still reaches a fixpoint (safety) and is
           // sound because we are not making something more specific which should not be made more specific.
           _ <- writeForce(varAddr, enrich(opValue, varValue))
+
+          // add the constraint symbolicly to the correct variable
+          _ <- effectful {
+            constrain(varAddr, condition)
+          }
+
           result <- consequent
         } yield result
 

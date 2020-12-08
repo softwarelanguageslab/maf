@@ -21,18 +21,14 @@ class ScSmallTestSuite extends ScTestsJVMLocalStore {
 
   verify("number?", "(or 5 2)").safe()
 
-  /*
-  eval("(define (f x) 5) (provide/contract (f (-> (or/c number? string?) number?))) (f 5)").tested {
-    machine =>
-      println(machine.summary.blames)
-      assert(machine.summary.blames.isEmpty)
-  }
-   */
-
   eval("(define/contract (f x) (-> int? int?) x) (@unchecked f OPQ)").safe()
 
   eval("(define (f x) #t) (provide/contract (f (-> (or/c number? string?) number?))) (f 5)")
     .tested { machine =>
       assert(machine.summary.blames.nonEmpty)
     }
+
+  eval("(define (f x) (and (int? x) (= x 0))) (f OPQ)").tested { machine =>
+    println(machine.summaries)
+  }
 }

@@ -33,6 +33,12 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemantics {
     */
   var allSafe: Boolean = false
 
+  def distinctContracts: Int =
+    distinctContractApplications.keys.size
+
+  def verifiedContracts: Int =
+    distinctContractApplications.view.values.filter(_ == VerifiedTrue).size
+
   override def intraAnalysis(component: Component): IntraScBigStepSemanticsMonitored
   trait IntraScBigStepSemanticsMonitored extends IntraScBigStepSemantics {
     override def analyze(_ignored_timeout: Timeout.T): Unit = {
@@ -78,10 +84,13 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemantics {
         blamingIdentity: Identity
     ): ScEvalM.ScEvalM[X] = {
       import maf.util.MapUtil._
-      distinctContractApplications =
-        distinctContractApplications.weakPut(blamingIdentity, VerifiedFalse)
-
-      super.blame(blamedIdentity, blamingIdentity)
+      withIgnoredIdentities(
+        ignored =>
+          if (!ignored.contains(blamedIdentity)) {
+            distinctContractApplications =
+              distinctContractApplications.weakPut(blamingIdentity, VerifiedFalse)
+          }
+      ) >> super.blame(blamedIdentity, blamingIdentity)
     }
   }
 

@@ -16,6 +16,8 @@ case class BenchmarkResult(
     elapsedTime: Long,
     numberOfChecks: Int,
     analysedComponents: Int,
+    verifiedContracts: Int,
+    distinctContracts: Int,
     correct: Boolean = true
 ) {
 
@@ -36,6 +38,12 @@ case class BenchmarkResult(
 
     outTable = outTable.add(this.benchmarkName, "numberOfChecks", this.numberOfChecks.toString)
     outTable = outTable.add(this.benchmarkName, "correct", this.correct.toString())
+    outTable =
+      outTable.add(this.benchmarkName, "verifiedContracts", this.verifiedContracts.toString)
+
+    outTable =
+      outTable.add(this.benchmarkName, "distinctContracts", this.distinctContracts.toString)
+
     outTable
   }
 }

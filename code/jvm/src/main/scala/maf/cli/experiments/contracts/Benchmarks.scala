@@ -72,10 +72,11 @@ trait Benchmarks {
       elapsedTime,
       analysis.contractApplications,
       analysis.analysedComponents,
-      // if the program is not marked as safe, then the analysis must not produce
-      // that it is safe. This is useful for generating a report on false positives.
+      analysis.verifiedContracts,
+      analysis.distinctContracts,
       !analysis.allSafe || (analysis.allSafe && analysis.summary.blames.isEmpty)
     )
+
     result
   }
 

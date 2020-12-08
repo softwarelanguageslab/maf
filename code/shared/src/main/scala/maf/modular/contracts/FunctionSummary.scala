@@ -19,7 +19,7 @@ trait FunctionSummary extends ScModSemantics {
   case class FunctionSummary(
       variables: Map[ScIdentifier, ScExp],
       returnValues: List[ScExp],
-      constraints: Map[ScIdentifier, ScExp]
+      constraints: Map[Addr, ScExp]
   )
 
   var summaries: Map[Component, List[FunctionSummary]] = Map()
@@ -37,7 +37,7 @@ trait FunctionSummary extends ScModSemantics {
     /**
       * A map from variables to constraints on these variables
       */
-    private var constraints: Map[ScIdentifier, ScExp] = Map()
+    private var constraints: Map[Addr, ScExp] = Map()
 
     /**
       * Adds an additional constraint to the given variable
@@ -45,7 +45,7 @@ trait FunctionSummary extends ScModSemantics {
       * @param variable the variable to add the constraint to
       * @param constraint the constraint to add
       */
-    def constrain(variable: ScIdentifier, constraint: ScExp): Unit = {
+    def constrain(variable: Addr, constraint: ScExp): Unit = {
       val value = constraints.getOrElse(variable, ScNil())
       constraints += variable -> value.and(constraint)
     }

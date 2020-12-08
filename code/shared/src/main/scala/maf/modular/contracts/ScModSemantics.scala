@@ -68,8 +68,8 @@ trait ScModSemantics
       if (GLOBAL_STORE_ENABLED) Map()
       else
         store.view.filterKeys {
-          case _: ReturnAddr[Component] | _: ExceptionAddr[Component] => false
-          case _                                                      => true
+          case _: ReturnAddr[_] | _: ExceptionAddr[_] => false
+          case _                                      => true
         }.toMap
   }
 
