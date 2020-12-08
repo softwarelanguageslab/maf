@@ -44,5 +44,5 @@ trait WorkList[X] {
 
 // Default implementation used in worklistMonoid.
 object WorkList {
-  def empty[X]: WorkList[X]                       = LIFOWorkList.empty
+  def empty[X]: WorkList[X] = LIFOWorkList.empty
 }
