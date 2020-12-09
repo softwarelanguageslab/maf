@@ -97,7 +97,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   val simulation: JsAny     = d3.forceSimulation()    // create a d3 force simulation
 
   def init(parent: dom.Node, width: Int, height: Int): Unit = {
-    d3.select(parent).selectAll("svg").remove()
+    d3.select(parent).selectAll("svg").remove() // Ensures the new analysis is shown an interacted with when a new file is loaded.
     // setup the svg
     val svg = d3.select(parent).append("svg").attr("width",width).attr("height",height)
     val outerContainer = svg.append("g")
