@@ -22,10 +22,7 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
   override def intraAnalysis(cmp: Component): ReturnResultIntra
   trait ReturnResultIntra extends GlobalStoreIntra {
     // updating the result of a component (default: of the current component)
-    protected def writeResult(result: Value, cmp: Component = component): Unit = {
-      println(s"$cmp => $result")
-      writeAddr(returnAddr(cmp), result)
-    }
+    protected def writeResult(result: Value, cmp: Component = component): Unit = writeAddr(returnAddr(cmp), result)
 
     // reading the result of a component
     protected def readResult(cmp: Component): Value =
