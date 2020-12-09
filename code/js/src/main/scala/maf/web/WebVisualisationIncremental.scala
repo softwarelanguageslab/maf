@@ -11,6 +11,7 @@ object WebVisualisationIncremental {
   val __CSS_DELETED_NODE__ = "node_deleted"
   val __CSS_DELETED_EDGE__ = "edge_deleted"
   val __SVG_DELETED_ARROW__ = "endarrow_deleted"
+  val __CSS_MAIN_NODE__ = "node_main"
 }
 
 class WebVisualisationIncremental[Expr <: Expression](override val analysis: IncrementalModAnalysis[Expr] with DependencyTracking[Expr])
@@ -21,6 +22,7 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Inc
   override def classifyNodes(): Unit = {
     super.classifyNodes()
     nodes.classed(__CSS_DELETED_NODE__, (node: Node) => deletedComponent(node.component))
+    nodes.classed(__CSS_MAIN_NODE__, (node: Node) => node.component == analysis.initialComponent)
   }
 
   override def classifyEdges(): Unit = {

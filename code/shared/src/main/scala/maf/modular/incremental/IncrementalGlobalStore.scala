@@ -37,6 +37,17 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   }
 
   /**
+   * Called when a component is deleted. Removes the provenance information corresponding to the addresses written by the
+   * given component, thereby possibly refining the analysis store.
+   * @param cmp
+   */
+  override def deleteComponent(cmp: Component): Unit = {
+    cachedWrites(cmp).foreach(deleteProvenance(cmp, _))
+    cachedWrites = cachedWrites - cmp
+    super.deleteComponent(cmp)
+  }
+
+  /**
    * To be called upon a commit, with the join of the values written by the component to the given address.
    * Possibly updates the store and provenance information, and triggers dependencies if the store is updated.
    * @param cmp  The component related to the value nw written to addr.

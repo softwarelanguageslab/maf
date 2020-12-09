@@ -1,12 +1,13 @@
 package maf.cli.runnables
 
+import maf.core.Identity
 import maf.language.CScheme.CSchemeParser
-import maf.language.scheme.SchemeExp
-import maf.modular.ModAnalysis
+import maf.language.scheme.{SchemeExp, SchemeParser}
+import maf.modular.{DependencyTracking, ModAnalysis}
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modf._
 import maf.modular.scheme.ssmodconc._
-import maf.modular.worklist.LIFOWorklistAlgorithm
+import maf.modular.worklist.{FIFOWorklistAlgorithm, LIFOWorklistAlgorithm}
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
@@ -38,11 +39,24 @@ object AnalyzeProgram extends App {
     "test/DEBUG2.scm"
   )
 
+  // Used by webviz.
+  def newStandardAnalysis(text: String) = {
+    val program = SchemeParser.parse(text)
+    new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
+      with SchemeConstantPropagationDomain
+      with DependencyTracking[SchemeExp]
+      with FIFOWorklistAlgorithm[SchemeExp] {
+      override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra =
+        new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+    }
+  }
+
   bench.foreach({ b =>
     try {
       print(b + " => ")
       val t0 = System.currentTimeMillis()
-      one(b, () => Timeout.start(Duration(2, MINUTES)))
+      newStandardAnalysis(Reader.loadFile(b)).analyze(Timeout.none)
+      //one(b, () => Timeout.start(Duration(2, MINUTES)))
       val t1 = System.currentTimeMillis()
       println(s"    in ${(t1 - t0)}ms")
     } catch {

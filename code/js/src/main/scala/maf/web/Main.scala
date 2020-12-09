@@ -87,7 +87,7 @@ object Main {
   def createIncrementalVisualisation(text: String) = new WebVisualisationIncremental(newIncrementalReanalysis(text))
 
   def loadFile(text: String): Unit = {
-    val visualisation = createIncrementalVisualisation(text)
+    val visualisation = createVisualisation(text)
     // parameters for the visualisation
     val body = document.body
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]

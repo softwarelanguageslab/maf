@@ -4,6 +4,9 @@ import maf.modular._
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util.benchmarks.Timeout
 
+import scala.concurrent.duration._
+import scala.util.control.Breaks._
+
 // Scala.js-related imports
 import org.scalajs.dom
 import org.scalajs.dom.document
@@ -97,7 +100,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   val simulation: JsAny     = d3.forceSimulation()    // create a d3 force simulation
 
   def init(parent: dom.Node, width: Int, height: Int): Unit = {
-    d3.select(parent).selectAll("svg").remove()
+    d3.select(parent).selectAll("svg").remove() // Ensures the new analysis is shown an interacted with when a new file is loaded.
     // setup the svg
     val svg = d3.select(parent).append("svg").attr("width",width).attr("height",height)
     val outerContainer = svg.append("g")
@@ -261,17 +264,48 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   //
 
   def keyHandler: PartialFunction[String,Unit] = {
-    case "n" | "N" | " " => stepAnalysis()
+    case "e" | "E" => runAnalysis(Timeout.none) // Run to end.
+    case "n" | "N" | " " => stepAnalysis() // Next step.
+    case "r" => runAnalysis(Timeout.start(Duration(5, SECONDS))) // Run 5 seconds.
+    case "R" => runAnalysis(Timeout.start(Duration(10, SECONDS))) // Run 10 seconds.
+    case "s" => stepMultiple(10)
+    case "S" => stepMultiple(25)
   }
 
   def onClick() = stepAnalysis()
 
-  protected def stepAnalysis() =
+  protected def stepAnalysis(): Unit =
     if (!analysis.finished()) {
       val component = analysis.workList.head
       val oldDeps = analysis.dependencies(component)
       analysis.step(Timeout.none)
-      refreshDataAfterStep(component,oldDeps)
+      refreshDataAfterStep(component, oldDeps)
+      refreshVisualisation()
+    } else {
+      println("The analysis has already terminated.")
+    }
+
+  protected def stepMultiple(n: Int): Unit = {
+    breakable {
+      for (i <- 1 to n) {
+        if (!analysis.finished()) {
+          val component = analysis.workList.head
+          val oldDeps = analysis.dependencies(component)
+          analysis.step(Timeout.none)
+          refreshDataAfterStep(component, oldDeps) // Could also use the less efficient version just once.
+        } else {
+          println("The analysis has already terminated.")
+          break()
+        }
+      }
+    }
+    refreshVisualisation() // Only refresh the visualisation once.
+  }
+
+  protected def runAnalysis(timeout: Timeout.T): Unit =
+    if (!analysis.finished()) {
+      analysis.analyze(timeout)
+      refreshData()
       refreshVisualisation()
     } else {
       println("The analysis has already terminated.")
