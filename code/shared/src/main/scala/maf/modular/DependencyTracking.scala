@@ -17,7 +17,7 @@ trait DependencyTracking[Expr <: Expression] extends ModAnalysis[Expr] { inter =
       super.commit()
       // update the bookkeeping
       newComponents = C.filterNot(visited)
-      dependencies += component -> (dependencies(component) ++ newComponents)
+      dependencies += component -> (dependencies(component) ++ C)
     }
   }
 }

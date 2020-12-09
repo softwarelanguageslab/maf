@@ -1,6 +1,5 @@
 package maf.cli.runnables
 
-import maf.core.Identity
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.{SchemeExp, SchemeParser}
 import maf.modular.{DependencyTracking, ModAnalysis}
@@ -11,7 +10,7 @@ import maf.modular.worklist.{FIFOWorklistAlgorithm, LIFOWorklistAlgorithm}
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.{Duration, MINUTES}
 
 object AnalyzeProgram extends App {
   def one(bench: String, timeout: () => Timeout.T): Unit = {
@@ -55,8 +54,7 @@ object AnalyzeProgram extends App {
     try {
       print(b + " => ")
       val t0 = System.currentTimeMillis()
-      newStandardAnalysis(Reader.loadFile(b)).analyze(Timeout.none)
-      //one(b, () => Timeout.start(Duration(2, MINUTES)))
+      one(b, () => Timeout.start(Duration(2, MINUTES)))
       val t1 = System.currentTimeMillis()
       println(s"    in ${(t1 - t0)}ms")
     } catch {
