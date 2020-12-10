@@ -64,10 +64,10 @@ object Main {
     }
   }
 
-  def newIncrementalReanalysis(text: String): IncrementalSchemeModFCPAnalysisStoreOpt with DependencyTracking[SchemeExp] = {
+  def newIncrementalReanalysis(text: String): IncrementalSchemeModFCPAnalysisStoreOpt with VisualisableIncrementalModAnalysis[SchemeExp] = {
     val program: SchemeExp = CSchemeParser.parse(text)
-    new IncrementalSchemeModFCPAnalysisStoreOpt(program) with DependencyTracking[SchemeExp] {
-      override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis with DependencyTrackingIntra
+    new IncrementalSchemeModFCPAnalysisStoreOpt(program) with VisualisableIncrementalModAnalysis[SchemeExp] {
+      override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis with VisualisableIntraAnalysis
       try {
         println("Starting initial analysis.") // Will be logged to console.
         analyze(Timeout.start(Duration(5, MINUTES)))
@@ -87,7 +87,7 @@ object Main {
   def createIncrementalVisualisation(text: String) = new WebVisualisationIncremental(newIncrementalReanalysis(text))
 
   def loadFile(text: String): Unit = {
-    val visualisation = createVisualisation(text)
+    val visualisation = createIncrementalVisualisation(text)
     // parameters for the visualisation
     val body = document.body
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]

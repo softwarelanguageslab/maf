@@ -7,6 +7,18 @@ import maf.web.WebVisualisation._
 import maf.web.WebVisualisationIncremental._
 import scala.scalajs.js
 
+trait VisualisableIncrementalModAnalysis[Expr <: Expression] extends IncrementalModAnalysis[Expr] with DependencyTracking[Expr] {
+  var recursive: Set[Component] = Set() // Collects the set of recursive components, since self-edges are omitted in the set `cachedSpawns`.
+
+  trait VisualisableIntraAnalysis extends IncrementalIntraAnalysis with DependencyTrackingIntra {
+    override def refineComponents(): Unit = {
+      if (C.contains(component)) recursive = recursive + component
+      else recursive = recursive - component
+      super.refineComponents()
+    }
+  }
+}
+
 object WebVisualisationIncremental {
   val __CSS_DELETED_NODE__ = "node_deleted"
   val __CSS_DELETED_EDGE__ = "edge_deleted"
@@ -14,7 +26,7 @@ object WebVisualisationIncremental {
   val __CSS_MAIN_NODE__ = "node_main"
 }
 
-class WebVisualisationIncremental[Expr <: Expression](override val analysis: IncrementalModAnalysis[Expr] with DependencyTracking[Expr])
+class WebVisualisationIncremental[Expr <: Expression](override val analysis: VisualisableIncrementalModAnalysis[Expr])
   extends WebVisualisation(analysis) {
 
   def deletedComponent(cmp: analysis.Component): Boolean = !analysis.visited.contains(cmp) && !analysis.workList.contains(cmp)
@@ -30,7 +42,8 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Inc
     edges.classed(__CSS_DELETED_EDGE__, (edge: Edge) =>
       deletedComponent(edge.source.component)
         || deletedComponent(edge.target.component)
-        || !analysis.cachedSpawns(edge.source.component).contains(edge.target.component))
+        || (!analysis.dependencies(edge.source.component).contains(edge.target.component)) // The edge has been deleted.
+              && !(edge.source.component == edge.target.component && analysis.recursive.contains(edge.source.component))) // Check that it is not a currently existing self-edge.
   }
 
   /**
