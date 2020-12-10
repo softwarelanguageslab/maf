@@ -27,7 +27,43 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Inc
 
   override def classifyEdges(): Unit = {
     super.classifyEdges()
-    edges.classed(__CSS_DELETED_EDGE__, (edge: Edge) => deletedComponent(edge.target.component))
+    edges.classed(__CSS_DELETED_EDGE__, (edge: Edge) =>
+      deletedComponent(edge.source.component)
+        || deletedComponent(edge.target.component)
+        || !analysis.cachedSpawns(edge.source.component).contains(edge.target.component))
+  }
+
+  /**
+   * Ensures all new nodes and edges in the analysis are drawn. May not shown nodes that have ceased to exist.
+   * @note No nodes and edges are deleted. Those that are deleted by the analysis will still be drawn, but in will be visualised differently.
+   * @note Nodes and edges that were created and deleted by the analysis since the last update of the visualisation data will not be shown using this method.
+   */
+  override def refreshData(): Unit = {
+    // Add all components currently in the analysis.
+    analysis.visited.foreach { cmp =>
+      val node = getNode(cmp)
+      nodesData += node
+    }
+    // Add all edges currently in the analysis.
+    nodesData.foreach { sourceNode =>
+      val targets = analysis.dependencies(sourceNode.component)
+      targets.foreach(target => {
+        val targetNode = getNode(target)
+        val edge = getEdge(sourceNode,targetNode)
+        edgesData += edge
+      })
+    }
+  }
+
+  override def refreshDataAfterStep(cmp: analysis.Component, oldDeps: Set[analysis.Component]): Unit = {
+    val sourceNode = getNode(cmp)
+    // Add new edges.
+    analysis.dependencies(cmp).foreach { otherCmp =>
+      val targetNode = getNode(otherCmp)
+      val edge = getEdge(sourceNode,targetNode)
+      nodesData += targetNode
+      edgesData += edge
+    }
   }
 
   override def setupMarker(svg: JsAny): js.Dynamic = {

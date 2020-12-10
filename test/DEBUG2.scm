@@ -9,20 +9,22 @@
 
 (define (some? pred? l)
   (if (null? l)
-      #f
-      (or (pred? (car l)) (some? pred? (cdr l)))))
+    #f
+    (or (pred? (car l)) (some? pred? (cdr l)))))
 
 (define (map2 f l1 l2)
   (if (pair? l1)
     (cons (f (car l1) (car l2))
       (map2 f (cdr l1) (cdr l2)))
-      '()))
+    '()))
 
 (define (get-last-pair l)
   (let ((x (cdr l)))
     (if (pair? x)
-        (get-last-pair x)
-        l)))
+      (get-last-pair x)
+      l)))
+
+(define tagged-list? (<change> #f (lambda (l tag) (eq? (car l) tag)))) ; <==============================================
 
 ;------------------------------------------------------------------------------
 ;
@@ -37,19 +39,21 @@
            (quot (const-value exp)))
           ((symbol? exp)
            (let ((x (assq exp env))) (if x (cdr x) exp)))
-          ((or (eq? (car exp) 'if) (eq? (car exp) 'begin))
+          ((or (<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <================================================
+               (<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin))) ; <=========================================
            (cons (car exp) (map alpha (cdr exp))))
-          ((or (eq? (car exp) 'let) (eq? (car exp) 'letrec))
+          ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <==============================================
+               (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <=======================================
            (let ((new-env (new-variables (map car (cadr exp)) env)))
              (list (car exp)
                    (map (lambda (x)
                           (list (cdr (assq (car x) new-env))
-                                (if (eq? (car exp) 'let)
+                                (if (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <=========================
                                   (alpha (cadr x))
                                   (alphatize (cadr x) new-env))))
                         (cadr exp))
                    (alphatize (caddr exp) new-env))))
-          ((eq? (car exp) 'lambda)
+          ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <============================================
            (let ((new-env (new-variables (cadr exp) env)))
              (list 'lambda
                    (map (lambda (x) (cdr (assq x new-env))) (cadr exp))
@@ -143,13 +147,15 @@
           ((symbol? exp)
            (let ((x (assq exp env)))
              (if x (cdr x) exp)))
-          ((or (eq? (car exp) 'if) (eq? (car exp) 'begin))
+          ((or (<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <================================================
+               (<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin))) ; <=========================================
            (cons (car exp) (map bs (cdr exp))))
-          ((or (eq? (car exp) 'let) (eq? (car exp) 'letrec))
+          ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <==============================================
+               (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <=======================================
            (list (car exp)
                  (map (lambda (x) (list (car x) (bs (cadr x)))) (cadr exp))
                  (bs (caddr exp))))
-          ((eq? (car exp) 'lambda)
+          ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <============================================
            (list 'lambda
                  (cadr exp)
                  (bs (caddr exp))))
@@ -172,7 +178,7 @@
 
               ((symbol? exp))      ; leave variable references the way they are
 
-              ((eq? (car exp) 'if) ; dead code removal for conditionals
+              ((<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <================================================
                (s! (cdr exp))      ; simplify the predicate
                (if (const-expr? (cadr exp)) ; is the predicate a constant?
                  (begin
@@ -183,20 +189,21 @@
                    (s! where))
                  (for-each! s! (cddr exp)))) ; simplify consequent and alt.
 
-              ((eq? (car exp) 'begin)
+              ((<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin)) ; <==========================================
                (for-each! s! (cdr exp))
                (let loop ((exps exp)) ; remove all useless expressions
                  (if (not (null? (cddr exps))) ; not last expression?
                    (let ((x (cadr exps)))
                      (loop (if (or (const-expr? x)
                                    (symbol? x)
-                                   (and (pair? x) (eq? (car x) 'lambda)))
+                                   (and (pair? x) (<change> (eq? (car x) 'lambda) (tagged-list? x 'lambda)))) ; <=======
                              (begin (set-cdr! exps (cddr exps)) exps)
                              (cdr exps))))))
                (if (null? (cddr exp)) ; only one expression in the begin?
                  (set-car! where (cadr exp))))
 
-              ((or (eq? (car exp) 'let) (eq? (car exp) 'letrec))
+              ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <==========================================
+                   (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <===================================
                (let ((new-env (cons exp env)))
                  (define (keep i)
                    (if (>= i (length (cadar where)))
@@ -212,7 +219,7 @@
                              ((or (const-expr? val)
                                   (symbol? val)
                                   (and (pair? val)
-                                       (eq? (car val) 'lambda)
+                                       (<change> (eq? (car val) 'lambda) (tagged-list? val 'lambda)) ; <================
                                        (= total-refs 1)
                                        (= oper-refs 1)
                                        (= (car self-refs) 0))
@@ -237,7 +244,7 @@
                      (if (null? to-keep)
                        (set-car! where (caddar where)))))))
 
-              ((eq? (car exp) 'lambda)
+              ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <========================================
                (simp! (cddr exp) (cons exp env)))
 
               (else
@@ -247,7 +254,7 @@
                         (if frame ; is it a bound variable?
                           (let ((proc (bound-expr (car exp) frame)))
                             (if (and (pair? proc)
-                                     (eq? (car proc) 'lambda)
+                                     (<change> (eq? (car proc) 'lambda) (tagged-list? proc 'lambda)) ; <================
                                      (some? const-expr? (cdr exp)))
                               (let* ((args (arg-pattern (cdr exp)))
                                      (new-proc (peval proc args))
@@ -258,7 +265,7 @@
                           (set-car! where
                             (constant-fold-global (car exp) (cdr exp))))))
                      ((not (pair? (car exp))))
-                     ((eq? (caar exp) 'lambda)
+                     ((<change> (eq? (caar exp) 'lambda) (tagged-list? (car exp) 'lambda)) ; <==========================
                       (set-car! where
                         (list 'let
                               (map2 list (cadar exp) (cdr exp))
@@ -274,18 +281,19 @@
 
         (cond ((const-expr? exp))
               ((symbol? exp))
-              ((eq? (car exp) 'if)
+              ((<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <================================================
                (rec! (cdr exp))
                (rec! (cddr exp))
                (rec! (cdddr exp)))
-              ((eq? (car exp) 'begin)
+              ((<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin)) ; <==========================================
                (for-each! rec! (cdr exp)))
-              ((or (eq? (car exp) 'let) (eq? (car exp) 'letrec))
+              ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <==========================================
+                   (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <===================================
                (let ((new-env (cons exp env)))
                  (remove-empty-calls! (cddr exp) new-env)
                  (for-each! (lambda (x) (remove-empty-calls! (cdar x) new-env))
                             (cadr exp))))
-              ((eq? (car exp) 'lambda)
+              ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <========================================
                (rec! (cddr exp)))
               (else
                (for-each! rec! (cdr exp))
@@ -294,7 +302,7 @@
                    (if frame ; is it a bound variable?
                      (let ((proc (bound-expr (car exp) frame)))
                        (if (and (pair? proc)
-                                (eq? (car proc) 'lambda))
+                                (<change> (eq? (car proc) 'lambda) (tagged-list? proc 'lambda))) ; <====================
                          (begin
                            (set! changed? #t)
                            (set-car! where (caddr proc))))))))))))
@@ -321,15 +329,16 @@
                (begin
                  (set! total (+ total 1))
                  (set! always-evaled (and ae always-evaled)))))
-            ((eq? (car exp) 'if)
+            ((<change> (eq? (car exp) 'if) (tagged-list? exp 'if)) ; <==================================================
              (rc (cadr exp) ae)
              (for-each (lambda (x) (rc x #f)) (cddr exp)))
-            ((eq? (car exp) 'begin)
+            ((<change> (eq? (car exp) 'begin) (tagged-list? exp 'begin)) ; <============================================
              (for-each (lambda (x) (rc x ae)) (cdr exp)))
-            ((or (eq? (car exp) 'let) (eq? (car exp) 'letrec))
+            ((or (<change> (eq? (car exp) 'let) (tagged-list? exp 'let)) ; <============================================
+                 (<change> (eq? (car exp) 'letrec) (tagged-list? exp 'letrec))) ; <=====================================
              (for-each (lambda (x) (rc (cadr x) ae)) (cadr exp))
              (rc (caddr exp) ae))
-            ((eq? (car exp) 'lambda)
+            ((<change> (eq? (car exp) 'lambda) (tagged-list? exp 'lambda)) ; <==========================================
              (rc (caddr exp) #f))
             (else
              (for-each (lambda (x) (rc x ae)) exp)
@@ -340,17 +349,19 @@
 
 (define (binding-frame var env)
   (cond ((null? env) #f)
-        ((or (eq? (caar env) 'let) (eq? (caar env) 'letrec))
+        ((or (<change> (eq? (caar env) 'let) (tagged-list? (car env) 'let)) ; <=========================================
+             (<change> (eq? (caar env) 'letrec) (tagged-list? (car env) 'letrec))) ; <==================================
          (if (assq var (cadar env)) (car env) (binding-frame var (cdr env))))
-        ((eq? (caar env) 'lambda)
+        ((<change> (eq? (caar env) 'lambda) (tagged-list? (car env) 'lambda)) ; <=======================================
          (if (memq var (cadar env)) (car env) (binding-frame var (cdr env))))
         (else
          (error "ill-formed environment"))))
 
 (define (bound-expr var frame)
-  (cond ((or (eq? (car frame) 'let) (eq? (car frame) 'letrec))
+  (cond ((or (<change> (eq? (car frame) 'let) (tagged-list? frame 'let)) ; <============================================
+             (<change> (eq? (car frame) 'letrec) (tagged-list? frame 'letrec))) ; <=====================================
          (cadr (assq var (cadr frame))))
-        ((eq? (car frame) 'lambda)
+        ((<change> (eq? (car frame) 'lambda) (tagged-list? frame 'lambda)) ; <==========================================
          not-constant)
         (else
          (error "ill-formed frame"))))

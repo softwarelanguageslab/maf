@@ -29,20 +29,6 @@ object IncrementalRun extends App {
   val modFbenchmarks: List[String]     = List()
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
-  modConcbenchmarks.foreach { bench =>
-    // println(bench)
-    //for (i <- 1 to 15) {
-    // print(Timer.timeOnly({
-    modconcAnalysis(bench, standardTimeout)
-    //}) + " ")
-    //}
-  }
-  modFbenchmarks.foreach { bench =>
-    //println(bench)
-    //for (i <- 1 to 15) {
-    // print(Timer.timeOnly({
-    modfAnalysis(bench, standardTimeout)
-    // }) + " ")
-    //}
-  }
+  modConcbenchmarks.foreach { bench => modconcAnalysis(bench, standardTimeout) }
+  modFbenchmarks.foreach { bench => modfAnalysis(bench, standardTimeout) }
 }
