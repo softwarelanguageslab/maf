@@ -2,7 +2,7 @@ package maf.util
 
 import maf.core._
 
-trait Show[V] {
+trait Show[V] extends Serializable {
   def show(v: V): String
 }
 

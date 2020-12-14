@@ -624,13 +624,6 @@
 (define (test)
   (set! *current-num* 0)
   (list (try-peval example1 (list '(10 11) not-constant '1))
-        (try-peval example2 (list not-constant '1))
-        (try-peval example3 (list not-constant '1))
-        (try-peval example3 (list '(1 2 3) not-constant))
-        (try-peval example4 (list 'x not-constant))
-        (try-peval example4 (list '(f 1 2 3) not-constant))
-        (try-peval example5 (list '5 not-constant))
-        (try-peval example6 '())
         (try-peval
          example7
          (list '(a b c d e f g h i j k l m n o p q r s t u v w x y z)))

@@ -1,6 +1,6 @@
 package maf.core
 
-sealed trait MayFail[A, E] {
+sealed trait MayFail[A, E] extends Serializable {
   def addError(err: E): MayFail[A, E] = addErrors(Set(err))
   def addErrors(errs: Set[E]): MayFail[A, E] = this match {
     case MayFailSuccess(a)     => MayFailBoth(a, errs)

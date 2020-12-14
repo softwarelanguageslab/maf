@@ -5,7 +5,7 @@ import maf.core.Position._
 import maf.util.SmartHash
 
 /** An identity to distinguish expressions. */
-sealed trait Identity {
+sealed trait Identity extends Serializable {
   val idn: IDN
   def pos: Position = idn // Extra positional information of the element in the source code. Used for printing and during tests.
   override def toString: String = pos.toString

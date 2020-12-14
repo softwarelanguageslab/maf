@@ -25,7 +25,7 @@ class ModularSchemeLattice[
     R: RealLattice,
     C: CharLattice,
     Sym: SymbolLattice
-] {
+] extends Serializable {
 
   // TODO: make this a type parameter for type safety!
   type K = Any
@@ -642,7 +642,7 @@ class ModularSchemeLattice[
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X =
       vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
   }
-  object Element {
+  object Element extends Serializable {
     def apply(v: Value): L = Elements(List(v))
   }
 

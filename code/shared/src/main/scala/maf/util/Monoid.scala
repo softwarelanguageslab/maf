@@ -3,7 +3,7 @@ package maf.util
 import maf.core._
 import maf.core.worklist.WorkList
 
-trait Monoid[M] {
+trait Monoid[M] extends Serializable {
   def append(x: M, y: => M): M
   def zero: M
 }

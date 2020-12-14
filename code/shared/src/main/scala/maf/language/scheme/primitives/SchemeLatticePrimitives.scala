@@ -6,7 +6,7 @@ import maf.language.scheme.lattices.{SchemeLattice, SchemeOps}
 import maf.util.Monoid
 
 /** Help code for manually implementing Scheme primitives. */
-trait PrimitiveBuildingBlocks[V, A <: Address] {
+trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
 
   val lat: SchemeLattice[V, A, SchemePrimitive[V,A]]
   lazy val latMon: Monoid[V] = maf.util.MonoidInstances.latticeMonoid[V](lat)

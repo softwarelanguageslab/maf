@@ -5,10 +5,12 @@ import maf.core._
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme._
+import maf.modular.ModAnalysis
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme._
 import maf.util._
 import maf.util.benchmarks._
+
 import scala.concurrent.duration._
 
 trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
@@ -84,7 +86,8 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       return
     }
 
-    val a1Copy = a1.deepCopy()
+    a1.exportAnalysis("exported.txt")
+    val a1Copy = ModAnalysis.importAnalysis[Analysis]("exported.txt")
 
     // First incremental update.
    /* if (!runAnalysis("-> inc1 ", {timeOut => a1.updateAnalysis(timeOut, file, false)})) compareAnalyses(i1, file, a1, a2)
@@ -136,7 +139,7 @@ object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision {
 }
 
 object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = Set("test/DEBUG2.scm") //IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
   override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysisStoreOpt(e)
   val outputFile: String = "precision/modf-CP-StoreOpt.txt"
 }

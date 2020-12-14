@@ -9,7 +9,7 @@ object LatticeTopUndefined extends MAFException
 /** A lattice typeclass.
   * It is actually a join-semi lattice as it only need a join operation and a bottom element
   */
-trait Lattice[L] extends PartialOrdering[L] with Show[L] {
+trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable {
 
   /** A lattice has a bottom element */
   def bottom: L

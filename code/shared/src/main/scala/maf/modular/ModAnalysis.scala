@@ -4,6 +4,8 @@ import maf.core._
 import maf.util.SmartHash
 import maf.util.benchmarks.Timeout
 
+import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
+
 // an intra-analysis of a component can read ("register") or write ("trigger") dependencies
 // a dependency represents a part of the global analysis state (such as a location in the global analysis' store)
 // in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
@@ -13,10 +15,10 @@ trait Dependency extends SmartHash
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and
  * provides some utility functionality.
  **/
-abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable { inter =>
+abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable with Serializable { inter =>
 
   // parameterized by a component representation
-  type Component
+  type Component <: Serializable
   def initialComponent: Component
   def expr(cmp: Component): Expr
 
@@ -90,4 +92,24 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable { i
   def finished(): Boolean                               // <= check if the analysis is finished
   /** Runs the analysis with an optional timeout (default value: no timeout). Implementation should be provided by the work list algorithm. */
   def analyze(timeout: Timeout.T = Timeout.none): Unit  // <= run the analysis (with given timeout)
+
+  // Exporting an analysis to a file.
+
+  /** Serialises a modular analysis and writes it to a file. */
+  def exportAnalysis(file: String): Unit = {
+    val out: ObjectOutputStream = new ObjectOutputStream(new FileOutputStream(file))
+    out.writeObject(this)
+    out.close()
+  }
+}
+
+object ModAnalysis {
+
+  /** Reads a serialised modular analysis from a file and returns the deserialised object. */
+  def importAnalysis[A <: ModAnalysis[_]](file: String): A = {
+    val in: ObjectInputStream = new ObjectInputStream(new FileInputStream(file))
+    val analysis: A = in.readObject().asInstanceOf[A]
+    in.close()
+    analysis
+  }
 }
