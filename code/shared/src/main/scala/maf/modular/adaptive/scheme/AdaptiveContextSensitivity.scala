@@ -5,6 +5,8 @@ import maf.modular.scheme.modf._
 import maf.modular.adaptive.scheme._
 import maf.core.Position._
 import maf.modular.Dependency
+import maf.util.Monoid
+import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
@@ -18,9 +20,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
    * - through which dependencies the analysis of a function was triggered
    * - which components correspond to a given function
    */
-  var counts: Map[SchemeExp, Int] = Map.empty
-  var triggeredBy: Map[SchemeExp, Set[Dependency]] = Map.empty
-  var cmpsPerFn: Map[SchemeLambdaExp, Set[Component]] = Map.empty
+  var counts:       Map[SchemeExp, Int]                   = Map.empty
+  var triggeredBy:  Map[SchemeExp, Map[Dependency, Int]]  = Map.empty
+  var triggered:    Map[Dependency, Set[SchemeExp]]       = Map.empty
+  var cmpsPerFn:    Map[SchemeExp, Set[Component]]        = Map.empty
   private def incCount(cmp: Component): Unit = incCount(expr(cmp))
   private def incCount(fn: SchemeExp): Unit = {
     val updated = counts.getOrElse(fn, 0) + 1
@@ -30,11 +33,15 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     } 
   }
   override def trigger(dep: Dependency): Unit = {
-    // increase the count and register the triggered dependency
     deps.getOrElse(dep, Set.empty).foreach { cmp => 
       val fn = expr(cmp)
+      // increase the count of the corresponding function
       incCount(fn)
-      triggeredBy += fn -> (triggeredBy.getOrElse(fn, Set.empty) + dep)
+      // bookkeeping for the  dependency
+      val previous = triggeredBy.getOrElse(fn, Map.empty)
+      val updated = previous + (dep -> (previous.getOrElse(dep, 0) + 1))
+      triggeredBy += fn -> updated
+      triggered += dep -> (triggered.getOrElse(dep, Set.empty) + fn)
     }
     // trigger the dependency
     super.trigger(dep)
@@ -49,17 +56,22 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     cmpsPerFn += lambda -> lambdaCmpsUpdated
   }
   // correctly updating the analysis data
+  private implicit val intMaxMonoid: Monoid[Int] = new Monoid[Int] { 
+    def zero: Int = 0 // assumption: only safe for nonnegative integers
+    def append(x: Int, y: => Int): Int = Math.max(x,y)
+  }
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)
     this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)
-    this.triggeredBy = updateMap(updateSet(updateDep(update)))(triggeredBy)
+    this.triggered = updateMap(updateDep(update), (s:Set[SchemeExp]) => s)(triggered)
+    this.triggeredBy = updateMap(updateMap(updateDep(update), (c:Int) => c))(triggeredBy)
   }
   /*
    * contexts are call-site strings
    * after adaptation, certain strings get trimmed
    */
   type ComponentContext = List[Position]
-  var kPerFn = Map[SchemeLambdaExp, Int]()
+  var kPerFn = Map[SchemeExp, Int]()
   def getContext(cmp: Component): ComponentContext = view(cmp) match {
     case Main => List.empty
     case cll: Call[ComponentContext] @unchecked => cll.ctx
@@ -80,17 +92,31 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   var toAdapt: Set[SchemeExp] = Set.empty
   override protected def adaptAnalysis(): Unit = {
     super.adaptAnalysis()
-    while(visited.size > Math.max(budget, cmpsPerFn.size)) {
-      val (lambda, cmps) = cmpsPerFn.maxBy(_._2.size)
-      val target = (cmpsPerFn - lambda).maxByOption(_._2.size) match {
-        case None                 => budget
-        case Some((_, nextCmps))  => Math.max(1, nextCmps.size - 1)
+    if(toAdapt.nonEmpty) {
+      // adapt the components of marked functions
+      // 2 possibilies:
+      // - too many components for the given function
+      // - too many reanalyses of the same components (of the corresponding function)
+      toAdapt.foreach { fn =>
+        // determine the root cause of the scalability problem for function fn
+        val total = counts(fn)
+        val cmps = cmpsPerFn(fn)
+        val hcount = cmps.size
+        val vcount = Math.round(total.toFloat / hcount) 
+        if (hcount > vcount) {                  // (a) too many components ...
+          adaptByComponent(fn, cmps, hcount/2)  // => reduce number of components for fn
+        } else {                                // (b) too many reanalyses ...
+          adaptByDependency(fn)                 // => reduce number of dependencies triggered for fn
+        }
+        // reset budget and bookkeeping for the adapted function
+        counts += fn -> 0
+        // update the analysis data structures
+        updateAnalysis()
       }
-      adaptFunction(lambda, cmps, target)
-      updateAnalysis()
+      toAdapt = Set.empty
     }
   }
-  private def adaptFunction(lambda: SchemeLambdaExp, cmps: Set[Component], target: Int): Unit = {
+  private def adaptByComponent(fn: SchemeExp, cmps: Set[Component], target: Int): Unit = {
     // find a fitting k
     var calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
     var k = calls.maxBy(_.ctx.length).ctx.length
@@ -98,13 +124,13 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       k = k - 1
       calls = calls.map(cll => cll.copy(ctx = cll.ctx.take(k)))
     } 
-    //println(s"$lambda -> $k")
-    kPerFn += lambda -> k  // register the new k
+    //println(s"$fn -> $k")
+    kPerFn += fn -> k  // register the new k
     // if lowering context does not work => adapt parent components
     if(calls.size > target) {
       val parentCmps = calls.map(cll => cll.clo._2.asInstanceOf[WrappedEnv[Addr,Component]].data)
       val parentLambda = view(parentCmps.head).asInstanceOf[Call[ComponentContext]].clo._1
-      adaptFunction(parentLambda, parentCmps, target)
+      adaptByComponent(parentLambda, parentCmps, target)
     }
   }
 }
