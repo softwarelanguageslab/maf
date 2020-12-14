@@ -86,8 +86,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       return
     }
 
-    a1.exportAnalysis("exported.txt")
-    val a1Copy = ModAnalysis.importAnalysis[Analysis]("exported.txt")
+    val a1Copy = a1.deepCopy()
 
     // First incremental update.
    /* if (!runAnalysis("-> inc1 ", {timeOut => a1.updateAnalysis(timeOut, file, false)})) compareAnalyses(i1, file, a1, a2)
