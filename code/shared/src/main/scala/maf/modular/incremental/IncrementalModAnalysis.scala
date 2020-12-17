@@ -11,8 +11,13 @@ import maf.util.Logger.Log
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion.sunion
 
-// NOTE - This implementation is not thread-safe, and does not always use the local stores of the intra-component analyses!
-//        Therefore, a sequential work-list algorithm is used.
+/**
+ * This trait provides the implementation of an incremental modular analysis.
+ * Upon a change, schedules the directly affected components for analysis, and initiates the reanalysis.
+ * Apart from that, two optimisations are implemented: component and dependency invalidation.
+ * @note The incremental analysis is not thread-safe and does not always use the local stores of the intra-component analyses!
+ *       Therefore, a sequential work-list algorithm is used.
+ */
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
   var logger: Log = _
@@ -155,7 +160,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
     analyze(timeout)
-    if (log) deps.keySet.foreach(dep => logger.log(s"DEPEN ${dep} <- ${deps(dep)}"))
+    if (log) deps.keySet.foreach(dep => logger.log(s"DEPEN $dep <- ${deps(dep)}"))
     if (log) logger.close()
   }
 
