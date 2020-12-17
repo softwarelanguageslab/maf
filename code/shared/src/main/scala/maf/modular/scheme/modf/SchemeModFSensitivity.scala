@@ -6,7 +6,7 @@ import maf.core.Position._
 trait SchemeModFSensitivity extends BaseSchemeModFSemantics
 
 /* Simplest (and most imprecise): no context-sensitivity */
-case object NoContext {
+case object NoContext extends Serializable {
   override def toString: String = "ε" // Mostly for the web visualisation that otherwise prints "undefined".
 }
 

@@ -24,7 +24,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
     // MODCONC COMPONENTS
     //
 
-    type Component <: TID
+    type Component <: TID with Serializable
     def view(cmp: Component): SchemeModConcComponent
     def initialComponent: Component 
     def newComponent(thread: Thread[ComponentContext]): Component
@@ -47,7 +47,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp]
         case MainThread             => (program, initialEnv)
         case Thread(bdy, env, _)    => (bdy, env)
     }
-    type ComponentContext
+    type ComponentContext <: Serializable
     def context(cmp: Component) = view(cmp) match {
         case MainThread                     => None
         case t: Thread[ComponentContext]    => Some(t.ctx)

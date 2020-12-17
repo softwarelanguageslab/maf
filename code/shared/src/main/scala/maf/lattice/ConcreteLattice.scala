@@ -24,7 +24,7 @@ object Concrete {
   case object Top                       extends L[Nothing]
   case class Values[X](content: Set[X]) extends L[X]
 
-  abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]] {
+  abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]] with Serializable {
     def show(x: L[A]): String = x match {
       case Top                                  => typeName
       case Values(content) if content.size == 1 => Show[A].show(content.head)

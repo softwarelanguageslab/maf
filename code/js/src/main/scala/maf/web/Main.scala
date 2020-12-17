@@ -64,30 +64,61 @@ object Main {
     }
   }
 
-  def newIncrementalReanalysis(text: String): IncrementalSchemeModFCPAnalysisStoreOpt with DependencyTracking[SchemeExp] = {
-    val program: SchemeExp = CSchemeParser.parse(text)
-    new IncrementalSchemeModFCPAnalysisStoreOpt(program) with DependencyTracking[SchemeExp] {
-      override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis with DependencyTrackingIntra
-      try {
-        println("Starting initial analysis.") // Will be logged to console.
-        analyze(Timeout.start(Duration(5, MINUTES)))
-        println("Finished initial analysis. Preparing for reanalysis.")
-        version = New
-        optimisationFlag = true
-        findUpdatedExpressions(program).flatMap(mapping).foreach(addToWorkList)
-        println("Preparation finished. Starting reanalysis.")
-      } catch {
-        case t: Throwable => System.err.println(t.getMessage) // Will display an error in the console.
-          throw t
+  class IncrementalAnalysis(program: SchemeExp) extends IncrementalSchemeModFCPAnalysisStoreOpt(program)
+                                                   with VisualisableIncrementalModAnalysis[SchemeExp] {
+
+    override def updateAddrInc(cmp: SchemeModFComponent, addr: Addr, nw: modularLatticeWrapper.modularLattice.L): Boolean = {
+      val old = provenance(addr)(cmp)
+      println(s"$addr [$cmp]: $old => $nw")
+      super.updateAddrInc(cmp, addr, nw)
+    }
+
+    override def deleteProvenance(cmp: SchemeModFComponent, addr: Addr): Unit = {
+      val old = store.getOrElse(addr, lattice.bottom)
+      super.deleteProvenance(cmp, addr)
+      val nw = store.getOrElse(addr, lattice.bottom)
+      println(s"$addr [$cmp]: $old _> $nw")
+    }
+    override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
+      with IncrementalSchemeModFBigStepIntra
+      with IncrementalReturnValueIntraAnalysis
+      with VisualisableIntraAnalysis {
+
+      override def analyze(timeout: Timeout.T): Unit = {
+        println(s"Analysing $cmp")
+        super.analyze(timeout)
+      }
+
+      override def trigger(dep: Dependency): Unit = {
+        println(s"$component triggers $dep")
+        super.trigger(dep)
       }
     }
+    try {
+      println("Starting initial analysis.") // Will be logged to console.
+      analyze(Timeout.start(Duration(5, MINUTES)))
+      println("Finished initial analysis. Preparing for reanalysis.")
+      version = New
+      optimisationFlag = true
+      val affected = findUpdatedExpressions(program).flatMap(mapping)
+      affected.foreach(addToWorkList)
+      println(s"Directly affected components: ${affected.toList.mkString(", ")}")
+      println("Preparation finished. Starting reanalysis.")
+    } catch {
+      case t: Throwable => System.err.println(t.getMessage) // Will display an error in the console.
+        throw t
+    }
+  }
+  def newIncrementalReanalysis(text: String): IncrementalSchemeModFCPAnalysisStoreOpt with VisualisableIncrementalModAnalysis[SchemeExp] = {
+    val program: SchemeExp = CSchemeParser.parse(text)
+    new IncrementalAnalysis(program)
   }
 
   def createVisualisation(text: String) = new WebVisualisation(newStandardAnalysis(text))
   def createIncrementalVisualisation(text: String) = new WebVisualisationIncremental(newIncrementalReanalysis(text))
 
   def loadFile(text: String): Unit = {
-    val visualisation = createVisualisation(text)
+    val visualisation = createIncrementalVisualisation(text)
     // parameters for the visualisation
     val body = document.body
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]

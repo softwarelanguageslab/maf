@@ -72,19 +72,19 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   class Node(val component: analysis.Component) extends js.Object
   class Edge(val source: Node, val target: Node) extends js.Object
 
-  var nodesData = Set[Node]()
-  var edgesData = Set[Edge]()
+  var nodesData: Set[Node] = Set()
+  var edgesData: Set[Edge] = Set()
   // TODO: use weak maps here to prevent memory leaks?
-  var nodesColl = Map[analysis.Component, Node]()
-  var edgesColl = Map[(Node,Node),Edge]()
-  private def getNode(cmp: analysis.Component): Node = nodesColl.get(cmp) match {
+  var nodesColl: Map[analysis.Component, Node] = Map()
+  var edgesColl: Map[(Node, Node), Edge]       = Map()
+  def getNode(cmp: analysis.Component): Node = nodesColl.get(cmp) match {
     case None =>
       val newNode = new Node(cmp)
       nodesColl += (cmp -> newNode)
       newNode
     case Some(existingNode) => existingNode
   }
-  private def getEdge(source: Node, target: Node): Edge = edgesColl.get((source,target)) match {
+  def getEdge(source: Node, target: Node): Edge = edgesColl.get((source,target)) match {
     case None =>
       val newEdge = new Edge(source, target)
       edgesColl += ((source,target) -> newEdge)
@@ -96,8 +96,8 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   // VISUALISATION SETUP
   //
 
-  var nodes, edges: JsAny   = null                    // will be used to keep selections of nodes/edges in the visualisation
-  val simulation: JsAny     = d3.forceSimulation()    // create a d3 force simulation
+  var nodes, edges: JsAny   = _                    // will be used to keep selections of nodes/edges in the visualisation
+  val simulation: JsAny     = d3.forceSimulation() // create a d3 force simulation
 
   def init(parent: dom.Node, width: Int, height: Int): Unit = {
     d3.select(parent).selectAll("svg").remove() // Ensures the new analysis is shown an interacted with when a new file is loaded.
@@ -178,13 +178,14 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   //
 
   // updates both the data and the visualisation
-  def refresh() = {
+  def refresh(): Unit = {
     refreshData()
     refreshVisualisation()
   }
 
-  // ensures that `nodesData` and `edgesData` are in sync with the analysis
-  def refreshData() = {
+  // Ensures that `nodesData` and `edgesData` are in sync with the analysis.
+  // Allows deleted components to be removed from the visualiation.
+  def refreshData(): Unit = {
     // refresh the nodes
     nodesData = Set.empty[Node]
     analysis.visited.foreach { cmp =>
@@ -203,8 +204,9 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     }
   }
 
-  // more efficient than `refreshData`: updates only data that may have changed after stepping
-  def refreshDataAfterStep(cmp: analysis.Component, oldDeps: Set[analysis.Component]) = {
+  // More efficient than `refreshData`: updates only data that may have changed after stepping.
+  // Does not allow deleted components to be removed from the visualisation.
+  def refreshDataAfterStep(cmp: analysis.Component, oldDeps: Set[analysis.Component]): Unit = {
     val sourceNode = getNode(cmp)
     // remove old edges
     oldDeps.foreach { otherCmp =>
@@ -252,7 +254,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   def classifyNodes(): Unit = {
     nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.workList.toSet.contains(node.component))
       .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
-      .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.workList.toList.headOption == Some(node.component))
+      .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.workList.toList.headOption.contains(node.component))
     //.style("fill", (node: Node) => colorFor(node.component))
   }
 
@@ -272,7 +274,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     case "S" => stepMultiple(25)
   }
 
-  def onClick() = stepAnalysis()
+  def onClick(): Unit = stepAnalysis()
 
   protected def stepAnalysis(): Unit =
     if (!analysis.finished()) {
@@ -302,14 +304,21 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     refreshVisualisation() // Only refresh the visualisation once.
   }
 
-  protected def runAnalysis(timeout: Timeout.T): Unit =
-    if (!analysis.finished()) {
-      analysis.analyze(timeout)
-      refreshData()
-      refreshVisualisation()
-    } else {
+  // TODO: Even when the visualisation is refreshed more, it seems that it becomes only visible afterwards.
+  //       It would be nice to see it grow, though this might slow down the lot.
+  protected def runAnalysis(timeout: Timeout.T): Unit = {
+    if (analysis.finished()) {
       println("The analysis has already terminated.")
+    } else {
+      while (!analysis.finished() && !timeout.reached) {
+        val component = analysis.workList.head
+        val oldDeps = analysis.dependencies(component)
+        analysis.step(Timeout.none)
+        refreshDataAfterStep(component, oldDeps)
+      }
+      refreshVisualisation()
     }
+  }
 
   //
   // DRAGGING
@@ -320,17 +329,17 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
                             .on("drag", (node: JsAny) => onDragDrag(node))
                             .on("end", (node: JsAny) => onDragEnd(node))
 
-  private def onDragStart(node: JsAny) = {
+  private def onDragStart(node: JsAny): Unit = {
     val isActive = d3.event.active.asInstanceOf[Int]
     if(isActive == 0) simulation.alphaTarget(0.3).restart()
     node.fx = node.x
     node.fy = node.y
   }
-  private def onDragDrag(node: JsAny) = {
+  private def onDragDrag(node: JsAny): Unit = {
     node.fx = d3.event.x
     node.fy = d3.event.y
   }
-  private def onDragEnd(node: JsAny) = {
+  private def onDragEnd(node: JsAny): Unit = {
     val isActive = d3.event.active.asInstanceOf[Int]
     if(isActive == 0) simulation.alphaTarget(0)
     node.fx = null

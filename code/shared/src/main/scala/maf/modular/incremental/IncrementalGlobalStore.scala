@@ -5,6 +5,11 @@ import maf.language.change.CodeVersion._
 import maf.modular._
 import maf.util.Annotations._
 
+/**
+ * This trait improves upon a basic incremental analysis (with dependency and component invalidation) by introducing
+ * store "provenance" tracking and store lowering.
+ * @tparam Expr The type of the expressions under analysis.
+ */
 trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr]
                                                     with GlobalStore[Expr] { inter =>
 
@@ -39,7 +44,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /**
    * Called when a component is deleted. Removes the provenance information corresponding to the addresses written by the
    * given component, thereby possibly refining the analysis store.
-   * @param cmp
+   * @param cmp The component that is deleted.
    */
   override def deleteComponent(cmp: Component): Unit = {
     cachedWrites(cmp).foreach(deleteProvenance(cmp, _))

@@ -24,7 +24,7 @@ case object MainComponent extends SmallStepModConcComponent {
 }
 
 // A thread created by the program.
-case class ThreadComponent[Ctx](exp: SchemeExp, env: Environment[Address], ctx: Ctx) extends SmallStepModConcComponent {
+case class ThreadComponent[Ctx](exp: SchemeExp, env: Environment[Address], ctx: Ctx) extends SmallStepModConcComponent with Serializable {
   override def toString: String = s"ThreadComponent($exp, $env, $ctx)"
 }
 

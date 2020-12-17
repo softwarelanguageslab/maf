@@ -10,27 +10,27 @@ jobs:
   # Checks whether the repository was updated within the last 25 hours (provide some overlap) and sets an environment flag.
   # Inspired by: * https://github.community/t/trigger-workflow-if-there-is-commit-in-last-24-hours/17074
   #              * https://github.com/rotators/Fo1in2/blob/33b3f45a9fd69757c8e8a5e698197cccadf8a1ae/.github/workflows/schedule.yml#L22-L65
-  activity-check:
-    name: Activity check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Activity check
-        run: |
-          curl -sL https://api.github.com/repos/$GITHUB_REPOSITORY/commits | jq -r '[.[]][0]' > $HOME/latest-commit.json
-          date="$(jq -r '.commit.author.date' $HOME/latest-commit.json)"
-          timestamp=$(date --utc -d "$date" +%s)
-          hours=$(( ( $(date --utc +%s) - $timestamp ) / 3600 ))
-          rm -f $HOME/latest-commit.json
-          if [$hours -le 25]; then
-            echo ::set-env name=MAF_REPO_ACTIVE::true
-          fi
-        shell: bash
+  #activity-check:
+  #  name: Activity check
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - name: Activity check
+  #      run: |
+  #        curl -sL https://api.github.com/repos/$GITHUB_REPOSITORY/commits | jq -r '[.[]][0]' > $HOME/latest-commit.json
+  #        date="$(jq -r '.commit.author.date' $HOME/latest-commit.json)"
+  #        timestamp=$(date --utc -d "$date" +%s)
+  #        hours=$(( ( $(date --utc +%s) - $timestamp ) / 3600 ))
+  #        rm -f $HOME/latest-commit.json
+  #        if [$hours -le 25]; then
+  #          echo ::set-env name=MAF_REPO_ACTIVE::true
+  #        fi
+  #      shell: bash
   # The compile job fetches the code and attempts to compile it.
   compile:
     name: Compile MAF
     runs-on: ubuntu-latest
-    needs: activity-check
-    if: env.MAF_REPO_ACTIVE == 'true'
+  #  needs: activity-check
+  #  if: env.MAF_REPO_ACTIVE == 'true'
     steps:
       # Send a notification to Slack.
       - name: Notify push

@@ -1,6 +1,9 @@
 package maf.cli.runnables
 
+import maf.cli.experiments.SchemeAnalyses.contextInsensitiveAnalysis
 import maf.language.CScheme.CSchemeParser
+import maf.language.scheme.SchemeParser
+import maf.modular.GlobalStore
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
@@ -14,35 +17,35 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a    = new IncrementalModConcCPAnalysisStoreOpt(text)
     a.analyze(timeout())
-    a.updateAnalysis(timeout(), bench, true)
+    //a.updateAnalysis(timeout(), bench, true)
   }
 
-  def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
+  def modfAnalysis(bench: String, timeout: () => Timeout.T) = {
     println(s"***** $bench *****")
-    val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a    = new IncrementalSchemeModFAnalysis(text)
+    val text = SchemeParser.parse(Reader.loadFile(bench))
+    val a    = contextInsensitiveAnalysis(text)
     a.analyze(timeout())
-    a.updateAnalysis(timeout(), bench)
+    a.store
+    //a.updateAnalysis(timeout(), bench)
   }
 
-  val modConcbenchmarks: List[String]  = List("test/changes/cscheme/threads/pc.scm")
-  val modFbenchmarks: List[String]     = List()
+  val modConcbenchmarks: List[String]  = List()
+  val    modFbenchmarks: List[String]  = List("test/DEBUG1.scm", "test/DEBUG2.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
-  modConcbenchmarks.foreach { bench =>
-    // println(bench)
-    //for (i <- 1 to 15) {
-    // print(Timer.timeOnly({
-    modconcAnalysis(bench, standardTimeout)
-    //}) + " ")
-    //}
-  }
-  modFbenchmarks.foreach { bench =>
-    //println(bench)
-    //for (i <- 1 to 15) {
-    // print(Timer.timeOnly({
-    modfAnalysis(bench, standardTimeout)
-    // }) + " ")
-    //}
+  modConcbenchmarks.foreach { bench => modconcAnalysis(bench, standardTimeout) }
+  //modFbenchmarks.foreach { bench => modfAnalysis(bench, standardTimeout) }
+  modFbenchmarks.map(modfAnalysis(_, standardTimeout)) match {
+    case s1 :: s2 :: Nil =>
+      assert(s1.keySet.map(_.toString) == s2.keySet.map(_.toString))
+      s1.foreach({case (a, v) => {
+        s2.find(_._1.toString == a.toString).get match {
+          case (_, v2) if(v.toString != v2.toString) =>
+            println(s"$a: $v")
+            println(s"$a: $v2")
+          case _ =>
+        }}
+      }
+      )
   }
 }
