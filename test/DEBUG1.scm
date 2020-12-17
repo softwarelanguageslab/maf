@@ -1,4 +1,4 @@
-(define tagged-list? (lambda (l tag) (eq? (car l) tag))) ; Debug1 maar dan met andere indent lijn 42
+(define tagged-list? (lambda (l tag) (eq? (car l) tag)))
 
 (define (alphatize exp env) ; return a copy of 'exp' where each bound var has
   (define (alpha exp)       ; been renamed (to prevent aliasing problems)
@@ -39,7 +39,7 @@
               ((symbol? (car exp)) ; is the operator position a var ref?
                       (let ((frame (binding-frame (car exp) env)))
                         (set-car! where #f)))
-                     ((<change> (eq? (caar exp) 'lambda) (tagged-list? (car exp) 'lambda)) ; <= Changing the indentation changes the result.
+              ((<change> (eq? (caar exp) 'lambda) (tagged-list? (car exp) 'lambda)) ; <= Changing the indentation changes the result.
                       (set-car! where
                         (list 'let
                               (map (map (lambda (x) (lambda (y) (list x y))) (cadar exp)) (cdr exp))

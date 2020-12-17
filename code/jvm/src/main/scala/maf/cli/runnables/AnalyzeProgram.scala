@@ -10,7 +10,7 @@ import maf.modular.worklist.{FIFOWorklistAlgorithm, LIFOWorklistAlgorithm}
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
-import scala.concurrent.duration.{Duration, MINUTES}
+import scala.concurrent.duration._
 
 object AnalyzeProgram extends App {
   def one(bench: String, timeout: () => Timeout.T): Unit = {
