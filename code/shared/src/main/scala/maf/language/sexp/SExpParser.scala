@@ -126,7 +126,8 @@ class SExpLexer extends Lexical with SExpTokens {
     (whitespaceChar | eol | eoi | chr('(') | chr(')') | chr('"') | chr(';')) ^^ (_ => ())
 
   def boolean: Parser[SExpToken] =
-    '#' ~> ('t' ^^^ TBoolean(true) | 'f' ^^^ TBoolean(false))
+    '#' ~> ('t' ^^^ TBoolean(true) | 'T' ^^^ TBoolean(true) |
+      'f' ^^^ TBoolean(false) | 'F' ^^^ TBoolean(false))
   def integer: Parser[SExpToken] =
     sign ~ rep1(digit) <~ guard(delimiter) ^^ {
       case s ~ n =>

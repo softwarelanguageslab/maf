@@ -16,7 +16,7 @@ abstract class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks
     }
   def check(parser: lexical.Parser[lexical.SExpToken])(input: String) = checkExpected(parser)(input, input)
 
-  val bools = Table("boolean", "#t","#f")
+  val bools = Table("boolean", "#t","#f", "#T", "#F")
   property("SExpLexer should lex booleans without error", ParserTest) {
     forAll(bools) { s => check(lexical.boolean)(s); check(lexical.token)(s) }
   }
