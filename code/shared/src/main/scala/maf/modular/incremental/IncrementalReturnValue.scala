@@ -28,7 +28,7 @@ trait IncrementalReturnValue[Expr <: Expression] extends ReturnValue[Expr] with 
   @nonMonotonicUpdate
   override def deleteComponent(cmp: Component): Unit = { // This cannot directly go into the intra-component analysis, as the values will then again become joined when the store is committed...
     //if (log) logger.log(s"RMCM* $cmp")
-    deleteAddress(returnAddr(cmp)) // TODO: Couldn't this also be deleteProvenance(cmp, returnAddr(cmp))? Or will this cause more deps to be triggered needlessly (are they arlready removed here)?
+    deleteAddress(returnAddr(cmp)) // TODO: Couldn't this also be deleteProvenance(cmp, returnAddr(cmp))? Or will this cause more deps to be triggered needlessly (are they already removed here)?
     //deps -= AddrDependency(returnAddr(cmp))
     super.deleteComponent(cmp)
   }

@@ -13,8 +13,7 @@ import maf.util.Annotations._
 trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr]
                                                     with GlobalStore[Expr] { inter =>
 
-  /**
-   * Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
+  /** Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
   var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
   /** Caches the addresses written by every component. Used to find addresses that are no longer written by a component. */
   var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
@@ -35,9 +34,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store.
     val value: Value = provenanceValue(addr)
-    if (value != inter.store.getOrElse(addr, lattice.bottom)) {
-      trigger(AddrDependency(addr))
+    if (value != inter.store.getOrElse(addr, lattice.bottom)) { // TODO Should this address not be written anyway? (i.e., this should work with 'get')?
       inter.store = inter.store + (addr -> value)
+      trigger(AddrDependency(addr))
     }
   }
 
@@ -87,13 +86,13 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       if (log) logger.log(s"$component writes $addr ($value, old: ${store.getOrElse(addr, lattice.bottom)})")
       // Update the intra-provenance: for every address, keep the join of the values written to the address.
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
-      super.writeAddr(addr, value) // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (working on the intra-store)?
+      super.writeAddr(addr, value) // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
     }
 
     /**
      * Called for every written address. Returns true if the dependency needs to be triggered.
      * @note This function should be overridden to avoid the functionality of GlobalStore to be used.
-     *       Even though this function could be merged into refineWrites.
+     *       Otherwise this function could be merged into refineWrites.
      */
     override def doWrite(dep: Dependency): Boolean = dep match {
       case AddrDependency(addr) =>

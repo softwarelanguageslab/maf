@@ -39,7 +39,7 @@
               ((symbol? (car exp)) ; is the operator position a var ref?
                       (let ((frame (binding-frame (car exp) env)))
                         (set-car! where #f)))
-              ((eq? (caar exp) 'lambda) ; <= Changing the indentation changes the result.
+              ((<change> (eq? (caar exp) 'lambda) (tagged-list? (car exp) 'lambda)) ; <= Changing the indentation changes the result.
                       (set-car! where
                         (list 'let
                               (map (map (lambda (x) (lambda (y) (list x y))) (cadar exp)) (cdr exp))

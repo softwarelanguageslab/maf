@@ -13,10 +13,10 @@ import maf.util.datastructures.SmartUnion.sunion
 
 /**
  * This trait provides the implementation of an incremental modular analysis.
- * Upon a change, schedules the directly affected components for analysis, and initiates the reanalysis.
+ * Upon a change, schedules the directly affected components for analysis and initiates the reanalysis.
  * Apart from that, two optimisations are implemented: component and dependency invalidation.
  * @note The incremental analysis is not thread-safe and does not always use the local stores of the intra-component analyses!
- *       Therefore, a sequential work-list algorithm is used.
+ *       Therefore, a sequential work-list algorithm is required.
  */
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
@@ -34,6 +34,11 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ************************************************************************* */
 
 
+  // TODO Can't we just only save change expressions here?
+  //      Also, we don't need to find _all_ change expressions: only those already encountered by the analysis matter!
+  //      This way, we also do not have to traverse the program: we can register all change expressions we encountered, and only those
+  //      can possibly affect the result of the analysis! Hence, actually, we can just register the components that encountered a change expression...
+
   /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
   var version: Version = Old
   /** Keeps track of which components depend on an expression. */
@@ -47,7 +52,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
    */
   def registerComponent(expr: Expr, component: Component): Unit = mapping = mapping + (expr -> (mapping(expr) + component))
 
-  /** Queries the program for `change` expressions and returns the expressions (within the given) that were affected by the change. */
+  /** Queries the given expression for `change` expressions and returns the expressions (within the given one) that were affected by the change. */
   def findUpdatedExpressions(expr: Expr): Set[Expr] = expr match {
     case e: ChangeExp[Expr] => Set(e.old) // Assumption: change expressions are not nested.
     case e => e.subexpressions.asInstanceOf[List[Expr]].flatMap(findUpdatedExpressions).toSet
@@ -59,8 +64,11 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* *********************************** */
 
 
-  /** Caches the read dependencies of every component. Used to find dependencies that are no longer inferred (and hence can be removed). */
-  var cachedReadDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)   // Another strategy would be not to cache, but walk through the data structures.
+  /**
+   * Caches the read dependencies of every component. Used to find dependencies that are no longer inferred (and hence can be removed).
+   * @note Another strategy would be not to cache, but to walk through the data structures.
+   */
+  var cachedReadDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)
 
   @nonMonotonicUpdate
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
@@ -72,23 +80,23 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ********************************** */
 
 
-  /** Keep track of the number of components that have spawned a given component (excluding possibly the component). */
+  /** Keep track of the number of distinct components that have spawned a given component (excluding possibly the component itself). */
   var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
-  /** Keeps track of the components spawned by a component: spawner -> spawnees. Used to determine whether a component spawns less other components. */
+  /** Keeps track of the components spawned by a component (spawner -> spawnees). Used to determine whether a component spawns less other components. */
   var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
 
   @nonMonotonicUpdate
   /**
    * Deletes information related to a component. May cause other components to be deleted as well if they are no longer spawned.
    * @note If subclasses add extra analysis state (e.g., a global store with return values),
-   *       then it is up to those subclasses to override this method and extend its functionality.
+   *       then it is up to those subclasses to override this method and extend its functionality (e.g., to remove the return value from the store).
    */
   def deleteComponent(cmp: Component): Unit = if (visited(cmp)) { // Only do this if we have not yet encountered the component. Note that this is not needed to prevent looping.
     if (log) logger.log(s"RMCMP $cmp")
     for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
     visited = visited - cmp                               // Remove the component from the visited set.
     println(s"Deleting $cmp. In worklist: ${workList.contains(cmp)}")
-    workList = workList - cmp                             // Remove the component from the work list, as it may be present there, to avoid it being analysed if it were scheduled.
+    workList = workList - cmp                             // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
                                                           // This should improve both performance and precision.
     for (to <- cachedSpawns(cmp)) unspawn(to)             // Transitively check for components that have to be deleted.
 
@@ -192,7 +200,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
       (Cdiff -- cachedSpawns(component)).foreach(cmp => if (log) logger.log(s"SPAWN $component --> $cmp (new count: ${countedSpawns(cmp)})"))
 
-      if (version == New) { // Check for efficiency.
+      if (version == New) { // Check performed for efficiency.
         val deltaC = cachedSpawns(component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
         deltaC.foreach(unspawn)
         deltaC.foreach(cmp => if (log) logger.log(s"USPWN $component -/-> $cmp finished"))

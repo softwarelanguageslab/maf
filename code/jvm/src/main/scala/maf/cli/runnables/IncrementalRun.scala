@@ -1,8 +1,6 @@
 package maf.cli.runnables
 
-import maf.cli.experiments.SchemeAnalyses.contextInsensitiveAnalysis
 import maf.language.CScheme.CSchemeParser
-import maf.language.scheme.SchemeParser
 import maf.modular.GlobalStore
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.util.Reader
@@ -22,8 +20,8 @@ object IncrementalRun extends App {
 
   def modfAnalysis(bench: String, timeout: () => Timeout.T) = {
     println(s"***** $bench *****")
-    val text = SchemeParser.parse(Reader.loadFile(bench))
-    val a    = contextInsensitiveAnalysis(text)
+    val text = CSchemeParser.parse(Reader.loadFile(bench))
+    val a    = new IncrementalSchemeModFCPAnalysisStoreOpt(text)
     a.analyze(timeout())
     a.store
     //a.updateAnalysis(timeout(), bench)
@@ -37,9 +35,9 @@ object IncrementalRun extends App {
   //modFbenchmarks.foreach { bench => modfAnalysis(bench, standardTimeout) }
   modFbenchmarks.map(modfAnalysis(_, standardTimeout)) match {
     case s1 :: s2 :: Nil =>
-      assert(s1.keySet.map(_.toString) == s2.keySet.map(_.toString))
+      assert(s1.keySet.map(_.hashCode()) == s2.keySet.map(_.hashCode()))
       s1.foreach({case (a, v) => {
-        s2.find(_._1.toString == a.toString).get match {
+        s2.find(_._1.hashCode() == a.hashCode()).get match {
           case (_, v2) if(v.toString != v2.toString) =>
             println(s"$a: $v")
             println(s"$a: $v2")
