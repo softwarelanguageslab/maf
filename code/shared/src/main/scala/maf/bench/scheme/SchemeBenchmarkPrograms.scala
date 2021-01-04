@@ -79,8 +79,6 @@ object SchemeBenchmarkPrograms {
     "dynamic.scm", // Uses call-with-input-file
     "graphs.scm", // Uses open-input-file.
     "handle.scm", // Uses defmacro (not standard r5rs).
-    "lattice.scm", // Parser error. Uses undefined (void) function.
-    "lattice-processed.scm", // Parser error. Uses undefined (void) function.
     "maze.scm", // Uses open-input-file.
     "nbody.scm", // Apply cannot handle this apparently.
     "nbody-processed.scm", // Apply cannot handle this apparently.
