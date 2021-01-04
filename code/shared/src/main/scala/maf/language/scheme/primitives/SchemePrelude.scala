@@ -264,7 +264,8 @@ object SchemePrelude {
                  |    (else (error "Unsupported call."))))""".stripMargin,
     "ref" -> "(define (ref x) @sensitivity:FA (cons x '()))",
     "deref" -> "(define deref car)",
-    "ref-set" -> "(define ref-set set-car!)"
+    "ref-set" -> "(define ref-set set-car!)",
+    "void" -> "(define (void) #f)"
     /*
     "ref" -> "(define (ref x) (cons x (new-lock))",
     "deref" ->
