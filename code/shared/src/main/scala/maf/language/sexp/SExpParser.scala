@@ -106,7 +106,7 @@ class SExpLexer extends Lexical with SExpTokens {
   }
   def eol: Parser[Any]          = acceptIf(n => n == '\n')(n => "")
   def notEol: Parser[Char]      = acceptIf(n => n != '\n')(n => "")
-  def comment: Parser[String]   = ';' ~> rep(notEol) <~ eol ^^ (_.mkString)
+  def comment: Parser[String]   = ';' ~> rep(notEol) ^^ (_.mkString)
   def nonRelevant: Parser[Unit] = rep(comment | whitespaceChar | eol) ^^ (_ => ())
 
   def any: Parser[Char]          = chrExcept()
