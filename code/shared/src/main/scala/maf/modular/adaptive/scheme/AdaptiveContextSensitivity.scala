@@ -8,6 +8,8 @@ import maf.modular.Dependency
 import maf.util.Monoid
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
+import maf.modular.AddrDependency
+import maf.core.Identity
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   /*
@@ -76,12 +78,14 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     case Main => List.empty
     case cll: Call[ComponentContext] @unchecked => cll.ctx
   }
-  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext =
-    adaptCtx(clo._1, call :: getContext(caller))
   def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
-    cll.copy(ctx = adaptCtx(cll.clo._1, cll.ctx))
-  def adaptCtx(lambda: SchemeLambdaExp, ctx: ComponentContext): ComponentContext =
-    kPerFn.get(lambda) match {
+    adaptCall(cll, kPerFn.get(cll.clo._1))
+  def adaptCall(cll: Call[ComponentContext], kLimit: Option[Int]): Call[ComponentContext] =
+    cll.copy(ctx = adaptCtx(cll.ctx, kLimit))
+  def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component): ComponentContext =
+    adaptCtx(call :: getContext(caller), kPerFn.get(clo._1))
+  def adaptCtx(ctx: ComponentContext, kLimit: Option[Int]): ComponentContext =
+    kLimit match {
       case None     => ctx    
       case Some(k)  => ctx.take(k)
     }
@@ -104,7 +108,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
         val hcount = cmps.size
         val vcount = Math.round(total.toFloat / hcount) 
         if (hcount > vcount) {                  // (a) too many components ...
-          adaptByComponent(fn, cmps, hcount/2)  // => reduce number of components for fn
+          reduceComponents(fn, cmps)            // => reduce number of components for fn
         } else {                                // (b) too many reanalyses ...
           adaptByDependency(fn)                 // => reduce number of dependencies triggered for fn
         }
@@ -116,21 +120,44 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       toAdapt = Set.empty
     }
   }
-  private def adaptByComponent(fn: SchemeExp, cmps: Set[Component], target: Int): Unit = {
+  private def reduceComponents(fn: SchemeExp): Unit = reduceComponents(fn, cmpsPerFn(fn))
+  private def reduceComponents(fn: SchemeExp, cmps: Set[Component]): Unit = reduceComponents(fn, cmps, cmps.size/2)
+  private def reduceComponents(fn: SchemeExp, cmps: Set[Component], target: Int): Unit = {
     // find a fitting k
     var calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
     var k = calls.maxBy(_.ctx.length).ctx.length
     while(calls.size > target && k > 0) { // TODO: replace with binary search?
       k = k - 1
-      calls = calls.map(cll => cll.copy(ctx = cll.ctx.take(k)))
+      calls = calls.map(adaptCall(_, Some(k)))
     } 
     //println(s"$fn -> $k")
     kPerFn += fn -> k  // register the new k
     // if lowering context does not work => adapt parent components
+    // TODO: do this earlier without dropping all context first
     if(calls.size > target) {
       val parentCmps = calls.map(cll => cll.clo._2.asInstanceOf[WrappedEnv[Addr,Component]].data)
       val parentLambda = view(parentCmps.head).asInstanceOf[Call[ComponentContext]].clo._1
-      adaptByComponent(parentLambda, parentCmps, target)
+      reduceComponents(parentLambda, parentCmps, target)
     }
+  }
+  private def adaptByDependency(fn: SchemeExp): Unit = {
+    val dependencies = triggeredBy(fn)
+    val numberOfDeps = dependencies.size
+    val averageCount = dependencies.values.sum / numberOfDeps
+    if (numberOfDeps > averageCount) {
+      val addrs = dependencies.keySet.collect {
+        case AddrDependency(addr) => addr
+      }
+      adaptByAddress(fn, addrs, numberOfDeps/2)
+    } else {
+      adaptByCoarsen(fn, dependencies)
+    }
+  }
+  private def adaptByAddress(fn: SchemeExp, addrs: Set[Addr], target: Int): Unit = {
+    val perLocation = addrs.groupBy(_.idn)
+    ???
+  }
+  private def adaptByCoarsen(fn: SchemeExp, dependencies: Map[Dependency, Int]): Unit = {
+    ???
   }
 }
