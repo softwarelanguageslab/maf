@@ -1,5 +1,7 @@
 package maf.test.language.sexp
 
+import org.scalatest.flatspec.AnyFlatSpec
+
 import maf.language.sexp._
 import maf.test._
 import maf.util._
@@ -20,3 +22,14 @@ trait SExpParserTestsSpec extends SchemeBenchmarkTests {
 }
 
 class SExpParserTests extends SExpParserTestsSpec with SequentialBenchmarks
+
+class SExpParserSimpleTests extends AnyFlatSpec {
+  "File that ends with a comment" should "be parsed without error" in {
+    // Issue #8
+    val program = "#t ;; foo"
+    val parsed = SExpParser.parse(program)
+    assert(parsed.size == 1)
+    assert(parsed(0).isInstanceOf[SExpValue])
+    assert(parsed(0).asInstanceOf[SExpValue].value == ValueBoolean(true))
+  }
+}

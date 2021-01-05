@@ -45,13 +45,13 @@ object SchemeBenchmarkPrograms {
   lazy val gabriel: Set[String] = fromFolder("test/R5RS/gabriel")
   lazy val gambit: Set[String] = fromFolder("test/R5RS/gambit",
     "cat.scm", // Needs open-input-file.
-    "compiler.scm", // Parser error (see issue on Github).
+    "compiler.scm", // Needs open-input-file.
     "ctak.scm", // Needs call-with-current-continuation.
     "fibc.scm", // Needs call-cc.
     "puzzle.scm",  // Needs call-with-current-continuation.
     "scheme.scm", // Error in program BUT CAN BE ANALYSED.
     "slatex.scm", // Needs make-string.
-    "string.scm", // Needs susbtring.
+    "string.scm", // Needs substring.
     "tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
     "trav1.scm", // Needs append.
     "wc.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
@@ -70,7 +70,7 @@ object SchemeBenchmarkPrograms {
   lazy val theLittleSchemer: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/the-little-schemer",
     "ch4.scm", // No main code (only definitions).
     "ch5.scm", // No main code (only definitions).
-    "ch6.scm", // Commented out half of the file. Now does not parse anymore.
+    "ch6.scm", // Parse error due to identifiers such as 1st-...
     "ch7.scm", // No main code (only definitions).
     "ch9.scm", // Unbound identifier: will-stop?
     "ch10.scm", // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
@@ -79,8 +79,6 @@ object SchemeBenchmarkPrograms {
     "dynamic.scm", // Uses call-with-input-file
     "graphs.scm", // Uses open-input-file.
     "handle.scm", // Uses defmacro (not standard r5rs).
-    "lattice.scm", // Parser error. Uses undefined (void) function.
-    "lattice-processed.scm", // Parser error. Uses undefined (void) function.
     "maze.scm", // Uses open-input-file.
     "nbody.scm", // Apply cannot handle this apparently.
     "nbody-processed.scm", // Apply cannot handle this apparently.
@@ -91,9 +89,8 @@ object SchemeBenchmarkPrograms {
   lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019", ".DS_Store",
     "church_exp.sch", // Uses non-standard (void) function.
     "earley.sch", // Uses read.
-    "mbrotZ.sch", // Parser error.
+    "mbrotZ.sch", // Parsing error due to identifiers starting with a minus character (-fl)
     "meta-circ.scm", // Uses procedure?
-    "regex-derivative.scm", // Parser error.
     "scheme2java.scm", // Uses char-alphabetic?
     "solovay-strassen.scm", // Program seems erroneous.
   )

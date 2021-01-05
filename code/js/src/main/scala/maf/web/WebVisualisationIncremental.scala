@@ -42,7 +42,7 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Vis
     edges.classed(__CSS_DELETED_EDGE__, (edge: Edge) =>
       deletedComponent(edge.source.component)
         || deletedComponent(edge.target.component)
-        || (!analysis.dependencies(edge.source.component).contains(edge.target.component)) // The edge has been deleted.
+        || (!analysis.cachedSpawns(edge.source.component).contains(edge.target.component)) // The edge has been deleted. We cannot use dependencies from the DependencyTracking trait as currently this map only grows monotonically.
               && !(edge.source.component == edge.target.component && analysis.recursive.contains(edge.source.component))) // Check that it is not a currently existing self-edge.
   }
 

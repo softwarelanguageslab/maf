@@ -1,7 +1,7 @@
 package maf.lattice
 
 import maf.core._
-import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, NotANumberString, RealLattice, StringLattice, SymbolLattice}
+import maf.lattice.interfaces._
 import maf.util.Show
 import maf.util.datastructures.SmartUnion._
 
@@ -236,8 +236,10 @@ object Concrete {
       def charEqCI[B2: BoolLattice](c1: C, c2: C): B2 = c2.guardBot { c1.foldMap(char1 => c2.foldMap(char2 => BoolLattice[B2].inject(char1.toUpper == char2.toUpper))) }
       def charLtCI[B2: BoolLattice](c1: C, c2: C): B2 = c2.guardBot { c1.foldMap(char1 => c2.foldMap(char2 => BoolLattice[B2].inject(char1.toUpper < char2.toUpper))) }
     }
-    implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")
-    with SymbolLattice[Sym] {
+    val symShow: Show[String] = new Show[String] {
+      def show(s: String): String = s"'$s"
+    }
+    implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")(symShow) with SymbolLattice[Sym] {
       def inject(x: String): Sym                  = Values(Set(x))
       def toString[S2: StringLattice](s: Sym): S2 = s.foldMap(s => StringLattice[S2].inject(s))
     }

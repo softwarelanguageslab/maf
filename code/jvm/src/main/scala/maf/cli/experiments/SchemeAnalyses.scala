@@ -16,7 +16,7 @@ object SchemeAnalyses {
     def contextInsensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
                                                         with SchemeModFNoSensitivity
                                                         with SchemeConstantPropagationDomain
-                                                        with LIFOWorklistAlgorithm[SchemeExp] {
+                                                        with RandomWorklistAlgorithm[SchemeExp] {
         override def toString() = "no-sensitivity"
     }
      def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)

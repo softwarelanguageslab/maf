@@ -2,7 +2,7 @@ package maf.modular.incremental.scheme
 
 import maf.language.scheme._
 import maf.modular._
-import maf.modular.incremental.{IncrementalGlobalStore, IncrementalReturnValue}
+import maf.modular.incremental._
 import maf.modular.incremental.scheme.modconc._
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme._
