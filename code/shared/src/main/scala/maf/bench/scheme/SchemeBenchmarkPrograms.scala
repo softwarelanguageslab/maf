@@ -70,7 +70,6 @@ object SchemeBenchmarkPrograms {
   lazy val theLittleSchemer: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/the-little-schemer",
     "ch4.scm", // No main code (only definitions).
     "ch5.scm", // No main code (only definitions).
-    "ch6.scm", // Parse error due to identifiers such as 1st-...
     "ch7.scm", // No main code (only definitions).
     "ch9.scm", // Unbound identifier: will-stop?
     "ch10.scm", // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
@@ -88,7 +87,7 @@ object SchemeBenchmarkPrograms {
   )
   lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019", ".DS_Store",
     "earley.sch", // Uses read.
-    "mbrotZ.sch", // Parsing error due to identifiers starting with a minus character (-fl)
+    "mbrotZ.sch", // Uses read.
     "meta-circ.scm", // Uses procedure?
     "solovay-strassen.scm", // Program seems erroneous.
   )
