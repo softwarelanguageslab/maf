@@ -143,29 +143,29 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   private def reduceDependencies(fn: SchemeExp): Unit = {
     val dependencies = triggeredBy(fn)
     val numberOfDeps = dependencies.size
-    val averageCount = dependencies.values.sum / numberOfDeps
+    val totalCount = dependencies.values.sum
+    val averageCount = totalCount / numberOfDeps
     if (numberOfDeps > averageCount) {
       val addrs = dependencies.keySet.collect {
         case AddrDependency(addr) => addr
       }
       reduceAddresses(addrs)
     } else {
-      adaptByCoarsen(fn, dependencies)
+      reduceValueAbs(fn, dependencies, totalCount/2)
     }
   }
-  private def takeLargestGroups[X,Y](grouped: Map[X,Set[Y]], minimum: Int): List[(X,Set[Y])] = {
-    def rec(cur: List[(X,Set[Y])], todo: Int):  List[(X,Set[Y])] = cur match {
-      case (next@(key, set)) :: rest if todo > 0 => 
-        next :: rec(rest, todo - set.size)
+  private def takeLargest[X](lst: List[X], size: X => Int, target: Int): List[X] = {
+    def rec(cur: List[X], todo: Int): List[X] = cur match {
+      case group :: rest if todo > 0 => 
+        group :: rec(rest, todo - size(group))
       case _ => Nil
     }
-    val groupList = grouped.toList
-    val sortedAsc = groupList.sortBy(_._2.size)
+    val sortedAsc = lst.sortBy(size)
     val sortedDsc = sortedAsc.reverse // TODO: just reverse the ordering
-    rec(sortedDsc, minimum)
+    rec(sortedDsc, target)
   }
   private def getAddrCmp(addr: Addr): Option[Component] = addr match {
-    case returnAddr: ReturnAddr[Component] => Some(returnAddr.cmp)
+    case returnAddr: ReturnAddr[Component] @unchecked => Some(returnAddr.cmp)
     case schemeAddr: SchemeAddr[Component] @unchecked => schemeAddr match {
       case VarAddr(_,ctx) => Some(ctx)
       case PtrAddr(_,ctx) => Some(ctx)
@@ -178,16 +178,20 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       case Call((fnExp,_),_,_) => Some(fnExp) 
       case _ => None
     }
-  private def reduceAddressesFns(addrs: Set[Addr]): Set[SchemeExp] = {
+  private def reduceAddresses(addrs: Set[Addr]): Unit = {
     val target: Int = addrs.size / 2
     val perLocation = addrs.groupBy(_.idn)
-    val chosenAddrs = takeLargestGroups(perLocation, target)
+    val chosenAddrs = takeLargest(perLocation.toList, (g: (_,Set[_])) => g._2.size, target)
     val chosenFuncs = chosenAddrs.map(_._2.head).flatMap(getAddrFn)
     // assert(chosenAddrs.size == chosenFuncs.size) // <- we expect all addresses to belong to Some(fn)
-    return chosenFuncs.toSet
+    chosenFuncs.toSet.foreach(reduceComponents)
   }
-  private def reduceAddresses(addrs: Set[Addr]): Unit = reduceAddressesFns(addrs).foreach(reduceComponents)
-  private def adaptByCoarsen(fn: SchemeExp, dependencies: Map[Dependency, Int]): Unit = {
-    ???
+  private def reduceValueAbs(fn: SchemeExp, deps: Map[Dependency,Int], target: Int): Unit = {
+    val chosenDeps = takeLargest(deps.toList, (g: (_,Int)) => g._2, target)
+    val chosenSourceAddrs = chosenDeps.map(_._1).collect { 
+      case AddrDependency(addr) => addr
+    }
+    val chosenTargetAddrs = chosenSourceAddrs.flatMap(addr => lattice.getPointerAddresses(store(addr)))
+    reduceAddresses(chosenTargetAddrs.toSet)
   }
 }
