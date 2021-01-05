@@ -8,7 +8,7 @@ trait Environment[A <: Address] extends SmartHash {
   /** Looks up a value in the environment */
   def lookup(name: String): Option[A]
   /** Extend the environment */
-  def extend(name: String, a: A): Environment[A] 
+  def extend(name: String, a: A): Environment[A]
   def extend(values: Iterable[(String, A)]): Environment[A]
   /** Mapping over the environment */
   def mapAddrs(f: A => A): Environment[A]

@@ -19,13 +19,13 @@ akka {
           type = PinnedDispatcher
           executor = "thread-pool-executor"
       }
-  }   
+  }
 }
   """)
 }
 
 trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
-  
+
   def workers: Int
 
   // We use a Master-Worker pattern, where the Master coordinates the distribution of intra-analyses, and the management of the global analysis state

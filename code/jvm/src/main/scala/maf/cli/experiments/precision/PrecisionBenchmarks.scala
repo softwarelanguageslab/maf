@@ -1,7 +1,6 @@
 package maf.cli.experiments.precision
 
 import maf.core._
-import maf.language.scheme.SchemeInterpreter.Addr
 import maf.language.scheme._
 import maf.language.scheme.lattices.ModularSchemeLattice
 import maf.language.scheme.primitives._
