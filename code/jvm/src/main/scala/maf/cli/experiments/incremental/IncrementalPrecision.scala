@@ -57,7 +57,8 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       else if (inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]))
         l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
       else {
-        println(s"$a: $incr < $rean")
+        System.err.println(s"$a: $incr < $rean")
+        System.err.flush()
         m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
       }
     })
@@ -70,7 +71,6 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
   def onBenchmark(file: String): Unit = {
     print(s"Testing $file ")
     val program = parse(file)
-    println(program)
     // Initial analysis: analyse + update.
     val a1 = analysis(program)
 
