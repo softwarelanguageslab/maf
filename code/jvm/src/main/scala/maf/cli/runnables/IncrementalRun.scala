@@ -1,7 +1,6 @@
 package maf.cli.runnables
 
 import maf.language.CScheme.CSchemeParser
-import maf.modular.GlobalStore
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
@@ -15,7 +14,7 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a    = new IncrementalModConcCPAnalysisStoreOpt(text)
     a.analyze(timeout())
-    //a.updateAnalysis(timeout(), bench, true)
+    a.updateAnalysis(timeout(), bench)
   }
 
   def modfAnalysis(bench: String, timeout: () => Timeout.T) = {
@@ -23,27 +22,14 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a    = new IncrementalSchemeModFCPAnalysisStoreOpt(text)
     a.analyze(timeout())
-    a.store
-    //a.updateAnalysis(timeout(), bench)
+    a.updateAnalysis(timeout(), bench)
+    a.cachedSpawns.filter(_._1.toString.contains("s!")).head._2.foreach(println)
   }
 
-  val modConcbenchmarks: List[String]  = List()
-  val    modFbenchmarks: List[String]  = List("test/DEBUG1.scm", "test/DEBUG2.scm")
+  val modConcbenchmarks: List[String]  = List("test/changes/cscheme/threads/crypt2.scm")
+  val modFbenchmarks: List[String]     = List() //List("test/DEBUG3.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
-  modConcbenchmarks.foreach { bench => modconcAnalysis(bench, standardTimeout) }
-  //modFbenchmarks.foreach { bench => modfAnalysis(bench, standardTimeout) }
-  modFbenchmarks.map(modfAnalysis(_, standardTimeout)) match {
-    case s1 :: s2 :: Nil =>
-      assert(s1.keySet.map(_.hashCode()) == s2.keySet.map(_.hashCode()))
-      s1.foreach({case (a, v) => {
-        s2.find(_._1.hashCode() == a.hashCode()).get match {
-          case (_, v2) if(v.toString != v2.toString) =>
-            println(s"$a: $v")
-            println(s"$a: $v2")
-          case _ =>
-        }}
-      }
-      )
-  }
+  modConcbenchmarks.foreach(modconcAnalysis(_, standardTimeout))
+  modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
 }
