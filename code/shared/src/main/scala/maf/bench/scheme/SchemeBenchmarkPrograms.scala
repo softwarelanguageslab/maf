@@ -53,7 +53,7 @@ object SchemeBenchmarkPrograms {
     "slatex.scm", // Needs make-string.
     "string.scm", // Needs susbtring.
     "tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
-    "trav1.scm", // Needs append.
+    "trav1.scm", // Needs append in the abstract interpreter (not as a preluded primitive)
     "wc.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
   )
   lazy val icp1: Set[String] = fromFolder("test/R5RS/icp",
@@ -84,14 +84,12 @@ object SchemeBenchmarkPrograms {
     "nbody-processed.scm", // Apply cannot handle this apparently.
     "nucleic.sch", // Uses square brackets.
     "nucleic2.sch", // Uses macros (define-syntax).
-    "splay.scm", // Uses () instead of '(), but has other issues.
+    "splay.scm", // Uses () instead of '(), and #(1 2 3) syntax for vectors
   )
   lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019", ".DS_Store",
-    "church_exp.sch", // Uses non-standard (void) function.
     "earley.sch", // Uses read.
     "mbrotZ.sch", // Parsing error due to identifiers starting with a minus character (-fl)
     "meta-circ.scm", // Uses procedure?
-    "scheme2java.scm", // Uses char-alphabetic?
     "solovay-strassen.scm", // Program seems erroneous.
   )
   lazy val other: Set[String] = fromFolder("test/R5RS", ".DS_Store",
