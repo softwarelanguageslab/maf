@@ -122,11 +122,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
      *       Otherwise this function could be merged into refineWrites.
      */
     override def doWrite(dep: Dependency): Boolean = dep match {
-      case AddrDependency(addr) =>
+      case AddrDependency(addr) if optimisationFlag =>
         // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
         // Also, this would not work, as updateAddr only performs monotonic updates.
         updateAddrInc(component, addr, intraProvenance(addr))
-      case _                    => super.doWrite(dep)
+      case _                                        => super.doWrite(dep)
     }
 
     /**
@@ -152,9 +152,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     }
 
     override def commit(): Unit = {
-      super.commit()        // First do the super commit, as this will cause the actual global store to be updated.
-      refineWrites()        // Refine the store by removing extra addresses or using the provenance information to refine the values in the store.
-      registerProvenances() // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
+      super.commit() // First do the super commit, as this will cause the actual global store to be updated.
+      if (optimisationFlag) {
+        refineWrites()        // Refine the store by removing extra addresses or using the provenance information to refine the values in the store.
+        registerProvenances() // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
+      }
     }
   }
 
