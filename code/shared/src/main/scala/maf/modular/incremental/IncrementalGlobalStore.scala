@@ -15,15 +15,17 @@ trait IncrementalGlobalStore[Expr <: Expression]
     with GlobalStore[Expr] { inter =>
 
   /** Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
-  var provenance: Map[Addr, Map[Component, Value]] =
-    Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
+  var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
 
   /** Caches the addresses written by every component. Used to find addresses that are no longer written by a component. */
   var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
   /** Computes the value that should reside at a given address according to the provenance information. */
-  def provenanceValue(addr: Addr): Value =
-    provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
+  def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
+
+  /** Updates the provenance information for a specific component and address. */
+  def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit =
+    provenance = provenance + (addr -> (provenance(addr) + (cmp -> value)))
 
   /**
     * To be called when a write dependency is deleted. Possibly updates the store with a new value for the given address.
@@ -38,11 +40,11 @@ trait IncrementalGlobalStore[Expr <: Expression]
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store.
     val value: Value = provenanceValue(addr)
-    if (value != inter.store.getOrElse(addr, lattice.bottom)) { // TODO We should not need to use 'getOrElse (bot)' as the address should be written as there was a previous (not bot) write to it.
-      trigger(AddrDependency(addr))                             // Trigger first, before the dependencies may possibly be removed.
-      if (value == lattice.bottom)                              // Small memory optimisation: clean up addresses entirely when they become bottom. This will also cause return addresses to be removed upon component deletion.
+    if (value != inter.store(addr)) {
+      trigger(AddrDependency(addr))    // Trigger first, as the dependencies may be removed should the address be deleted.
+      if (provenance(addr).isEmpty) {  // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
         deleteAddress(addr)
-      else inter.store = inter.store + (addr -> value)
+      } else inter.store = inter.store + (addr -> value)
     }
   }
 
@@ -70,7 +72,7 @@ trait IncrementalGlobalStore[Expr <: Expression]
   /**
     * To be called upon a commit, with the join of the values written by the component to the given address.
     * Possibly updates the store and provenance information, and triggers dependencies if the store is updated.
-    * @param cmp  The component related to the value nw written to addr.
+    * @param cmp  The component that is committed.
     * @param addr The address in the store of value nw.
     * @param nw   The join of all values written by cmp to the store at addr.
     * @return Returns a boolean indicating whether the address was updated,
@@ -81,11 +83,10 @@ trait IncrementalGlobalStore[Expr <: Expression]
     val old = provenance(addr)(cmp)
     if (old == nw) return false // Nothing changed.
     // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
-    provenance = provenance + (addr -> (provenance(addr) + (cmp -> nw)))
+    updateProvenance(cmp, addr, nw)
     val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
     // If `old ⊏ nw` we can just use join, which is probably more efficient.
-    val newJoin =
-      if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr)
+    val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr)
     if (oldJoin == newJoin) return false // Even with this component writing a different value to addr, the store does not change.
     inter.store = inter.store + (addr -> newJoin)
     true
@@ -95,16 +96,13 @@ trait IncrementalGlobalStore[Expr <: Expression]
     intra =>
 
     /**
-      *  Keep track of the values written by a component to an address.
-      *  For every address, stores the join of all values written during this intra-component address.
+      * Keep track of the values written by a component to an address.
+      * For every address, stores the join of all values written during this intra-component address.
       */
     var intraProvenance: Map[Addr, Value] = Map().withDefaultValue(lattice.bottom)
 
     override def writeAddr(addr: Addr, value: Value): Boolean = {
-      if (log)
-        logger.log(
-          s"$component writes $addr ($value, old: ${store.getOrElse(addr, lattice.bottom)})"
-        )
+      if (log) logger.log(s"$component writes $addr ($value, old: ${store.getOrElse(addr, lattice.bottom)})")
       // Update the intra-provenance: for every address, keep the join of the values written to the address.
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
       super.writeAddr(addr, value) // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
@@ -123,6 +121,12 @@ trait IncrementalGlobalStore[Expr <: Expression]
       case _ => super.doWrite(dep)
     }
 
+    /**
+     * Registers the provenance information to the global provenance registry.
+     * @note Will also update the provenances that were already updated by updateAddrInc (but this is ok as the same value is used).
+     */
+    def registerProvenances(): Unit =  intraProvenance.foreach({ case (addr, value) => updateProvenance(component, addr, value) })
+
     /** Refines values in the store that are no longer written to by a component. */
     @nonMonotonicUpdate
     def refineWrites(): Unit = {
@@ -136,8 +140,9 @@ trait IncrementalGlobalStore[Expr <: Expression]
     }
 
     override def commit(): Unit = {
+      super.commit() // First do the super commit, as this will cause the actual global store to be updated.
       refineWrites() // Refine the store by removing extra addresses or using the provenance information to refine the values in the store.
-      super.commit()
+      registerProvenances() // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
     }
   }
 

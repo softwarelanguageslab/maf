@@ -34,12 +34,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ************************************************************************* */
 
 
-  // TODO Can't we just only save change expressions here?
-  //      Also, we don't need to find _all_ change expressions: only those already encountered by the analysis matter!
-  //      This way, we also do not have to traverse the program: we can register all change expressions we encountered, and only those
-  //      can possibly affect the result of the analysis! Hence, actually, we can just register the components that encountered a change expression...
-  //      => No: assumes upfront knowledge of changes.
-
   /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
   var version: Version = Old
   /** Keeps track of which components depend on an expression. */
@@ -96,7 +90,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     if (log) logger.log(s"RMCMP $cmp")
     for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
     visited = visited - cmp                               // Remove the component from the visited set.
-    println(s"Deleting $cmp. In worklist: ${workList.contains(cmp)}")
     workList = workList - cmp                             // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
                                                           // This should improve both performance and precision.
     for (to <- cachedSpawns(cmp)) unspawn(to)             // Transitively check for components that have to be deleted.
@@ -167,7 +160,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     optimisationFlag = optimisedExecution                           // Used for testing pursposes.
     version = New                                                   // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
-    System.err.println(if (affected.isEmpty) "None" else affected.mkString(", "))
     affected.foreach(addToWorkList)
     analyze(timeout)
     if (log) deps.keySet.foreach(dep => logger.log(s"DEPEN $dep <- ${deps(dep)}"))
