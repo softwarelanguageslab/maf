@@ -11,7 +11,7 @@ trait Address extends SmartHash {
     */
   def printable: Boolean
 
-  /** The identity of an address *
+  /** The identity of an address
    * Should correspond to the program location where the address was allocated *
    * Can be Identity.none if there is no sensible program location (e.g., pre-allocated addresses for primitives) 
    */

@@ -8,9 +8,7 @@ import maf.modular.scheme.modf.EvalM._
 import maf.modular.scheme.modf._
 import maf.util.Annotations.nonMonotonicUpdate
 
-trait IncrementalSchemeModFBigStepSemantics
-    extends BigStepModFSemantics
-    with IncrementalSchemeSemantics {
+trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {
 
   trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis {
     override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
@@ -20,7 +18,7 @@ trait IncrementalSchemeModFBigStepSemantics
       case SchemeCodeChange(_, e, _) if version == New =>
         registerComponent(e, component)
         eval(e) // Same than above.
-      case _ =>
+      case _                                           =>
         registerComponent(exp, component)
         super.eval(exp)
     }

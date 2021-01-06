@@ -32,4 +32,11 @@ class SExpParserSimpleTests extends AnyFlatSpec {
     assert(parsed(0).isInstanceOf[SExpValue])
     assert(parsed(0).asInstanceOf[SExpValue].value == ValueBoolean(true))
   }
+  "Use of backets or parenthesis" should "not changed the parsed expression" in {
+    val program1 = SExpParser.parse("((foo) bar)")
+    val program2 = SExpParser.parse("[(foo) bar]")
+    val program3 = SExpParser.parse("([foo] bar)")
+    assert(program1 == program2)
+    assert(program1 == program3)
+  }
 }
