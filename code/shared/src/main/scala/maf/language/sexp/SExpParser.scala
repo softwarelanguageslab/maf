@@ -76,8 +76,14 @@ trait SExpTokens extends Tokens {
   case class TLeftParen() extends SExpToken {
     def chars = "("
   }
+  case class TLeftBracket() extends SExpToken {
+    def chars = "["
+  }
   case class TRightParen() extends SExpToken {
     def chars = ")"
+  }
+  case class TRightBracket() extends SExpToken {
+    def chars = "]"
   }
   case class THashParen() extends SExpToken {
     def chars = "#("
@@ -123,7 +129,7 @@ class SExpLexer extends Lexical with SExpTokens {
 
   // R5RS: Tokens which require implicit termination (identifiers, numbers, characters, and dot) may be terminated by any <delimiter>, but not necessarily by anything else.  */
   def delimiter: Parser[Unit] =
-    (whitespaceChar | eol | eoi | chr('(') | chr(')') | chr('"') | chr(';')) ^^ (_ => ())
+    (whitespaceChar | eol | eoi | chr('(') | chr('[') | chr(')') | chr(']') | chr('"') | chr(';')) ^^ (_ => ())
 
   def boolean: Parser[SExpToken] =
     '#' ~> ('t' ^^^ TBoolean(true) | 'T' ^^^ TBoolean(true) |
@@ -154,15 +160,23 @@ class SExpLexer extends Lexical with SExpTokens {
     def initial: Parser[Char]              = letter | specialInitial
     def specialSubsequent: Parser[Char]    = chr('+') | chr('-') | chr('.') | chr('@')
     def subsequent: Parser[Char]           = initial | digit | specialSubsequent
-    def peculiarIdentifier: Parser[String] =
+    def peculiarIdentifier: Parser[String] = { in =>
       // R5RS specifies + | - | ..., not clear what ... is supposed to be
-      ((chr('+') | chr('-')) ^^ (_.toString)) |
-        ((chr('1') ~ chr('+') | chr('1') ~ chr('-')) ^^ { case c1 ~ c2 => s"$c1$c2" })
+      // so let's be very flexible with this definition
+      (rep1(subsequent) andThen {
+        case Success(List('.'), _) => Failure("not a valid identifier: .", in)
+        case Success(List('@'), _) => Failure("not a valid identifier: @", in)
+        case Success(cs, next) => Success(cs.mkString(""), next)
+        case Failure(msg, next) => Failure(msg, next)
+      })(in)
+    }
     (initial ~ rep(subsequent) ^^ { case i ~ s => s"$i${s.mkString}" }
       | peculiarIdentifier) <~ guard(delimiter) ^^ (s => TIdentifier(s))
   }
   def leftParen: Parser[SExpToken]       = chr('(') ^^^ TLeftParen()
+  def leftBracket: Parser[SExpToken]     = chr('[') ^^^ TLeftBracket()
   def rightParen: Parser[SExpToken]      = chr(')') ^^^ TRightParen()
+  def rightBracket: Parser[SExpToken]    = chr(']') ^^^ TRightBracket()
   def hashParen: Parser[SExpToken]       = chr('#') ~ chr('(') ^^^ THashParen()
   def quote: Parser[SExpToken]           = chr('\'') ^^^ TQuote()
   def backquote: Parser[SExpToken]       = chr('`') ^^^ TBackquote()
@@ -188,8 +202,8 @@ class SExpLexer extends Lexical with SExpTokens {
     nonRelevant ~> positioned({
       boolean | number | identifier |
         character | string |
-        leftParen | rightParen | hashParen | quote | backquote |
-        unquoteSplicing | unquote | dot
+        leftParen | leftBracket | rightParen | rightBracket |
+        hashParen | quote | backquote | unquoteSplicing | unquote | dot
     }) <~ nonRelevant
 }
 
@@ -213,7 +227,7 @@ object SExpParser extends TokenParsers {
   def string: Parser[Value] = elem("string", _.isInstanceOf[TString]) ^^ {
     case TString(s) => ValueString(s)
   }
-  def nil: Parser[Value] = leftParen ~ rightParen ^^^ ValueNil
+  def nil: Parser[Value] = ((leftParen ~ rightParen) | (leftBracket ~ rightBracket)) ^^^ ValueNil
 
   def value(tag: PTag): Parser[SExp] = Parser { in =>
     (bool | real | integer | character | string | nil)(in) match {
@@ -231,14 +245,16 @@ object SExpParser extends TokenParsers {
   }
 
   def leftParen       = elem("left parenthesis",  _.isInstanceOf[TLeftParen])
+  def leftBracket     = elem("left bracket",      _.isInstanceOf[TLeftBracket])
   def rightParen      = elem("right parenthesis", _.isInstanceOf[TRightParen])
+  def rightBracket    = elem("right bracket",     _.isInstanceOf[TRightBracket])
   def dot             = elem("dot",               _.isInstanceOf[TDot])
   def quote           = elem("quote",             _.isInstanceOf[TQuote])
   def quasiquote      = elem("quasiquote",        _.isInstanceOf[TBackquote])
   def unquote         = elem("unquote",           _.isInstanceOf[TUnquote])
   def unquoteSplicing = elem("unquote-splicing",  _.isInstanceOf[TUnquoteSplicing])
 
-  def list(tag: PTag): Parser[SExp] = Parser { in =>
+  def parenList(tag: PTag): Parser[SExp] = Parser { in =>
     (leftParen ~> rep1(exp(tag)) ~ opt(dot ~> exp(tag)) <~ rightParen)(in) match {
       case Success(es ~ None, in1) =>
         Success(SExpList(es, Identity(in.pos, tag)), in1)
@@ -247,6 +263,18 @@ object SExpParser extends TokenParsers {
       case ns: NoSuccess => ns
     }
   }
+
+  def bracketList(tag: PTag): Parser[SExp] = Parser { in =>
+    (leftBracket ~> rep1(exp(tag)) ~ opt(dot ~> exp(tag)) <~ rightBracket)(in) match {
+      case Success(es ~ None, in1) =>
+        Success(SExpList(es, Identity(in.pos, tag)), in1)
+      case Success(es ~ Some(tail), in1) =>
+        Success(SExpList(es, tail), in1)
+      case ns: NoSuccess => ns
+    }
+  }
+
+  def list(tag: PTag): Parser[SExp] = parenList(tag) | bracketList(tag)
 
   def withQuote(tag: PTag)(p: Parser[_], make: (SExp, Identity) => SExp) = Parser { in =>
     (p ~> exp(tag))(in) match {

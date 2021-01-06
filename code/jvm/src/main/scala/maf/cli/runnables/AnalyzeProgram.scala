@@ -15,21 +15,20 @@ import scala.concurrent.duration._
 object AnalyzeProgram extends App {
   def one(bench: String, timeout: () => Timeout.T): Unit = {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a = new ModAnalysis(text) with KKallocModConc with SchemeConstantPropagationDomain
+    /* val a = new ModAnalysis(text) with KKallocModConc with SchemeConstantPropagationDomain
     with LIFOWorklistAlgorithm[SchemeExp] {
       val k = 1
 
       override def intraAnalysis(component: SmallStepModConcComponent) =
         new IntraAnalysis(component) with KCFAIntra
-    }
-    val b = new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain
-    with SchemeModFCallSiteSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    }*/
 
-    val c = b
-    c.analyze(timeout())
-    val r = c.finalResult
-    c.visited.foreach(println)
-    c.deps.foreach(println)
+    val analysis = new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain
+        with SchemeModFCallSiteSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    analysis.analyze(timeout())
+    val r = analysis.finalResult
+    analysis.visited.foreach(println)
+    analysis.deps.foreach(println)
     println(r)
   }
 

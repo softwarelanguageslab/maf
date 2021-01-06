@@ -134,6 +134,7 @@ object SchemePrelude {
     "char-ci>?" -> "(define (char-ci>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char-ci<=? c1 c2)))",
     "char-ci<=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
     "char-ci>=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
+    "char-alphabetic?" -> "(define (char-alphabetic c) @sensitivity:FA (and (char-ci>= c #\\a) (char-ci<= #\\z)))",
     "caar" -> "(define (caar x) @sensitivity:FA (car (car x)))",
     "cadr" -> "(define (cadr x) @sensitivity:FA (car (cdr x)))",
     "cdar" -> "(define (cdar x) @sensitivity:FA (cdr (car x)))",

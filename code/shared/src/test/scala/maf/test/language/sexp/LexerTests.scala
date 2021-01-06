@@ -5,7 +5,7 @@ import org.scalatest.propspec._
 import maf.language.sexp._
 import maf.test.ParserTest
 
-abstract class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
+class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
   val lexical = new SExpLexer
   def checkExpected(parser: lexical.Parser[lexical.SExpToken])(input: String, expected: String) =
     parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray)) match {
@@ -18,7 +18,7 @@ abstract class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks
 
   val bools = Table("boolean", "#t","#f", "#T", "#F")
   property("SExpLexer should lex booleans without error", ParserTest) {
-    forAll(bools) { s => check(lexical.boolean)(s); check(lexical.token)(s) }
+    forAll(bools) { s => check(lexical.boolean)(s.toLowerCase); check(lexical.token)(s.toLowerCase) }
   }
 
   val integers = Table("integer", "100", "-231")
@@ -44,12 +44,12 @@ abstract class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks
     forAll(strings) { s => check(lexical.string)(s); check(lexical.token)(s) }
   }
 
-  val identifiers = Table("identifier", "foo", "+", "1+", "1-", "<<test>>")
+  val identifiers = Table("identifier", "foo", "+", "1+", "1-", "<<test>>", "-fl", "1st-foo")
   property("SExpLexer should lex identifiers without error", ParserTest) {
     forAll(identifiers) { s => check(lexical.identifier)(s); check(lexical.token)(s) }
   }
 
-  val specialTokens = Table("special token", "(", ")", ",", "`", "'", ",@", "#(")
+  val specialTokens = Table("special token", "(", ")", ",", "`", "'", ",@", "#(", "[", "]")
   property("SExpLexer should lex special tokens without error", ParserTest) {
     forAll(specialTokens) { check(lexical.token) }
   }
