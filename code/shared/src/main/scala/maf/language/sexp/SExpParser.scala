@@ -160,10 +160,16 @@ class SExpLexer extends Lexical with SExpTokens {
     def initial: Parser[Char]              = letter | specialInitial
     def specialSubsequent: Parser[Char]    = chr('+') | chr('-') | chr('.') | chr('@')
     def subsequent: Parser[Char]           = initial | digit | specialSubsequent
-    def peculiarIdentifier: Parser[String] =
+    def peculiarIdentifier: Parser[String] = { in =>
       // R5RS specifies + | - | ..., not clear what ... is supposed to be
       // so let's be very flexible with this definition
-      rep1(subsequent) ^^ { x => x.mkString }
+      (rep1(subsequent) andThen {
+        case Success(List('.'), _) => Failure("not a valid identifier: .", in)
+        case Success(List('@'), _) => Failure("not a valid identifier: @", in)
+        case Success(cs, next) => Success(cs.mkString(""), next)
+        case Failure(msg, next) => Failure(msg, next)
+      })(in)
+    }
     (initial ~ rep(subsequent) ^^ { case i ~ s => s"$i${s.mkString}" }
       | peculiarIdentifier) <~ guard(delimiter) ^^ (s => TIdentifier(s))
   }
