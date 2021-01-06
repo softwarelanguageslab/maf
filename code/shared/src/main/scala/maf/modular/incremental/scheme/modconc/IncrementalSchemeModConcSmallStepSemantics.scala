@@ -7,9 +7,7 @@ import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.scheme.ssmodconc._
 import maf.util.Annotations.nonMonotonicUpdate
 
-trait IncrementalSchemeModConcSmallStepSemantics
-    extends SmallStepModConcSemantics
-    with IncrementalSchemeSemantics {
+trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
 
   trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis {
     override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match {
@@ -19,7 +17,7 @@ trait IncrementalSchemeModConcSmallStepSemantics
       case SchemeCodeChange(_, e, _) if version == New =>
         registerComponent(e, component)
         Set(Eval(e, env, stack))
-      case _ =>
+      case _                                           =>
         registerComponent(exp, component)
         super.evaluate(exp, env, stack)
     }
