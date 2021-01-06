@@ -10,7 +10,7 @@ object Type {
       case Top    => Lattice[L].top
     }
   }
-  case object Top    extends T
+  case object Top extends T
   case object Bottom extends T
 
   abstract class BaseInstance(typeName: String) extends Lattice[T] {
@@ -19,7 +19,7 @@ object Type {
       case Bottom => s"$typeName.⊥"
     }
     val bottom: T = Bottom
-    val top: T    = Top
+    val top: T = Top
     def join(x: T, y: => T): T = x match {
       case Top    => Top
       case Bottom => y
@@ -42,11 +42,11 @@ object Type {
     }
   }
 
-  type S   = T
-  type B   = T
-  type I   = T
-  type R   = T
-  type C   = T
+  type S = T
+  type B = T
+  type I = T
+  type R = T
+  type C = T
   type Sym = T
 
   object T {
@@ -75,15 +75,15 @@ object Type {
     }
     implicit val typeIsBoolean: BoolLattice[B] = new BaseInstance("Bool") with BoolLattice[B] {
       def inject(x: Boolean): T = Top
-      def isTrue(b: T)          = b == Top
-      def isFalse(b: T)         = b == Top
-      def not(b: T)             = b
+      def isTrue(b: T) = b == Top
+      def isFalse(b: T) = b == Top
+      def not(b: T) = b
     }
     implicit val typeIsInteger: IntLattice[I] = new BaseInstance("Int") with IntLattice[I] {
       def inject(x: Int): T = Top
       def toReal[R2: RealLattice](n: T): R2 = n.to[R2]
-      def random(n: T): T        = n
-      def plus(n1: T, n2: T): T  = meet(n1, n2)
+      def random(n: T): T = n
+      def plus(n1: T, n2: T): T = meet(n1, n2)
       def minus(n1: T, n2: T): T = meet(n1, n2)
       def times(n1: T, n2: T): T = meet(n1, n2)
       def div[R2: RealLattice](n1: T, n2: T): R2 = (n1, n2) match {
@@ -91,8 +91,8 @@ object Type {
         case _          => RealLattice[R2].bottom
       }
       def expt(n1: T, n2: T): T = meet(n1, n2)
-      def quotient(n1: T, n2: T): T  = meet(n1, n2)
-      def modulo(n1: T, n2: T): T    = meet(n1, n2)
+      def quotient(n1: T, n2: T): T = meet(n1, n2)
+      def modulo(n1: T, n2: T): T = meet(n1, n2)
       def remainder(n1: T, n2: T): T = meet(n1, n2)
       def lt[B2: BoolLattice](n1: T, n2: T): B2 = (n1, n2) match {
         case (Top, Top) => BoolLattice[B2].top
@@ -105,23 +105,23 @@ object Type {
     implicit val typeIsReal: RealLattice[R] = new BaseInstance("Real") with RealLattice[R] {
       def inject(x: Double): T = Top
       def toInt[I2: IntLattice](n: T): I2 = n.to[I2]
-      def ceiling(n: T): T       = n
-      def floor(n: T): T         = n
-      def round(n: T): T         = n
-      def log(n: T): T           = n
-      def random(n: T): T        = n
-      def sin(n: T): T           = n
-      def asin(n: T): T          = n
-      def cos(n: T): T           = n
-      def acos(n: T): T          = n
-      def tan(n: T): T           = n
-      def atan(n: T): T          = n
-      def sqrt(n: T): T          = n
-      def plus(n1: T, n2: T): T  = meet(n1, n2)
+      def ceiling(n: T): T = n
+      def floor(n: T): T = n
+      def round(n: T): T = n
+      def log(n: T): T = n
+      def random(n: T): T = n
+      def sin(n: T): T = n
+      def asin(n: T): T = n
+      def cos(n: T): T = n
+      def acos(n: T): T = n
+      def tan(n: T): T = n
+      def atan(n: T): T = n
+      def sqrt(n: T): T = n
+      def plus(n1: T, n2: T): T = meet(n1, n2)
       def minus(n1: T, n2: T): T = meet(n1, n2)
       def times(n1: T, n2: T): T = meet(n1, n2)
-      def div(n1: T, n2: T): T   = meet(n1, n2)
-      def expt(n1: T, n2: T): T  = meet(n1, n2)
+      def div(n1: T, n2: T): T = meet(n1, n2)
+      def expt(n1: T, n2: T): T = meet(n1, n2)
       def lt[B2: BoolLattice](n1: T, n2: T): B2 = (n1, n2) match {
         case (Top, Top) => BoolLattice[B2].top
         case _          => BoolLattice[B2].bottom
@@ -154,9 +154,8 @@ object Type {
         case _          => BoolLattice[B2].bottom
       }
     }
-    implicit val typeIsSymbol: SymbolLattice[Sym] = new BaseInstance("Sym")
-    with SymbolLattice[Sym] {
-      def inject(sym: String): T                = Top
+    implicit val typeIsSymbol: SymbolLattice[Sym] = new BaseInstance("Sym") with SymbolLattice[Sym] {
+      def inject(sym: String): T = Top
       def toString[S2: StringLattice](s: T): S2 = StringLattice[S2].top
     }
   }

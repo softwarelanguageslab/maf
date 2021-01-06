@@ -16,8 +16,7 @@ trait SExpParserTestsSpec extends SchemeBenchmarkTests {
       // Check that printing and parsing the result again gives the same result
       val printed = parsed.mkString("")
       val reparsed = SExpParser.parse(printed)
-      assert(parsed.mkString("") == reparsed.mkString(""),
-        "Printing and parsing again gives a result different from the original parse")
+      assert(parsed.mkString("") == reparsed.mkString(""), "Printing and parsing again gives a result different from the original parse")
     }
 }
 

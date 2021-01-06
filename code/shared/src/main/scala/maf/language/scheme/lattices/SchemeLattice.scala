@@ -43,7 +43,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   type Closure = (SchemeLambdaExp, Env)
 
   /** Extract closures contained in this value */
-  def getClosures(x: L): Set[(Closure,Option[String])]
+  def getClosures(x: L): Set[(Closure, Option[String])]
 
   /** Extract primitives contained in this value */
   def getPrimitives(x: L): Set[P]
@@ -109,7 +109,11 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def vectorRef(vector: L, index: L): MayFail[L, Error]
 
   /** Changes an element of a vector */
-  def vectorSet(vector: L, index: L, newval: L): MayFail[L, Error]
+  def vectorSet(
+      vector: L,
+      index: L,
+      newval: L
+    ): MayFail[L, Error]
 
   /** Injection of a thread identifier */
   def thread(tid: TID): L
@@ -135,10 +139,10 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
       case b: Boolean => bool(b)
       case c: Char    => char(c)
       //case p: P       => primitive(p)
-      case s: Symbol  => symbol(s.name)
+      case s: Symbol => symbol(s.name)
       //case a: A       => pointer(a)
-      case Nil        => nil
-      case v          => throw new Exception(s"Attempting to inject unknown value $v.")
+      case Nil => nil
+      case v   => throw new Exception(s"Attempting to inject unknown value $v.")
     }
   }
 
@@ -205,11 +209,11 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
     }
     /* TODO: more properties */
   }
- */
+   */
 }
 
 object SchemeLattice {
   def apply[L, A <: Address, P <: Primitive](
       implicit lat: SchemeLattice[L, A, P]
-  ): SchemeLattice[L, A, P] = lat
+    ): SchemeLattice[L, A, P] = lat
 }

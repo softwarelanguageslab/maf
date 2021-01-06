@@ -23,14 +23,14 @@ trait Expression extends SmartHash {
   /** Returns whether this expression is isomorphic to another expression. This is a basic implementation which should be specialised in subclasses. */
   def isomorphic(other: Expression): Boolean =
     label == other.label &&
-    subexpressions.length == other.subexpressions.length &&
-    subexpressions.zip(other.subexpressions).forall { case (x, y) => x.isomorphic(y) }
+      subexpressions.length == other.subexpressions.length &&
+      subexpressions.zip(other.subexpressions).forall { case (x, y) => x.isomorphic(y) }
 
   /** Indicates whether this expression is equal to another expression when identity information of the expression is ignored. */
   def eql(other: Expression): Boolean = (hash == other.hash
-                                        && label == other.label
-                                        && subexpressions.length == other.subexpressions.length
-                                        && subexpressions.zip(other.subexpressions).forall(p => p._1.eql(p._2)))
+    && label == other.label
+    && subexpressions.length == other.subexpressions.length
+    && subexpressions.zip(other.subexpressions).forall(p => p._1.eql(p._2)))
 
   /** A hash code that ignores positional information of the expression within the source code. */
   lazy val hash: Int = (label, subexpressions.map(_.hash)).hashCode()
@@ -45,11 +45,11 @@ case object SYM extends Label // Identifier
 
 /** An identifier. It has a name and a position */
 case class Identifier(name: String, idn: Identity) extends Expression with SmartHash {
-  def fullString:              String  = s"$name@$idn"
-  override def toString:       String  = name
-  def fv:                  Set[String] = Set(name)
-  override val height:             Int = 0
-  val label:                     Label = SYM
+  def fullString: String = s"$name@$idn"
+  override def toString: String = name
+  def fv: Set[String] = Set(name)
+  override val height: Int = 0
+  val label: Label = SYM
   def subexpressions: List[Expression] = List()
-  override lazy val hash:          Int = (label, name).hashCode()
+  override lazy val hash: Int = (label, name).hashCode()
 }

@@ -5,9 +5,9 @@ import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, NotANumberS
 
 object ConstantPropagation {
   sealed trait L[+A]
-  case object Top              extends L[Nothing]
+  case object Top extends L[Nothing]
   case class Constant[A](x: A) extends L[A]
-  case object Bottom           extends L[Nothing]
+  case object Bottom extends L[Nothing]
 
   abstract class BaseInstance[A](typeName: String) extends Lattice[L[A]] {
     def show(x: L[A]): String = x match {
@@ -16,7 +16,7 @@ object ConstantPropagation {
       case Bottom      => s"$typeName.⊥"
     }
     val bottom: L[A] = Bottom
-    val top: L[A]    = Top
+    val top: L[A] = Top
     def join(x: L[A], y: => L[A]): L[A] = x match {
       case Top => Top
       case Constant(_) =>
@@ -72,11 +72,11 @@ object ConstantPropagation {
     }
   }
 
-  type B   = L[Boolean]
-  type S   = L[String]
-  type I   = L[Int]
-  type R   = L[Double]
-  type C   = L[Char]
+  type B = L[Boolean]
+  type S = L[String]
+  type I = L[Int]
+  type R = L[Double]
+  type C = L[Char]
   type Sym = L[String]
 
   object L {
@@ -84,24 +84,23 @@ object ConstantPropagation {
     implicit val boolCP: BoolLattice[B] = new BaseInstance[Boolean]("Bool") with BoolLattice[B] {
       def inject(b: Boolean): B = Constant(b)
       def isTrue(b: B): Boolean = b match {
-        case Top => true
+        case Top         => true
         case Constant(x) => x
-        case Bottom => false
+        case Bottom      => false
       }
       def isFalse(b: B): Boolean = b match {
-        case Top => true
+        case Top         => true
         case Constant(x) => !x
-        case Bottom => false
+        case Bottom      => false
       }
       def not(b: B): B = b match {
-        case Top => Top
+        case Top         => Top
         case Constant(x) => Constant(!x)
-        case Bottom => Bottom
+        case Bottom      => Bottom
       }
     }
 
-    implicit val stringCP: StringLattice[S] = new BaseInstance[String]("Str")
-    with StringLattice[S] {
+    implicit val stringCP: StringLattice[S] = new BaseInstance[String]("Str") with StringLattice[S] {
       def inject(x: String): S = Constant(x)
       def length[I2: IntLattice](s: S): I2 = s match {
         case Top         => IntLattice[I2].top
@@ -117,7 +116,7 @@ object ConstantPropagation {
         case Bottom => CharLattice[C2].bottom
         case Top    => CharLattice[C2].top
         case Constant(x) =>
-           0.to(x.length)
+          0.to(x.length)
             .collect({
               case i2
                   if BoolLattice[Concrete.B]
@@ -137,9 +136,9 @@ object ConstantPropagation {
         case Constant(x) => SymbolLattice[Sym2].inject(x)
       }
       def toNumber[I2: IntLattice](s: S) = s match {
-        case Bottom         => MayFail.success(IntLattice[I2].bottom)
-        case Constant(str)  => MayFail.fromOption(str.toIntOption.map(IntLattice[I2].inject))(NotANumberString)
-        case Top            => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
+        case Bottom        => MayFail.success(IntLattice[I2].bottom)
+        case Constant(str) => MayFail.fromOption(str.toIntOption.map(IntLattice[I2].inject))(NotANumberString)
+        case Top           => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
       }
     }
     implicit val intCP: IntLattice[I] = new BaseInstance[Int]("Int") with IntLattice[I] {
@@ -153,14 +152,18 @@ object ConstantPropagation {
         case Bottom => Bottom
         case _      => Top
       }
-      private def binop(op: (Int, Int) => Int, n1: I, n2: I) = (n1, n2) match {
+      private def binop(
+          op: (Int, Int) => Int,
+          n1: I,
+          n2: I
+        ) = (n1, n2) match {
         case (Top, Top)                 => Top
         case (Top, Constant(_))         => Top
         case (Constant(_), Top)         => Top
         case (Constant(x), Constant(y)) => Constant(op(x, y))
         case _                          => Bottom
       }
-      def plus(n1: I, n2: I): I  = binop(_ + _, n1, n2)
+      def plus(n1: I, n2: I): I = binop(_ + _, n1, n2)
       def minus(n1: I, n2: I): I = binop(_ - _, n1, n2)
       def times(n1: I, n2: I): I = binop(_ * _, n1, n2)
       def div[F: RealLattice](n1: I, n2: I): F = (n1, n2) match {
@@ -168,14 +171,14 @@ object ConstantPropagation {
         case (Constant(x), Constant(y)) => RealLattice[F].inject(x / y.toDouble)
         case _                          => RealLattice[F].bottom
       }
-      def expt(n1: I, n2: I): I = binop((x, y) => Math.pow(x.toDouble,y.toDouble).toInt, n1, n2)
-      def quotient(n1: I, n2: I): I  = binop(_ / _, n1, n2)
-      def modulo(n1: I, n2: I): I    = (n1, n2) match {
-        case (Top, Top) => Top
-        case (Top, Constant(_)) => Top
-        case (Constant(_), Top) => Top
+      def expt(n1: I, n2: I): I = binop((x, y) => Math.pow(x.toDouble, y.toDouble).toInt, n1, n2)
+      def quotient(n1: I, n2: I): I = binop(_ / _, n1, n2)
+      def modulo(n1: I, n2: I): I = (n1, n2) match {
+        case (Top, Top)                           => Top
+        case (Top, Constant(_))                   => Top
+        case (Constant(_), Top)                   => Top
         case (Constant(x), Constant(y)) if y != 0 => Constant(MathOps.modulo(x, y))
-        case _ => Bottom
+        case _                                    => Bottom
       }
       def remainder(n1: I, n2: I): I = binop(MathOps.remainder, n1, n2)
       def lt[B2: BoolLattice](n1: I, n2: I): B2 = (n1, n2) match {
@@ -257,18 +260,22 @@ object ConstantPropagation {
         case Constant(x) => Constant(scala.math.sqrt(x))
         case _           => n
       }
-      private def binop(op: (Double, Double) => Double, n1: R, n2: R) = (n1, n2) match {
+      private def binop(
+          op: (Double, Double) => Double,
+          n1: R,
+          n2: R
+        ) = (n1, n2) match {
         case (Top, Top)                 => Top
         case (Top, Constant(_))         => Top
         case (Constant(_), Top)         => Top
         case (Constant(x), Constant(y)) => Constant(op(x, y))
         case _                          => Bottom
       }
-      def plus(n1: R, n2: R): R  = binop(_ + _, n1, n2)
+      def plus(n1: R, n2: R): R = binop(_ + _, n1, n2)
       def minus(n1: R, n2: R): R = binop(_ - _, n1, n2)
       def times(n1: R, n2: R): R = binop(_ * _, n1, n2)
-      def div(n1: R, n2: R): R   = binop(_ / _, n1, n2)
-      def expt(n1: R, n2: R): R = binop((x, y) => Math.pow(x,y), n1, n2)
+      def div(n1: R, n2: R): R = binop(_ / _, n1, n2)
+      def expt(n1: R, n2: R): R = binop((x, y) => Math.pow(x, y), n1, n2)
       def lt[B2: BoolLattice](n1: R, n2: R): B2 = (n1, n2) match {
         case (Top, Top)                 => BoolLattice[B2].top
         case (Top, Constant(_))         => BoolLattice[B2].top
@@ -286,11 +293,11 @@ object ConstantPropagation {
       def inject(x: Char) = Constant(x)
       def downCase(c: C): C = c match {
         case Constant(char) => Constant(char.toLower)
-        case _ => c
+        case _              => c
       }
       def upCase(c: C): C = c match {
         case Constant(char) => Constant(char.toUpper)
-        case _ => c
+        case _              => c
       }
       def toString[S2: StringLattice](c: C): S2 = c match {
         case Top            => StringLattice[S2].top
@@ -298,9 +305,9 @@ object ConstantPropagation {
         case Bottom         => StringLattice[S2].bottom
       }
       def toInt[I2: IntLattice](c: C): I2 = c match {
-        case Bottom       => IntLattice[I2].bottom
-        case Constant(c)  => IntLattice[I2].inject(c.toInt)
-        case Top          => IntLattice[I2].top
+        case Bottom      => IntLattice[I2].bottom
+        case Constant(c) => IntLattice[I2].inject(c.toInt)
+        case Top         => IntLattice[I2].top
       }
       def isLower[B2: BoolLattice](c: C): B2 = c match {
         case Bottom         => BoolLattice[B2].bottom
@@ -333,8 +340,7 @@ object ConstantPropagation {
         case _                            => BoolLattice[B2].top
       }
     }
-    implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol")
-    with SymbolLattice[Sym] {
+    implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol") with SymbolLattice[Sym] {
       def inject(x: String) = Constant(x)
       def toString[S2: StringLattice](s: Sym): S2 = s match {
         case Top         => StringLattice[S2].top

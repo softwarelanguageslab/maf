@@ -14,7 +14,7 @@ trait Dependency extends SmartHash
 /**
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and
  * provides some utility functionality.
- **/
+ */
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable with Serializable { inter =>
 
   // parameterized by a component representation
@@ -27,7 +27,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
 
   // some form of "worklist" is required to keep track of which components need to be (re-)analyzed
   // this method is responsible for adding a given component to that worklist
-  def addToWorkList(cmp: Component): Unit 
+  def addToWorkList(cmp: Component): Unit
 
   // the intra-analysis of a component can discover new components
   // when we discover a component that has not yet been analyzed, we add it to the worklist
@@ -41,7 +41,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
     }
 
   /** Keeps track of the components depending on a given "effect" (~ read dependencies). */
-  var deps: Map[Dependency,Set[Component]] = Map[Dependency,Set[Component]]().withDefaultValue(Set.empty)
+  var deps: Map[Dependency, Set[Component]] = Map[Dependency, Set[Component]]().withDefaultValue(Set.empty)
   def register(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))
   def trigger(dep: Dependency): Unit = deps(dep).foreach(addToWorkList)
 
@@ -54,37 +54,49 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
   // parameterized by an 'intra-component analysis'
   def intraAnalysis(component: Component): IntraAnalysis
   abstract class IntraAnalysis(val component: Component) { intra =>
+
     /** Set of dependencies read by this intra-component analysis. */
     var R: Set[Dependency] = Set()
+
     /** Set of dependencies written (triggered) by this intra-component analysis. */
     var W: Set[Dependency] = Set()
+
     /** Set of components discovered by this intra-component analysis. */
-    var C: Set[Component]  = Set()
+    var C: Set[Component] = Set()
+
     /** Registers a read dependency. */
     def register(dep: Dependency): Unit = R += dep
+
     /** Triggers a written dependency. */
-    def trigger(dep: Dependency): Unit  = W += dep
+    def trigger(dep: Dependency): Unit = W += dep
+
     /** Spawns a discovered component. */
-    def spawn(cmp: Component): Unit     = C += cmp
-    /** Performs the intra-component analysis of the given component.<br>
-     * <b>Important:</b> should only update the *local* analysis state, and must not modify the global analysis state directly. */
+    def spawn(cmp: Component): Unit = C += cmp
+
+    /**
+     * Performs the intra-component analysis of the given component.<br>
+     * <b>Important:</b> should only update the *local* analysis state, and must not modify the global analysis state directly.
+     */
     def analyze(timeout: Timeout.T = Timeout.none): Unit
+
     /** Pushes the local changes to the global analysis state. */
     def commit(): Unit = {
       R.foreach(inter.register(component, _))
-      W.foreach(dep => if(doWrite(dep)) inter.trigger(dep))
+      W.foreach(dep => if (doWrite(dep)) inter.trigger(dep))
       C.foreach(inter.spawn(_, component))
     }
+
     /** Called upon a commit for every written dependency. Returns a boolean indicating whether the global analysis state was modified. */
-    def doWrite(dep: Dependency): Boolean = false  // `ModAnalysis` has no knowledge of dependencies it can commit.
+    def doWrite(dep: Dependency): Boolean = false // `ModAnalysis` has no knowledge of dependencies it can commit.
   }
 
   // Specific to the worklist algorithm:
 
   /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
-  def finished(): Boolean                              
+  def finished(): Boolean
+
   /** Runs the analysis with an optional timeout (default value: no timeout). Implementation should be provided by the work list algorithm. */
-  def analyze(timeout: Timeout.T = Timeout.none): Unit  // <= run the analysis (with given timeout)
+  def analyze(timeout: Timeout.T = Timeout.none): Unit // <= run the analysis (with given timeout)
 
   // Exporting an analysis to a file.
 

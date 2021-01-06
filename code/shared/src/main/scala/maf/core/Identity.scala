@@ -52,7 +52,7 @@ trait UniqueIdentity {
     SimpleIdentity(idn)
   }
 }
-*/
+ */
 
 trait PositionalIdentity {
   type IDN = Position
@@ -72,12 +72,20 @@ object Position {
   val noTag: PTag = None
   def newTag(tag: String): PTag = Some(tag)
 
-  case class Position(line: Int, col: Int, tag: PTag = noTag) extends SmartHash {
+  case class Position(
+      line: Int,
+      col: Int,
+      tag: PTag = noTag)
+      extends SmartHash {
     override def toString: String = tag match {
       case None    => s"$line:$col"
       case Some(t) => s"$t:$line:$col"
     }
   }
 
-  def apply(line: Int, col: Int, tag: PTag = noTag): Position = Position(line, col, tag)
+  def apply(
+      line: Int,
+      col: Int,
+      tag: PTag = noTag
+    ): Position = Position(line, col, tag)
 }

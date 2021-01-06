@@ -125,7 +125,9 @@ object SchemeR5RSBenchmarks {
     ("(let ((p (lambda (x) x)))\n(eq? p p))", true),
     //("(let ((p (lambda (x) x)))\n(eqv? p p))", true),
     ("(let ((vec (vector 'a 'b 'c))) (and (equal? (vector-ref vec 0) 'a) (equal? (vector-ref vec 1) 'b) (equal? (vector-ref vec 2) 'c)))", true),
-    ("(let ((vec (vector 0 '(2 2 2 2) \"Anna\"))) (vector-set! vec 1 '(\"Sue\" \"Sue\")) (and (equal? (vector-ref vec 0) 0) (equal? (vector-ref vec 1) '(\"Sue\" \"Sue\")) (equal? (vector-ref vec 2) \"Anna\")))", true),
+    ("(let ((vec (vector 0 '(2 2 2 2) \"Anna\"))) (vector-set! vec 1 '(\"Sue\" \"Sue\")) (and (equal? (vector-ref vec 0) 0) (equal? (vector-ref vec 1) '(\"Sue\" \"Sue\")) (equal? (vector-ref vec 2) \"Anna\")))",
+     true
+    ),
     //("(let ((x '#())) (eq? x x))", true),
     ("(let ((x '(a))) (eq? x x))", true),
     // ("(let ((x '(a))) (set-cdr! x x) (list? x))", false), // This is fine for abstract runs, but kills the concrete interpreter (list? is not actually properly defined for circular lists)
@@ -230,7 +232,7 @@ object SchemeR5RSBenchmarks {
     ("(vector? (vector 'a 'b 'c))", true),
     ("(zero? -1)", false),
     ("(zero? 0)", true),
-    ("(zero? 1)", false),
+    ("(zero? 1)", false)
   )
 
 }

@@ -24,7 +24,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
 
   /** Updates the provenance information for a specific component and address. */
-  def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit =
+  def updateProvenance(
+      cmp: Component,
+      addr: Addr,
+      value: Value
+    ): Unit =
     provenance = provenance + (addr -> (provenance(addr) + (cmp -> value)))
 
   /**
@@ -43,8 +47,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     val value: Value = provenanceValue(addr)
     if (value != inter.store(addr)) {
       trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
-      if (provenance(
-          addr).isEmpty)            // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
+      if (
+        provenance(addr).isEmpty
+      ) // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
         deleteAddress(addr)
       else inter.store = inter.store + (addr -> value)
     }
@@ -56,8 +61,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @note Also removes possible dependencies on this address!
    */
   def deleteAddress(addr: Addr): Unit = {
-    store -= addr                // Delete the address in the actual store.
-    provenance -= addr           // Remove provenance information corresponding to the address (to ensure the right dependencies are triggered should the address be recreated and obtain the same value).
+    store -= addr // Delete the address in the actual store.
+    provenance -= addr // Remove provenance information corresponding to the address (to ensure the right dependencies are triggered should the address be recreated and obtain the same value).
     deps -= AddrDependency(addr) // Given that the address is no longer in existence, dependencies on this address can be removed.
   }
 
@@ -84,7 +89,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    *         and hence whether the corresponding dependency should be triggered.
    */
   @nonMonotonicUpdate
-  def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
+  def updateAddrInc(
+      cmp: Component,
+      addr: Addr,
+      nw: Value
+    ): Boolean = {
     val old = provenance(addr)(cmp)
     if (old == nw) return false // Nothing changed.
     // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
@@ -126,7 +135,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
         // Also, this would not work, as updateAddr only performs monotonic updates.
         updateAddrInc(component, addr, intraProvenance(addr))
-      case _                                        => super.doWrite(dep)
+      case _ => super.doWrite(dep)
     }
 
     /**
@@ -144,7 +153,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       if (version == New) {
         val deltaW =
           cachedWrites(
-            component) -- recentWrites // The addresses previously written to by this component, but that are no longer written by this component.
+            component
+          ) -- recentWrites // The addresses previously written to by this component, but that are no longer written by this component.
         if (log) logger.log(s"$component no longer writes $deltaW")
         deltaW.foreach(deleteProvenance(component, _))
       }
@@ -154,7 +164,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     override def commit(): Unit = {
       super.commit() // First do the super commit, as this will cause the actual global store to be updated.
       if (optimisationFlag) {
-        refineWrites()        // Refine the store by removing extra addresses or using the provenance information to refine the values in the store.
+        refineWrites() // Refine the store by removing extra addresses or using the provenance information to refine the values in the store.
         registerProvenances() // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
       }
     }

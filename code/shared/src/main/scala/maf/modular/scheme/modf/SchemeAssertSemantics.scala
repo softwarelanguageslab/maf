@@ -10,15 +10,15 @@ trait SchemeAssertSemantics extends BigStepModFSemantics {
 
   override def intraAnalysis(cmp: Component): AssertionModFIntra
   trait AssertionModFIntra extends IntraAnalysis with BigStepModFIntra {
-    override def evalAssert(exp: SchemeExp): EvalM[Value] = {
+    override def evalAssert(exp: SchemeExp): EvalM[Value] =
       for {
         v <- eval(exp)
         res <- merge(guard(lattice.isTrue(v)).map(_ => lattice.void),
-          guard(lattice.isFalse(v)).map(_ => {
-            assertViolated(component, exp)
-            lattice.void
-          }))
+                     guard(lattice.isFalse(v)).map { _ =>
+                       assertViolated(component, exp)
+                       lattice.void
+                     }
+        )
       } yield res
-    }
   }
 }

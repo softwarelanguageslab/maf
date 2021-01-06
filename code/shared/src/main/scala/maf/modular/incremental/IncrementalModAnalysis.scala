@@ -21,7 +21,7 @@ import maf.util.datastructures.SmartUnion.sunion
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
   var logger: Log = _
-  var log         = false
+  var log = false
 
   override def trigger(dep: Dependency): Unit = {
     if (log) logger.log(s"TRIGG $dep")
@@ -89,7 +89,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
       visited = visited - cmp // Remove the component from the visited set.
       workList =
-        workList - cmp        // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
+        workList - cmp // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
       // This should improve both performance and precision.
       for (to <- cachedSpawns(cmp)) unspawn(to) // Transitively check for components that have to be deleted.
 
@@ -121,7 +121,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Computes the set of reachable components. */
   def reachableComponents(): Set[Component] = {
     var reachable: Set[Component] = Set()
-    var work: Set[Component]      = Set(initialComponent)
+    var work: Set[Component] = Set(initialComponent)
     while (work.nonEmpty) {
       val head = work.head
       work = work.tail
@@ -139,7 +139,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Deletes components that are no longer 'reachable' from the Main component given a spawning relation. */
   @nonMonotonicUpdate
   def deleteDisconnectedComponents(): Unit =
-    if (deletionFlag) {                                // Only perform the next steps if there was a component that was unspawned but not collected.
+    if (deletionFlag) { // Only perform the next steps if there was a component that was unspawned but not collected.
       // In the other case, there can be no unreachable components left.
       unreachableComponents().foreach(deleteComponent) // Make sure the components are actually deleted.
       deletionFlag = false
@@ -152,11 +152,15 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   var optimisationFlag: Boolean = true // This flag can be used to enable or disable certain optimisations (for testing purposes).
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
-  def updateAnalysis(timeout: Timeout.T, name: String, optimisedExecution: Boolean = true): Unit = {
+  def updateAnalysis(
+      timeout: Timeout.T,
+      name: String,
+      optimisedExecution: Boolean = true
+    ): Unit = {
     //log = true
     if (log) logger = Logger(name.split("/").last.dropRight(4))
     optimisationFlag = optimisedExecution // Used for testing pursposes.
-    version = New                         // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
+    version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
     analyze(timeout)
@@ -176,7 +180,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       if (version == New) { // Check for efficiency.
         val deltaR =
           cachedReadDeps(
-            component) -- R                      // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
+            component
+          ) -- R // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
         deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
         if (log) deltaR.foreach(d => logger.log(s"DEREG $component -/-> $d"))
       }
@@ -196,7 +201,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       if (version == New) { // Check performed for efficiency.
         val deltaC =
           cachedSpawns(
-            component) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
+            component
+          ) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
         deltaC.foreach(unspawn)
         deltaC.foreach(cmp => if (log) logger.log(s"USPWN $component -/-> $cmp finished"))
       }
@@ -210,7 +216,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       if (log) logger.log(s"COMMI $component")
       if (optimisationFlag) {
         refineDependencies() // First, remove excess dependencies if this is a reanalysis.
-        refineComponents()   // Second, remove components that are no longer reachable (if this is a reanalysis).
+        refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
       }
       super.commit() // Then commit and trigger dependencies.
     }

@@ -2,10 +2,10 @@ package maf.modular
 
 import maf.core._
 
-case class ReturnAddr[Component](cmp: Component, idn: Identity) extends Address { 
+case class ReturnAddr[Component](cmp: Component, idn: Identity) extends Address {
   def printable = true
   override def toString: String = s"ret ($cmp)"
-} 
+}
 
 /**
  * Provides facilities for storing and retrieving return values of components (component analyses).

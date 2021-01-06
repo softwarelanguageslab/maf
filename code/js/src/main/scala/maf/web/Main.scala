@@ -25,13 +25,17 @@ import maf.modular.scheme.modf.SimpleSchemeModFAnalysis
 object FileInputElement {
   def apply(handler: String => Unit): html.Input = {
     val input = document.createElement("input").asInstanceOf[html.Input]
-    input.setAttribute("type","file")
-    input.addEventListener("change", (evtUpload: dom.Event) => {
-      val file = input.files.item(0)
-      val reader = new dom.FileReader()
-      reader.onload = (evtLoad: dom.Event) => handler(reader.result.asInstanceOf[String])
-      reader.readAsText(file)
-    }, false)
+    input.setAttribute("type", "file")
+    input.addEventListener(
+      "change",
+      (evtUpload: dom.Event) => {
+        val file = input.files.item(0)
+        val reader = new dom.FileReader()
+        reader.onload = (evtLoad: dom.Event) => handler(reader.result.asInstanceOf[String])
+        reader.readAsText(file)
+      },
+      false
+    )
     return input
   }
 }
@@ -48,7 +52,8 @@ object Main {
 
   def newStandardAnalysis(text: String) = {
     val program = SchemeParser.parse(text)
-    new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
+    new SimpleSchemeModFAnalysis(program)
+      with SchemeModFNoSensitivity
       with SchemeConstantPropagationDomain
       with DependencyTracking[SchemeExp]
       with FIFOWorklistAlgorithm[SchemeExp] {
@@ -64,10 +69,15 @@ object Main {
     }
   }
 
-  class IncrementalAnalysis(program: SchemeExp) extends IncrementalSchemeModFCPAnalysisStoreOpt(program)
-                                                   with VisualisableIncrementalModAnalysis[SchemeExp] {
+  class IncrementalAnalysis(program: SchemeExp)
+      extends IncrementalSchemeModFCPAnalysisStoreOpt(program)
+         with VisualisableIncrementalModAnalysis[SchemeExp] {
 
-    override def updateAddrInc(cmp: SchemeModFComponent, addr: Addr, nw: modularLatticeWrapper.modularLattice.L): Boolean = {
+    override def updateAddrInc(
+        cmp: SchemeModFComponent,
+        addr: Addr,
+        nw: modularLatticeWrapper.modularLattice.L
+      ): Boolean = {
       val old = provenance(addr)(cmp)
       println(s"$addr [$cmp]: $old => $nw")
       super.updateAddrInc(cmp, addr, nw)
@@ -79,10 +89,9 @@ object Main {
       val nw = store.getOrElse(addr, lattice.bottom)
       println(s"$addr [$cmp]: $old _> $nw")
     }
-    override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
-      with IncrementalSchemeModFBigStepIntra
-      with IncrementalReturnValueIntraAnalysis
-      with VisualisableIntraAnalysis {
+    override def intraAnalysis(
+        cmp: SchemeModFComponent
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis with VisualisableIntraAnalysis {
 
       override def analyze(timeout: Timeout.T): Unit = {
         println(s"Analysing $cmp")
@@ -105,7 +114,8 @@ object Main {
       println(s"Directly affected components: ${affected.toList.mkString(", ")}")
       println("Preparation finished. Starting reanalysis.")
     } catch {
-      case t: Throwable => System.err.println(t.getMessage) // Will display an error in the console.
+      case t: Throwable =>
+        System.err.println(t.getMessage) // Will display an error in the console.
         throw t
     }
   }

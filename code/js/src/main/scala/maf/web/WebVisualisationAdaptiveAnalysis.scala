@@ -10,9 +10,10 @@ object WebVisualisationAdaptive {
   val d3 = js.Dynamic.global.d3
   lazy val __NODE_COLORS__ = List("blue", "green", "yellow", "red")
   lazy val __NO_OF_COLORS__ = __NODE_COLORS__.length
-  lazy val __COLOR_SCALE__  = d3.scaleOrdinal()
-                                  .domain(d3.range(__NO_OF_COLORS__))
-                                  .range(__NODE_COLORS__)
+  lazy val __COLOR_SCALE__ = d3
+    .scaleOrdinal()
+    .domain(d3.range(__NO_OF_COLORS__))
+    .range(__NODE_COLORS__)
 }
 
 trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
@@ -33,15 +34,14 @@ class WebVisualisationAdaptive(override val analysis: WebAdaptiveAnalysis[_]) ex
 
   var adapted = false
 
-  override def displayText(cmp: analysis.Component) = 
+  override def displayText(cmp: analysis.Component) =
     s"[$cmp] ${analysis.deref(cmp).toString()}"
 
-  override def refreshDataAfterStep(cmp: analysis.Component,
-                                    dps: Set[analysis.Component]) =
+  override def refreshDataAfterStep(cmp: analysis.Component, dps: Set[analysis.Component]) =
     if (this.adapted) {
       this.adapted = false
       super.refreshData()
     } else {
-      super.refreshDataAfterStep(cmp,dps)
+      super.refreshDataAfterStep(cmp, dps)
     }
 }

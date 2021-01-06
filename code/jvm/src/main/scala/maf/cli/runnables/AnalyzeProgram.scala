@@ -23,8 +23,10 @@ object AnalyzeProgram extends App {
         new IntraAnalysis(component) with KCFAIntra
     }*/
 
-    val analysis = new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain
-        with SchemeModFCallSiteSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    val analysis = new SimpleSchemeModFAnalysis(text)
+      with SchemeConstantPropagationDomain
+      with SchemeModFCallSiteSensitivity
+      with LIFOWorklistAlgorithm[SchemeExp]
     analysis.analyze(timeout())
     val r = analysis.finalResult
     analysis.visited.foreach(println)
@@ -40,7 +42,8 @@ object AnalyzeProgram extends App {
   // Used by webviz.
   def newStandardAnalysis(text: String) = {
     val program = SchemeParser.parse(text)
-    new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
+    new SimpleSchemeModFAnalysis(program)
+      with SchemeModFNoSensitivity
       with SchemeConstantPropagationDomain
       with DependencyTracking[SchemeExp]
       with FIFOWorklistAlgorithm[SchemeExp] {

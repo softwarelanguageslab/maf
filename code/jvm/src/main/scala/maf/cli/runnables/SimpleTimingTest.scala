@@ -18,8 +18,7 @@ object SimpleTimingTest extends App {
   type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
 
   def analysis(program: SchemeExp): Analysis =
-    new ModAnalysis(program) with KKallocModConc with SchemeConstantPropagationDomain
-    with LIFOWorklistAlgorithm[SchemeExp] {
+    new ModAnalysis(program) with KKallocModConc with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] {
       val k = 1
       override def intraAnalysis(component: SmallStepModConcComponent) =
         new IntraAnalysis(component) with SmallStepIntra with KCFAIntra
@@ -29,8 +28,8 @@ object SimpleTimingTest extends App {
     System.out.print(benchmark + " ")
     System.out.flush()
     val text = CSchemeParser.parse(Reader.loadFile(benchmark))
-    val a    = analysis(text)
-    val to   = Timeout.start(Duration(1, MINUTES))
+    val a = analysis(text)
+    val to = Timeout.start(Duration(1, MINUTES))
     val time = Timer.timeOnly(a.analyze(to))
     if (to.reached) {
       System.out.println("timed out.")
@@ -75,9 +74,9 @@ object SimpleTimingTest extends App {
 
     lazy val threads: Set[String] = fromFolder(
       "test/concurrentScheme/threads",
-      "abp.scm",       // Unbound reference: display-recorded.
+      "abp.scm", // Unbound reference: display-recorded.
       "lastzero2.scm", // Uses let*, but should use something like letrec*?
-      "phild.scm"      // Unbound reference: bool-top
+      "phild.scm" // Unbound reference: bool-top
     )
   }
 }

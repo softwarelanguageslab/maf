@@ -16,7 +16,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   // The maximal number of warm-up runs.
   val maxWarmupRuns = 5
   // The number of actually measured runs.
-  val  measuredRuns = 30
+  val measuredRuns = 30
 
   // Indicate whether there is one or 2 incremental set-ups. Note that the setup must also be changed for warm-up.
   val multiInc = true
@@ -25,8 +25,8 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   sealed trait Result
   case class Finished(mean: Long, stddev: Long) extends Result { override def toString: String = s"$mean±$stddev" }
   case object Timedout extends Result { override def toString: String = "∞" }
-  case object NotRun   extends Result { override def toString: String = " " }
-  case object Errored  extends Result { override def toString: String = "E" }
+  case object NotRun extends Result { override def toString: String = " " }
+  case object Errored extends Result { override def toString: String = "E" }
 
   final val initS: String = "init" // Initial run.
   final val inc1S: String = "inc1" // Incremental update.
@@ -64,7 +64,9 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
       analyses = a :: analyses
     }
     print(s"\n* Warm-up incremental analysis (max. ${analyses.length}): ")
-    timeoutWarmup = timeout().map(_ * (if (multiInc) 2 else 1)) // Need to run two analyses, so double the time given (no guarantees on equal division between versions).
+    timeoutWarmup = timeout().map(
+      _ * (if (multiInc) 2 else 1)
+    ) // Need to run two analyses, so double the time given (no guarantees on equal division between versions).
     for (w <- analyses.indices) {
       val a = analyses(w) // We need an analysis that has already been (partially) run.
       val b = a.deepCopy()
@@ -74,7 +76,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
       if (multiInc) {
         print(s"* ")
         System.gc()
-        b.updateAnalysis(timeoutWarmup, file,true)
+        b.updateAnalysis(timeoutWarmup, file, true)
       }
     }
 
@@ -96,7 +98,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
       var a = analysis(program)
 
       // Run the initial analysis.
-      runAnalysis(false, {timeOut => a.analyze(timeOut)}) match {
+      runAnalysis(false, timeOut => a.analyze(timeOut)) match {
         case Some(t) => timesInit = t :: timesInit
         case None =>
           println(" => Base analysis timed out.")
@@ -106,20 +108,20 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
 
       val aCopy = a.deepCopy()
 
-      runAnalysis(inc1Timeout, {timeOut => a.updateAnalysis(timeOut, file,false)}) match {
+      runAnalysis(inc1Timeout, timeOut => a.updateAnalysis(timeOut, file, false)) match {
         case Some(t) => timesInc1 = t :: timesInc1
         case None    => inc1Timeout = true
       }
 
       if (multiInc)
-        runAnalysis(inc2Timeout, {timeOut => aCopy.updateAnalysis(timeOut, file,true)}) match {
+        runAnalysis(inc2Timeout, timeOut => aCopy.updateAnalysis(timeOut, file, true)) match {
           case Some(t) => timesInc2 = t :: timesInc2
           case None    => inc2Timeout = true
         }
 
       a = analysis(program) // Create a new analysis and set the flag to "New".
       a.version = New
-      runAnalysis(reanTimeout, {timeOut => a.analyze(timeOut)}) match {
+      runAnalysis(reanTimeout, timeOut => a.analyze(timeOut)) match {
         case Some(t) => timesRean = t :: timesRean
         case None    => reanTimeout = true
       }
@@ -150,11 +152,9 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   def createOutput(): String = results.prettyString(columns = List(initS, inc1S, inc2S, reanS))
 }
 
-
 /* ************************** */
 /* ***** Instantiations ***** */
 /* ************************** */
-
 
 object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential

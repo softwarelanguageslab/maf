@@ -3,58 +3,58 @@ package maf.language.scheme
 import maf.core._
 
 /**
-  * Remove defines from a Scheme expression, replacing them by let bindings.
-  * For example:
-  *   (define foo 1)
-  *   (define (f x) x)
-  *   (f foo)
-  * Will be converted to:
-  *   (letrec ((foo 1)
-  *            (f (lambda (x) x)))
-  *     (f foo))
-  * Which is semantically equivalent with respect to the end result
-  */
+ * Remove defines from a Scheme expression, replacing them by let bindings.
+ * For example:
+ *   (define foo 1)
+ *   (define (f x) x)
+ *   (f foo)
+ * Will be converted to:
+ *   (letrec ((foo 1)
+ *            (f (lambda (x) x)))
+ *     (f foo))
+ * Which is semantically equivalent with respect to the end result
+ */
 trait BaseSchemeUndefiner {
   import scala.util.control.TailCalls._
 
   def undefine(exps: List[SchemeExp]): SchemeExp =
     undefine(exps, List(), None).result
 
-  def undefine(exps: List[SchemeExp], defs: List[(Identifier, SchemeExp)], idn: Option[Identity]): TailRec[SchemeExp] =
+  def undefine(
+      exps: List[SchemeExp],
+      defs: List[(Identifier, SchemeExp)],
+      idn: Option[Identity]
+    ): TailRec[SchemeExp] =
     exps match {
       case Nil => done(SchemeBegin(Nil, Identity.none))
       case SchemeDefineFunction(name, args, body, pos) :: rest =>
         tailcall(
-          tailcall(undefineBody(body)).flatMap(
-            bodyv =>
-              undefine(
-                SchemeDefineVariable(name, SchemeLambda(args, bodyv, exps.head.idn), pos) :: rest,
-                defs,
-                idn
-              )
+          tailcall(undefineBody(body)).flatMap(bodyv =>
+            undefine(
+              SchemeDefineVariable(name, SchemeLambda(args, bodyv, exps.head.idn), pos) :: rest,
+              defs,
+              idn
+            )
           )
         )
       case SchemeDefineVarArgFunction(name, args, vararg, body, pos) :: rest =>
         tailcall(
-          tailcall(undefineBody(body)).flatMap(
-            bodyv =>
-              undefine(
-                SchemeDefineVariable(name, SchemeVarArgLambda(args, vararg, bodyv, exps.head.idn), pos) :: rest,
-                defs,
-                idn
-              )
+          tailcall(undefineBody(body)).flatMap(bodyv =>
+            undefine(
+              SchemeDefineVariable(name, SchemeVarArgLambda(args, vararg, bodyv, exps.head.idn), pos) :: rest,
+              defs,
+              idn
+            )
           )
         )
       case SchemeDefineVariable(name, value, pos) :: rest =>
         tailcall(undefine1(value)).flatMap(v => tailcall(undefine(rest, (name, v) :: defs, idn.orElse(Some(pos)))))
       case _ :: _ =>
         tailcall(undefineBody(exps)).map { bdy =>
-          if(defs.isEmpty) {
+          if (defs.isEmpty) {
             SchemeBody(bdy)
           } else {
-            SchemeLetrec(defs.reverse, 
-                         if (bdy.nonEmpty) bdy else List(SchemeBody(bdy)),
-                         idn.get)
+            SchemeLetrec(defs.reverse, if (bdy.nonEmpty) bdy else List(SchemeBody(bdy)), idn.get)
           }
         }
     }
@@ -73,15 +73,10 @@ trait BaseSchemeUndefiner {
     case SchemeVarArgLambda(args, vararg, body, pos) =>
       tailcall(undefineBody(body)).map(b => SchemeVarArgLambda(args, vararg, b, pos))
     case SchemeFuncall(f, args, pos) =>
-      tailcall(undefine1(f)).flatMap(
-        fun => trampolineM(undefine1, args).map(argsv => SchemeFuncall(fun, argsv, pos))
-      )
+      tailcall(undefine1(f)).flatMap(fun => trampolineM(undefine1, args).map(argsv => SchemeFuncall(fun, argsv, pos)))
     case SchemeIf(cond, cons, alt, pos) =>
-      tailcall(undefine1(cond)).flatMap(
-        condv =>
-          tailcall(undefine1(cons)).flatMap(
-            consv => tailcall(undefine1(alt)).map(altv => SchemeIf(condv, consv, altv, pos))
-          )
+      tailcall(undefine1(cond)).flatMap(condv =>
+        tailcall(undefine1(cons)).flatMap(consv => tailcall(undefine1(alt)).map(altv => SchemeIf(condv, consv, altv, pos)))
       )
     case SchemeLet(bindings, body, pos) =>
       trampolineM(
@@ -90,9 +85,7 @@ trait BaseSchemeUndefiner {
             case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
           },
         bindings
-      ).flatMap(
-        bindingsv => tailcall(undefineBody(body)).map(bodyv => SchemeLet(bindingsv, bodyv, pos))
-      )
+      ).flatMap(bindingsv => tailcall(undefineBody(body)).map(bodyv => SchemeLet(bindingsv, bodyv, pos)))
     case SchemeLetStar(bindings, body, pos) =>
       trampolineM(
         (x: (Identifier, SchemeExp)) =>
@@ -100,10 +93,7 @@ trait BaseSchemeUndefiner {
             case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
           },
         bindings
-      ).flatMap(
-        bindingsv =>
-          tailcall(undefineBody(body)).map(bodyv => SchemeLetStar(bindingsv, bodyv, pos))
-      )
+      ).flatMap(bindingsv => tailcall(undefineBody(body)).map(bodyv => SchemeLetStar(bindingsv, bodyv, pos)))
     case SchemeLetrec(bindings, body, pos) =>
       trampolineM(
         (x: (Identifier, SchemeExp)) =>
@@ -111,10 +101,7 @@ trait BaseSchemeUndefiner {
             case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
           },
         bindings
-      ).flatMap(
-        bindingsv =>
-          tailcall(undefineBody(body)).map(bodyv => SchemeLetrec(bindingsv, bodyv, pos))
-      )
+      ).flatMap(bindingsv => tailcall(undefineBody(body)).map(bodyv => SchemeLetrec(bindingsv, bodyv, pos)))
     case SchemeNamedLet(name, bindings, body, pos) =>
       trampolineM(
         (x: (Identifier, SchemeExp)) =>
@@ -122,33 +109,30 @@ trait BaseSchemeUndefiner {
             case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
           },
         bindings
-      ).flatMap(
-        bindingsv =>
-          tailcall(undefineBody(body)).map(bodyv => SchemeNamedLet(name, bindingsv, bodyv, pos))
-      )
+      ).flatMap(bindingsv => tailcall(undefineBody(body)).map(bodyv => SchemeNamedLet(name, bindingsv, bodyv, pos)))
     case SchemeSet(variable, value, pos) =>
       tailcall(undefine1(value)).map(v => SchemeSet(variable, v, pos))
     case SchemeBegin(exps, pos) =>
       tailcall(undefineBody(exps)).map(expsv => SchemeBegin(expsv, pos))
     case SchemeAnd(args, pos) =>
       trampolineM(undefine1, args).map(argsv => SchemeAnd(argsv, pos))
-    case SchemeOr(args, pos)       => trampolineM(undefine1, args).map(argsv => SchemeOr(argsv, pos))
-    case SchemePair(car,cdr,pos)   =>
+    case SchemeOr(args, pos) => trampolineM(undefine1, args).map(argsv => SchemeOr(argsv, pos))
+    case SchemePair(car, cdr, pos) =>
       for {
         carUndef <- tailcall(undefine1(car))
         cdrUndef <- tailcall(undefine1(cdr))
       } yield SchemePair(carUndef, cdrUndef, pos)
-    case SchemeSplicedPair(exps,cdr,pos) =>
+    case SchemeSplicedPair(exps, cdr, pos) =>
       for {
         spliceUndef <- tailcall(undefine1(exps))
         cdrUndef <- tailcall(undefine1(cdr))
       } yield SchemeSplicedPair(spliceUndef, cdrUndef, pos)
-    case SchemeAssert(exp,pos) =>
+    case SchemeAssert(exp, pos) =>
       for {
         expUndef <- tailcall(undefine1(exp))
       } yield SchemeAssert(expUndef, pos)
-    case SchemeVar(id)             => done(SchemeVar(id))
-    case SchemeValue(value, pos)   => done(SchemeValue(value, pos))
+    case SchemeVar(id)           => done(SchemeVar(id))
+    case SchemeValue(value, pos) => done(SchemeValue(value, pos))
   }
 
   def undefineBody(exps: List[SchemeExp]): TailRec[List[SchemeExp]] = exps match {

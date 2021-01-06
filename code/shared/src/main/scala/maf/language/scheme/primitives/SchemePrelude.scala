@@ -11,7 +11,6 @@ object SchemePrelude {
     "@sensitivity:1A" -> "(define @sensitivity:1A #f)",
     "@sensitivity:2A" -> "(define @sensitivity:2A #f)",
     "@sensitivity:No" -> "(define @sensitivity:No #f)",
-
     "abs" -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
     "append" -> """(define (append l1 l2)
                   |  @sensitivity:No
@@ -179,7 +178,7 @@ object SchemePrelude {
                    |      '()
                    |      (append (reverse (cdr l))
                    |              (list (car l)))))""".stripMargin,
-    "map" ->  """(define (map f l)
+    "map" -> """(define (map f l)
                 |  @sensitivity:1A
                 |  ;(assert (proc? f)) ;; TODO
                 |  (assert (list? l))
@@ -284,21 +283,20 @@ object SchemePrelude {
      */
   )
 
-  val primDefsParsed: Map[String, SchemeExp] = primDefs.map {
-    case (nam,str) =>
-      val exp = SchemeParser.parse(str,Position.newTag(nam))
-      (nam,exp)
+  val primDefsParsed: Map[String, SchemeExp] = primDefs.map { case (nam, str) =>
+    val exp = SchemeParser.parse(str, Position.newTag(nam))
+    (nam, exp)
   }
 
   val primNames: Set[String] = primDefs.keySet
 
   /** Transively adds all required definitions to the prelude, except the ones listed in `excl`. */
   def addPrelude(exp: SchemeExp, excl: Set[String] = Set()): SchemeExp = {
-    var prelude: List[ SchemeExp] = List()
-    var work:    List[Expression] = List(exp)
-    var visited:  Set[    String] = Set()
+    var prelude: List[SchemeExp] = List()
+    var work: List[Expression] = List(exp)
+    var visited: Set[String] = Set()
 
-    while (work.nonEmpty) {
+    while (work.nonEmpty)
       work.head match {
         case Identifier(name, _) if primNames.contains(name) && !visited.contains(name) && !excl.contains(name) =>
           val exp = primDefsParsed(name)
@@ -307,7 +305,6 @@ object SchemePrelude {
           visited = visited + name
         case e => work = e.subexpressions ::: work.tail // There will be no subexpressions if e is an Identifier for which the conditions do not hold.
       }
-    }
     SchemeBody(prelude ::: List(exp))
   }
 }

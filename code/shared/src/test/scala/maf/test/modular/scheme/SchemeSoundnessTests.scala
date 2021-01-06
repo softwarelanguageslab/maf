@@ -18,9 +18,7 @@ import scala.concurrent.duration._
 
 trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support basic Scheme semantics
-  type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
-                                         with ReturnValue[SchemeExp]
-                                         with SchemeDomain
+  type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
@@ -29,25 +27,28 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
   def concreteRuns(b: Benchmark): Int = 1 // for highly non-deterministic programs, a higher value is recommended
   // the actual testing code
-  protected def runInterpreter(i: SchemeInterpreter, p: SchemeExp, t: Timeout.T): Value = i.run(p, t) // If there are code changes in the file, runs the "new" version by default (ensures compatibility with files containing changes).
-  protected def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Set[Value], Map[Identity,Set[Value]]) = {
+  protected def runInterpreter(
+      i: SchemeInterpreter,
+      p: SchemeExp,
+      t: Timeout.T
+    ): Value =
+    i.run(p, t) // If there are code changes in the file, runs the "new" version by default (ensures compatibility with files containing changes).
+  protected def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Set[Value], Map[Identity, Set[Value]]) = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
     val program = CSchemeUndefiner.undefine(List(preluded))
     var endResults = Set[Value]()
-    var idnResults = Map[Identity,Set[Value]]().withDefaultValue(Set())
+    var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
-    try {
-      for (_ <- 1 to times) {
-        val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
-        endResults += runInterpreter(interpreter, program, timeout)
-      }
+    try for (_ <- 1 to times) {
+      val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
+      endResults += runInterpreter(interpreter, program, timeout)
     } catch {
-      case _ : TimeoutException =>
+      case _: TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
       case ChildThreadDiedException(_) =>
         alert(s"Concrete evaluation of $benchmark aborted due to a fatal crash in a child thread.")
-      case e : VirtualMachineError =>
+      case e: VirtualMachineError =>
         System.gc()
         alert(s"Concrete evaluation of $benchmark failed with $e")
     }
@@ -89,27 +90,30 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
 
   protected def compareResult(a: Analysis, values: Set[Value]): Unit = {
     val aRes = a.finalResult
-    values.foreach { value => 
+    values.foreach { value =>
       if (!checkSubsumption(a)(value, aRes)) {
         val failureMsg =
-s"""Program result is unsound:
+          s"""Program result is unsound:
   - concrete value: $value
   - abstract value: $aRes
 """
         fail(failureMsg)
-      } 
+      }
     }
   }
 
-  protected def compareIdentities(a: Analysis, concIdn: Map[Identity,Set[Value]]): Unit = {
-    val absID: Map[Identity, a.Value] = a.store.groupBy(_._1.idn).view
-                                                .mapValues(m => a.lattice.join(m.values)).toMap
-                                                .withDefaultValue(a.lattice.bottom)
-    concIdn.foreach { case (idn,values) =>
+  protected def compareIdentities(a: Analysis, concIdn: Map[Identity, Set[Value]]): Unit = {
+    val absID: Map[Identity, a.Value] = a.store
+      .groupBy(_._1.idn)
+      .view
+      .mapValues(m => a.lattice.join(m.values))
+      .toMap
+      .withDefaultValue(a.lattice.bottom)
+    concIdn.foreach { case (idn, values) =>
       values.foreach { value =>
         if (!checkSubsumption(a)(value, absID(idn))) {
           val failureMsg =
-s"""Intermediate result at $idn is unsound:
+            s"""Intermediate result at $idn is unsound:
   - concrete value: $value
   - abstract value: ${absID(idn)}
 """
@@ -135,9 +139,9 @@ s"""Intermediate result at $idn is unsound:
       val content = Reader.loadFile(benchmark)
       val program = CSchemeParser.parse(content)
       // run the program using a concrete interpreter
-      val (cResult, cPosResults) = evalConcrete(program,benchmark)
+      val (cResult, cPosResults) = evalConcrete(program, benchmark)
       // analyze the program using a ModF analysis
-      val anl = runAnalysis(program,benchmark)
+      val anl = runAnalysis(program, benchmark)
       // check if the final result of the analysis soundly approximates the final result of concrete evaluation
       compareResult(anl, cResult)
       // check if the intermediate results at various program points are soundly approximated by the analysis

@@ -29,61 +29,74 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
   def workers: Int
 
   // We use a Master-Worker pattern, where the Master coordinates the distribution of intra-analyses, and the management of the global analysis state
-  object Master { 
+  object Master {
     sealed trait MasterMessage
     case class Start(timeout: Timeout.T, respondTo: ActorRef[Boolean]) extends MasterMessage
     case class Result(intra: ParallelIntra) extends MasterMessage
     case class TimedOut(cmp: Component) extends MasterMessage
     def ready(workers: ActorRef[Worker.WorkerMessage], cmps: Set[Component]): Behaviour[MasterMessage] =
-      Behaviours.receive((context,msg) => msg match {
-        case Start(timeout, replyTo) =>
-          for (cmp <- cmps) {
-            workers ! Worker.DoWork(intraAnalysis(cmp), timeout, context.self)
-          }
-          running(workers, cmps, timeout, replyTo)
-      })
-    def running(workers: ActorRef[Worker.WorkerMessage], queued: Set[Component], timeout: Timeout.T, replyTo: ActorRef[Boolean]): Behaviour[MasterMessage] = 
+      Behaviours.receive((context, msg) =>
+        msg match {
+          case Start(timeout, replyTo) =>
+            for (cmp <- cmps)
+              workers ! Worker.DoWork(intraAnalysis(cmp), timeout, context.self)
+            running(workers, cmps, timeout, replyTo)
+        }
+      )
+    def running(
+        workers: ActorRef[Worker.WorkerMessage],
+        queued: Set[Component],
+        timeout: Timeout.T,
+        replyTo: ActorRef[Boolean]
+      ): Behaviour[MasterMessage] =
       if (queued.isEmpty) {
         replyTo ! true
         Behaviours.stopped
       } else {
-        Behaviours.receive((context, msg) => msg match {
-          case Result(intra) => 
-            intra.commit()
-            // add items to the worklist
-            var updatedQueued = queued
-            toDistribute.foreach { cmp =>
-              if(!updatedQueued(cmp)) {
-                updatedQueued += cmp
-                workers ! Worker.DoWork(intraAnalysis(cmp), timeout, context.self)
+        Behaviours.receive((context, msg) =>
+          msg match {
+            case Result(intra) =>
+              intra.commit()
+              // add items to the worklist
+              var updatedQueued = queued
+              toDistribute.foreach { cmp =>
+                if (!updatedQueued(cmp)) {
+                  updatedQueued += cmp
+                  workers ! Worker.DoWork(intraAnalysis(cmp), timeout, context.self)
+                }
               }
-            }
-            toDistribute = Nil
-            // check if the current component needs to be analyzed again
-            if(intra.isDone) {
-              running(workers, updatedQueued - intra.component, timeout, replyTo)
-            } else {
-              workers ! Worker.DoWork(intraAnalysis(intra.component), timeout, context.self)
-              running(workers, updatedQueued, timeout, replyTo)
-            }
-          case TimedOut(cmp) =>
-            pause(workers, queued - cmp, Set(cmp), replyTo)
-        })
+              toDistribute = Nil
+              // check if the current component needs to be analyzed again
+              if (intra.isDone) {
+                running(workers, updatedQueued - intra.component, timeout, replyTo)
+              } else {
+                workers ! Worker.DoWork(intraAnalysis(intra.component), timeout, context.self)
+                running(workers, updatedQueued, timeout, replyTo)
+              }
+            case TimedOut(cmp) =>
+              pause(workers, queued - cmp, Set(cmp), replyTo)
+          }
+        )
       }
-    def pause(workers: ActorRef[Worker.WorkerMessage], waitingFor: Set[Component], cmps: Set[Component], replyTo: ActorRef[Boolean]): Behaviour[MasterMessage] = 
-      if(waitingFor.isEmpty) {
+    def pause(
+        workers: ActorRef[Worker.WorkerMessage],
+        waitingFor: Set[Component],
+        cmps: Set[Component],
+        replyTo: ActorRef[Boolean]
+      ): Behaviour[MasterMessage] =
+      if (waitingFor.isEmpty) {
         replyTo ! false
         ready(workers, cmps)
       } else {
         Behaviours.receiveMessage {
           case TimedOut(cmp) =>
             pause(workers, waitingFor - cmp, cmps + cmp, replyTo)
-          case Result(intra) => 
+          case Result(intra) =>
             intra.commit()
             val updatedCmps = cmps ++ toDistribute
             val updatedWaitingFor = waitingFor - intra.component
             toDistribute = Nil
-            if(intra.isDone) {
+            if (intra.isDone) {
               pause(workers, updatedWaitingFor, updatedCmps, replyTo)
             } else {
               pause(workers, updatedWaitingFor, updatedCmps + intra.component, replyTo)
@@ -91,9 +104,10 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
         }
       }
     def apply(): Behaviour[MasterMessage] = Behaviours.setup { context =>
-      val workerPool = Routers.pool(poolSize = inter.workers)(Worker())
-                          .withRoundRobinRouting()
-                          .withRouteeProps(routeeProps = DispatcherSelector.sameAsParent())
+      val workerPool = Routers
+        .pool(poolSize = inter.workers)(Worker())
+        .withRoundRobinRouting()
+        .withRouteeProps(routeeProps = DispatcherSelector.sameAsParent())
       val workers = context.spawn(workerPool, "worker-pool", DispatcherSelector.sameAsParent())
       ready(workers, Set(initialComponent))
     }
@@ -102,17 +116,20 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
   // We use a Master-Worker pattern, where Workers perform the intra-analyses
   object Worker {
     sealed trait WorkerMessage
-    case class DoWork(intra: ParallelIntra, timeout: Timeout.T, master: ActorRef[Master.MasterMessage]) extends WorkerMessage
+    case class DoWork(
+        intra: ParallelIntra,
+        timeout: Timeout.T,
+        master: ActorRef[Master.MasterMessage])
+        extends WorkerMessage
     def apply(): Behaviour[WorkerMessage] = Behaviours.setup { context =>
-      Behaviours.receiveMessage {
-        case DoWork(intra, timeout, master) =>
-          intra.analyze(timeout)
-          if(timeout.reached) {
-            master ! Master.TimedOut(intra.component)
-          } else {
-            master ! Master.Result(intra)
-          }
-          Behaviours.same
+      Behaviours.receiveMessage { case DoWork(intra, timeout, master) =>
+        intra.analyze(timeout)
+        if (timeout.reached) {
+          master ! Master.TimedOut(intra.component)
+        } else {
+          master ! Master.Result(intra)
+        }
+        Behaviours.same
       }
     }
   }
@@ -124,7 +141,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
 
   // use this to temporarily hold items that need to be added to the worklist
   private var toDistribute: List[Component] = Nil
-  @inline final def addToWorkList(cmp: Component): Unit = 
+  @inline final def addToWorkList(cmp: Component): Unit =
     toDistribute = cmp :: toDistribute
 
   import AskPattern._
@@ -133,7 +150,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
     implicit val infTimeout = akka.util.Timeout(infDuration)
     implicit val scheduler = actorSystem
     val future = actorSystem.ask(replyTo => Master.Start(timeout, replyTo))
-    if(Await.result(future, infDuration)) {
+    if (Await.result(future, infDuration)) {
       done = true
       actorSystem.terminate()
       Await.result(actorSystem.whenTerminated, infDuration)
@@ -141,11 +158,8 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
   }
 
   def analyzeAndShutDown(timeout: Timeout.T): Unit =
-    try {
-      analyze(timeout) 
-    } finally {
-      actorSystem.terminate()
-    }
+    try analyze(timeout)
+    finally actorSystem.terminate()
 
   // keep track for every dependency of its "version number"
   var depVersion = Map[Dependency, Int]().withDefaultValue(0)

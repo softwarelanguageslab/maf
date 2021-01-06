@@ -9,7 +9,7 @@ import scala.collection.mutable.PriorityQueue
 
 trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {
   // we can choose what kind of worklist to pick
-  def emptyWorkList: WorkList[Component] 
+  def emptyWorkList: WorkList[Component]
   // adding elements to the worklist
   var workList: WorkList[Component] = emptyWorkList.add(initialComponent)
   def addToWorkList(cmp: Component) = workList = workList.add(cmp)
@@ -19,7 +19,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
   def step(timeout: Timeout.T): Unit = {
     // take the next component
     val current = workList.head
-    workList = workList.tail 
+    workList = workList.tail
     // do the intra-analysis
     // intraCount = intraCount + 1
     val intra = intraAnalysis(current)
@@ -34,9 +34,8 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
   }
   // step until worklist is empty or timeout is reached
   def analyze(timeout: Timeout.T = Timeout.none): Unit =
-    while(!finished() && !timeout.reached) {
+    while (!finished() && !timeout.reached)
       step(timeout)
-    }
 }
 
 /** Provides a work list with a depth-first exploration order to a modular analysis. */
@@ -61,8 +60,8 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
   // worklist is a priority queue
   var worklistSet: Set[Component] = Set(initialComponent)
   lazy val worklist: PriorityQueue[Component] = PriorityQueue(initialComponent)
-  def push(cmp: Component) = 
-    if(!worklistSet.contains(cmp)) {
+  def push(cmp: Component) =
+    if (!worklistSet.contains(cmp)) {
       worklistSet += cmp
       worklist += cmp
     }
@@ -87,25 +86,23 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
       // analysis finished properly => commit its changes to the global analysis state
       intra.commit()
     }
-  } 
+  }
   // step until worklist is empty or timeout is reached
   def analyze(timeout: Timeout.T = Timeout.none): Unit =
-    while(!finished() && !timeout.reached) {
+    while (!finished() && !timeout.reached)
       step(timeout)
-    }
 }
 
 /** Provides a work list that prioritises nested calls by call depth to a modular analysis. */
 trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)
   lazy val ordering: Ordering[Component] = Ordering.by(depth)
-  override def spawn(cmp: Component, from: Component): Unit = {
+  override def spawn(cmp: Component, from: Component): Unit =
     if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
       visited += cmp
       depth += cmp -> (depth(from) + 1)
       addToWorkList(cmp)
     }
-  }
 }
 
 trait LeastVisitedFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {

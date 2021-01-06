@@ -112,11 +112,10 @@ object SchemeAnalyses {
          with LIFOWorklistAlgorithm[SchemeExp]
          with SchemeConstantPropagationDomain
          with IncrementalGlobalStore[SchemeExp] {
-    val k                                      = 1 // TODO Perhaps make a parameter of the class.
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp)
-      with IncrementalSmallStepIntra
-      with KCFAIntra
-      with IncrementalGlobalStoreIntraAnalysis
+    val k = 1 // TODO Perhaps make a parameter of the class.
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
   class IncrementalSchemeModFCPAnalysisStoreOpt(prg: SchemeExp)
@@ -128,9 +127,9 @@ object SchemeAnalyses {
          with SchemeConstantPropagationDomain
          with IncrementalSchemeModFBigStepSemantics
          with IncrementalReturnValue[SchemeExp] {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp)
-      with IncrementalSchemeModFBigStepIntra
-      with IncrementalReturnValueIntraAnalysis
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis
   }
 
 }

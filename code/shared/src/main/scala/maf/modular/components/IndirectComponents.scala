@@ -23,13 +23,13 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 
   // Keep a mapping from component pointer addresses to actual component data.
   private var count: Address = _ // Next free address.
-  protected var cMap : Map[Address, ComponentData] = _
+  protected var cMap: Map[Address, ComponentData] = _
   protected var cMapR: Map[ComponentData, Address] = _
 
   // Needed due to the initialisation order of Scala.
   protected def init(): Unit = {
     count = 0
-    cMap  = Map()
+    cMap = Map()
     cMapR = Map()
   }
 
@@ -42,7 +42,7 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 
   /** Registers a component at a given address. */
   protected def register(cmp: ComponentData, addr: Address): Unit = {
-    cMap  = cMap  + (addr -> cmp)
+    cMap = cMap + (addr -> cmp)
     cMapR = cMapR + (cmp -> addr)
   }
 
@@ -62,5 +62,3 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
   /** Allows to treat a component pointer as a component. */
   implicit def view(cmp: Component): ComponentData = deref(cmp)
 }
-
-

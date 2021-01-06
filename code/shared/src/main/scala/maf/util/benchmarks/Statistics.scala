@@ -12,12 +12,16 @@ object Statistics {
    * @param median  The median value of measurements.
    * @param stddev  The standard deviation of measurements.
    */
-  case class Stats(min: Double, max: Double, mean: Double, median: Double, stddev: Double) {
-    override def toString: String = {
+  case class Stats(
+      min: Double,
+      max: Double,
+      mean: Double,
+      median: Double,
+      stddev: Double) {
+    override def toString: String =
       s"* Values in [$min,$max]\n" ++
-      s"* Mean: $mean , Median: $median\n" ++
-      s"* Standard deviation: $stddev"
-    }
+        s"* Mean: $mean , Median: $median\n" ++
+        s"* Standard deviation: $stddev"
   }
 
   /** Computes the mean value of a list of measurements. */
@@ -27,18 +31,17 @@ object Statistics {
   def median(l: List[Double]): Double = {
     val s = l.sorted
     val split: Int = s.length / 2
-    if (s.length % 2 == 0) (s(split - 1) + s(split))/2 else s(split)
+    if (s.length % 2 == 0) (s(split - 1) + s(split)) / 2 else s(split)
   }
 
   /** Computes the standard deviation of a list of measurements. */
-  def stddev(l: List[Double]): Double = {
+  def stddev(l: List[Double]): Double =
     if (l.length == 1) 0
     else {
-      val     mea:      Double  = mean(l)
+      val mea: Double = mean(l)
       val sqDiffs: List[Double] = l.map(v => scala.math.pow(v - mea, 2))
-      scala.math.sqrt(sqDiffs.sum/(l.length-1))
+      scala.math.sqrt(sqDiffs.sum / (l.length - 1))
     }
-  }
 
   /** Computes all statistics of a list of measurements and returns an object containing these statistics. */
   def all(l: List[Double]): Stats = Stats(l.min, l.max, mean(l), median(l), stddev(l))
@@ -59,8 +62,7 @@ object Statistics {
    * @param l A list of tuples (weight, value).
    * @return The weighted sum of the input list.
    */
-  def weightedSum(l: List[(Double, Double)]): Double = {
+  def weightedSum(l: List[(Double, Double)]): Double =
     l.foldLeft(0.0)((acc, t) => acc + t._1 * t._2)
-  }
 
 }

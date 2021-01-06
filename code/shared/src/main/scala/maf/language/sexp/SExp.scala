@@ -3,9 +3,7 @@ package maf.language.sexp
 import maf.core._
 import maf.language.scheme._
 
-/**
-  * S-expressions and related values
-  */
+/** S-expressions and related values */
 sealed abstract class Value
 case class ValueString(value: String) extends Value {
   override def toString: String = s""""$value""""
@@ -17,7 +15,7 @@ case class ValueInteger(value: Int) extends Value {
   override def toString: String = value.toString
 }
 case class ValueReal(value: Double) extends Value {
-  override def toString: String = f"$value%e".replace(",",".") // Might not preserve full precision, but will be in a Scheme-compatible format
+  override def toString: String = f"$value%e".replace(",", ".") // Might not preserve full precision, but will be in a Scheme-compatible format
 }
 case class ValueBoolean(value: Boolean) extends Value {
   override def toString: String = if (value) "#t" else "#f"
@@ -30,24 +28,28 @@ case object ValueNil extends Value {
 }
 
 /**
-  * Abstract grammar elements for S-expressions include some positional
-  * information. This serves two purposes: identify where the s-expression
-  * resides in the input file, and as tagging information for the abstract
-  * machine.
-  */
+ * Abstract grammar elements for S-expressions include some positional
+ * information. This serves two purposes: identify where the s-expression
+ * resides in the input file, and as tagging information for the abstract
+ * machine.
+ */
 trait SExp extends Expression {
   val idn: Identity
   def fv: Set[String] = Set()
 }
 
 /**
-  * An s-expression is made of pairs, e.g., (foo bar) is represented as the pair
-  * with identifier foo as car and another pair -- with identifier bar as car and
-  * value nil as cdr -- as cdr. Pairs are pretty-printed when converted to
-  * string. i.e., (foo bar) is stringified as (foo bar) and not (foo . (bar
-  * . ()))
-  */
-case class SExpPair(car: SExp, cdr: SExp, idn: Identity) extends SExp {
+ * An s-expression is made of pairs, e.g., (foo bar) is represented as the pair
+ * with identifier foo as car and another pair -- with identifier bar as car and
+ * value nil as cdr -- as cdr. Pairs are pretty-printed when converted to
+ * string. i.e., (foo bar) is stringified as (foo bar) and not (foo . (bar
+ * . ()))
+ */
+case class SExpPair(
+    car: SExp,
+    cdr: SExp,
+    idn: Identity)
+    extends SExp {
   override def toString: String = {
     val content = toStringRest
     s"($content)"
@@ -65,11 +67,14 @@ case class SExpPair(car: SExp, cdr: SExp, idn: Identity) extends SExp {
 }
 
 object SExpList {
-  /** Alternative constructor to automatically construct a bunch of pair from a
-    * list of expressions */
+
+  /**
+   * Alternative constructor to automatically construct a bunch of pair from a
+   * list of expressions
+   */
   def apply(content: List[SExp], end: SExp): SExp = fromList(content, end)
   def apply(content: List[SExp], idn: Identity): SExp =
-    fromList(content, SExpValue(ValueNil,idn))
+    fromList(content, SExpValue(ValueNil, idn))
 
   def fromList(content: List[SExp], end: SExp): SExp = content match {
     case Nil          => end
@@ -77,9 +82,7 @@ object SExpList {
   }
 }
 
-/**
-  * An identifier, such as foo, bar, etc.
-  */
+/** An identifier, such as foo, bar, etc. */
 case class SExpId(id: Identifier) extends SExp {
   val idn: Identity = id.idn
   override def toString: String = id.toString
@@ -87,9 +90,7 @@ case class SExpId(id: Identifier) extends SExp {
   def subexpressions: List[Expression] = List(id)
 }
 
-/**
-  * A literal value, such as 1, "foo", 'foo, etc.
-  */
+/** A literal value, such as 1, "foo", 'foo, etc. */
 case class SExpValue(value: Value, idn: Identity) extends SExp {
   override def toString: String = value.toString
   val label: Label = VAL
@@ -97,34 +98,26 @@ case class SExpValue(value: Value, idn: Identity) extends SExp {
   override lazy val hash: Int = (label, value).hashCode()
 }
 
-/**
-  * A quoted element, such as 'foo, '(foo (bar)), etc.
-  */
+/** A quoted element, such as 'foo, '(foo (bar)), etc. */
 object SExpQuoted {
   def apply(content: SExp, idn: Identity): SExp =
-    SExpList(List(SExpId(Identifier("quote",idn)), content), idn)
+    SExpList(List(SExpId(Identifier("quote", idn)), content), idn)
 }
 
-/**
-  * A quasiquoted element, such as `foo
-  */
+/** A quasiquoted element, such as `foo */
 object SExpQuasiquoted {
   def apply(content: SExp, idn: Identity): SExp =
-    SExpList(List(SExpId(Identifier("quasiquote",idn)), content), idn)
+    SExpList(List(SExpId(Identifier("quasiquote", idn)), content), idn)
 }
 
-/**
-  * An unquoted element, such as ,foo
-  */
+/** An unquoted element, such as ,foo */
 object SExpUnquoted {
   def apply(content: SExp, idn: Identity): SExp =
-    SExpList(List(SExpId(Identifier("unquote",idn)), content), idn)
+    SExpList(List(SExpId(Identifier("unquote", idn)), content), idn)
 }
 
-/**
-  * A unquoted-splicing element, such as ,@foo
-  */
+/** A unquoted-splicing element, such as ,@foo */
 object SExpUnquotedSplicing {
   def apply(content: SExp, idn: Identity): SExp =
-    SExpList(List(SExpId(Identifier("unquote-splicing",idn)), content), idn)
+    SExpList(List(SExpId(Identifier("unquote-splicing", idn)), content), idn)
 }

@@ -18,7 +18,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
       case SchemeCodeChange(_, e, _) if version == New =>
         registerComponent(e, component)
         eval(e) // Same than above.
-      case _                                           =>
+      case _ =>
         registerComponent(exp, component)
         super.eval(exp)
     }

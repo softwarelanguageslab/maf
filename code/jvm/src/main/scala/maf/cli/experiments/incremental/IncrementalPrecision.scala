@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 
 trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
 
-  final val eq: String = "Equal"        // Precision of incremental update equals the one of a full reanalysis.
+  final val eq: String = "Equal" // Precision of incremental update equals the one of a full reanalysis.
   final val mp: String = "More precise" // Precision of incremental update is better than the one of a full reanalysis.
   final val lp: String = "Less precise" // Precision of incremental update is lower than the one of a full reanalysis.
 
@@ -39,7 +39,12 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     timeOut.reached // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
   }
 
-  def compareAnalyses(name: String, file: String, inc: Analysis, rean: Analysis): Unit = {
+  def compareAnalyses(
+      name: String,
+      file: String,
+      inc: Analysis,
+      rean: Analysis
+    ): Unit = {
     // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
     val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
     val rStore = rean.store.withDefaultValue(rean.lattice.bottom)
@@ -59,7 +64,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       else {
         System.err.println(s"$a: $incr < $rean") // Soundness error.
         System.err.flush()
-        m += 1                                   // The incremental value is subsumed by the value of the full reanalysis => more precise.
+        m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
       }
     })
     results = results
@@ -72,7 +77,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     print(s"Testing $file ")
     val program = parse(file)
     // Initial analysis: analyse + update.
-    val a1      = analysis(program)
+    val a1 = analysis(program)
 
     // Base case: analysis of new program version.
     val a2 = analysis(program)

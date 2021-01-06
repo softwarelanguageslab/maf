@@ -22,9 +22,9 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
 
   final val al = List(in, u1, u2, re) // Analyses
 
-  final val co: String = "#Components"   // Number of components
-  final val an: String = "#Analyses"     // Number of intra-component analyses
-  final val ad: String = "|Store|"       // Store size
+  final val co: String = "#Components" // Number of components
+  final val an: String = "#Analyses" // Number of intra-component analyses
+  final val ad: String = "|Store|" // Store size
   final val dp: String = "#Dependencies" // Number of dependencies
 
   final val pr = List(ad, co, dp, an) // Properties
@@ -34,7 +34,13 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] {
 
   var results: Table[String] = Table.empty.withDefaultValue(" ")
 
-  def runAnalysis(name: String, file: String, analysis: Analysis, block: Timeout.T => Unit, marker: String): Boolean = {
+  def runAnalysis(
+      name: String,
+      file: String,
+      analysis: Analysis,
+      block: Timeout.T => Unit,
+      marker: String
+    ): Boolean = {
     print(name)
     val timeOut = timeout()
     block(timeOut)

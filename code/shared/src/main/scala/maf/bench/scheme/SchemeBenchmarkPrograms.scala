@@ -36,45 +36,49 @@ object SchemeBenchmarkPrograms {
 
   // SEQUENTIAL ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  lazy val ad: Set[String] = fromFolder("test/R5RS/ad",
+  lazy val ad: Set[String] = fromFolder(
+    "test/R5RS/ad",
     "bfirst.scm", // Unbound identifier: create-graph
     "bst.scm", // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
     "btree.scm", // Lacks a body.
-    "stspaceCODE.scm", // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
+    "stspaceCODE.scm" // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
   )
   lazy val gabriel: Set[String] = fromFolder("test/R5RS/gabriel")
-  lazy val gambit: Set[String] = fromFolder("test/R5RS/gambit",
+  lazy val gambit: Set[String] = fromFolder(
+    "test/R5RS/gambit",
     "cat.scm", // Needs open-input-file.
     "compiler.scm", // Needs open-input-file.
     "ctak.scm", // Needs call-with-current-continuation.
     "fibc.scm", // Needs call-cc.
-    "puzzle.scm",  // Needs call-with-current-continuation.
+    "puzzle.scm", // Needs call-with-current-continuation.
     "scheme.scm", // Error in program BUT CAN BE ANALYSED.
     "slatex.scm", // Needs make-string.
     "string.scm", // Needs substring.
     "tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
     "trav1.scm", // Needs append in the abstract interpreter (not as a preluded primitive)
-    "wc.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
+    "wc.scm" // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
   )
   lazy val icp1: Set[String] = fromFolder("test/R5RS/icp",
-    "icp_1c_ambeval.scm", // Undefined variable read.
-    "icp_4_qeval.scm", // Needs define-syntax and delay.
+                                          "icp_1c_ambeval.scm", // Undefined variable read.
+                                          "icp_4_qeval.scm" // Needs define-syntax and delay.
   )
   lazy val rosetta: Set[String] = fromFolder("test/R5RS/rosetta")
   lazy val scp1: Set[String] = fromFolder("test/R5RS/scp1",
-    "circus.scm", // Vararg append not supported by concrete interpreter.
+                                          "circus.scm" // Vararg append not supported by concrete interpreter.
   )
   lazy val scp1_compressed: Set[String] = fromFolder("test/R5RS/scp1-compressed")
   lazy val scp1_singleFile: Set[String] = Set("test/R5RS/scp1-compressed/all.scm")
   lazy val sigscheme: Set[String] = fromFolder("test/R5RS/sigscheme")
-  lazy val theLittleSchemer: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/the-little-schemer",
+  lazy val theLittleSchemer: Set[String] = fromFolder(
+    "test/R5RS/WeiChenRompf2019/the-little-schemer",
     "ch4.scm", // No main code (only definitions).
     "ch5.scm", // No main code (only definitions).
     "ch7.scm", // No main code (only definitions).
     "ch9.scm", // Unbound identifier: will-stop?
-    "ch10.scm", // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
+    "ch10.scm" // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
   )
-  lazy val toplas98: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/toplas98",
+  lazy val toplas98: Set[String] = fromFolder(
+    "test/R5RS/WeiChenRompf2019/toplas98",
     "dynamic.scm", // Uses call-with-input-file
     "graphs.scm", // Uses open-input-file.
     "handle.scm", // Uses defmacro (not standard r5rs).
@@ -83,38 +87,44 @@ object SchemeBenchmarkPrograms {
     "nbody-processed.scm", // Apply cannot handle this apparently.
     "nucleic.sch", // Uses square brackets.
     "nucleic2.sch", // Uses macros (define-syntax).
-    "splay.scm", // Uses () instead of '(), and #(1 2 3) syntax for vectors
+    "splay.scm" // Uses () instead of '(), and #(1 2 3) syntax for vectors
   )
-  lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019", ".DS_Store",
+  lazy val WCR2019: Set[String] = fromFolder(
+    "test/R5RS/WeiChenRompf2019",
+    ".DS_Store",
     "earley.sch", // Uses read.
     "mbrotZ.sch", // Uses read.
     "meta-circ.scm", // Uses procedure?
-    "solovay-strassen.scm", // Program seems erroneous.
+    "solovay-strassen.scm" // Program seems erroneous.
   )
-  lazy val other: Set[String] = fromFolder("test/R5RS", ".DS_Store",
+  lazy val other: Set[String] = fromFolder(
+    "test/R5RS",
+    ".DS_Store",
     "pico.scm", // Used def-macro, no main body + need to incorporate pico.ini file.
     "quasiquoting.scm", // Uses unquote-splicing.
     "Streams.scm", // Uses define-macro.
-    "callcc.scm", // call/cc not yet support in concrete interpreter
+    "callcc.scm" // call/cc not yet support in concrete interpreter
   )
-  lazy val     WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
-  lazy val sequentialBenchmarks: Set[String] = SmartUnion.sunionList(List(ad, gabriel, gambit, icp1, rosetta, scp1, sigscheme, WeiChenRompf2019, other))
+  lazy val WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
+  lazy val sequentialBenchmarks: Set[String] =
+    SmartUnion.sunionList(List(ad, gabriel, gambit, icp1, rosetta, scp1, sigscheme, WeiChenRompf2019, other))
 
   def selectRandomSeq(n: Int): Set[String] = Random.shuffle(sequentialBenchmarks).take(n)
 
   // CONCURRENT ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  lazy val savina: Set[String] = fromFolder(    "test/concurrentScheme/actors/savina")
+  lazy val savina: Set[String] = fromFolder("test/concurrentScheme/actors/savina")
   lazy val soter: Set[String] = fromFolder("test/concurrentScheme/actors/soter")
   lazy val actors: Set[String] = savina ++ soter ++ fromFolder("test/concurrentScheme/actors")
   lazy val futures: Set[String] = fromFolder("test/concurrentScheme/futures")
-  lazy val futuresVariations: Set[String] = fromFolder(    "test/concurrentScheme/futures/variations")
+  lazy val futuresVariations: Set[String] = fromFolder("test/concurrentScheme/futures/variations")
   lazy val threads: Set[String] = fromFolder("test/concurrentScheme/threads",
-    "abp.scm", // Unbound reference: display-recorded.
-    "lastzero2.scm", // Uses let*, but should use something like letrec*?
+                                             "abp.scm", // Unbound reference: display-recorded.
+                                             "lastzero2.scm" // Uses let*, but should use something like letrec*?
   )
   lazy val threadsVariations: Set[String] = fromFolder("test/concurrentScheme/threads/variations")
-  lazy val concurrentBenchmarks: Set[String] = SmartUnion.sunionList(List(actors, futures, futuresVariations, savina, soter, threads, threadsVariations))
+  lazy val concurrentBenchmarks: Set[String] =
+    SmartUnion.sunionList(List(actors, futures, futuresVariations, savina, soter, threads, threadsVariations))
 
   def selectRandomPar(n: Int): Set[String] = Random.shuffle(concurrentBenchmarks).take(n)
 

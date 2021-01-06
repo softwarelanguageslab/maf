@@ -31,7 +31,7 @@ object WebVisualisation {
   // some JS helpers
   implicit def toJsArray[E](seq: Iterable[E]): JsArray[E] = {
     val array = new js.Array[E]()
-    seq.foreach { item => array.push(item) }
+    seq.foreach(item => array.push(item))
     return array
   }
   // more helpers
@@ -39,7 +39,7 @@ object WebVisualisation {
     val r = (scala.math.random() * 255).toInt
     val g = (scala.math.random() * 255).toInt
     val b = (scala.math.random() * 255).toInt
-    d3.rgb(r,g,b)
+    d3.rgb(r, g, b)
   }
 }
 
@@ -76,7 +76,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   var edgesData: Set[Edge] = Set()
   // TODO: use weak maps here to prevent memory leaks?
   var nodesColl: Map[analysis.Component, Node] = Map()
-  var edgesColl: Map[(Node, Node), Edge]       = Map()
+  var edgesColl: Map[(Node, Node), Edge] = Map()
   def getNode(cmp: analysis.Component): Node = nodesColl.get(cmp) match {
     case None =>
       val newNode = new Node(cmp)
@@ -84,10 +84,10 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
       newNode
     case Some(existingNode) => existingNode
   }
-  def getEdge(source: Node, target: Node): Edge = edgesColl.get((source,target)) match {
+  def getEdge(source: Node, target: Node): Edge = edgesColl.get((source, target)) match {
     case None =>
       val newEdge = new Edge(source, target)
-      edgesColl += ((source,target) -> newEdge)
+      edgesColl += ((source, target) -> newEdge)
       newEdge
     case Some(existingEdge) => existingEdge
   }
@@ -96,17 +96,21 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   // VISUALISATION SETUP
   //
 
-  var nodes, edges: JsAny   = _                    // will be used to keep selections of nodes/edges in the visualisation
-  val simulation: JsAny     = d3.forceSimulation() // create a d3 force simulation
+  var nodes, edges: JsAny = _ // will be used to keep selections of nodes/edges in the visualisation
+  val simulation: JsAny = d3.forceSimulation() // create a d3 force simulation
 
-  def init(parent: dom.Node, width: Int, height: Int): Unit = {
+  def init(
+      parent: dom.Node,
+      width: Int,
+      height: Int
+    ): Unit = {
     d3.select(parent).selectAll("svg").remove() // Ensures the new analysis is shown an interacted with when a new file is loaded.
     // setup the svg
-    val svg = d3.select(parent).append("svg").attr("width",width).attr("height",height)
+    val svg = d3.select(parent).append("svg").attr("width", width).attr("height", height)
     val outerContainer = svg.append("g")
-    val innerContainer = outerContainer.append("g").attr("transform",s"translate(${width/2},${height/2})")
-    val nodesContainer = innerContainer.append("g").attr("class","nodes")
-    val edgesContainer = innerContainer.append("g").attr("class","links")
+    val innerContainer = outerContainer.append("g").attr("transform", s"translate(${width / 2},${height / 2})")
+    val nodesContainer = innerContainer.append("g").attr("class", "nodes")
+    val edgesContainer = innerContainer.append("g").attr("class", "links")
     nodes = nodesContainer.selectAll("g")
     edges = edgesContainer.selectAll("path")
     setupMarker(svg)
@@ -115,62 +119,69 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     // setup the key handler
     d3.select(document.body).on("keypress", () => keyHandler(d3.event.key.asInstanceOf[String]))
     // setup a fancy zoom effect
-    svg.call(d3.zoom().on("zoom", () => outerContainer.attr("transform",d3.event.transform)))
+    svg.call(d3.zoom().on("zoom", () => outerContainer.attr("transform", d3.event.transform)))
     // setup the simulation
-    simulation.force(__FORCE_COLLIDE__, d3.forceCollide().radius(__CIRCLE_RADIUS__))
-              .force(__FORCE_CHARGE__, d3.forceManyBody().strength(-500))
-              .force(__FORCE_LINKS__, d3.forceLink().distance(150))
-              .force(__FORCE_CENTER__, d3.forceCenter())
-              .on("tick", () => onTick())
+    simulation
+      .force(__FORCE_COLLIDE__, d3.forceCollide().radius(__CIRCLE_RADIUS__))
+      .force(__FORCE_CHARGE__, d3.forceManyBody().strength(-500))
+      .force(__FORCE_LINKS__, d3.forceLink().distance(150))
+      .force(__FORCE_CENTER__, d3.forceCenter())
+      .on("tick", () => onTick())
     // reload the data and visualisation
     refresh()
   }
 
   def setupMarker(svg: JsAny) = {
     // adapted from http://bl.ocks.org/fancellu/2c782394602a93921faff74e594d1bb1
-    val marker = svg.append("defs").append("marker")
-                                    .attr("id",__SVG_ARROW_ID__)
-                                    .attr("viewBox","-0 -5 10 10")
-                                    .attr("refX",0)
-                                    .attr("refY",0)
-                                    .attr("orient","auto")
-                                    .attr("markerWidth",5)
-                                    .attr("markerHeight",5)
-    marker.append("svg:path")
-          .attr("d", "M 0,-5 L 10 ,0 L 0,5")
-          //.attr("fill", "#999")
-          //.style("stroke","none")
+    val marker = svg
+      .append("defs")
+      .append("marker")
+      .attr("id", __SVG_ARROW_ID__)
+      .attr("viewBox", "-0 -5 10 10")
+      .attr("refX", 0)
+      .attr("refY", 0)
+      .attr("orient", "auto")
+      .attr("markerWidth", 5)
+      .attr("markerHeight", 5)
+    marker
+      .append("svg:path")
+      .attr("d", "M 0,-5 L 10 ,0 L 0,5")
+    //.attr("fill", "#999")
+    //.style("stroke","none")
   }
 
   private def onTick() = {
     // update the nodes
     nodes.attr("transform", (node: JsAny) => s"translate(${node.x},${node.y})")
     // update the edges
-    edges.attr("d",(edge: JsAny) =>
-      if (edge.source == edge.target) {
-        val cx = edge.source.x.asInstanceOf[Double]
-        val cy = edge.source.y.asInstanceOf[Double]
-        val x1 = cx - __CIRCLE_RADIUS__
-        val y1 = cy
-        val x2 = cx - 9
-        val y2 = cy - __CIRCLE_RADIUS__ - 8
-        s"M$x1 $y1 A ${__CIRCLE_RADIUS__} ${__CIRCLE_RADIUS__} 1 1 1 $x2 $y2"
-      } else {
-        val sourceX = edge.source.x.asInstanceOf[Double]
-        val sourceY = edge.source.y.asInstanceOf[Double]
-        val targetX = edge.target.x.asInstanceOf[Double]
-        val targetY = edge.target.y.asInstanceOf[Double]
-        val deltaX = targetX - sourceX
-        val deltaY = targetY - sourceY
-        val dist = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY))
-        val scaleFactorSource = __CIRCLE_RADIUS__ / dist
-        val scaleFactorTarget = (__CIRCLE_RADIUS__ + 10) / dist
-        val x1 = sourceX + (deltaX * scaleFactorSource)
-        val x2 = targetX - (deltaX * scaleFactorTarget)
-        val y1 = sourceY + (deltaY * scaleFactorSource)
-        val y2 = targetY - (deltaY * scaleFactorTarget)
-        s"M$x1 $y1 L$x2 $y2"
-    })
+    edges.attr(
+      "d",
+      (edge: JsAny) =>
+        if (edge.source == edge.target) {
+          val cx = edge.source.x.asInstanceOf[Double]
+          val cy = edge.source.y.asInstanceOf[Double]
+          val x1 = cx - __CIRCLE_RADIUS__
+          val y1 = cy
+          val x2 = cx - 9
+          val y2 = cy - __CIRCLE_RADIUS__ - 8
+          s"M$x1 $y1 A ${__CIRCLE_RADIUS__} ${__CIRCLE_RADIUS__} 1 1 1 $x2 $y2"
+        } else {
+          val sourceX = edge.source.x.asInstanceOf[Double]
+          val sourceY = edge.source.y.asInstanceOf[Double]
+          val targetX = edge.target.x.asInstanceOf[Double]
+          val targetY = edge.target.y.asInstanceOf[Double]
+          val deltaX = targetX - sourceX
+          val deltaY = targetY - sourceY
+          val dist = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY))
+          val scaleFactorSource = __CIRCLE_RADIUS__ / dist
+          val scaleFactorTarget = (__CIRCLE_RADIUS__ + 10) / dist
+          val x1 = sourceX + (deltaX * scaleFactorSource)
+          val x2 = targetX - (deltaX * scaleFactorTarget)
+          val y1 = sourceY + (deltaY * scaleFactorSource)
+          val y2 = targetY - (deltaY * scaleFactorTarget)
+          s"M$x1 $y1 L$x2 $y2"
+        }
+    )
   }
 
   //
@@ -196,11 +207,11 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     edgesData = Set.empty[Edge]
     nodesData.foreach { sourceNode =>
       val targets = analysis.dependencies(sourceNode.component)
-      targets.foreach(target => {
+      targets.foreach { target =>
         val targetNode = getNode(target)
-        val edge = getEdge(sourceNode,targetNode)
+        val edge = getEdge(sourceNode, targetNode)
         edgesData += edge
-      })
+      }
     }
   }
 
@@ -211,13 +222,13 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
     // remove old edges
     oldDeps.foreach { otherCmp =>
       val targetNode = getNode(otherCmp)
-      val edge = getEdge(sourceNode,targetNode)
+      val edge = getEdge(sourceNode, targetNode)
       edgesData -= edge
     }
     // add the new edges
     analysis.dependencies(cmp).foreach { otherCmp =>
       val targetNode = getNode(otherCmp)
-      val edge = getEdge(sourceNode,targetNode)
+      val edge = getEdge(sourceNode, targetNode)
       nodesData += targetNode
       edgesData += edge
     }
@@ -227,20 +238,25 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   def refreshVisualisation(): Unit = {
     // update the nodes
     val nodesUpdate = nodes.data(nodesData, (n: Node) => n.component)
-    val newGroup = nodesUpdate.enter().append("g")
-                                      .call(dragEffect)
-    newGroup.append("circle")
-            .attr("r",__CIRCLE_RADIUS__)
-    newGroup.append("text")
-            .attr("dx",__CIRCLE_RADIUS__)
-            .attr("dy",__CIRCLE_RADIUS__)
+    val newGroup = nodesUpdate
+      .enter()
+      .append("g")
+      .call(dragEffect)
+    newGroup
+      .append("circle")
+      .attr("r", __CIRCLE_RADIUS__)
+    newGroup
+      .append("text")
+      .attr("dx", __CIRCLE_RADIUS__)
+      .attr("dy", __CIRCLE_RADIUS__)
     nodes = newGroup.merge(nodesUpdate)
-    nodes.select("text")
-         .text((node: Node) => displayText(node.component))
+    nodes
+      .select("text")
+      .text((node: Node) => displayText(node.component))
     nodesUpdate.exit().remove()
     classifyNodes()
     // update the edges
-    val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.component,e.target.component))
+    val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.component, e.target.component))
     edges = edgesUpdate.enter().append("path").merge(edgesUpdate)
     classifyEdges()
     edgesUpdate.exit().remove()
@@ -251,12 +267,12 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   }
 
   /** Classifies every node based on its role in the analysis, so the node can be coloured correctly. */
-  def classifyNodes(): Unit = {
-    nodes.classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.workList.toSet.contains(node.component))
+  def classifyNodes(): Unit =
+    nodes
+      .classed(__CSS_IN_WORKLIST__, (node: Node) => analysis.workList.toSet.contains(node.component))
       .classed(__CSS_NOT_VISITED__, (node: Node) => !analysis.visited.contains(node.component))
       .classed(__CSS_NEXT_COMPONENT__, (node: Node) => analysis.workList.toList.headOption.contains(node.component))
-    //.style("fill", (node: Node) => colorFor(node.component))
-  }
+  //.style("fill", (node: Node) => colorFor(node.component))
 
   /** Classifies every edge based on its role in the analysis, so the edge can be coloured correctly. */
   def classifyEdges(): Unit = ()
@@ -265,13 +281,13 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   // INPUT HANDLING
   //
 
-  def keyHandler: PartialFunction[String,Unit] = {
-    case "e" | "E" => runAnalysis(Timeout.none) // Run to end.
+  def keyHandler: PartialFunction[String, Unit] = {
+    case "e" | "E"       => runAnalysis(Timeout.none) // Run to end.
     case "n" | "N" | " " => stepAnalysis() // Next step.
-    case "r" => runAnalysis(Timeout.start(Duration(5, SECONDS))) // Run 5 seconds.
-    case "R" => runAnalysis(Timeout.start(Duration(10, SECONDS))) // Run 10 seconds.
-    case "s" => stepMultiple(10)
-    case "S" => stepMultiple(25)
+    case "r"             => runAnalysis(Timeout.start(Duration(5, SECONDS))) // Run 5 seconds.
+    case "R"             => runAnalysis(Timeout.start(Duration(10, SECONDS))) // Run 10 seconds.
+    case "s"             => stepMultiple(10)
+    case "S"             => stepMultiple(25)
   }
 
   def onClick(): Unit = stepAnalysis()
@@ -289,7 +305,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
 
   protected def stepMultiple(n: Int): Unit = {
     breakable {
-      for (i <- 1 to n) {
+      for (i <- 1 to n)
         if (!analysis.finished()) {
           val component = analysis.workList.head
           val oldDeps = analysis.dependencies(component)
@@ -299,14 +315,13 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
           println("The analysis has already terminated.")
           break()
         }
-      }
     }
     refreshVisualisation() // Only refresh the visualisation once.
   }
 
   // TODO: Even when the visualisation is refreshed more, it seems that it becomes only visible afterwards.
   //       It would be nice to see it grow, though this might slow down the lot.
-  protected def runAnalysis(timeout: Timeout.T): Unit = {
+  protected def runAnalysis(timeout: Timeout.T): Unit =
     if (analysis.finished()) {
       println("The analysis has already terminated.")
     } else {
@@ -318,20 +333,21 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
       }
       refreshVisualisation()
     }
-  }
 
   //
   // DRAGGING
   //
 
   // create a fancy drag effect
-  val dragEffect = d3.drag().on("start", (node: JsAny) => onDragStart(node))
-                            .on("drag", (node: JsAny) => onDragDrag(node))
-                            .on("end", (node: JsAny) => onDragEnd(node))
+  val dragEffect = d3
+    .drag()
+    .on("start", (node: JsAny) => onDragStart(node))
+    .on("drag", (node: JsAny) => onDragDrag(node))
+    .on("end", (node: JsAny) => onDragEnd(node))
 
   private def onDragStart(node: JsAny): Unit = {
     val isActive = d3.event.active.asInstanceOf[Int]
-    if(isActive == 0) simulation.alphaTarget(0.3).restart()
+    if (isActive == 0) simulation.alphaTarget(0.3).restart()
     node.fx = node.x
     node.fy = node.y
   }
@@ -341,7 +357,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   }
   private def onDragEnd(node: JsAny): Unit = {
     val isActive = d3.event.active.asInstanceOf[Int]
-    if(isActive == 0) simulation.alphaTarget(0)
+    if (isActive == 0) simulation.alphaTarget(0)
     node.fx = null
     node.fy = null
   }

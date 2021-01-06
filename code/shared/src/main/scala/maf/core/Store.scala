@@ -10,6 +10,7 @@ trait Store[A <: Address, V] extends SmartHash {
 
   /** Looks up a value in the store */
   def lookup(a: A): Option[V]
+
   /** Add a new entry in the store */
   def extend(a: A, v: V): Store[A, V]
 
@@ -28,6 +29,7 @@ trait Store[A <: Address, V] extends SmartHash {
 
   /** Update an entry in the store */
   def update(a: A, v: V): Store[A, V] = extend(a, v)
+
   /** Tries to update an address if it's already mapped into the store. Otherwise, extend the store */
   def updateOrExtend(a: A, v: V): Store[A, V] = extend(a, v)
 }

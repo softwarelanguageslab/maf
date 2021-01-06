@@ -27,7 +27,7 @@ object WebVisualisationIncremental {
 }
 
 class WebVisualisationIncremental[Expr <: Expression](override val analysis: VisualisableIncrementalModAnalysis[Expr])
-  extends WebVisualisation(analysis) {
+    extends WebVisualisation(analysis) {
 
   def deletedComponent(cmp: analysis.Component): Boolean = !analysis.visited.contains(cmp) && !analysis.workList.contains(cmp)
 
@@ -39,11 +39,18 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Vis
 
   override def classifyEdges(): Unit = {
     super.classifyEdges()
-    edges.classed(__CSS_DELETED_EDGE__, (edge: Edge) =>
-      deletedComponent(edge.source.component)
-        || deletedComponent(edge.target.component)
-        || (!analysis.cachedSpawns(edge.source.component).contains(edge.target.component)) // The edge has been deleted. We cannot use dependencies from the DependencyTracking trait as currently this map only grows monotonically.
-              && !(edge.source.component == edge.target.component && analysis.recursive.contains(edge.source.component))) // Check that it is not a currently existing self-edge.
+    edges.classed(
+      __CSS_DELETED_EDGE__,
+      (edge: Edge) =>
+        deletedComponent(edge.source.component)
+          || deletedComponent(edge.target.component)
+          || (!analysis
+            .cachedSpawns(edge.source.component)
+            .contains(
+              edge.target.component
+            )) // The edge has been deleted. We cannot use dependencies from the DependencyTracking trait as currently this map only grows monotonically.
+          && !(edge.source.component == edge.target.component && analysis.recursive.contains(edge.source.component))
+    ) // Check that it is not a currently existing self-edge.
   }
 
   /**
@@ -60,11 +67,11 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Vis
     // Add all edges currently in the analysis.
     nodesData.foreach { sourceNode =>
       val targets = analysis.dependencies(sourceNode.component)
-      targets.foreach(target => {
+      targets.foreach { target =>
         val targetNode = getNode(target)
-        val edge = getEdge(sourceNode,targetNode)
+        val edge = getEdge(sourceNode, targetNode)
         edgesData += edge
-      })
+      }
     }
   }
 
@@ -73,7 +80,7 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Vis
     // Add new edges.
     analysis.dependencies(cmp).foreach { otherCmp =>
       val targetNode = getNode(otherCmp)
-      val edge = getEdge(sourceNode,targetNode)
+      val edge = getEdge(sourceNode, targetNode)
       nodesData += targetNode
       edgesData += edge
     }
@@ -81,16 +88,18 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Vis
 
   override def setupMarker(svg: JsAny): js.Dynamic = {
     super.setupMarker(svg)
-    val marker = svg.select("defs").append("marker")
-                                   .attr("id",__SVG_DELETED_ARROW__)
-                                   .attr("viewBox","-0 -5 10 10")
-                                   .attr("refX",0)
-                                   .attr("refY",0)
-                                   .attr("orient","auto")
-                                   .attr("markerWidth",5)
-                                   .attr("markerHeight",5)
-                                   .attr("fill","darkgray")
-                                   .attr("stroke","darkgray")
+    val marker = svg
+      .select("defs")
+      .append("marker")
+      .attr("id", __SVG_DELETED_ARROW__)
+      .attr("viewBox", "-0 -5 10 10")
+      .attr("refX", 0)
+      .attr("refY", 0)
+      .attr("orient", "auto")
+      .attr("markerWidth", 5)
+      .attr("markerHeight", 5)
+      .attr("fill", "darkgray")
+      .attr("stroke", "darkgray")
     marker.append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5")
   }
 

@@ -8,10 +8,11 @@ import maf.util._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
-abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends ModAnalysis(program) 
-                                                                        with IndirectComponents[Expr]
-                                                                        with SequentialWorklistAlgorithm[Expr]
-                                                                        with DependencyTracking[Expr] {
+abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
+    extends ModAnalysis(program)
+       with IndirectComponents[Expr]
+       with SequentialWorklistAlgorithm[Expr]
+       with DependencyTracking[Expr] {
 
   import maf.modular.components.IndirectComponents._
 
@@ -28,7 +29,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   // .. and that when this happens, one needs to call `updateAnalysis`
   def updateAnalysis(): Unit = {
     // update the indirection maps and calculate the "new component pointer" for every "old component pointer"
-    val current = this.cMap.map({ case (addr, _) => (addr,addr) }).toMap
+    val current = this.cMap.map({ case (addr, _) => (addr, addr) }).toMap
     val (updated, moved) = updateComponentMapping(this.cMapR, adaptComponent, current)
     this.cMap = updated.map(_.swap)
     this.cMapR = updated
@@ -37,16 +38,18 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   }
 
   @scala.annotation.tailrec
-  private def updateComponentMapping(current: Map[ComponentData,Address],
-                                     update: ComponentData => ComponentData,
-                                     moved: Map[Address,Address]): (Map[ComponentData,Address], Map[Address,Address]) = {
-    var mapping = Map[Address,Address]()
-    var updated = Map[ComponentData,Address]()
+  private def updateComponentMapping(
+      current: Map[ComponentData, Address],
+      update: ComponentData => ComponentData,
+      moved: Map[Address, Address]
+    ): (Map[ComponentData, Address], Map[Address, Address]) = {
+    var mapping = Map[Address, Address]()
+    var updated = Map[ComponentData, Address]()
     current.foreach { case (oldCmp, oldAddr) =>
       val newCmp = update(oldCmp)
       updated.get(newCmp) match {
-        case None           => updated += (newCmp -> oldAddr)
-        case Some(newAddr)  => mapping += (oldAddr -> newAddr)
+        case None          => updated += (newCmp -> oldAddr)
+        case Some(newAddr) => mapping += (oldAddr -> newAddr)
       }
     }
     if (mapping.isEmpty) {
@@ -60,11 +63,11 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
 
   // ... which in turn calls `updateAnalysisData` to update the component pointers
   def updateAnalysisData(update: Component => Component) = {
-    workList        = workList.map(update)
-    visited         = updateSet(update)(visited)
-    newComponents   = updateSet(update)(newComponents)
-    dependencies    = updateMap(update,updateSet(update))(dependencies)
-    deps            = updateMap(updateDep(update),updateSet(update))(deps)
+    workList = workList.map(update)
+    visited = updateSet(update)(visited)
+    newComponents = updateSet(update)(newComponents)
+    dependencies = updateMap(update, updateSet(update))(dependencies)
+    deps = updateMap(updateDep(update), updateSet(update))(deps)
   }
   // the analysis' data structures need to be updated after adaptation, as some components may now be equal
   // the following methods need to be implemented by a subclass, since they depend on the representation of 'ComponentData' and 'Dependency'
@@ -72,11 +75,11 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr) extends Mo
   def updateDep(update: Component => Component)(dep: Dependency): Dependency = dep
   // the following methods are convenience methods to update standard compound data structures
   def updateSet[V](update: V => V)(set: Set[V]): Set[V] = set.map(update)
-  def updateMap[K,V](update: V => V)(map: Map[K,V]): Map[K,V] = map.view.mapValues(update).toMap
-  def updateMap[K, V : Monoid](updateK: K => K, updateV: V => V)(map: Map[K,V]): Map[K,V] =
-    map.foldLeft(Map[K,V]().withDefaultValue(Monoid[V].zero)) { case (acc,(key,vlu)) =>
+  def updateMap[K, V](update: V => V)(map: Map[K, V]): Map[K, V] = map.view.mapValues(update).toMap
+  def updateMap[K, V: Monoid](updateK: K => K, updateV: V => V)(map: Map[K, V]): Map[K, V] =
+    map.foldLeft(Map[K, V]().withDefaultValue(Monoid[V].zero)) { case (acc, (key, vlu)) =>
       val keyAbs = updateK(key)
-      acc + (keyAbs -> Monoid[V].append(acc(keyAbs),updateV(vlu)))
+      acc + (keyAbs -> Monoid[V].append(acc(keyAbs), updateV(vlu)))
     }
-  def updatePair[P,Q](updateA: P => P, updateB: Q => Q)(p: (P,Q)): (P,Q) = (updateA(p._1),updateB(p._2))
+  def updatePair[P, Q](updateA: P => P, updateB: Q => Q)(p: (P, Q)): (P, Q) = (updateA(p._1), updateB(p._2))
 }
