@@ -20,7 +20,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
   final val inc2S: String = "inc2" // Another incremental update (same changes, different analysis).
   final val reanS: String = "rean" // Full reanalysis.
 
-  val columns = List(initS, inc1S, inc1S, reanS)
+  val columns = List(initS, inc1S, inc2S, reanS)
 
   final val inf: String = "∞"
   final val err: String = "E"
