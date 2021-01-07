@@ -2,7 +2,6 @@ package maf.language.scheme.lattices
 
 import maf.core._
 import maf.language.CScheme.TID
-import maf.language.scheme.lattices.SchemeOps._
 import maf.language.scheme.primitives._
 import maf.language.scheme._
 import maf.lattice.interfaces.BoolLattice
@@ -48,9 +47,10 @@ class TypeSchemeLattice[A <: Address, K] {
     def show(x: L): String = s"$x"
     def isTrue(x: L): Boolean = true // only "false" is not true, but we only have Bool represented
     def isFalse(x: L): Boolean = x.bool
-    def unaryOp(op: UnaryOperator)(x: L): MayFail[L, Error] = {
-      import UnaryOperator._
-      if (x.isBottom) { MayFail.success(x) }
+    def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] = {
+      import SchemeOp._
+      op.checkArity(args)
+      if (args.exists(_.isBottom)) { MayFail.success(bottom) }
       else {
         op match {
           case IsNull | IsCons | IsPointer | IsChar | IsSymbol | IsInteger | IsString | IsReal | IsBoolean | IsVector | Not =>
@@ -58,51 +58,43 @@ class TypeSchemeLattice[A <: Address, K] {
             MayFail.success(Inject.bool)
           case Ceiling | Floor | Round | Log | Random | Sin | Cos | ACos | Tan | ATan | Sqrt | ExactToInexact | InexactToExact =>
             // Num -> Num
-            check(x.num, Inject.num)(op.toString, List(x))
+            check(args(0).num, Inject.num)(op.toString, args)
           case VectorLength =>
             // Vector -> Num
             ???
           case StringLength =>
             // String -> Num
-            check(x.str, Inject.str)(op.toString, List(x))
+            check(args(0).str, Inject.str)(op.toString, args)
           case NumberToString =>
             // Number -> String
-            check(x.num, Inject.str)(op.toString, List(x))
+            check(args(0).num, Inject.str)(op.toString, args)
           case SymbolToString =>
             // Symbol -> String
-            check(x.sym, Inject.str)(op.toString, List(x))
+            check(args(0).sym, Inject.str)(op.toString, args)
           case StringToSymbol =>
             // String -> Symbol
-            check(x.str, Inject.sym)(op.toString, List(x))
+            check(args(0).str, Inject.sym)(op.toString, args)
           case CharacterToInteger =>
             // Char -> Num
-            check(x.char, Inject.num)(op.toString, List(x))
-        }
-      }
-    }
-    def binaryOp(op: BinaryOperator)(x: L, y: L): MayFail[L, Error] = {
-      import BinaryOperator._
-      if (x.isBottom || y.isBottom) { MayFail.success(Inject.bottom) }
-      else {
-        op match {
+            check(args(0).char, Inject.num)(op.toString, args)
           case Plus | Minus | Times | Quotient | Div | Expt | Modulo | Remainder =>
             // Num -> Num -> Num
-            check(x.num && y.num, Inject.num)(op.toString, List(x, y))
+            check(args(0).num && args(1).num, Inject.num)(op.toString, args)
           case Lt | NumEq =>
             // Num -> Num -> Bool
-            check(x.num && y.num, Inject.num)(op.toString, List(x, y))
+            check(args(0).num && args(1).num, Inject.num)(op.toString, args)
           case Eq =>
             // Any -> Any -> Bool
             MayFail.success(Inject.bool)
           case StringAppend =>
             // Str -> Str -> Str
-            check(x.str && y.str, Inject.str)(op.toString, List(x, y))
+            check(args(0).str && args(1).str, Inject.str)(op.toString, args)
           case StringRef =>
             // Str -> Num -> Char
-            check(x.str && y.num, Inject.char)(op.toString, List(x, y))
+            check(args(0).str && args(1).num, Inject.char)(op.toString, args)
           case StringLt =>
             // Str -> Str -> Bool
-            check(x.str && y.str, Inject.bool)(op.toString, List(x, y))
+            check(args(0).str && args(1).str, Inject.bool)(op.toString, args)
         }
       }
     }

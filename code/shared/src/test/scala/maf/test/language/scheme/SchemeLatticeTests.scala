@@ -13,8 +13,6 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
   val schemeLaws = newProperties("Scheme") { p =>
     implicit val arb = gen.anyArb
     implicit val shr = gen.shrink
-    implicit val auo = gen.arbUnop
-    implicit val abo = gen.arbBinop
     import schemeLattice._
     /* */
     def convert(mf: MayFail[L, Error]): L = mf match {
@@ -23,7 +21,10 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
       case MayFailError(_)   => bottom
     }
     /* Unary operators preserve bottom */
-    p.property("∀ unop: unop(⊥) = ⊥") = forAll((unop: SchemeOps.UnaryOperator) => convert(unaryOp(unop)(bottom)) == bottom)
+    p.property("∀ unop: unop(⊥) = ⊥") = {
+      implicit val auo = gen.arbUnop
+      forAll((unop: SchemeOp) => convert(op(unop)(List(bottom))) == bottom)
+    }
     /* Unary operators are monotone */
     /* TODO: fails because of NaN
         p.property("∀ unop, a, b: a ⊑ b ⇒ unop(a) ⊑ unop(b)") = forAll { (unop: SchemeOps.UnaryOperator, b: L) =>
@@ -38,10 +39,12 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
         }
      */
     /* Binary operators preverse bottom */
-    p.property("∀ binop, a: binop(⊥,a) = ⊥ = binop(a,⊥)") = forAll((binop: SchemeOps.BinaryOperator, a: L) =>
-      convert(binaryOp(binop)(bottom, a)) == bottom &&
-        convert(binaryOp(binop)(a, bottom)) == bottom
-    )
+    p.property("∀ binop, a: binop(⊥,a) = ⊥ = binop(a,⊥)") = {
+      implicit val abo = gen.arbBinop
+      forAll((binop: SchemeOp, a: L) =>
+        convert(op(binop)(List(bottom, a))) == bottom &&
+          convert(op(binop)(List(a, bottom))) == bottom)
+    }
     /* Properties about vectors */
     p.property("∀ vct, idx1, val1, idx2, val2: vectorSet(vectorSet(vct,idx1,val1),idx2,val2) = vectorSet(vectorSet(vct,idx2,val2),idx1,val1)") =
       forAll(gen.anyVec, gen.anyInt, gen.any, gen.anyInt, gen.any) { (vct: L, idx1: L, val1: L, idx2: L, val2: L) =>

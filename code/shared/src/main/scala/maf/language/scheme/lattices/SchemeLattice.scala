@@ -16,11 +16,8 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Can this value be considered false for conditionals? */
   def isFalse(x: L): Boolean
 
-  /** Performs a unary operation on the abstract value x */
-  def unaryOp(op: SchemeOps.UnaryOperator)(x: L): MayFail[L, Error]
-
-  /** Performs a binary operation on abstract values x and y */
-  def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): MayFail[L, Error]
+  /** Performs an SchemeOp on the abstract values */
+  def op(op: SchemeOp)(args: List[L]): MayFail[L, Error]
 
   /** Conjunction */
   def and(x: L, y: => L): L = (isTrue(x), isFalse(x)) match {
@@ -84,10 +81,13 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Injection of a symbol */
   def symbol(x: String): L
 
-  /** Injection of a cons cell */
+  /** Injection of a cons cell. */
   def cons(car: L, cdr: L): L
 
-  /** Extract the car of a cons-cell */
+  /**
+   * Extract the car of a cons-cell
+   *    TODO: any function that has a signature like L* -> MayFail[L, Error] should become a SchemeOp
+   */
   def car(x: L): MayFail[L, Error]
 
   /** Extract the cdr of a cons-cell */
