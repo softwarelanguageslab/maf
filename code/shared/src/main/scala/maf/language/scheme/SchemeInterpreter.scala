@@ -1409,20 +1409,20 @@ object SchemeInterpreter {
     case class RetAddr(exp: SchemeExp) extends AddrInfo
   }
   object Value {
-    case class Undefined(idn: Identity) extends Value { override def toString: String = "<#undef>" } /* arises from undefined behavior */
-    case class Unbound(id: Identifier) extends Value { override def toString: String = "<#unbound>" } /* only used for letrec */
+    case class Undefined(idn: Identity) extends Value { override def toString: String = "#<undef>" } /* arises from undefined behavior */
+    case class Unbound(id: Identifier) extends Value { override def toString: String = "#<unbound>" } /* only used for letrec */
     case class Clo(
         lambda: SchemeLambdaExp,
         env: Env,
         name: Option[String] = None)
-        extends Value { override def toString: String = name.map(n => s"#$n ${lambda.idn.pos}").getOrElse(s"<#clo ${lambda.idn.pos}>") }
-    case class Primitive(p: Prim) extends Value { override def toString: String = s"<#prim ${p.name}>" }
+        extends Value { override def toString: String = name.map(n => s"#<procedure:$n>").getOrElse(s"#<procedure:${lambda.idn.pos}>") }
+    case class Primitive(p: Prim) extends Value { override def toString: String = s"#<primitive:${p.name}>" }
     case class Str(str: String) extends Value { override def toString: String = str }
     case class Symbol(sym: String) extends Value { override def toString: String = s"'$sym" }
     case class Integer(n: Int) extends Value { override def toString: String = n.toString }
     case class Real(r: Double) extends Value { override def toString: String = r.toString }
     case class Bool(b: Boolean) extends Value { override def toString: String = if (b) "#t" else "#f" }
-    case class Pointer(v: Addr) extends Value { override def toString: String = s"<#ptr $v>" }
+    case class Pointer(v: Addr) extends Value { override def toString: String = s"#<ptr $v>" }
     case class Character(c: Char) extends Value {
       override def toString: String = c match {
         case ' '  => "#\\space"
@@ -1431,14 +1431,14 @@ object SchemeInterpreter {
       }
     }
     case object Nil extends Value { override def toString: String = "'()" }
-    case class Cons(car: Value, cdr: Value) extends Value { override def toString: String = s"<#cons $car $cdr>" }
+    case class Cons(car: Value, cdr: Value) extends Value { override def toString: String = s"#<cons $car $cdr>" }
     case class Vector(
         size: Int,
         elems: Map[Int, Value],
         init: Value)
-        extends Value { override def toString: String = s"<#vector[$size]>" }
-    case class Thread(fut: Future[Value]) extends Value { override def toString: String = s"<thread>" }
-    case class Lock(l: java.util.concurrent.locks.Lock) extends Value { override def toString: String = "<Lock>" }
+        extends Value { override def toString: String = s"#<vector[size:$size]>" }
+    case class Thread(fut: Future[Value]) extends Value { override def toString: String = s"#<thread>" }
+    case class Lock(l: java.util.concurrent.locks.Lock) extends Value { override def toString: String = "#<lock>" }
     case object Void extends Value { override def toString: String = "<void>" }
   }
 
