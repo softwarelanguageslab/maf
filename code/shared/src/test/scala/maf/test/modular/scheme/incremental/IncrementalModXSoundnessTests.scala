@@ -125,13 +125,3 @@ class IncrementalModFCP extends IncrementalModF {
   override def name = "Incremental ModF CP"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFCPAnalysis(b)
 }
-
-// Soundness tests for WIP on store provenance:
-class IncrementalSmallStepModConcCPStoreOpt extends IncrementalSmallStepModConc {
-  override def name = "Incremental ModConc CP StoreOpt"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcCPAnalysisStoreOpt(b)
-}
-class IncrementalModFCPStoreOpt extends IncrementalModF {
-  override def name = "Incremental ModF CP StoreOpt"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFCPAnalysisStoreOpt(b)
-}

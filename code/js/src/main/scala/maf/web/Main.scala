@@ -69,9 +69,7 @@ object Main {
     }
   }
 
-  class IncrementalAnalysis(program: SchemeExp)
-      extends IncrementalSchemeModFCPAnalysisStoreOpt(program)
-         with VisualisableIncrementalModAnalysis[SchemeExp] {
+  class IncrementalAnalysis(program: SchemeExp) extends IncrementalSchemeModFCPAnalysis(program) with VisualisableIncrementalModAnalysis[SchemeExp] {
 
     override def updateAddrInc(
         cmp: SchemeModFComponent,
@@ -120,7 +118,8 @@ object Main {
         throw t
     }
   }
-  def newIncrementalReanalysis(text: String): IncrementalSchemeModFCPAnalysisStoreOpt with VisualisableIncrementalModAnalysis[SchemeExp] = {
+
+  def newIncrementalReanalysis(text: String): IncrementalSchemeModFCPAnalysis with VisualisableIncrementalModAnalysis[SchemeExp] = {
     val program: SchemeExp = CSchemeParser.parse(text)
     new IncrementalAnalysis(program)
   }
