@@ -20,14 +20,6 @@ import maf.util.datastructures.SmartUnion.sunion
  */
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
-  //var logger: Log = _
-  //var log = false
-
-  //override def trigger(dep: Dependency): Unit = {
-  //  if (log) logger.log(s"TRIGG $dep")
-  //  super.trigger(dep)
-  //}
-
   /* ************************************************************************* */
   /* ***** Tracking: track which components depend on which expressions. ***** */
   /* ************************************************************************* */
@@ -87,9 +79,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     if (visited(cmp)) { // Only do this if we have not yet encountered the component. Note that this is not needed to prevent looping.
       for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
       visited = visited - cmp // Remove the component from the visited set.
-      workList =
-        workList - cmp // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
+      // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
       // This should improve both performance and precision.
+      workList = workList - cmp
       for (to <- cachedSpawns(cmp)) unspawn(to) // Transitively check for components that have to be deleted.
 
       // Delete the caches.

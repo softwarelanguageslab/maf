@@ -126,10 +126,10 @@ object SchemeAnalyses {
          with LIFOWorklistAlgorithm[SchemeExp]
          with SchemeConstantPropagationDomain
          with IncrementalSchemeModFBigStepSemantics
-         with IncrementalReturnValue[SchemeExp] {
+         with IncrementalGlobalStore[SchemeExp] {
     override def intraAnalysis(
         cmp: Component
-      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
 }
