@@ -9,6 +9,9 @@ trait StringLattice[S] extends Lattice[S] {
   def inject(s: String): S
   def length[I: IntLattice](s: S): I
   def append(s1: S, s2: S): S
+  // TODO[easy]: in practice, substring can result in an error and should use MayFail
+  def substring[I: IntLattice](s: S, from: I, to: I): S
+  // TODO[easy]: in practice, ref can result in an error and should use MayFail
   def ref[I: IntLattice, C: CharLattice](s: S, i: I): C
   def lt[B: BoolLattice](s1: S, s2: S): B
   def toSymbol[Sym: SymbolLattice](s: S): Sym

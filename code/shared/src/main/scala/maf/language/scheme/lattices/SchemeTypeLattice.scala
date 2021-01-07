@@ -58,43 +58,46 @@ class TypeSchemeLattice[A <: Address, K] {
             MayFail.success(Inject.bool)
           case Ceiling | Floor | Round | Log | Random | Sin | Cos | ACos | Tan | ATan | Sqrt | ExactToInexact | InexactToExact =>
             // Num -> Num
-            check(args(0).num, Inject.num)(op.toString, args)
+            check(args(0).num, Inject.num)(op.name, args)
           case VectorLength =>
             // Vector -> Num
             ???
           case StringLength =>
             // String -> Num
-            check(args(0).str, Inject.str)(op.toString, args)
+            check(args(0).str, Inject.str)(op.name, args)
           case NumberToString =>
             // Number -> String
-            check(args(0).num, Inject.str)(op.toString, args)
+            check(args(0).num, Inject.str)(op.name, args)
           case SymbolToString =>
             // Symbol -> String
-            check(args(0).sym, Inject.str)(op.toString, args)
+            check(args(0).sym, Inject.str)(op.name, args)
           case StringToSymbol =>
             // String -> Symbol
-            check(args(0).str, Inject.sym)(op.toString, args)
+            check(args(0).str, Inject.sym)(op.name, args)
           case CharacterToInteger =>
             // Char -> Num
-            check(args(0).char, Inject.num)(op.toString, args)
+            check(args(0).char, Inject.num)(op.name, args)
           case Plus | Minus | Times | Quotient | Div | Expt | Modulo | Remainder =>
             // Num -> Num -> Num
-            check(args(0).num && args(1).num, Inject.num)(op.toString, args)
+            check(args(0).num && args(1).num, Inject.num)(op.name, args)
           case Lt | NumEq =>
             // Num -> Num -> Bool
-            check(args(0).num && args(1).num, Inject.num)(op.toString, args)
+            check(args(0).num && args(1).num, Inject.num)(op.name, args)
           case Eq =>
             // Any -> Any -> Bool
             MayFail.success(Inject.bool)
           case StringAppend =>
             // Str -> Str -> Str
-            check(args(0).str && args(1).str, Inject.str)(op.toString, args)
+            check(args(0).str && args(1).str, Inject.str)(op.name, args)
           case StringRef =>
             // Str -> Num -> Char
-            check(args(0).str && args(1).num, Inject.char)(op.toString, args)
+            check(args(0).str && args(1).num, Inject.char)(op.name, args)
           case StringLt =>
             // Str -> Str -> Bool
-            check(args(0).str && args(1).str, Inject.bool)(op.toString, args)
+            check(args(0).str && args(1).str, Inject.bool)(op.name, args)
+          case Substring =>
+            // Str -> Int -> Int -> Str
+            check(args(0).str && args(1).num && args(2).num, Inject.str)(op.name, args)
         }
       }
     }

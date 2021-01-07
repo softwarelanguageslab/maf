@@ -171,7 +171,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       /* [x]  string-set!: String Modification */
       `string<?`, /* [vv]  string<?: String Comparison */
       `string?`, /* [vv]  string?: String Predicates */
-      /* [x]  substring: String Selection */
+      `substring`, /* [vv]  substring: String Selection */
       `symbol->string`, /* [vv] symbol->string: Symbol Primitives */
       `symbol?`, /* [vv] symbol?: Symbol Primitives */
       `tan`, /* [vv] tan: Scientific */
@@ -262,7 +262,19 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         alloc: SchemeInterpreterBridge[V, A]
       ): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: y :: Nil => call(x._2, y._2).map(v => (v, store))
-      case _             => MayFail.failure(PrimitiveArityError(name, 1, args.length))
+      case _             => MayFail.failure(PrimitiveArityError(name, 2, args.length))
+    }
+  }
+
+  class NoStore3Operation(val name: String, val call: (V, V, V) => MayFail[V, Error]) extends SchemePrimitive[V, A] {
+    override def call(
+        fpos: SchemeExp,
+        args: List[(SchemeExp, V)],
+        store: Store[A, V],
+        alloc: SchemeInterpreterBridge[V, A]
+      ): MayFail[(V, Store[A, V]), Error] = args match {
+      case x :: y :: z :: Nil => call(x._2, y._2, z._2).map(v => (v, store))
+      case _             => MayFail.failure(PrimitiveArityError(name, 3, args.length))
     }
   }
 
@@ -322,6 +334,18 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
   }
 
+  class Store3Operation(val name: String, val call: (V, V, V, Store[A, V]) => MayFail[(V, Store[A, V]), Error]) extends SchemePrimitive[V, A] {
+    override def call(
+        fpos: SchemeExp,
+        args: List[(SchemeExp, V)],
+        store: Store[A, V],
+        alloc: SchemeInterpreterBridge[V, A]
+      ): MayFail[(V, Store[A, V]), Error] = args match {
+      case x :: y :: z :: Nil => call(x._2, y._2, z._2, store)
+      case _             => MayFail.failure(PrimitiveArityError(name, 3, args.length))
+    }
+  }
+
   object PrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
 
     val lat: SchemeLattice[V, A, SchemePrimitive[V, A]] = schemeLattice
@@ -330,6 +354,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     def unaryOp(op: SchemeOp)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
     def binaryOp(op: SchemeOp)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
+    def ternaryOp(op: SchemeOp)(x: V, y: V, z: V): MayFail[V, Error] = lat.op(op)(List(x, y, z))
 
     case object `<` extends NoStore2Operation("<", binaryOp(SchemeOp.Lt)) // TODO[easy]: < should accept any number of arguments (same for <= etc.)
     case object `acos` extends NoStore1Operation("acos", unaryOp(SchemeOp.ACos))
@@ -374,6 +399,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `string-ref` extends NoStore2Operation("string-ref", binaryOp(SchemeOp.StringRef))
     case object `string<?` extends NoStore2Operation("string<?", binaryOp(SchemeOp.StringLt))
     case object `string?` extends NoStore1Operation("string?", unaryOp(SchemeOp.IsString))
+    case object `substring` extends NoStore3Operation("substring", ternaryOp(SchemeOp.Substring))
     case object `symbol->string` extends NoStore1Operation("symbol->string", unaryOp(SchemeOp.SymbolToString))
     case object `symbol?` extends NoStore1Operation("symbol?", unaryOp(SchemeOp.IsSymbol))
     case object `tan` extends NoStore1Operation("tan", unaryOp(SchemeOp.Tan))

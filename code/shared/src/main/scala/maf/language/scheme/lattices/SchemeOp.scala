@@ -144,4 +144,12 @@ object SchemeOp {
                                                 CharacterEqCI,
                                                 CharacterLtCI
   )
+
+
+  class SchemeOp3(val name: String) extends SchemeOp {
+    val arity = 3
+  }
+  case object Substring extends SchemeOp3("substring")
+
+  val ternaryOperators: Iterable[SchemeOp] = Set(Substring)
 }
