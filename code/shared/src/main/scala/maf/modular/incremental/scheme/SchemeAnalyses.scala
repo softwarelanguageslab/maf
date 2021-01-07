@@ -36,10 +36,13 @@ object SchemeAnalyses {
          with KKallocModConc
          with IncrementalSchemeModConcSmallStepSemantics
          with LIFOWorklistAlgorithm[SchemeExp]
-         with SchemeTypeDomain {
+         with SchemeTypeDomain
+         with IncrementalGlobalStore[SchemeExp] {
     val k = 1
 
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
   /**
@@ -89,8 +92,11 @@ object SchemeAnalyses {
          with SchemeModFSemantics
          with LIFOWorklistAlgorithm[SchemeExp]
          with SchemeTypeDomain
-         with IncrementalSchemeModFBigStepSemantics {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
+         with IncrementalSchemeModFBigStepSemantics
+         with IncrementalGlobalStore[SchemeExp] {
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
   /**
@@ -116,6 +122,22 @@ object SchemeAnalyses {
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+  }
+
+  // Same as the one above, but with assertions.
+  class IncrementalSchemeModFCPAssertionAnalysis(prg: SchemeExp)
+      extends ModAnalysis[SchemeExp](prg)
+         with StandardSchemeModFComponents
+         with SchemeModFNoSensitivity
+         with SchemeModFSemantics
+         with LIFOWorklistAlgorithm[SchemeExp]
+         with SchemeConstantPropagationDomain
+         with IncrementalSchemeModFBigStepSemantics
+         with IncrementalGlobalStore[SchemeExp]
+         with SchemeAssertSemantics {
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra
   }
 
 }
