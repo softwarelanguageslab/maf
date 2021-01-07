@@ -145,7 +145,6 @@ object SchemeOp {
                                                 CharacterLtCI
   )
 
-
   class SchemeOp3(val name: String) extends SchemeOp {
     val arity = 3
   }

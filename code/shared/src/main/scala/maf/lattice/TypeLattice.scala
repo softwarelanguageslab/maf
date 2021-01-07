@@ -67,11 +67,15 @@ object Type {
         case (Bottom, _) | (_, Bottom) => BoolLattice[B2].bottom
         case (Top, _) | (Top, _)       => BoolLattice[B2].top
       }
-      def substring[I2: IntLattice](s: T, from: I2, to: I2): T = s match {
-        case Bottom => Bottom
+      def substring[I2: IntLattice](
+          s: T,
+          from: I2,
+          to: I2
+        ): T = s match {
+        case Bottom                             => Bottom
         case _ if from == IntLattice[I2].bottom => Bottom
-        case _ if to == IntLattice[I2].bottom => Bottom
-        case Top => Top
+        case _ if to == IntLattice[I2].bottom   => Bottom
+        case Top                                => Top
       }
 
       def toSymbol[Sym2: SymbolLattice](s: S) = s.to[Sym2]

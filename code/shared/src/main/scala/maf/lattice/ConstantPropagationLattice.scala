@@ -112,12 +112,16 @@ object ConstantPropagation {
         case (Top, _) | (_, Top)        => Top
         case (Constant(x), Constant(y)) => Constant(x ++ y)
       }
-      def substring[I2: IntLattice](s: S, from: I2, to: I2): S = (s, from, to) match {
-        case (Bottom, _, _) => Bottom
+      def substring[I2: IntLattice](
+          s: S,
+          from: I2,
+          to: I2
+        ): S = (s, from, to) match {
+        case (Bottom, _, _)                                => Bottom
         case (_, from, _) if from == IntLattice[I2].bottom => Bottom
-        case (_, _, to) if to == IntLattice[I2].bottom => Bottom
-        case (Top, _, _) => Top
-        case (Constant(s), from, to) =>
+        case (_, _, to) if to == IntLattice[I2].bottom     => Bottom
+        case (Top, _, _)                                   => Top
+        case (Constant(s), from, to)                       =>
           // This is duplicated code from ConcreteLattice, it should be refactored
           (0.to(s.size)
             .collect({
@@ -127,11 +131,13 @@ object ConstantPropagation {
                     case to2 if BoolLattice[B].isTrue(IntLattice[I2].eql[B](to, IntLattice[I2].inject(to2))) =>
                       inject(s.substring(from2, to2))
                   }))
-            }).flatten).foldLeft(bottom)((s1, s2) => join(s1, s2))
+            })
+            .flatten)
+            .foldLeft(bottom)((s1, s2) => join(s1, s2))
       }
       def ref[I2: IntLattice, C2: CharLattice](s: S, i: I2): C2 = s match {
-        case Bottom => CharLattice[C2].bottom
-        case Top    => CharLattice[C2].top
+        case Bottom      => CharLattice[C2].bottom
+        case Top         => CharLattice[C2].top
         case Constant(x) =>
           // This is duplicated code from ConcreteLattice, it should be refactored
           0.to(x.length)

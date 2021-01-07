@@ -550,7 +550,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         case Substring =>
           (args(0), args(1), args(2)) match {
             case (Str(s), Int(from), Int(to)) => MayFail.success(Str(StringLattice[S].substring(s, from, to)))
-            case _ => MayFail.failure(OperatorNotApplicable("substring", args))
+            case _                            => MayFail.failure(OperatorNotApplicable("substring", args))
           }
       }
     }

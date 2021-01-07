@@ -1201,10 +1201,9 @@ class SchemeInterpreter(
       val name = "substring"
       def call(args: List[Value], position: Position): Value.Str = args match {
         case Value.Str(s) :: Value.Integer(from) :: Value.Integer(to) :: Nil if from <= to => Value.Str(s.substring(from, to))
-        case _ => stackedException(s"substring ($position): invalid arguments $args")
+        case _                                                                             => stackedException(s"substring ($position): invalid arguments $args")
       }
     }
-
 
     ///////////////
     // Equality //

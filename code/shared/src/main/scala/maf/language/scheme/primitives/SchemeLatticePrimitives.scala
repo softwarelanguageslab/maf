@@ -274,7 +274,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         alloc: SchemeInterpreterBridge[V, A]
       ): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: y :: z :: Nil => call(x._2, y._2, z._2).map(v => (v, store))
-      case _             => MayFail.failure(PrimitiveArityError(name, 3, args.length))
+      case _                  => MayFail.failure(PrimitiveArityError(name, 3, args.length))
     }
   }
 
@@ -342,7 +342,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         alloc: SchemeInterpreterBridge[V, A]
       ): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: y :: z :: Nil => call(x._2, y._2, z._2, store)
-      case _             => MayFail.failure(PrimitiveArityError(name, 3, args.length))
+      case _                  => MayFail.failure(PrimitiveArityError(name, 3, args.length))
     }
   }
 
@@ -354,7 +354,13 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     def unaryOp(op: SchemeOp)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
     def binaryOp(op: SchemeOp)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
-    def ternaryOp(op: SchemeOp)(x: V, y: V, z: V): MayFail[V, Error] = lat.op(op)(List(x, y, z))
+    def ternaryOp(
+        op: SchemeOp
+      )(
+        x: V,
+        y: V,
+        z: V
+      ): MayFail[V, Error] = lat.op(op)(List(x, y, z))
 
     case object `<` extends NoStore2Operation("<", binaryOp(SchemeOp.Lt)) // TODO[easy]: < should accept any number of arguments (same for <= etc.)
     case object `acos` extends NoStore1Operation("acos", unaryOp(SchemeOp.ACos))
