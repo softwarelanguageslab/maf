@@ -89,9 +89,10 @@ object Main {
       val nw = store.getOrElse(addr, lattice.bottom)
       println(s"$addr [$cmp]: $old _> $nw")
     }
+
     override def intraAnalysis(
         cmp: SchemeModFComponent
-      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis with VisualisableIntraAnalysis {
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with VisualisableIntraAnalysis {
 
       override def analyze(timeout: Timeout.T): Unit = {
         println(s"Analysing $cmp")

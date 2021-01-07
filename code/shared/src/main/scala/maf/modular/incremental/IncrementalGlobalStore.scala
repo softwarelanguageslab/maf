@@ -40,7 +40,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    */
   @nonMonotonicUpdate
   def deleteProvenance(cmp: Component, addr: Addr): Unit = {
-    if (log) logger.log(s"DELPR $cmp w-/-> $addr")
     // Delete the provenance information corresponding to this component.
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store.
@@ -116,7 +115,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     var intraProvenance: Map[Addr, Value] = Map().withDefaultValue(lattice.bottom)
 
     override def writeAddr(addr: Addr, value: Value): Boolean = {
-      if (log) logger.log(s"$component writes $addr ($value, old: ${store.getOrElse(addr, lattice.bottom)})")
       // Update the intra-provenance: for every address, keep the join of the values written to the address.
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
       super.writeAddr(addr,
@@ -155,7 +153,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
           cachedWrites(
             component
           ) -- recentWrites // The addresses previously written to by this component, but that are no longer written by this component.
-        if (log) logger.log(s"$component no longer writes $deltaW")
         deltaW.foreach(deleteProvenance(component, _))
       }
       cachedWrites = cachedWrites + (component -> recentWrites)
