@@ -71,7 +71,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     try {
       val anl: IncrementalAnalysis = analysis(program)
       val timeout = analysisTimeout(benchmark)
-      anl.updateAnalysis(timeout, benchmark)
+      anl.updateAnalysis(timeout)
       assume(anl.finished(), "Reanalysis timed out.")
       anl
     } catch {

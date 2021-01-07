@@ -14,7 +14,7 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new IncrementalModConcCPAnalysisStoreOpt(text)
     a.analyze(timeout())
-    a.updateAnalysis(timeout(), bench)
+    a.updateAnalysis(timeout())
   }
 
   def modfAnalysis(bench: String, timeout: () => Timeout.T) = {
@@ -22,7 +22,7 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = new IncrementalSchemeModFCPAnalysisStoreOpt(text)
     a.analyze(timeout())
-    a.updateAnalysis(timeout(), bench)
+    a.updateAnalysis(timeout())
     a.cachedSpawns.filter(_._1.toString.contains("s!")).head._2.foreach(println)
   }
 
