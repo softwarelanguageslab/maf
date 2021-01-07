@@ -2,16 +2,6 @@
   (lambda (x)
     (and (not (pair? x)) (not (null? x)))))
 
-(define numbered?
-  (lambda (aexp) 
-    (cond ((atom? aexp) (number? aexp))
-          ((eq? (car (cdr aexp)) '+) 
-           (and (numbered? (car aexp)) (numbered? (car (cdr (cdr aexp))))))
-          ((eq? (car (cdr aexp)) '*) 
-           (and (numbered? (car aexp)) (numbered? (car (cdr (cdr aexp))))))
-          ((eq? (car (cdr aexp)) '^)
-           (and (numbered? (car aexp)) (numbered? (car (cdr (cdr aexp)))))))))
-
 ;; Simplified numbered?
 (define numbered?
   (lambda (aexp)
