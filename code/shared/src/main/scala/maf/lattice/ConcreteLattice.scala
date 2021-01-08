@@ -119,7 +119,8 @@ object Concrete {
               .collect({
                 case i2
                     if BoolLattice[B]
-                      .isTrue(IntLattice[I2].eql[B](i, IntLattice[I2].inject(i2))) =>
+                      .isTrue(IntLattice[I2].eql[B](i, IntLattice[I2].inject(i2))) &&
+                      i2 < s.size =>
                   CharLattice[C2].inject(s.charAt(i2))
               })
               .foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))

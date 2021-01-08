@@ -144,7 +144,8 @@ object ConstantPropagation {
             .collect({
               case i2
                   if BoolLattice[Concrete.B]
-                    .isTrue(IntLattice[I2].eql[Concrete.B](i, IntLattice[I2].inject(i2))) =>
+                    .isTrue(IntLattice[I2].eql[Concrete.B](i, IntLattice[I2].inject(i2))) &&
+                    i2 < x.size =>
                 CharLattice[C2].inject(x.charAt(i2))
             })
             .foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))
