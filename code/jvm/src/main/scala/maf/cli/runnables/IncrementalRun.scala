@@ -12,7 +12,7 @@ object IncrementalRun extends App {
   def modconcAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     println(s"***** $bench *****")
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a = new IncrementalModConcCPAnalysis(text)
+    val a = new IncrementalModConcAnalysisCPLattice(text)
     a.analyze(timeout())
     a.updateAnalysis(timeout())
   }
@@ -20,14 +20,13 @@ object IncrementalRun extends App {
   def modfAnalysis(bench: String, timeout: () => Timeout.T) = {
     println(s"***** $bench *****")
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a = new IncrementalSchemeModFCPAnalysis(text)
+    val a = new IncrementalSchemeModFAssertionAnalysisCPLattice(text)
     a.analyze(timeout())
     a.updateAnalysis(timeout())
-    a.cachedSpawns.filter(_._1.toString.contains("s!")).head._2.foreach(println)
   }
 
-  val modConcbenchmarks: List[String] = List("test/changes/cscheme/threads/crypt2.scm")
-  val modFbenchmarks: List[String] = List() //List("test/DEBUG3.scm")
+  val modConcbenchmarks: List[String] = List()
+  val modFbenchmarks: List[String] = List("test/changes/scheme/assertions/fact.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
   modConcbenchmarks.foreach(modconcAnalysis(_, standardTimeout))

@@ -59,17 +59,21 @@ object Main {
       with FIFOWorklistAlgorithm[SchemeExp] {
       //override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       def key(cmp: Component): Identity = expr(cmp).idn
+
       override def step(t: Timeout.T) = {
         val cmp = workList.head
         println(cmp)
         super.step(t)
       }
+
       override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
     }
   }
 
-  class IncrementalAnalysis(program: SchemeExp) extends IncrementalSchemeModFCPAnalysis(program) with VisualisableIncrementalModAnalysis[SchemeExp] {
+  class IncrementalAnalysis(program: SchemeExp)
+      extends IncrementalSchemeModFAnalysisCPLattice(program)
+         with VisualisableIncrementalModAnalysis[SchemeExp] {
 
     override def updateAddrInc(
         cmp: SchemeModFComponent,
@@ -119,7 +123,7 @@ object Main {
     }
   }
 
-  def newIncrementalReanalysis(text: String): IncrementalSchemeModFCPAnalysis with VisualisableIncrementalModAnalysis[SchemeExp] = {
+  def newIncrementalReanalysis(text: String): IncrementalSchemeModFAnalysisCPLattice with VisualisableIncrementalModAnalysis[SchemeExp] = {
     val program: SchemeExp = CSchemeParser.parse(text)
     new IncrementalAnalysis(program)
   }

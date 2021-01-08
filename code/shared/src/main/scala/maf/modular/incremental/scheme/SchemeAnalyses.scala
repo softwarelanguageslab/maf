@@ -20,6 +20,13 @@ object SchemeAnalyses {
   /* ***** ModConc ***** */
   /* ******************* */
 
+  abstract class BaseModConcAnalysis(prg: SchemeExp)
+      extends ModAnalysis[SchemeExp](prg)
+         with KKallocModConc
+         with IncrementalSchemeModConcSmallStepSemantics
+         with LIFOWorklistAlgorithm[SchemeExp]
+         with IncrementalGlobalStore[SchemeExp]
+
   /**
    * Builds an incremental ModConc Analysis for the given Scheme program with the following properties:
    * <ul>
@@ -31,14 +38,7 @@ object SchemeAnalyses {
    *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalModConcAnalysis(prg: SchemeExp)
-      extends ModAnalysis[SchemeExp](prg)
-         with KKallocModConc
-         with IncrementalSchemeModConcSmallStepSemantics
-         with LIFOWorklistAlgorithm[SchemeExp]
-         with SchemeTypeDomain
-         with IncrementalGlobalStore[SchemeExp] {
-    val k = 1
+  class IncrementalModConcAnalysisTypeLattice(prg: SchemeExp, val k: Int = 1) extends BaseModConcAnalysis(prg) with SchemeTypeDomain {
 
     override def intraAnalysis(
         cmp: Component
@@ -56,14 +56,7 @@ object SchemeAnalyses {
    *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalModConcCPAnalysis(prg: SchemeExp)
-      extends ModAnalysis[SchemeExp](prg)
-         with KKallocModConc
-         with IncrementalSchemeModConcSmallStepSemantics
-         with LIFOWorklistAlgorithm[SchemeExp]
-         with SchemeConstantPropagationDomain
-         with IncrementalGlobalStore[SchemeExp] {
-    val k = 1
+  class IncrementalModConcAnalysisCPLattice(prg: SchemeExp, val k: Int = 1) extends BaseModConcAnalysis(prg) with SchemeConstantPropagationDomain {
 
     override def intraAnalysis(
         cmp: Component
@@ -74,6 +67,15 @@ object SchemeAnalyses {
   /* ***** ModF ***** */
   /* **************** */
 
+  abstract class BaseModFAnalysis(prg: SchemeExp)
+      extends ModAnalysis[SchemeExp](prg)
+         with StandardSchemeModFComponents
+         with SchemeModFNoSensitivity
+         with SchemeModFSemantics
+         with LIFOWorklistAlgorithm[SchemeExp]
+         with IncrementalSchemeModFBigStepSemantics
+         with IncrementalGlobalStore[SchemeExp]
+
   /**
    * Builds an incremental ModF Analysis for the given Scheme program with the following properties:
    * <ul>
@@ -85,15 +87,7 @@ object SchemeAnalyses {
    *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalSchemeModFAnalysis(prg: SchemeExp)
-      extends ModAnalysis[SchemeExp](prg)
-         with StandardSchemeModFComponents
-         with SchemeModFNoSensitivity
-         with SchemeModFSemantics
-         with LIFOWorklistAlgorithm[SchemeExp]
-         with SchemeTypeDomain
-         with IncrementalSchemeModFBigStepSemantics
-         with IncrementalGlobalStore[SchemeExp] {
+  class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp) extends BaseModFAnalysis(prg) with SchemeTypeDomain {
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
@@ -110,30 +104,15 @@ object SchemeAnalyses {
    *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalSchemeModFCPAnalysis(prg: SchemeExp)
-      extends ModAnalysis[SchemeExp](prg)
-         with StandardSchemeModFComponents
-         with SchemeModFNoSensitivity
-         with SchemeModFSemantics
-         with LIFOWorklistAlgorithm[SchemeExp]
-         with SchemeConstantPropagationDomain
-         with IncrementalSchemeModFBigStepSemantics
-         with IncrementalGlobalStore[SchemeExp] {
+  class IncrementalSchemeModFAnalysisCPLattice(prg: SchemeExp) extends BaseModFAnalysis(prg) with SchemeConstantPropagationDomain {
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
   // Same as the one above, but with assertions.
-  class IncrementalSchemeModFCPAssertionAnalysis(prg: SchemeExp)
-      extends ModAnalysis[SchemeExp](prg)
-         with StandardSchemeModFComponents
-         with SchemeModFNoSensitivity
-         with SchemeModFSemantics
-         with LIFOWorklistAlgorithm[SchemeExp]
-         with SchemeConstantPropagationDomain
-         with IncrementalSchemeModFBigStepSemantics
-         with IncrementalGlobalStore[SchemeExp]
+  class IncrementalSchemeModFAssertionAnalysisCPLattice(prg: SchemeExp)
+      extends IncrementalSchemeModFAnalysisCPLattice(prg)
          with SchemeAssertSemantics {
     override def intraAnalysis(
         cmp: Component
