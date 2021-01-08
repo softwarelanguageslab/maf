@@ -86,7 +86,9 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
   def name = "Incremental ModConc"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysis(b)
+
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b)
+
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
   override def isSlow(b: Benchmark): Boolean =
     Set(
@@ -100,13 +102,16 @@ class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with Con
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConc {
   override def name = "Incremental ModConc CP"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcCPAnalysis(b)
+
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b)
 }
 
 /** Implements soundness tests for an incremental ModF analysis. */
 class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
   def name = "Incremental ModF"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysis(b)
+
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b)
+
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
     Set(
@@ -123,5 +128,6 @@ class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncre
 /** Implements soundness tests for an incremental ModF analysis. */
 class IncrementalModFCP extends IncrementalModF {
   override def name = "Incremental ModF CP"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFCPAnalysis(b)
+
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b)
 }

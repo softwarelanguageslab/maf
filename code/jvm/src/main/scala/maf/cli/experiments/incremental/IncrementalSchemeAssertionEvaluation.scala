@@ -6,7 +6,7 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
 import maf.modular.GlobalStore
 import maf.modular.incremental.IncrementalModAnalysis
-import maf.modular.incremental.scheme.SchemeAnalyses.IncrementalSchemeModFCPAssertionAnalysis
+import maf.modular.incremental.scheme.SchemeAnalyses.IncrementalSchemeModFAssertionAnalysisCPLattice
 import maf.modular.scheme.modf.SchemeAssertSemantics
 import maf.util.Reader
 import maf.util.benchmarks._
@@ -103,7 +103,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeAssertionEvaluation {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
-  override def analysis(e: SchemeExp) = new IncrementalSchemeModFCPAssertionAnalysis(e)
+  override def analysis(e: SchemeExp) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e)
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 

@@ -108,7 +108,7 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysis(e)
+  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e)
 
   val outputFile: String = s"properties/modf-type.txt"
 }
@@ -116,7 +116,7 @@ object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
 object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFCPAnalysis(e)
+  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e)
 
   val outputFile: String = s"properties/modf-CP.txt"
 }
@@ -124,7 +124,7 @@ object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties {
 object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysis(e)
+  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysisTypeLattice(e)
 
   val outputFile: String = s"properties/modconc-type.txt"
 }
@@ -132,7 +132,7 @@ object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
 object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcCPAnalysis(e)
+  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysisCPLattice(e)
 
   val outputFile: String = s"properties/modconc-CP.txt"
 }
