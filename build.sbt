@@ -24,8 +24,8 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
                         /** Configuration for running the tests */
                         logBuffered in Test := false,
                         libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % "test",
-                        libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.15.1" % "test",
-                        libraryDependencies += "org.scalatestplus" %% "scalacheck-1-14" % "3.1.0.0" % "test",
+                        libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.15.2" % "test",
+                        libraryDependencies += "org.scalatestplus" %% "scalacheck-1-15" % "3.2.3.0" % "test",
                         libraryDependencies += "com.vladsch.flexmark" % "flexmark-all" % "0.62.2" % Test,
                         /** Imported options from https://tpolecat.github.io/2017/04/25/scalac-flags.html */
                         scalacOptions ++= Seq(
