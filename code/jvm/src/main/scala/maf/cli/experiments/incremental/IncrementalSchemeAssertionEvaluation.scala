@@ -13,6 +13,7 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
+// Note that the sets of verified/failed assertions grow monotonically.
 trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] {
 
   final val initS: String = "init" // Initial run.
@@ -20,7 +21,11 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
   final val inc2S: String = "inc2" // Another incremental update (same changes, different analysis).
   final val reanS: String = "rean" // Full reanalysis.
 
-  val columns = List(initS, inc1S, inc2S, reanS)
+  final val veriS: String = "veri" // Verified assertions.
+  final val failS: String = "fail" // Failed assertions.
+
+  val rs = List(veriS, failS)
+  val columns = List(initS, inc1S, inc2S, reanS).flatMap(a => rs.map(r => s"$r ($a)"))
 
   final val inf: String = "∞"
   final val err: String = "E"
@@ -36,18 +41,20 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
   def runAnalysis(
       file: String,
       phase: String,
-      block: Timeout.T => Int
+      block: Timeout.T => A
     ): Boolean = {
     print(phase)
     val timeOut = timeout()
-    val res = block(timeOut)
+    val a = block(timeOut)
     val t = timeOut.reached
     if (t) {
       print(" timed out - ")
-      results = results.add(file, phase, inf)
+      results = results.add(file, s"$veriS ($phase)", inf)
+      results = results.add(file, s"$failS ($phase)", inf)
     } else {
       print(" ")
-      results = results.add(file, phase, res.toString)
+      results = results.add(file, s"$veriS ($phase)", a.assertionsVerified.size.toString)
+      results = results.add(file, s"$failS ($phase)", a.assertionsFailed.size.toString)
     }
     t
 
@@ -65,7 +72,8 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
       runAnalysis(file,
                   "init",
                   timeOut => {
-                    a1.analyze(timeOut); a1.assertionsFailed.size
+                    a1.analyze(timeOut);
+                    a1
                   }
       )
     ) {
@@ -78,19 +86,22 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     runAnalysis(file,
                 "inc1",
                 timeOut => {
-                  a1.updateAnalysis(timeOut, false); a1.assertionsFailed.size
+                  a1.updateAnalysis(timeOut, false);
+                  a1
                 }
     )
     runAnalysis(file,
                 "inc2",
                 timeOut => {
-                  a1Copy.updateAnalysis(timeOut, true); a1Copy.assertionsFailed.size
+                  a1Copy.updateAnalysis(timeOut, true);
+                  a1Copy
                 }
     )
     runAnalysis(file,
                 "rean",
                 timeOut => {
-                  a2.analyze(timeOut); a2.assertionsFailed.size
+                  a2.analyze(timeOut);
+                  a2
                 }
     )
   }
@@ -101,7 +112,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 }
 
 object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeAssertionEvaluation {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential
 
   override def analysis(e: SchemeExp) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e)
 

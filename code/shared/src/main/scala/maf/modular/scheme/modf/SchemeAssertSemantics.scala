@@ -5,19 +5,30 @@ import maf.modular.scheme.modf.EvalM._
 
 trait SchemeAssertSemantics extends BigStepModFSemantics {
   var assertionsFailed: Set[(Component, SchemeExp)] = Set.empty
+
   protected def assertViolated(component: Component, exp: SchemeExp): Unit =
     assertionsFailed = assertionsFailed + ((component, exp))
 
+  var assertionsVerified: Set[(Component, SchemeExp)] = Set.empty
+
+  protected def assertVerified(component: Component, exp: SchemeExp): Unit =
+    assertionsVerified = assertionsVerified + ((component, exp))
+
   override def intraAnalysis(cmp: Component): AssertionModFIntra
+
   trait AssertionModFIntra extends IntraAnalysis with BigStepModFIntra {
     override def evalAssert(exp: SchemeExp): EvalM[Value] =
       for {
         v <- eval(exp)
-        res <- merge(guard(lattice.isTrue(v)).map(_ => lattice.void),
-                     guard(lattice.isFalse(v)).map { _ =>
-                       assertViolated(component, exp)
-                       lattice.void
-                     }
+        res <- merge(
+          guard(lattice.isTrue(v)).map { _ =>
+            assertVerified(component, exp)
+            lattice.void
+          },
+          guard(lattice.isFalse(v)).map { _ =>
+            assertViolated(component, exp)
+            lattice.void
+          }
         )
       } yield res
   }

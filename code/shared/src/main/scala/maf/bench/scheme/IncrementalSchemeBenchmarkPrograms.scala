@@ -12,6 +12,7 @@ object IncrementalSchemeBenchmarkPrograms {
     "machine-simulator.scm", // map with three arguments
     ".DS_Store"
   )
+  lazy val assertions: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/assertions")()
 
   lazy val scam2020ModF: Set[String] = SchemeBenchmarkPrograms.toFolder("test/changes/scheme")(
     "leval.scm",
