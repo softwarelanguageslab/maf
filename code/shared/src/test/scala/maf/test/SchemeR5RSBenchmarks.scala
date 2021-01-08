@@ -222,6 +222,8 @@ object SchemeR5RSBenchmarks {
     ("(substring \"foo\" 0 2)", "fo"),
     ("(substring \"foo\" 1 2)", "o"),
     ("(substring \"foo\" 0 0)", ""),
+    ("(string-length (make-string 5))", 5), // The content of the string is unspecified
+    ("(make-string 5 #\\c)", "ccccc"),
     ("(symbol->string 'flying-fish)", "flying-fish"),
     ("(symbol? #f)", false),
     ("(symbol? '())", false),

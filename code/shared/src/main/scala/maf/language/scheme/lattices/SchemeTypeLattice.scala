@@ -95,6 +95,9 @@ class TypeSchemeLattice[A <: Address, K] {
           case StringLt =>
             // Str -> Str -> Bool
             check(args(0).str && args(1).str, Inject.bool)(op.name, args)
+          case MakeString =>
+            // Int -> Char -> Bool
+            check(args(0).num && args(1).char, Inject.str)(op.name, args)
           case Substring =>
             // Str -> Int -> Int -> Str
             check(args(0).str && args(1).num && args(2).num, Inject.str)(op.name, args)

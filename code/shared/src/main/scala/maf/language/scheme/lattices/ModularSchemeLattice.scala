@@ -552,6 +552,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Str(s), Int(from), Int(to)) => MayFail.success(Str(StringLattice[S].substring(s, from, to)))
             case _                            => MayFail.failure(OperatorNotApplicable("substring", args))
           }
+        case MakeString =>
+          (args(0), args(1)) match {
+            case (Int(length), Char(c)) => MayFail.success(Str(IntLattice[I].makeString(length, c)))
+            case _                      => MayFail.failure(OperatorNotApplicable("make-string", args))
+          }
       }
     }
 

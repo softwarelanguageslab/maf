@@ -12,7 +12,7 @@ sealed trait SchemeOp {
 
 object SchemeOp {
 
-  class SchemeOp1(val name: String) extends SchemeOp {
+  abstract class SchemeOp1(val name: String) extends SchemeOp {
     val arity = 1
   }
 
@@ -58,7 +58,7 @@ object SchemeOp {
   case object CharacterIsLower extends SchemeOp1("char-is-lower?")
   case object CharacterIsUpper extends SchemeOp1("char-is-upper?")
 
-  val unaryOperators: Iterable[SchemeOp] = Set(
+  val unaryOperators: Iterable[SchemeOp1] = Set(
     IsNull,
     IsBoolean,
     IsCons,
@@ -102,7 +102,7 @@ object SchemeOp {
     CharacterIsUpper
   )
 
-  class SchemeOp2(val name: String) extends SchemeOp {
+  abstract class SchemeOp2(val name: String) extends SchemeOp {
     val arity = 2
   }
 
@@ -124,31 +124,35 @@ object SchemeOp {
   case object CharacterLt extends SchemeOp2("char<")
   case object CharacterEqCI extends SchemeOp2("char-ci=")
   case object CharacterLtCI extends SchemeOp2("char-ci<")
+  case object MakeString extends SchemeOp2("make-string")
 
-  val binaryOperators: Iterable[SchemeOp] = Set(Plus,
-                                                Minus,
-                                                Times,
-                                                Div,
-                                                Quotient,
-                                                Modulo,
-                                                Remainder,
-                                                Expt,
-                                                Lt,
-                                                NumEq,
-                                                Eq,
-                                                StringAppend,
-                                                StringRef,
-                                                StringLt,
-                                                CharacterEq,
-                                                CharacterLt,
-                                                CharacterEqCI,
-                                                CharacterLtCI
+  val binaryOperators: Iterable[SchemeOp2] = Set(
+    Plus,
+    Minus,
+    Times,
+    Div,
+    Quotient,
+    Modulo,
+    Remainder,
+    Expt,
+    Lt,
+    NumEq,
+    Eq,
+    StringAppend,
+    StringRef,
+    StringLt,
+    CharacterEq,
+    CharacterLt,
+    CharacterEqCI,
+    CharacterLtCI,
+    MakeString
   )
 
-  class SchemeOp3(val name: String) extends SchemeOp {
+  abstract class SchemeOp3(val name: String) extends SchemeOp {
     val arity = 3
   }
+
   case object Substring extends SchemeOp3("substring")
 
-  val ternaryOperators: Iterable[SchemeOp] = Set(Substring)
+  val ternaryOperators: Iterable[SchemeOp3] = Set(Substring)
 }

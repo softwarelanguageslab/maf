@@ -218,6 +218,15 @@ object ConstantPropagation {
         case (Constant(x), Constant(y)) => x.to(y).map(i => Constant(i)).toSet
         case _                          => Set()
       }
+      def makeString[C2: CharLattice, S2: StringLattice](length: I, char: C2): S2 = (length, char) match {
+        case (Bottom, _)                               => StringLattice[S2].bottom
+        case (_, bot) if bot == CharLattice[C2].bottom => StringLattice[S2].bottom
+        case (Top, _)                                  => StringLattice[S2].top
+        case (Constant(n), _) =>
+          val c = CharLattice[C2].toString[S2](char)
+          0.to(n).foldLeft(StringLattice[S2].inject(""))((s, _) => StringLattice[S2].append(s, c))
+      }
+
       def toString[S2: StringLattice](n: I): S2 = n match {
         case Top         => StringLattice[S2].top
         case Constant(x) => StringLattice[S2].inject(x.toString)

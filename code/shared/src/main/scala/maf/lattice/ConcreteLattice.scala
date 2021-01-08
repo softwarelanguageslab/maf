@@ -109,7 +109,6 @@ object Concrete {
               .foldLeft(bottom)((s1, s2) => join(s1, s2))
           )(stringConcrete)
       }
-
       def ref[I2: IntLattice, C2: CharLattice](s: S, i: I2): C2 = s match {
         case Values(bot) if bot.isEmpty => CharLattice[C2].bottom
         case Top                        => CharLattice[C2].top
@@ -203,6 +202,18 @@ object Concrete {
             vs1.min.to(vs2.max).map(i => Values(Set(i))).toSet
           }
       }
+      def makeString[C2: CharLattice, S2: StringLattice](length: I, char: C2): S2 = (length, char) match {
+        case (bot, _) if bot == bottom                 => StringLattice[S2].bottom
+        case (_, bot) if bot == CharLattice[C2].bottom => StringLattice[S2].bottom
+        case (Top, _)                                  => StringLattice[S2].top
+        case (Values(vs), _) =>
+          val c = CharLattice[C2].toString[S2](char)
+          vs.foldMap(n =>
+            /* Appends n times c to the empty string to construct the actual string we need */
+            0.to(n).foldLeft(StringLattice[S2].inject(""))((s, _) => StringLattice[S2].append(s, c))
+          )
+      }
+
       def toString[S2: StringLattice](n: I): S2 =
         n.foldMap(n => StringLattice[S2].inject(n.toString))
       def toChar[C2: CharLattice](n: I): C2 =

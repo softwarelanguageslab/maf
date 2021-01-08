@@ -110,6 +110,7 @@ object Type {
         case _          => BoolLattice[B2].bottom
       }
       def valuesBetween(n1: T, n2: T): Set[T] = Set(Top)
+      def makeString[C2: CharLattice, S2: StringLattice](length: I, char: C2): S2 = StringLattice[S2].top
       def toString[S2: StringLattice](n: T): S2 = n.to[S2]
       def toChar[C2: CharLattice](n: T): C2 = n.to[C2]
     }

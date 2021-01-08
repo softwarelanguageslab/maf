@@ -17,6 +17,7 @@ trait IntLattice[I] extends Lattice[I] { self =>
   def remainder(n1: I, n2: I): I
   def lt[B: BoolLattice](n1: I, n2: I): B
   def valuesBetween(n1: I, n2: I): Set[I]
+  def makeString[C: CharLattice, S: StringLattice](length: I, char: C): S
   def toString[S: StringLattice](n: I): S
   def toChar[C: CharLattice](n: I): C
 }

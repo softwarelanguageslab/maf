@@ -504,7 +504,7 @@ class SchemeInterpreter(
       /* [x]  magnitude: Complex */
       /* [x]  make-polar: Complex */
       /* [x]  make-rectangular: Complex */
-      /* [x]  make-string: String Constructors */
+      MakeString, /* [vv]  make-string: String Constructors */
       /* [x]  map: List Mapping */
       Max, /* [vv] max: Arithmetic */
       //Member, /* [vv] member: List Searching */
@@ -1169,6 +1169,14 @@ class SchemeInterpreter(
             }
           )
         )
+    }
+    object MakeString extends SimplePrim {
+      val name = "make-string"
+      def call(args: List[Value], position: Position) = args match {
+        case Value.Integer(length) :: Nil                       => Value.Str("\u0000" * length)
+        case Value.Integer(length) :: Value.Character(c) :: Nil => Value.Str(c.toString * length)
+        case _                                                  => stackedException(s"$name ($position): invalid arguments $args")
+      }
     }
     object StringLength extends SingleArgumentPrim("string-length") {
       def fun = { case Value.Str(x) =>

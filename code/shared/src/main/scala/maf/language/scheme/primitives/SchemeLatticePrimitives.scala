@@ -132,7 +132,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       /* [x]  magnitude: Complex */
       /* [x]  make-polar: Complex */
       /* [x]  make-rectangular: Complex */
-      /* [x]  make-string: String Constructors */
+      `make-string`, /* [vv]  make-string: String Constructors */
       `max`,
       `min`,
       `null?`, /* [vv] null?: List Predicates */
@@ -352,10 +352,10 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     import schemeLattice._
 
-    def unaryOp(op: SchemeOp)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
-    def binaryOp(op: SchemeOp)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
+    def unaryOp(op: SchemeOp.SchemeOp1)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
+    def binaryOp(op: SchemeOp.SchemeOp2)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
     def ternaryOp(
-        op: SchemeOp
+        op: SchemeOp.SchemeOp3
       )(
         x: V,
         y: V,
@@ -558,6 +558,15 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                 case (Nil, _)          => string("")
                                 case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOp.StringAppend)(x, _))
                               }
+        )
+
+    case object `make-string`
+        extends NoStoreLOp("make-string",
+                           {
+                             case length :: Nil         => binaryOp(SchemeOp.MakeString)(length, lat.char(0.toChar))
+                             case length :: char :: Nil => binaryOp(SchemeOp.MakeString)(length, char)
+                             case l                     => MayFail.failure(PrimitiveArityError("make-string", 1, l.size))
+                           }
         )
 
     case object `cons` extends SchemePrimitive[V, A] {

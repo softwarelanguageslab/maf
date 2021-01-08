@@ -13,6 +13,10 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
   val schemeLaws = newProperties("Scheme") { p =>
     implicit val arb = gen.anyArb
     implicit val shr = gen.shrink
+    implicit val auo = gen.arbUnop
+    implicit val abo = gen.arbBinop
+    implicit val ato = gen.arbTernop
+
     import schemeLattice._
     /* */
     def convert(mf: MayFail[L, Error]): L = mf match {
@@ -21,10 +25,7 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
       case MayFailError(_)   => bottom
     }
     /* Unary operators preserve bottom */
-    p.property("∀ unop: unop(⊥) = ⊥") = {
-      implicit val auo = gen.arbUnop
-      forAll((unop: SchemeOp) => convert(op(unop)(List(bottom))) == bottom)
-    }
+    p.property("∀ unop: unop(⊥) = ⊥") = forAll((unop: SchemeOp.SchemeOp1) => convert(op(unop)(List(bottom))) == bottom)
     /* Unary operators are monotone */
     /* TODO: fails because of NaN
         p.property("∀ unop, a, b: a ⊑ b ⇒ unop(a) ⊑ unop(b)") = forAll { (unop: SchemeOps.UnaryOperator, b: L) =>
@@ -39,12 +40,17 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
         }
      */
     /* Binary operators preverse bottom */
-    p.property("∀ binop, a: binop(⊥,a) = ⊥ = binop(a,⊥)") = {
-      implicit val abo = gen.arbBinop
-      forAll((binop: SchemeOp, a: L) =>
+    p.property("∀ binop, a: binop(⊥,a) = ⊥ = binop(a,⊥)") =
+      forAll((binop: SchemeOp.SchemeOp2, a: L) =>
         convert(op(binop)(List(bottom, a))) == bottom &&
           convert(op(binop)(List(a, bottom))) == bottom)
-    }
+    /* Ternary operators preserve bottom */
+    p.property("∀ ternop, a: ternop(⊥,a,b) = ⊥ = ternop(a,⊥,b) = ternop(a,b,⊥)") =
+      forAll((ternop: SchemeOp.SchemeOp3, a: L, b: L) =>
+        convert(op(ternop)(List(bottom, a, b))) == bottom &&
+          convert(op(ternop)(List(a, bottom, b))) == bottom &&
+            convert(op(ternop)(List(a, b, bottom))) == bottom)
+
     /* Properties about vectors */
     p.property("∀ vct, idx1, val1, idx2, val2: vectorSet(vectorSet(vct,idx1,val1),idx2,val2) = vectorSet(vectorSet(vct,idx2,val2),idx1,val1)") =
       forAll(gen.anyVec, gen.anyInt, gen.any, gen.anyInt, gen.any) { (vct: L, idx1: L, val1: L, idx2: L, val2: L) =>
