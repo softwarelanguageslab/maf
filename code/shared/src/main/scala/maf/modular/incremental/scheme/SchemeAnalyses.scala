@@ -16,6 +16,10 @@ import maf.modular.worklist.LIFOWorklistAlgorithm
  */
 object SchemeAnalyses {
 
+  /* ******************* */
+  /* ***** ModConc ***** */
+  /* ******************* */
+
   /**
    * Builds an incremental ModConc Analysis for the given Scheme program with the following properties:
    * <ul>
@@ -32,10 +36,13 @@ object SchemeAnalyses {
          with KKallocModConc
          with IncrementalSchemeModConcSmallStepSemantics
          with LIFOWorklistAlgorithm[SchemeExp]
-         with SchemeTypeDomain {
+         with SchemeTypeDomain
+         with IncrementalGlobalStore[SchemeExp] {
     val k = 1
 
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
   /**
@@ -54,11 +61,18 @@ object SchemeAnalyses {
          with KKallocModConc
          with IncrementalSchemeModConcSmallStepSemantics
          with LIFOWorklistAlgorithm[SchemeExp]
-         with SchemeConstantPropagationDomain {
+         with SchemeConstantPropagationDomain
+         with IncrementalGlobalStore[SchemeExp] {
     val k = 1
 
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
   }
+
+  /* **************** */
+  /* ***** ModF ***** */
+  /* **************** */
 
   /**
    * Builds an incremental ModF Analysis for the given Scheme program with the following properties:
@@ -78,8 +92,11 @@ object SchemeAnalyses {
          with SchemeModFSemantics
          with LIFOWorklistAlgorithm[SchemeExp]
          with SchemeTypeDomain
-         with IncrementalSchemeModFBigStepSemantics {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
+         with IncrementalSchemeModFBigStepSemantics
+         with IncrementalGlobalStore[SchemeExp] {
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
   /**
@@ -100,25 +117,15 @@ object SchemeAnalyses {
          with SchemeModFSemantics
          with LIFOWorklistAlgorithm[SchemeExp]
          with SchemeConstantPropagationDomain
-         with IncrementalSchemeModFBigStepSemantics {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
-  }
-
-  // With store invalidation.
-  class IncrementalModConcCPAnalysisStoreOpt(prg: SchemeExp)
-      extends ModAnalysis[SchemeExp](prg)
-         with KKallocModConc
-         with IncrementalSchemeModConcSmallStepSemantics
-         with LIFOWorklistAlgorithm[SchemeExp]
-         with SchemeConstantPropagationDomain
+         with IncrementalSchemeModFBigStepSemantics
          with IncrementalGlobalStore[SchemeExp] {
-    val k = 1 // TODO Perhaps make a parameter of the class.
     override def intraAnalysis(
         cmp: Component
-      ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
-  class IncrementalSchemeModFCPAnalysisStoreOpt(prg: SchemeExp)
+  // Same as the one above, but with assertions.
+  class IncrementalSchemeModFCPAssertionAnalysis(prg: SchemeExp)
       extends ModAnalysis[SchemeExp](prg)
          with StandardSchemeModFComponents
          with SchemeModFNoSensitivity
@@ -126,10 +133,11 @@ object SchemeAnalyses {
          with LIFOWorklistAlgorithm[SchemeExp]
          with SchemeConstantPropagationDomain
          with IncrementalSchemeModFBigStepSemantics
-         with IncrementalGlobalStore[SchemeExp] {
+         with IncrementalGlobalStore[SchemeExp]
+         with SchemeAssertSemantics {
     override def intraAnalysis(
         cmp: Component
-      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra
   }
 
 }

@@ -610,7 +610,7 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp {
   override def toString: String = s"(assert $exp)"
   def fv: Set[String] = exp.fv
   val label: Label = ASS
-  def subexpressions: List[Expression] = List()
+  def subexpressions: List[Expression] = List(exp)
 }
 
 /** A code change in a Scheme program. */
