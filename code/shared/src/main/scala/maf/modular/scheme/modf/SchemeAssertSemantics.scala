@@ -6,13 +6,17 @@ import maf.modular.scheme.modf.EvalM._
 trait SchemeAssertSemantics extends BigStepModFSemantics {
   var assertionsFailed: Set[(Component, SchemeExp)] = Set.empty
 
-  protected def assertViolated(component: Component, exp: SchemeExp): Unit =
+  protected def assertViolated(component: Component, exp: SchemeExp): Unit = {
     assertionsFailed = assertionsFailed + ((component, exp))
+    assertionsVerified = assertionsVerified - ((component, exp))
+  }
 
   var assertionsVerified: Set[(Component, SchemeExp)] = Set.empty
 
-  protected def assertVerified(component: Component, exp: SchemeExp): Unit =
+  protected def assertVerified(component: Component, exp: SchemeExp): Unit = {
     assertionsVerified = assertionsVerified + ((component, exp))
+    assertionsFailed = assertionsFailed - ((component, exp))
+  }
 
   override def intraAnalysis(cmp: Component): AssertionModFIntra
 
