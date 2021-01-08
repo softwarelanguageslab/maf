@@ -229,6 +229,11 @@ object SchemePrelude {
     "string<=?" -> "(define (string<=? s1 s2) @sensitivity:FA (or (string<? s1 s2) (string=? s1 s2)))",
     "string>?" -> "(define (string>? s1 s2) @sensitivity:FA (not (string<=? s1 s2)))",
     "string>=?" -> "(define (string<=? s1 s2) @sensitivity:FA (or (string>? s1 s2) (string=? s1 s2)))",
+    "list->string" -> """(define (list->string l)
+                       |   (assert (list? l))
+                       |   (if (null? l)
+                       |     ""
+                       |     (string-append (char->string (car l)) (list->string (cdr l)))))""".stripMargin,
     "truncate" -> "(define (truncate x) @sensitivity:FA (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
     //"string-fill!" -> """(define (string-fill! s c)
     //                    |  (let loop ((i (- (string-length s) 1)))
