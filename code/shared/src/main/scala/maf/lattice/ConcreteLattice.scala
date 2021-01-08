@@ -211,7 +211,7 @@ object Concrete {
           val c = CharLattice[C2].toString[S2](char)
           vs.foldMap(n =>
             /* Appends n times c to the empty string to construct the actual string we need */
-            0.to(n).foldLeft(StringLattice[S2].inject(""))((s, _) => StringLattice[S2].append(s, c))
+            1.to(n).foldLeft(StringLattice[S2].inject(""))((s, _) => StringLattice[S2].append(s, c))
           )
       }
 

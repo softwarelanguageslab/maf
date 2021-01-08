@@ -225,7 +225,7 @@ object ConstantPropagation {
         case (Top, _)                                  => StringLattice[S2].top
         case (Constant(n), _) =>
           val c = CharLattice[C2].toString[S2](char)
-          0.to(n).foldLeft(StringLattice[S2].inject(""))((s, _) => StringLattice[S2].append(s, c))
+          1.to(n).foldLeft(StringLattice[S2].inject(""))((s, _) => StringLattice[S2].append(s, c))
       }
 
       def toString[S2: StringLattice](n: I): S2 = n match {

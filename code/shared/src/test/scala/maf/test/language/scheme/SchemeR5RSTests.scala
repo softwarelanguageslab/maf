@@ -68,13 +68,19 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 
 }
 
-class ConcreteBigStepModFSoundnessTests extends SchemeR5RSTests {
+class ConstantPropagationBigStepModFR5RSCorrectnessTests extends SchemeR5RSTests {
   def analysis(
       text: SchemeExp
     ) = new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 }
 
-class TypeBigStepModFSoundnessTests extends SchemeR5RSTests {
+class PowersetBigStepModFR5RSCorrectnessTests extends SchemeR5RSTests {
+  def analysis(
+      text: SchemeExp
+    ) = new SimpleSchemeModFAnalysis(text) with SchemePowersetDomain with SchemeModFFullArgumentSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+}
+
+class TypeBigStepModFR5RSCorrectnessTests extends SchemeR5RSTests {
   def analysis(
       text: SchemeExp
     ) = new SimpleSchemeModFAnalysis(text) with SchemeTypeDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
