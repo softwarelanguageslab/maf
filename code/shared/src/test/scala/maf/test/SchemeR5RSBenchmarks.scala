@@ -463,7 +463,7 @@ object SchemeR5RSBenchmarks {
     ("(vector-length (vector 0 1 0))", 3),
     ("(vector-length (vector))", 0),
     // (vector-ref vector k)
-    ("(vector-ref (vector 'a 'b 'c) 1)", Symbol("a")),
+    ("(vector-ref (vector 'a 'b 'c) 1)", Symbol("b")),
     // (vector-set! vector k obj) TODO supported but not tested
     // (vector->list vector)
     ("(equal? (vector->list (vector 'a 'b 'c)) '(a b c))", true),
