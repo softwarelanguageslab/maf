@@ -23,6 +23,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
                         maxErrors := 5,
                         /** Configuration for running the tests */
                         logBuffered in Test := false,
+                        testOptions in Test += Tests.Argument("-oI"), // Produces a summary after running the tests, showing the failing tests
                         libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % "test",
                         libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.15.2" % "test",
                         libraryDependencies += "org.scalatestplus" %% "scalacheck-1-15" % "3.2.3.0" % "test",
