@@ -559,7 +559,7 @@ class SchemeInterpreter(
       /* [x]  string>=?: String Comparison */
       /* [x]  string>?: String Comparison */
       Stringp, /* [vv]  string?: String Predicates */
-      /* [x]  substring: String Selection */
+      Substring, /* [x]  substring: String Selection */
       SymbolToString, /* [vv] symbol->string: Symbol Primitives */
       Symbolp, /* [vv] symbol?: Symbol Primitives */
       Tan, /* [vv] tan: Scientific */
@@ -1195,6 +1195,13 @@ class SchemeInterpreter(
       def call(args: List[Value], position: Position): Value.Integer = args match {
         case Value.Str(x) :: Nil if x.toIntOption.nonEmpty => Value.Integer(x.toIntOption.get)
         case _                                             => stackedException(s"$name ($position): invalid arguments $args")
+      }
+    }
+    object Substring extends SimplePrim {
+      val name = "substring"
+      def call(args: List[Value], position: Position): Value.Str = args match {
+        case Value.Str(s) :: Value.Integer(from) :: Value.Integer(to) :: Nil if from <= to => Value.Str(s.substring(from, to))
+        case _                                                                             => stackedException(s"substring ($position): invalid arguments $args")
       }
     }
 

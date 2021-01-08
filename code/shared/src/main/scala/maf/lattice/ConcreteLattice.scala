@@ -82,6 +82,34 @@ object Concrete {
         case (Values(content1), Values(content2)) =>
           Values(content1.foldMap(s1 => content2.map(s2 => s1 + s2)))
       }
+      def substring[I2: IntLattice](
+          s: S,
+          from: I2,
+          to: I2
+        ): S = (s, from, to) match {
+        case (Values(bot), _, _) if bot.isEmpty            => Values(bot)
+        case (_, from, _) if from == IntLattice[I2].bottom => bottom
+        case (_, _, to) if to == IntLattice[I2].bottom     => bottom
+        case (Top, _, _) | (_, Top, _) | (_, _, Top)       => Top /* This could be further refined, but that wouldn't be too useful */
+        case (Values(s), from, to)                         =>
+          // Assumptions: from and to are in the string, we perform no bound check
+          s.foldMap[S](s =>
+            (0.to(s.size)
+              .collect({
+                case from2 if BoolLattice[B].isTrue(IntLattice[I2].eql[B](from, IntLattice[I2].inject(from2))) =>
+                  (0.to(s.size)
+                    .collect({
+                      case to2
+                          if BoolLattice[B].isTrue(IntLattice[I2].eql[B](to, IntLattice[I2].inject(to2))) &&
+                            from2 <= to2 =>
+                        inject(s.substring(from2, to2))
+                    }))
+              })
+              .flatten)
+              .foldLeft(bottom)((s1, s2) => join(s1, s2))
+          )(stringConcrete)
+      }
+
       def ref[I2: IntLattice, C2: CharLattice](s: S, i: I2): C2 = s match {
         case Values(bot) if bot.isEmpty => CharLattice[C2].bottom
         case Top                        => CharLattice[C2].top

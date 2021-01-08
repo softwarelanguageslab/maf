@@ -33,7 +33,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
     // All R5RS tests should terminate, no matter the analysis, because they're so simple.
     assert(a.finished(), s"Analysis of $program should finish within the given time bound out.")
     val result = a.finalResult.asInstanceOf[V]
-    assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result.")
+    assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
   }
 
   SchemeR5RSBenchmarks.bench.foreach { case (e, a) => property(s"Primitive in $e is correct.", PrimitiveTest)(testExpr(e, a)) }
@@ -63,7 +63,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
       case SchemeInterpreter.Value.Character(c) => l.char(c)
       case _                                    => ???
     }
-    assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result.")
+    assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
   }
 
 }

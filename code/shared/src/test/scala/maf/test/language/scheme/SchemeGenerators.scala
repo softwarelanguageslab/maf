@@ -11,11 +11,11 @@ import maf.test.lattice._
 
 trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
   /* unary ops */
-  val anyUnaryOp: Gen[SchemeOps.UnaryOperator] = Gen.oneOf(SchemeOps.UnaryOperator.values)
-  implicit val arbUnop: Arbitrary[SchemeOps.UnaryOperator] = Arbitrary(anyUnaryOp)
+  val anyUnaryOp: Gen[SchemeOp] = Gen.oneOf(SchemeOp.unaryOperators)
+  implicit val arbUnop: Arbitrary[SchemeOp] = Arbitrary(anyUnaryOp)
   /* binary ops */
-  val anyBinaryOp: Gen[SchemeOps.BinaryOperator] = Gen.oneOf(SchemeOps.BinaryOperator.values)
-  implicit val arbBinop: Arbitrary[SchemeOps.BinaryOperator] = Arbitrary(anyBinaryOp)
+  val anyBinaryOp: Gen[SchemeOp] = Gen.oneOf(SchemeOp.binaryOperators)
+  implicit val arbBinop: Arbitrary[SchemeOp] = Arbitrary(anyBinaryOp)
   /* generators for specific values */
   def anyPai: Gen[L]
   def anyVec: Gen[L]

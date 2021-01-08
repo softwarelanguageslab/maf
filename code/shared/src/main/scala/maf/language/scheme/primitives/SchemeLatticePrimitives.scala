@@ -2,7 +2,7 @@ package maf.language.scheme.primitives
 
 import maf.core._
 import maf.language.scheme._
-import maf.language.scheme.lattices.{SchemeLattice, SchemeOps}
+import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
 import maf.util.Monoid
 
 /** Help code for manually implementing Scheme primitives. */
@@ -17,12 +17,12 @@ trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
   implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
 
   /* Simpler names for frequently used lattice operations. */
-  def isInteger: V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.IsInteger)
-  def isVector: V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.IsVector)
-  def isLock: V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.IsLock)
-  def vectorLength: V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.VectorLength)
-  def inexactToExact: V => MayFail[V, Error] = unaryOp(SchemeOps.UnaryOperator.InexactToExact)
-  def eqq: (V, V) => MayFail[V, Error] = binaryOp(SchemeOps.BinaryOperator.Eq)
+  def isInteger: V => MayFail[V, Error] = x => op(SchemeOp.IsInteger)(List(x))
+  def isVector: V => MayFail[V, Error] = x => op(SchemeOp.IsVector)(List(x))
+  def isLock: V => MayFail[V, Error] = x => op(SchemeOp.IsLock)(List(x))
+  def vectorLength: V => MayFail[V, Error] = x => op(SchemeOp.VectorLength)(List(x))
+  def inexactToExact: V => MayFail[V, Error] = x => op(SchemeOp.InexactToExact)(List(x))
+  def eqq: (V, V) => MayFail[V, Error] = (x, y) => op(SchemeOp.Eq)(List(x, y))
 
   def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] =
     cond >>= { condv =>
@@ -171,7 +171,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       /* [x]  string-set!: String Modification */
       `string<?`, /* [vv]  string<?: String Comparison */
       `string?`, /* [vv]  string?: String Predicates */
-      /* [x]  substring: String Selection */
+      `substring`, /* [vv]  substring: String Selection */
       `symbol->string`, /* [vv] symbol->string: Symbol Primitives */
       `symbol?`, /* [vv] symbol?: Symbol Primitives */
       `tan`, /* [vv] tan: Scientific */
@@ -262,7 +262,19 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         alloc: SchemeInterpreterBridge[V, A]
       ): MayFail[(V, Store[A, V]), Error] = args match {
       case x :: y :: Nil => call(x._2, y._2).map(v => (v, store))
-      case _             => MayFail.failure(PrimitiveArityError(name, 1, args.length))
+      case _             => MayFail.failure(PrimitiveArityError(name, 2, args.length))
+    }
+  }
+
+  class NoStore3Operation(val name: String, val call: (V, V, V) => MayFail[V, Error]) extends SchemePrimitive[V, A] {
+    override def call(
+        fpos: SchemeExp,
+        args: List[(SchemeExp, V)],
+        store: Store[A, V],
+        alloc: SchemeInterpreterBridge[V, A]
+      ): MayFail[(V, Store[A, V]), Error] = args match {
+      case x :: y :: z :: Nil => call(x._2, y._2, z._2).map(v => (v, store))
+      case _                  => MayFail.failure(PrimitiveArityError(name, 3, args.length))
     }
   }
 
@@ -322,67 +334,87 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
   }
 
+  class Store3Operation(val name: String, val call: (V, V, V, Store[A, V]) => MayFail[(V, Store[A, V]), Error]) extends SchemePrimitive[V, A] {
+    override def call(
+        fpos: SchemeExp,
+        args: List[(SchemeExp, V)],
+        store: Store[A, V],
+        alloc: SchemeInterpreterBridge[V, A]
+      ): MayFail[(V, Store[A, V]), Error] = args match {
+      case x :: y :: z :: Nil => call(x._2, y._2, z._2, store)
+      case _                  => MayFail.failure(PrimitiveArityError(name, 3, args.length))
+    }
+  }
+
   object PrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
 
     val lat: SchemeLattice[V, A, SchemePrimitive[V, A]] = schemeLattice
 
     import schemeLattice._
 
-    case object `<`
-        extends NoStore2Operation("<",
-                                  binaryOp(SchemeOps.BinaryOperator.Lt)
-        ) // TODO[easy]: < should accept any number of arguments (same for <= etc.)
-    case object `acos` extends NoStore1Operation("acos", unaryOp(SchemeOps.UnaryOperator.ACos))
-    case object `asin` extends NoStore1Operation("asin", unaryOp(SchemeOps.UnaryOperator.ASin))
-    case object `atan` extends NoStore1Operation("atan", unaryOp(SchemeOps.UnaryOperator.ATan))
-    case object `boolean?` extends NoStore1Operation("boolean?", unaryOp(SchemeOps.UnaryOperator.IsBoolean))
-    case object `ceiling` extends NoStore1Operation("ceiling", unaryOp(SchemeOps.UnaryOperator.Ceiling))
-    case object `char->integer` extends NoStore1Operation("char->integer", unaryOp(SchemeOps.UnaryOperator.CharacterToInteger))
-    case object `char->string` extends NoStore1Operation("char->string", unaryOp(SchemeOps.UnaryOperator.CharacterToString))
-    case object `char-ci<?` extends NoStore2Operation("char-ci<?", binaryOp(SchemeOps.BinaryOperator.CharacterLtCI))
-    case object `char-ci=?` extends NoStore2Operation("char-ci=?", binaryOp(SchemeOps.BinaryOperator.CharacterEqCI))
-    case object `char-downcase` extends NoStore1Operation("char-downcase", unaryOp(SchemeOps.UnaryOperator.CharacterDowncase))
-    case object `char-lower-case?` extends NoStore1Operation("char-lower-case?", unaryOp(SchemeOps.UnaryOperator.CharacterIsLower))
-    case object `char-upcase` extends NoStore1Operation("char-upcase", unaryOp(SchemeOps.UnaryOperator.CharacterUpcase))
-    case object `char-upper-case?` extends NoStore1Operation("char-upper-case?", unaryOp(SchemeOps.UnaryOperator.CharacterIsUpper))
-    case object `char<?` extends NoStore2Operation("char<?", binaryOp(SchemeOps.BinaryOperator.CharacterLt))
-    case object `char=?` extends NoStore2Operation("char=?", binaryOp(SchemeOps.BinaryOperator.CharacterEq))
-    case object `char?` extends NoStore1Operation("char?", unaryOp(SchemeOps.UnaryOperator.IsChar))
-    case object `cos` extends NoStore1Operation("cos", unaryOp(SchemeOps.UnaryOperator.Cos))
+    def unaryOp(op: SchemeOp)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
+    def binaryOp(op: SchemeOp)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
+    def ternaryOp(
+        op: SchemeOp
+      )(
+        x: V,
+        y: V,
+        z: V
+      ): MayFail[V, Error] = lat.op(op)(List(x, y, z))
+
+    case object `<` extends NoStore2Operation("<", binaryOp(SchemeOp.Lt)) // TODO[easy]: < should accept any number of arguments (same for <= etc.)
+    case object `acos` extends NoStore1Operation("acos", unaryOp(SchemeOp.ACos))
+    case object `asin` extends NoStore1Operation("asin", unaryOp(SchemeOp.ASin))
+    case object `atan` extends NoStore1Operation("atan", unaryOp(SchemeOp.ATan))
+    case object `boolean?` extends NoStore1Operation("boolean?", unaryOp(SchemeOp.IsBoolean))
+    case object `ceiling` extends NoStore1Operation("ceiling", unaryOp(SchemeOp.Ceiling))
+    case object `char->integer` extends NoStore1Operation("char->integer", unaryOp(SchemeOp.CharacterToInteger))
+    case object `char->string` extends NoStore1Operation("char->string", unaryOp(SchemeOp.CharacterToString))
+    case object `char-ci<?` extends NoStore2Operation("char-ci<?", binaryOp(SchemeOp.CharacterLtCI))
+    case object `char-ci=?` extends NoStore2Operation("char-ci=?", binaryOp(SchemeOp.CharacterEqCI))
+    case object `char-downcase` extends NoStore1Operation("char-downcase", unaryOp(SchemeOp.CharacterDowncase))
+    case object `char-lower-case?` extends NoStore1Operation("char-lower-case?", unaryOp(SchemeOp.CharacterIsLower))
+    case object `char-upcase` extends NoStore1Operation("char-upcase", unaryOp(SchemeOp.CharacterUpcase))
+    case object `char-upper-case?` extends NoStore1Operation("char-upper-case?", unaryOp(SchemeOp.CharacterIsUpper))
+    case object `char<?` extends NoStore2Operation("char<?", binaryOp(SchemeOp.CharacterLt))
+    case object `char=?` extends NoStore2Operation("char=?", binaryOp(SchemeOp.CharacterEq))
+    case object `char?` extends NoStore1Operation("char?", unaryOp(SchemeOp.IsChar))
+    case object `cos` extends NoStore1Operation("cos", unaryOp(SchemeOp.Cos))
     case object `eq?` extends NoStore2Operation("eq?", eqq)
     case object `error` extends NoStore1Operation("error", x => MayFail.failure(UserError(x.toString)))
-    case object `exact->inexact` extends NoStore1Operation("exact->inexact", unaryOp(SchemeOps.UnaryOperator.ExactToInexact))
-    case object `expt` extends NoStore2Operation("expt", binaryOp(SchemeOps.BinaryOperator.Expt))
-    case object `floor` extends NoStore1Operation("floor", unaryOp(SchemeOps.UnaryOperator.Floor))
-    case object `inexact->exact` extends NoStore1Operation("inexact->exact", unaryOp(SchemeOps.UnaryOperator.InexactToExact))
-    case object `integer->char` extends NoStore1Operation("integer->char", unaryOp(SchemeOps.UnaryOperator.IntegerToCharacter))
-    case object `integer?` extends NoStore1Operation("integer?", unaryOp(SchemeOps.UnaryOperator.IsInteger))
-    case object `log` extends NoStore1Operation("log", unaryOp(SchemeOps.UnaryOperator.Log))
-    case object `modulo` extends NoStore2Operation("modulo", binaryOp(SchemeOps.BinaryOperator.Modulo))
-    case object `null?` extends NoStore1Operation("null?", unaryOp(SchemeOps.UnaryOperator.IsNull))
-    case object `number->string` extends NoStore1Operation("number->string", unaryOp(SchemeOps.UnaryOperator.NumberToString))
+    case object `exact->inexact` extends NoStore1Operation("exact->inexact", unaryOp(SchemeOp.ExactToInexact))
+    case object `expt` extends NoStore2Operation("expt", binaryOp(SchemeOp.Expt))
+    case object `floor` extends NoStore1Operation("floor", unaryOp(SchemeOp.Floor))
+    case object `inexact->exact` extends NoStore1Operation("inexact->exact", unaryOp(SchemeOp.InexactToExact))
+    case object `integer->char` extends NoStore1Operation("integer->char", unaryOp(SchemeOp.IntegerToCharacter))
+    case object `integer?` extends NoStore1Operation("integer?", unaryOp(SchemeOp.IsInteger))
+    case object `log` extends NoStore1Operation("log", unaryOp(SchemeOp.Log))
+    case object `modulo` extends NoStore2Operation("modulo", binaryOp(SchemeOp.Modulo))
+    case object `null?` extends NoStore1Operation("null?", unaryOp(SchemeOp.IsNull))
+    case object `number->string` extends NoStore1Operation("number->string", unaryOp(SchemeOp.NumberToString))
     case object `number?` extends NoStore1Operation("number?", `real?`.call(_)) /* No support for complex number, so number? is equivalent as real? */
-    case object `procedure?` extends NoStore1Operation("procedure?", unaryOp(SchemeOps.UnaryOperator.IsProcedure))
-    case object `quotient` extends NoStore2Operation("quotient", binaryOp(SchemeOps.BinaryOperator.Quotient))
-    case object `random` extends NoStore1Operation("random", unaryOp(SchemeOps.UnaryOperator.Random))
-    case object `remainder` extends NoStore2Operation("remainder", binaryOp(SchemeOps.BinaryOperator.Remainder))
-    case object `round` extends NoStore1Operation("round", unaryOp(SchemeOps.UnaryOperator.Round))
-    case object `sin` extends NoStore1Operation("sin", unaryOp(SchemeOps.UnaryOperator.Sin))
-    case object `string->number` extends NoStore1Operation("string->number", unaryOp(SchemeOps.UnaryOperator.StringToNumber))
-    case object `string->symbol` extends NoStore1Operation("string->symbol", unaryOp(SchemeOps.UnaryOperator.StringToSymbol))
-    case object `string-length` extends NoStore1Operation("string-length", unaryOp(SchemeOps.UnaryOperator.StringLength))
-    case object `string-ref` extends NoStore2Operation("string-ref", binaryOp(SchemeOps.BinaryOperator.StringRef))
-    case object `string<?` extends NoStore2Operation("string<?", binaryOp(SchemeOps.BinaryOperator.StringLt))
-    case object `string?` extends NoStore1Operation("string?", unaryOp(SchemeOps.UnaryOperator.IsString))
-    case object `symbol->string` extends NoStore1Operation("symbol->string", unaryOp(SchemeOps.UnaryOperator.SymbolToString))
-    case object `symbol?` extends NoStore1Operation("symbol?", unaryOp(SchemeOps.UnaryOperator.IsSymbol))
-    case object `tan` extends NoStore1Operation("tan", unaryOp(SchemeOps.UnaryOperator.Tan))
+    case object `procedure?` extends NoStore1Operation("procedure?", unaryOp(SchemeOp.IsProcedure))
+    case object `quotient` extends NoStore2Operation("quotient", binaryOp(SchemeOp.Quotient))
+    case object `random` extends NoStore1Operation("random", unaryOp(SchemeOp.Random))
+    case object `remainder` extends NoStore2Operation("remainder", binaryOp(SchemeOp.Remainder))
+    case object `round` extends NoStore1Operation("round", unaryOp(SchemeOp.Round))
+    case object `sin` extends NoStore1Operation("sin", unaryOp(SchemeOp.Sin))
+    case object `string->number` extends NoStore1Operation("string->number", unaryOp(SchemeOp.StringToNumber))
+    case object `string->symbol` extends NoStore1Operation("string->symbol", unaryOp(SchemeOp.StringToSymbol))
+    case object `string-length` extends NoStore1Operation("string-length", unaryOp(SchemeOp.StringLength))
+    case object `string-ref` extends NoStore2Operation("string-ref", binaryOp(SchemeOp.StringRef))
+    case object `string<?` extends NoStore2Operation("string<?", binaryOp(SchemeOp.StringLt))
+    case object `string?` extends NoStore1Operation("string?", unaryOp(SchemeOp.IsString))
+    case object `substring` extends NoStore3Operation("substring", ternaryOp(SchemeOp.Substring))
+    case object `symbol->string` extends NoStore1Operation("symbol->string", unaryOp(SchemeOp.SymbolToString))
+    case object `symbol?` extends NoStore1Operation("symbol?", unaryOp(SchemeOp.IsSymbol))
+    case object `tan` extends NoStore1Operation("tan", unaryOp(SchemeOp.Tan))
 
     case object `+`
         extends NoStoreLOpRec("+",
                               {
                                 case (Nil, _)          => number(0)
-                                case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.Plus)(x, _))
+                                case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOp.Plus)(x, _))
                               }
         )
 
@@ -390,8 +422,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         extends NoStoreLOp("-",
                            {
                              case Nil       => MayFail.failure(PrimitiveVariadicArityError("-", 1, 0))
-                             case x :: Nil  => binaryOp(SchemeOps.BinaryOperator.Minus)(number(0), x)
-                             case x :: rest => `+`.call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.Minus)(x, _))
+                             case x :: Nil  => binaryOp(SchemeOp.Minus)(number(0), x)
+                             case x :: rest => `+`.call(rest) >>= (binaryOp(SchemeOp.Minus)(x, _))
                            }
         )
 
@@ -399,7 +431,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         extends NoStoreLOpRec("*",
                               {
                                 case (Nil, _)          => number(1)
-                                case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.Times)(x, _))
+                                case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOp.Times)(x, _))
                               }
         )
 
@@ -410,8 +442,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                              case x :: rest =>
                                for {
                                  multrest <- `*`.call(rest)
-                                 r <- binaryOp(SchemeOps.BinaryOperator.Div)(x, multrest)
-                                 fl <- unaryOp(SchemeOps.UnaryOperator.Floor)(r)
+                                 r <- binaryOp(SchemeOp.Div)(x, multrest)
+                                 fl <- unaryOp(SchemeOp.Floor)(r)
                                  isexact <- eqq(r, fl)
                                  xisint <- isInteger(x)
                                  multrestisint <- isInteger(multrest)
@@ -444,7 +476,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       def eq(first: V, l: List[V]): MayFail[V, Error] = l match {
         case Nil => bool(true)
         case x :: rest =>
-          ifThenElse(binaryOp(SchemeOps.BinaryOperator.NumEq)(first, x)) {
+          ifThenElse(binaryOp(SchemeOp.NumEq)(first, x)) {
             eq(first, rest)
           } {
             bool(false)
@@ -465,8 +497,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                     } {
                                       /* n >= 0 */
                                       for {
-                                        r <- unaryOp(SchemeOps.UnaryOperator.Sqrt)(x)
-                                        fl <- unaryOp(SchemeOps.UnaryOperator.Floor)(r)
+                                        r <- unaryOp(SchemeOp.Sqrt)(x)
+                                        fl <- unaryOp(SchemeOp.Floor)(r)
                                         argisexact <- isInteger(x)
                                         resisexact <- eqq(r, fl)
                                         convert <- and(argisexact, resisexact)
@@ -479,9 +511,9 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `pair?`
         extends Store1Operation("pair?",
                                 (x, store) =>
-                                  ifThenElse(unaryOp(SchemeOps.UnaryOperator.IsPointer)(x)) {
+                                  ifThenElse(unaryOp(SchemeOp.IsPointer)(x)) {
                                     dereferencePointer(x, store) { cons =>
-                                      unaryOp(SchemeOps.UnaryOperator.IsCons)(cons)
+                                      unaryOp(SchemeOp.IsCons)(cons)
                                     }
                                   } {
                                     bool(false)
@@ -493,7 +525,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                   x =>
                                     for {
                                       isint <- isInteger(x)
-                                      isreal <- unaryOp(SchemeOps.UnaryOperator.IsReal)(x)
+                                      isreal <- unaryOp(SchemeOp.IsReal)(x)
                                     } yield or(isint, isreal)
         )
 
@@ -501,19 +533,19 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         extends Store1Operation("vector?",
                                 (x, store) =>
                                   for {
-                                    ispointer <- unaryOp(SchemeOps.UnaryOperator.IsPointer)(x)
+                                    ispointer <- unaryOp(SchemeOp.IsPointer)(x)
                                     isvector <- dereferencePointer(x, store) { v =>
                                       isVector(v)
                                     }
                                   } yield (and(ispointer, isvector), store)
         )
-    case object `thread?` extends NoStore1Operation("thread?", unaryOp(SchemeOps.UnaryOperator.IsThread))
+    case object `thread?` extends NoStore1Operation("thread?", unaryOp(SchemeOp.IsThread))
     case object `lock?`
         extends Store1Operation("lock?",
                                 (x, store) => // Analogous to `pair?`, could also do analogous to `vector?`.
-                                  ifThenElse(unaryOp(SchemeOps.UnaryOperator.IsPointer)(x)) {
+                                  ifThenElse(unaryOp(SchemeOp.IsPointer)(x)) {
                                     dereferencePointer(x, store) { lock =>
-                                      unaryOp(SchemeOps.UnaryOperator.IsLock)(lock)
+                                      unaryOp(SchemeOp.IsLock)(lock)
                                     }
                                   } {
                                     bool(false)
@@ -524,7 +556,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         extends NoStoreLOpRec("string-append",
                               {
                                 case (Nil, _)          => string("")
-                                case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOps.BinaryOperator.StringAppend)(x, _))
+                                case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOp.StringAppend)(x, _))
                               }
         )
 
