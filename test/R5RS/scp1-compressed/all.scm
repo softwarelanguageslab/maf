@@ -142,33 +142,26 @@
   (close-to (calc-cos 3.1415 10) -0.9999999992346591))
 
 ; 3.4
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result2 '())
+(define display2 (lambda (i) (set! result2 (cons i result2))))
 
 (define (count1 x)
-  (cond ((= 0 x) (display x))
-    (else (display x)
+  (cond ((= 0 x) (display2 x))
+    (else (display2 x)
       (count1 (- x 1)))))
 
 (define (count2 x)
-  (cond ((= 0 x) (display x))
+  (cond ((= 0 x) (display2 x))
     (else (count2 (- x 1))
-      (display x))))
+      (display2 x))))
 
 (count1 4)
 (count2 4)
-(equal? result '(4 3 2 1 0 0 1 2 3 4))
+(equal? result2 '(4 3 2 1 0 0 1 2 3 4))
 
 ; 3.6
-(define (for-each f l)
-  (if (null? l)
-    #t
-    (if (pair? l)
-      (begin (f (car l)) (for-each f (cdr l)))
-      (error "Cannot for-each over a non-list"))))
-
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result3 '())
+(define display3 (lambda (i) (set! result3 (cons i result3))))
 
 (define (weird x)
   (cond
@@ -185,18 +178,18 @@
 (define (weird-table min max)
   (cond
     ((< min max)
-      (for-each display (list min "\t" (depth-weird min) "\n"))
+      (for-each display3 (list min "\t" (depth-weird min) "\n"))
       (weird-table (+ min 1) max))))
 
 (weird-table 1 10)
 
 (and (= (weird 15) 1)
   (= (depth-weird 15) 17)
-  (equal? result '("\n" 19 "\t" 9 "\n" 3 "\t" 8 "\n" 16 "\t" 7 "\n" 8 "\t" 6 "\n" 5 "\t" 5 "\n" 2 "\t" 4 "\n" 7 "\t" 3 "\n" 1 "\t" 2 "\n" 0 "\t" 1)))
+  (equal? result3 '("\n" 19 "\t" 9 "\n" 3 "\t" 8 "\n" 16 "\t" 7 "\n" 8 "\t" 6 "\n" 5 "\t" 5 "\n" 2 "\t" 4 "\n" 7 "\t" 3 "\n" 1 "\t" 2 "\n" 0 "\t" 1)))
 
 ; 3.8
-(define (double x) (+ x x))
-(define (halve x) (/ x 2))
+;(define (double x) (+ x x))
+;(define (halve x) (/ x 2))
 (define (sim-multiply a b)
   (if (zero? b)
     1
@@ -210,14 +203,14 @@
   (= (sim-fast-multiply 14 2365) 19))
 
 ; 3.9
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
+(define result4 '())
+(define display4 (lambda (i) (set! result4 (cons i result4))))
+(define newline4 (lambda () (set! result4 (cons 'newline result4))))
 
 (define (display-n n x)
   (if (> n 0)
     (begin
-      (display x)
+      (display4 x)
       (display-n (- n 1) x))))
 
 (define (parasol n)
@@ -226,21 +219,21 @@
       (begin
         (display-n (- n i 1) " ")
         (display-n (+ (* 2 i) 1) "*")
-        (newline)
+        (newline4)
         (triangle (+ i 1)))))
 
   (define (stick i)
     (if (< i 3)
       (begin
         (display-n (- n 1) " ")
-        (display "*")(newline)
+        (display4 "*")(newline4)
         (stick (+ i 1)))))
 
   (triangle 0)
   (stick 0))
 
 (parasol 10)
-(equal? result
+(equal? result4
     '(newline
        "*"
        " "
@@ -429,16 +422,15 @@
        " "
        " "
        " "))
-
 ; 4.1
 (define result '())
-(define display (lambda (i) (set! result (cons i result))))
-(define newline (lambda () (set! result (cons 'newline result))))
+(define display2 (lambda (i) (set! result (cons i result))))
+(define newline2 (lambda () (set! result (cons 'newline result))))
 
 (define (print-abc a b c)
-  (display a) (display " ")
-  (display b) (display " ")
-  (display c) (newline))
+  (display2 a) (display " ")
+  (display2 b) (display " ")
+  (display2 c) (newline2))
 
 (define (foo a b c)
   (print-abc a b c)
@@ -476,16 +468,15 @@
 (and (= (simp-int (lambda (x) x) 0 10 100) 50)
   (= (simp-int (lambda (x) (sqrt (- (* r r) (* x x)))) (- r) r 100) 3.1402925778303366))
 
-
 ; 5.6
 (define (add-to-end e l)
-  (if (null? l)
-    (cons e '())
-    (cons (car l) (add-to-end e (cdr l)))))
+   (if (null? l)
+     (cons e '())
+     (cons (car l) (add-to-end e (cdr l)))))
 
 (and (equal? (add-to-end 999 '(1 2 3 4 5)) '(1 2 3 4 5 999))
-  (equal? (add-to-end 999 '()) '(999))
-  (equal? (add-to-end 999 '(1)) '(1 999)))
+   (equal? (add-to-end 999 '()) '(999))
+   (equal? (add-to-end 999 '(1)) '(1 999)))
 
 ; 5.7
 (and (equal? (append '(1 2 3) '(4 5)) '(1 2 3 4 5))
@@ -715,8 +706,8 @@
   (equal? (depth-and-leaf-count l) (cons 3 7)))
 
 ; 7.3
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (fringe l)
   (cond ((null? l) '())
@@ -727,7 +718,7 @@
 (equal? (fringe '((1) ((((2)))) (3 (4 5) 6) ((7) 8 9))) '(1 2 3 4 5 6 7 8 9))
 
 
-; &.4
+; 7.4
 (define (unfringe-1 l)
   (cond ((null? l) '())
     ((null? (cdr l)) (list (car l)))
@@ -751,8 +742,8 @@
   (equal? (unfringe-2 '(1 2 3 4 5 6 7 8 9)) '(((((1 2) (3 4)) ((5 6) (7 8))) (((9)))))))
 
 ; 7.5
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (same-structure? l1 l2)
   (cond ((and (atom? l1) (atom? l2)) #t)
@@ -773,8 +764,8 @@
            '((((1 2) (3 4)) ((5 6) (7 8))) 9))))
 
 ; 7.6
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (deep-combine combiner null-value l)
   (cond ((null? l) null-value)
@@ -939,51 +930,51 @@
 (define (atom? x)
   (not (pair? x)))
 
-(define mijn-vuurwerk '(groen ((blauw (X (blauw (X X)) X X))
-                                (rood ((groen (X X)) X))
-                                X
-                                (geel (X X)))))
+ (define mijn-vuurwerk '(groen ((blauw (X (blauw (X X)) X X))
+                                 (rood ((groen (X X)) X))
+                                 X
+                                 (geel (X X)))))
 
-(define (kleur vuurwerk) (car vuurwerk))
-(define (takken vuurwerk) (cadr vuurwerk))
-(define (low-energy? vuurwerk) (eq? vuurwerk 'X))
+ (define (kleur vuurwerk) (car vuurwerk))
+ (define (takken vuurwerk) (cadr vuurwerk))
+ (define (low-energy? vuurwerk) (eq? vuurwerk 'X))
 
-(define (tel-knallen vuurwerk)
-  (cond ((null? vuurwerk) 0)
-    ((low-energy? vuurwerk) 0)
-    ((atom? vuurwerk) 1)
-    (else (+ (tel-knallen (car vuurwerk))
-            (tel-knallen (cdr vuurwerk))))))
+ (define (tel-knallen vuurwerk)
+   (cond ((null? vuurwerk) 0)
+     ((low-energy? vuurwerk) 0)
+     ((atom? vuurwerk) 1)
+     (else (+ (tel-knallen (car vuurwerk))
+             (tel-knallen (cdr vuurwerk))))))
 
-(define (tel-low-energies v)
-  (cond ((null? v) 0)
-    ((low-energy? v) 1)
-    ((atom? v) 0)
-    (else (+ (tel-low-energies (car v))
-            (tel-low-energies (cdr v))))))
+ (define (tel-low-energies v)
+   (cond ((null? v) 0)
+     ((low-energy? v) 1)
+     ((atom? v) 0)
+     (else (+ (tel-low-energies (car v))
+             (tel-low-energies (cdr v))))))
 
-(define (tel-einde-in takken een-kleur)
-  (cond ((null? takken) 0)
-    ((low-energy? (car takken)) 0)
-    (else (+ (tel-einde (car takken) een-kleur)
-            (tel-einde-in (cdr takken) een-kleur)))))
+ (define (tel-einde-in takken een-kleur)
+   (cond ((null? takken) 0)
+     ((low-energy? (car takken)) 0)
+     (else (+ (tel-einde (car takken) een-kleur)
+             (tel-einde-in (cdr takken) een-kleur)))))
 
-(define (tel-einde vuurwerk een-kleur)
-  (if (eq? (kleur vuurwerk) een-kleur)
-    (tel-low-energies (takken vuurwerk))
-    (tel-einde-in (takken vuurwerk) een-kleur)))
+ (define (tel-einde vuurwerk een-kleur)
+   (if (eq? (kleur vuurwerk) een-kleur)
+     (tel-low-energies (takken vuurwerk))
+     (tel-einde-in (takken vuurwerk) een-kleur)))
 
-(define (ster? vuurwerk)
-  (not (member 'X (takken vuurwerk))))
+ (define (ster? vuurwerk)
+   (not (member 'X (takken vuurwerk))))
 
-(and (eq? (kleur mijn-vuurwerk) 'groen)
-  (equal? (takken mijn-vuurwerk)
-      '((blauw (X (blauw (X X)) X X)) (rood ((groen (X X)) X)) X (geel (X X))))
-  (not (low-energy? mijn-vuurwerk))
-  (low-energy? 'X)
-  (= (tel-knallen mijn-vuurwerk) 6)
-  (= (tel-einde mijn-vuurwerk 'blauw) 5)
-  (not (ster? mijn-vuurwerk)))
+ (and (eq? (kleur mijn-vuurwerk) 'groen)
+   (equal? (takken mijn-vuurwerk)
+       '((blauw (X (blauw (X X)) X X)) (rood ((groen (X X)) X)) X (geel (X X))))
+   (not (low-energy? mijn-vuurwerk))
+   (low-energy? 'X)
+   (= (tel-knallen mijn-vuurwerk) 6)
+   (= (tel-einde mijn-vuurwerk 'blauw) 5)
+   (not (ster? mijn-vuurwerk)))
 
 ; 7.13
 (define result '())
@@ -1106,8 +1097,8 @@
        rechten))
 
 ; 7.14
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (maak-dier naam eigenschappen)
   (list naam eigenschappen))
@@ -1126,7 +1117,7 @@
 (define (knoop boom) (car boom))
 (define (deelbomen boom) (cadr boom))
 (define (leeg? boom) (null? boom))
-(define (knoop? boom) (dier? boom))
+;(define (knoop? boom) (dier? boom))
 
 
 (define classificatieboom
@@ -1197,8 +1188,8 @@
   (not (ask? classificatieboom 'olifant   'kan-vliegen)))
 
 ; 7.15
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define (maak-blad type) type)
 (define (geef-type blad) blad)
@@ -1209,9 +1200,9 @@
 (define (maak-hybride-tak knopen) knopen)
 (define (geef-knopen tak) tak)
 
-(define (leeg? boom) (null? boom))
+;(define (leeg? boom) (null? boom))
 (define (knoop? boom) (pair? boom))
-(define (blad? boom) (atom? boom))
+(define (blad2? boom) (atom? boom))
 
 (define hybride-tak
   (maak-hybride-tak
@@ -1251,11 +1242,11 @@
 
   (define (tel-hulp boom)
     (cond ((leeg? boom) (list 0 0 0))
-      ((and (blad? boom) (eq? boom 'appel))
+      ((and (blad2? boom) (eq? boom 'appel))
         (list 1 0 0))
-      ((and (blad? boom) (eq? boom 'peer))
+      ((and (blad2? boom) (eq? boom 'peer))
         (list 0 1 0))
-      ((blad? boom) (list 0 0 1))
+      ((blad2? boom) (list 0 0 1))
       (else (tel-hulp-in (geef-knopen boom)))))
 
   (define (tel-hulp-in lst)
@@ -1274,7 +1265,7 @@
 
 (define (check-normaal boom)
   (cond ((leeg? boom) #t)
-    ((blad? boom) #t)
+    ((blad2? boom) #t)
     ((knoop? boom)
       (and (normaal? boom)
         (check-normaal-in (geef-knopen boom))))
@@ -1299,8 +1290,8 @@
           (f (car lst) (foldr-aux (cdr lst))))))
     (foldr-aux lst)))
 
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define Coca-Cola-NV
     '(Coca-Cola-NV (Frisdranken
@@ -1404,7 +1395,7 @@
 (define (laatste-nakomeling? fam)
   (null? (kinderen fam)))
 
-(define (verdeel-democratisch boom budget)
+(define (verdeel-democratisch2 boom budget)
   (define (verdeel boom)
     (if (laatste-nakomeling? boom)
       1
@@ -1429,26 +1420,26 @@
         (budget-hulp-in (cdr bomen) budget-list))))
   (budget-hulp-in (kinderen boom) budget-list))
 
-(define (verdeel boom budget)
+(define (verdeel2 boom budget)
   (cond ((laatste-nakomeling? boom)
           (list (list (familiehoofd boom) budget)))
     (else (let* ((rest (kinderen boom))
                   (new-budget (/ budget (length rest))))
-            (verdeel-in rest new-budget)))))
+            (verdeel2-in rest new-budget)))))
 
-(define (verdeel-in bomen budget)
+(define (verdeel2-in bomen budget)
   (if (null? bomen)
       '()
-    (append (verdeel    (car bomen) budget)
-      (verdeel-in (cdr bomen) budget))))
+    (append (verdeel2    (car bomen) budget)
+      (verdeel2-in (cdr bomen) budget))))
 
-(and (= (verdeel-democratisch familieboom 1500) 100)
+(and (= (verdeel-democratisch2 familieboom 1500) 100)
   (= (budget familieboom '(100 50 20)) 650)
-  (equal? (verdeel familieboom 3000) '((tom 250) (roel 250) (mie 500) (ina 125) (ilse 125) (bart 250) (iris 500) (ilse 1000))))
+  (equal? (verdeel2 familieboom 3000) '((tom 250) (roel 250) (mie 500) (ina 125) (ilse 125) (bart 250) (iris 500) (ilse 1000))))
 
 ; 7.18
-(define (atom? x)
-  (not (pair? x)))
+;(define (atom? x)
+;  (not (pair? x)))
 
 (define VUB-circus '(ann (mien (eef (bas)
                                  (bob))
@@ -1491,8 +1482,8 @@
     (if (and (artiest? piramide)
           (eq? (hoofdartiest piramide) artiest))
       (append pad
-        (list (hoofdartiest piramide))
-        (map hoofdartiest (artiesten piramide))))
+              (append (list (hoofdartiest piramide))
+                      (map hoofdartiest (artiesten piramide)))))
     (fall-in (artiesten piramide)
       (append pad
         (list (hoofdartiest piramide)))))
@@ -1531,12 +1522,12 @@
         (set! state 0))
       state)))
 
-(define flip (make-flip))
+(define flip2 (make-flip))
 
-(and (= (flip) 1)
-  (= (flip) 0)
-  (= (flip) 1)
-  (= (flip) 0))
+(and (= (flip2) 1)
+  (= (flip2) 0)
+  (= (flip2) 1)
+  (= (flip2) 0))
 
 ; 8.5
 (define (make-point x y)
@@ -1623,19 +1614,19 @@
   (= ((polynome 'coefficient) 2) 2))
 
 ; 8.6
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result3 '())
+(define display3 (lambda (i) (set! result3 (cons i result3))))
 
 (define hulp 2)
 (define (haha x)
   (let ((hulp (* x hulp)))
-    (display hulp))
-  (display hulp)
+    (display3 hulp))
+  (display3 hulp)
   (set! hulp 4))
 
 (haha 2)
 (haha 3)
-(equal? result '(4 12 2 4))
+(equal? result3 '(4 12 2 4))
 
 ; 8.10
 (define result '())
@@ -1974,10 +1965,10 @@
           base
           (f (car lst) (foldr-aux (cdr lst))))))
     (foldr-aux lst)))
-(define result '())
-(define display2 (lambda (i) (set! result (cons i result))))
-(define newline2 (lambda () (set! result (cons 'newline result))))
-(define error2 (lambda (e) (set! result (cons (list 'error e) result))))
+(define result2 '())
+(define display2 (lambda (i) (set! result2 (cons i result2))))
+(define newline2 (lambda () (set! result2 (cons 'newline result2))))
+(define error2 (lambda (e) (set! result2 (cons (list 'error e) result2))))
 
 
 (define (maak-buffer)
@@ -2150,7 +2141,7 @@
 
 (verkeersteller 'newDay)
 
-(equal? result '(newline
+(equal? result2 '(newline
                   newline
                   " auto's"
                   1
@@ -2590,61 +2581,61 @@
   (= (count-pairs ret7) 7))
 
 ; 9.3
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result2 '())
+(define display2 (lambda (i) (set! result2 (cons i result2))))
 
-(define (make-ring n)
-  (let ((last (cons 0 '())))
-    (define (build-list n)
+(define (make-ring2 n)
+  (let ((last2 (cons 0 '())))
+    (define (build-list2 n)
       (if (= n 0)
-        last
-        (cons n (build-list (- n 1)))))
-    (let ((ring (build-list n)))
-      (set-cdr! last ring)
-      ring)))
+        last2
+        (cons n (build-list2 (- n 1)))))
+    (let ((ring2 (build-list2 n)))
+      (set-cdr! last2 ring2)
+      ring2)))
 
-(define (print-ring r)
+(define (print-ring2 r)
   (define (aux l)
     (if (not (null? l))
       (if (eq? (cdr l) r)
-        (begin (display " ")
-          (display (car l))
-          (display "..."))
-        (begin (display " ")
-          (display (car l))
+        (begin (display2 " ")
+          (display2 (car l))
+          (display2 "..."))
+        (begin (display2 " ")
+          (display2 (car l))
           (aux (cdr l))))))
   (aux r)
   #t)
 
 
-(define r (make-ring 3))
-(print-ring r)
-(print-ring (cdr r))
-(equal? result '("..." 3 " " 0 " " 1 " " 2 " " "..." 0 " " 1 " " 2 " " 3 " "))
+(define r2 (make-ring2 3))
+(print-ring2 r2)
+(print-ring2 (cdr r2))
+(equal? result2 '("..." 3 " " 0 " " 1 " " 2 " " "..." 0 " " 1 " " 2 " " 3 " "))
 
 ; 9.5
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result3 '())
+(define display3 (lambda (i) (set! result3 (cons i result3))))
 
-(define (make-ring n)
-  (let ((last (cons 0 '())))
-    (define (build-list n)
+(define (make-ring3 n)
+  (let ((last3 (cons 0 '())))
+    (define (build-list3 n)
       (if (= n 0)
-        last
-        (cons n (build-list (- n 1)))))
-    (let ((ring (build-list n)))
-      (set-cdr! last ring)
-      ring)))
+        last3
+        (cons n (build-list3 (- n 1)))))
+    (let ((ring3 (build-list3 n)))
+      (set-cdr! last3 ring3)
+      ring3)))
 
-(define (print-ring r)
+(define (print-ring3 r)
   (define (aux l)
     (if (not (null? l))
       (if (eq? (cdr l) r)
+        (begin (display3 " ")
+          (display3 (car l))
+          (display3 "..."))
         (begin (display " ")
-          (display (car l))
-          (display "..."))
-        (begin (display " ")
-          (display (car l))
+          (display3 (car l))
           (aux (cdr l))))))
   (aux r)
   #t)
@@ -2656,19 +2647,19 @@
       (iter (cdr l))))
   (iter r))
 
-(define r (make-ring 3))
-(print-ring (right-rotate r))
-(equal? result '("..." 1 " " 2 " " 3 " " 0 " "))
+(define r3 (make-ring3 3))
+(print-ring3 (right-rotate r3))
+(equal? result3 '("..." 1 " " 2 " " 3 " " 0 " "))
 
 ; 9.6
-(define ret4
+(define ret4-2
   (let ((last (cons 'c '())))
     (cons last (cons 'b last))))
-(define ret7
+(define ret7-2
   (let* ((last (cons 'c '()))
           (middle (cons last last)))
     (cons middle middle)))
-(define retno
+(define retno-2
   (let* ((last (cons 'c '()))
           (lst (cons 'a (cons 'b last))))
     (set-cdr! last lst)
@@ -2685,34 +2676,34 @@
 
 (and (not (cycles? '()))
   (not (cycles? '(1 2 3)))
-  (not (cycles? ret4))
-  (cycles? retno)
-  (not (cycles? ret7))
-  (cycles? (cons 'a (cons 'b retno))))
+  (not (cycles? ret4-2))
+  (cycles? retno-2)
+  (not (cycles? ret7-2))
+  (cycles? (cons 'a (cons 'b retno-2))))
 
 ; 9.7
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result4 '())
+(define display4 (lambda (i) (set! result4 (cons i result4))))
 
-(define (make-ring n)
-  (let ((last (cons 0 '())))
-    (define (build-list n)
+(define (make-ring4 n)
+  (let ((last4 (cons 0 '())))
+    (define (build-list4 n)
       (if (= n 0)
-        last
-        (cons n (build-list (- n 1)))))
-    (let ((ring (build-list n)))
-      (set-cdr! last ring)
-      ring)))
+        last4
+        (cons n (build-list4 (- n 1)))))
+    (let ((ring4 (build-list4 n)))
+      (set-cdr! last4 ring4)
+      ring4)))
 
-(define (print-ring r)
+(define (print-ring4 r)
   (define (aux l)
     (if (not (null? l))
       (if (eq? (cdr l) r)
-        (begin (display " ")
-          (display (car l))
-          (display "..."))
-        (begin (display " ")
-          (display (car l))
+        (begin (display4 " ")
+          (display4 (car l))
+          (display4 "..."))
+        (begin (display4 " ")
+          (display4 (car l))
           (aux (cdr l))))))
   (aux r)
   #t)
@@ -2729,42 +2720,42 @@
     (set-cdr! last first)
     first))
 
-(define r (make-ring 3))
-(define s (copy-ring r))
-(print-ring s)
-(set-car! s 999)
-(print-ring s)
-(print-ring r)
-(equal? result '("..." 0 " " 1 " " 2 " " 3 " " "..." 0 " " 1 " " 2 " " 999 " " "..." 0 " " 1 " " 2 " " 3 " "))
+(define r4 (make-ring4 3))
+(define s4 (copy-ring r4))
+(print-ring4 s4)
+(set-car! s4 999)
+(print-ring4 s4)
+(print-ring4 r4)
+(equal? result4 '("..." 0 " " 1 " " 2 " " 3 " " "..." 0 " " 1 " " 2 " " 999 " " "..." 0 " " 1 " " 2 " " 3 " "))
 
 ; 9.8
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result5 '())
+(define display5 (lambda (i) (set! result5 (cons i result5))))
 
-(define (make-ring n)
-  (let ((last (cons 0 '())))
-    (define (build-list n)
+(define (make-ring5 n)
+  (let ((last5 (cons 0 '())))
+    (define (build-list5 n)
       (if (= n 0)
-        last
-        (cons n (build-list (- n 1)))))
-    (let ((ring (build-list n)))
-      (set-cdr! last ring)
-      ring)))
+        last5
+        (cons n (build-list5 (- n 1)))))
+    (let ((ring5 (build-list5 n)))
+      (set-cdr! last5 ring5)
+      ring5)))
 
-(define (print-ring r)
+(define (print-ring5 r)
   (define (aux l)
     (if (not (null? l))
       (if (eq? (cdr l) r)
-        (begin (display " ")
-          (display (car l))
-          (display "..."))
-        (begin (display " ")
-          (display (car l))
+        (begin (display5 " ")
+          (display5 (car l))
+          (display5 "..."))
+        (begin (display5 " ")
+          (display5 (car l))
           (aux (cdr l))))))
   (aux r)
   #t)
 
-(define (copy-ring r)
+(define (copy-ring5 r)
   (define last '())
   (define (aux l)
     (cond ((eq? (cdr l) r)
@@ -2784,22 +2775,22 @@
       (remove-nth! (cdr l) (- n 1))))
 
   (define (iter l)
-    (print-ring l)
+    (print-ring5 l)
     (if (eq? l (cdr l))
       (car l)
       (iter (remove-nth! l n))))
 
   (if (= n 1)
     (car (right-rotate r))
-    (iter (copy-ring r))))
+    (iter (copy-ring5 r))))
 
-(define ring (make-ring 5))
-(Josephus ring 5)
-(print-ring ring)
-(equal? result '("..." 0 " " 1 " " 2 " " 3 " " 4 " " 5 " " "..." 5 " " "..." 5 " " 3 " " "..." 3 " " 4 " " 5 " " "..." 3 " " 4 " " 5 " " 0 " " "..." 2 " " 3 " " 4 " " 5 " " 0 " " "..." 0 " " 1 " " 2 " " 3 " " 4 " " 5 " "))
+(define ring5 (make-ring5 5))
+(Josephus ring5 5)
+(print-ring5 ring5)
+(equal? result5 '("..." 0 " " 1 " " 2 " " 3 " " 4 " " 5 " " "..." 5 " " "..." 5 " " 3 " " "..." 3 " " 4 " " 5 " " "..." 3 " " 4 " " 5 " " 0 " " "..." 2 " " 3 " " 4 " " 5 " " 0 " " "..." 0 " " 1 " " 2 " " 3 " " 4 " " 5 " "))
 
 ; 9.9
-(define (count-pairs lst)
+(define (count-pairs2 lst)
   (let ((path '()))
     (define (count current)
       (cond
@@ -2812,21 +2803,21 @@
             (count (cdr current))))))
     (count lst)))
 
-(define ret3 (cons 'a (cons 'b (cons 'c '()))))
-(define ret4
+(define ret3-3 (cons 'a (cons 'b (cons 'c '()))))
+(define ret4-3
   (let ((last (cons 'c '())))
     (cons last (cons 'b last))))
-(define ret7
+(define ret7-3
   (let* ((last (cons 'c '()))
           (middle (cons last last)))
     (cons middle middle)))
-(define retno
+(define retno-3
   (let* ((last (cons 'c '()))
           (lst (cons 'a (cons 'b last))))
     (set-cdr! last lst)
     lst))
 
-(= 3 (count-pairs ret3) (count-pairs ret4) (count-pairs ret7) (count-pairs retno))
+(= 3 (count-pairs2 ret3-3) (count-pairs2 ret4-3) (count-pairs2 ret7-3) (count-pairs2 retno-3))
 
 ; 9.12
 (define (find-last lijst)
@@ -2876,8 +2867,8 @@
   (equal? (flatten2! '(1 2 (3 (4 5) 6 (7 8) 9) 10)) '(1 2 3 4 5 6 7 8 9 10)))
 
 ; 9.13
-(define result '())
-(define display (lambda (i) (set! result (cons i result))))
+(define result6 '())
+(define display6 (lambda (i) (set! result6 (cons i result6))))
 
 (define (kw-lijst lst)
   (define (loop l)
@@ -2890,15 +2881,15 @@
   (loop lst)
   lst)
 
-(define (print-ring r)
+(define (print-ring6 r)
   (define (aux l)
     (if (not (null? l))
       (if (eq? (cdr l) r)
-        (begin (display " ")
-          (display (car l))
-          (display "..."))
-        (begin (display " ")
-          (display (car l))
+        (begin (display6 " ")
+          (display6 (car l))
+          (display6 "..."))
+        (begin (display6 " ")
+          (display6 (car l))
           (aux (cdr l))))))
   (aux r)
   #t)
@@ -2906,8 +2897,8 @@
 (define last-cons (cons 3 '()))
 (define test-lst (cons 1 (cons 4 last-cons)))
 (set-cdr! last-cons test-lst)
-(print-ring (kw-lijst test-lst))
-(equal? result '("..." 9 " " 3 " " 16 " " 4 " " 1 " " 1 " "))
+(print-ring6 (kw-lijst test-lst))
+(equal? result6 '("..." 9 " " 3 " " 16 " " 4 " " 1 " " 1 " "))
 
 ; 9.14
 (define (schuif-in! l1 l2)

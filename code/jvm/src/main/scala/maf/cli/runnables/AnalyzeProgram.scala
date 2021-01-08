@@ -36,7 +36,7 @@ object AnalyzeProgram extends App {
 
   val bench: List[String] = List(
     //"test/R5RS/SETL/setl-benchmarks/arithmetic.scm"
-    "test/DEBUG2.scm"
+    "test/R5RS/scp1-compressed/all.scm"
   )
 
   // Used by webviz.
