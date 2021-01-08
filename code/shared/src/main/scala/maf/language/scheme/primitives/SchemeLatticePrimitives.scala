@@ -64,176 +64,84 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
        with PrimitiveBuildingBlocks[V, A] {
   val lat: SchemeLattice[V, A, SchemePrimitive[V, A]] = schemeLattice
 
-  /** Bundles all the primitives together, annotated with R5RS support (v: supported, vv: supported and tested in PrimitiveTests, vx: not fully supported, x: not supported), and section in Guile manual */
+  // See comments in SchemeR5RSBenchmarks.scala for a list of all supported and unsupported primitives
   def allPrimitives: List[SchemePrimitive[V, A]] = {
     import PrimitiveDefs._
     List(
       `modulo`,
-      `*`, /* [vv] *: Arithmetic */
-      `+`, /* [vv] +: Arithmetic */
-      `-`, /* [vv] -: Arithmetic */
-      `/`, /* [vx] /: Arithmetic (no support for fractions) */
-      `acos`, /* [vv] acos: Scientific */
-      /* [x]  angle: Complex */
-      /* [x]  apply: Fly Evaluation */
-      `asin`, /* [vv] asin: Scientific */
-      `atan`, /* [vv] atan: Scientific */
-      `boolean?`, /* [vv] boolean?: Booleans */
-      `call/cc`, /* [vv]  call-with-current-continuation: Continuations */
-      /* [x]  call-with-input-file: File Ports */
-      /* [x]  call-with-output-file: File Ports */
-      /* [x]  call-with-values: Multiple Values */
-      `car`, /* [vv] car: Pairs */
-      `cdr`, /* [vv] cdr: Pairs */
-      `ceiling`, /* [vv] ceiling: Arithmetic */
-      `char->integer`, /* [x]  char->integer: Characters */
+      `*`,
+      `+`,
+      `-`,
+      `/`,
+      `acos`,
+      `asin`,
+      `atan`,
+      `boolean?`,
+      `call/cc`,
+      `car`,
+      `cdr`,
+      `ceiling`,
+      `char->integer`,
       `char->string`,
-      `char-ci<?`, /* [x]  char-ci<?: Characters */
-      `char-ci=?`, /* [x]  char-ci=?: Characters */
-      `char-downcase`, /* [x]  char-downcase: Characters */
-      `char-lower-case?`, /* [x]  char-lower-case?: Characters */
-      /* [x]  char-ready?: Reading */
-      `char-upcase`, /* [x]  char-upcase: Characters */
-      `char-upper-case?`, /* [x]  char-upper-case?: Characters */
-      /* [x]  char-whitespace?: Characters */
-      `char<?`, /* [x]  char<?: Characters */
-      `char=?`, /* [x]  char=?: Characters */
-      `char?`, /* [vv] char?: Characters */
-      /* [x]  close-input-port: Closing */
-      /* [x]  close-output-port: Closing */
-      /* [x]  complex?: Complex Numbers */
-      `cons`, /* [vv] cons: Pairs */
-      `cos`, /* [vv] cos: Scientific */
-      /* [x]  current-input-port: Default Ports */
-      /* [x]  current-output-port: Default Ports */
-      /* [x]  dynamic-wind: Dynamic Wind */
-      /* [x]  eof-object?: Reading */
-      `eq?`, /* [vv] eq?: Equality */
-      /* [x]  eval: Fly Evaluation */
-      `exact->inexact`, /* [vv] exact->inexact: Exactness */
-      /* [x]  exact?: Exactness */
-      /* [x]  exp: Scientific */
-      `expt`, /* [vv] expt: Scientific */
-      `floor`, /* [vv] floor: Arithmetic */
-      /* [x]  force: Delayed Evaluation */
-      /* [x]  imag-part: Complex */
-      `inexact->exact`, /* [vv] inexact->exact: Exactness */
-      /* [x]  inexact?: Exactness */
-      /* [x]  input-port?: Ports */
-      `integer->char`, /* [vv]  integer->char: Characters */
-      `integer?`, /* [vv] integer?: Integers */
-      /* [x]  interaction-environment: Fly Evaluation */
-      `list`, /* [vv] list: List Constructors */
-      /* [x]  list->string: String Constructors */
-      /* [x]  load: Loading */
-      `log`, /* [vv] log: Scientific */
-      /* [x]  magnitude: Complex */
-      /* [x]  make-polar: Complex */
-      /* [x]  make-rectangular: Complex */
-      `make-string`, /* [vv]  make-string: String Constructors */
+      `char-ci<?`,
+      `char-ci=?`,
+      `char-downcase`,
+      `char-lower-case?`,
+      `char-upcase`,
+      `char-upper-case?`,
+      `char<?`,
+      `char=?`,
+      `char?`,
+      `cons`,
+      `cos`,
+      `eq?`,
+      `exact->inexact`,
+      `expt`,
+      `floor`,
+      `inexact->exact`,
+      `integer->char`,
+      `integer?`,
+      `list`,
+      `log`,
+      `make-string`,
       `max`,
       `min`,
-      `null?`, /* [vv] null?: List Predicates */
-      `number->string`, /* [vx] number->string: Conversion: does not support two arguments */
-      `number?`, /* [vv] number?: Numerical Tower */
-      /* [x]  open-input-file: File Ports */
-      /* [x]  open-output-file: File Ports */
-      /* [x]  output-port?: Ports */
-      `pair?`, /* [vv] pair?: Pairs */
-      /* [x]  peek-char?: Reading */
-//      Positivep, /* [vv] positive?: Comparison */
-      `procedure?`, /* [x]  procedure?: Procedure Properties */
-      `quotient`, /* [vv] quotient: Integer Operations */
-      /* [x]  rational?: Reals and Rationals */
-      /* [x]  read: Scheme Read */
-      /* [x]  read-char?: Reading */
-      /* [x]  real-part: Complex */
-      `real?`, /* [vv] real?: Reals and Rationals */
-      `remainder`, /* [vv] remainder: Integer Operations */
-      `round`, /* [vv] round: Arithmetic */
-      `set-car!`, /* [vv] set-car!: Pairs */
-      `set-cdr!`, /* [vv] set-cdr!: Pairs */
-      `sin`, /* [vv] sin: Scientific */
-      `sqrt`, /* [vv] sqrt: Scientific */
-      /* [x]  string: String Constructors */
-      `string->number`, /* [x]  string->number: Conversion */
-      `string->symbol`, /* [vv] string->symbol: Symbol Primitives */
-      `string-append`, /* [vx] string-append: Appending Strings: only two arguments supported */
-      /* [x]  string-ci<: String Comparison */
-      /* [x]  string-ci>=?: String Comparison */
-      /* [x]  string-ci>?: String Comparison */
-      /* [x]  string-copy: String Selection */
-      /* [P]  string-fill!: String Modification */ // => Prelude but requires string-set!
-      `string-length`, /* [vv] string-length: String Selection */
-      `string-ref`, /* [x]  string-ref: String Selection */
-      /* [x]  string-set!: String Modification */
-      `string<?`, /* [vv]  string<?: String Comparison */
-      `string?`, /* [vv]  string?: String Predicates */
-      `substring`, /* [vv]  substring: String Selection */
-      `symbol->string`, /* [vv] symbol->string: Symbol Primitives */
-      `symbol?`, /* [vv] symbol?: Symbol Primitives */
-      `tan`, /* [vv] tan: Scientific */
-      /* [x]  values: Multiple Values */
-      `make-vector`, /* [vv] make-vector: Vector Creation */
-      `vector`, /* [vv] vector: Vector Creation */
-      `vector-length`, /* [vv] vector-length: Vector Accessors */
-      `vector-ref`, /* [vv] vector-ref: Vector Accessors */
-      `vector-set!`, /* [vv] vector-set!: Vector Accessors */
-      `vector?`, /* [vv] vector?: Vector Creation */
-      /* [x]  with-input-from-file: File Ports */
-      /* [x]  with-output-to-file: File Ports */
-      /* [x]  write-char: Writing */
-      `<`, /* [vv]  < */
-      `=`, /* [vv]  = */
-      /* [x]  numerator */
-      /* [x]  denominator */
-      /* [x]  rationalize-string */
-      /* [x]  scheme-report-environment */
-      /* [x]  null-environment */
-      /* [x]  write transcript-on */
-      /* [x]  transcript-off */
+      `null?`,
+      `number->string`,
+      `number?`,
+      `pair?`,
+      `procedure?`,
+      `quotient`,
+      `real?`,
+      `remainder`,
+      `round`,
+      `set-car!`,
+      `set-cdr!`,
+      `sin`,
+      `sqrt`,
+      `string->number`,
+      `string->symbol`,
+      `string-append`,
+      `string-length`,
+      `string-ref`,
+      `string<?`,
+      `string?`,
+      `substring`,
+      `symbol->string`,
+      `symbol?`,
+      `tan`,
+      `make-vector`,
+      `vector`,
+      `vector-length`,
+      `vector-ref`,
+      `vector-set!`,
+      `vector?`,
+      `<`,
+      `=`,
       /* Other primitives that are not R5RS */
       `random`,
       `error`
     ) ++ CSchemePrimitives
-
-    // Preluded primitives:
-
-    /* [x]  assv: Retrieving Alist Entries => Prelude */
-    //`append`, // => Prelude
-    /* [P]  char<=?: Characters */
-    // => Prelude
-    /* [P]  char>=?: Characters */
-    // => Prelude
-    /* [P]  char>?: Characters */
-    // => Prelude
-    /* [x]  char-ci<=?: Characters */
-    /* [x]  char-ci>=?: Characters */
-    /* [x]  char-ci>?: Characters */
-    /* [x]  char-alphabetic?: Characters */
-    /* [x]  char-numeric?: Characters */
-    /* [P]  eqv?: Equality */
-    // => Prelude
-    /* [P]  for-each: List Mapping */
-    // => Prelude
-    /* [P]  lcm: Integer Operations */
-    // => Prelude
-    /* [x]  list->vector: Vector Creation */
-    /* [x]  list-tail: List Selection */
-    /* [x]  map: List Mapping */
-    /* [x]  memv: List Searching */
-    //      Oddp, /* [vv] odd?: Integer Operations */
-    /* [x]  reverse: Append/Reverse */
-    /* [P]  string->list: List/String Conversion */
-    // => Prelude
-    /* [P]  string-ci=?: String Comparison */ // => Prelude
-    /* [P]  string<=?: String Comparison */ // => Prelude
-    /* [P]  string=?: String Comparison */ // => Prelude
-    /* [P]  string>=?: String Comparison */ // => Prelude
-    /* [P]  string>?: String Comparison */ // => Prelude
-    /* [x]  truncate: Arithmetic */
-    /* [x]  vector->list: Vector Creation */
-    //      `>`, /* [vv]  > */ // => Prelude
 
   }
 

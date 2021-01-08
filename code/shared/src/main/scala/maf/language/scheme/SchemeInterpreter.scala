@@ -444,7 +444,7 @@ class SchemeInterpreter(
       CharToInteger, /* [vv]  char->integer: Characters */
       /* [x]  char-alphabetic?: Characters */
       /* [x]  char-ci<=?: Characters */
-      /* [x]  char-ci<?: Characters */
+      CharCILt, /* [x]  char-ci<?: Characters */
       /* [x]  char-ci=?: Characters */
       /* [x]  char-ci>=?: Characters */
       /* [x]  char-ci>?: Characters */
@@ -1090,6 +1090,7 @@ class SchemeInterpreter(
         case _                  => Value.Bool(false)
       }
     }
+
     object Nullp extends SingleArgumentPrim("null?") {
       def fun = {
         case Value.Nil => Value.Bool(true)
@@ -1198,6 +1199,7 @@ class SchemeInterpreter(
         case _                                   => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object StringToNumber extends SimplePrim {
       val name = "string->number"
       def call(args: List[Value], position: Position): Value.Integer = args match {
@@ -1362,6 +1364,14 @@ class SchemeInterpreter(
       def fun = {
         case Value.Integer(x) => Value.Integer((scala.math.random() * x).toInt)
         case Value.Real(x)    => Value.Real(scala.math.random() * x)
+      }
+    }
+
+    object CharCILt extends SimplePrim {
+      val name = "char-ci?"
+      def call(args: List[Value], position: Position): Value.Bool = args match {
+        case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1 < c2)
+        case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
 

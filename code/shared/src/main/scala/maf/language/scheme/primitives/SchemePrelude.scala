@@ -127,12 +127,12 @@ object SchemePrelude {
     "<=" -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y)))",
     ">" -> "(define (> x y) @sensitivity:FA (assert (number? x)) (not (<= x y)))",
     ">=" -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
-    "char>?" -> "(define (char>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char<=? c1 c2)))",
-    "char<=?" -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? x)) (or (char<? c1 c2) (char=? c1 c2)))",
-    "char>=?" -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? x)) (or (char>? c1 c2) (char=? c1 c2)))",
-    "char-ci>?" -> "(define (char-ci>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char-ci<=? c1 c2)))",
-    "char-ci<=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
-    "char-ci>=?" -> "(define (char-ci>=? c1 c2) @sensitivity:FA (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
+    "char>?" -> "(define (char>? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (not (char<=? c1 c2)))",
+    "char<=?" -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char<? c1 c2) (char=? c1 c2)))",
+    "char>=?" -> "(define (char>=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char>? c1 c2) (char=? c1 c2)))",
+    "char-ci>?" -> "(define (char-ci>? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (not (char-ci<=? c1 c2)))",
+    "char-ci<=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
+    "char-ci>=?" -> "(define (char-ci>=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
     "char-alphabetic?" -> "(define (char-alphabetic? c) @sensitivity:FA (and (char-ci>=? c #\\a) (char-ci<=? c #\\z)))",
     "char-numeric?" -> "(define (char-alphabetic c) @sensitivity:FA (and (char<=? #\\0 c) (char<=? c #\\9)))",
     "caar" -> "(define (caar x) @sensitivity:FA (car (car x)))",
@@ -181,14 +181,14 @@ object SchemePrelude {
                    |              (list (car l)))))""".stripMargin,
     "map" -> """(define (map f l)
                 |  @sensitivity:1A
-                |  ;(assert (proc? f)) ;; TODO
+                |  (assert (procedure? f))
                 |  (assert (list? l))
                 |  (if (null? l)
                 |      '()
                 |      (cons (f (car l)) (map f (cdr l)))))""".stripMargin,
     "for-each" -> """(define (for-each f l)
                     |  @sensitivity:1A
-                    |  ;(assert (proc? f)) ;; TODO
+                    |  (assert (procedure? f))
                     |  (assert (list? l))
                     |  (if (null? l)
                     |      #t
@@ -257,7 +257,7 @@ object SchemePrelude {
     // TODO: implement apply internally
     "apply" -> """(define (apply proc args)
                  |  @sensitivity:1A
-                 |  ;(assert (proc? proc)) ;; TODO
+                 |  (assert (procedure? proc))
                  |  (assert (list? args))
                  |  (cond
                  |    ((null?                args)   (proc))
