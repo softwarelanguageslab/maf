@@ -442,10 +442,11 @@ class SchemeInterpreter(
       Cdr, /* [vv] cdr: Pairs */
       Ceiling, /* [vv] ceiling: Arithmetic */
       CharToInteger, /* [vv]  char->integer: Characters */
+      CharToString,
       /* [x]  char-alphabetic?: Characters */
       /* [x]  char-ci<=?: Characters */
       CharCILt, /* [x]  char-ci<?: Characters */
-      /* [x]  char-ci=?: Characters */
+      CharCIEq, /* [x]  char-ci=?: Characters */
       /* [x]  char-ci>=?: Characters */
       /* [x]  char-ci>?: Characters */
       /* [x]  char-downcase: Characters */
@@ -456,8 +457,8 @@ class SchemeInterpreter(
       /* [x]  char-upper-case?: Characters */
       /* [x]  char-whitespace?: Characters */
       /* [x]  char<=?: Characters */
-      /* [x]  char<?: Characters */
-      /* [x]  char=?: Characters */
+      CharLt, /* [x]  char<?: Characters */
+      CharEq, /* [x]  char=?: Characters */
       /* [x]  char>=?: Characters */
       /* [x]  char>?: Characters */
       Charp, /* [vv] char?: Characters */
@@ -1046,6 +1047,11 @@ class SchemeInterpreter(
         Value.Integer(c.toInt)
       }
     }
+    object CharToString extends SingleArgumentPrim("char->string") {
+      def fun = { case Value.Character(c) =>
+        Value.Str(c.toString)
+      }
+    }
     object IntegerToChar extends SingleArgumentPrim("integer->char") {
       def fun = { case Value.Integer(n) =>
         Value.Character(n.toChar)
@@ -1367,10 +1373,31 @@ class SchemeInterpreter(
       }
     }
 
-    object CharCILt extends SimplePrim {
-      val name = "char-ci?"
+    object CharEq extends SimplePrim {
+      val name = "char=?"
+      def call(args: List[Value], position: Position): Value.Bool = args match {
+        case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1 == c2)
+        case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
+      }
+    }
+    object CharCIEq extends SimplePrim {
+      val name = "char-ci=?"
+      def call(args: List[Value], position: Position): Value.Bool = args match {
+        case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1.toLower == c2.toLower)
+        case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
+      }
+    }
+    object CharLt extends SimplePrim {
+      val name = "char<?"
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1 < c2)
+        case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
+      }
+    }
+    object CharCILt extends SimplePrim {
+      val name = "char-ci<?"
+      def call(args: List[Value], position: Position): Value.Bool = args match {
+        case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1.toLower < c2.toLower)
         case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
