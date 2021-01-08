@@ -133,7 +133,8 @@ object SchemePrelude {
     "char-ci>?" -> "(define (char-ci>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char-ci<=? c1 c2)))",
     "char-ci<=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
     "char-ci>=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
-    "char-alphabetic?" -> "(define (char-alphabetic c) @sensitivity:FA (and (char-ci>= c #\\a) (char-ci<= #\\z)))",
+    "char-alphabetic?" -> "(define (char-alphabetic? c) @sensitivity:FA (and (char-ci>=? c #\\a) (char-ci<=? #\\z)))",
+    "char-numeric?" -> "(define (char-alphabetic c) @sensitivity:FA (and (char<=? #\\0 c) (char<=? c #\\9)))",
     "caar" -> "(define (caar x) @sensitivity:FA (car (car x)))",
     "cadr" -> "(define (cadr x) @sensitivity:FA (car (cdr x)))",
     "cdar" -> "(define (cdar x) @sensitivity:FA (cdr (car x)))",
@@ -228,12 +229,13 @@ object SchemePrelude {
                        |                 (loop (- i 1)))))))""".stripMargin,
     "string<=?" -> "(define (string<=? s1 s2) @sensitivity:FA (or (string<? s1 s2) (string=? s1 s2)))",
     "string>?" -> "(define (string>? s1 s2) @sensitivity:FA (not (string<=? s1 s2)))",
-    "string>=?" -> "(define (string<=? s1 s2) @sensitivity:FA (or (string>? s1 s2) (string=? s1 s2)))",
-    "list->string" -> """(define (list->string l)
-                       |   (assert (list? l))
-                       |   (if (null? l)
-                       |     ""
-                       |     (string-append (char->string (car l)) (list->string (cdr l)))))""".stripMargin,
+    "string>=?" -> "(define (string>=? s1 s2) @sensitivity:FA (or (string>? s1 s2) (string=? s1 s2)))",
+    "list->string" ->
+      """(define (list->string l)
+        |   (assert (list? l))
+        |   (if (null? l)
+        |     ""
+        |     (string-append (char->string (car l)) (list->string (cdr l)))))""".stripMargin,
     "truncate" -> "(define (truncate x) @sensitivity:FA (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
     //"string-fill!" -> """(define (string-fill! s c)
     //                    |  (let loop ((i (- (string-length s) 1)))

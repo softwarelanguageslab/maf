@@ -88,12 +88,10 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       `ceiling`, /* [vv] ceiling: Arithmetic */
       `char->integer`, /* [x]  char->integer: Characters */
       `char->string`,
-      /* [x]  char-alphabetic?: Characters */
       `char-ci<?`, /* [x]  char-ci<?: Characters */
       `char-ci=?`, /* [x]  char-ci=?: Characters */
       `char-downcase`, /* [x]  char-downcase: Characters */
       `char-lower-case?`, /* [x]  char-lower-case?: Characters */
-      /* [x]  char-numeric?: Characters */
       /* [x]  char-ready?: Reading */
       `char-upcase`, /* [x]  char-upcase: Characters */
       `char-upper-case?`, /* [x]  char-upper-case?: Characters */
@@ -203,22 +201,31 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     /* [x]  assv: Retrieving Alist Entries => Prelude */
     //`append`, // => Prelude
-    /* [P]  char<=?: Characters */ // => Prelude
-    /* [P]  char>=?: Characters */ // => Prelude
-    /* [P]  char>?: Characters */ // => Prelude
+    /* [P]  char<=?: Characters */
+    // => Prelude
+    /* [P]  char>=?: Characters */
+    // => Prelude
+    /* [P]  char>?: Characters */
+    // => Prelude
     /* [x]  char-ci<=?: Characters */
     /* [x]  char-ci>=?: Characters */
     /* [x]  char-ci>?: Characters */
-    /* [P]  eqv?: Equality */ // => Prelude
-    /* [P]  for-each: List Mapping */ // => Prelude
-    /* [P]  lcm: Integer Operations */ // => Prelude
+    /* [x]  char-alphabetic?: Characters */
+    /* [x]  char-numeric?: Characters */
+    /* [P]  eqv?: Equality */
+    // => Prelude
+    /* [P]  for-each: List Mapping */
+    // => Prelude
+    /* [P]  lcm: Integer Operations */
+    // => Prelude
     /* [x]  list->vector: Vector Creation */
     /* [x]  list-tail: List Selection */
     /* [x]  map: List Mapping */
     /* [x]  memv: List Searching */
     //      Oddp, /* [vv] odd?: Integer Operations */
     /* [x]  reverse: Append/Reverse */
-    /* [P]  string->list: List/String Conversion */ // => Prelude
+    /* [P]  string->list: List/String Conversion */
+    // => Prelude
     /* [P]  string-ci=?: String Comparison */ // => Prelude
     /* [P]  string<=?: String Comparison */ // => Prelude
     /* [P]  string=?: String Comparison */ // => Prelude
