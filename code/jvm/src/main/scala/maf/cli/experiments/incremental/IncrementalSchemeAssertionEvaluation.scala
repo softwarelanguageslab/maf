@@ -13,24 +13,15 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
-// Note that the sets of verified/failed assertions grow monotonically.
-trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] {
-
-  final val initS: String = "init" // Initial run.
-  final val inc1S: String = "inc1" // Incremental update.
-  final val inc2S: String = "inc2" // Another incremental update (same changes, different analysis).
-  final val reanS: String = "rean" // Full reanalysis.
+trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] with TableOutput[String] {
 
   final val veriS: String = "veri" // Verified assertions.
   final val failS: String = "fail" // Failed assertions.
 
-  val rs = List(veriS, failS)
-  val columns = List(initS, inc1S, inc2S, reanS).flatMap(a => rs.map(r => s"$r ($a)"))
-
-  final val inf: String = "∞"
-  final val err: String = "E"
+  val propertiesS = List(veriS, failS)
 
   var results: Table[String] = Table.empty.withDefaultValue(" ")
+  val error: String = errS
 
   type A = IncrementalModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with SchemeAssertSemantics
 
@@ -49,12 +40,12 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     val t = timeOut.reached
     if (t) {
       print(" timed out - ")
-      results = results.add(file, s"$veriS ($phase)", inf)
-      results = results.add(file, s"$failS ($phase)", inf)
+      results = results.add(file, columnName(veriS, phase), infS)
+      results = results.add(file, columnName(failS, phase), infS)
     } else {
       print(" ")
-      results = results.add(file, s"$veriS ($phase)", a.assertionsVerified.size.toString)
-      results = results.add(file, s"$failS ($phase)", a.assertionsFailed.size.toString)
+      results = results.add(file, columnName(veriS, phase), a.assertionsVerified.size.toString)
+      results = results.add(file, columnName(failS, phase), a.assertionsFailed.size.toString)
     }
     t
 
@@ -106,9 +97,18 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     )
   }
 
-  def reportError(file: String): Unit = columns.foreach(c => results = results.add(file, c, err))
-
-  def createOutput(): String = results.prettyString(columns = columns)
+  def createOutput(): String = {
+    // Mark rows that are different between the two incremental versions.
+    results.allRows.foreach { row =>
+      if (
+        results.get(row, columnName(veriS, inc1S)) != results.get(row, columnName(veriS, inc2S))
+        || results.get(row, columnName(failS, inc1S)) != results.get(row, columnName(failS, inc2S))
+      ) {
+        results = results.add(row, "diff", "x")
+      }
+    }
+    results.prettyString(columns = columns ++ Set("diff"))
+  }
 }
 
 object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeAssertionEvaluation {
