@@ -148,6 +148,11 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       `close-output-port`,
       `current-input-port`,
       `current-output-port`,
+      `read-char`,
+      `write-char`,
+      `write`,
+      `display`,
+      `eof-object?`,
       /* Other primitives that are not R5RS */
       `random`,
       `error`
@@ -747,6 +752,53 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     case object `current-output-port` extends NoStore0Operation("current-output-port",
       () => unaryOp(SchemeOp.MakeOutputPort)(string("__current-output-port__")))
+
+    class ReadOrPeekChar(name: String) extends NoStoreLOperation(name) {
+      def call(args: List[V]): MayFail[V, Error] = args match {
+        case Nil => charTop
+        case inputPort :: Nil => ifThenElse(unaryOp(SchemeOp.IsInputPort)(inputPort)) {
+          charTop
+        } {
+          MayFail.failure(PrimitiveNotApplicable(name, args))
+        }
+        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+    }
+
+    case object `read-char` extends ReadOrPeekChar("read-char")
+    case object `peek-char` extends ReadOrPeekChar("peek-char")
+
+    case object `write-char` extends NoStoreLOperation("write-char") {
+      def call(args: List[V]): MayFail[V, Error] = args match {
+        case Nil => unspecified
+        case outputPort :: Nil => ifThenElse(unaryOp(SchemeOp.IsOutputPort)(outputPort)) {
+          unspecified
+        } {
+          MayFail.failure(PrimitiveNotApplicable("write-char", args))
+        }
+        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+    }
+
+    class WriteOrDisplay(name: String) extends NoStoreLOperation(name) {
+      def call(args: List[V]): MayFail[V, Error] = args match {
+        case _ :: Nil => unspecified
+        case _ :: outputPort :: Nil => ifThenElse(unaryOp(SchemeOp.IsOutputPort)(outputPort)) {
+          unspecified
+        } {
+          MayFail.failure(PrimitiveNotApplicable(name, args))
+        }
+        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+    }
+
+    case object `display` extends WriteOrDisplay("display")
+    case object `write` extends WriteOrDisplay("write")
+
+    case object `eof-object?` extends NoStore1Operation("eof-object?",
+      /* TODO: there is no specific encoding for EOF objects, but they can only arise in scenarios where charTop is produced. So we can approximate them as follows */
+      x => if (subsumes(x, charTop)) { join(bool(true), bool(false)) } else { bool(false) }
+    )
 
     case object `new-lock` extends SchemePrimitive[V, A] {
       val name = "new-lock"

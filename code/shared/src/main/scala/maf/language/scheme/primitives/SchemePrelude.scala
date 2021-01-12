@@ -45,7 +45,6 @@ object SchemePrelude {
                 |     (car l)
                 |     (assq k (cdr l)))))""".stripMargin,
     "call-with-current-continuation" -> "(define call-with-current-continuation call/cc)",
-    "display" -> "(define (display x) @sensitivity:FA x)", // undefined behavior in R5RS
     "equal?" -> """(define (equal? a b)
                   |  @sensitivity:FA
                   |  (or (eq? a b)
@@ -275,14 +274,14 @@ object SchemePrelude {
                                 |  (let* ((input-port (open-input-file filename))
                                 |         (res (proc input-port)))
                                 |    (close-input-port input-port)
-                                |    res)""".stripMargin,
+                                |    res))""".stripMargin,
     "call-with-output-file" -> """(define (call-with-output-file filename proc)
                                  |  (assert (string? filename))
                                  |  (assert (procedure? proc))
                                  |  (let* ((output-port (open-output-file filename))
                                  |         (res (proc output-port)))
                                  |    (close-output-port output-port)
-                                 |    res)""".stripMargin,
+                                 |    res))""".stripMargin,
     "ref" -> "(define (ref x) @sensitivity:FA (cons x '()))",
     "deref" -> "(define deref car)",
     "ref-set" -> "(define ref-set set-car!)",

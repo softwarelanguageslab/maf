@@ -808,6 +808,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def bottom: L = Elements(List.empty)
     def number(x: scala.Int): L = Element(Value.number(x))
     def numTop: L = Element(Int(IntLattice[I].top))
+    def charTop: L = Element(Char(CharLattice[C].top))
     def real(x: Double): L = Element(Value.real(x))
     def string(x: String): L = Element(Value.string(x))
     def char(x: scala.Char): L = Element(Value.char(x))

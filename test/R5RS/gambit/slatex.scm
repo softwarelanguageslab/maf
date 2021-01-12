@@ -145,7 +145,7 @@
     (display ": ")
     (newline)
     (for-each (lambda (x) (write x) (newline)) error-values)
-    (fatal-error "")))
+    (error "")))
 
 (define slatex.keyword-tokens
   (map symbol->string
