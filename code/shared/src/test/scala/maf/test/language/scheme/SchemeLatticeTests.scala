@@ -17,12 +17,39 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
     implicit val abo = gen.arbBinop
     implicit val ato = gen.arbTernop
 
+    def inject(v: Any) = schemeLattice.Injector.inject(v)
+
     import schemeLattice._
     /* */
     def convert(mf: MayFail[L, Error]): L = mf match {
       case MayFailSuccess(v) => v
       case MayFailBoth(v, _) => v
       case MayFailError(_)   => bottom
+    }
+    p.property("⊥ ⊑ ⊥") = subsumes(bottom, bottom)
+    p.property("∀ x: ⊥ ⊑ x") = forAll { (x: L) => subsumes(x, bottom) }
+    p.property("∀ x: join(x, ⊥) = join(⊥, x) = x") = forAll { (x: L) => join(x, bottom) == x && join(bottom, x) == x }
+    p.property("∀ x, y: y ⊑ x ⇒ join(x, y) = x") =
+      forAll { (x: L) =>
+        forAll(gen.le(x)) { (y: L) =>
+          join(x, y) == x
+        }
+      }
+    p.property("∀ x, y: x ⊑ join(x, y), y ⊑ join(x, y)") =
+      forAll { (x: L, y: L) =>
+        val xy = join(x, y)
+        subsumes(xy, x) && subsumes(xy, y)
+      }
+    p.property("∀ x, y, z: x ⊑ join(x, join(y, z)), y ⊑ join(x, join(y, z)), z ⊑ join(x, join(y, z))") =
+      forAll { (x: L, y: L, z: L) =>
+        val xyz = join(x, join(y, z))
+        subsumes(xyz, x) && subsumes(xyz, y) && subsumes(xyz, z)
+      }
+    p.property("injection preserves truth") = isTrue(inject(true)) && isFalse(inject(false))
+    p.property("!isTrue(⊥) && !isFalse(⊥)") = !isTrue(bottom) && !isFalse(bottom)
+    p.property("isTrue(BoolTop) && isFalse(BoolTop)") = {
+      val boolTop = join(inject(true), inject(false))
+      isTrue(boolTop) && isFalse(boolTop)
     }
     /* Unary operators preserve bottom */
     p.property("∀ unop: unop(⊥) = ⊥") = forAll((unop: SchemeOp.SchemeOp1) => convert(op(unop)(List(bottom))) == bottom)
@@ -49,7 +76,51 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
       forAll((ternop: SchemeOp.SchemeOp3, a: L, b: L) =>
         convert(op(ternop)(List(bottom, a, b))) == bottom &&
           convert(op(ternop)(List(a, bottom, b))) == bottom &&
-            convert(op(ternop)(List(a, b, bottom))) == bottom)
+          convert(op(ternop)(List(a, b, bottom))) == bottom)
+
+    /* not is correct */
+    p.property("isFalse(not(true)) && isTrue(not(false)") =
+      isFalse(convert(op(SchemeOp.Not)(List(inject(true))))) && isTrue(convert(op(SchemeOp.Not)(List(inject(false)))))
+
+    /* and is correct */
+    p.property("∀ b1, b2: b1 && b2 = and(inject(b1), inject(b2))") =
+      forAll { (b1: Boolean, b2: Boolean) =>
+        val v1 = inject(b1)
+        val v2 = inject(b2)
+        if (b1 && b2) isTrue(and(v1, v2)) else isFalse(and(v1, v2))
+      }
+
+    /* or is correct */
+    p.property("∀ b1, b2: b1 || b2 = or(inject(b1), inject(b2))") =
+      forAll { (b1: Boolean, b2: Boolean) =>
+        val v1 = inject(b1)
+        val v2 = inject(b2)
+        if (b1 || b2) isTrue(or(v1, v2)) else isFalse(or(v1, v2))
+      }
+
+    /* lt is correct */
+    p.property("∀ n1, n2: n1 < n2 = lt(inject(n1), inject(n2))") =
+      forAll { (n1: Int, n2: Int) =>
+        val v1 = inject(n1)
+        val v2 = inject(n2)
+        if (n1 < n2)
+          isTrue(convert(op(SchemeOp.Lt)(List(v1, v2))))
+        else
+          isFalse(convert(op(SchemeOp.Lt)(List(v1, v2))))
+      }
+
+    /* eq is correct */
+    p.property("∀ n1, n2: n1 == n2 = eq(inject(n1), inject(n2))") =
+      forAll { (n1: Int, n2: Int) =>
+        val v1 = inject(n1)
+        val v2 = inject(n2)
+        if (n1 == n2)
+          isTrue(convert(op(SchemeOp.Eq)(List(v1, v2))))
+        else
+          isFalse(convert(op(SchemeOp.Eq)(List(v1, v2))))
+      }
+
+    /* TODO: properties that match the specification of other SchemeOps */
 
     /* Properties about vectors */
     p.property("∀ vct, idx1, val1, idx2, val2: vectorSet(vectorSet(vct,idx1,val1),idx2,val2) = vectorSet(vectorSet(vct,idx2,val2),idx1,val1)") =
