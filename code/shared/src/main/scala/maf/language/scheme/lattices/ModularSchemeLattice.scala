@@ -769,14 +769,13 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
     def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] = {
       def fold(argsToProcess: List[L], argsvRev: List[Value]): MayFail[L, Error] = argsToProcess match {
-        case arg :: args => arg.foldMapL(argv => fold(args, argv :: argsvRev))
+        case arg :: args =>
+          arg.foldMapL(argv => fold(args, argv :: argsvRev))
         case List() =>
           val argsv = argsvRev.reverse
           op match {
             case SchemeOp.Car => Value.car(argsv(0))
             case SchemeOp.Cdr => Value.cdr(argsv(0))
-            case SchemeOp.MakeVector =>
-              Value.vector(argsv(0), args(1)).map(v => Element(v))
             case SchemeOp.VectorRef =>
               Value.vectorRef(argsv(0), argsv(1))
             case SchemeOp.VectorSet =>
@@ -785,7 +784,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
           }
       }
       op.checkArity(args)
-      fold(args, List())
+      op match {
+        case SchemeOp.MakeVector =>
+          /* Treated as a special case because args(1) can be bottom (this would be a valid use of MakeVector) */
+          args(0).foldMapL(arg0 => Value.vector(arg0, args(1)).map(v => Element(v)))
+        case _ => fold(args, List())
+      }
     }
     def join(x: L, y: => L): L = Monoid[L].append(x, y)
     def subsumes(x: L, y: => L): Boolean =
