@@ -12,25 +12,17 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
+trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String] {
 
-  final val eq: String = "Equal" // Precision of incremental update equals the one of a full reanalysis.
-  final val mp: String = "More precise" // Precision of incremental update is better than the one of a full reanalysis.
-  final val lp: String = "Less precise" // Precision of incremental update is lower than the one of a full reanalysis.
+  final val eqS: String = "Equal" // Precision of incremental update equals the one of a full reanalysis.
+  final val mpS: String = "More precise" // Precision of incremental update is better than the one of a full reanalysis.
+  final val lpS: String = "Less precise" // Precision of incremental update is lower than the one of a full reanalysis.
 
-  final val options: List[String] = List(eq, lp, mp)
-
-  final val i1: String = "inc1" // First incremental analysis.
-  final val i2: String = "inc2" // Second incremental analysis.
-
-  final val analyses: List[String] = List(i1, i2)
-
-  val columns: List[String] = analyses.flatMap(a => options.map(o => s"$o ($a)"))
-
-  final val inf: String = "∞"
-  final val err: String = "E"
+  final val propertiesS: List[String] = List(eqS, lpS, mpS)
+  override val analysesS: List[String] = List(inc1S, inc2S)
 
   var results: Table[String] = Table.empty.withDefaultValue(" ")
+  val error: String = errS
 
   def runAnalysis(name: String, block: Timeout.T => Unit): Boolean = {
     print(name)
@@ -68,9 +60,9 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
       }
     })
     results = results
-      .add(file, s"$eq ($name)", Formatter.withPercent(e, t))
-      .add(file, s"$lp ($name)", Formatter.withPercent(l, t))
-      .add(file, s"$mp ($name)", Formatter.withPercent(m, t))
+      .add(file, columnName(eqS, name), Formatter.withPercent(e, t))
+      .add(file, columnName(lpS, name), Formatter.withPercent(l, t))
+      .add(file, columnName(mpS, name), Formatter.withPercent(m, t))
   }
 
   def onBenchmark(file: String): Unit = {
@@ -84,35 +76,32 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] {
     a2.version = New
 
     // Run the initial analysis and full reanalysis. They both need to finish.
-    if (runAnalysis("init ", timeOut => a1.analyze(timeOut)) || runAnalysis("-> rean ", timeOut => a2.analyze(timeOut))) {
+    if (runAnalysis("init ", timeOut => a1.analyze(timeOut)) || runAnalysis("rean ", timeOut => a2.analyze(timeOut))) {
       print("timed out.")
-      columns.foreach(c => results = results.add(file, c, inf))
+      columns.foreach(c => results = results.add(file, c, infS))
       return
     }
 
     val a1Copy = a1.deepCopy()
 
     // First incremental update.
-    if (!runAnalysis("-> inc1 ", timeOut => a1.updateAnalysis(timeOut, false))) compareAnalyses(i1, file, a1, a2)
+    if (!runAnalysis("inc1 ", timeOut => a1.updateAnalysis(timeOut, false))) compareAnalyses(inc1S, file, a1, a2)
     else {
-      options.foreach(o => results = results.add(file, s"$o ($i1)", inf))
-      print("timed out")
+      propertiesS.foreach(o => results = results.add(file, columnName(o, inc1S), infS))
+      print("timed out - ")
     }
 
     // Second incremental update.
-    if (!runAnalysis("-> inc2 ", timeOut => a1Copy.updateAnalysis(timeOut, true))) compareAnalyses(i2, file, a1Copy, a2)
+    if (!runAnalysis("inc2 ", timeOut => a1Copy.updateAnalysis(timeOut, true))) compareAnalyses(inc2S, file, a1Copy, a2)
     else {
-      options.foreach(o => results = results.add(file, s"$o ($i2)", inf))
-      print("timed out")
+      propertiesS.foreach(o => results = results.add(file, columnName(o, inc2S), infS))
+      print("timed out - ")
     }
   }
 
   // Note, we could also compare to the initial analysis. This would give us an idea on how many addresses were refined (column "More precise").
 
   def interestingAddress[A <: Address](a: A): Boolean
-
-  def reportError(file: String): Unit = columns.foreach(c => results = results.add(file, c, err))
-
   def createOutput(): String = results.prettyString(columns = columns)
 }
 

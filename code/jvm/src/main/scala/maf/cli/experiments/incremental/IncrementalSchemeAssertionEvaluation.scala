@@ -13,30 +13,15 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait TableOutput {
-
-  final val initS: String = "init" // Initial run.
-  final val inc1S: String = "inc1" // Incremental update.
-  final val inc2S: String = "inc2" // Another incremental update (same changes, different analysis).
-  final val reanS: String = "rean" // Full reanalysis.
-
-  final val analysesS: List[String] = List(initS, inc1S, inc2S, reanS)
-
-  def columnName(property: String, analysis: String): String = s"$property ($analysis)"
-
-  final val inf: String = "∞"
-  final val err: String = "E"
-}
-
-trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] with TableOutput {
+trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] with TableOutput[String] {
 
   final val veriS: String = "veri" // Verified assertions.
   final val failS: String = "fail" // Failed assertions.
 
-  val rs = List(veriS, failS)
-  val columns: List[String] = analysesS.flatMap(a => rs.map(columnName(_, a)))
+  val propertiesS = List(veriS, failS)
 
   var results: Table[String] = Table.empty.withDefaultValue(" ")
+  val error: String = errS
 
   type A = IncrementalModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with SchemeAssertSemantics
 
@@ -55,8 +40,8 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     val t = timeOut.reached
     if (t) {
       print(" timed out - ")
-      results = results.add(file, columnName(veriS, phase), inf)
-      results = results.add(file, columnName(failS, phase), inf)
+      results = results.add(file, columnName(veriS, phase), infS)
+      results = results.add(file, columnName(failS, phase), infS)
     } else {
       print(" ")
       results = results.add(file, columnName(veriS, phase), a.assertionsVerified.size.toString)
@@ -111,8 +96,6 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
                 }
     )
   }
-
-  def reportError(file: String): Unit = columns.foreach(c => results = results.add(file, c, err))
 
   def createOutput(): String = {
     // Mark rows that are different between the two incremental versions.

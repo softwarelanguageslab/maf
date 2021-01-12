@@ -11,7 +11,26 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
+// The results of the evaluation.
+sealed trait Result
+
+case class Finished(mean: Long, stddev: Long) extends Result {
+  override def toString: String = s"$mean±$stddev"
+}
+
+case object Timedout extends Result {
+  override def toString: String = "∞"
+}
+
+case object NotRun extends Result {
+  override def toString: String = " "
+}
+
+case object Errored extends Result {
+  override def toString: String = "E"
+}
+
+trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with TableOutput[Result] {
 
   // The maximal number of warm-up runs.
   val maxWarmupRuns = 5
@@ -21,19 +40,10 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
   // Indicate whether there is one or 2 incremental set-ups. Note that the setup must also be changed for warm-up.
   val multiInc = true
 
-  // The results of the evaluation.
-  sealed trait Result
-  case class Finished(mean: Long, stddev: Long) extends Result { override def toString: String = s"$mean±$stddev" }
-  case object Timedout extends Result { override def toString: String = "∞" }
-  case object NotRun extends Result { override def toString: String = " " }
-  case object Errored extends Result { override def toString: String = "E" }
-
-  final val initS: String = "init" // Initial run.
-  final val inc1S: String = "inc1" // Incremental update.
-  final val inc2S: String = "inc2" // Another incremental update (same changes, different analysis).
-  final val reanS: String = "rean" // Full reanalysis.
-
+  val timeS: String = "ms"
+  val propertiesS: List[String] = List(timeS)
   var results: Table[Result] = Table.empty.withDefaultValue(NotRun)
+  val error: Result = Errored
 
   def runAnalysis(timedOut: Boolean, block: Timeout.T => Unit): Option[Double] = {
     print(if (timedOut) "x" else "*")
@@ -102,7 +112,11 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
         case Some(t) => timesInit = t :: timesInit
         case None =>
           println(" => Base analysis timed out.")
-          results = results.add(file, initS, Timedout).add(file, inc1S, NotRun).add(file, inc2S, NotRun).add(file, reanS, NotRun)
+          results = results
+            .add(file, columnName(timeS, initS), Timedout)
+            .add(file, columnName(timeS, inc1S), NotRun)
+            .add(file, columnName(timeS, inc2S), NotRun)
+            .add(file, columnName(timeS, reanS), NotRun)
           return
       }
 
@@ -135,21 +149,20 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] {
     val rean = Statistics.all(timesRean)
 
     results = results
-      .add(file, initS, Finished(scala.math.round(init.mean), scala.math.round(init.stddev)))
-      .add(file, inc1S, if (inc1Timeout) Timedout else Finished(scala.math.round(inc1.mean), scala.math.round(inc1.stddev)))
-      .add(file, reanS, if (reanTimeout) Timedout else Finished(scala.math.round(rean.mean), scala.math.round(rean.stddev)))
+      .add(file, columnName(timeS, initS), Finished(scala.math.round(init.mean), scala.math.round(init.stddev)))
+      .add(file, columnName(timeS, inc1S), if (inc1Timeout) Timedout else Finished(scala.math.round(inc1.mean), scala.math.round(inc1.stddev)))
+      .add(file, columnName(timeS, reanS), if (reanTimeout) Timedout else Finished(scala.math.round(rean.mean), scala.math.round(rean.stddev)))
 
     if (multiInc)
-      results = results.add(file, inc2S, if (inc2Timeout) Timedout else Finished(scala.math.round(inc2.mean), scala.math.round(inc2.stddev)))
+      results = results.add(file,
+                            columnName(timeS, inc2S),
+                            if (inc2Timeout) Timedout else Finished(scala.math.round(inc2.mean), scala.math.round(inc2.stddev))
+      )
 
     println(s"\n    => $initS: ${init.mean} - $inc1S: ${inc1.mean} - $inc2S: ${inc2.mean} - $reanS: ${rean.mean}")
   }
 
-  def reportError(file: String): Unit = {
-    results = results.add(file, initS, Errored).add(file, inc1S, Errored).add(file, reanS, Errored)
-    if (multiInc) results = results.add(file, inc2S, Errored)
-  }
-  def createOutput(): String = results.prettyString(columns = List(initS, inc1S, inc2S, reanS))
+  def createOutput(): String = results.prettyString(columns = List(initS, inc1S, inc2S, reanS).map(columnName(timeS, _)))
 }
 
 /* ************************** */
