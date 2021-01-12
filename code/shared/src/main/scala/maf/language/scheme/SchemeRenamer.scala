@@ -3,11 +3,11 @@ package maf.language.scheme
 import maf.core.Identifier
 
 /**
-  * Object that provides a method to rename variables in a Scheme program in
-  * order to have only unique names. For example, (let ((x 1)) (let ((x 2)) x))
-  * will be converted to (let ((_x0 1)) (let ((_x1 2)) _x1)). This is useful to
-  * perform ANF conversion.
-  */
+ * Object that provides a method to rename variables in a Scheme program in
+ * order to have only unique names. For example, (let ((x 1)) (let ((x 2)) x))
+ * will be converted to (let ((_x0 1)) (let ((_x1 2)) _x1)). This is useful to
+ * perform ANF conversion.
+ */
 object SchemeRenamer {
 
   /** Maps each variables to their alpha-renamed version (eg. x -> _x0) */
@@ -21,7 +21,11 @@ object SchemeRenamer {
       case (e, _) => e
     }
 
-  def rename(exp: SchemeExp, names: NameMap, count: CountMap): (SchemeExp, CountMap) = exp match {
+  def rename(
+      exp: SchemeExp,
+      names: NameMap,
+      count: CountMap
+    ): (SchemeExp, CountMap) = exp match {
     case SchemeLambda(args, body, pos) =>
       countl(args, names, count) match {
         case (args1, names1, count1) =>
@@ -98,9 +102,14 @@ object SchemeRenamer {
       rename(value, names, count) match {
         case (value1, count1) =>
           (SchemeSet(names.get(variable.name) match {
-            case Some(n) => Identifier(n, variable.idn)
-            case None    => variable
-          }, value1, pos), count1)
+                       case Some(n) => Identifier(n, variable.idn)
+                       case None    => variable
+                     },
+                     value1,
+                     pos
+           ),
+           count1
+          )
       }
     case SchemeBegin(body, pos) =>
       renameList(body, names, count) match {
@@ -116,7 +125,7 @@ object SchemeRenamer {
       }
     case SchemeAssert(exp, pos) =>
       rename(exp, names, count) match {
-        case (exp1, count1) =>(SchemeAssert(exp1, pos), count1)
+        case (exp1, count1) => (SchemeAssert(exp1, pos), count1)
       }
     case SchemeDefineVariable(name, value, pos) =>
       /* Keeps name untouched (maybe not correct?) */
@@ -146,9 +155,9 @@ object SchemeRenamer {
       exps: List[SchemeExp],
       names: NameMap,
       count: CountMap
-  ): (List[SchemeExp], CountMap) = exps match {
+    ): (List[SchemeExp], CountMap) = exps match {
     case exp :: rest =>
-      val (exp1, count1)  = rename(exp, names, count)
+      val (exp1, count1) = rename(exp, names, count)
       val (rest1, count2) = renameList(rest, names, count1)
       (exp1 :: rest1, count2)
     case Nil => (Nil, count)
@@ -158,7 +167,7 @@ object SchemeRenamer {
       bindings: List[(Identifier, SchemeExp)],
       names: NameMap,
       count: CountMap
-  ): (List[(Identifier, SchemeExp)], NameMap, CountMap) =
+    ): (List[(Identifier, SchemeExp)], NameMap, CountMap) =
     bindings match {
       case (v, e) :: rest =>
         count1(v, names, count) match {
@@ -176,13 +185,15 @@ object SchemeRenamer {
       case Nil => (Nil, names, count)
     }
 
-  /** To be called when a new variable is introduced in the scope. Adds it to the
-    * name map and count map */
+  /**
+   * To be called when a new variable is introduced in the scope. Adds it to the
+   * name map and count map
+   */
   def count1(
       variable: Identifier,
       names: NameMap,
       count: CountMap
-  ): (Identifier, NameMap, CountMap) = {
+    ): (Identifier, NameMap, CountMap) = {
     val c: Int = count.get(variable.name) match {
       case Some(x) => x + 1
       case None    => 0
@@ -196,15 +207,14 @@ object SchemeRenamer {
       variables: List[Identifier],
       names: NameMap,
       count: CountMap
-  ): (List[Identifier], NameMap, CountMap) =
-    variables.foldLeft((List[Identifier](), names, count))(
-      (st: (List[Identifier], NameMap, CountMap), v: Identifier) =>
-        st match {
-          case (l, ns, cs) =>
-            count1(v, ns, cs) match {
-              case (v1, ns1, cs1) => (v1 :: l, ns1, cs1)
-            }
-        }
+    ): (List[Identifier], NameMap, CountMap) =
+    variables.foldLeft((List[Identifier](), names, count))((st: (List[Identifier], NameMap, CountMap), v: Identifier) =>
+      st match {
+        case (l, ns, cs) =>
+          count1(v, ns, cs) match {
+            case (v1, ns1, cs1) => (v1 :: l, ns1, cs1)
+          }
+      }
     ) match {
       case (l, ns, cs) => (l.reverse, ns, cs)
     }

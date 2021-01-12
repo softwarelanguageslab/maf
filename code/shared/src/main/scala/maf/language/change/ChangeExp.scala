@@ -6,7 +6,7 @@ case object CHA extends Label // Code change
 
 trait ChangeExp[Expr <: Expression] extends Expression {
   val old: Expr
-  val  nw: Expr
+  val nw: Expr
   val idn: Identity
 
   def fv: Set[String] = old.fv ++ nw.fv

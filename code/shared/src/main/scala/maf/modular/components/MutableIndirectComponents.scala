@@ -11,7 +11,8 @@ import maf.modular.components.IndirectComponents.ComponentPointer
  */
 trait MutableIndirectComponents[Expr <: Expression] extends IndirectComponents[Expr] {
 
-  /** Allows to update the 'actual component' corresponding to a given pointer.
+  /**
+   * Allows to update the 'actual component' corresponding to a given pointer.
    * If no binding exists for the pointer, this method will just register it.
    */
   def updateCPtr(cmp: ComponentData, ptr: ComponentPointer): Unit = {

@@ -8,7 +8,7 @@ object Timeout {
 
   case class T(startingTime: Long, private var timeout: Option[Long]) {
     def reached: Boolean = timeout.exists(System.nanoTime - startingTime > _)
-    def time: Double     = (System.nanoTime - startingTime) / Math.pow(10, 9)
+    def time: Double = (System.nanoTime - startingTime) / Math.pow(10, 9)
     def timeLeft: Option[Long] = timeout.map { duration =>
       val deadline = startingTime + duration
       deadline - System.nanoTime
@@ -29,9 +29,9 @@ object Timer {
 
   @inline
   def time[A](block: => A): (Long, A) = {
-    val t1: Long   = System.nanoTime()
-    val ans: A     = block
-    val t2: Long   = System.nanoTime()
+    val t1: Long = System.nanoTime()
+    val ans: A = block
+    val t2: Long = System.nanoTime()
     val time: Long = t2 - t1
     (time, ans)
   }
@@ -53,4 +53,3 @@ object Clock {
   def now(): Date      = Calendar.getInstance().getTime
   def nowStr(): String = stdFormat.format(now())
 }
-

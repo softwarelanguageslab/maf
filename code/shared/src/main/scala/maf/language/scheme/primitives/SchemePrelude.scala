@@ -6,13 +6,13 @@ import maf.language.scheme._
 object SchemePrelude {
 
   val primDefs = Map(
-    "@sensitivity:1CS"               -> "(define @sensitivity:1CS #f)",
-    "@sensitivity:FA"                -> "(define @sensitivity:FA #f)",
-    "@sensitivity:1A"                -> "(define @sensitivity:1A #f)",
-    "@sensitivity:2A"                -> "(define @sensitivity:2A #f)",
-    "@sensitivity:No"                -> "(define @sensitivity:No #f)",
-    "abs"                            -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
-    "append"                         -> """(define (append l1 l2)
+    "@sensitivity:1CS" -> "(define @sensitivity:1CS #f)",
+    "@sensitivity:FA" -> "(define @sensitivity:FA #f)",
+    "@sensitivity:1A" -> "(define @sensitivity:1A #f)",
+    "@sensitivity:2A" -> "(define @sensitivity:2A #f)",
+    "@sensitivity:No" -> "(define @sensitivity:No #f)",
+    "abs" -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
+    "append" -> """(define (append l1 l2)
                   |  @sensitivity:No
                   |  (assert (list? l1))
                   |  (assert (list? l2))
@@ -118,49 +118,51 @@ object SchemePrelude {
                 |      (memq e (cdr l)))))""".stripMargin,
     "memv"   -> "(define (memv e l) @sensitivity:FA (memq e l))",
     //"min" -> "(define (min a b) (if (< a b) a b))", // Variadic => implemented manually.
-    "negative?"    -> "(define (negative? x) @sensitivity:FA (assert (number? x)) (< x 0))",
-    "newline"      -> "(define (newline) @sensitivity:FA #f)", // undefined
-    "not"          -> "(define (not x) @sensitivity:FA (if x #f #t))",
-    "odd?"         -> "(define (odd? x) @sensitivity:FA (assert (number? x)) (= 1 (modulo x 2)))",
-    "positive?"    -> "(define (positive? x) @sensitivity:FA (assert (number? x)) (> x 0))",
-    "zero?"        -> "(define (zero? x) @sensitivity:FA (assert (number? x)) (= x 0))",
-    "<="           -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y)))",
-    ">"            -> "(define (> x y) @sensitivity:FA (assert (number? x)) (not (<= x y)))",
-    ">="           -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
-    "char>?"       -> "(define (char>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char<=? c1 c2)))",
-    "char<=?"      -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? x)) (or (char<? c1 c2) (char=? c1 c2)))",
-    "char>=?"      -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? x)) (or (char>? c1 c2) (char=? c1 c2)))",
-    "char-ci>?"    -> "(define (char-ci>? c1 c2) @sensitivity:FA (assert (char? x)) (not (char-ci<=? c1 c2)))",
-    "char-ci<=?"   -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
-    "char-ci>=?"   -> "(define (char-ci<=? c1 c2) @sensitivity:FA (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
-    "caar"         -> "(define (caar x) @sensitivity:FA (car (car x)))",
-    "cadr"         -> "(define (cadr x) @sensitivity:FA (car (cdr x)))",
-    "cdar"         -> "(define (cdar x) @sensitivity:FA (cdr (car x)))",
-    "cddr"         -> "(define (cddr x) @sensitivity:FA (cdr (cdr x)))",
-    "caaar"        -> "(define (caaar x) @sensitivity:FA (car (car (car x))))",
-    "caadr"        -> "(define (caadr x) @sensitivity:FA (car (car (cdr x))))",
-    "cadar"        -> "(define (cadar x) @sensitivity:FA (car (cdr (car x))))",
-    "caddr"        -> "(define (caddr x) @sensitivity:FA (car (cdr (cdr x))))",
-    "cdaar"        -> "(define (cdaar x) @sensitivity:FA (cdr (car (car x))))",
-    "cdadr"        -> "(define (cdadr x) @sensitivity:FA (cdr (car (cdr x))))",
-    "cddar"        -> "(define (cddar x) @sensitivity:FA (cdr (cdr (car x))))",
-    "cdddr"        -> "(define (cdddr x) @sensitivity:FA (cdr (cdr (cdr x))))",
-    "caaaar"       -> "(define (caaaar x) @sensitivity:FA (car (car (car (car x)))))",
-    "caaadr"       -> "(define (caaadr x) @sensitivity:FA (car (car (car (cdr x)))))",
-    "caadar"       -> "(define (caadar x) @sensitivity:FA (car (car (cdr (car x)))))",
-    "caaddr"       -> "(define (caaddr x) @sensitivity:FA (car (car (cdr (cdr x)))))",
-    "cadaar"       -> "(define (cadaar x) @sensitivity:FA (car (cdr (car (car x)))))",
-    "cadadr"       -> "(define (cadadr x) @sensitivity:FA (car (cdr (car (cdr x)))))",
-    "caddar"       -> "(define (caddar x) @sensitivity:FA (car (cdr (cdr (car x)))))",
-    "cadddr"       -> "(define (cadddr x) @sensitivity:FA (car (cdr (cdr (cdr x)))))",
-    "cdaaar"       -> "(define (cdaaar x) @sensitivity:FA (cdr (car (car (car x)))))",
-    "cdaadr"       -> "(define (cdaadr x) @sensitivity:FA (cdr (car (car (cdr x)))))",
-    "cdadar"       -> "(define (cdadar x) @sensitivity:FA (cdr (car (cdr (car x)))))",
-    "cdaddr"       -> "(define (cdaddr x) @sensitivity:FA (cdr (car (cdr (cdr x)))))",
-    "cddaar"       -> "(define (cddaar x) @sensitivity:FA (cdr (cdr (car (car x)))))",
-    "cddadr"       -> "(define (cddadr x) @sensitivity:FA (cdr (cdr (car (cdr x)))))",
-    "cdddar"       -> "(define (cdddar x) @sensitivity:FA (cdr (cdr (cdr (car x)))))",
-    "cddddr"       -> "(define (cddddr x) @sensitivity:FA (cdr (cdr (cdr (cdr x)))))",
+    "negative?" -> "(define (negative? x) @sensitivity:FA (assert (number? x)) (< x 0))",
+    "newline" -> "(define (newline) @sensitivity:FA #f)", // undefined
+    "not" -> "(define (not x) @sensitivity:FA (if x #f #t))",
+    "odd?" -> "(define (odd? x) @sensitivity:FA (assert (number? x)) (= 1 (modulo x 2)))",
+    "positive?" -> "(define (positive? x) @sensitivity:FA (assert (number? x)) (> x 0))",
+    "zero?" -> "(define (zero? x) @sensitivity:FA (assert (number? x)) (= x 0))",
+    "<=" -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y)))",
+    ">" -> "(define (> x y) @sensitivity:FA (assert (number? x)) (not (<= x y)))",
+    ">=" -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
+    "char>?" -> "(define (char>? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (not (char<=? c1 c2)))",
+    "char<=?" -> "(define (char<=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char<? c1 c2) (char=? c1 c2)))",
+    "char>=?" -> "(define (char>=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char>? c1 c2) (char=? c1 c2)))",
+    "char-ci>?" -> "(define (char-ci>? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (not (char-ci<=? c1 c2)))",
+    "char-ci<=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
+    "char-ci>=?" -> "(define (char-ci>=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
+    "char-alphabetic?" -> "(define (char-alphabetic? c) @sensitivity:FA (and (char-ci>=? c #\\a) (char-ci<=? c #\\z)))",
+    "char-numeric?" -> "(define (char-alphabetic c) @sensitivity:FA (and (char<=? #\\0 c) (char<=? c #\\9)))",
+    "caar" -> "(define (caar x) @sensitivity:FA (car (car x)))",
+    "cadr" -> "(define (cadr x) @sensitivity:FA (car (cdr x)))",
+    "cdar" -> "(define (cdar x) @sensitivity:FA (cdr (car x)))",
+    "cddr" -> "(define (cddr x) @sensitivity:FA (cdr (cdr x)))",
+    "caaar" -> "(define (caaar x) @sensitivity:FA (car (car (car x))))",
+    "caadr" -> "(define (caadr x) @sensitivity:FA (car (car (cdr x))))",
+    "cadar" -> "(define (cadar x) @sensitivity:FA (car (cdr (car x))))",
+    "caddr" -> "(define (caddr x) @sensitivity:FA (car (cdr (cdr x))))",
+    "cdaar" -> "(define (cdaar x) @sensitivity:FA (cdr (car (car x))))",
+    "cdadr" -> "(define (cdadr x) @sensitivity:FA (cdr (car (cdr x))))",
+    "cddar" -> "(define (cddar x) @sensitivity:FA (cdr (cdr (car x))))",
+    "cdddr" -> "(define (cdddr x) @sensitivity:FA (cdr (cdr (cdr x))))",
+    "caaaar" -> "(define (caaaar x) @sensitivity:FA (car (car (car (car x)))))",
+    "caaadr" -> "(define (caaadr x) @sensitivity:FA (car (car (car (cdr x)))))",
+    "caadar" -> "(define (caadar x) @sensitivity:FA (car (car (cdr (car x)))))",
+    "caaddr" -> "(define (caaddr x) @sensitivity:FA (car (car (cdr (cdr x)))))",
+    "cadaar" -> "(define (cadaar x) @sensitivity:FA (car (cdr (car (car x)))))",
+    "cadadr" -> "(define (cadadr x) @sensitivity:FA (car (cdr (car (cdr x)))))",
+    "caddar" -> "(define (caddar x) @sensitivity:FA (car (cdr (cdr (car x)))))",
+    "cadddr" -> "(define (cadddr x) @sensitivity:FA (car (cdr (cdr (cdr x)))))",
+    "cdaaar" -> "(define (cdaaar x) @sensitivity:FA (cdr (car (car (car x)))))",
+    "cdaadr" -> "(define (cdaadr x) @sensitivity:FA (cdr (car (car (cdr x)))))",
+    "cdadar" -> "(define (cdadar x) @sensitivity:FA (cdr (car (cdr (car x)))))",
+    "cdaddr" -> "(define (cdaddr x) @sensitivity:FA (cdr (car (cdr (cdr x)))))",
+    "cddaar" -> "(define (cddaar x) @sensitivity:FA (cdr (cdr (car (car x)))))",
+    "cddadr" -> "(define (cddadr x) @sensitivity:FA (cdr (cdr (car (cdr x)))))",
+    "cdddar" -> "(define (cdddar x) @sensitivity:FA (cdr (cdr (cdr (car x)))))",
+    "cddddr" -> "(define (cddddr x) @sensitivity:FA (cdr (cdr (cdr (cdr x)))))",
     "vector->list" -> """(define (vector->list v)
                         |  @sensitivity:FA
                         |  (assert (vector? v))
@@ -177,16 +179,16 @@ object SchemePrelude {
                    |      '()
                    |      (append (reverse (cdr l))
                    |              (list (car l)))))""".stripMargin,
-    "map"          -> """(define (map f l)
+    "map" -> """(define (map f l)
                 |  @sensitivity:1A
-                |  ;(assert (proc? f)) ;; TODO
+                |  (assert (procedure? f))
                 |  (assert (list? l))
                 |  (if (null? l)
                 |      '()
                 |      (cons (f (car l)) (map f (cdr l)))))""".stripMargin,
     "for-each"     -> """(define (for-each f l)
                     |  @sensitivity:1A
-                    |  ;(assert (proc? f)) ;; TODO
+                    |  (assert (procedure? f))
                     |  (assert (list? l))
                     |  (if (null? l)
                     |      #t
@@ -225,10 +227,16 @@ object SchemePrelude {
                        |            #t
                        |            (and (char-ci=? (string-ref s1 i) (string-ref s2 i))
                        |                 (loop (- i 1)))))))""".stripMargin,
-    "string<=?"    -> "(define (string<=? s1 s2) @sensitivity:FA (or (string<? s1 s2) (string=? s1 s2)))",
-    "string>?"     -> "(define (string>? s1 s2) @sensitivity:FA (not (string<=? s1 s2)))",
-    "string>=?"    -> "(define (string<=? s1 s2) @sensitivity:FA (or (string>? s1 s2) (string=? s1 s2)))",
-    "truncate"     -> "(define (truncate x) @sensitivity:FA (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
+    "string<=?" -> "(define (string<=? s1 s2) @sensitivity:FA (or (string<? s1 s2) (string=? s1 s2)))",
+    "string>?" -> "(define (string>? s1 s2) @sensitivity:FA (not (string<=? s1 s2)))",
+    "string>=?" -> "(define (string>=? s1 s2) @sensitivity:FA (or (string>? s1 s2) (string=? s1 s2)))",
+    "list->string" ->
+      """(define (list->string l)
+        |   (assert (list? l))
+        |   (if (null? l)
+        |     ""
+        |     (string-append (char->string (car l)) (list->string (cdr l)))))""".stripMargin,
+    "truncate" -> "(define (truncate x) @sensitivity:FA (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
     //"string-fill!" -> """(define (string-fill! s c)
     //                    |  (let loop ((i (- (string-length s) 1)))
     //                    |    (if (< i 0)
@@ -249,7 +257,7 @@ object SchemePrelude {
     // TODO: implement apply internally
     "apply"   -> """(define (apply proc args)
                  |  @sensitivity:1A
-                 |  ;(assert (proc? proc)) ;; TODO
+                 |  (assert (procedure? proc))
                  |  (assert (list? args))
                  |  (cond
                  |    ((null?                args)   (proc))
@@ -261,9 +269,10 @@ object SchemePrelude {
                  |    ((null? ( cddr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args)) (cadr (cddddr args))))
                  |    ((null? (cdddr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args)) (cadr (cddddr args)) (caddr (cddddr args))))
                  |    (else (error "Unsupported call."))))""".stripMargin,
-    "ref"     -> "(define (ref x) @sensitivity:FA (cons x '()))",
-    "deref"   -> "(define deref car)",
-    "ref-set" -> "(define ref-set set-car!)"
+    "ref" -> "(define (ref x) @sensitivity:FA (cons x '()))",
+    "deref" -> "(define deref car)",
+    "ref-set" -> "(define ref-set set-car!)",
+    "void" -> "(define (void) #f)"
     /*
     "ref" -> "(define (ref x) (cons x (new-lock))",
     "deref" ->
@@ -281,10 +290,9 @@ object SchemePrelude {
    */
   )
 
-  val primDefsParsed: Map[String, SchemeExp] = primDefs.map {
-    case (nam, str) =>
-      val exp = SchemeParser.parse(str, Position.newTag(nam))
-      (nam, exp)
+  val primDefsParsed: Map[String, SchemeExp] = primDefs.map { case (nam, str) =>
+    val exp = SchemeParser.parse(str, Position.newTag(nam))
+    (nam, exp)
   }
 
   val primNames: Set[String] = primDefs.keySet
@@ -292,10 +300,10 @@ object SchemePrelude {
   /** Transively adds all required definitions to the prelude, except the ones listed in `excl`. */
   def addPrelude(exp: SchemeExp, excl: Set[String] = Set()): SchemeExp = {
     var prelude: List[SchemeExp] = List()
-    var work: List[Expression]   = List(exp)
-    var visited: Set[String]     = Set()
+    var work: List[Expression] = List(exp)
+    var visited: Set[String] = Set()
 
-    while (work.nonEmpty) {
+    while (work.nonEmpty)
       work.head match {
         case Identifier(name, _)
             if primNames.contains(name) && !visited.contains(name) && !excl.contains(name) =>
@@ -306,7 +314,6 @@ object SchemePrelude {
         case e =>
           work = e.subexpressions ::: work.tail // There will be no subexpressions if e is an Identifier for which the conditions do not hold.
       }
-    }
     SchemeBody(prelude ::: List(exp))
   }
 }

@@ -1,5 +1,5 @@
 package maf.core
 
-trait Primitive {
+trait Primitive extends Serializable {
   def name: String
 }

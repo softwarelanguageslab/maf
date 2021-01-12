@@ -11,14 +11,16 @@ case object Main extends SchemeModFComponent {
   override def toString: String = "main"
 }
 // A call to a specific closure
-case class Call[Context](clo: (SchemeLambdaExp, Environment[Address]), 
-                         nam: Option[String], 
-                         ctx: Context) extends SchemeModFComponent {
+case class Call[Context](
+    clo: (SchemeLambdaExp, Environment[Address]),
+    nam: Option[String],
+    ctx: Context)
+    extends SchemeModFComponent {
   // convenience accessors
   lazy val (lambda, env) = clo
   // TODO: move this to SchemeLambdaExp
   def lambdaName: String = nam match {
-    case None => s"λ@${lambda.idn}"
+    case None       => s"λ@${lambda.idn}"
     case Some(name) => name
   }
   override def toString: String = s"$lambdaName [$ctx]"
@@ -30,7 +32,6 @@ trait StandardSchemeModFComponents extends BaseSchemeModFSemantics {
   def newComponent(call: Call[ComponentContext]) = call
   def view(cmp: Component): SchemeModFComponent = cmp
 }
-
 
 /*package maf.modular.scheme
 
@@ -96,4 +97,4 @@ trait ModuledSchemeComponents extends SchemeModFSemantics {
     case call: CallComponent => Some(call.mod.parent)
   }
 }
-*/
+ */

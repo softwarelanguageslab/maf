@@ -16,11 +16,8 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Can this value be considered false for conditionals? */
   def isFalse(x: L): Boolean
 
-  /** Performs a unary operation on the abstract value x */
-  def unaryOp(op: SchemeOps.UnaryOperator)(x: L): MayFail[L, Error]
-
-  /** Performs a binary operation on abstract values x and y */
-  def binaryOp(op: SchemeOps.BinaryOperator)(x: L, y: L): MayFail[L, Error]
+  /** Performs an SchemeOp on the abstract values */
+  def op(op: SchemeOp)(args: List[L]): MayFail[L, Error]
 
   /** Conjunction */
   def and(x: L, y: => L): L = (isTrue(x), isFalse(x)) match {
@@ -43,7 +40,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   type Closure = (SchemeLambdaExp, Env)
 
   /** Extract closures contained in this value */
-  def getClosures(x: L): Set[(Closure,Option[String])]
+  def getClosures(x: L): Set[(Closure, Option[String])]
 
   /** Extract primitives contained in this value */
   def getPrimitives(x: L): Set[P]
@@ -84,14 +81,14 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Injection of a symbol */
   def symbol(x: String): L
 
-  /** Injection of a cons cell */
+  /** Injection of a cons cell. */
   def cons(car: L, cdr: L): L
 
   /** Extract the car of a cons-cell */
-  def car(x: L): MayFail[L, Error]
+  def car(x: L): MayFail[L, Error] = op(SchemeOp.Car)(List(x))
 
   /** Extract the cdr of a cons-cell */
-  def cdr(x: L): MayFail[L, Error]
+  def cdr(x: L): MayFail[L, Error] = op(SchemeOp.Cdr)(List(x))
 
   /** Injection of the nil value */
   def nil: L
@@ -103,13 +100,17 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def cont(k: K): L
 
   /** Constructs a new vector */
-  def vector(size: L, init: L): MayFail[L, Error]
+  def vector(size: L, init: L): MayFail[L, Error] = op(SchemeOp.MakeVector)(List(size, init))
 
   /** Accesses an element of a vector */
-  def vectorRef(vector: L, index: L): MayFail[L, Error]
+  def vectorRef(vector: L, index: L): MayFail[L, Error] = op(SchemeOp.VectorRef)(List(vector, index))
 
   /** Changes an element of a vector */
-  def vectorSet(vector: L, index: L, newval: L): MayFail[L, Error]
+  def vectorSet(
+      vector: L,
+      index: L,
+      newval: L
+    ): MayFail[L, Error] = op(SchemeOp.VectorSet)(List(vector, index, newval))
 
   /** Injection of a thread identifier */
   def thread(tid: TID): L
@@ -135,81 +136,16 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
       case b: Boolean => bool(b)
       case c: Char    => char(c)
       //case p: P       => primitive(p)
-      case s: Symbol  => symbol(s.name)
+      case s: Symbol => symbol(s.name)
       //case a: A       => pointer(a)
-      case Nil        => nil
-      case v          => throw new Exception(s"Attempting to inject unknown value $v.")
+      case Nil => nil
+      case v   => throw new Exception(s"Attempting to inject unknown value $v.")
     }
   }
-
-  /* TODO: move this to the tests
-  trait SchemeLatticeLaw extends MonoidLaw {
-    import scalaz.std.boolean.conditional
-    def bottomSubsumesItself: Boolean = subsumes(bottom, bottom)
-    def bottomAlwaysSubsumed(x: L): Boolean = subsumes(x, bottom) && conditional(x != bottom, !subsumes(bottom, x))
-    def joinedWithSubsumesRemainsEqual(x: L, y: L): Boolean = conditional(subsumes(x, y), join(x, y) == x)
-    def joinedWithBottomRemainsEqual(x: L): Boolean = join(x, bottom) == x
-    def joinedSubsumes(x: L, y: L): Boolean = {
-      val xy = join(x, y)
-      subsumes(xy, x) && subsumes(xy, y)
-    }
-    def joinedSubsumes3(x: L, y: L, z: L): Boolean = {
-      /* Due to a bug detected on commit 7546a519, where {#t, Str, Int} did not subsume Str */
-      val xyz = join(x, join(y, z))
-      subsumes(xyz, x) && subsumes(xyz, y) && subsumes(xyz, z)
-    }
-    def injectBoolPreservesTruth: Boolean = isTrue(inject(true)) && isFalse(inject(false))
-    def bottomNeitherTrueNorFalse: Boolean = !isTrue(bottom) && !isFalse(bottom)
-    def boolTopIsTrueAndFalse: Boolean = {
-      val boolTop = join(inject(true), inject(false))
-      isTrue(boolTop) && isFalse(boolTop)
-    }
-    def unaryOpPreservesBottom(op: SchemeOps.UnaryOperator): Boolean =
-      unaryOp(op)(bottom).extract == Some(bottom)
-    def binaryOpPreservesBottom(op: SchemeOps.BinaryOperator, v: L): Boolean = {
-      binaryOp(op)(bottom, bottom).extract == Some(bottom) &&
-      binaryOp(op)(bottom, v).extract == Some(bottom) &&
-      binaryOp(op)(v, bottom).extract == Some(bottom)
-    }
-    def notIsCorrect: Boolean = {
-      unaryOp(UnaryOperator.Not)(inject(true)).map(isFalse).extract == Some(true) &&
-      unaryOp(UnaryOperator.Not)(inject(false)).map(isTrue).extract == Some(true)
-    }
-    def andIsCorrect(b1: Boolean, b2: Boolean): Boolean = {
-      val v1 = inject(b1)
-      val v2 = inject(b2)
-      if (b1 && b2) isTrue(and(v1, v2)) else isFalse(and(v1, v2))
-    }
-    def orIsCorrect(b1: Boolean, b2: Boolean): Boolean = {
-      val v1 = inject(b1)
-      val v2 = inject(b2)
-      if (b1 || b2) isTrue(or(v1, v2)) else isFalse(or(v1, v2))
-    }
-    def ltIsCorrect(n1: Int, n2: Int): Boolean = {
-      val v1 = inject(n1)
-      val v2 = inject(n2)
-      conditional(n1 < n2,
-        (binaryOp(BinaryOperator.Lt)(v1, v2).extract.map(isTrue).getOrElse(false)) &&
-          (binaryOp(BinaryOperator.Lt)(v2, v1).extract.map(isFalse).getOrElse(false)))
-    }
-    def eqIsCorrect(n1: Int, n2: Int): Boolean = {
-      val v1 = inject(n1)
-      val v2 = inject(n2)
-      if (n1 == n2) {
-        (binaryOp(BinaryOperator.Eq)(v1, v2).extract.map(isTrue).getOrElse(false) &&
-          binaryOp(BinaryOperator.Eq)(v2, v1).extract.map(isTrue).getOrElse(false))
-      } else {
-        (binaryOp(BinaryOperator.Eq)(v1, v2).extract.map(isFalse).getOrElse(false) &&
-          binaryOp(BinaryOperator.Eq)(v2, v1).extract.map(isFalse).getOrElse(false))
-      }
-    }
-    /* TODO: more properties */
-  }
- */
 }
 
 object SchemeLattice {
   def apply[L, A <: Address, P <: Primitive](
       implicit lat: SchemeLattice[L, A, P]
-  ): SchemeLattice[L, A, P] = lat
+    ): SchemeLattice[L, A, P] = lat
 }

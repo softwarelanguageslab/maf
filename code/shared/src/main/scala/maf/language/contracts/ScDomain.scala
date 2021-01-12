@@ -411,7 +411,7 @@ class ScCoProductLattice[I, B, Addr <: Address](
 ) extends ScDomain[I, B, Addr] {
   import ScLattice._
 
-  sealed trait CoProductValue
+  sealed trait CoProductValue extends Serializable
   case class CoProduct(value: Value) extends CoProductValue
   case object Top                    extends CoProductValue
   case object Bottom                 extends CoProductValue

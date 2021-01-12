@@ -10,6 +10,6 @@ trait AdaptiveArgumentSensitivityPolicy2 extends AdaptiveArgumentSensitivity {
     if (visited.size > budget) {
       val cmps = cmpsPerFn.maxBy(_._2.size)._2
       joinComponents(cmps)
-    } 
+    }
   }
 }

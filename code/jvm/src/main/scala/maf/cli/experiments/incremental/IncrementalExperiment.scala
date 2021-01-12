@@ -29,7 +29,7 @@ trait IncrementalExperiment[E <: Expression] {
   def reportError(file: String): Unit
 
   // Where to write the results.
-  val outputDir:  String = "benchOutput/incremental/"
+  val outputDir: String = "benchOutput/incremental/"
   val outputFile: String
 
   // Creates a string representation of the final output.
@@ -38,12 +38,13 @@ trait IncrementalExperiment[E <: Expression] {
   // Runs measurements on the benchmarks in a given trait, or uses specific benchmarks if passed as an argument.
   def measure(bench: Option[Set[String]] = None): Unit =
     bench.getOrElse(benchmarks()).foreach { file =>
-      try {
-        onBenchmark(file)
-      } catch {
-        case e: Exception => writeErrln(s"Running $file resulted in an exception: ${e.getMessage}\n")
+      try onBenchmark(file)
+      catch {
+        case e: Exception =>
+          writeErrln(s"Running $file resulted in an exception: ${e.getMessage}\n")
           reportError(file)
-        case e: VirtualMachineError => writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
+        case e: VirtualMachineError =>
+          writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
           reportError(file)
       }
       println()

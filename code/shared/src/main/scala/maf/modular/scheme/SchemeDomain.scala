@@ -7,14 +7,15 @@ import maf.language.scheme._
 import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
 import maf.language.scheme.primitives._
 
-/**
- * The abstract domain used for Scheme analyses.
- */
+/** The abstract domain used for Scheme analyses. */
 trait SchemeDomain extends AbstractDomain[SchemeExp] {
+
   /** Type of primitive functions. */
   type Prim = SchemePrimitive[Value, Address]
+
   /** Contains the implementation of the primitives for the given abstract domain. */
   val primitives: SchemePrimitives[Value, Address]
+
   /** Implementation of abstract values. */
   implicit val lattice: SchemeLattice[Value, Address, Prim]
 }
@@ -37,8 +38,8 @@ trait ModularSchemeLatticeWrapper {
   type C
   type Sym
   // holds a modular lattice
-  val modularLattice: ModularSchemeLattice[Address,S,B,I,R,C,Sym]
-  val primitives: SchemePrimitives[modularLattice.L,Address]
+  val modularLattice: ModularSchemeLattice[Address, S, B, I, R, C, Sym]
+  val primitives: SchemePrimitives[modularLattice.L, Address]
 }
 
 //
@@ -48,12 +49,12 @@ trait ModularSchemeLatticeWrapper {
 /* A type lattice for ModF */
 object SchemeTypeDomain extends ModularSchemeLatticeWrapper {
   // use type domains everywhere, except for booleans
-  type S    = Type.S
-  type B    = ConstantPropagation.B
-  type I    = Type.I
-  type R    = Type.R
-  type C    = Type.C
-  type Sym  = Concrete.Sym
+  type S = Type.S
+  type B = ConstantPropagation.B
+  type I = Type.I
+  type R = Type.R
+  type C = Type.C
+  type Sym = Concrete.Sym
   // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
@@ -69,12 +70,12 @@ trait SchemeTypeDomain extends ModularSchemeDomain {
 
 object SchemeConstantPropagationDomain extends ModularSchemeLatticeWrapper {
   // use constant propagation domains everywhere, except for booleans
-  type S    = ConstantPropagation.S
-  type B    = ConstantPropagation.B
-  type I    = ConstantPropagation.I
-  type R    = ConstantPropagation.R
-  type C    = ConstantPropagation.C
-  type Sym  = Concrete.Sym
+  type S = ConstantPropagation.S
+  type B = ConstantPropagation.B
+  type I = ConstantPropagation.I
+  type R = ConstantPropagation.R
+  type C = ConstantPropagation.C
+  type Sym = Concrete.Sym
   // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
@@ -91,12 +92,12 @@ trait SchemeConstantPropagationDomain extends ModularSchemeDomain {
 /* A powerset lattice for ModF */
 object SchemePowersetDomain extends ModularSchemeLatticeWrapper {
   // use powerset domains everywhere
-  type S    = Concrete.S
-  type B    = Concrete.B
-  type I    = Concrete.I
-  type R    = Concrete.R
-  type C    = Concrete.C
-  type Sym  = Concrete.Sym
+  type S = Concrete.S
+  type B = Concrete.B
+  type I = Concrete.I
+  type R = Concrete.R
+  type C = Concrete.C
+  type Sym = Concrete.Sym
   // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)

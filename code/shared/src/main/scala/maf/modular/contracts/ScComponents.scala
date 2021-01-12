@@ -4,7 +4,7 @@ import maf.core.{Address, Environment, Identity}
 import maf.language.contracts.{ScExp, ScLambda}
 import maf.modular.LocalStoreMap
 
-sealed trait ScComponent
+sealed trait ScComponent extends Serializable
 
 /**
   * The main entry point of the program

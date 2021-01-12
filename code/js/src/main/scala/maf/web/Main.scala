@@ -1,20 +1,5 @@
 package maf.web
 
-import org.scalajs.dom.html.TextArea
-import org.scalajs.dom.raw.MouseEvent
-import maf.core.Position._
-import maf.core.Identity._
-import maf.language.contracts.SCExpCompiler
-import maf.language.scheme._
-import maf.modular._
-import maf.modular.adaptive._
-import maf.modular.adaptive.scheme._
-import maf.modular.adaptive.scheme.adaptiveArgumentSensitivity._
-import maf.modular.scheme._
-import maf.modular.scheme.modf._
-import maf.util.PrettyPrinter
-import maf.util.benchmarks.Timeout
-import maf.core.Position._
 import maf.core.Identity
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme._
@@ -30,13 +15,9 @@ import scala.concurrent.duration._
 
 // Scala.js-related imports
 import org.scalajs.dom
-import org.scalajs.dom.{document, html, window}
+import org.scalajs.dom._
 
 import scala.scalajs.js
-import maf.modular.scheme.modf.SimpleSchemeModFAnalysis
-import org.scalajs.dom.raw.HashChangeEvent
-import maf.language.contracts.ScExp
-import maf.core.Identity
 import maf.modular.scheme.modf.SimpleSchemeModFAnalysis
 
 // Scala.js helpers
@@ -48,7 +29,7 @@ object FileInputElement {
     input.addEventListener(
       "change",
       (evtUpload: dom.Event) => {
-        val file   = input.files.item(0)
+        val file = input.files.item(0)
         val reader = new dom.FileReader()
         reader.onload = (evtLoad: dom.Event) => handler(reader.result.asInstanceOf[String])
         reader.readAsText(file)
@@ -59,136 +40,109 @@ object FileInputElement {
   }
 }
 
-trait Component {
-  def afterRender(): Unit = ()
-  def render(): dom.Element
-}
+object Main {
+  val input = FileInputElement(loadFile)
 
-trait Router {
-  private def path: String =
-    if (window.top.location.hash.isEmpty) {
-      "/"
-    } else {
-      window.top.location.hash.substring(1)
-    }
+  def main(args: Array[String]): Unit = setupUI()
 
-  private def updateComponent(routes: Map[String, Component]): Unit = {
+  def setupUI() = {
     val body = document.body
-    body.innerHTML = ""
-    val currentPath = path
-    val component   = routes.get(currentPath)
-    component match {
-      case Some(c) => {
-        body.appendChild(c.render())
-        c.afterRender()
-      }
-      case None => println("404 not found")
-    }
-  }
-
-  def routes(r: (String, Component)*): Unit = {
-    val routesMap = r.toMap
-    updateComponent(routesMap)
-    window.addEventListener(
-      "hashchange",
-      (change: HashChangeEvent) => updateComponent(routesMap),
-      false
-    )
+    body.appendChild(input)
   }
 
   def newStandardAnalysis(text: String) = {
     val program = SchemeParser.parse(text)
-    new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
-    with SchemeConstantPropagationDomain with DependencyTracking[SchemeExp]
-    with FIFOWorklistAlgorithm[SchemeExp] {
+    new SimpleSchemeModFAnalysis(program)
+      with SchemeModFNoSensitivity
+      with SchemeConstantPropagationDomain
+      with DependencyTracking[SchemeExp]
+      with FIFOWorklistAlgorithm[SchemeExp] {
       //override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
       def key(cmp: Component): Identity = expr(cmp).idn
+
       override def step(t: Timeout.T) = {
         val cmp = workList.head
         println(cmp)
         super.step(t)
       }
+
       override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
     }
   }
-}
 
-object WebVisualisationPage extends Component {
-  val input = FileInputElement(loadFile)
+  class IncrementalAnalysis(program: SchemeExp)
+      extends IncrementalSchemeModFAnalysisCPLattice(program)
+         with VisualisableIncrementalModAnalysis[SchemeExp] {
 
-  def render(): dom.Element = {
-    input
-  }
+    override def updateAddrInc(
+        cmp: SchemeModFComponent,
+        addr: Addr,
+        nw: modularLatticeWrapper.modularLattice.L
+      ): Boolean = {
+      val old = provenance(addr)(cmp)
+      println(s"$addr [$cmp]: $old => $nw")
+      super.updateAddrInc(cmp, addr, nw)
+    }
 
-  def standardAnalysis(program: SchemeExp) =
-    new SimpleSchemeModFAnalysis(program) with SchemeModFNoSensitivity
-    with SchemeConstantPropagationDomain with DependencyTracking[SchemeExp]
-    with FIFOWorklistAlgorithm[SchemeExp] {
-      //override def allocCtx(nam: Option[String], clo: lattice.Closure, args: List[Value], call: Position, caller: Component) = super.allocCtx(nam,clo,args,call,caller)
-      def key(cmp: Component) = expr(cmp).idn
-      override def step(t: Timeout.T) = {
-        val cmp = workList.head
-        println(cmp)
-        super.step(t)
+    override def deleteProvenance(cmp: SchemeModFComponent, addr: Addr): Unit = {
+      val old = store.getOrElse(addr, lattice.bottom)
+      super.deleteProvenance(cmp, addr)
+      val nw = store.getOrElse(addr, lattice.bottom)
+      println(s"$addr [$cmp]: $old _> $nw")
+    }
+
+    override def intraAnalysis(
+        cmp: SchemeModFComponent
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with VisualisableIntraAnalysis {
+
+      override def analyze(timeout: Timeout.T): Unit = {
+        println(s"Analysing $cmp")
+        super.analyze(timeout)
       }
-      override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra =
-        new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-    }
 
-  def incrementalReanalysis(program: SchemeExp) =
-    new IncrementalSchemeModFCPAnalysis(program) with DependencyTracking[SchemeExp] {
-      override def intraAnalysis(cmp: SchemeModFComponent) =
-        new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with DependencyTrackingIntra
+      override def trigger(dep: Dependency): Unit = {
+        println(s"$component triggers $dep")
+        super.trigger(dep)
+      }
+    }
+    try {
+      println("Starting initial analysis.") // Will be logged to console.
       analyze(Timeout.start(Duration(5, MINUTES)))
+      println("Finished initial analysis. Preparing for reanalysis.")
       version = New
       optimisationFlag = true
-      findUpdatedExpressions(program).flatMap(mapping).foreach(addToWorkList)
-    }
-
-  // Select the analysis to be used by the web visualisation.
-  val analysis
-      : SchemeExp => ModAnalysis[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_] =
-    standardAnalysis
-
-  def newIncrementalReanalysis(
-      text: String
-  ): IncrementalSchemeModFCPAnalysisStoreOpt with DependencyTracking[SchemeExp] = {
-    val program: SchemeExp = CSchemeParser.parse(text)
-    new IncrementalSchemeModFCPAnalysisStoreOpt(program) with DependencyTracking[SchemeExp] {
-      override def intraAnalysis(cmp: SchemeModFComponent) =
-        new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
-        with IncrementalReturnValueIntraAnalysis with DependencyTrackingIntra
-      try {
-        println("Starting initial analysis.") // Will be logged to console.
-        analyze(Timeout.start(Duration(5, MINUTES)))
-        println("Finished initial analysis. Preparing for reanalysis.")
-        version = New
-        optimisationFlag = true
-        findUpdatedExpressions(program).flatMap(mapping).foreach(addToWorkList)
-        println("Preparation finished. Starting reanalysis.")
-      } catch {
-        case t: Throwable =>
-          System.err.println(t.getMessage) // Will display an error in the console.
-          throw t
-      }
+      val affected = findUpdatedExpressions(program).flatMap(mapping)
+      affected.foreach(addToWorkList)
+      println(s"Directly affected components: ${affected.toList.mkString(", ")}")
+      println("Preparation finished. Starting reanalysis.")
+    } catch {
+      case t: Throwable =>
+        System.err.println(t.getMessage) // Will display an error in the console.
+        throw t
     }
   }
 
-  //def createVisualisation(text: String) = new WebVisualisation(newStandardAnalysis(text))
-  def createIncrementalVisualisation(text: String) =
-    new WebVisualisationIncremental(newIncrementalReanalysis(text))
+  def newIncrementalReanalysis(text: String): IncrementalSchemeModFAnalysisCPLattice with VisualisableIncrementalModAnalysis[SchemeExp] = {
+    val program: SchemeExp = CSchemeParser.parse(text)
+    new IncrementalAnalysis(program)
+  }
+
+  def createVisualisation(text: String) = new WebVisualisation(newStandardAnalysis(text))
+  def createIncrementalVisualisation(text: String) = new WebVisualisationIncremental(newIncrementalReanalysis(text))
 
   def loadFile(text: String): Unit = {
     val visualisation = createIncrementalVisualisation(text)
     // parameters for the visualisation
-    val body   = document.body
-    val width  = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
+    val body = document.body
+    val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
     val height = js.Dynamic.global.document.documentElement.clientHeight.asInstanceOf[Int]
     visualisation.init(body, width, height)
   }
 }
 
+
+/*
 object ContractVerificationPage extends Component {
 
   override def afterRender(): Unit = {
@@ -293,3 +247,4 @@ object Main extends Router {
     "/contracts" -> ContractVerificationPage
   )
 }
+*/

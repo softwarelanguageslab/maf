@@ -8,9 +8,9 @@ case class AddrDependency(addr: Address) extends Dependency {
 }
 
 /**
-  * Provides a global store to a modular analysis.
-  * @tparam Expr The type of the expressions under analysis.
-  */
+ * Provides a global store to a modular analysis.
+ * @tparam Expr The type of the expressions under analysis.
+ */
 trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDomain[Expr] { inter =>
 
   // TODO: should we parameterize this for more type-safety, or do we not care about that for addresses?
@@ -23,7 +23,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
       store: Map[Addr, Value],
       addr: Addr,
       value: Value
-  ): Option[Map[Addr, Value]] =
+    ): Option[Map[Addr, Value]] =
     store.get(addr) match {
       case None if value == lattice.bottom => None
       case None                            => Some(store + (addr -> value))
@@ -47,12 +47,10 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
     }
     // writing addresses of the global store
     def writeAddr(addr: Addr, value: Value): Boolean =
-      updateAddr(intra.store, addr, value)
-        .map(updated => {
-          intra.store = updated
-          trigger(AddrDependency(addr))
-        })
-        .isDefined
+      updateAddr(intra.store, addr, value).map { updated =>
+        intra.store = updated
+        trigger(AddrDependency(addr))
+      }.isDefined
 
     override def doWrite(dep: Dependency): Boolean = dep match {
       case AddrDependency(addr) =>
@@ -64,7 +62,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
     // An adapter for the "old" store interface
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
     case object StoreAdapter extends Store[Addr, Value] {
-      def lookup(a: Addr): Option[Value]                = Some(readAddr(a))
+      def lookup(a: Addr): Option[Value] = Some(readAddr(a))
       def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a, v); this }
     }
   }

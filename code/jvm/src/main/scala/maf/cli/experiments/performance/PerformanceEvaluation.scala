@@ -13,12 +13,12 @@ trait PerformanceEvaluation {
   type Analysis = ModAnalysis[SchemeExp]
 
   // Configuring the warm-up
-  def maxWarmupRuns = 10                                    // maximum number of warm-up runs
-  def maxWarmupTime = Timeout.start(Duration(1, MINUTES))   // maximum time to spend on warm-up *in total* (i.e., for all runs)
+  def maxWarmupRuns = 10 // maximum number of warm-up runs
+  def maxWarmupTime = Timeout.start(Duration(1, MINUTES)) // maximum time to spend on warm-up *in total* (i.e., for all runs)
 
   // Configuring the analysis runs
-  def analysisRuns = 20                                     // number of analysis runs
-  def analysisTime = Timeout.start(Duration(60, MINUTES))   // maximum time to spend *on a single analysis run*
+  def analysisRuns = 20 // number of analysis runs
+  def analysisTime = Timeout.start(Duration(60, MINUTES)) // maximum time to spend *on a single analysis run*
 
   // The list of benchmarks used for the evaluation
   type Benchmark = String
@@ -61,23 +61,27 @@ trait PerformanceEvaluation {
       print(s"$i ")
       val a = analysis(program)
       System.gc()
-      val t = Timer.timeOnly { a.analyze(analysisTime) }
+      val t = Timer.timeOnly(a.analyze(analysisTime))
       if (a.finished()) {
         times = (t.toDouble / 1000000) :: times
       } else {
-        return TimedOut  // immediately return
+        return TimedOut // immediately return
       }
     }
     print("\n")
     // Compute, print and return the results
     val result = Statistics.all(times)
-    println(times.mkString("[",",","]"))
+    println(times.mkString("[", ",", "]"))
     println(result)
     Completed(result)
   }
 
   // Runs the evaluation
-  def measureBenchmark(benchmark: Benchmark, timeoutFast: Boolean = true, failFast: Boolean = true): Unit =
+  def measureBenchmark(
+      benchmark: Benchmark,
+      timeoutFast: Boolean = true,
+      failFast: Boolean = true
+    ): Unit =
     analyses.foreach { case (analysis, name) =>
       try {
         println(s"***** Running $name on $benchmark *****")
@@ -85,23 +89,23 @@ trait PerformanceEvaluation {
         results = results.add(benchmark, name, result)
         result match {
           case TimedOut if timeoutFast => return
-          case _ => () 
+          case _                       => ()
         }
       } catch {
         case e: Exception =>
           println(s"Encountered an exception: ${e.getMessage}")
           if (failFast) return
-        case e: VirtualMachineError => 
+        case e: VirtualMachineError =>
           System.gc()
           println(s"Running $benchmark resulted in an error: ${e.getMessage}")
           if (failFast) return
       }
     }
 
-  def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true) = 
+  def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true) =
     benchmarks.foreach(b => measureBenchmark(b, timeoutFast, failFast))
 
-  def printResults() = 
+  def printResults() =
     println(results.prettyString(format = format))
   def exportCSV(path: String) = {
     val hdl = Writer.openTimeStamped(path)
@@ -110,7 +114,11 @@ trait PerformanceEvaluation {
     Writer.close(hdl)
   }
 
-  def run(path: String = "benchOutput/performance/output.csv", timeoutFast: Boolean = true, failFast: Boolean = true) = {
+  def run(
+      path: String = "benchOutput/performance/output.csv",
+      timeoutFast: Boolean = true,
+      failFast: Boolean = true
+    ) = {
     measureBenchmarks(timeoutFast, failFast)
     printResults()
     exportCSV(path)

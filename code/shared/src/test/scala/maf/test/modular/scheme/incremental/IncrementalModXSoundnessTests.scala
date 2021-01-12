@@ -29,17 +29,22 @@ import scala.concurrent.duration.{Duration, MINUTES}
  */
 trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
-  type IncrementalAnalysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
-                                                    with ReturnValue[SchemeExp]
-                                                    with SchemeDomain
-                                                    with IncrementalModAnalysis[SchemeExp]
-                                                    
+  type IncrementalAnalysis = ModAnalysis[SchemeExp]
+    with GlobalStore[SchemeExp]
+    with ReturnValue[SchemeExp]
+    with SchemeDomain
+    with IncrementalModAnalysis[SchemeExp]
+
   override def analysis(b: SchemeExp): IncrementalAnalysis
   override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
   private var version: Version = Old
 
-  override def runInterpreter(i: SchemeInterpreter, p: SchemeExp, t: Timeout.T): SchemeInterpreter.Value = i.run(p, t, version)
+  override def runInterpreter(
+      i: SchemeInterpreter,
+      p: SchemeExp,
+      t: Timeout.T
+    ): SchemeInterpreter.Value = i.run(p, t, version)
 
   override def onBenchmark(benchmark: Benchmark): Unit =
     property(s"Incremental (re-)analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
@@ -49,24 +54,24 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
       // Check soundness on the original version of the program.
       version = Old
-      val (cResultOld, cPosResultsOld) = evalConcrete(program,benchmark)
+      val (cResultOld, cPosResultsOld) = evalConcrete(program, benchmark)
       val anlOld = runAnalysis(program, benchmark)
       compareResult(anlOld, cResultOld)
       compareIdentities(anlOld, cPosResultsOld)
 
       // Check soundness on the updated version of the program.
       version = New
-      val (cResultNew, cPosResultsNew) = evalConcrete(program,benchmark)
+      val (cResultNew, cPosResultsNew) = evalConcrete(program, benchmark)
       val anlNew = updateAnalysis(program, benchmark)
       compareResult(anlNew, cResultNew)
       compareIdentities(anlNew, cPosResultsNew)
     }
 
-   private def updateAnalysis(program: SchemeExp, benchmark: Benchmark): IncrementalAnalysis =
+  private def updateAnalysis(program: SchemeExp, benchmark: Benchmark): IncrementalAnalysis =
     try {
       val anl: IncrementalAnalysis = analysis(program)
       val timeout = analysisTimeout(benchmark)
-      anl.updateAnalysis(timeout, benchmark)
+      anl.updateAnalysis(timeout)
       assume(anl.finished(), "Reanalysis timed out.")
       anl
     } catch {
@@ -81,28 +86,32 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
   def name = "Incremental ModConc"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysis(b)
+
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b)
+
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
   override def isSlow(b: Benchmark): Boolean =
     Set(
       "test/changes/cscheme/threads/actors.scm",
       "test/changes/cscheme/threads/crypt.scm",
       "test/changes/cscheme/threads/crypt2.scm",
-      "test/changes/cscheme/threads/stm.scm",
+      "test/changes/cscheme/threads/stm.scm"
     )(b)
 }
 
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConc {
   override def name = "Incremental ModConc CP"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcCPAnalysis(b)
-}
 
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b)
+}
 
 /** Implements soundness tests for an incremental ModF analysis. */
 class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
   def name = "Incremental ModF"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysis(b)
+
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b)
+
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
     Set(
@@ -112,22 +121,13 @@ class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncre
       "test/changes/scheme/machine-simulator.scm",
       "test/changes/scheme/mceval-dynamic.scm",
       "test/changes/scheme/nboyer.scm",
-      "test/changes/scheme/peval.scm",
+      "test/changes/scheme/peval.scm"
     )(b)
 }
 
 /** Implements soundness tests for an incremental ModF analysis. */
 class IncrementalModFCP extends IncrementalModF {
   override def name = "Incremental ModF CP"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFCPAnalysis(b)
-}
 
-// Soundness tests for WIP on store provenance:
-class IncrementalSmallStepModConcCPStoreOpt extends IncrementalSmallStepModConc {
-  override def name = "Incremental ModConc CP StoreOpt"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcCPAnalysisStoreOpt(b)
-}
-class IncrementalModFCPStoreOpt extends IncrementalModF {
-  override def name = "Incremental ModF CP StoreOpt"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFCPAnalysisStoreOpt(b)
+  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b)
 }

@@ -15,18 +15,19 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
                         scalaVersion := "2.13.3",
                         /** Dependencies */
                         libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "1.1.2",
-                        libraryDependencies += "au.com.bytecode" % "opencsv" % "2.4",
-                        libraryDependencies += "com.typesafe.akka" %% "akka-actor-typed" % "2.6.9",
+                        libraryDependencies += "com.opencsv" % "opencsv" % "5.3",
+                        libraryDependencies += "com.typesafe.akka" %% "akka-actor-typed" % "2.6.10",
                         libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
-                        libraryDependencies += "com.typesafe" % "config" % "1.4.0",
+                        libraryDependencies += "com.typesafe" % "config" % "1.4.1",
                         /** Compilation options */
                         maxErrors := 5,
                         /** Configuration for running the tests */
                         logBuffered in Test := false,
-                        libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.0" % "test",
-                        libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.3" % "test",
-                        libraryDependencies += "org.scalatestplus" %% "scalacheck-1-14" % "3.1.0.0" % "test",
-                        libraryDependencies += "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test,
+                        testOptions in Test += Tests.Argument("-oI"), // Produces a summary after running the tests, showing the failing tests
+                        libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % "test",
+                        libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.15.2" % "test",
+                        libraryDependencies += "org.scalatestplus" %% "scalacheck-1-15" % "3.2.3.0" % "test",
+                        libraryDependencies += "com.vladsch.flexmark" % "flexmark-all" % "0.62.2" % Test,
                         /** Imported options from https://tpolecat.github.io/2017/04/25/scalac-flags.html */
                         scalacOptions ++= Seq(
                           "-deprecation",                      // Emit warning and location for usages of deprecated APIs.
@@ -87,8 +88,8 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
                         mainClass in Compile := Some("maf.web.Main"),
                         scalaJSUseMainModuleInitializer := true,
                         /** Dependencies */
-                        libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.8",
-                        libraryDependencies += "com.lihaoyi" %%% "scalatags" % "0.9.2"
+                        libraryDependencies += "com.lihaoyi" %%% "scalatags" % "0.9.2",
+                        libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.1.0",
                       )
 
 lazy val mafJVM = maf.jvm

@@ -2,10 +2,10 @@ package maf.modular
 
 import maf.core._
 
-case class ReturnAddr[Component](cmp: Component, idn: Identity) extends Address { 
+case class ReturnAddr[Component](cmp: Component, idn: Identity) extends Address {
   def printable = true
   override def toString: String = s"ret ($cmp)"
-} 
+}
 
 /**
  * Provides facilities for storing and retrieving return values of components (component analyses).
@@ -22,8 +22,8 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
   override def intraAnalysis(cmp: Component): ReturnResultIntra
   trait ReturnResultIntra extends GlobalStoreIntra {
     // updating the result of a component (default: of the current component)
-    protected def writeResult(result: Value, cmp: Component = component): Unit =
-      writeAddr(returnAddr(cmp), result)
+    protected def writeResult(result: Value, cmp: Component = component): Unit = writeAddr(returnAddr(cmp), result)
+
     // reading the result of a component
     protected def readResult(cmp: Component): Value =
       readAddr(returnAddr(cmp))

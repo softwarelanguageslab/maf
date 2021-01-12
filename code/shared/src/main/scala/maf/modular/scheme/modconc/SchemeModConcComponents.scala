@@ -12,12 +12,13 @@ case object MainThread extends SchemeModConcComponent {
   override def toString: String = "main-thread"
 }
 // A thread that was spawned in some component
-case class Thread[Context](exp: SchemeExp,
-                           env: Environment[Address],
-                           ctx: Context) extends SchemeModConcComponent { 
+case class Thread[Context](
+    exp: SchemeExp,
+    env: Environment[Address],
+    ctx: Context)
+    extends SchemeModConcComponent {
   override def toString: String = s"thread@${exp.idn}"
 }
-
 
 trait StandardSchemeModConcComponents extends SchemeModConcSemantics {
   type Component = SchemeModConcComponent

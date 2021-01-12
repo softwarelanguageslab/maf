@@ -12,37 +12,23 @@ object IncrementalRun extends App {
   def modconcAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     println(s"***** $bench *****")
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a    = new IncrementalModConcCPAnalysisStoreOpt(text)
+    val a = new IncrementalModConcAnalysisCPLattice(text)
     a.analyze(timeout())
-    a.updateAnalysis(timeout(), bench, true)
+    a.updateAnalysis(timeout())
   }
 
-  def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
+  def modfAnalysis(bench: String, timeout: () => Timeout.T) = {
     println(s"***** $bench *****")
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a    = new IncrementalSchemeModFAnalysis(text)
+    val a = new IncrementalSchemeModFAssertionAnalysisCPLattice(text)
     a.analyze(timeout())
-    a.updateAnalysis(timeout(), bench)
+    a.updateAnalysis(timeout())
   }
 
-  val modConcbenchmarks: List[String]  = List("test/changes/cscheme/threads/pc.scm")
-  val modFbenchmarks: List[String]     = List()
+  val modConcbenchmarks: List[String] = List()
+  val modFbenchmarks: List[String] = List("test/changes/scheme/assertions/fact.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
-  modConcbenchmarks.foreach { bench =>
-    // println(bench)
-    //for (i <- 1 to 15) {
-    // print(Timer.timeOnly({
-    modconcAnalysis(bench, standardTimeout)
-    //}) + " ")
-    //}
-  }
-  modFbenchmarks.foreach { bench =>
-    //println(bench)
-    //for (i <- 1 to 15) {
-    // print(Timer.timeOnly({
-    modfAnalysis(bench, standardTimeout)
-    // }) + " ")
-    //}
-  }
+  modConcbenchmarks.foreach(modconcAnalysis(_, standardTimeout))
+  modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
 }

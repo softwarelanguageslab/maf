@@ -30,19 +30,18 @@ object Writer {
   def open(path: String): Writer =
     new BufferedWriter(new FileWriter(path))
 
-  def openTimeStamped(path: String): Writer = {
+  def openTimeStamped(path: String): Writer =
     path.split("\\.") match {
       case Array(file, ext) => open(file + "_" + Clock.nowStr() + "." + ext)
       case _                => throw new Exception(s"Illegal path: $path")
     }
-  }
 
   def close(writer: Writer): Unit = writer.close()
 
   def setDefaultWriter(writer: Writer): Unit = defaultWriter = writer
   def closeDefaultWriter(): Unit = defaultWriter.close()
 
-  def  enableReporting(): Unit = report = true
+  def enableReporting(): Unit = report = true
   def disableReporting(): Unit = report = false
 
   // Avoid output being buffered.
@@ -79,16 +78,22 @@ object Writer {
 object Formatter {
 
   //def toPercentString(value: Double, digits: Int = 2): String = f"${value*100}%.${digits}f%%"
-  def toPercentString(num: Long, den: Long, digits: Int = 2): String = {
+  def toPercentString(
+      num: Long,
+      den: Long,
+      digits: Int = 2
+    ): String = {
     val frac = num.toDouble / den.toDouble
     s"%.${digits}f".format(frac * 100) + "%"
   }
-  def withPercent(num: Long, den: Long, digits: Int = 2) = s"$num (${toPercentString(num, den, digits)})"
+  def withPercent(
+      num: Long,
+      den: Long,
+      digits: Int = 2
+    ) = s"$num (${toPercentString(num, den, digits)})"
 }
 
-/**
- * Small utility to log messages in a structured way.
- */
+/** Small utility to log messages in a structured way. */
 object Logger {
 
   private val out: String = "logs/"

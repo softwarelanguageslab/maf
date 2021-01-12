@@ -1,6 +1,6 @@
 package maf.core
 
-sealed trait MayFail[A, E] {
+sealed trait MayFail[A, E] extends Serializable {
   def addError(err: E): MayFail[A, E] = addErrors(Set(err))
   def addErrors(errs: Set[E]): MayFail[A, E] = this match {
     case MayFailSuccess(a)     => MayFailBoth(a, errs)
@@ -53,13 +53,13 @@ sealed trait MayFail[A, E] {
   }
 }
 
-case class MayFailSuccess[A, E](a: A)            extends MayFail[A, E]
-case class MayFailError[A, E](errs: Set[E])      extends MayFail[A, E]
+case class MayFailSuccess[A, E](a: A) extends MayFail[A, E]
+case class MayFailError[A, E](errs: Set[E]) extends MayFail[A, E]
 case class MayFailBoth[A, E](a: A, errs: Set[E]) extends MayFail[A, E]
 
 object MayFail {
   def failure[A, E](err: E): MayFail[A, E] = MayFailError(Set(err))
-  def success[A, E](a: A): MayFail[A, E]   = MayFailSuccess(a)
+  def success[A, E](a: A): MayFail[A, E] = MayFailSuccess(a)
   def fromOption[A, E](opt: Option[A])(alt: => E): MayFail[A, E] = opt match {
     case Some(a) => success(a)
     case None    => failure(alt)

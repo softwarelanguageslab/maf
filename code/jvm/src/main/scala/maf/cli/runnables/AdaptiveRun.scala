@@ -6,7 +6,7 @@ import maf.modular.ReturnAddr
 import maf.modular.adaptive.AdaptiveModAnalysis
 import maf.modular.adaptive.scheme._
 import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.worklist.LIFOWorklistAlgorithm
+import maf.modular.worklist._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
@@ -19,18 +19,19 @@ object AdaptiveRun {
   def test(): Unit = {
     val txt = Reader.loadFile("test/R5RS/mceval.scm")
     val prg = CSchemeParser.parse(txt)
-    val analysis = new AdaptiveModAnalysis(prg) with AdaptiveSchemeModFSemantics
+    val analysis = new AdaptiveModAnalysis(prg)
+      with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
       with SchemeConstantPropagationDomain
-      with LIFOWorklistAlgorithm[SchemeExp] {
-      val budget = 100
+      with FIFOWorklistAlgorithm[SchemeExp] {
+      val budget = 500
       override def step(timeout: Timeout.T): Unit = {
-        //val cmp = workList.head
-        //println(view(cmp))
+        val cmp = workList.head
+        println(view(cmp))
         super.step(timeout)
       }
     }
-    analysis.analyze(Timeout.start(Duration(300,SECONDS)))
+    analysis.analyze(Timeout.start(Duration(300, SECONDS)))
     //debugClosures(analysis)
     debugResults(analysis, false)
   }

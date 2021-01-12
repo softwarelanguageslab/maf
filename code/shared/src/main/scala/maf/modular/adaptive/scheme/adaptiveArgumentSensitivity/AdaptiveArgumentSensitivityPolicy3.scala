@@ -16,18 +16,18 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
     if (!targetCalledBy.contains(source)) {
       val newComponents = (sourceCalledBy + source) -- targetCalledBy
       calledBy += (target -> (targetCalledBy ++ newComponents))
-      propagate(List((target,newComponents)))
+      propagate(List((target, newComponents)))
     }
   }
   @scala.annotation.tailrec
-  private def propagate(worklist: List[(Component,Set[Component])]): Unit =
-    if(worklist.nonEmpty) {
+  private def propagate(worklist: List[(Component, Set[Component])]): Unit =
+    if (worklist.nonEmpty) {
       val (current, newComponents) :: rest = worklist
-      val cmps = dependencies.getOrElse(current,Set())
-      val updatedWorklist = cmps.foldLeft(rest) { (acc,cmp) =>
+      val cmps = dependencies.getOrElse(current, Set())
+      val updatedWorklist = cmps.foldLeft(rest) { (acc, cmp) =>
         val cmpCalledBy = calledBy(cmp) // contains at least the 'current' component
         val componentsToAdd = newComponents -- cmpCalledBy
-        if(componentsToAdd.isEmpty) {
+        if (componentsToAdd.isEmpty) {
           acc
         } else {
           calledBy += (cmp -> (cmpCalledBy ++ componentsToAdd))
@@ -38,11 +38,13 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
     }
   // do a simple loop check when you have too many components in a single stracktrace
   override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = {
-    super.onNewComponent(cmp,call)
+    super.onNewComponent(cmp, call)
     val callStack = calledBy(cmp)
-    val prevCmps: Set[Component] = callStack.collect(c => view(c) match {
-      case cll: Call[ComponentContext] if cll.clo._1.idn == call.clo._1.idn => c
-    })
+    val prevCmps: Set[Component] = callStack.collect(c =>
+      view(c) match {
+        case cll: Call[ComponentContext] if cll.clo._1.idn == call.clo._1.idn => c
+      }
+    )
     val updatedCmps = prevCmps + cmp
     if (updatedCmps.size > limit) {
       joinComponents(updatedCmps)
@@ -59,7 +61,7 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
   override def intraAnalysis(cmp: Component): AdaptiveArgIntraPolicy3 = new AdaptiveArgIntraPolicy3(cmp)
   class AdaptiveArgIntraPolicy3(component: Component) extends AdaptiveSchemeModFIntra(component) {
     override def call(cmp: Component) = {
-      registerCall(component,cmp)
+      registerCall(component, cmp)
       super.call(cmp)
     }
   }

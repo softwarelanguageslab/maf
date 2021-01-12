@@ -3,7 +3,7 @@ package maf.util
 import maf.core._
 import maf.core.worklist.WorkList
 
-trait Monoid[M] {
+trait Monoid[M] extends Serializable {
   def append(x: M, y: => M): M
   def zero: M
 }
@@ -14,19 +14,19 @@ object Monoid {
 
 object MonoidImplicits {
   implicit class FoldMapExtension[X](coll: Iterable[X]) {
-      def foldMap[M : Monoid](f: X => M): M =
-        coll.foldLeft(Monoid[M].zero)((acc,elm) => Monoid[M].append(acc,f(elm)))
+    def foldMap[M: Monoid](f: X => M): M =
+      coll.foldLeft(Monoid[M].zero)((acc, elm) => Monoid[M].append(acc, f(elm)))
   }
   implicit def setMonoid[X]: Monoid[Set[X]] = MonoidInstances.setMonoid
-  implicit def mapMonoid[K,V: Monoid]: Monoid[Map[K,V]] = MonoidInstances.mapMonoid
-  implicit def latticeMonoid[L : Lattice]: Monoid[L] = MonoidInstances.latticeMonoid
-  implicit def mayFail[M : Monoid]: Monoid[MayFail[M,Error]] = MonoidInstances.mayFail
+  implicit def mapMonoid[K, V: Monoid]: Monoid[Map[K, V]] = MonoidInstances.mapMonoid
+  implicit def latticeMonoid[L: Lattice]: Monoid[L] = MonoidInstances.latticeMonoid
+  implicit def mayFail[M: Monoid]: Monoid[MayFail[M, Error]] = MonoidInstances.mayFail
 }
 
 object MonoidInstances {
   def latticeMonoid[L: Lattice]: Monoid[L] = new Monoid[L] {
     def append(x: L, y: => L): L = Lattice[L].join(x, y)
-    def zero: L                  = Lattice[L].bottom
+    def zero: L = Lattice[L].bottom
   }
   def mayFail[M](implicit monoid: Monoid[M]): Monoid[MayFail[M, Error]] =
     new Monoid[MayFail[M, Error]] {
@@ -56,18 +56,17 @@ object MonoidInstances {
 
   implicit def setMonoid[M]: Monoid[Set[M]] = new Monoid[Set[M]] {
     def append(x: Set[M], y: => Set[M]): Set[M] = x ++ y
-    def zero: Set[M]                            = Set[M]()
+    def zero: Set[M] = Set[M]()
   }
-
-  def mapMonoid[K,V: Monoid]: Monoid[Map[K,V]] = new Monoid[Map[K,V]] {
-    def append(x: Map[K,V], y: => Map[K,V]): Map[K,V] = 
-      y.foldLeft(x) { case (acc, (k, v)) => 
+  def mapMonoid[K, V: Monoid]: Monoid[Map[K, V]] = new Monoid[Map[K, V]] {
+    def append(x: Map[K, V], y: => Map[K, V]): Map[K, V] =
+      y.foldLeft(x) { case (acc, (k, v)) =>
         acc.get(k) match {
           case None     => acc + (k -> v)
-          case Some(v2) => acc + (k -> Monoid[V].append(v,v2))
+          case Some(v2) => acc + (k -> Monoid[V].append(v, v2))
         }
       }
-    def zero: Map[K,V] = Map.empty
+    def zero: Map[K, V] = Map.empty
   }
 
   def workListMonoid[M]: Monoid[WorkList[M]] = new Monoid[WorkList[M]] {
@@ -76,11 +75,11 @@ object MonoidInstances {
   }
   val boolOrMonoid: Monoid[Boolean] = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x || y
-    def zero: Boolean                              = false
+    def zero: Boolean = false
   }
   val boolAndMonoid: Monoid[Boolean] = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x && y
-    def zero: Boolean                              = true
+    def zero: Boolean = true
   }
   implicit def optionMonoid[A: Monoid]: Monoid[Option[A]] = new Monoid[Option[A]] {
     def append(x: Option[A], y: => Option[A]): Option[A] = (x, y) match {

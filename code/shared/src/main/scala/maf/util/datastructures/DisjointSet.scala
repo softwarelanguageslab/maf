@@ -2,8 +2,8 @@ package maf.util.datastructures
 
 class DisjointSet[A] {
 
-  var tree: Map[A,A]    = Map[A,A]().withDefault(a => a)
-  var ranks: Map[A,Int] = Map[A,Int]().withDefaultValue(0)
+  var tree: Map[A, A] = Map[A, A]().withDefault(a => a)
+  var ranks: Map[A, Int] = Map[A, Int]().withDefaultValue(0)
 
   // Core methods
 
@@ -13,12 +13,12 @@ class DisjointSet[A] {
       a
     } else {
       val root = find(parent)
-      tree = tree.updated(a,root)
+      tree = tree.updated(a, root)
       root
     }
   }
 
-  def union(r1: A, r2: A): A = 
+  def union(r1: A, r2: A): A =
     if (r1 == r2) {
       return r1
     } else {
@@ -31,15 +31,15 @@ class DisjointSet[A] {
         tree = tree.updated(r2, r1)
         return r1
       } else {
-        tree  = tree.updated(r1, r2) 
+        tree = tree.updated(r1, r2)
         ranks = ranks.updated(r2, rank2 + 1)
         return r2
       }
     }
 
-  def merge(e1: A, e2: A) = 
-    union(find(e1),find(e2))
-  def mergeAll(elms: Iterable[A]): A = 
+  def merge(e1: A, e2: A) =
+    union(find(e1), find(e2))
+  def mergeAll(elms: Iterable[A]): A =
     elms.tail.foldLeft(elms.head)(union)
 
   def singleton(r: A): Boolean = (ranks(r) == 0)

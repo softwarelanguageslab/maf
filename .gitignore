@@ -21,3 +21,4 @@
 /.idea
 *.diff
 /.vscode
+.bsp/sbt.json

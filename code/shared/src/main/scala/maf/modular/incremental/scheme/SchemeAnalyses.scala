@@ -2,7 +2,7 @@ package maf.modular.incremental.scheme
 
 import maf.language.scheme._
 import maf.modular._
-import maf.modular.incremental.{IncrementalGlobalStore, IncrementalReturnValue}
+import maf.modular.incremental._
 import maf.modular.incremental.scheme.modconc._
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme._
@@ -16,103 +16,107 @@ import maf.modular.worklist.LIFOWorklistAlgorithm
  */
 object SchemeAnalyses {
 
+  /* ******************* */
+  /* ***** ModConc ***** */
+  /* ******************* */
+
+  abstract class BaseModConcAnalysis(prg: SchemeExp)
+      extends ModAnalysis[SchemeExp](prg)
+         with KKallocModConc
+         with IncrementalSchemeModConcSmallStepSemantics
+         with LIFOWorklistAlgorithm[SchemeExp]
+         with IncrementalGlobalStore[SchemeExp]
+
   /**
    * Builds an incremental ModConc Analysis for the given Scheme program with the following properties:
    * <ul>
-   *   <li>Allocated continuation addresses contain a single expression, and the previous continuation address. ({@link KKallocModConc}, k = 1).</li>
-   *   <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
-   *   <li>Uses an abstract type domain ({@link SchemeTypeDomain}).</li>
-   *   <li>Uses small-step semantics ({@link IncrementalSchemeModConcSmallStepSemantics}).</li>
+   * <li>Allocated continuation addresses contain a single expression, and the previous continuation address. ({@link KKallocModConc}, k = 1).</li>
+   * <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
+   * <li>Uses an abstract type domain ({@link SchemeTypeDomain}).</li>
+   * <li>Uses small-step semantics ({@link IncrementalSchemeModConcSmallStepSemantics}).</li>
    * </ul>
+   *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalModConcAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                      with KKallocModConc
-                                                      with IncrementalSchemeModConcSmallStepSemantics
-                                                      with LIFOWorklistAlgorithm[SchemeExp]
-                                                      with SchemeTypeDomain {
-    val k = 1
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra
+  class IncrementalModConcAnalysisTypeLattice(prg: SchemeExp, val k: Int = 1) extends BaseModConcAnalysis(prg) with SchemeTypeDomain {
+
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
   /**
    * Builds an incremental ModConc Analysis for the given Scheme program with the following properties:
    * <ul>
-   *   <li>Allocated continuation addresses contain a single expression, and the previous continuation address. ({@link KKallocModConc}, k = 1).</li>
-   *   <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
-   *   <li>Uses an abstract type domain ({@link SchemeConstantPropagationDomain}).</li>
-   *   <li>Uses small-step semantics ({@link IncrementalSchemeModConcSmallStepSemantics}).</li>
+   * <li>Allocated continuation addresses contain a single expression, and the previous continuation address. ({@link KKallocModConc}, k = 1).</li>
+   * <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
+   * <li>Uses an abstract type domain ({@link SchemeConstantPropagationDomain}).</li>
+   * <li>Uses small-step semantics ({@link IncrementalSchemeModConcSmallStepSemantics}).</li>
    * </ul>
+   *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalModConcCPAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                        with KKallocModConc
-                                                        with IncrementalSchemeModConcSmallStepSemantics
-                                                        with LIFOWorklistAlgorithm[SchemeExp]
-                                                        with SchemeConstantPropagationDomain {
-    val k = 1
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra
+  class IncrementalModConcAnalysisCPLattice(prg: SchemeExp, val k: Int = 1) extends BaseModConcAnalysis(prg) with SchemeConstantPropagationDomain {
+
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
+  }
+
+  /* **************** */
+  /* ***** ModF ***** */
+  /* **************** */
+
+  abstract class BaseModFAnalysis(prg: SchemeExp)
+      extends ModAnalysis[SchemeExp](prg)
+         with StandardSchemeModFComponents
+         with SchemeModFNoSensitivity
+         with SchemeModFSemantics
+         with LIFOWorklistAlgorithm[SchemeExp]
+         with IncrementalSchemeModFBigStepSemantics
+         with IncrementalGlobalStore[SchemeExp]
+
+  /**
+   * Builds an incremental ModF Analysis for the given Scheme program with the following properties:
+   * <ul>
+   * <li>Uses standard scheme ModF components ({@link StandardSchemeModFComponents}).</li>
+   * <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
+   * <li>Uses an abstract type domain ({@link SchemeTypeDomain}).</li>
+   * <li>Uses big-step semantics ({@link IncrementalSchemeModFBigStepSemantics}).</li>
+   * </ul>
+   *
+   * @param prg The program to construct the analysis for.
+   */
+  class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp) extends BaseModFAnalysis(prg) with SchemeTypeDomain {
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
   /**
    * Builds an incremental ModF Analysis for the given Scheme program with the following properties:
    * <ul>
-   *   <li>Uses standard scheme ModF components ({@link StandardSchemeModFComponents}).</li>
-   *   <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
-   *   <li>Uses an abstract type domain ({@link SchemeTypeDomain}).</li>
-   *   <li>Uses big-step semantics ({@link IncrementalSchemeModFBigStepSemantics}).</li>
+   * <li>Uses standard scheme ModF components ({@link StandardSchemeModFComponents}).</li>
+   * <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
+   * <li>Uses an abstract type domain ({@link SchemeConstantPropagationDomain}).</li>
+   * <li>Uses big-step semantics ({@link IncrementalSchemeModFBigStepSemantics}).</li>
    * </ul>
+   *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalSchemeModFAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                         with StandardSchemeModFComponents
-                                                         with SchemeModFNoSensitivity
-                                                         with SchemeModFSemantics
-                                                         with LIFOWorklistAlgorithm[SchemeExp]
-                                                         with SchemeTypeDomain
-                                                         with IncrementalSchemeModFBigStepSemantics {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
+  class IncrementalSchemeModFAnalysisCPLattice(prg: SchemeExp) extends BaseModFAnalysis(prg) with SchemeConstantPropagationDomain {
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
-  /**
-   * Builds an incremental ModF Analysis for the given Scheme program with the following properties:
-   * <ul>
-   *   <li>Uses standard scheme ModF components ({@link StandardSchemeModFComponents}).</li>
-   *   <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
-   *   <li>Uses an abstract type domain ({@link SchemeConstantPropagationDomain}).</li>
-   *   <li>Uses big-step semantics ({@link IncrementalSchemeModFBigStepSemantics}).</li>
-   * </ul>
-   * @param prg The program to construct the analysis for.
-   */
-  class IncrementalSchemeModFCPAnalysis(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                           with StandardSchemeModFComponents
-                                                           with SchemeModFNoSensitivity
-                                                           with SchemeModFSemantics
-                                                           with LIFOWorklistAlgorithm[SchemeExp]
-                                                           with SchemeConstantPropagationDomain
-                                                           with IncrementalSchemeModFBigStepSemantics {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra
+  // Same as the one above, but with assertions.
+  class IncrementalSchemeModFAssertionAnalysisCPLattice(prg: SchemeExp)
+      extends IncrementalSchemeModFAnalysisCPLattice(prg)
+         with SchemeAssertSemantics {
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra
   }
 
-  // With store invalidation.
-  class IncrementalModConcCPAnalysisStoreOpt(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                                with KKallocModConc
-                                                                with IncrementalSchemeModConcSmallStepSemantics
-                                                                with LIFOWorklistAlgorithm[SchemeExp]
-                                                                with SchemeConstantPropagationDomain
-                                                                with IncrementalGlobalStore[SchemeExp] {
-                                                                val k = 1 // TODO Perhaps make a parameter of the class.
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
-  }
-
-  class IncrementalSchemeModFCPAnalysisStoreOpt(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
-                                                                   with StandardSchemeModFComponents
-                                                                   with SchemeModFNoSensitivity
-                                                                   with SchemeModFSemantics
-                                                                   with LIFOWorklistAlgorithm[SchemeExp]
-                                                                   with SchemeConstantPropagationDomain
-                                                                   with IncrementalSchemeModFBigStepSemantics
-                                                                   with IncrementalReturnValue[SchemeExp] {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalReturnValueIntraAnalysis
-  }
 }

@@ -9,6 +9,10 @@
         stroke-width: 2;
         stroke: black;
       }
+      .nodes .node_main {
+        stroke: gold;
+        fill: gold;
+      }
       .nodes .in_worklist {
         fill: lightblue;
       }
@@ -16,7 +20,7 @@
         fill: darkblue;
       }
       .nodes .not_visited {
-        stroke: none;
+        stroke: red;
       }
       .nodes .node_deleted {
         stroke: darkgray;
@@ -93,6 +97,9 @@
       .nodes .node_deleted text {
         fill: darkgray;
       }
+      .nodes .node_main text {
+        fill: gold
+      }
       .links {
         stroke: black;
         stroke-width: 2;
@@ -101,6 +108,7 @@
       }
       .links .edge_deleted {
         stroke: darkgray;
+        stroke-dasharray: 2;
         marker-end: url(#endarrow_deleted);
       }
     </style>

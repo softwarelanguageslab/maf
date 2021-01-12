@@ -10,23 +10,15 @@ import maf.util.Annotations.nonMonotonicUpdate
 
 trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {
 
-  @nonMonotonicUpdate
-  override def deleteComponent(cmp: Component): Unit = { // This cannot directly go into the intra-component analysis, as the values will then again become joined when the store is committed...
-    if (log) logger.log(s"RMCM* $cmp")
-    store -= returnAddr(cmp)
-    deps -= AddrDependency(returnAddr(cmp))
-    super.deleteComponent(cmp)
-  }
-
   trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis {
     override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
       case SchemeCodeChange(e, _, _) if version == Old =>
         registerComponent(e, component)
-        eval(e) // TODO: shouldn't this also be a super call?
+        eval(e) // This could also be a super call if we assume no nesting of change expressions (which could be expected).
       case SchemeCodeChange(_, e, _) if version == New =>
         registerComponent(e, component)
-        eval(e) // TODO: shouldn't this also be a super call?
-      case _                                     =>
+        eval(e) // Same than above.
+      case _ =>
         registerComponent(exp, component)
         super.eval(exp)
     }

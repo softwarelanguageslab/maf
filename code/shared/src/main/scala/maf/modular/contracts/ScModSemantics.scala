@@ -104,7 +104,7 @@ trait ScModSemantics
   /**
     * The components of this analysis are functions
     */
-  type Component
+  type Component <: Serializable
 
   /**
     * For convience we define the `main` function as the initial component that must be analysed
