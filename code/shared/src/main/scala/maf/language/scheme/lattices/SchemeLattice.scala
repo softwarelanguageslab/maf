@@ -72,6 +72,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Injection of a character */
   def char(x: Char): L
 
+  /** Top element for all characters */
+  def charTop: L
+
   /** Injection of a primitive function */
   def primitive(x: P): L
 

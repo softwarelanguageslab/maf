@@ -31,6 +31,8 @@ object SchemeOp {
   case object IsThread extends SchemeOp1("thread?")
   case object IsLock extends SchemeOp1("lock?")
   case object IsProcedure extends SchemeOp1("proc?")
+  case object IsInputPort extends SchemeOp1("input-port?")
+  case object IsOutputPort extends SchemeOp1("output-port?")
   case object Not extends SchemeOp1("not")
   case object Ceiling extends SchemeOp1("ceiling")
   case object Floor extends SchemeOp1("floor")
@@ -59,6 +61,8 @@ object SchemeOp {
   case object CharacterUpcase extends SchemeOp1("char-upcase")
   case object CharacterIsLower extends SchemeOp1("char-is-lower?")
   case object CharacterIsUpper extends SchemeOp1("char-is-upper?")
+  case object MakeInputPort extends SchemeOp1("make-input-port")
+  case object MakeOutputPort extends SchemeOp1("make-input-port")
 
   val unaryOperators: Iterable[SchemeOp1] = Set(
     Car,
@@ -76,6 +80,8 @@ object SchemeOp {
     IsThread,
     IsLock,
     IsProcedure,
+    IsInputPort,
+    IsOutputPort,
     Not,
     Ceiling,
     Floor,
@@ -103,7 +109,9 @@ object SchemeOp {
     CharacterDowncase,
     CharacterUpcase,
     CharacterIsLower,
-    CharacterIsUpper
+    CharacterIsUpper,
+    MakeInputPort,
+    MakeOutputPort
   )
 
   abstract class SchemeOp2(val name: String) extends SchemeOp {

@@ -138,6 +138,21 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       `vector?`,
       `<`,
       `=`,
+      /* IO primitives */
+      `input-port?`,
+      `output-port?`,
+      `open-input-file`,
+      `open-input-string`,
+      `open-output-file`,
+      `close-input-port`,
+      `close-output-port`,
+      `current-input-port`,
+      `current-output-port`,
+      `read-char`,
+      `write-char`,
+      `write`,
+      `display`,
+      `eof-object?`,
       /* Other primitives that are not R5RS */
       `random`,
       `error`
@@ -155,6 +170,18 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       `lock?`,
       `thread?`
     )
+  }
+
+  class NoStore0Operation(val name: String, val call: () => MayFail[V, Error]) extends SchemePrimitive[V, A] {
+    override def call(
+        fpos: SchemeExp,
+        args: List[(SchemeExp, V)],
+        store: Store[A, V],
+        alloc: SchemeInterpreterBridge[V, A]
+      ): MayFail[(V, Store[A, V]), Error] = args match {
+      case Nil => call().map(v => (v, store))
+      case _        => MayFail.failure(PrimitiveArityError(name, 0, args.length))
+    }
   }
 
   class NoStore1Operation(val name: String, val call: V => MayFail[V, Error]) extends SchemePrimitive[V, A] {
@@ -266,6 +293,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     val lat: SchemeLattice[V, A, SchemePrimitive[V, A]] = schemeLattice
 
     import schemeLattice._
+    val unspecified = bool(false) /* TODO: introduce an "unspecified" value */
 
     def unaryOp(op: SchemeOp.SchemeOp1)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
     def binaryOp(op: SchemeOp.SchemeOp2)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
@@ -421,7 +449,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                         res <- ifThenElse(convert)(exr)(r)
                                       } yield res
                                     }
-        )
+    )
 
     case object `pair?`
         extends Store1Operation("pair?",
@@ -548,7 +576,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             }
           )
         args match {
-          case (_, size) :: Nil              => createVec(size, /* XXX: unspecified */ bool(false))
+          case (_, size) :: Nil              => createVec(size, unspecified)
           case (_, size) :: (_, init) :: Nil => createVec(size, init)
           case l                             => MayFail.failure(PrimitiveVariadicArityError(name, 1, l.size))
         }
@@ -605,7 +633,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
           isVector(vec) >>= (test => {
             val t: MayFail[(V, Option[(A, V)]), Error] =
               if (isTrue(test)) {
-                lat.vectorSet(vec, index, newval) >>= (newvec => MayFail.success(( /* unspecified */ bool(false), Some((veca, newvec)))))
+                lat.vectorSet(vec, index, newval) >>= (newvec => MayFail.success((unspecified, Some((veca, newvec)))))
               } else {
                 MayFail.success((bottom, None))
               }
@@ -655,23 +683,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       }
     }
 
-    case object `new-lock` extends SchemePrimitive[V, A] {
-      val name = "new-lock"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, Store[A, V]), Error] = args match {
-        case Nil =>
-          val addr = alloc.pointer(fpos)
-          val lock = lat.lock(Set.empty) // An initial lock does not contain any thread since it is not held.
-          val ptr = lat.pointer(addr)
-          (ptr, store.extend(addr, lock))
-        case l => MayFail.failure(PrimitiveArityError(name, 0, l.size))
-      }
-    }
-
     case object `call/cc` extends SchemePrimitive[V, A] {
       val name = "call/cc"
       override def call(
@@ -689,6 +700,121 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
       }
 
+    }
+
+    case object `input-port?` extends NoStore1Operation("input-port?",
+      x => unaryOp(SchemeOp.IsInputPort)(x))
+
+    case object `output-port?` extends NoStore1Operation("output-port?",
+      x => unaryOp(SchemeOp.IsOutputPort)(x))
+
+    case object `open-input-file` extends NoStore1Operation("open-input-file",
+      x => ifThenElse(unaryOp(SchemeOp.IsString)(x)) {
+        for {
+          // TODO: this could be cleaner by having a difference between a file input port and string input port, but this would be a bit overkill
+          str <- binaryOp(SchemeOp.StringAppend)(string("__file__"), x)
+          inputPort <- unaryOp(SchemeOp.MakeInputPort)(str)
+        } yield inputPort
+      } {
+        MayFail.failure(PrimitiveNotApplicable("open-input-file", List(x)))
+      })
+
+    case object `open-input-string` extends NoStore1Operation("open-input-string",
+      x => ifThenElse(unaryOp(SchemeOp.IsString)(x)) {
+        unaryOp(SchemeOp.MakeInputPort)(x)
+      } {
+        MayFail.failure(PrimitiveNotApplicable("open-input-string", List(x)))
+      })
+
+    case object `open-output-file` extends NoStore1Operation("open-output-file",
+      x => ifThenElse(unaryOp(SchemeOp.IsString)(x)) {
+        unaryOp(SchemeOp.MakeOutputPort)(x)
+      } {
+        MayFail.failure(PrimitiveNotApplicable("open-output-file", List(x)))
+      })
+
+    case object `close-input-port` extends NoStore1Operation("close-input-port",
+      x => ifThenElse(unaryOp(SchemeOp.IsInputPort)(x)) {
+        unspecified
+      } {
+        MayFail.failure(PrimitiveNotApplicable("close-input-port", List(x)))
+      })
+
+    case object `close-output-port` extends NoStore1Operation("close-output-port",
+      x => ifThenElse(unaryOp(SchemeOp.IsOutputPort)(x)) {
+        unspecified
+      } {
+        MayFail.failure(PrimitiveNotApplicable("close-output-port", List(x)))
+      })
+
+    case object `current-input-port` extends NoStore0Operation("current-input-port",
+      () => unaryOp(SchemeOp.MakeInputPort)(string("__current-input-port__")))
+
+    case object `current-output-port` extends NoStore0Operation("current-output-port",
+      () => unaryOp(SchemeOp.MakeOutputPort)(string("__current-output-port__")))
+
+    class ReadOrPeekChar(name: String) extends NoStoreLOperation(name) {
+      def call(args: List[V]): MayFail[V, Error] = args match {
+        case Nil => charTop
+        case inputPort :: Nil => ifThenElse(unaryOp(SchemeOp.IsInputPort)(inputPort)) {
+          charTop
+        } {
+          MayFail.failure(PrimitiveNotApplicable(name, args))
+        }
+        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+    }
+
+    case object `read-char` extends ReadOrPeekChar("read-char")
+    case object `peek-char` extends ReadOrPeekChar("peek-char")
+
+    case object `write-char` extends NoStoreLOperation("write-char") {
+      def call(args: List[V]): MayFail[V, Error] = args match {
+        case Nil => unspecified
+        case outputPort :: Nil => ifThenElse(unaryOp(SchemeOp.IsOutputPort)(outputPort)) {
+          unspecified
+        } {
+          MayFail.failure(PrimitiveNotApplicable("write-char", args))
+        }
+        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+    }
+
+    class WriteOrDisplay(name: String) extends NoStoreLOperation(name) {
+      def call(args: List[V]): MayFail[V, Error] = args match {
+        case _ :: Nil => unspecified
+        case _ :: outputPort :: Nil => ifThenElse(unaryOp(SchemeOp.IsOutputPort)(outputPort)) {
+          unspecified
+        } {
+          MayFail.failure(PrimitiveNotApplicable(name, args))
+        }
+        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+    }
+
+    case object `display` extends WriteOrDisplay("display")
+    case object `write` extends WriteOrDisplay("write")
+
+    case object `eof-object?` extends NoStore1Operation("eof-object?",
+      /* TODO: there is no specific encoding for EOF objects, but they can only arise in scenarios where charTop is produced. So we can approximate them as follows */
+      x => if (subsumes(x, charTop)) { join(bool(true), bool(false)) } else { bool(false) }
+    )
+
+    case object `new-lock` extends SchemePrimitive[V, A] {
+      val name = "new-lock"
+      override def call(
+          fpos: SchemeExp,
+          args: List[(SchemeExp, V)],
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): MayFail[(V, Store[A, V]), Error] = args match {
+        case Nil =>
+          val addr = alloc.pointer(fpos)
+          val lock = lat.lock(Set.empty) // An initial lock does not contain any thread since it is not held.
+          val ptr = lat.pointer(addr)
+          (ptr, store.extend(addr, lock))
+        case l => MayFail.failure(PrimitiveArityError(name, 0, l.size))
+      }
     }
 
     case object `acquire`
