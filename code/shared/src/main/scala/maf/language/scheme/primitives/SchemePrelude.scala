@@ -269,6 +269,20 @@ object SchemePrelude {
                  |    ((null? ( cddr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args)) (cadr (cddddr args))))
                  |    ((null? (cdddr (cddddr args))) (proc (car args) (cadr args) (caddr args) (cadddr args) (car (cddddr args)) (cadr (cddddr args)) (caddr (cddddr args))))
                  |    (else (error "Unsupported call."))))""".stripMargin,
+    "call-with-input-file" -> """(define (call-with-input-file filename proc)
+                                |  (assert (string? filename))
+                                |  (assert (procedure? proc))
+                                |  (let* ((input-port (open-input-file filename))
+                                |         (res (proc input-port)))
+                                |    (close-input-port input-port)
+                                |    res)""".stripMargin,
+    "call-with-output-file" -> """(define (call-with-output-file filename proc)
+                                 |  (assert (string? filename))
+                                 |  (assert (procedure? proc))
+                                 |  (let* ((output-port (open-output-file filename))
+                                 |         (res (proc output-port)))
+                                 |    (close-output-port output-port)
+                                 |    res)""".stripMargin,
     "ref" -> "(define (ref x) @sensitivity:FA (cons x '()))",
     "deref" -> "(define deref car)",
     "ref-set" -> "(define ref-set set-car!)",

@@ -17,6 +17,8 @@ class TypeSchemeLattice[A <: Address, K] {
       char: Boolean = false,
       sym: Boolean = false,
       nil: Boolean = false,
+      inputPort: Boolean = false,
+      outputPort: Boolean = false,
       prims: Set[P] = Set.empty,
       clos: Set[((SchemeLambdaExp, schemeLattice.Env), Option[String])] = Set.empty,
       ptrs: Set[A] = Set.empty,
@@ -33,6 +35,8 @@ class TypeSchemeLattice[A <: Address, K] {
     val char: L = L(char = true)
     val sym: L = L(sym = true)
     val nil: L = L(nil = true)
+    val inputPort: L = L(inputPort = true)
+    val outputPort: L = L(outputPort = true)
     def prim(p: P): L = L(prims = Set(p))
     def pointer(a: A): L = L(ptrs = Set(a))
     def clo(clo: schemeLattice.Closure, name: Option[String]): L = L(clos = Set((clo, name)))
@@ -58,7 +62,7 @@ class TypeSchemeLattice[A <: Address, K] {
           case MakeVector                                                                                                   => throw new Exception("NYI: vectors in type lattice")
           case VectorRef                                                                                                    => throw new Exception("NYI: vectors in type lattice")
           case VectorSet                                                                                                    => throw new Exception("NYI: vectors in type lattice")
-          case IsNull | IsCons | IsPointer | IsChar | IsSymbol | IsInteger | IsString | IsReal | IsBoolean | IsVector | Not =>
+          case IsNull | IsCons | IsPointer | IsChar | IsSymbol | IsInteger | IsString | IsReal | IsBoolean | IsVector | IsThread | IsLock | IsProcedure | IsInputPort | IsOutputPort | Not =>
             // Any -> Bool
             MayFail.success(Inject.bool)
           case Ceiling | Floor | Round | Log | Random | Sin | Cos | ACos | Tan | ATan | Sqrt | ExactToInexact | InexactToExact =>
@@ -66,7 +70,7 @@ class TypeSchemeLattice[A <: Address, K] {
             check(args(0).num, Inject.num)(op.name, args)
           case VectorLength =>
             // Vector -> Num
-            ???
+            throw new Exception("NYI: vectors in type lattice")
           case StringLength =>
             // String -> Num
             check(args(0).str, Inject.str)(op.name, args)
@@ -79,9 +83,30 @@ class TypeSchemeLattice[A <: Address, K] {
           case StringToSymbol =>
             // String -> Symbol
             check(args(0).str, Inject.sym)(op.name, args)
+          case StringToNumber =>
+            // String -> Num
+            check(args(0).str, Inject.num)(op.name, args)
+          case IntegerToCharacter =>
+            // Num -> Char
+            check(args(0).num, Inject.char)(op.name, args)
           case CharacterToInteger =>
             // Char -> Num
             check(args(0).char, Inject.num)(op.name, args)
+          case CharacterToString =>
+            // Char -> String
+            check(args(0).char, Inject.str)(op.name, args)
+          case CharacterDowncase | CharacterUpcase =>
+            // Char -> Char
+            check(args(0).char, Inject.char)(op.name, args)
+          case CharacterIsLower | CharacterIsUpper =>
+            // Char -> Bool
+            check(args(0).char, Inject.bool)(op.name, args)
+          case MakeInputPort =>
+            // String -> InputPort
+            check(args(0).str, Inject.inputPort)(op.name, args)
+          case MakeOutputPort =>
+            // String -> OutputPort
+            check(args(0).str, Inject.outputPort)(op.name, args)
           case Plus | Minus | Times | Quotient | Div | Expt | Modulo | Remainder =>
             // Num -> Num -> Num
             check(args(0).num && args(1).num, Inject.num)(op.name, args)
@@ -100,6 +125,9 @@ class TypeSchemeLattice[A <: Address, K] {
           case StringLt =>
             // Str -> Str -> Bool
             check(args(0).str && args(1).str, Inject.bool)(op.name, args)
+          case CharacterEq | CharacterLt| CharacterEqCI | CharacterLtCI =>
+            // Char -> Char -> Bool
+            check(args(0).char && args(1).char, Inject.bool)(op.name, args)
           case MakeString =>
             // Int -> Char -> Bool
             check(args(0).num && args(1).char, Inject.str)(op.name, args)
@@ -117,6 +145,8 @@ class TypeSchemeLattice[A <: Address, K] {
         char = x.char || y.char,
         sym = x.sym || y.sym,
         nil = x.nil || y.nil,
+        inputPort = x.inputPort || y.inputPort,
+        outputPort = x.outputPort || y.outputPort,
         prims = x.prims.union(y.prims),
         clos = x.clos.union(y.clos),
         ptrs = x.ptrs.union(y.ptrs),
@@ -129,6 +159,8 @@ class TypeSchemeLattice[A <: Address, K] {
         (if (x.char) y.char else true) &&
         (if (x.sym) y.sym else true) &&
         (if (x.nil) y.nil else true) &&
+        (if (x.inputPort) y.inputPort else true) &&
+        (if (x.outputPort) y.outputPort else true) &&
         y.prims.subsetOf(x.prims) &&
         y.clos.subsetOf(y.clos) &&
         subsumes(x.consCells._1, y.consCells._1) &&

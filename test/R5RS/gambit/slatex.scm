@@ -1787,7 +1787,7 @@
     (let ((pltexchk.jnk "pltexchk.jnk"))
       (if (slatex.file-exists? pltexchk.jnk) (slatex.delete-file pltexchk.jnk))
       (if (not slatex.*latex?*)
-        (call-with-output-file/truncate
+        (call-with-output-file
           pltexchk.jnk
           (lambda (outp) (display 'junk outp) (newline outp)))))))
 
@@ -1839,7 +1839,7 @@
       (if (slatex.file-exists? file-hide-file)
         (slatex.delete-file file-hide-file))
       (if (eq? *op-sys* 'dos)
-        (call-with-output-file/truncate
+        (call-with-output-file
           file-hide-file
           (lambda (out) (display "\\def\\filehider{x}" out) (newline out)))))
 ;    (display "typesetting code")
@@ -2130,7 +2130,7 @@
           (call-with-input-file
             filename
             (lambda (in)
-              (call-with-output-file/truncate
+              (call-with-output-file
                 aux.tex
                 (lambda (out)
                   (let ((%:g5% slatex.*intext?*)
@@ -2155,7 +2155,7 @@
       (if (slatex.file-exists? aux.tex) (slatex.delete-file aux.tex))
 ;      (display ".")
       (slatex.force-output)
-      (call-with-output-file/truncate
+      (call-with-output-file
         aux.scm
         (lambda (out)
           (cond ((memq typ '(intext resultintext)) (slatex.dump-intext in out))
@@ -2167,7 +2167,7 @@
       (call-with-input-file
         aux.scm
         (lambda (in)
-          (call-with-output-file/truncate
+          (call-with-output-file
             aux.tex
             (lambda (out)
               (let ((%:g7% slatex.*intext?*) (%:g8% slatex.*code-env-spec*))
@@ -2203,7 +2203,7 @@
         (set! slatex.*slatex-in-protected-region?* #t)
         (set! slatex.*protected-files* '())
         (let ((%temp% (begin
-                        (call-with-output-file/truncate
+                        (call-with-output-file
                           aux2.tex
                           (lambda (out)
                             (cond ((eq? typ 'envregion)
@@ -2224,7 +2224,7 @@
                         (call-with-input-file
                           aux2.tex
                           (lambda (in)
-                            (call-with-output-file/truncate
+                            (call-with-output-file
                               aux.tex
                               (lambda (out)
                                 (slatex.inline-protected-files in out)))))
