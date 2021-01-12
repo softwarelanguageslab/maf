@@ -44,16 +44,13 @@ object SchemeBenchmarkPrograms {
   )
   lazy val gabriel: Set[String] = fromFolder("test/R5RS/gabriel")()
   lazy val gambit: Set[String] = fromFolder("test/R5RS/gambit")(
-    "cat.scm", // Needs open-input-file.
-    "compiler.scm", // Needs open-input-file.
+    "compiler.scm", // Does not parse
     "ctak.scm", // Needs call-with-current-continuation.
     "fibc.scm", // Needs call-cc.
     "puzzle.scm", // Needs call-with-current-continuation.
     "scheme.scm", // Error in program BUT CAN BE ANALYSED.
-    "slatex.scm", // Needs call-with-input-file.
-    "tail.scm", // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
+    "slatex.scm", // Needs string primitive
     "trav1.scm", // Needs append in the abstract interpreter (not as a preluded primitive)
-    "wc.scm" // Needs file manipulation primitives (open-input-port, close-input-port, read-char).
   )
   lazy val icp1: Set[String] = fromFolder("test/R5RS/icp")(
     "icp_1c_ambeval.scm", // Undefined variable read.
@@ -74,13 +71,12 @@ object SchemeBenchmarkPrograms {
     "ch10.scm" // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
   )
   lazy val toplas98: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/toplas98")(
-    "dynamic.scm", // Uses call-with-input-file
-    "graphs.scm", // Uses open-input-file.
+    "graphs.scm", // Uses read
     "handle.scm", // Uses defmacro (not standard r5rs).
-    "maze.scm", // Uses open-input-file.
+    "maze.scm", // Uses read
     "nbody.scm", // Apply cannot handle this apparently.
     "nbody-processed.scm", // Apply cannot handle this apparently.
-    "nucleic.sch", // Uses square brackets.
+    "nucleic.sch", // Does not parse
     "nucleic2.sch", // Uses macros (define-syntax).
     "splay.scm" // Uses () instead of '(), and #(1 2 3) syntax for vectors
   )
@@ -88,7 +84,6 @@ object SchemeBenchmarkPrograms {
     ".DS_Store",
     "earley.sch", // Uses read.
     "mbrotZ.sch", // Uses read.
-    "meta-circ.scm", // Uses procedure?
     "solovay-strassen.scm" // Program seems erroneous.
   )
   lazy val other: Set[String] = fromFolder("test/R5RS")(
