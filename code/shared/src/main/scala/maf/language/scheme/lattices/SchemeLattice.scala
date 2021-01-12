@@ -84,14 +84,11 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Injection of a cons cell. */
   def cons(car: L, cdr: L): L
 
-  /**
-   * Extract the car of a cons-cell
-   *    TODO: any function that has a signature like L* -> MayFail[L, Error] should become a SchemeOp
-   */
-  def car(x: L): MayFail[L, Error]
+  /** Extract the car of a cons-cell */
+  def car(x: L): MayFail[L, Error] = op(SchemeOp.Car)(List(x))
 
   /** Extract the cdr of a cons-cell */
-  def cdr(x: L): MayFail[L, Error]
+  def cdr(x: L): MayFail[L, Error] = op(SchemeOp.Cdr)(List(x))
 
   /** Injection of the nil value */
   def nil: L
@@ -103,17 +100,17 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def cont(k: K): L
 
   /** Constructs a new vector */
-  def vector(size: L, init: L): MayFail[L, Error]
+  def vector(size: L, init: L): MayFail[L, Error] = op(SchemeOp.MakeVector)(List(size, init))
 
   /** Accesses an element of a vector */
-  def vectorRef(vector: L, index: L): MayFail[L, Error]
+  def vectorRef(vector: L, index: L): MayFail[L, Error] = op(SchemeOp.VectorRef)(List(vector, index))
 
   /** Changes an element of a vector */
   def vectorSet(
       vector: L,
       index: L,
       newval: L
-    ): MayFail[L, Error]
+    ): MayFail[L, Error] = op(SchemeOp.VectorSet)(List(vector, index, newval))
 
   /** Injection of a thread identifier */
   def thread(tid: TID): L

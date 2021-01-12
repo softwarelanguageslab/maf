@@ -53,6 +53,11 @@ class TypeSchemeLattice[A <: Address, K] {
       if (args.exists(_.isBottom)) { MayFail.success(bottom) }
       else {
         op match {
+          case Car                                                                                                          => MayFail.success(args(0).consCells._1)
+          case Cdr                                                                                                          => MayFail.success(args(0).consCells._2)
+          case MakeVector                                                                                                   => throw new Exception("NYI: vectors in type lattice")
+          case VectorRef                                                                                                    => throw new Exception("NYI: vectors in type lattice")
+          case VectorSet                                                                                                    => throw new Exception("NYI: vectors in type lattice")
           case IsNull | IsCons | IsPointer | IsChar | IsSymbol | IsInteger | IsString | IsReal | IsBoolean | IsVector | Not =>
             // Any -> Bool
             MayFail.success(Inject.bool)
@@ -129,15 +134,7 @@ class TypeSchemeLattice[A <: Address, K] {
         subsumes(x.consCells._1, y.consCells._1) &&
         subsumes(x.consCells._1, y.consCells._2)
     def top: L = ???
-    def vectorRef(v: L, idx: L): MayFail[L, Error] = ???
-    def vectorSet(
-        v: L,
-        idx: L,
-        newval: L
-      ): MayFail[L, Error] = ???
     def getClosures(x: L): Set[(Closure, Option[String])] = x.clos
-    def car(x: L): MayFail[L, Error] = MayFail.success(x.consCells._1)
-    def cdr(x: L): MayFail[L, Error] = MayFail.success(x.consCells._2)
     def getPrimitives(x: L): Set[P] = x.prims
     def getPointerAddresses(x: L): Set[A] = Set()
     def getThreads(x: L): Set[TID] = throw new Exception("Not supported.")
@@ -156,7 +153,6 @@ class TypeSchemeLattice[A <: Address, K] {
     def cons(car: L, cdr: L): L = Inject.cons(car, cdr)
     def pointer(a: A): L = Inject.pointer(a)
     def eql[B: BoolLattice](x: L, y: L): B = BoolLattice[B].top /* could be refined in some cases */
-    def vector(size: L, init: L): MayFail[L, Error] = ???
     def thread(tid: TID): L = ???
     def cont(k: K): L = ???
     def lock(threads: Set[TID]) = ???

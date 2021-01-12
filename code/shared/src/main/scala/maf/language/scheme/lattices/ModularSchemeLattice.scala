@@ -196,6 +196,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       import SchemeOp._
       op.checkArity(args)
       op match {
+        case Car => throw new Exception("ModularSchemeLattice: car SchemeOp not supported on Value")
+        case Cdr => throw new Exception("ModularSchemeLattice: cdr SchemeOp not supported on Value")
         case IsNull =>
           MayFail.success(args(0) match {
             case Nil => True
@@ -742,10 +744,23 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
     def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] = {
-      def fold(args: List[L], argsv_rev: List[Value]): MayFail[L, Error] = args match {
-        case arg :: args => arg.foldMapL(argv => fold(args, argv :: argsv_rev))
-        case List()      => Value.op(op)(argsv_rev.reverse).map(x => Element(x))
+      def fold(argsToProcess: List[L], argsvRev: List[Value]): MayFail[L, Error] = argsToProcess match {
+        case arg :: args => arg.foldMapL(argv => fold(args, argv :: argsvRev))
+        case List() =>
+          val argsv = argsvRev.reverse
+          op match {
+            case SchemeOp.Car => Value.car(argsv(0))
+            case SchemeOp.Cdr => Value.cdr(argsv(0))
+            case SchemeOp.MakeVector =>
+              Value.vector(argsv(0), args(1)).map(v => Element(v))
+            case SchemeOp.VectorRef =>
+              Value.vectorRef(argsv(0), argsv(1))
+            case SchemeOp.VectorSet =>
+              Value.vectorSet(argsv(0), argsv(1), args(2))
+            case _ => Value.op(op)(argsv).map(x => Element(x))
+          }
       }
+      op.checkArity(args)
       fold(args, List())
     }
     def join(x: L, y: => L): L = Monoid[L].append(x, y)
@@ -755,15 +770,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         x.foldMapL(x => Value.subsumes(x, y))(boolOrMonoid)
       )(boolAndMonoid)
     def top: L = throw LatticeTopUndefined
-
-    def vectorRef(vector: L, index: L): MayFail[L, Error] =
-      vector.foldMapL(vec => index.foldMapL(i => Value.vectorRef(vec, i)))
-    def vectorSet(
-        vector: L,
-        index: L,
-        newval: L
-      ): MayFail[L, Error] =
-      vector.foldMapL(vec => index.foldMapL(i => Value.vectorSet(vec, i, newval)))
 
     def getClosures(x: L): Set[(Closure, Option[String])] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
     def getContinuations(x: L): Set[K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)
@@ -787,10 +793,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def cont(x: K): L = Element(Value.cont(x))
     def symbol(x: String): L = Element(Value.symbol(x))
     def cons(car: L, cdr: L): L = Element(Value.cons(car, cdr))
-    def car(x: L): MayFail[L, Error] = x.foldMapL(v => Value.car(v))
-    def cdr(x: L): MayFail[L, Error] = x.foldMapL(v => Value.cdr(v))
     def pointer(a: A): L = Element(Value.pointer(a))
-    def vector(size: L, init: L): MayFail[L, Error] = size.foldMapL(sz => Value.vector(sz, init).map(v => Element(v)))
     def thread(tid: TID): L = Element(Value.thread(tid))
     def lock(threads: Set[TID]): L = Element(Value.lock(threads))
     def nil: L = Element(Value.nil)

@@ -16,6 +16,8 @@ object SchemeOp {
     val arity = 1
   }
 
+  case object Car extends SchemeOp1("car")
+  case object Cdr extends SchemeOp1("cdr")
   case object IsNull extends SchemeOp1("null?")
   case object IsBoolean extends SchemeOp1("bool?")
   case object IsCons extends SchemeOp1("cons?")
@@ -59,6 +61,8 @@ object SchemeOp {
   case object CharacterIsUpper extends SchemeOp1("char-is-upper?")
 
   val unaryOperators: Iterable[SchemeOp1] = Set(
+    Car,
+    Cdr,
     IsNull,
     IsBoolean,
     IsCons,
@@ -117,6 +121,7 @@ object SchemeOp {
   case object Lt extends SchemeOp2("<")
   case object NumEq extends SchemeOp2("=")
   case object Eq extends SchemeOp2("eq")
+  case object MakeString extends SchemeOp2("make-string")
   case object StringAppend extends SchemeOp2("string-append")
   case object StringRef extends SchemeOp2("string-ref")
   case object StringLt extends SchemeOp2("string<")
@@ -124,7 +129,8 @@ object SchemeOp {
   case object CharacterLt extends SchemeOp2("char<")
   case object CharacterEqCI extends SchemeOp2("char-ci=")
   case object CharacterLtCI extends SchemeOp2("char-ci<")
-  case object MakeString extends SchemeOp2("make-string")
+  case object MakeVector extends SchemeOp2("make-vector")
+  case object VectorRef extends SchemeOp2("vector-ref")
 
   val binaryOperators: Iterable[SchemeOp2] = Set(
     Plus,
@@ -138,6 +144,7 @@ object SchemeOp {
     Lt,
     NumEq,
     Eq,
+    MakeString,
     StringAppend,
     StringRef,
     StringLt,
@@ -145,7 +152,8 @@ object SchemeOp {
     CharacterLt,
     CharacterEqCI,
     CharacterLtCI,
-    MakeString
+    MakeVector,
+    VectorRef
   )
 
   abstract class SchemeOp3(val name: String) extends SchemeOp {
@@ -153,6 +161,7 @@ object SchemeOp {
   }
 
   case object Substring extends SchemeOp3("substring")
+  case object VectorSet extends SchemeOp3("vector-set!")
 
-  val ternaryOperators: Iterable[SchemeOp3] = Set(Substring)
+  val ternaryOperators: Iterable[SchemeOp3] = Set(Substring, VectorSet)
 }
