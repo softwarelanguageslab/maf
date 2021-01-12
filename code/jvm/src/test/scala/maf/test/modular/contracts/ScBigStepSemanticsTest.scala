@@ -400,4 +400,11 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   verify("(-> any? any? int?)", "(lambda (x y) (if (and (int? x) #t) (+ x y) 0))")
     .applied2()
     .unsafe()
+
+  /**
+   * Test that contracts for functions with no arguments work 
+   */
+  verify("(-> number?)", "(lambda () 2)")
+    .applied0()
+    .safe()
 }

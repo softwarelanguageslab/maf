@@ -1,7 +1,7 @@
 package maf.test.language.contracts
 
 import maf.language.contracts._
-import maf.language.sexp.{SExpParser, ValueBoolean, ValueInteger}
+import maf.language.sexp.{ValueBoolean, ValueInteger}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should
 

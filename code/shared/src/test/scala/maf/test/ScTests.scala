@@ -67,6 +67,7 @@ trait ScAnalysisTests extends ScTests {
 
   trait VerifyTestBuilder extends ScLatticeFixture {
     def named(name: String): VerifyTestBuilder
+    def applied0(): VerifyTestBuilder
     def applied(refinements: Set[String] = Set(), value: String = "OPQ"): VerifyTestBuilder
     def applied2(): VerifyTestBuilder
 
@@ -120,6 +121,11 @@ trait ScAnalysisTests extends ScTests {
 
     def applied2(): VerifyTestBuilder = {
       this.command = s"(${this.command} OPQ OPQ)"
+      this
+    }
+
+    def applied0(): VerifyTestBuilder = {
+      this.command = s"(${this.command})"
       this
     }
 
@@ -205,6 +211,7 @@ trait ScAnalysisTests extends ScTests {
     def named(name: String): VerifyTestBuilder                                              = this
     def applied(refinements: Set[String] = Set(), value: String = "OPQ"): VerifyTestBuilder = this
     def applied2(): VerifyTestBuilder                                                       = this
+    def applied0(): VerifyTestBuilder = this
     def safe(): Unit                                                                        = ()
     def unsafe(): Unit                                                                      = ()
     def safeIf(f: ScTestAnalysis => Boolean): Unit                                          = ()
