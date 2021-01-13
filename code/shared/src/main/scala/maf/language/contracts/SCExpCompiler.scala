@@ -145,10 +145,10 @@ object SCExpCompiler {
       ScDependentContract(List(domainCompiled), rangeCompiled, prog.idn)
 
     case SExpId(identifier) => ScIdentifier(identifier.name, prog.idn)
-    case (Ident("lambda") | Ident("λ")) :: params :: expression :: ListNil(_) =>
+    case (Ident("lambda") | Ident("λ")) :: params :: expressions =>
       val compiledParams = compile_params(params)
-      val compiledExpression = compile(expression)
-      ScLambda(compiledParams, compiledExpression, prog.idn)
+      val compiledExpression = compile_sequence(expressions)
+      ScLambda(compiledParams, ScBegin(compiledExpression, Identity.none), prog.idn)
 
     case Ident("lambda") :: _ => throw new Exception(s"invalid syntax lambda at ${prog.idn.pos}")
 

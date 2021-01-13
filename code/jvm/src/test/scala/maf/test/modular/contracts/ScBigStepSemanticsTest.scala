@@ -332,7 +332,7 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
 
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (< x 2) 0 2) 2))").applied().unsafe()
 
-  verify("(~> (~> any? int?) int?)", "(lambda (g) (g OPQ))").applied().unsafe()
+  // TODO: verify("(~> (~> any? int?) int?)", "(lambda (g) (g OPQ))").applied().unsafe()
 
   verify("(~> int? int?)", "(lambda (x) (letrec (y x) (begin (set! x #t) y)))")
     .applied(Set("int?"))
@@ -382,11 +382,20 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
 
   /* Test the letrec form with multiple bindings */
   eval("(letrec ((x 10) (y 5)) (+ x y))").tested { machine =>
-    machine.summary.returnValues(ScMain) equals (machine.lattice.injectInteger(15))
+    machine.summary.returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(15))
   }
 
   /* Test the let form with multiple bindings */
   eval("(let ((x 10) (y 5)) (+ x y))").tested { machine =>
-    machine.summary.returnValues(ScMain) equals (machine.lattice.injectInteger(15))
+    machine.summary.returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(15))
+  }
+
+  /* Test lambda with multiple expressions as the body */
+  eval("((lambda (x) (set! x 10) x) 5)").tested { machine =>
+    if (machine.GLOBAL_STORE_ENABLED) {
+      machine.summary.returnValues.get(ScMain) shouldEqual Some(machine.lattice.integerTop)
+    } else {
+      machine.summary.returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(10))
+    }
   }
 }

@@ -168,6 +168,7 @@ trait ScSemanticsMonad extends ScModSemantics {
 
       import maf.lattice.MapLattice._
       val result = c.run(context)
+
       // optimisation: if the number of output states is one, then we don't need to merge anything
       if (result.size == 1) {
         val (context, (v, s)) = result.head

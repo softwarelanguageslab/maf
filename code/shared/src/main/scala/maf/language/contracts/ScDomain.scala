@@ -7,40 +7,40 @@ import maf.util.SmartHash
 trait ScDomain[I, B, Addr <: Address] {
   import ScLattice._
 
-  protected[this] implicit def intLattice: IntLattice[I]
-  protected[this] implicit def boolLattice: BoolLattice[B]
+  implicit protected[this] def intLattice: IntLattice[I]
+  implicit protected[this] def boolLattice: BoolLattice[B]
 
   sealed trait Value extends SmartHash {
     def ord: Int
   }
 
-  val TOP_VALUE              = 0
-  val BOT_VALUE              = 1
-  val BOOL_VALUE             = 2
-  val CLOS_VALUE             = 3
-  val GRDS_VALUE             = 4
-  val ARRS_VALUE             = 5
-  val NUM_VALUE              = 6
-  val OPQS_VALUE             = 7
-  val PRIMS_VALUE            = 8
-  val BLAMES_VALUE           = 9
-  val SYM_VALUE              = 10
-  val FLAT_VALUE             = 11
+  val TOP_VALUE = 0
+  val BOT_VALUE = 1
+  val BOOL_VALUE = 2
+  val CLOS_VALUE = 3
+  val GRDS_VALUE = 4
+  val ARRS_VALUE = 5
+  val NUM_VALUE = 6
+  val OPQS_VALUE = 7
+  val PRIMS_VALUE = 8
+  val BLAMES_VALUE = 9
+  val SYM_VALUE = 10
+  val FLAT_VALUE = 11
   val REFINED_VALUE_IN_STATE = 12
-  val THUNK_VALUE            = 13
-  val CONS_VALUE             = 14
-  val NIL_VALUE              = 15
-  val VEC_VALUE              = 16
-  val PTR_VALUE              = 17
-  val SYMBOL_VALUE           = 18
+  val THUNK_VALUE = 13
+  val CONS_VALUE = 14
+  val NIL_VALUE = 15
+  val VEC_VALUE = 16
+  val PTR_VALUE = 17
+  val SYMBOL_VALUE = 18
 
   case object TopValue extends Value {
-    def ord                       = TOP_VALUE
+    def ord = TOP_VALUE
     override def toString: String = "top"
   }
 
   case object BotValue extends Value {
-    def ord               = BOT_VALUE
+    def ord = BOT_VALUE
     override def toString = "bottom"
   }
 
@@ -224,8 +224,7 @@ trait ScDomain[I, B, Addr <: Address] {
     def pred(b: PartialFunction[Value, Unit], refinement: Option[String] = None)(v: Value): Value =
       v match {
         case v if b.isDefinedAt(v) => bool(true)
-        case Opqs(s)
-            if refinement.isDefined && s.forall(_.refinementSet.contains(refinement.get)) =>
+        case Opqs(s) if refinement.isDefined && s.forall(_.refinementSet.contains(refinement.get)) =>
           bool(true)
         case TopValue | Opqs(_) => Bool(BoolLattice[B].top)
         case BotValue           => BotValue
@@ -238,8 +237,10 @@ trait ScDomain[I, B, Addr <: Address] {
     def constantBin(v: Value)(a: Value, b: Value): Value = v
 
     def primOr(a: Value, b: Value): Value = (isTrue(a), isTrue(b), isFalse(a), isFalse(b)) match {
-      case (true, _, false, _)        => a /** (or 4 #f) = 4 **/
-      case (_, true, _, false)        => b /** (or #f 4) = 4 */
+      case (true, _, false, _) => a
+      /** (or 4 #f) = 4 * */
+      case (_, true, _, false) => b
+      /** (or #f 4) = 4 */
       case (false, false, true, true) => Bool(BoolLattice[B].inject(false))
       case _                          => Bool(BoolLattice[B].top)
     }
@@ -251,45 +252,44 @@ trait ScDomain[I, B, Addr <: Address] {
     }
 
     val binPrimitives: Map[String, (Value, Value) => Value] = Map(
-      "+"   -> arith(IntLattice[I].plus),
-      "-"   -> arith(IntLattice[I].minus),
-      "*"   -> arith(IntLattice[I].times),
-      "/"   -> arith(IntLattice[I].quotient),
-      "<"   -> cmp(IntLattice[I].lt[B]),
-      ">"   -> constantBin(TopValue),
-      "=<"  -> ((a, b) => ???),
-      ">="  -> ((a, b) => ???),
-      "="   -> cmp(IntLattice[I].eql[B]),
-      "or"  -> primOr,
+      "+" -> arith(IntLattice[I].plus),
+      "-" -> arith(IntLattice[I].minus),
+      "*" -> arith(IntLattice[I].times),
+      "/" -> arith(IntLattice[I].quotient),
+      "<" -> cmp(IntLattice[I].lt[B]),
+      ">" -> constantBin(TopValue),
+      "=<" -> ((a, b) => ???),
+      ">=" -> ((a, b) => ???),
+      "=" -> cmp(IntLattice[I].eql[B]),
+      "or" -> primOr,
       "and" -> primAnd
     )
 
     def unaryPrim: Map[String, (Value) => Value] = Map(
-      "symbol?"             -> pred({ case Symbols(_) => }, "symbol?"),
-      "even?"               -> (a => ???),
-      "odd?"                -> (a => ???),
-      "proc?"               -> pred { case Clos(_) | Prims(_) | Arrs(_) | Flats(_) => },
+      "symbol?" -> pred({ case Symbols(_) => }, "symbol?"),
+      "even?" -> (a => ???),
+      "odd?" -> (a => ???),
+      "proc?" -> pred { case Clos(_) | Prims(_) | Arrs(_) | Flats(_) => },
       "dependent-contract?" -> pred({ case Grds(_) => }, "dependent-contract?"),
-      "true?"               -> pred({ case Bool(b) if BoolLattice[B].isTrue(b) => }, "true?"),
-      "false?"              -> pred({ case Bool(b) if BoolLattice[B].isFalse(b) => }, "false?"),
-      "int?"                -> pred({ case Number(_) => }, "int?"),
-      "any?"                -> pred { case a if a != BotValue => },
-      "pair?"               -> pred { case Conses(_) => },
-      "bool?"               -> pred { case Bool(_) => },
-      "number?"             -> pred({ case Number(_) => }, "int?"),
-      "char?"               -> (_ => Bool(BoolLattice[B].top)), // TODO
-      "vector?"             -> (_ => Bool(BoolLattice[B].top)), // TODO
-      "string?"             -> (_ => Bool(BoolLattice[B].top)), // TODO
-      "not"                 -> bUnOp(BoolLattice[B].not),
-      "string-length"       -> (_ => Number(IntLattice[I].top)),
-      "nonzero?" -> (
-          (value) =>
-            value match {
-              case Number(a) =>
-                Bool(BoolLattice[B].not((IntLattice[I].eql(a, IntLattice[I].inject(0)))))
-              case TopValue | Opqs(_) => Bool(BoolLattice[B].top)
-            }
-        )
+      "true?" -> pred({ case Bool(b) if BoolLattice[B].isTrue(b) => }, "true?"),
+      "false?" -> pred({ case Bool(b) if BoolLattice[B].isFalse(b) => }, "false?"),
+      "int?" -> pred({ case Number(_) => }, "int?"),
+      "any?" -> pred { case a if a != BotValue => },
+      "pair?" -> pred { case Conses(_) => },
+      "bool?" -> pred { case Bool(_) => },
+      "number?" -> pred({ case Number(_) => }, "int?"),
+      "char?" -> (_ => Bool(BoolLattice[B].top)), // TODO
+      "vector?" -> (_ => Bool(BoolLattice[B].top)), // TODO
+      "string?" -> (_ => Bool(BoolLattice[B].top)), // TODO
+      "not" -> bUnOp(BoolLattice[B].not),
+      "string-length" -> (_ => Number(IntLattice[I].top)),
+      "nonzero?" -> ((value) =>
+        value match {
+          case Number(a) =>
+            Bool(BoolLattice[B].not((IntLattice[I].eql(a, IntLattice[I].inject(0)))))
+          case TopValue | Opqs(_) => Bool(BoolLattice[B].top)
+        }
+      )
     )
 
     def applyPrimitive(prim: Prim)(arguments: Value*): Value =
@@ -407,14 +407,14 @@ trait ScDomain[I, B, Addr <: Address] {
 }
 class ScCoProductLattice[I, B, Addr <: Address](
     implicit val intLattice: IntLattice[I],
-    implicit val boolLattice: BoolLattice[B]
-) extends ScDomain[I, B, Addr] {
+    implicit val boolLattice: BoolLattice[B])
+    extends ScDomain[I, B, Addr] {
   import ScLattice._
 
   sealed trait CoProductValue extends Serializable
   case class CoProduct(value: Value) extends CoProductValue
-  case object Top                    extends CoProductValue
-  case object Bottom                 extends CoProductValue
+  case object Top extends CoProductValue
+  case object Bottom extends CoProductValue
 
   def isPred(pred: (Value => Boolean), value: CoProductValue): Boolean = value match {
     case Top              => true
@@ -476,19 +476,18 @@ class ScCoProductLattice[I, B, Addr <: Address](
         vector: CoProductValue,
         index: CoProductValue,
         value: CoProductValue
-    ): CoProductValue = ???
+      ): CoProductValue = ???
 
     def vectorRef(vector: CoProductValue, index: CoProductValue): CoProductValue = ???
 
     /*================================================================================================================*/
 
-    def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue = {
+    def applyPrimitive(prim: Prim)(arguments: CoProductValue*): CoProductValue =
       Values.applyPrimitive(prim)(arguments.map {
         case product: CoProduct => product.value
         case Top                => TopValue
         case Bottom             => BotValue
       }: _*)
-    }
     /*================================================================================================================*/
 
     def isTrue(value: CoProductValue): Boolean = isPred(Values.isTrue, value)
@@ -582,8 +581,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
         case CoProduct(value) =>
           value match {
             case RefinedValueInStates(m) =>
-              m.flatMap {
-                case (key, value) => value.map(RefinedValueInState(CoProduct(key), _))
+              m.flatMap { case (key, value) =>
+                value.map(RefinedValueInState(CoProduct(key), _))
               }.toSet
             case _ => Set()
           }
@@ -601,9 +600,9 @@ class ScCoProductLattice[I, B, Addr <: Address](
     def bottom: CoProductValue = Bottom
 
     /** A lattice has a top element (might be undefined) */
-    def top: CoProductValue        = Top
+    def top: CoProductValue = Top
     def integerTop: CoProductValue = Number(IntLattice[I].top)
-    def boolTop                    = Bool(BoolLattice[B].top)
+    def boolTop = Bool(BoolLattice[B].top)
 
     /** Elements of the lattice can be joined together */
     def join(x: CoProductValue, y: => CoProductValue): CoProductValue = (x, y) match {
@@ -635,8 +634,8 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
 class ScProductLattice[I, B, Addr <: Address](
     implicit val intLattice: IntLattice[I],
-    implicit val boolLattice: BoolLattice[B]
-) extends ScDomain[I, B, Addr] {
+    implicit val boolLattice: BoolLattice[B])
+    extends ScDomain[I, B, Addr] {
   import ScLattice._
 
   case class ProductElements(elements: List[Value])
@@ -697,7 +696,11 @@ class ScProductLattice[I, B, Addr <: Address](
 
       /*==============================================================================================================*/
 
-      private def isPred(value: ProductElements, category: Int, pred: (Value => Boolean)): Boolean =
+      private def isPred(
+          value: ProductElements,
+          category: Int,
+          pred: (Value => Boolean)
+        ): Boolean =
         value.elements.exists(v => v.ord == category && pred(v))
 
       override def isTrue(value: ProductElements): Boolean =
@@ -765,9 +768,7 @@ class ScProductLattice[I, B, Addr <: Address](
           .flatten
           .toSet
 
-      /**
-        * Extract a set of blames from the abstract value
-        */
+      /** Extract a set of blames from the abstract value */
       override def getBlames(value: ProductElements): Set[Blame] =
         value.elements
           .flatMap {
@@ -810,8 +811,8 @@ class ScProductLattice[I, B, Addr <: Address](
 
       /** A lattice has a top element (might be undefined) */
       override def top: ProductElements = throw LatticeTopUndefined
-      override def integerTop           = Number(IntLattice[I].top)
-      override def boolTop              = Bool(BoolLattice[B].top)
+      override def integerTop = Number(IntLattice[I].top)
+      override def boolTop = Bool(BoolLattice[B].top)
 
       /** Elements of the lattice can be joined together */
       override def join(x: ProductElements, y: => ProductElements): ProductElements = (x, y) match {
@@ -838,87 +839,59 @@ class ScProductLattice[I, B, Addr <: Address](
       private def append(x: List[Value], y: List[Value]): List[Value] =
         x.foldLeft(y)((a, b) => insert(b, a))
 
-      /**
-        * Inject an opaque value from the given state in the abstract domain
-        */
+      /** Inject an opaque value from the given state in the abstract domain */
       override def injectRefinedValueInState(state: ProductElements, value: Opq): ProductElements =
         ???
 
-      /**
-        * Extract the set of opaque values associated with the given state
-        */
+      /** Extract the set of opaque values associated with the given state */
       override def getRefinedValueInState(
           state: ProductElements
-      ): Set[RefinedValueInState[ProductElements]] = ???
+        ): Set[RefinedValueInState[ProductElements]] = ???
 
-      /**
-        * Inject a thunk in the abstract domain
-        */
+      /** Inject a thunk in the abstract domain */
       override def injectThunk(thunk: Thunk[Addr]): ProductElements = ???
 
-      /**
-        * Returns true if the value is possibly a thunk
-        */
+      /** Returns true if the value is possibly a thunk */
       override def isThunk(value: ProductElements): Boolean = ???
 
-      /**
-        * Extracts the set of thunks from the abstract domain
-        */
+      /** Extracts the set of thunks from the abstract domain */
       override def getThunk(value: ProductElements): Set[Thunk[Addr]] = ???
 
-      /**
-        * Inject a cons value in the abstract domain
-        */
+      /** Inject a cons value in the abstract domain */
       override def injectCons(cons: Cons[Addr]): ProductElements = ???
 
-      /**
-        * Returns true if the value is possibly a cons pair
-        */
+      /** Returns true if the value is possibly a cons pair */
       override def isCons(value: ProductElements): Boolean = ???
 
-      /**
-        * Extracts the set of cons pairs from the abstract value
-        */
+      /** Extracts the set of cons pairs from the abstract value */
       override def getCons(value: ProductElements): Set[Cons[Addr]] = ???
 
-      /**
-        * Inject an address in the abstract domain
-        */
+      /** Inject an address in the abstract domain */
       override def injectPointer(a: Addr): ProductElements = ???
 
-      /**
-        * Returns true if the value is possibly a vector
-        */
+      /** Returns true if the value is possibly a vector */
       override def isVec(value: ProductElements): Boolean = ???
 
-      /**
-        * Returns true if the the value is a wrapped pointer
-        */
+      /** Returns true if the the value is a wrapped pointer */
       override def isPointer(value: ProductElements): Boolean = ???
 
-      /**
-        * Extract the pointers contained within the value from the abstract domain.
-        */
+      /** Extract the pointers contained within the value from the abstract domain. */
       override def getPointers(value: ProductElements): Set[Addr] = ???
 
       /**
-        * Create a vector from a length represented as an abstract value
-        * and with the default abstract value of `L`
-        */
+       * Create a vector from a length represented as an abstract value
+       * and with the default abstract value of `L`
+       */
       override def vector(length: ProductElements, init: ProductElements): ProductElements = ???
 
-      /**
-        * Change the value of the vector `vector` on index `index` to value `value`
-        */
+      /** Change the value of the vector `vector` on index `index` to value `value` */
       override def vectorSet(
           vector: ProductElements,
           index: ProductElements,
           value: ProductElements
-      ): ProductElements = ???
+        ): ProductElements = ???
 
-      /**
-        * Retrieve a value on index `index` from  the vector
-        */
+      /** Retrieve a value on index `index` from  the vector */
       override def vectorRef(vector: ProductElements, index: ProductElements): ProductElements = ???
     }
 }

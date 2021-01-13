@@ -106,6 +106,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       }
     }
 
+    def cacheContains(addr: Addr): ScEvalM[Boolean] = withStoreCache { cache =>
+      pure(cache.get(addr).isDefined)
+    }
+
     /**
      * Write a value to both the store cache and the global store
      * @param addr the address to write the value to
@@ -124,7 +128,21 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       } yield ()
 
     def writeLocal(addr: Addr, value: PostValue): ScEvalM[()] =
-      joinInCache(addr, value)
+      // this prevents the local cache to be out of sync with the global store
+      cacheContains(addr).flatMap { (contains) =>
+        if (contains) {
+          // if we already had something in the local cache on the given adress we simply
+          // join that with the new value we got
+          joinInCache(addr, value)
+        } else if (GLOBAL_STORE_ENABLED) {
+          // if the cache did not contain a value yet, then it might be in the global
+          // store (that is, if we are using one)
+          joinInCache(addr, (readAddr(addr), ScNil()))
+            .flatMap(_ => joinInCache(addr, value))
+        } else {
+          throw new Exception(s"value should have been in  the cache but was not at addr $addr")
+        }
+      }
 
     def writeLocalForce(addr: Addr, value: PostValue): ScEvalM[()] =
       addToCache(addr -> value)
@@ -261,7 +279,18 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       for {
         addr <- lookupOrDefine(name, component)
         lambda <- eval(ScLambda(parameters, body, idn))
-        _ <- write(addr, (lambda._1, name))
+        // TODO: check that this is sound, it is actually not, due to the prescense of set!
+        // the issue that we encouter is actually with the provide/contract, which relies
+        // on flow sensitivity and which is not possible when we are using the global store.
+        //
+        // A possible solution would be to check whether the address contains a contract that
+        // points to the value we are going to write (the lambda), if so, then we could resist
+        // replacing it, otherwise we replace it.
+        //
+        // Also, this is potentially unsafe, as we would force a write to the given address,
+        // which should trigger an analysis of another component, which might change it to something it else,
+        // then we force the value again, ... We never reach a fixpoint.
+        _ <- writeForce(addr, (lambda._1, name))
       } yield lambda
 
     def evalDefineAnnotatedFn(
