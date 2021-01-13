@@ -12,24 +12,33 @@ object SchemePrelude {
     "@sensitivity:2A" -> "(define @sensitivity:2A #f)",
     "@sensitivity:No" -> "(define @sensitivity:No #f)",
     "abs" -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
-    "append" -> """(define (append l1 l2)
-                  |  @sensitivity:No
-                  |  (assert (list? l1))
-                  |  (assert (list? l2))
-                  |  (if (null? l1)
-                  |      l2
-                  |      (cons (car l1)
-                  |            (append (cdr l1) l2))))""".stripMargin,
-    "assoc" -> """(define (assoc k l)
-                 |  @sensitivity:FA
-                 |  (assert (list? l))
-                 |  (if (null? l)
-                 |    #f
-                 |   (if (equal? (caar l) k)
-                 |     (car l)
-                 |     (assoc k (cdr l)))))""".stripMargin,
-    "assq" -> """(define (assq k l)
-                |  @sensitivity:FA
+    "append" ->
+      """(define (append . lsts)
+        |  (define (app lsts)
+        |    @sensitivity:No
+        |    (cond ((null? lsts) '())
+        |          ((null? (cdr lsts)) (car lsts)) ; Structure sharing.
+        |          (else (let loop ((first (car lsts))
+        |                           (rest (app (cdr lsts))))
+        |                  @sensitivity:No
+        |                  (if (null? first)
+        |                      rest
+        |                      (cons (car first)
+        |                            (loop (cdr first)
+        |                                  rest)))))))
+        |  (app lsts))""".stripMargin,
+    "assoc" ->
+      """(define (assoc k l)
+        |  @sensitivity:FA
+        |  (assert (list? l))
+        |  (if (null? l)
+        |    #f
+        |   (if (equal? (caar l) k)
+        |     (car l)
+        |     (assoc k (cdr l)))))""".stripMargin,
+    "assq" ->
+      """(define (assq k l)
+        |  @sensitivity:FA
                 |  (assert (list? l))
                 |  (if (null? l)
                 |    #f
