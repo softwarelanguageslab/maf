@@ -47,7 +47,12 @@ object SchemeBenchmarkPrograms {
     "compiler.scm", // Throws a NumberFormatException in the parser (the number is too big for being an Int).
     "scheme.scm", // Error in program BUT CAN BE ANALYSED.
     "slatex.scm", // Needs string primitive
-    "trav1.scm" // Needs append in the abstract interpreter (not as a preluded primitive)
+    "trav1.scm", // Needs append in the abstract interpreter (not as a preluded primitive)
+
+    // Can be enabled when call-cc is supported in the interpreter.
+    "ctak.scm", // Needs call-with-current-continuation.
+    "fibc.scm", // Needs call-cc.
+    "puzzle.scm" // Needs call-with-current-continuation.
   )
   lazy val icp1: Set[String] = fromFolder("test/R5RS/icp")(
     "icp_1c_ambeval.scm", // Undefined variable read.
