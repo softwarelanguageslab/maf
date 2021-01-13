@@ -272,7 +272,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     try {
       for (_ <- 1 to times) {
         print(".")
-        val interpreter = new SchemeInterpreter((i, v) => (), false)
+        val interpreter = new SchemeInterpreter((i, v) => (), io = new FileIO(Map("../../src/bib" -> "foo\nbar\nbaz")))
         interpreter.run(undefined, timeout)
         baseStore = join(baseStore, extract(interpreter))
       }

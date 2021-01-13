@@ -51,7 +51,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 
     import l.Injector._
 
-    val interpreter = new SchemeInterpreter((_: Identity, _: SchemeInterpreter.Value) => (), false)
+    val interpreter = new SchemeInterpreter((_: Identity, _: SchemeInterpreter.Value) => (), io = new FileIO(Map("../../src/bib" -> "foo\nbar\nbaz")))
     val v = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(text))), Timeout.start(Duration(30, SECONDS)))
     val result = v match {
       case SchemeInterpreter.Value.Nil          => l.nil

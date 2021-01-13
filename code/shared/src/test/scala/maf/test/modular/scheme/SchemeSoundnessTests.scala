@@ -41,7 +41,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     try for (_ <- 1 to times) {
-      val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), false)
+      val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), io = new FileIO(Map("../../src/bib" -> "foo\nbar\nbaz")))
       endResults += runInterpreter(interpreter, program, timeout)
     } catch {
       case _: TimeoutException =>

@@ -18,14 +18,101 @@ import scala.concurrent.duration.Duration
 case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"A child thread has tragically died with ${e.getMessage}.")
 case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpreter encountered an unexpected value during its execution: $v.")
 
+trait IO {
+  type Handle
+  def fromString(string: String): Handle
+  def open(filename: String): Handle
+  def close(f: Handle): Unit
+  val console: Handle
+
+  def readChar(f: Handle): SchemeInterpreter.Value
+  def peekChar(f: Handle): SchemeInterpreter.Value
+  def writeChar(c: Char, f: Handle): Unit
+  def writeString(s: String, f: Handle): Unit
+}
+
+class EmptyIO extends IO {
+  type Handle = Unit
+  def fromString(string: String): Handle = ()
+  def open(filename: String): Handle = ()
+  def close(h: Handle): Unit = ()
+  val console = ()
+
+  def readChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
+  def peekChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
+  def writeChar(c: Char, h: Handle): Unit = ()
+  def writeString(s: String, h: Handle): Unit = ()
+}
+
+class FileIO(val files: Map[String, String]) extends IO {
+  var positions: Map[Handle, Int] = Map.empty
+
+  trait Handle
+  class FileHandle(val filename: String) extends Handle
+  class StringHandle(val content: String) extends Handle
+  object ConsoleHandle extends Handle
+
+  def fromString(string: String): Handle = {
+    val handle = new StringHandle(string)
+    positions = positions + (handle -> 0)
+    handle
+  }
+  def open(filename: String): Handle = {
+    if (files.contains(filename)) {
+      val handle = new FileHandle(filename)
+      positions = positions + (handle -> 0)
+      handle
+    } else {
+      throw new Exception(s"Cannot open virtual file $filename")
+    }
+  }
+  def close(h: Handle): Unit = h match {
+    case ConsoleHandle => SchemeInterpreter.Value.EOF
+    case h: FileHandle => positions = positions + (h -> files(h.filename).size)
+    case h: StringHandle => positions = positions + (h -> h.content.size)
+  }
+
+  val console = ConsoleHandle
+
+  def readChar(h: Handle): SchemeInterpreter.Value = {
+    peekChar(h) match {
+      case SchemeInterpreter.Value.EOF => SchemeInterpreter.Value.EOF
+      case c =>
+        positions = positions + (h -> (positions(h) + 1))
+        c
+    }
+  }
+  def peekChar(h: Handle): SchemeInterpreter.Value = h match {
+    case ConsoleHandle =>
+      /* Console is never opened with this IO class */
+      SchemeInterpreter.Value.EOF
+    case h: FileHandle =>
+      val pos = positions(h)
+      if (pos >= files(h.filename).size) {
+        SchemeInterpreter.Value.EOF
+      } else {
+        SchemeInterpreter.Value.Character(files(h.filename).charAt(pos))
+      }
+    case h: StringHandle =>
+      val pos = positions(h)
+      if (pos >= h.content.size) {
+        SchemeInterpreter.Value.EOF
+      } else {
+        SchemeInterpreter.Value.Character(h.content.charAt(pos))
+      }
+  }
+  def writeChar(c: Char, h: Handle): Unit = ()
+  def writeString(s: String, h: Handle): Unit = ()
+}
+
 /**
  * This is an interpreter that runs a program and calls a callback at every evaluated value.
  * This interpreter dictates the concrete semantics of the Scheme language analyzed by MAF.
  */
 class SchemeInterpreter(
-    cb: (Identity, SchemeInterpreter.Value) => Unit,
-    output: Boolean = true,
-    stack: Boolean = false) {
+  cb: (Identity, SchemeInterpreter.Value) => Unit,
+  io: IO = new EmptyIO(),
+  stack: Boolean = false) {
   import scala.util.control.TailCalls._
   import SchemeInterpreter._
 
@@ -99,16 +186,6 @@ class SchemeInterpreter(
   }
   def setStore(s: Map[Addr, Value]): Unit = synchronized {
     store = s
-  }
-
-  // Access to the standard output stream should be synchronized on 'Out'.
-  object Out {
-    def prt(s: Value): Unit = synchronized {
-      print(s)
-    }
-    def prtln(s: String): Unit = synchronized {
-      println(s)
-    }
   }
 
   // Keep an artificial call stack to ease debugging.
@@ -469,7 +546,6 @@ class SchemeInterpreter(
       Cos, /* [vv] cos: Scientific */
       /* [x]  current-input-port: Default Ports */
       /* [x]  current-output-port: Default Ports */
-      Display, /* [v]  display: Writing */
       /* [x]  dynamic-wind: Dynamic Wind */
       /* [x]  eof-object?: Reading */
       Eq, /* [vv] eq?: Equality */
@@ -514,7 +590,6 @@ class SchemeInterpreter(
       Min, /* [vv] min: Arithmetic */
       Modulo, /* [vv] modulo: Integer Operations */
       Negativep, /* [vv] negative?: Comparison */
-      Newline, /* [v]  newline: Writing */
       Not, /* [vv] not: Booleans */
       Nullp, /* [vv] null?: List Predicates */
       NumberToString, /* [vx] number->string: Conversion: does not support two arguments */
@@ -623,7 +698,23 @@ class SchemeInterpreter(
       Error,
       NewLock,
       Acquire,
-      Release
+      Release,
+
+      `input-port?`,
+      `output-port?`,
+      `open-input-file`,
+      `open-output-file`,
+      `open-input-string`,
+      `close-input-port`,
+      `close-output-port`,
+      `current-input-port`,
+      `current-output-port`,
+      `read-char`,
+      `peek-char`,
+      `write`,
+      `write-char`,
+      `display`,
+      `newline`
     )
 
     abstract class SingleArgumentPrim(val name: String) extends SimplePrim {
@@ -1061,21 +1152,134 @@ class SchemeInterpreter(
     ////////
     // IO //
     ////////
-    object Display extends SingleArgumentPrim("display") {
-      def fun = { case x =>
-        if (output) Out.prt(x)
-        Value.Undefined(Identity.none)
+    object `input-port?` extends SingleArgumentPrim("input-port?") {
+      def fun = {
+        case _: Value.InputPort => Value.Bool(true)
+        case _ => Value.Bool(false)
       }
     }
-    object Newline extends SimplePrim {
+    object `output-port?` extends SingleArgumentPrim("output-port?") {
+      def fun = {
+        case _: Value.OutputPort => Value.Bool(true)
+        case _ => Value.Bool(false)
+      }
+    }
+    object `eof-object?` extends SingleArgumentPrim("eof-object?") {
+      def fun = {
+        case Value.EOF => Value.Bool(true)
+        case _ => Value.Bool(false)
+      }
+    }
+
+
+    object `open-input-file` extends SingleArgumentPrim("open-input-file") {
+      def fun = {
+        case Value.Str(filename) => Value.InputPort(io.open(filename))
+      }
+    }
+    object `open-output-file` extends SingleArgumentPrim("open-output-file") {
+      def fun = {
+        case Value.Str(filename) => Value.InputPort(io.open(filename))
+      }
+    }
+    object `open-input-string` extends SingleArgumentPrim("open-input-string") {
+      def fun = {
+        case Value.Str(s) => Value.InputPort(io.fromString(s))
+      }
+    }
+
+    object `close-input-port` extends SingleArgumentPrim("close-input-port") {
+      def fun = {
+        case Value.InputPort(handle) =>
+          io.close(handle.asInstanceOf[io.Handle])
+          Value.Undefined(Identity.none)
+      }
+    }
+    object `close-output-port` extends SingleArgumentPrim("close-output-port") {
+      def fun = {
+        case Value.InputPort(handle) =>
+          io.close(handle.asInstanceOf[io.Handle])
+          Value.Undefined(Identity.none)
+      }
+    }
+
+    object `current-input-port` extends SimplePrim {
+      val name = "current-input-port"
+      def call(args: List[Value], position: Position) = args match {
+        case Nil => Value.InputPort(io.console)
+        case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
+      }
+    }
+
+    object `current-output-port` extends SimplePrim {
+      val name = "current-output-port"
+      def call(args: List[Value], position: Position) = args match {
+        case Nil => Value.OutputPort(io.console)
+        case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
+      }
+    }
+
+    class DisplayLike(val name: String) extends SimplePrim {
+      def call(args: List[Value], position: Position) = args match {
+        case v :: Nil =>
+          io.writeString(v.toString, io.console)
+          Value.Undefined(Identity.none)
+        case v :: Value.OutputPort(port) :: Nil =>
+          io.writeString(v.toString, port.asInstanceOf[io.Handle])
+          Value.Undefined(Identity.none)
+        case _ => stackedException(s"$name ($position): invalid arguments")
+      }
+    }
+    object `display` extends DisplayLike("display")
+    object `write` extends DisplayLike("write")
+
+    object `write-char` extends SimplePrim {
+      val name = "write-char"
+      def call(args: List[Value], position: Position) = args match {
+        case Value.Character(c) :: Nil =>
+          io.writeChar(c, io.console)
+          Value.Undefined(Identity.none)
+        case Value.Character(c) :: Value.OutputPort(port) :: Nil =>
+          io.writeChar(c, port.asInstanceOf[io.Handle])
+          Value.Undefined(Identity.none)
+        case _ => stackedException(s"$name ($position): invalid arguments")
+      }
+    }
+
+    object `newline` extends SimplePrim {
       val name = "newline"
       def call(args: List[Value], position: Position) = args match {
         case Nil =>
-          if (output) Out.prtln("\n")
+          io.writeString("\n", io.console);
+          Value.Undefined(Identity.none)
+        case Value.OutputPort(port) :: Nil =>
+          io.writeString("\n", port.asInstanceOf[io.Handle])
           Value.Undefined(Identity.none)
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
       }
     }
+
+    object `read-char` extends SimplePrim {
+      val name = "read-char"
+      def call(args: List[Value], position: Position) = args match {
+        case Nil =>
+          io.readChar(io.console)
+        case Value.InputPort(port) :: Nil =>
+          io.readChar(port.asInstanceOf[io.Handle])
+        case _ => stackedException(s"$name ($position): wrong number of arguments, 0 or 1 expected, got ${args.length}")
+      }
+    }
+    object `peek-char` extends SimplePrim {
+      val name = "peek-char"
+      def call(args: List[Value], position: Position) = args match {
+        case Nil =>
+          io.peekChar(io.console)
+        case Value.InputPort(port) :: Nil =>
+          io.peekChar(port.asInstanceOf[io.Handle])
+        case _ => stackedException(s"$name ($position): wrong number of arguments, 0 or 1 expected, got ${args.length}")
+      }
+    }
+
     object Error extends SimplePrim {
       val name = "error"
       def call(args: List[Value], position: Position) = stackedException(s"user-raised error ($position): $args")
@@ -1489,9 +1693,12 @@ object SchemeInterpreter {
         elems: Map[Int, Value],
         init: Value)
         extends Value { override def toString: String = s"#<vector[size:$size]>" }
+    case class InputPort(port: Any) extends Value { override def toString: String = s"#<input-port:$port>" }
+    case class OutputPort(port: Any) extends Value { override def toString: String = s"#<output-port:$port>" }
     case class Thread(fut: Future[Value]) extends Value { override def toString: String = s"#<thread>" }
     case class Lock(l: java.util.concurrent.locks.Lock) extends Value { override def toString: String = "#<lock>" }
-    case object Void extends Value { override def toString: String = "<void>" }
+    case object EOF extends Value { override def toString: String = "#<eof>" }
+    case object Void extends Value { override def toString: String = "#<void>" }
   }
 
   import scala.concurrent.duration._
@@ -1501,7 +1708,7 @@ object SchemeInterpreter {
     if (args.size == 1) {
       val text = Reader.loadFile(args(0))
       val pgm = SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display"))))
-      val interpreter = new SchemeInterpreter((id, v) => (), true)
+      val interpreter = new SchemeInterpreter((id, v) => ())
       val res = interpreter.run(pgm, Timeout.start(timeout))
       println(s"Result: $res")
     } else {
