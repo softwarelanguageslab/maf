@@ -1,6 +1,6 @@
 package maf.language.contracts
 
-import maf.core.{Address, Identity, LatticeTopUndefined}
+import maf.core.{Address, LatticeTopUndefined}
 import maf.lattice.interfaces.{BoolLattice, IntLattice}
 import maf.util.SmartHash
 

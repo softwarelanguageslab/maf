@@ -7,43 +7,39 @@ import maf.util.benchmarks.Timeout
 import maf.util.benchmarks.Timer
 import maf.language.sexp.ValueSymbol
 
-trait ScBigStepSemantics 
-  extends ScModSemantics 
-  with ScPrimitives 
-  with ScSemanticsMonad 
-  with FunctionSummary {
+trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanticsMonad with FunctionSummary {
 
-  private val primTrue  = ScLattice.Prim("true?")
+  private val primTrue = ScLattice.Prim("true?")
   private val primFalse = ScLattice.Prim("false?")
-  private val primProc  = ScLattice.Prim("proc?")
-  private val primDep   = ScLattice.Prim("dependent-contract?")
+  private val primProc = ScLattice.Prim("proc?")
+  private val primDep = ScLattice.Prim("dependent-contract?")
   private var totalRuns = 0
 
   import ScEvalM._
 
   trait IntraScBigStepSemantics extends IntraScAnalysis with IntraFunctionAnalysis {
+
     /**
-      * Compute the context of the current component
-      * @return a new context based on the environment of the component under analysis
-      */
+     * Compute the context of the current component
+     * @return a new context based on the environment of the component under analysis
+     */
     def initialContext: Context = {
       var storeCache: StoreCache = componentStore.view.mapValues(v => (v, ScNil())).toMap
 
-      primBindings.foreach {
-        case (name, addr) =>
-          val value = readPure(addr, storeCache)
-          storeCache = storeCache +  (addr -> ((value, ScIdentifier(name, Identity.none))))
-          storeCache += (ScPrimAddr(name) -> ((lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none))))
+      primBindings.foreach { case (name, addr) =>
+        val value = readPure(addr, storeCache)
+        storeCache = storeCache + (addr -> ((value, ScIdentifier(name, Identity.none))))
+        storeCache += (ScPrimAddr(name) -> ((lattice.injectPrim(Prim(name)), ScIdentifier(name, Identity.none))))
       }
 
-      fnEnv.mapAddrs((addr) => {
+      fnEnv.mapAddrs { (addr) =>
         val value = readPure(addr, storeCache)
         if (lattice.isDefinitelyOpq(value)) {
           storeCache += (addr -> ((value, ScIdentifier(ScModSemantics.genSym, Identity.none))))
         }
         addr
-      })
-    
+      }
+
       Context(env = fnEnv, cache = storeCache, pc = ScNil())
     }
 
@@ -60,101 +56,94 @@ trait ScBigStepSemantics
       writeReturnStore(sstore)
       writeResult(value, component)
       finishSummary(symbolicReturnValues)
-    
+
       println(s"Return value $value")
       println("==================================")
     }
 
     def eval(expr: ScExp): ScEvalM[PostValue] = expr match {
-      case ScBegin(expressions, _) => evalSequence(expressions)
-      case ScIf(condition, consequent, alternative, _) => evalIf(condition, consequent, alternative)
-      case ScLetRec(ident, binding, body, _) => evalLetRec(ident, binding, body)
-      case ScRaise(_, _) => ???
-      case ScSet(variable, value, _) => evalSet(variable, value)
+      case ScBegin(expressions, _)                              => evalSequence(expressions)
+      case ScIf(condition, consequent, alternative, _)          => evalIf(condition, consequent, alternative)
+      case ScLetRec(idents, bindings, body, _)                  => evalLetRec(idents, bindings, body)
+      case ScRaise(_, _)                                        => ???
+      case ScSet(variable, value, _)                            => evalSet(variable, value)
       case ScFunctionAp(ScIdentifier("and", _), operands, _, _) => evalAnd(operands)
-      case ScFunctionAp(operator, operands, _, _) => evalFunctionAp(operator, operands)
-      case v: ScValue => evalValue(v)
-      case exp: ScIdentifier => evalIdentifier(exp)
-      case ScMon(contract, expression, idn, _) => evalMon(contract, expression, idn)
-      case ScOpaque(_, refinements) => evalOpaque(refinements)
-      case ScHigherOrderContract(domain, range, idn) => eval(higherOrderToDependentContract(domain, range, idn))
-      case ScDependentContract(domains, rangeMaker, _) => evalDependentContract(domains, rangeMaker)
-      case ScFlatContract(expression, _) => evalFlatContract(expression)
-      case ScLambda(params, body, idn) => evalLambda(params, body, idn)
-      case ScAssume(identifier, assumption, expression, _) => evalAssume(identifier, assumption, expression)
-      case ScProgram(expressions, _) => evalProgram(expressions)
-      case ScDefine(variable, expression, _) => evalDefine(variable, expression)
-      case ScDefineFn(name, parameters, body, idn) => evalDefineFn(name, parameters, body, idn)
+      case ScFunctionAp(operator, operands, _, _)               => evalFunctionAp(operator, operands)
+      case v: ScValue                                           => evalValue(v)
+      case exp: ScIdentifier                                    => evalIdentifier(exp)
+      case ScMon(contract, expression, idn, _)                  => evalMon(contract, expression, idn)
+      case ScOpaque(_, refinements)                             => evalOpaque(refinements)
+      case ScHigherOrderContract(domain, range, idn)            => eval(higherOrderToDependentContract(domain, range, idn))
+      case ScDependentContract(domains, rangeMaker, _)          => evalDependentContract(domains, rangeMaker)
+      case ScFlatContract(expression, _)                        => evalFlatContract(expression)
+      case ScLambda(params, body, idn)                          => evalLambda(params, body, idn)
+      case ScAssume(identifier, assumption, expression, _)      => evalAssume(identifier, assumption, expression)
+      case ScProgram(expressions, _)                            => evalProgram(expressions)
+      case ScDefine(variable, expression, _)                    => evalDefine(variable, expression)
+      case ScDefineFn(name, parameters, body, idn)              => evalDefineFn(name, parameters, body, idn)
       case ScDefineAnnotatedFn(name, parameters, contract, expression, idn) =>
         evalDefineAnnotatedFn(name, parameters, contract, expression, idn)
       case ScProvideContracts(variables, contracts, _) => evalProvideContracts(variables, contracts)
-      case ScCons(car, cdr, _) => evalCons(car, cdr)
-      case ScCar(pai, _) => evalCar(pai)
-      case ScCdr(pai, _) => evalCdr(pai)
-      case ScNil(_) => result(lattice.injectNil)
+      case ScCons(car, cdr, _)                         => evalCons(car, cdr)
+      case ScCar(pai, _)                               => evalCar(pai)
+      case ScCdr(pai, _)                               => evalCdr(pai)
+      case ScNil(_)                                    => result(lattice.injectNil)
     }
 
     /**
-      * Read a value from the store cache, if it is not in the store cache, retrieve it from the global store
-      * @param addr the addres to read from
-      * @return a value combined with (optionally) its symbolic component
-      */
-    def read(addr: Addr): ScEvalM[PostValue] = withStoreCache((cache) => {
+     * Read a value from the store cache, if it is not in the store cache, retrieve it from the global store
+     * @param addr the addres to read from
+     * @return a value combined with (optionally) its symbolic component
+     */
+    def read(addr: Addr): ScEvalM[PostValue] = withStoreCache { (cache) =>
       cache.get(addr) match {
-        case Some(value) => pure(value)
-        case None if GLOBAL_STORE_ENABLED=> result(readAddr(addr))
+        case Some(value)                  => pure(value)
+        case None if GLOBAL_STORE_ENABLED => result(readAddr(addr))
         // if we are not using a global store, then we throw an exception
         // this should never occur, but if it does, it is much easier to track down.
         case None =>
           throw new Exception(s"Addr $addr is not found in store $cache while analysing $component")
       }
-    })
-
+    }
 
     /**
-      * Write a value to both the store cache and the global store
-      * @param addr the address to write the value to
-      * @param value the value to write
-      */
-    def write(addr: Addr, value: PostValue): ScEvalM[()] = {
+     * Write a value to both the store cache and the global store
+     * @param addr the address to write the value to
+     * @param value the value to write
+     */
+    def write(addr: Addr, value: PostValue): ScEvalM[()] =
       for {
-        _ <- effectful { if (GLOBAL_STORE_ENABLED) writeAddr(addr, value._1) }
+        _ <- effectful(if (GLOBAL_STORE_ENABLED) writeAddr(addr, value._1))
         _ <- writeLocal(addr, value)
       } yield ()
-    }
 
-    def writeForce(addr: Addr, value: PostValue): ScEvalM[()] = {
+    def writeForce(addr: Addr, value: PostValue): ScEvalM[()] =
       for {
-        _ <- effectful { if (GLOBAL_STORE_ENABLED) forceWrite(addr, value._1) }
+        _ <- effectful(if (GLOBAL_STORE_ENABLED) forceWrite(addr, value._1))
         _ <- writeLocalForce(addr, value)
       } yield ()
-    }
 
-    def writeLocal(addr: Addr, value: PostValue): ScEvalM[()] = {
+    def writeLocal(addr: Addr, value: PostValue): ScEvalM[()] =
       joinInCache(addr, value)
-    }
 
-    def writeLocalForce(addr: Addr, value: PostValue): ScEvalM[()] = {
+    def writeLocalForce(addr: Addr, value: PostValue): ScEvalM[()] =
       addToCache(addr -> value)
-    }
 
-    def blame[X](blamedIdentity: Identity, blamingIdentity: Identity = Identity.none): ScEvalM[X]  = 
-      withIgnoredIdentities(ignored => {
+    def blame[X](blamedIdentity: Identity, blamingIdentity: Identity = Identity.none): ScEvalM[X] =
+      withIgnoredIdentities { ignored =>
         if (!ignored.contains(blamedIdentity)) {
           writeBlame(Blame(blamedIdentity, blamingIdentity))
         }
-      }) >> void
+      } >> void
 
-    /**
-      * Returns true if we are currently at top-level (i.e., evaluating the main program)
-      */
+    /** Returns true if we are currently at top-level (i.e., evaluating the main program) */
     def isTopLevel: Boolean = view(component) match {
       case ScMain => true
-      case _ => false
+      case _      => false
     }
 
     def localCall(component: Component): ScEvalM[PostValue] =
-      getStore.flatMap(store => {
+      getStore.flatMap { store =>
         if (!GLOBAL_STORE_ENABLED) {
           val (v, updatedStore) = callLocal(component, store)
           mergeStores(updatedStore).flatMap(_ => result(v))
@@ -162,35 +151,34 @@ trait ScBigStepSemantics
           val v = call(component)
           result(v)
         }
-      })
+      }
 
     /**
-      * Writes the values of the arguments in the store cache to a designated address.
-      * This can be used to determine
-      */
-    def writeRefinedArguments(): ScEvalM[()] = withContext(context => effectful {
+     * Writes the values of the arguments in the store cache to a designated address.
+     * This can be used to determine
+     */
+    def writeRefinedArguments(): ScEvalM[()] = withContext(context =>
+      effectful {
         // TODO: add return value to the value of the opaque result, so that we can differentiate between true and false states
         component match {
           case Call(_, lambda, _) =>
-            lambda
-              .variables
+            lambda.variables
               .flatMap(v => context.env.lookup(v.name))
               .flatMap(context.cache.get)
               .filter(v => lattice.isDefinitelyOpq(v._1))
               .map(_._1)
               .zip(0 to lambda.variables.length)
-              .foreach {
-                case (value, pos) => writeAddr(OpaqueResultAddr(component, pos, lambda.idn), value)
+              .foreach { case (value, pos) =>
+                writeAddr(OpaqueResultAddr(component, pos, lambda.idn), value)
               }
 
           case _ => ()
         }
-    })
+      }
+    )
 
-    /**
-      * Creates a fresh identifier for the given opaque value
-      */
-    def fresh(v: Value): PostValue =  if (lattice.isDefinitelyOpq(v)) (v, ScModSemantics.freshIdent) else (v, ScNil())
+    /** Creates a fresh identifier for the given opaque value */
+    def fresh(v: Value): PostValue = if (lattice.isDefinitelyOpq(v)) (v, ScModSemantics.freshIdent) else (v, ScNil())
 
     def readPure(addr: Addr, storeCache: StoreCache): Value = {
       val (value, _) = merged(read(addr).map(_._1))(Context(env = fnEnv, cache = storeCache, pc = ScNil()))
@@ -198,13 +186,16 @@ trait ScBigStepSemantics
     }
 
     // TODO: this is included in the compiler as well, so this can be removed
-    def higherOrderToDependentContract(domain: ScExp, range: ScExp, idn: Identity): ScExp =
+    def higherOrderToDependentContract(
+        domain: ScExp,
+        range: ScExp,
+        idn: Identity
+      ): ScExp =
       ScDependentContract(List(domain), ScLambda(List(ScIdentifier("\"x", Identity.none)), range, range.idn), idn)
 
     def evalAnd(operands: List[ScExp]): ScEvalM[PostValue] = operands match {
-      case List(expr) => eval(expr)
-      case expr :: exprs => eval(expr).flatMap(value => 
-          cond(value, enrichOpaqueInStore(expr, evalAnd(exprs)), result(lattice.injectBoolean(false))))
+      case List(expr)    => eval(expr)
+      case expr :: exprs => eval(expr).flatMap(value => cond(value, enrichOpaqueInStore(expr, evalAnd(exprs)), result(lattice.injectBoolean(false))))
     }
 
     def evalCons(car: ScExp, cdr: ScExp): ScEvalM[PostValue] = for {
@@ -213,7 +204,12 @@ trait ScBigStepSemantics
       consValue <- allocCons(evaluatedCar, evaluatedCdr, car.idn, cdr.idn)
     } yield consValue
 
-    def allocCons(car: PostValue, cdr: PostValue, carIdn: Identity, cdrIdn: Identity): ScEvalM[PostValue] = for {
+    def allocCons(
+        car: PostValue,
+        cdr: PostValue,
+        carIdn: Identity,
+        cdrIdn: Identity
+      ): ScEvalM[PostValue] = for {
       _ <- unit
       carAddr = allocGeneric(carIdn, component)
       cdrAddr = allocGeneric(cdrIdn, component)
@@ -222,23 +218,26 @@ trait ScBigStepSemantics
     } yield value(lattice.injectCons(Cons(carAddr, cdrAddr)))
 
     def evalCar(pai: ScExp): ScEvalM[PostValue] =
-      eval(pai).flatMap((pai) => {
-        val topValue = if (lattice.top == pai) { Set(result(lattice.top)) } else { Set() }
-        val opqValue = if (lattice.isDefinitelyOpq(pai._1)) { Set(pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))) } else { Set() }
+      eval(pai).flatMap { (pai) =>
+        val topValue = if (lattice.top == pai) { Set(result(lattice.top)) }
+        else { Set() }
+        val opqValue = if (lattice.isDefinitelyOpq(pai._1)) { Set(pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))) }
+        else { Set() }
         nondets(lattice.getCons(pai._1).map(p => read(p.car)) ++ topValue ++ opqValue)
-      })
+      }
 
     def evalCdr(pai: ScExp): ScEvalM[PostValue] =
-      eval(pai).flatMap((pai) => {
-        val topValue = if (lattice.top == pai) { Set(result(lattice.top)) } else { Set() }
-        val opqValue = if (lattice.isDefinitelyOpq(pai._1)) { Set(pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))) } else { Set() }
+      eval(pai).flatMap { (pai) =>
+        val topValue = if (lattice.top == pai) { Set(result(lattice.top)) }
+        else { Set() }
+        val opqValue = if (lattice.isDefinitelyOpq(pai._1)) { Set(pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))) }
+        else { Set() }
         nondets(lattice.getCons(pai._1).map(p => read(p.cdr)) ++ topValue ++ opqValue)
-      })
-
+      }
 
     def evalProvideContracts(variables: List[ScIdentifier], contracts: List[ScExp]): ScEvalM[PostValue] =
-      sequenceLast(variables.zip(contracts).map {
-        case (variable, contract) => for {
+      sequenceLast(variables.zip(contracts).map { case (variable, contract) =>
+        for {
           addr <- lookup(variable.name)
           value <- read(addr)
           evaluatedContract <- eval(contract)
@@ -253,14 +252,25 @@ trait ScBigStepSemantics
       _ <- write(addr, value)
     } yield value
 
-    def evalDefineFn(name: ScIdentifier, parameters: List[ScParam], body: ScExp, idn: Identity): ScEvalM[PostValue] =
+    def evalDefineFn(
+        name: ScIdentifier,
+        parameters: List[ScParam],
+        body: ScExp,
+        idn: Identity
+      ): ScEvalM[PostValue] =
       for {
         addr <- lookupOrDefine(name, component)
         lambda <- eval(ScLambda(parameters, body, idn))
         _ <- write(addr, (lambda._1, name))
       } yield lambda
 
-    def evalDefineAnnotatedFn(name: ScIdentifier, parameters: List[ScParam], contract: ScExp, body: ScExp, idn: Identity): ScEvalM[PostValue] =
+    def evalDefineAnnotatedFn(
+        name: ScIdentifier,
+        parameters: List[ScParam],
+        contract: ScExp,
+        body: ScExp,
+        idn: Identity
+      ): ScEvalM[PostValue] =
       for {
         addr <- lookupOrDefine(name, component)
         lambda <- eval(ScLambda(parameters, body, idn))
@@ -270,20 +280,20 @@ trait ScBigStepSemantics
       } yield monitoredFunction
 
     def evalProgram(expressions: List[ScExp]): ScEvalM[PostValue] = {
-      def addBinding(name: ScIdentifier): ScEvalM[()] = 
+      def addBinding(name: ScIdentifier): ScEvalM[()] =
         addBindingToEnv(name, component) >> lookupOrDefine(name, component) >> unit
 
       for {
         // extend the environment first
         _ <- sequence(expressions.map {
-          case ScDefineAnnotatedFn(name, _, _, _, _) => 
-            addBinding(name) 
+          case ScDefineAnnotatedFn(name, _, _, _, _) =>
+            addBinding(name)
 
-          case ScDefine(name, _, _) => 
-            addBinding(name)  
+          case ScDefine(name, _, _) =>
+            addBinding(name)
 
-          case ScDefineFn(name, _, _, _) => 
-            addBinding(name) 
+          case ScDefineFn(name, _, _, _) =>
+            addBinding(name)
 
           case _ => unit
         })
@@ -298,7 +308,11 @@ trait ScBigStepSemantics
       _ <- write(addr, evaluatedValue)
     } yield evaluatedValue
 
-    def evalAssume(identifier: ScIdentifier, assumption: ScExp, expression: ScExp): ScEvalM[PostValue] = {
+    def evalAssume(
+        identifier: ScIdentifier,
+        assumption: ScExp,
+        expression: ScExp
+      ): ScEvalM[PostValue] =
       for {
         evaluatedAssumption <- eval(assumption)
         evaluatedExpression <- eval(expression)
@@ -311,14 +325,13 @@ trait ScBigStepSemantics
         // TODO: we should actually only do this when the value of the assumption is Top or Opq
         _ <- writeForce(identifierValueAddr, enrich(evaluatedAssumption, fresh(lattice.injectOpq(Opq()))))
       } yield evaluatedExpression
-    }
 
     def evalDependentContract(domains: List[ScExp], rangeMaker: ScExp): ScEvalM[PostValue] = {
       val domainAddrs = domains.map(domain => allocGeneric(domain.idn, component))
-      val rangeAddr  = allocGeneric(rangeMaker.idn, component)
+      val rangeAddr = allocGeneric(rangeMaker.idn, component)
       for {
-        evaluatedDomains <- sequence(domains.zip(domainAddrs).map {
-          case (domain, addr) => for {
+        evaluatedDomains <- sequence(domains.zip(domainAddrs).map { case (domain, addr) =>
+          for {
             evaluated <- eval(domain)
             _ <- write(addr, evaluated)
           } yield addr
@@ -328,16 +341,23 @@ trait ScBigStepSemantics
       } yield (lattice.injectGrd(Grd(evaluatedDomains, rangeAddr)), ScNil())
     }
 
-    def evalMon(contract: ScExp, expression: ScExp, identity: Identity): ScEvalM[PostValue] = {
+    def evalMon(
+        contract: ScExp,
+        expression: ScExp,
+        identity: Identity
+      ): ScEvalM[PostValue] =
       // `mon` has two functions: wrapping a function to monitor it, and checking a flat contract
       for {
         evaluatedContract <- eval(contract)
         evaluatedExpression <- eval(expression)
         res <- applyMon(evaluatedContract, evaluatedExpression, contract.idn, expression.idn)
       } yield res
-    }
 
-    def evalLambda(params: List[ScParam], body: ScExp, idn: Identity): ScEvalM[PostValue] = withEnv { env =>
+    def evalLambda(
+        params: List[ScParam],
+        body: ScExp,
+        idn: Identity
+      ): ScEvalM[PostValue] = withEnv { env =>
       val clo = Clo(idn, env, params.map(toScIdentifier), ScLambda(params, body, idn), topLevel = isTopLevel)
       result(lattice.injectClo(clo))
     }
@@ -350,14 +370,25 @@ trait ScBigStepSemantics
       }
     } yield res
 
-    def evalLetRec(ident: ScIdentifier, binding: ScExp, body: ScExp): ScEvalM[PostValue] = for {
-      evaluatedBody <- extended(ident, component) { addr => for {
-          evaluatedBinding <- eval(binding)
-          _ <- write(addr, evaluatedBinding)
-          evaluatedBody <- eval (body)
-        } yield evaluatedBody
-      }
-    } yield evaluatedBody
+    def evalLetRec(
+        idents: List[ScIdentifier],
+        bindings: List[ScExp],
+        body: ScExp
+      ): ScEvalM[PostValue] =
+      for {
+        // first evaluate the bindings
+        _ <- sequence(idents.lazyZip(bindings).map { (ident, binding) =>
+          extended(ident, component) { addr =>
+            for {
+              evaluatedBinding <- eval(binding)
+              _ <- write(addr, evaluatedBinding)
+            } yield ()
+          }
+        })
+
+        // then evaluate the body in an extended environment
+        evaluatedBody <- extended(idents, component)(_ => eval(body))
+      } yield evaluatedBody
 
     def evalOpaque(refinements: Set[String]): ScEvalM[PostValue] =
       pure((lattice.injectOpq(Opq(refinements)), ScIdentifier(ScModSemantics.genSym, Identity.none)))
@@ -381,24 +412,34 @@ trait ScBigStepSemantics
       res <- applyFn(evaluatedOperator, evaluatedOperands, operands)
     } yield res
 
-    def evalIf(condition: ScExp, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] = 
+    def evalIf(
+        condition: ScExp,
+        consequent: ScExp,
+        alternative: ScExp
+      ): ScEvalM[PostValue] =
       eval(condition).flatMap((value) => conditional(value, condition, consequent, alternative))
 
     def allocList(values: List[PostValue], idns: List[Identity]): ScEvalM[PostValue] = values match {
       case List() => result(lattice.injectNil)
-      case v :: values => for {
-        cdr <- allocList(values, idns.tail)
-        carAddr = allocGeneric(idns.head, component)
-        cdrAddr = ScCdrAddr(carAddr)
-        _ <- write(carAddr, v)
-        _ <- write(cdrAddr, cdr)
-      } yield value(lattice.injectCons(Cons(carAddr, cdrAddr)))
+      case v :: values =>
+        for {
+          cdr <- allocList(values, idns.tail)
+          carAddr = allocGeneric(idns.head, component)
+          cdrAddr = ScCdrAddr(carAddr)
+          _ <- write(carAddr, v)
+          _ <- write(cdrAddr, cdr)
+        } yield value(lattice.injectCons(Cons(carAddr, cdrAddr)))
     }
 
-    def bindArgs(operands: List[PostValue], params: List[ScParam], syntacticOperands: List[ScExp], context: ComponentContext): ScEvalM[()] =
+    def bindArgs(
+        operands: List[PostValue],
+        params: List[ScParam],
+        syntacticOperands: List[ScExp],
+        context: ComponentContext
+      ): ScEvalM[()] =
       (operands, params) match {
         case (List(), List()) => unit
-        case (values, List(param@ScVarArgIdentifier(name, idn))) =>
+        case (values, List(param @ ScVarArgIdentifier(name, idn))) =>
           for {
             listedValues <- allocList(values, syntacticOperands.map(_.idn))
             _ <- write(allocVar(param, context), listedValues)
@@ -413,7 +454,11 @@ trait ScBigStepSemantics
         case (_, _) => throw new Exception("Invalid closure application")
       }
 
-    def applyFn(operator: PostValue, operands: List[PostValue], syntacticOperands: List[ScExp] = List()): ScEvalM[PostValue] = {
+    def applyFn(
+        operator: PostValue,
+        operands: List[PostValue],
+        syntacticOperands: List[ScExp] = List()
+      ): ScEvalM[PostValue] = {
       // we have five distinct cases
       // 1. Primitive application
       // 2. User-defined function application
@@ -423,7 +468,7 @@ trait ScBigStepSemantics
 
       // 1. Primitive application
       val primitiveAp = lattice.getPrim(operator._1).map { prim =>
-        val result = lattice.applyPrimitive(prim)(operands.map(_._1) : _*)
+        val result = lattice.applyPrimitive(prim)(operands.map(_._1): _*)
         pure((result, operator._2.app(operands.map(_._2))))
       }
 
@@ -449,9 +494,8 @@ trait ScBigStepSemantics
         for {
           contract <- options(read(arr.contract).map((c) => lattice.getGrd(c._1)))
           values <- sequence {
-            contract.domain.map(read).zip(operands.zip(syntacticOperands)).map {
-              case (domain, (value, syn)) =>
-                domain.flatMap(d => applyMon(d, value, arr.contract.idn, syn.idn))
+            contract.domain.map(read).zip(operands.zip(syntacticOperands)).map { case (domain, (value, syn)) =>
+              domain.flatMap(d => applyMon(d, value, arr.contract.idn, syn.idn))
             }
           }
 
@@ -478,9 +522,7 @@ trait ScBigStepSemantics
       }
 
       // 6. Application of thunk
-      val thunk = lattice.getThunk(operator._1).map( t =>
-        read(t.value)
-      )
+      val thunk = lattice.getThunk(operator._1).map(t => read(t.value))
 
       for {
         value <- nondets(primitiveAp ++ cloAp ++ arrAp ++ flatAp ++ opqAp ++ thunk)
@@ -491,13 +533,15 @@ trait ScBigStepSemantics
       } yield value
     }
 
-    def applyMon(evaluatedContract: PostValue,
-                 evaluatedExpression: PostValue,
-                 contractIdn: Identity,
-                 exprIdn: Identity): ScEvalM[PostValue] = {
+    def applyMon(
+        evaluatedContract: PostValue,
+        evaluatedExpression: PostValue,
+        contractIdn: Identity,
+        exprIdn: Identity
+      ): ScEvalM[PostValue] = {
 
       // flat contract
-      val flatContract = ifFeasible(primProc, evaluatedContract) { 
+      val flatContract = ifFeasible(primProc, evaluatedContract) {
         monFlat(evaluatedContract, evaluatedExpression, exprIdn, contractIdn)
       }
 
@@ -514,53 +558,74 @@ trait ScBigStepSemantics
       nondets(Set(flatContract, dependentContract))
     }
 
-    def monFlat(contract: PostValue, expressionValue: PostValue, blamedIdentity: Identity, blamingIdentity: Identity = Identity.none): ScEvalM[PostValue] =
+    def monFlat(
+        contract: PostValue,
+        expressionValue: PostValue,
+        blamedIdentity: Identity,
+        blamingIdentity: Identity = Identity.none
+      ): ScEvalM[PostValue] =
       applyFn(contract, List(expressionValue), List(expressionValue._2))
-        .flatMap(value => {
+        .flatMap { value =>
           cond(value, pure(enrich(contract, expressionValue)), blame(blamedIdentity, blamingIdentity))
-        })
+        }
 
-    def cond[X](condition: PostValue, consequent: ScEvalM[X], alternative: ScEvalM[X], mustReplacePc: Boolean = true): ScEvalM[X] = {
-      val t = ifFeasible(primTrue, condition, mustReplacePc) { consequent }
-      val f = ifFeasible(primFalse, condition, mustReplacePc) { alternative }
+    def cond[X](
+        condition: PostValue,
+        consequent: ScEvalM[X],
+        alternative: ScEvalM[X],
+        mustReplacePc: Boolean = true
+      ): ScEvalM[X] = {
+      val t = ifFeasible(primTrue, condition, mustReplacePc)(consequent)
+      val f = ifFeasible(primFalse, condition, mustReplacePc)(alternative)
       nondet(t, f)
     }
 
-
-    def conditional(conditionValue: PostValue, condition: ScExp, consequent: ScExp, alternative: ScExp): ScEvalM[PostValue] = {
+    def conditional(
+        conditionValue: PostValue,
+        condition: ScExp,
+        consequent: ScExp,
+        alternative: ScExp
+      ): ScEvalM[PostValue] = {
       val t = enrichOpaqueInStore(condition, eval(consequent))
       cond(conditionValue, t, eval(alternative))
     }
 
-    def enrichOpaqueInStore(condition: ScExp, consequent: => ScEvalM[PostValue]): ScEvalM[PostValue] = 
+    def enrichOpaqueInStore(condition: ScExp, consequent: => ScEvalM[PostValue]): ScEvalM[PostValue] =
       // enrich the opaque value if it is a simple predicate on an opaque value
       // eg. (mon int? (letrec (y (OPQ int?)) (if (int? x) x y)) is safe
       isPredicateOnVariable(condition) match {
-        case Some((operator, variable)) => for {
-          opAddr <- lookup(operator)
-          varAddr <- lookup(variable)
-          opValue <- read(opAddr)
-          varValue <- read(varAddr)
-          // a writeForce is sound and safe here, because we are either writing the same value to the varAddr, or writing
-          // a refined opaque value. Either way, the value on that address still reaches a fixpoint (safety) and is
-          // sound because we are not making something more specific which should not be made more specific.
-          _ <- writeForce(varAddr, enrich(opValue, varValue))
+        case Some((operator, variable)) =>
+          for {
+            opAddr <- lookup(operator)
+            varAddr <- lookup(variable)
+            opValue <- read(opAddr)
+            varValue <- read(varAddr)
+            // a writeForce is sound and safe here, because we are either writing the same value to the varAddr, or writing
+            // a refined opaque value. Either way, the value on that address still reaches a fixpoint (safety) and is
+            // sound because we are not making something more specific which should not be made more specific.
+            _ <- writeForce(varAddr, enrich(opValue, varValue))
 
-          // add the constraint symbolicly to the correct variable
-          _ <- effectful {
-            constrain(varAddr, condition)
-          }
+            // add the constraint symbolicly to the correct variable
+            _ <- effectful {
+              constrain(varAddr, condition)
+            }
 
-          result <- consequent
-        } yield result
+            result <- consequent
+          } yield result
 
         case None => consequent
       }
 
-    def ifFeasible[X](op: Prim, value: PostValue, mustReplacePc: Boolean = true)(c: => ScEvalM[X]): ScEvalM[X] =
+    def ifFeasible[X](
+        op: Prim,
+        value: PostValue,
+        mustReplacePc: Boolean = true
+      )(
+        c: => ScEvalM[X]
+      ): ScEvalM[X] =
       withPc(feasible(op, value)).flatMap {
         case Some(pc) => if (mustReplacePc) replacePc(pc)(c) else c
-        case None => void
+        case None     => void
       }
 
     def guardFeasible(op: Prim, value: PostValue): ScEvalM[()] = ifFeasible(op, value)(pure(()))
@@ -568,7 +633,7 @@ trait ScBigStepSemantics
     private def feasible(op: Prim, value: PostValue)(pc: PC): Option[PC] =
       value._2 match {
         case _ if !lattice.isTrue(lattice.applyPrimitive(op)(value._1)) => None
-        case ScNil(_) => Some(pc)
+        case ScNil(_)                                                   => Some(pc)
         case _ =>
           val newPc = pc.and(ScFunctionAp(ScIdentifier(op.operation, Identity.none), List(value._2), Identity.none))
           val solver = newSmtSolver(newPc)
@@ -577,7 +642,8 @@ trait ScBigStepSemantics
   }
 
   def refined(name: String, value: PostValue): PostValue = {
-    val refinedValue = lattice.getOpq(value._1)
+    val refinedValue = lattice
+      .getOpq(value._1)
       .map(opq => opq.copy(refinementSet = opq.refinementSet + name))
       .map(lattice.injectOpq)
       .foldLeft(lattice.bottom)((acc, v) => lattice.join(acc, v))
@@ -586,18 +652,17 @@ trait ScBigStepSemantics
   }
 
   def enrich(operator: PostValue, value: PostValue): PostValue = operator._2 match {
-        // if we have symbolic information we can enrich the opaque value with this symbolic information,
-        case ScIdentifier(name, _) if lattice.isDefinitelyOpq(value._1) && primitives.contains(name) =>
-          refined(name, value)
+    // if we have symbolic information we can enrich the opaque value with this symbolic information,
+    case ScIdentifier(name, _) if lattice.isDefinitelyOpq(value._1) && primitives.contains(name) =>
+      refined(name, value)
 
-        // if the operator is a primitive, then we can fetch its name from its value
-        case _ if lattice.isDefinitelyOpq(value._1) => lattice.getSymbolic(operator._1).map(refined(_, value)).getOrElse(value)
-        case _ => value
-      }
-
+    // if the operator is a primitive, then we can fetch its name from its value
+    case _ if lattice.isDefinitelyOpq(value._1) => lattice.getSymbolic(operator._1).map(refined(_, value)).getOrElse(value)
+    case _                                      => value
+  }
 
   def isPredicateOnVariable(expr: ScExp): Option[(String, String)] = expr match {
     case ScFunctionAp(ScIdentifier(operator, _), List(ScIdentifier(variable, _)), _, _) => Some((operator, variable))
-    case _ => None
+    case _                                                                              => None
   }
 }

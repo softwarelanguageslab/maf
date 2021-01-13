@@ -119,9 +119,7 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   // an example of how the mon special form enriches the value it returns
   eval("(mon nonzero? (if (= 1 0) 0 1))").safe()
 
-  /**
-    * Test that the OPQ value is refined to an integer
-    */
+  /** Test that the OPQ value is refined to an integer */
   eval("(int? (mon int? OPQ))").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
   }
@@ -134,16 +132,14 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
   eval("(define/contract (f a) (~> int? int?) (+ a 1)) (f 5)").safe()
 
   /**
-    * Unchecked does removes blame from the arguments of the function,
-    * this should mostly be used for running tests or benchmarks where
-    * we want to check whether f has the correct return value, but that
-    * we assume that the input values are correct
-    */
+   * Unchecked does removes blame from the arguments of the function,
+   * this should mostly be used for running tests or benchmarks where
+   * we want to check whether f has the correct return value, but that
+   * we assume that the input values are correct
+   */
   eval("(define/contract (f x) (-> int? int?) x) (@unchecked f OPQ)").safe()
 
-  /**
-    * Test if the semantics when running on a valid value are the same as the wrapped value
-    */
+  /** Test if the semantics when running on a valid value are the same as the wrapped value */
   eval("((flat int?) 0)").tested { machine =>
     println(machine.getReturnValue(ScMain))
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(true))
@@ -178,9 +174,7 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
       .map(_.topLevel) shouldEqual Some(false)
   }
 
-  /**
-    * A cons should evaluate to a cons pair
-    */
+  /** A cons should evaluate to a cons pair */
   eval("(cons 1 2)").tested { machine =>
     assert(
       machine
@@ -190,9 +184,7 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
     )
   }
 
-  /**
-    * Tests on conditions
-    */
+  /** Tests on conditions */
   eval("(and #t #f)").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectBoolean(false))
   }
@@ -257,30 +249,22 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.top)
   }
 
-  /**
-    * We should be able to get the car of a cons pair
-    */
+  /** We should be able to get the car of a cons pair */
   eval("(car (cons 1 2))").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(1))
   }
 
-  /**
-    * We should be able to get the cdr of a cons pair
-    */
+  /** We should be able to get the cdr of a cons pair */
   eval("(cdr (cons 1 2))").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(2))
   }
 
-  /**
-    * We should be able to define a function with variable number of arguments
-    */
+  /** We should be able to define a function with variable number of arguments */
   eval("(define (list . args) args) (car (cdr (list 1 2 3)))").tested { machine =>
     machine.getReturnValue(ScMain) shouldEqual Some(machine.lattice.injectInteger(2))
   }
 
-  /**
-    * Testing whether provide contract works
-    */
+  /** Testing whether provide contract works */
   eval("(define (f x) 5) (provide/contract (f (-> any? number?)))(f 5)").tested { machine =>
     assert(machine.summary.blames.isEmpty)
   }
@@ -289,26 +273,18 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
     assert(machine.summary.blames.nonEmpty)
   }
 
-  /**
-    * An integer literal should always pass the `int?` test
-    */
+  /** An integer literal should always pass the `int?` test */
   verify("int?", "5").named("flat_lit_int?").safe()
 
-  /**
-    * An opaque value can be different from an integer, so this should not be verified as safe
-    */
+  /** An opaque value can be different from an integer, so this should not be verified as safe */
   verify("int?", "OPQ").named("flat_OPQ_int?").unsafe()
 
-  /**
-    * Higher order contracts verification
-    */
+  /** Higher order contracts verification */
   verify("(or/c int? pair?)", "5").safe()
 
   verify("(or/c int? pair?)", "#t").unsafe()
 
-  /**
-    * A contract from any to any should always be verified as safe
-    */
+  /** A contract from any to any should always be verified as safe */
   verify("(~> any? any?)", "(lambda (x) x)").applied().named("id_any2any").safe()
 
   verify("(~> any? int?)", "(lambda (x) 1)").applied().named("any2int_constant1").safe()
@@ -348,8 +324,7 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
     blames.size shouldEqual 1
   }
 
-  verify("(~> int? int?)", "(lambda (x) OPQ)").tested { machine =>
-  }
+  verify("(~> int? int?)", "(lambda (x) OPQ)").tested { machine => }
 
   verify("(~> any? nonzero?)", "(lambda (x) (if (< x 2) (if (> x 2) 0 2) 2))")
     .applied(Set("int?"))
@@ -364,9 +339,9 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
     .safeIf(machine => !machine.GLOBAL_STORE_ENABLED)
 
   /**
-    * This should not be verified as safe, as the applied lambda changes x before returning it, this is to
-    * test whether the store cache is correctly invalidated if the applied lambda captures variables
-    */
+   * This should not be verified as safe, as the applied lambda changes x before returning it, this is to
+   * test whether the store cache is correctly invalidated if the applied lambda captures variables
+   */
   verify("(~> int? int?)", "(lambda (x) (begin ((lambda (y) (set! x #t)) OPQ) x))")
     .applied(Set("int?"))
     .unsafe()
@@ -387,24 +362,31 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
     .applied()
     .unsafe()
 
-  /**
-    * Test whether refined works on a both with an and in it
-    */
+  /** Test whether refined works on a both with an and in it */
   verify("(-> any? any? int?)", "(lambda (x y) (if (and (int? x) (int? y)) (+ x y) 0))")
     .applied2()
     .safe()
 
-  /**
-    * Test whether refined works on a both with an and in it
-    */
+  /** Test whether refined works on a both with an and in it */
   verify("(-> any? any? int?)", "(lambda (x y) (if (and (int? x) #t) (+ x y) 0))")
     .applied2()
     .unsafe()
 
-  /**
-   * Test that contracts for functions with no arguments work 
-   */
+  /** Test that contracts for functions with no arguments work */
   verify("(-> number?)", "(lambda () 2)")
     .applied0()
     .safe()
+
+  /* Test the letrec form wich returns a single value */
+  verify("(-> number?)", "(lambda () (letrec (x 0) x))").applied0().safe()
+
+  /* Test the letrec form with multiple bindings */
+  eval("(letrec ((x 10) (y 5)) (+ x y))").tested { machine =>
+    machine.summary.returnValues(ScMain) equals (machine.lattice.injectInteger(15))
+  }
+
+  /* Test the let form with multiple bindings */
+  eval("(let ((x 10) (y 5)) (+ x y))").tested { machine =>
+    machine.summary.returnValues(ScMain) equals (machine.lattice.injectInteger(15))
+  }
 }

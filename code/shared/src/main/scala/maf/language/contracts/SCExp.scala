@@ -4,37 +4,35 @@ import maf.core.{Expression, Identifier, Identity, Label}
 import maf.language.sexp.Value
 import maf.util.{Monoid, PrettyPrinter}
 
-case object FLAT_CONTRACT         extends Label
+case object FLAT_CONTRACT extends Label
 case object HIGHER_ORDER_CONTRACT extends Label
-case object DEPENDENT_CONTRACT    extends Label
-case object MONITOR               extends Label
-case object NIL                   extends Label
-case object VALUE                 extends Label
-case object BLAME                 extends Label
-case object IDENTIFIER            extends Label
-case object LAMBDA                extends Label
-case object FUNCTION_AP           extends Label
-case object RAISE                 extends Label
-case object CHECK                 extends Label
-case object OPQ                   extends Label
-case object LETREC                extends Label
-case object BEGIN                 extends Label
-case object IF                    extends Label
-case object SET                   extends Label
-case object ASSUME                extends Label
-case object PROGRAM               extends Label
-case object DEFINE                extends Label
-case object DEFINE_FN             extends Label
-case object DEFINE_ANNOTATED_FN   extends Label
-case object PROVIDE_CONTRACT      extends Label
-case object CONS                  extends Label
-case object CAR                   extends Label
-case object CDR                   extends Label
-case object VARARG_IDENTIFIER     extends Label
+case object DEPENDENT_CONTRACT extends Label
+case object MONITOR extends Label
+case object NIL extends Label
+case object VALUE extends Label
+case object BLAME extends Label
+case object IDENTIFIER extends Label
+case object LAMBDA extends Label
+case object FUNCTION_AP extends Label
+case object RAISE extends Label
+case object CHECK extends Label
+case object OPQ extends Label
+case object LETREC extends Label
+case object BEGIN extends Label
+case object IF extends Label
+case object SET extends Label
+case object ASSUME extends Label
+case object PROGRAM extends Label
+case object DEFINE extends Label
+case object DEFINE_FN extends Label
+case object DEFINE_ANNOTATED_FN extends Label
+case object PROVIDE_CONTRACT extends Label
+case object CONS extends Label
+case object CAR extends Label
+case object CDR extends Label
+case object VARARG_IDENTIFIER extends Label
 
-/**
-  * A language for defining software contracts
-  */
+/** A language for defining software contracts */
 trait ScExp extends Expression {
   implicit class FreeVariablesList(list: List[Expression]) {
     def fv: Set[String] = list.foldLeft(Set[String]())((a, b) => a ++ b.fv)
@@ -75,7 +73,11 @@ case class ScFlatContract(expression: ScExp, idn: Identity) extends ScContract {
   }
 }
 
-case class ScHigherOrderContract(domain: ScExp, range: ScExp, idn: Identity) extends ScContract {
+case class ScHigherOrderContract(
+    domain: ScExp,
+    range: ScExp,
+    idn: Identity)
+    extends ScContract {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = domain.fv ++ range.fv
@@ -89,7 +91,10 @@ case class ScHigherOrderContract(domain: ScExp, range: ScExp, idn: Identity) ext
   override def toString: String = s"(~> $domain $range)"
 }
 
-case class ScDependentContract(domains: List[ScExp], rangeMaker: ScExp, idn: Identity)
+case class ScDependentContract(
+    domains: List[ScExp],
+    rangeMaker: ScExp,
+    idn: Identity)
     extends ScContract {
 
   /** The set of free variables appearing in this expression. */
@@ -136,9 +141,12 @@ case class ScVarArgIdentifier(name: String, idn: Identity) extends ScExp with Sc
 
 trait ScLiterals extends ScExp
 
-case class ScLambda(variables: List[ScParam], body: ScExp, idn: Identity)
+case class ScLambda(
+    variables: List[ScParam],
+    body: ScExp,
+    idn: Identity)
     extends ScLiterals
-    with ScExp {
+       with ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] =
@@ -161,24 +169,42 @@ case class ScLambda(variables: List[ScParam], body: ScExp, idn: Identity)
   }
 }
 
-case class ScLetRec(name: ScIdentifier, binding: ScExp, body: ScExp, idn: Identity) extends ScExp {
+case class ScLetRec(
+    names: List[ScIdentifier],
+    bindings: List[ScExp],
+    body: ScExp,
+    idn: Identity)
+    extends ScExp {
 
   /** The set of free variables appearing in this expression. */
-  override def fv: Set[String] = (body.fv ++ binding.fv) - name.name
+  override def fv: Set[String] =
+    (body.fv ++ bindings.flatMap(_.fv).toSet) -- names.map(_.name).toSet
 
   /** A label indicating the type of an expression. */
   override def label: Label = LETREC
 
   /** Returns the list of subexpressions of the given expression. */
-  override def subexpressions: List[Expression] = List(body, binding)
+  override def subexpressions: List[Expression] = List(body) ++ bindings
 
-  override def toString: String = s"(letrec ($name $binding) $body)"
+  override def toString: String = {
+    val bds = names.zip(bindings).map { case (name, binding) =>
+      s"($name $binding)"
+    }
+
+    s"(letrec ${bds.mkString(" ")} $body)"
+  }
 
   override def prettyPrint(printer: PrettyPrinter): Unit = {
     printer.print(s"(letrec (", idn)
-    name.prettyPrint(printer)
-    printer.print(" ")
-    binding.prettyPrint(printer)
+
+    names.lazyZip(bindings) map { (name, binding) =>
+      printer.print("(")
+      name.prettyPrint(printer)
+      printer.print(" ")
+      binding.prettyPrint(printer)
+      printer.print(")")
+    }
+
     printer.print(")")
     printer.newIndent()
     body.prettyPrint(printer)
@@ -205,8 +231,8 @@ case class ScFunctionAp(
     operator: ScExp,
     operands: List[ScExp],
     idn: Identity,
-    annotation: Option[String] = None
-) extends ScAnnotated {
+    annotation: Option[String] = None)
+    extends ScAnnotated {
 
   override def annotatedExpression: ScExp = operands.head
 
@@ -262,7 +288,11 @@ case class ScBegin(expressions: List[ScExp], idn: Identity) extends ScExp {
   }
 }
 
-case class ScSet(variable: ScIdentifier, value: ScExp, idn: Identity) extends ScExp {
+case class ScSet(
+    variable: ScIdentifier,
+    value: ScExp,
+    idn: Identity)
+    extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = value.fv
@@ -285,8 +315,8 @@ case class ScMon(
     contract: ScExp,
     expression: ScExp,
     idn: Identity,
-    annotation: Option[String] = None
-) extends ScAnnotated {
+    annotation: Option[String] = None)
+    extends ScAnnotated {
 
   override def annotatedExpression: ScExp = expression
 
@@ -310,7 +340,11 @@ case class ScMon(
   }
 }
 
-case class ScCheck(contract: ScExp, returnValue: ScExp, idn: Identity) extends ScExp {
+case class ScCheck(
+    contract: ScExp,
+    returnValue: ScExp,
+    idn: Identity)
+    extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = contract.fv ++ returnValue.fv
@@ -322,7 +356,11 @@ case class ScCheck(contract: ScExp, returnValue: ScExp, idn: Identity) extends S
   override def subexpressions: List[Expression] = List(contract, returnValue)
 }
 
-case class ScIf(condition: ScExp, consequent: ScExp, alternative: ScExp, idn: Identity)
+case class ScIf(
+    condition: ScExp,
+    consequent: ScExp,
+    alternative: ScExp,
+    idn: Identity)
     extends ScExp {
 
   /** The set of free variables appearing in this expression. */
@@ -402,16 +440,16 @@ case class ScOpaque(idn: Identity, refinement: Set[String]) extends ScExp {
 }
 
 /**
-  * An assumption of the form:
-  *
-  * (assume (identifier assumption) expression)
-  */
+ * An assumption of the form:
+ *
+ * (assume (identifier assumption) expression)
+ */
 case class ScAssume(
     identifier: ScIdentifier,
     assumption: ScExp,
     expression: ScExp,
-    idn: Identity
-) extends ScExp {
+    idn: Identity)
+    extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = expression.fv
@@ -424,10 +462,14 @@ case class ScAssume(
 }
 
 /**
-  * A variable definition
-  * (define x expression)
-  */
-case class ScDefine(variable: ScIdentifier, expression: ScExp, idn: Identity) extends ScExp {
+ * A variable definition
+ * (define x expression)
+ */
+case class ScDefine(
+    variable: ScIdentifier,
+    expression: ScExp,
+    idn: Identity)
+    extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = expression.fv
@@ -439,9 +481,7 @@ case class ScDefine(variable: ScIdentifier, expression: ScExp, idn: Identity) ex
   override def subexpressions: List[Expression] = List(expression)
 }
 
-/**
-  * A soft contract program
-  * */
+/** A soft contract program */
 case class ScProgram(expressions: List[ScExp], idn: Identity) extends ScExp {
 
   /** The set of free variables appearing in this expression. */
@@ -455,17 +495,17 @@ case class ScProgram(expressions: List[ScExp], idn: Identity) extends ScExp {
 }
 
 /**
-  * A function definition
-  *
-  * Syntax:
-  * (define (name parameters ...) expressions ...)
-  */
+ * A function definition
+ *
+ * Syntax:
+ * (define (name parameters ...) expressions ...)
+ */
 case class ScDefineFn(
     name: ScIdentifier,
     parameters: List[ScParam],
     expressions: ScBegin,
-    idn: Identity
-) extends ScExp {
+    idn: Identity)
+    extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = expressions.fv -- parameters.map(_.name).toSet
@@ -478,18 +518,18 @@ case class ScDefineFn(
 }
 
 /**
-  * A function definition annotated with a contract
-  *
-  * Syntax:
-  * (define (name parameters ...) contract expressions ...)
-  */
+ * A function definition annotated with a contract
+ *
+ * Syntax:
+ * (define (name parameters ...) contract expressions ...)
+ */
 case class ScDefineAnnotatedFn(
     name: ScIdentifier,
     parameters: List[ScParam],
     contract: ScExp,
     expressions: ScBegin,
-    idn: Identity
-) extends ScExp {
+    idn: Identity)
+    extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = expressions.fv -- parameters.map(_.name).toSet
@@ -501,7 +541,11 @@ case class ScDefineAnnotatedFn(
   override def subexpressions: List[Expression] = expressions.subexpressions
 }
 
-case class ScCons(car: ScExp, cdr: ScExp, idn: Identity) extends ScExp {
+case class ScCons(
+    car: ScExp,
+    cdr: ScExp,
+    idn: Identity)
+    extends ScExp {
 
   /** The set of free variables appearing in this expression. */
   override def fv: Set[String] = car.fv ++ cdr.fv
@@ -540,8 +584,8 @@ case class ScCdr(pai: ScExp, idn: Identity) extends ScExp {
 case class ScProvideContracts(
     identifiers: List[ScIdentifier],
     contracts: List[ScExp],
-    idn: Identity
-) extends ScExp {
+    idn: Identity)
+    extends ScExp {
   import maf.util.MonoidInstances._
 
   /** The set of free variables appearing in this expression. */
@@ -572,14 +616,12 @@ abstract class ScTraverser[T: Monoid] {
 object ScTraverser {
   def traverse[T: Monoid](exp: ScExp)(f: ScExp => Either[T, T]): T = {
     val traverser = new ScTraverser[T] {
-      override def traverse(exp: ScExp): T = {
+      override def traverse(exp: ScExp): T =
         f(exp) match {
           case Left(value) => value
-          case Right(value) => {
+          case Right(value) =>
             Monoid[T].append(value, super.traverse(exp))
-          }
         }
-      }
     }
     traverser.traverse(exp)
   }

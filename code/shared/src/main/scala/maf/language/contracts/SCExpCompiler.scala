@@ -1,20 +1,17 @@
 package maf.language.contracts
 
-import maf.core.{Identifier, Identity}
+import maf.core.Identity
 import maf.language.sexp.{SExp, SExpId, SExpPair, SExpParser, SExpValue, ValueNil, ValueString}
 import maf.language.sexp.ValueSymbol
 
-/**
-  * Compiles a program of S-expressions into a program of ScExp
-  */
+/** Compiles a program of S-expressions into a program of ScExp */
 object SCExpCompiler {
   object :: {
-    def unapply(value: SExp): Option[(SExp, SExp)] = {
+    def unapply(value: SExp): Option[(SExp, SExp)] =
       value match {
         case SExpPair(car, cdr, _) => Some((car, cdr))
         case _                     => None
       }
-    }
   }
 
   object Ident {
@@ -35,6 +32,15 @@ object SCExpCompiler {
 
   case class SCExpCompilerException(message: String) extends Exception
 
+  def compile_letrec_bindings(bindings: SExp): (List[ScIdentifier], List[ScExp]) =
+    bindings match {
+      case ListNil(_) => (List(), List())
+      case ((IdentWithIdentity(name, idn) :: binding :: ListNil(_)) :: cdr) =>
+        val (compiledNames, compiledBindings) = compile_letrec_bindings(cdr)
+        (ScIdentifier(name, idn) :: compiledNames, compile(binding) :: compiledBindings)
+      case _ => throw new Exception("invalid letrec binding")
+    }
+
   def compile_params(s: SExp): List[ScParam] = s match {
     case IdentWithIdentity(args, args_idn) =>
       List(ScVarArgIdentifier(args, args_idn))
@@ -45,9 +51,8 @@ object SCExpCompiler {
   }
 
   def compile_sequence(s: SExp): List[ScExp] = s match {
-    case SExpPair(exp, cdr, _) => {
+    case SExpPair(exp, cdr, _) =>
       compile(exp) :: compile_sequence(cdr)
-    }
     case SExpValue(ValueNil, _) => List()
   }
 
@@ -71,36 +76,36 @@ object SCExpCompiler {
   }
 
   /**
-    * Compiles a named letrec to a normal letrec
-    * @param functionName the name of the recursive function
-    * @param paramNames the names of the parameters, these will be bound in the environment of the body
-    * @param values the values to which to initially bind the parameters (as expressions)
-    * @param body the uncompiled body of the letrec
-    * @param idn an identity that the translated version of the letrec can assume
-    * @return a function application of the recursive function defined by the letrec
-    *         Example: (letrec loop ((x 10)) (loop (+ x 1))) becomes
-    *         ((letrec loop (lambda (x) (loop (+ x 1))) loop) 10)
-    */
+   * Compiles a named letrec to a normal letrec
+   * @param functionName the name of the recursive function
+   * @param paramNames the names of the parameters, these will be bound in the environment of the body
+   * @param values the values to which to initially bind the parameters (as expressions)
+   * @param body the uncompiled body of the letrec
+   * @param idn an identity that the translated version of the letrec can assume
+   * @return a function application of the recursive function defined by the letrec
+   *         Example: (letrec loop ((x 10)) (loop (+ x 1))) becomes
+   *         ((letrec (loop (lambda (x) (loop (+ x 1)))) loop) 10)
+   */
   def named_letrec_compile(
       functionName: SExpId,
       paramNames: List[SExpId],
       values: List[SExp],
       body: SExp,
       idn: Identity
-  ): ScExp = {
-    val compiledBindings   = values.map(compile)
-    val compiledBody       = compile(body)
-    val fnName             = ScIdentifier(functionName.id.name, functionName.idn)
+    ): ScExp = {
+    val compiledBindings = values.map(compile)
+    val compiledBody = compile(body)
+    val fnName = ScIdentifier(functionName.id.name, functionName.idn)
     val compiledParamNames = paramNames.map(n => ScIdentifier(n.id.name, n.idn))
-    val lambda             = ScLambda(compiledParamNames, compiledBody, idn)
-    val letrec             = ScLetRec(fnName, lambda, fnName, idn)
+    val lambda = ScLambda(compiledParamNames, compiledBody, idn)
+    val letrec = ScLetRec(List(fnName), List(lambda), fnName, idn)
     ScFunctionAp(letrec, compiledBindings, idn)
   }
 
   def compile_fn_contracts(exp: SExp): List[ScExp] = exp match {
     case ListNil(_) => List()
     case contract :: contracts =>
-      val compiledContract  = compile(contract)
+      val compiledContract = compile(contract)
       val compiledContracts = compile_fn_contracts(contracts)
       compiledContract :: compiledContracts
   }
@@ -122,13 +127,13 @@ object SCExpCompiler {
 
     case (Ident("~>") | Ident("->")) :: domain :: range :: ListNil(_) =>
       val domainCompiled = compile(domain)
-      val rangeCompiled  = compile(range)
+      val rangeCompiled = compile(range)
       ScHigherOrderContract(domainCompiled, rangeCompiled, prog.idn)
 
     case (Ident("~>") | Ident("->")) :: contracts =>
       val compiledContracts = compile_fn_contracts(contracts)
-      val domainContracts   = compiledContracts.init
-      val rangeContract     = compiledContracts.last
+      val domainContracts = compiledContracts.init
+      val rangeContract = compiledContracts.last
       val rangeMaker =
         ScLambda(List(ScVarArgIdentifier("0args", Identity.none)), rangeContract, rangeContract.idn)
 
@@ -136,12 +141,12 @@ object SCExpCompiler {
 
     case Ident("~") :: domain :: range :: ListNil(_) =>
       val domainCompiled = compile(domain)
-      val rangeCompiled  = compile(range)
+      val rangeCompiled = compile(range)
       ScDependentContract(List(domainCompiled), rangeCompiled, prog.idn)
 
     case SExpId(identifier) => ScIdentifier(identifier.name, prog.idn)
     case (Ident("lambda") | Ident("λ")) :: params :: expression :: ListNil(_) =>
-      val compiledParams     = compile_params(params)
+      val compiledParams = compile_params(params)
       val compiledExpression = compile(expression)
       ScLambda(compiledParams, compiledExpression, prog.idn)
 
@@ -151,30 +156,36 @@ object SCExpCompiler {
           _
         ) =>
       val compiledBindingExpression = compile(bindingExpression)
-      val compiledExpression        = compile(expression)
-      ScLetRec(ScIdentifier(name, idn), compiledBindingExpression, compiledExpression, prog.idn)
+      val compiledExpression = compile(expression)
+      ScLetRec(List(ScIdentifier(name, idn)), List(compiledBindingExpression), compiledExpression, prog.idn)
 
     case Ident("letrec") :: ((fnName: SExpId) :: (varName: SExpId) :: bindingExpression :: ListNil(
           _
         )) :: expression :: ListNil(_) =>
       named_letrec_compile(fnName, List(varName), List(bindingExpression), expression, prog.idn)
 
+    // this is a form of let/letrec that is the most often found in R5RS
+    case (Ident("letrec") | Ident("let")) :: (bindings) :: expression :: ListNil(_) =>
+      val (compiledNames, compiledBindings) = compile_letrec_bindings(bindings)
+      val compiledExpression = compile(expression)
+      ScLetRec(compiledNames, compiledBindings, compiledExpression, prog.idn)
+
     case Ident("letrec") :: _ =>
       throw new Exception(s"invalid syntax for letrec at ${prog.idn.pos}")
 
     case Ident("mon") :: Ident(annotation) :: contract :: expression :: ListNil(_) =>
-      val compiledContract   = compile(contract)
+      val compiledContract = compile(contract)
       val compiledExpression = compile(expression)
       ScMon(compiledContract, compiledExpression, prog.idn, Some(annotation))
 
     case Ident("mon") :: contract :: expression :: ListNil(_) =>
-      val compiledContract   = compile(contract)
+      val compiledContract = compile(contract)
       val compiledExpression = compile(expression)
       ScMon(compiledContract, compiledExpression, prog.idn)
 
     case Ident("if") :: condition :: consequent :: alternative :: ListNil(_) =>
-      val compiledCondition   = compile(condition)
-      val compiledConsequent  = compile(consequent)
+      val compiledCondition = compile(condition)
+      val compiledConsequent = compile(consequent)
       val compiledAlternative = compile(alternative)
       ScIf(compiledCondition, compiledConsequent, compiledAlternative, prog.idn)
 
@@ -185,7 +196,7 @@ object SCExpCompiler {
       ScBegin(compile_sequence(expressions), prog.idn)
 
     case Ident("check") :: contract :: expression :: ListNil(_) =>
-      val compiledContract   = compile(contract)
+      val compiledContract = compile(contract)
       val compiledExpression = compile(expression)
       ScCheck(compiledContract, compiledExpression, prog.idn)
 
@@ -202,12 +213,12 @@ object SCExpCompiler {
 
     case Ident("define") :: (IdentWithIdentity(f, idn) :: params) :: expressions =>
       val compiledSequence = ScBegin(compile_sequence(expressions), expressions.idn)
-      val compiledParams   = compile_params(params)
+      val compiledParams = compile_params(params)
       ScDefineFn(ScIdentifier(f, idn), compiledParams, compiledSequence, prog.idn)
 
     case Ident("define/contract") :: (IdentWithIdentity(f, idn) :: params) :: contract :: expressions =>
       val compiledSequence = ScBegin(compile_sequence(expressions), expressions.idn)
-      val compiledParams   = compile_params(params)
+      val compiledParams = compile_params(params)
       val compiledContract = compile(contract)
       ScDefineAnnotatedFn(
         ScIdentifier(f, idn),
@@ -265,10 +276,10 @@ object SCExpCompiler {
   }
 
   /**
-    * Prepends the prelude to the beginning of the program
-    * @param s the program to read and compile into the an AST of the contract language
-    * @return an AST of the contract language
-    */
+   * Prepends the prelude to the beginning of the program
+   * @param s the program to read and compile into the an AST of the contract language
+   * @return an AST of the contract language
+   */
   def preludedRead(s: String): ScExp = {
     import ScPrelude._
     read(preludeString ++ s"\n$s")
