@@ -8,7 +8,7 @@ import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
 object InterpretProgram extends App {
-  val text = Reader.loadFile("test/R5RS/VUB-projects/railway-control-system.scm")
+  val text = Reader.loadFile("test/DEBUG1.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), true, true)
   val res = interpreter.run(
     CSchemeUndefiner.undefine(
