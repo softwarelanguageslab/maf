@@ -1,7 +1,5 @@
 package maf.lattice
 
-import maf.lattice.interfaces.IntLattice
-
 import scala.util.Random
 
 /** Various implementations of mathematical utilities functions. */
@@ -41,15 +39,4 @@ object MathOps {
       scala.math.round(n).toDouble
     }
   }
-
-  /** Used to convert big integers to doubles, but warns if the value is too big/small. */
-  implicit def bigIntToDouble(i: BigInt): Double = if (i.isValidDouble) i.doubleValue else throw new Exception(s"Illegal conversion of $i to double.")
-
-  def bigIntToInt(i: BigInt): Int = if (i.isValidInt) i.intValue else throw new Exception(s"Illegal conversion of $i to int.")
-
-  def bigIntFromString(s: String): Option[BigInt] =
-    try Some(BigInt(s, 10)) // May throw a NumberFormatException.
-    catch {
-      case _: Throwable => None
-    }
 }

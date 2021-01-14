@@ -113,7 +113,7 @@ class SchemeInterpreter(
     stack: Boolean = false) {
   import scala.util.control.TailCalls._
   import SchemeInterpreter._
-  import MathOps._
+  import maf.lattice.NumOps._
 
   /**
    * Evaluates `program`.
