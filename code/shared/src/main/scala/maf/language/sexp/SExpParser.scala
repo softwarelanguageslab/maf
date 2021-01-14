@@ -2,6 +2,7 @@ package maf.language.sexp
 
 import maf.core.Position._
 import maf.core._
+import maf.lattice.MathOps
 
 /**
  * Implementation of a simple s-expression parser, which supports some
@@ -137,9 +138,9 @@ class SExpLexer extends Lexical with SExpTokens {
   def integer: Parser[SExpToken] =
     sign ~ rep1(digit) <~ guard(delimiter) ^^ { case s ~ n =>
       s match {
-        case Some('+') => TInteger(n.mkString.toInt)
-        case Some('-') => TInteger(-n.mkString.toInt)
-        case _         => TInteger(n.mkString.toInt)
+        case Some('+') => TInteger(MathOps.bigIntFromString((s ++ n).mkString).getOrElse(throw new Exception("Illegal number.")))
+        case Some('-') => TInteger(MathOps.bigIntFromString((s ++ n).mkString).getOrElse(throw new Exception("Illegal number.")))
+        case _         => TInteger(MathOps.bigIntFromString(n.mkString).getOrElse(throw new Exception("Illegal number.")))
       }
     }
   def character: Parser[SExpToken] =
