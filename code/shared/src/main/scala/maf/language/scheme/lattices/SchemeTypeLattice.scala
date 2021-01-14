@@ -176,6 +176,9 @@ class TypeSchemeLattice[A <: Address, K] {
     def number(x: scala.Int): L = Inject.num
     def numTop: L = Inject.num
     def charTop: L = Inject.char
+    def stringTop: L = Inject.str
+    def realTop: L = Inject.num
+    def symbolTop: L = Inject.sym
     def real(x: Double): L = Inject.num
     def string(x: String): L = Inject.str
     def bool(x: Boolean): L = Inject.bool
