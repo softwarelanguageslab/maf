@@ -10,5 +10,4 @@ trait SymbolLattice[Sym] extends Lattice[Sym] {
 
 object SymbolLattice {
   def apply[Sym: SymbolLattice]: SymbolLattice[Sym] = implicitly
-
 }
