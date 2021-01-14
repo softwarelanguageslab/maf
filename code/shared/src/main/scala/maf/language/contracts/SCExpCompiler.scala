@@ -179,10 +179,10 @@ object SCExpCompiler {
       named_letrec_compile(fnName, List(varName), List(bindingExpression), expression, prog.idn)
 
     // this is a form of let/letrec that is the most often found in R5RS
-    case (Ident("letrec") | Ident("let")) :: (bindings) :: expression :: ListNil(_) =>
+    case (Ident("letrec") | Ident("let")) :: (bindings @ SExpPair(_, _, _)) :: expressions =>
       val (compiledNames, compiledBindings) = compile_letrec_bindings(bindings)
-      val compiledExpression = compile(expression)
-      ScLetRec(compiledNames, compiledBindings, compiledExpression, prog.idn)
+      val compiledExpressions = compile_sequence(expressions)
+      ScLetRec(compiledNames, compiledBindings, ScBegin(compiledExpressions, Identity.none), prog.idn)
 
     case Ident("letrec") :: _ =>
       throw new Exception(s"invalid syntax for letrec at ${prog.idn.pos}")
