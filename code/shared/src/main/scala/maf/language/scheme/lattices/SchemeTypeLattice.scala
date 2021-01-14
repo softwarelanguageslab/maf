@@ -173,7 +173,9 @@ class TypeSchemeLattice[A <: Address, K] {
     def getThreads(x: L): Set[TID] = throw new Exception("Not supported.")
     def getContinuations(x: L): Set[K] = ???
     def bottom: L = Inject.bottom
-    def number(x: scala.Int): L = Inject.num
+
+    def number(x: BigInt): L = Inject.num
+
     def numTop: L = Inject.num
     def charTop: L = Inject.char
     def real(x: Double): L = Inject.num

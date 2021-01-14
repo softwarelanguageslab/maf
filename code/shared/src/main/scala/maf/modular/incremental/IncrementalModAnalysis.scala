@@ -5,9 +5,7 @@ import maf.language.change.CodeVersion._
 import maf.language.change._
 import maf.modular._
 import maf.modular.worklist.SequentialWorklistAlgorithm
-import maf.util.Annotations.{nonMonotonicUpdate, _}
-import maf.util.Logger
-import maf.util.Logger.Log
+import maf.util.Annotations._
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion.sunion
 

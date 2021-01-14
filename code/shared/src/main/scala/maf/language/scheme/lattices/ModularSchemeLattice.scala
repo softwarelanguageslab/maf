@@ -586,7 +586,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       }
     }
 
-    def number(x: scala.Int): Value = Int(IntLattice[I].inject(x))
+    def number(x: BigInt): Value = Int(IntLattice[I].inject(x))
+
     def real(x: Double): Value = Real(RealLattice[R].inject(x))
     def string(x: String): Value = Str(StringLattice[S].inject(x))
     def bool(x: Boolean): Value = Bool(BoolLattice[B].inject(x))
@@ -810,7 +811,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       lock.foldMapL(l => Value.release(l, tid))
 
     def bottom: L = Elements(List.empty)
-    def number(x: scala.Int): L = Element(Value.number(x))
+
+    def number(x: BigInt): L = Element(Value.number(x))
+
     def numTop: L = Element(Int(IntLattice[I].top))
     def charTop: L = Element(Char(CharLattice[C].top))
     def real(x: Double): L = Element(Value.real(x))

@@ -53,9 +53,11 @@ trait SExpTokens extends Tokens {
   case class TString(s: String) extends SExpToken {
     def chars = s""""$s""""
   }
-  case class TInteger(n: Int) extends SExpToken {
+
+  case class TInteger(n: BigInt) extends SExpToken {
     def chars = n.toString
   }
+
   case class TReal(n: Double) extends SExpToken {
     def chars = n.toString
   }

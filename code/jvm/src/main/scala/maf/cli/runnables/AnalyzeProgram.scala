@@ -1,11 +1,10 @@
 package maf.cli.runnables
 
 import maf.language.CScheme.CSchemeParser
-import maf.language.scheme.{SchemeExp, SchemeParser}
-import maf.modular.{DependencyTracking, ModAnalysis}
+import maf.language.scheme._
+import maf.modular._
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modf._
-import maf.modular.scheme.ssmodconc._
 import maf.modular.worklist.{FIFOWorklistAlgorithm, LIFOWorklistAlgorithm}
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
@@ -35,7 +34,7 @@ object AnalyzeProgram extends App {
   }
 
   val bench: List[String] = List(
-    "test/R5RS/WeiChenRompf2019/toplas98/nucleic.sch"
+    "test/R5RS/gambit/compiler.scm"
   )
 
   // Used by webviz.
