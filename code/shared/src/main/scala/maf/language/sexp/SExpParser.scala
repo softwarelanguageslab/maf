@@ -296,4 +296,16 @@ object SExpParser extends TokenParsers {
     case Failure(msg, next) => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
     case Error(msg, next)   => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
   }
+
+  /* 
+    * Similar to parse, but:
+    * - only parses a single SExp
+    * - doesn't require having reached the end of the reader after parsing
+    * - can use any reader as input (instead of reading a full string from the beginning)
+  */
+  def parseIn(s: Reader[Char], tag: PTag = noTag): (SExp, Int) = exp(tag)(new lexical.Scanner(s)) match {
+    case Success(res, next) => (res, next.offset)
+    case failure: NoSuccess => throw new Exception(s"cannot parse expression: $failure")
+  }
+
 }
