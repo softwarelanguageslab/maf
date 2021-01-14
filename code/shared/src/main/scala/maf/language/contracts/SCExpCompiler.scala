@@ -32,6 +32,19 @@ object SCExpCompiler {
 
   case class SCExpCompilerException(message: String) extends Exception
 
+  /* Transforms a quoted expression to an expression involving cons */
+  def compile_quoted(expr: SExp): ScExp = expr match {
+    case IdentWithIdentity(sym, idn) =>
+      ScValue(ValueSymbol(sym), idn)
+
+    case SExpValue(value, idn) =>
+      ScValue(value, idn)
+
+    case ListNil(idn) => ScNil(idn)
+    case SExpPair(car, cdr, idn) =>
+      ScCons(compile_quoted(car), compile_quoted(cdr), idn)
+  }
+
   def compile_letrec_bindings(bindings: SExp): (List[ScIdentifier], List[ScExp]) =
     bindings match {
       case ListNil(_) => (List(), List())
@@ -252,8 +265,13 @@ object SCExpCompiler {
     case Ident("provide/contract") :: contracts =>
       compile_contracts(contracts)
 
+    // Symbols
     case Ident("quote") :: IdentWithIdentity(s, idn) :: ListNil(_) =>
       ScValue(ValueSymbol(s), idn)
+
+    // Other quoted values
+    case Ident("quote") :: expr :: ListNil(_) =>
+      compile_quoted(expr)
 
     case Ident(annotation) :: operator :: arguments if annotation.startsWith("@") =>
       ScFunctionAp(compile(operator), compile_sequence(arguments), prog.idn, Some(annotation))

@@ -555,6 +555,8 @@ case class ScCons(
 
   /** Returns the list of subexpressions of the given expression. */
   override def subexpressions: List[Expression] = List(car, cdr)
+
+  override def toString = s"(cons $car $cdr)"
 }
 
 case class ScCar(pai: ScExp, idn: Identity) extends ScExp {

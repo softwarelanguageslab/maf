@@ -5,6 +5,7 @@ import maf.language.contracts.{ScExp, _}
 import maf.language.sexp.{ValueBoolean, ValueInteger}
 import maf.util.benchmarks.Timeout
 import maf.language.sexp.ValueSymbol
+import maf.language.sexp.ValueNil
 
 trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanticsMonad with FunctionSummary {
 
@@ -440,7 +441,8 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       case ValueInteger(i) => pure((lattice.injectInteger(i), value))
       case ValueBoolean(b) => pure((lattice.injectBoolean(b), value))
       case ValueSymbol(s)  => pure((lattice.injectSymbol(Symbol(s)), ScNil()))
-      case _               => throw new Exception("unsupported value")
+      case ValueNil        => result(lattice.injectNil)
+      case _               => throw new Exception(s"unsupported value ${value}")
     }
 
     def evalIdentifier(identifier: ScIdentifier): ScEvalM[PostValue] =

@@ -8,6 +8,8 @@ import maf.language.contracts.SCExpCompiler
 import maf.modular.contracts.ScCallInsensitivity
 import maf.modular.contracts.ScConstantPropagationDomain
 import maf.modular.contracts.ScMain
+import maf.language.contracts.ScPrelude
+import maf.modular.contracts.ScAnalysisWithPrelude
 
 /** A tiny REPL for testing soft contract verification on smaller programs */
 object SoftContractConsole extends App {
@@ -15,19 +17,34 @@ object SoftContractConsole extends App {
     print("> ")
     val input = readLine().trim()
     if (input != ":q") {
-      val exp = SCExpCompiler.read(input)
+      val exp =
+        try SCExpCompiler.read(input)
+        catch {
+          case e: Exception =>
+            println(s"error while parsing expression ${e.getMessage()}")
+            return repl()
+        }
+
+      println(s"Analysing ${exp}")
+
       val analyser = new SimpleScSemantics(exp)
         with ScConstantPropagationDomain
         with ScCallInsensitivity
         with ScJVMAnalysis
         with ScGlobalStoreAnalysis
+        with ScAnalysisWithPrelude
 
-      analyser.analyze()
-      println("Analysis terminated")
-      println("Summary")
-      println(s"Parsed expression $exp")
-      println(s"ScMain return value ${analyser.summary.returnValues(ScMain)}")
-      println(s"Blames map ${analyser.summary.blames}")
+      try {
+        analyser.analyze()
+        println("Analysis terminated")
+        println("Summary")
+        println(s"Parsed expression $exp")
+        println(s"ScMain return value ${analyser.summary.returnValues(ScMain)}")
+        println(s"Blames map ${analyser.summary.blames}")
+      } catch {
+        case e: Exception =>
+          println(s"an error occured during the analysis '${e.getMessage()}'")
+      }
       repl()
     }
   }
