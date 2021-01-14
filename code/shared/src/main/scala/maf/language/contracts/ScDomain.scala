@@ -331,6 +331,11 @@ trait ScDomain[I, B, Addr <: Address] {
       case _       => false
     }
 
+    def isDefinitelyArrow(value: Value): Boolean = value match {
+      case Arrs(_) => true
+      case _       => false
+    }
+
     def isSymbol(value: Value): Boolean = value match {
       case Symbols(_) => true
       case _          => false
@@ -504,6 +509,11 @@ class ScCoProductLattice[I, B, Addr <: Address](
 
     def isDefinitelyOpq(value: CoProductValue): Boolean = value match {
       case CoProduct(value) => Values.isDefinitelyOpq(value)
+      case _                => false
+    }
+
+    def isDefinitelyArrow(value: CoProductValue): Boolean = value match {
+      case CoProduct(value) => Values.isDefinitelyArrow(value)
       case _                => false
     }
 
@@ -862,6 +872,8 @@ class ScProductLattice[I, B, Addr <: Address](
 
       /** Returns true if the value is possibly a cons pair */
       override def isCons(value: ProductElements): Boolean = ???
+
+      override def isDefinitelyArrow(value: ProductElements): Boolean = ???
 
       /** Extracts the set of cons pairs from the abstract value */
       override def getCons(value: ProductElements): Set[Cons[Addr]] = ???

@@ -1,10 +1,9 @@
 package maf.modular.contracts
-import maf.core.{Environment, Identity, Lattice}
+import maf.core.Identity
 import maf.language.contracts.ScLattice._
 import maf.language.contracts.{ScExp, _}
 import maf.language.sexp.{ValueBoolean, ValueInteger}
 import maf.util.benchmarks.Timeout
-import maf.util.benchmarks.Timer
 import maf.language.sexp.ValueSymbol
 
 trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanticsMonad with FunctionSummary {
@@ -258,9 +257,15 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
         for {
           addr <- lookup(variable.name)
           value <- read(addr)
-          evaluatedContract <- eval(contract)
-          annotatedFn <- applyMon(evaluatedContract, value, contract.idn, variable.idn)
-          _ <- writeForce(addr, annotatedFn)
+          // FIXME: this is possibly unsound. It serves as a hack to fix issues with flow insensitivity  and writeForce
+          annotatedFn <-
+            if (lattice.isDefinitelyArrow(value._1)) pure(value)
+            else
+              for {
+                evaluatedContract <- eval(contract)
+                annotatedFn <- applyMon(evaluatedContract, value, contract.idn, variable.idn)
+                _ <- writeForce(addr, annotatedFn)
+              } yield annotatedFn
         } yield annotatedFn
       })
 
@@ -279,18 +284,27 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       for {
         addr <- lookupOrDefine(name, component)
         lambda <- eval(ScLambda(parameters, body, idn))
-        // TODO: check that this is sound, it is actually not, due to the prescense of set!
-        // the issue that we encouter is actually with the provide/contract, which relies
-        // on flow sensitivity and which is not possible when we are using the global store.
-        //
-        // A possible solution would be to check whether the address contains a contract that
-        // points to the value we are going to write (the lambda), if so, then we could resist
-        // replacing it, otherwise we replace it.
-        //
-        // Also, this is potentially unsafe, as we would force a write to the given address,
-        // which should trigger an analysis of another component, which might change it to something it else,
-        // then we force the value again, ... We never reach a fixpoint.
-        _ <- writeForce(addr, (lambda._1, name))
+
+        // The logic below for writing the lambda to the store is rather complicated.
+        // The reason for this is that the value can be overwritten by a provide/contract,
+        // in that case we would like to keep the contract if it points to the lambda,
+        // otherwise we use a join.
+        value <- read(addr)
+        _ <-
+          if (lattice.isDefinitelyArrow(value._1) && lattice.getArr(value._1).size == 1) {
+            // the address we try to write to contains a contract
+            read(lattice.getArr(value._1).head.e).flatMap { (wrappedValue) =>
+              if (wrappedValue._1 == lambda._1)
+                // the contract wraps us, we don't overwrite (or join)
+                unit
+              else
+                // the contract does not point to us, use a normal join
+                write(addr, (lambda._1, name))
+            }
+          } else
+            // the value on the adress is not a contract, use a normal join
+            write(addr, (lambda._1, name))
+
       } yield lambda
 
     def evalDefineAnnotatedFn(
@@ -438,7 +452,13 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
     def evalFunctionAp(operator: ScExp, operands: List[ScExp]): ScEvalM[PostValue] = for {
       evaluatedOperator <- eval(operator)
       evaluatedOperands <- sequence(operands.map(eval))
+      _ <- debug {
+        println(s"Doing application of ${evaluatedOperator} on ${evaluatedOperands}")
+      }
       res <- applyFn(evaluatedOperator, evaluatedOperands, operands)
+      _ <- debug {
+        println(s"result of evaluating function ${operator} is ${res}")
+      }
     } yield res
 
     def evalIf(
@@ -531,6 +551,9 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
           rangeMaker <- read(contract.rangeMaker)
           rangeContract <- applyFn(rangeMaker, values, syntacticOperands)
           fn <- read(arr.e)
+          _ <- debug {
+            println(s"applying function ${fn}")
+          }
           resultValue <- applyFn(fn, values, syntacticOperands)
           checkedResultValue <- applyMon(rangeContract, resultValue, contract.rangeMaker.idn, arr.e.idn)
         } yield checkedResultValue
