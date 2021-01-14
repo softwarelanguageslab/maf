@@ -11,9 +11,11 @@ case class ValueString(value: String) extends Value {
 case class ValueSymbol(sym: String) extends Value {
   override def toString: String = s"'$sym"
 }
-case class ValueInteger(value: Int) extends Value {
+
+case class ValueInteger(value: BigInt) extends Value {
   override def toString: String = value.toString
 }
+
 case class ValueReal(value: Double) extends Value {
   override def toString: String = f"$value%e".replace(",", ".") // Might not preserve full precision, but will be in a Scheme-compatible format
 }

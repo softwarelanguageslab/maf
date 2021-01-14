@@ -91,7 +91,8 @@ object Type {
       def not(b: T) = b
     }
     implicit val typeIsInteger: IntLattice[I] = new BaseInstance("Int") with IntLattice[I] {
-      def inject(x: Int): T = Top
+      def inject(x: BigInt): T = Top
+
       def toReal[R2: RealLattice](n: T): R2 = n.to[R2]
       def random(n: T): T = n
       def plus(n1: T, n2: T): T = meet(n1, n2)

@@ -55,7 +55,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def getThreads(x: L): Set[TID]
 
   /** Injection of an integer */
-  def number(x: Int): L
+  def number(x: BigInt): L
 
   /** Top element for all integers */
   def numTop: L

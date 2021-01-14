@@ -101,7 +101,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case SchemeInterpreter.Value.Cons(a, d)   => baseLattice.cons(convertConcreteValue(a), convertConcreteValue(d))
     case SchemeInterpreter.Value.Pointer(a)   => baseLattice.pointer(convertConcreteAddr(a))
     case SchemeInterpreter.Value.Vector(siz, els, _) =>
-      def convertNumber(n: Int): Num = baseLattice.number(n) match {
+      def convertNumber(n: BigInt): Num = baseLattice.number(n) match {
         case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
       }
       val cSiz = convertNumber(siz)

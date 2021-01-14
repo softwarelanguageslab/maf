@@ -1,7 +1,6 @@
 package maf.language.scheme
 
 import java.util.concurrent.TimeUnit
-
 import maf.core.Position.Position
 import maf.core._
 import maf.language.CScheme._
@@ -9,6 +8,7 @@ import maf.language.change.CodeVersion._
 import maf.util._
 import maf.language.sexp
 import maf.language.sexp._
+import maf.lattice.MathOps
 import maf.util.benchmarks.Timeout
 
 import scala.concurrent.TimeoutException
@@ -134,6 +134,7 @@ class SchemeInterpreter(
     stack: Boolean = false) {
   import scala.util.control.TailCalls._
   import SchemeInterpreter._
+  import maf.lattice.NumOps._
 
   /**
    * Evaluates `program`.
@@ -810,16 +811,19 @@ class SchemeInterpreter(
     object Div extends SimplePrim {
       val name = "/"
       def call(args: List[Value], position: Position) = args match {
-        case Nil                     => stackedException("/: wrong number of arguments")
-        case Value.Integer(1) :: Nil => Value.Integer(1)
-        case Value.Integer(x) :: Nil => Value.Real(1.0 / x)
-        case Value.Real(x) :: Nil    => Value.Real(1.0 / x)
+        case Nil                                            => stackedException("/: wrong number of arguments")
+        case Value.Integer(i) :: Nil if i.equals(BigInt(1)) => Value.Integer(BigInt(1))
+        case Value.Integer(x) :: Nil                        => Value.Real(1.0 / x)
+        case Value.Real(x) :: Nil                           => Value.Real(1.0 / x)
         case Value.Integer(x) :: rest =>
           Times.call(rest, position) match {
             case Value.Integer(y) =>
-              if (x % y == 0) { Value.Integer(x / y) }
-              else { Value.Real(x.toDouble / y) }
-            case Value.Real(y) => Value.Real(x / y)
+              if (x % y == 0) {
+                Value.Integer(x / y)
+              } else {
+                Value.Real(x.toDouble / y)
+              }
+            case Value.Real(y) => Value.Real(x.doubleValue / y)
             case v             => throw new UnexpectedValueTypeException[Value](v)
           }
         case Value.Real(x) :: rest =>
@@ -844,7 +848,7 @@ class SchemeInterpreter(
 
     object Abs extends SingleArgumentPrim("abs") {
       def fun = {
-        case Value.Integer(x) => Value.Integer(scala.math.abs(x))
+        case Value.Integer(x) => Value.Integer(x.abs)
         case Value.Real(x)    => Value.Real(scala.math.abs(x))
       }
     }
@@ -950,8 +954,8 @@ class SchemeInterpreter(
     }
     object Zerop extends SingleArgumentPrim("zero?") {
       def fun = {
-        case Value.Integer(0) => Value.Bool(true)
-        case _: Value.Integer => Value.Bool(false)
+        case Value.Integer(i) if i.equals(BigInt(0)) => Value.Bool(true)
+        case _: Value.Integer                        => Value.Bool(false)
       }
     }
 
@@ -1043,8 +1047,13 @@ class SchemeInterpreter(
     }
     object Gcd extends SimplePrim {
       val name = "gcd"
-      def gcd(a: Int, b: Int): Int = if (b == 0) { a }
-      else { gcd(b, a % b) }
+
+      def gcd(a: BigInt, b: BigInt): BigInt = if (b == 0) {
+        a
+      } else {
+        gcd(b, a % b)
+      }
+
       def call(args: List[Value], position: Position): Value.Integer = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(gcd(x, y))
         case _                                           => stackedException(s"gcd ($position): invalid arguments $args")
@@ -1097,8 +1106,9 @@ class SchemeInterpreter(
 
     object NumEq extends SimplePrim {
       val name = "="
+
       @scala.annotation.tailrec
-      def numEqInt(first: Int, l: List[Value]): Value = l match {
+      def numEqInt(first: BigInt, l: List[Value]): Value = l match {
         case Nil                                    => Value.Bool(true)
         case Value.Integer(x) :: rest if x == first => numEqInt(first, rest)
         case (_: Value.Integer) :: _                => Value.Bool(false)
@@ -1106,6 +1116,7 @@ class SchemeInterpreter(
         case (_: Value.Real) :: _                   => Value.Bool(false)
         case _                                      => stackedException(s"=: invalid type of arguments $l")
       }
+
       @scala.annotation.tailrec
       def numEqReal(first: Double, l: List[Value]): Value = l match {
         case Nil                                    => Value.Bool(true)
@@ -1421,8 +1432,8 @@ class SchemeInterpreter(
     object MakeString extends SimplePrim {
       val name = "make-string"
       def call(args: List[Value], position: Position) = args match {
-        case Value.Integer(length) :: Nil                       => Value.Str("\u0000" * length)
-        case Value.Integer(length) :: Value.Character(c) :: Nil => Value.Str(c.toString * length)
+        case Value.Integer(length) :: Nil                       => Value.Str("\u0000" * bigIntToInt(length))
+        case Value.Integer(length) :: Value.Character(c) :: Nil => Value.Str(c.toString * bigIntToInt(length))
         case _                                                  => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
@@ -1435,7 +1446,7 @@ class SchemeInterpreter(
       val name = "string-ref"
       def call(args: List[Value], position: Position): Value.Character = args match {
         case Value.Str(x) :: Value.Integer(n) :: Nil =>
-          Value.Character(x(n))
+          Value.Character(x(bigIntToInt(n)))
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
@@ -1457,8 +1468,9 @@ class SchemeInterpreter(
     object Substring extends SimplePrim {
       val name = "substring"
       def call(args: List[Value], position: Position): Value.Str = args match {
-        case Value.Str(s) :: Value.Integer(from) :: Value.Integer(to) :: Nil if from <= to => Value.Str(s.substring(from, to))
-        case _                                                                             => stackedException(s"substring ($position): invalid arguments $args")
+        case Value.Str(s) :: Value.Integer(from) :: Value.Integer(to) :: Nil if from <= to =>
+          Value.Str(s.substring(bigIntToInt(from), bigIntToInt(to)))
+        case _ => stackedException(s"substring ($position): invalid arguments $args")
       }
     }
 
@@ -1480,8 +1492,8 @@ class SchemeInterpreter(
       val name = "vector"
       def newVector(
           fexp: SchemeFuncall,
-          siz: Int,
-          elms: Map[Int, Value],
+          siz: BigInt,
+          elms: Map[BigInt, Value],
           ini: Value
         ): Value = {
         val ptr = newAddr(AddrInfo.PtrAddr(fexp))
@@ -1490,7 +1502,7 @@ class SchemeInterpreter(
         Value.Pointer(ptr)
       }
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = {
-        val elms = args.map(_._2).zipWithIndex.map(_.swap).toMap
+        val elms = args.map(_._2).zipWithIndex.map({ case (e, i) => (BigInt(i), e) }).toMap
         newVector(fexp, args.size, elms, Value.Undefined(fexp.idn))
       }
     }
@@ -1609,7 +1621,7 @@ class SchemeInterpreter(
     ///////////
     object Random extends SingleArgumentPrim("random") {
       def fun = {
-        case Value.Integer(x) => Value.Integer((scala.math.random() * x).toInt)
+        case Value.Integer(x) => Value.Integer(MathOps.random(x))
         case Value.Real(x)    => Value.Real(scala.math.random() * x)
       }
     }
@@ -1711,9 +1723,18 @@ object SchemeInterpreter {
         extends Value { override def toString: String = name.map(n => s"#<procedure:$n>").getOrElse(s"#<procedure:${lambda.idn.pos}>") }
     case class Primitive(p: Prim) extends Value { override def toString: String = s"#<primitive:${p.name}>" }
     case class Str(str: String) extends Value { override def toString: String = str }
-    case class Symbol(sym: String) extends Value { override def toString: String = s"'$sym" }
-    case class Integer(n: Int) extends Value { override def toString: String = n.toString }
-    case class Real(r: Double) extends Value { override def toString: String = r.toString }
+
+    case class Symbol(sym: String) extends Value {
+      override def toString: String = s"'$sym"
+    }
+
+    case class Integer(n: BigInt) extends Value {
+      override def toString: String = n.toString
+    }
+
+    case class Real(r: Double) extends Value {
+      override def toString: String = r.toString
+    }
     case class Bool(b: Boolean) extends Value { override def toString: String = if (b) "#t" else "#f" }
     case class Pointer(v: Addr) extends Value { override def toString: String = s"#<ptr $v>" }
     case class Character(c: Char) extends Value {
@@ -1726,8 +1747,8 @@ object SchemeInterpreter {
     case object Nil extends Value { override def toString: String = "'()" }
     case class Cons(car: Value, cdr: Value) extends Value { override def toString: String = s"#<cons $car $cdr>" }
     case class Vector(
-        size: Int,
-        elems: Map[Int, Value],
+        size: BigInt,
+        elems: Map[BigInt, Value],
         init: Value)
         extends Value { override def toString: String = s"#<vector[size:$size]>" }
     case class InputPort(port: Any) extends Value { override def toString: String = s"#<input-port:$port>" }

@@ -2,10 +2,8 @@ package maf.modular.incremental.scheme.modconc
 
 import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeCodeChange
-import maf.modular.AddrDependency
 import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.scheme.ssmodconc._
-import maf.util.Annotations.nonMonotonicUpdate
 
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics {
 
