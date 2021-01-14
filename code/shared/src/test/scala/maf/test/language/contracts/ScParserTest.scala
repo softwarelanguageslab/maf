@@ -6,16 +6,15 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should
 
 class ScParserTest extends AnyFlatSpec with should.Matchers {
-  private def compile(exp: String): ScExp = {
+  private def compile(exp: String): ScExp =
     SCExpCompiler.read(exp)
-  }
 
   "A number" should "parse to an ScValue" in {
     compile("1") should matchPattern { case ScValue(ValueInteger(1), _) => }
   }
 
   "A boolean" should "parse to an ScValue" in {
-    compile("#t") should matchPattern { case ScValue(ValueBoolean(true), _)  => }
+    compile("#t") should matchPattern { case ScValue(ValueBoolean(true), _) => }
     compile("#f") should matchPattern { case ScValue(ValueBoolean(false), _) => }
   }
 
@@ -34,48 +33,41 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
 
   "A lambda" should "have the correct body" in {
     val result = compile("(lambda (x) x)")
-    result should matchPattern { case ScLambda(_, ScIdentifier("x", _), _) => }
+    result should matchPattern { case ScLambda(_, ScBegin(List(ScIdentifier("x", _)), _), _) => }
   }
 
   "An if" should "parse to an ScIf" in {
-    compile("(if x y z)") should matchPattern {
-      case ScIf(ScIdentifier("x", _), ScIdentifier("y", _), ScIdentifier("z", _), _) =>
+    compile("(if x y z)") should matchPattern { case ScIf(ScIdentifier("x", _), ScIdentifier("y", _), ScIdentifier("z", _), _) =>
     }
   }
 
   "A begin" should "parse to an ScBegin" in {
-    compile("(begin x y z)") should matchPattern {
-      case ScBegin(List(ScIdentifier("x", _), ScIdentifier("y", _), ScIdentifier("z", _)), _) =>
+    compile("(begin x y z)") should matchPattern { case ScBegin(List(ScIdentifier("x", _), ScIdentifier("y", _), ScIdentifier("z", _)), _) =>
     }
   }
 
   "A mon" should "parse to an ScMon" in {
-    compile("(mon x y)") should matchPattern {
-      case ScMon(ScIdentifier("x", _), ScIdentifier("y", _), _, _) =>
+    compile("(mon x y)") should matchPattern { case ScMon(ScIdentifier("x", _), ScIdentifier("y", _), _, _) =>
     }
   }
 
   "A higher order contract" should "parse to a ScHigherOrderContract" in {
-    compile("(~> x y)") should matchPattern {
-      case ScHigherOrderContract(ScIdentifier("x", _), ScIdentifier("y", _), _) =>
+    compile("(~> x y)") should matchPattern { case ScHigherOrderContract(ScIdentifier("x", _), ScIdentifier("y", _), _) =>
     }
   }
 
   "A dependent contract" should "parse to a ScDependentContract" in {
-    compile("(~ x y)") should matchPattern {
-      case ScDependentContract(List(ScIdentifier("x", _)), ScIdentifier("y", _), _) =>
+    compile("(~ x y)") should matchPattern { case ScDependentContract(List(ScIdentifier("x", _)), ScIdentifier("y", _), _) =>
     }
   }
 
   "A set!" should "parse to a ScSet" in {
-    compile("(set! x 10)") should matchPattern {
-      case ScSet(ScIdentifier("x", _), ScValue(ValueInteger(10), _), _) =>
+    compile("(set! x 10)") should matchPattern { case ScSet(ScIdentifier("x", _), ScValue(ValueInteger(10), _), _) =>
     }
   }
 
   "A check" should "parse to a ScCheck" in {
-    compile("(check int? 5)") should matchPattern {
-      case ScCheck(ScIdentifier("int?", _), _, _) =>
+    compile("(check int? 5)") should matchPattern { case ScCheck(ScIdentifier("int?", _), _, _) =>
     }
   }
 
@@ -94,27 +86,26 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
   "An assumption" should "be able to be parsed" in {
     compile("(assume (x int?) (+ 1 1))") should matchPattern {
       case ScAssume(
-          ScIdentifier("x", _),
-          ScIdentifier("int?", _),
-          ScFunctionAp(ScIdentifier("+", _), _, _, _),
-          _
+            ScIdentifier("x", _),
+            ScIdentifier("int?", _),
+            ScFunctionAp(ScIdentifier("+", _), _, _, _),
+            _
           ) =>
     }
   }
 
   "A top level definition with a variable" should "be able to be parsed" in {
-    compile("(define x 10)") should matchPattern {
-      case ScDefine(ScIdentifier("x", _), _, _) =>
+    compile("(define x 10)") should matchPattern { case ScDefine(ScIdentifier("x", _), _, _) =>
     }
   }
 
   "A top level definition with a function" should "be able to be parsed" in {
     compile("(define (f x) x)") should matchPattern {
       case ScDefineFn(
-          ScIdentifier("f", _),
-          List(ScIdentifier("x", _)),
-          ScBegin(List(ScIdentifier("x", _)), _),
-          _
+            ScIdentifier("f", _),
+            List(ScIdentifier("x", _)),
+            ScBegin(List(ScIdentifier("x", _)), _),
+            _
           ) =>
     }
   }
@@ -122,11 +113,11 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
   "A top level defintion with a contract" should "be able to be parsed" in {
     compile("(define/contract (f x) (~> int? int?) x)") should matchPattern {
       case ScDefineAnnotatedFn(
-          ScIdentifier("f", _),
-          List(ScIdentifier("x", _)),
-          _,
-          ScBegin(List(ScIdentifier("x", _)), _),
-          _
+            ScIdentifier("f", _),
+            List(ScIdentifier("x", _)),
+            _,
+            ScBegin(List(ScIdentifier("x", _)), _),
+            _
           ) =>
     }
   }
@@ -134,10 +125,10 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
   "A conditional" should "be able to be parsed" in {
     compile("(cond (a b) (c d))") should matchPattern {
       case ScIf(
-          ScIdentifier("a", _),
-          ScIdentifier("b", _),
-          ScIf(ScIdentifier("c", _), ScIdentifier("d", _), ScNil(_), _),
-          _
+            ScIdentifier("a", _),
+            ScBegin(List(ScIdentifier("b", _)), _),
+            ScIf(ScIdentifier("c", _), ScBegin(List(ScIdentifier("d", _)), _), ScNil(_), _),
+            _
           ) =>
     }
   }
@@ -151,52 +142,45 @@ class ScParserTest extends AnyFlatSpec with should.Matchers {
   "Contract" should "be able to be provided for arbitrary identifiers" in {
     compile("(provide/contract (n->f (~> exact-nonnegative-integer? church/c)))") should matchPattern {
       case ScProvideContracts(
-          List(ScIdentifier("n->f", _)),
-          List((ScHigherOrderContract(_, _, _))),
-          _
+            List(ScIdentifier("n->f", _)),
+            List((ScHigherOrderContract(_, _, _))),
+            _
           ) =>
     }
   }
 
   "A monitor with annotation" should "be parsed" in {
-    compile("(mon @safe int? 10)") should matchPattern {
-      case ScMon(_, _, _, Some("@safe")) =>
+    compile("(mon @safe int? 10)") should matchPattern { case ScMon(_, _, _, Some("@safe")) =>
     }
   }
 
   "An application with annotation" should "be parsed" in {
-    compile("(@safe f 10)") should matchPattern {
-      case ScFunctionAp(_, _, _, Some("@safe")) =>
+    compile("(@safe f 10)") should matchPattern { case ScFunctionAp(_, _, _, Some("@safe")) =>
     }
   }
 
   "A cons" should "be parsed to ScCons" in {
-    compile("(cons a b)") should matchPattern {
-      case ScCons(ScIdentifier("a", _), ScIdentifier("b", _), _) =>
+    compile("(cons a b)") should matchPattern { case ScCons(ScIdentifier("a", _), ScIdentifier("b", _), _) =>
     }
   }
 
   "A car" should "be parsed to ScCar" in {
-    compile("(car a)") should matchPattern {
-      case ScCar(ScIdentifier("a", _), _) =>
+    compile("(car a)") should matchPattern { case ScCar(ScIdentifier("a", _), _) =>
     }
   }
 
   "A cdr" should "be parsed to ScCdr" in {
-    compile("(cdr a)") should matchPattern {
-      case ScCdr(ScIdentifier("a", _), _) =>
+    compile("(cdr a)") should matchPattern { case ScCdr(ScIdentifier("a", _), _) =>
     }
   }
 
   "A contract with mumtiple arrows" should "be parsed into a contract with multiple domains" in {
-    compile("(-> x y z)") should matchPattern {
-      case ScDependentContract(List(ScIdentifier("x", _), ScIdentifier("y", _)), _, _) =>
+    compile("(-> x y z)") should matchPattern { case ScDependentContract(List(ScIdentifier("x", _), ScIdentifier("y", _)), _, _) =>
     }
   }
 
   "A contract with arrow" should "be parsed" in {
-    compile("(-> x y)") should matchPattern {
-      case ScHigherOrderContract(ScIdentifier("x", _), ScIdentifier("y", _), _) =>
+    compile("(-> x y)") should matchPattern { case ScHigherOrderContract(ScIdentifier("x", _), ScIdentifier("y", _), _) =>
     }
   }
 }

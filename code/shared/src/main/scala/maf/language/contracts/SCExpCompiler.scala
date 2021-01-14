@@ -56,10 +56,11 @@ object SCExpCompiler {
     case SExpValue(ValueNil, _) => List()
   }
 
+  /** Transforms a conditional-expression to an equivalent if-expression */
   def compile_branches(exp: SExp): ScExp = exp match {
     case ListNil(idn) => ScNil(idn)
-    case SExpPair((condition :: expression :: ListNil(_)), rest, _) =>
-      ScIf(compile(condition), compile(expression), compile_branches(rest), exp.idn)
+    case SExpPair((condition :: expressions), rest, _) =>
+      ScIf(compile(condition), ScBegin(compile_sequence(expressions), Identity.none), compile_branches(rest), exp.idn)
   }
 
   def compile_contracts(exp: SExp): ScExp = exp match {
