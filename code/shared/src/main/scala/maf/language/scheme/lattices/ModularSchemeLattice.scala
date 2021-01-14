@@ -156,13 +156,13 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
           }
         })
         vWithEls2Joined
-      case (Kont(k1), Kont(k2))     => Kont(sunion(k1, k2))
-      case (Thread(t1), Thread(t2)) => Thread(sunion(t1, t2))
-      case (Lock(l1), Lock(l2))     => Lock(sunion(l1, l2))
-      case (Void, Void)             => Void
-      case (InputPort(l1), InputPort(l2)) => InputPort(join(l1, l2))
+      case (Kont(k1), Kont(k2))             => Kont(sunion(k1, k2))
+      case (Thread(t1), Thread(t2))         => Thread(sunion(t1, t2))
+      case (Lock(l1), Lock(l2))             => Lock(sunion(l1, l2))
+      case (Void, Void)                     => Void
+      case (InputPort(l1), InputPort(l2))   => InputPort(join(l1, l2))
       case (OutputPort(l1), OutputPort(l2)) => OutputPort(join(l1, l2))
-      case _                        => throw new Exception(s"Illegal join of $x and $y")
+      case _                                => throw new Exception(s"Illegal join of $x and $y")
     }
 
     def subsumes(x: Value, y: => Value): Boolean =
@@ -188,11 +188,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                   IntLattice[I].subsumes(idx1, idx2) && schemeLattice.subsumes(vlu1, vlu2)
                 }
               }
-          case (Thread(t1), Thread(t2)) => t2.subsetOf(t1)
-          case (Lock(l1), Lock(l2))     => l2.subsetOf(l1)
-          case (InputPort(l1), InputPort(l2)) => subsumes(l1, l2)
+          case (Thread(t1), Thread(t2))         => t2.subsetOf(t1)
+          case (Lock(l1), Lock(l2))             => l2.subsetOf(l1)
+          case (InputPort(l1), InputPort(l2))   => subsumes(l1, l2)
           case (OutputPort(l1), OutputPort(l2)) => subsumes(l1, l2)
-          case _                        => false
+          case _                                => false
         }
       }
 
@@ -278,12 +278,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         case IsInputPort =>
           MayFail.success(args(0) match {
             case _: InputPort => True
-            case _ => False
+            case _            => False
           })
         case IsOutputPort =>
           MayFail.success(args(0) match {
             case _: OutputPort => True
-            case _ => False
+            case _             => False
           })
         case Not =>
           MayFail.success(args(0) match {
@@ -441,7 +441,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case Char(c) => MayFail.success(Bool(CharLattice[C].isUpper(c)))
             case _       => MayFail.failure(OperatorNotApplicable("char-upper-case?", args))
           }
-        case MakeInputPort => MayFail.success(InputPort(args(0)))
+        case MakeInputPort  => MayFail.success(InputPort(args(0)))
         case MakeOutputPort => MayFail.success(OutputPort(args(0)))
         case Plus =>
           (args(0), args(1)) match {

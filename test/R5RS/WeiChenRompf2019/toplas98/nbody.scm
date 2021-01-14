@@ -147,8 +147,7 @@
 					local-expansion
 					eval-local-expansion)
 	(let ((center (node-center node))
-				 (near-field (apply append (map node-particles
-																		 (node-near-field node)))))
+				 (near-field (apply append (map node-particles (node-near-field node)))))
 		(for-each (lambda (particle)
 								(let* ((pos (particle-position particle))
 												(far-field-accel-and-poten

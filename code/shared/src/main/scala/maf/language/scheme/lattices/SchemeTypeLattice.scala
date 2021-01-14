@@ -57,12 +57,13 @@ class TypeSchemeLattice[A <: Address, K] {
       if (args.exists(_.isBottom)) { MayFail.success(bottom) }
       else {
         op match {
-          case Car                                                                                                          => MayFail.success(args(0).consCells._1)
-          case Cdr                                                                                                          => MayFail.success(args(0).consCells._2)
-          case MakeVector                                                                                                   => throw new Exception("NYI: vectors in type lattice")
-          case VectorRef                                                                                                    => throw new Exception("NYI: vectors in type lattice")
-          case VectorSet                                                                                                    => throw new Exception("NYI: vectors in type lattice")
-          case IsNull | IsCons | IsPointer | IsChar | IsSymbol | IsInteger | IsString | IsReal | IsBoolean | IsVector | IsThread | IsLock | IsProcedure | IsInputPort | IsOutputPort | Not =>
+          case Car        => MayFail.success(args(0).consCells._1)
+          case Cdr        => MayFail.success(args(0).consCells._2)
+          case MakeVector => throw new Exception("NYI: vectors in type lattice")
+          case VectorRef  => throw new Exception("NYI: vectors in type lattice")
+          case VectorSet  => throw new Exception("NYI: vectors in type lattice")
+          case IsNull | IsCons | IsPointer | IsChar | IsSymbol | IsInteger | IsString | IsReal | IsBoolean | IsVector | IsThread | IsLock |
+              IsProcedure | IsInputPort | IsOutputPort | Not =>
             // Any -> Bool
             MayFail.success(Inject.bool)
           case Ceiling | Floor | Round | Log | Random | Sin | Cos | ACos | Tan | ATan | Sqrt | ExactToInexact | InexactToExact =>
@@ -125,7 +126,7 @@ class TypeSchemeLattice[A <: Address, K] {
           case StringLt =>
             // Str -> Str -> Bool
             check(args(0).str && args(1).str, Inject.bool)(op.name, args)
-          case CharacterEq | CharacterLt| CharacterEqCI | CharacterLtCI =>
+          case CharacterEq | CharacterLt | CharacterEqCI | CharacterLtCI =>
             // Char -> Char -> Bool
             check(args(0).char && args(1).char, Inject.bool)(op.name, args)
           case MakeString =>

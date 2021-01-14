@@ -76,11 +76,12 @@ object SchemeBenchmarkPrograms {
     "graphs.scm", // Uses read
     "handle.scm", // Uses defmacro (not standard r5rs).
     "maze.scm", // Uses read
-    "nbody.scm", // Apply cannot handle this apparently.
-    "nbody-processed.scm", // Apply cannot handle this apparently.
+    "nbody.scm", // Apply cannot handle this (call to (apply append (map ...))
+    "nbody-processed.scm", // Apply cannot handle this (call to (apply append (map ...))
     "nucleic.sch", // Made it parse by replacing vector literals, but does not have proper main code.
     "nucleic2.sch", // Uses macros (define-syntax).
-    "splay.scm" // Uses () instead of '(), and #(1 2 3) syntax for vectors, also has unsupported match functions.
+    "splay.scm", // Uses () instead of '(), and #(1 2 3) syntax for vectors, also has unsupported match functions.
+    "dynamic.scm" // Uses read
   )
   lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019")(
     ".DS_Store",

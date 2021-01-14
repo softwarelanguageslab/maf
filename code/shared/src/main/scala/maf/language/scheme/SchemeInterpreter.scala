@@ -57,7 +57,7 @@ class FileIO(val files: Map[String, String]) extends IO {
     positions = positions + (handle -> 0)
     handle
   }
-  def open(filename: String): Handle = {
+  def open(filename: String): Handle =
     if (files.contains(filename)) {
       val handle = new FileHandle(filename)
       positions = positions + (handle -> 0)
@@ -65,23 +65,21 @@ class FileIO(val files: Map[String, String]) extends IO {
     } else {
       throw new Exception(s"Cannot open virtual file $filename")
     }
-  }
   def close(h: Handle): Unit = h match {
-    case ConsoleHandle => SchemeInterpreter.Value.EOF
-    case h: FileHandle => positions = positions + (h -> files(h.filename).size)
+    case ConsoleHandle   => SchemeInterpreter.Value.EOF
+    case h: FileHandle   => positions = positions + (h -> files(h.filename).size)
     case h: StringHandle => positions = positions + (h -> h.content.size)
   }
 
   val console = ConsoleHandle
 
-  def readChar(h: Handle): SchemeInterpreter.Value = {
+  def readChar(h: Handle): SchemeInterpreter.Value =
     peekChar(h) match {
       case SchemeInterpreter.Value.EOF => SchemeInterpreter.Value.EOF
       case c =>
         positions = positions + (h -> (positions(h) + 1))
         c
     }
-  }
   def peekChar(h: Handle): SchemeInterpreter.Value = h match {
     case ConsoleHandle =>
       /* Console is never opened with this IO class */
@@ -110,9 +108,9 @@ class FileIO(val files: Map[String, String]) extends IO {
  * This interpreter dictates the concrete semantics of the Scheme language analyzed by MAF.
  */
 class SchemeInterpreter(
-  cb: (Identity, SchemeInterpreter.Value) => Unit,
-  io: IO = new EmptyIO(),
-  stack: Boolean = false) {
+    cb: (Identity, SchemeInterpreter.Value) => Unit,
+    io: IO = new EmptyIO(),
+    stack: Boolean = false) {
   import scala.util.control.TailCalls._
   import SchemeInterpreter._
 
@@ -699,7 +697,7 @@ class SchemeInterpreter(
       NewLock,
       Acquire,
       Release,
-
+      `eof-object?`,
       `input-port?`,
       `output-port?`,
       `open-input-file`,
@@ -1155,51 +1153,48 @@ class SchemeInterpreter(
     object `input-port?` extends SingleArgumentPrim("input-port?") {
       def fun = {
         case _: Value.InputPort => Value.Bool(true)
-        case _ => Value.Bool(false)
+        case _                  => Value.Bool(false)
       }
     }
     object `output-port?` extends SingleArgumentPrim("output-port?") {
       def fun = {
         case _: Value.OutputPort => Value.Bool(true)
-        case _ => Value.Bool(false)
+        case _                   => Value.Bool(false)
       }
     }
     object `eof-object?` extends SingleArgumentPrim("eof-object?") {
       def fun = {
         case Value.EOF => Value.Bool(true)
-        case _ => Value.Bool(false)
+        case _         => Value.Bool(false)
       }
     }
 
-
     object `open-input-file` extends SingleArgumentPrim("open-input-file") {
-      def fun = {
-        case Value.Str(filename) => Value.InputPort(io.open(filename))
+      def fun = { case Value.Str(filename) =>
+        Value.InputPort(io.open(filename))
       }
     }
     object `open-output-file` extends SingleArgumentPrim("open-output-file") {
-      def fun = {
-        case Value.Str(filename) => Value.InputPort(io.open(filename))
+      def fun = { case Value.Str(filename) =>
+        Value.InputPort(io.open(filename))
       }
     }
     object `open-input-string` extends SingleArgumentPrim("open-input-string") {
-      def fun = {
-        case Value.Str(s) => Value.InputPort(io.fromString(s))
+      def fun = { case Value.Str(s) =>
+        Value.InputPort(io.fromString(s))
       }
     }
 
     object `close-input-port` extends SingleArgumentPrim("close-input-port") {
-      def fun = {
-        case Value.InputPort(handle) =>
-          io.close(handle.asInstanceOf[io.Handle])
-          Value.Undefined(Identity.none)
+      def fun = { case Value.InputPort(handle) =>
+        io.close(handle.asInstanceOf[io.Handle])
+        Value.Undefined(Identity.none)
       }
     }
     object `close-output-port` extends SingleArgumentPrim("close-output-port") {
-      def fun = {
-        case Value.InputPort(handle) =>
-          io.close(handle.asInstanceOf[io.Handle])
-          Value.Undefined(Identity.none)
+      def fun = { case Value.InputPort(handle) =>
+        io.close(handle.asInstanceOf[io.Handle])
+        Value.Undefined(Identity.none)
       }
     }
 
@@ -1207,7 +1202,7 @@ class SchemeInterpreter(
       val name = "current-input-port"
       def call(args: List[Value], position: Position) = args match {
         case Nil => Value.InputPort(io.console)
-        case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
+        case _   => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
       }
     }
 
@@ -1215,7 +1210,7 @@ class SchemeInterpreter(
       val name = "current-output-port"
       def call(args: List[Value], position: Position) = args match {
         case Nil => Value.OutputPort(io.console)
-        case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
+        case _   => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
       }
     }
 
