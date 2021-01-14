@@ -26,7 +26,7 @@
           (wcport port)))))
 
 (define (go)
-  (set! inport (open-input-file "../../src/bib"))
+  (set! inport (open-input-file "input.txt"))
   (set! nl 0)
   (set! nw 0)
   (set! nc 0)

@@ -55,22 +55,28 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
     p.property("∀ unop: unop(⊥) = ⊥") = forAll((unop: SchemeOp.SchemeOp1) => convert(op(unop)(List(bottom))) == bottom)
     /* Unary operators are monotone */
     /* TODO: fails because of NaN
-        p.property("∀ unop, a, b: a ⊑ b ⇒ unop(a) ⊑ unop(b)") = forAll { (unop: SchemeOps.UnaryOperator, b: L) =>
+     p.property("∀ unop, a, b: a ⊑ b ⇒ unop(a) ⊑ unop(b)") = forAll { (unop: SchemeOp.SchemeOp1, b: L) =>
             forAll(gen.le(b)) { (a: L) =>
-                val fa = convert(unaryOp(unop)(a))
-                val fb = convert(unaryOp(unop)(b))
+                val fa = convert(op(unop)(List(a)))
+                val fb = convert(op(unop)(List(b)))
                 println(s"f = $unop")
                 println(s"f($a) = $fa")
                 println(s"f($b) = $fb")
                 subsumes(b, a) ==> subsumes(fb, fa)
             }
-        }
-     */
+        } */
     /* Binary operators preverse bottom */
     p.property("∀ binop, a: binop(⊥,a) = ⊥ = binop(a,⊥)") =
       forAll((binop: SchemeOp.SchemeOp2, a: L) =>
-        convert(op(binop)(List(bottom, a))) == bottom &&
-          convert(op(binop)(List(a, bottom))) == bottom)
+        if (binop == SchemeOp.MakeVector) {
+          /* MakeVector is a strange beast as it accepts bottom as a second argument to create an uninitialized vector */
+          true
+        } else {
+          convert(op(binop)(List(bottom, a))) == bottom &&
+          convert(op(binop)(List(a, bottom))) == bottom
+        }
+      )
+
     /* Ternary operators preserve bottom */
     p.property("∀ ternop, a: ternop(⊥,a,b) = ⊥ = ternop(a,⊥,b) = ternop(a,b,⊥)") =
       forAll((ternop: SchemeOp.SchemeOp3, a: L, b: L) =>

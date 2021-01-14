@@ -24,8 +24,8 @@
   (tail-r-aux port '()))
 
 (define (go)
-  (set! inport (open-input-file "../../src/bib"))
-  (set! outport (open-output-file "foo"))
+  (set! inport (open-input-file "input.txt"))
+  (set! outport (open-output-file "output.txt"))
   (tail-r inport)
   (close-input-port inport))
 
