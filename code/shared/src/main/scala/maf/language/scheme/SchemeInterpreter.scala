@@ -7,6 +7,7 @@ import maf.core._
 import maf.language.CScheme._
 import maf.language.change.CodeVersion._
 import maf.util._
+import maf.language.sexp
 import maf.language.sexp._
 import maf.util.benchmarks.Timeout
 
@@ -14,6 +15,7 @@ import scala.concurrent.TimeoutException
 import scala.concurrent._
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.util.parsing.input.CharSequenceReader
 
 case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"A child thread has tragically died with ${e.getMessage}.")
 case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpreter encountered an unexpected value during its execution: $v.")
@@ -25,6 +27,7 @@ trait IO {
   def close(f: Handle): Unit
   val console: Handle
 
+  def read(f: Handle): Option[SExp]
   def readChar(f: Handle): SchemeInterpreter.Value
   def peekChar(f: Handle): SchemeInterpreter.Value
   def writeChar(c: Char, f: Handle): Unit
@@ -38,6 +41,7 @@ class EmptyIO extends IO {
   def close(h: Handle): Unit = ()
   val console = ()
 
+  def read(h: Handle): Option[SExp] = None
   def readChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
   def peekChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
   def writeChar(c: Char, h: Handle): Unit = ()
@@ -66,12 +70,29 @@ class FileIO(val files: Map[String, String]) extends IO {
       throw new Exception(s"Cannot open virtual file $filename")
     }
   def close(h: Handle): Unit = h match {
-    case ConsoleHandle   => SchemeInterpreter.Value.EOF
-    case h: FileHandle   => positions = positions + (h -> files(h.filename).size)
-    case h: StringHandle => positions = positions + (h -> h.content.size)
+    case ConsoleHandle   => ()
+    case h: FileHandle   => positions += h -> files(h.filename).size
+    case h: StringHandle => positions += h -> h.content.size
   }
 
   val console = ConsoleHandle
+
+  def read(h: Handle): Option[SExp] = h match {
+    case ConsoleHandle   => None
+    case h: FileHandle   => readUsingString(files(h.filename), h)
+    case h: StringHandle => readUsingString(h.content, h)
+  }
+  private def readUsingString(str: String, hdl: Handle): Option[SExp] = {
+    val pos = positions(hdl)
+    if (pos >= str.size) {
+      None
+    } else {
+      val reader = new CharSequenceReader(str, pos)
+      val (sexp, offset) = SExpParser.parseIn(reader)
+      positions += hdl -> offset
+      Some(sexp)
+    }
+  }
 
   def readChar(h: Handle): SchemeInterpreter.Value =
     peekChar(h) match {
@@ -108,7 +129,7 @@ class FileIO(val files: Map[String, String]) extends IO {
  * This interpreter dictates the concrete semantics of the Scheme language analyzed by MAF.
  */
 class SchemeInterpreter(
-    cb: (Identity, SchemeInterpreter.Value) => Unit,
+    cb: (Identity, SchemeInterpreter.Value) => Unit = (_,_) => (),
     io: IO = new EmptyIO(),
     stack: Boolean = false) {
   import scala.util.control.TailCalls._
@@ -451,15 +472,7 @@ class SchemeInterpreter(
       //val cdrv    = eval(cdr,env,timeout)
       //Primitives.Append.append(splicev,cdrv)
       case SchemeValue(v, _) =>
-        done(v match {
-          case ValueString(s)    => Value.Str(s)
-          case ValueSymbol(s)    => Value.Symbol(s)
-          case ValueInteger(n)   => Value.Integer(n)
-          case ValueReal(r)      => Value.Real(r)
-          case ValueBoolean(b)   => Value.Bool(b)
-          case ValueCharacter(c) => Value.Character(c)
-          case ValueNil          => Value.Nil
-        })
+        done(evalLiteral(v))
       case CSchemeFork(body, _) =>
         // TODO: This is a bit hacky in terms of tailcalls
         done(Value.Thread(safeFuture(eval(body, env, timeout, version).result)))
@@ -489,6 +502,25 @@ class SchemeInterpreter(
   def makeList(values: List[(SchemeExp, Value)]): Value = values match {
     case Nil                  => Value.Nil
     case (exp, value) :: rest => allocateCons(exp, value, makeList(rest))
+  }
+
+  def evalSExp(sexp: SExp, exp: SchemeExp): SchemeInterpreter.Value = sexp match {
+    case SExpId(id)               => Value.Symbol(id.name)
+    case SExpValue(value, _)      => evalLiteral(value) 
+    case SExpPair(car, cdr, idn)  =>
+      val carValue = evalSExp(car, exp)
+      val cdrValue = evalSExp(cdr, exp)
+      allocateCons(exp, carValue, cdrValue)
+  }
+
+  def evalLiteral(lit: sexp.Value) = lit match {
+    case ValueString(s)    => Value.Str(s)
+    case ValueSymbol(s)    => Value.Symbol(s)
+    case ValueInteger(n)   => Value.Integer(n)
+    case ValueReal(r)      => Value.Real(r)
+    case ValueBoolean(b)   => Value.Bool(b)
+    case ValueCharacter(c) => Value.Character(c)
+    case ValueNil          => Value.Nil
   }
 
   object Primitives {
@@ -709,6 +741,7 @@ class SchemeInterpreter(
       `current-output-port`,
       `read-char`,
       `peek-char`,
+      `read`,
       `write`,
       `write-char`,
       `display`,
@@ -1253,7 +1286,16 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
       }
     }
-
+    object `read` extends Prim {
+      val name = "read"
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+        case Nil => 
+          io.read(io.console).map(sexp => evalSExp(sexp,fexp)).getOrElse(Value.EOF)
+        case (_, Value.InputPort(port: io.Handle @unchecked)) :: Nil =>
+          io.read(port).map(sexp => evalSExp(sexp,fexp)).getOrElse(Value.EOF)
+        case _ => stackedException(s"$name (${fexp.idn.pos}): wrong number of arguments, 0 or 1 expected, got ${args.length}")
+      }
+    }
     object `read-char` extends SimplePrim {
       val name = "read-char"
       def call(args: List[Value], position: Position) = args match {
