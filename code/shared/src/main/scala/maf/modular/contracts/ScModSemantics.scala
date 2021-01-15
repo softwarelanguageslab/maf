@@ -4,15 +4,7 @@ import maf.core.Position.Position
 import maf.core.{Address, Environment, Identity}
 import maf.language.contracts.ScLattice.Blame
 import maf.language.contracts.{ScExp, ScIdentifier, ScLambda, ScLattice, ScParam}
-import maf.modular.{
-  DestructiveStore,
-  GlobalStore,
-  LocalStore,
-  LocalStoreMap,
-  ModAnalysis,
-  ReturnAddr,
-  ReturnValue
-}
+import maf.modular.{DestructiveStore, GlobalStore, LocalStore, LocalStoreMap, ModAnalysis, ReturnAddr, ReturnValue}
 import maf.core.Lattice
 import maf.lattice.interfaces.BoolLattice
 
@@ -23,18 +15,17 @@ object ScModSemantics {
     s"x$r"
   }
 
-  def freshIdent: ScExp = {
+  def freshIdent: ScExp =
     ScIdentifier(genSym, Identity.none)
-  }
 }
 
 trait ScModSemantics
     extends ModAnalysis[ScExp]
-    with ScDomain
-    with GlobalStore[ScExp]
-    with ReturnValue[ScExp]
-    with DestructiveStore[ScExp]
-    with LocalStore[ScExp] {
+       with ScDomain
+       with GlobalStore[ScExp]
+       with ReturnValue[ScExp]
+       with DestructiveStore[ScExp]
+       with LocalStore[ScExp] {
 
   type ComponentContext
   type AllocationContext
@@ -42,24 +33,18 @@ trait ScModSemantics
   def allocVar(id: ScIdentifier, cmp: ComponentContext): ScVarAddr[VarAllocationContext]
   def allocGeneric(idn: Identity, cmp: Component): ScGenericAddr[AllocationContext]
 
-  /**
-    * Returns the context of a component
-    */
+  /** Returns the context of a component */
   def context(component: Component): ComponentContext
 
-  /**
-    * Allocates a new context
-    */
+  /** Allocates a new context */
   def allocCtx(
       clo: ScLattice.Clo[Addr],
       args: List[Value],
       call: Position,
       caller: Component
-  ): ComponentContext
+    ): ComponentContext
 
-  /**
-    * Creates a new component based on the given concrete component
-    */
+  /** Creates a new component based on the given concrete component */
   def newComponent(component: Call[ComponentContext]): Component
 
   def viewStore(component: Component): Store = view(component) match {
@@ -86,43 +71,33 @@ trait ScModSemantics
     case _                                               => component
   }
 
-  /**
-    * The environment in which the analysis is executed
-    */
+  /** The environment in which the analysis is executed */
   type Env = Environment[Address]
 
-  /**
-    * The type of a call component creator
-    */
+  /** The type of a call component creator */
   type CreateCallComponent = (Env, ScLambda, ComponentContext) => Call[ComponentContext]
 
-  /**
-    * A base environment which can be defined by implementations of this trait
-    */
+  /** A base environment which can be defined by implementations of this trait */
   def baseEnv: Env
 
-  /**
-    * The components of this analysis are functions
-    */
+  /** The components of this analysis are functions */
   type Component <: Serializable
 
-  /**
-    * For convience we define the `main` function as the initial component that must be analysed
-    */
+  /** For convience we define the `main` function as the initial component that must be analysed */
   def initialComponent: Component
 
   /**
-    * Retrieves the expression from the given component
-    * @param cmp the component to extract the expression from
-    * @return an expression from the soft contract language
-    */
+   * Retrieves the expression from the given component
+   * @param cmp the component to extract the expression from
+   * @return an expression from the soft contract language
+   */
   def expr(cmp: Component): ScExp
 
   /**
-    * Set to true if the analysis must use a global store, for all its variables.
-    * Set to false if the global store should only be used for return values and for parameter passing
-    * to top-level functions.
-    */
+   * Set to true if the analysis must use a global store, for all its variables.
+   * Set to false if the global store should only be used for return values and for parameter passing
+   * to top-level functions.
+   */
   val GLOBAL_STORE_ENABLED: Boolean
 
   def view(component: Component): ScComponent
@@ -130,17 +105,10 @@ trait ScModSemantics
   implicit def toScIdentifier(p: ScParam): ScIdentifier =
     ScIdentifier(p.name, p.idn)
 
-  trait IntraScAnalysis
-      extends IntraAnalysis
-      with GlobalStoreIntra
-      with ReturnResultIntra
-      with DestructiveStoreIntra
-      with LocalStoreIntra { intra =>
+  trait IntraScAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra with DestructiveStoreIntra with LocalStoreIntra { intra =>
 
-    /**
-      * Remove a blame of a certain component from the store
-      */
-    def removeBlame(component: Component, idn: Identity): Unit = {
+    /** Remove a blame of a certain component from the store */
+    def removeBlame(component: Component, idn: Identity): Unit =
       intra.store = intra.store
         .map {
           case (ex @ ExceptionAddr(`component`, _), value) =>
@@ -158,33 +126,30 @@ trait ScModSemantics
           case (ExceptionAddr(_, _), v) => lattice.getBlames(v).nonEmpty
           case _                        => true
         }
-    }
 
     def writeBlame(blame: Blame) =
       writeAddr(ExceptionAddr(component, expr(component).idn), lattice.injectBlame(blame))
 
     /**
-      * Compute the body of the component under analysis
-      * @return the body of the component under analysis
-      */
+     * Compute the body of the component under analysis
+     * @return the body of the component under analysis
+     */
     def fnBody: ScExp = view(component) match {
       case ScMain             => program
       case Call(_, lambda, _) => lambda.body
     }
 
     /**
-      * Compute the environment of the component under analysis
-      * @return the body of the component under analysis
-      */
+     * Compute the environment of the component under analysis
+     * @return the body of the component under analysis
+     */
     def fnEnv: Env = view(component) match {
       case ScMain => baseEnv
       case Call(env, lambda, _) =>
         env.extend(lambda.variables.map(v => (v.name, allocVar(v, context(component)))))
     }
 
-    /**
-      * Computes the list of free variables of this component
-      */
+    /** Computes the list of free variables of this component */
     def fv: Set[String] = expr(component).fv
   }
 
@@ -192,7 +157,7 @@ trait ScModSemantics
 
   def summary: ScAnalysisSummary[Value] = {
     var returnValues = Map[Any, Value]()
-    var blames       = Map[Any, Set[Blame]]()
+    var blames = Map[Any, Set[Blame]]()
 
     store.foreach {
       case (ReturnAddr(cmp, _), value)    => returnValues = returnValues.updated(cmp, value)
@@ -203,16 +168,15 @@ trait ScModSemantics
     ScAnalysisSummary(returnValues, blames)
   }
 
-  def getReturnValue(component: Component): Option[Value] = {
+  def getReturnValue(component: Component): Option[Value] =
     summary.getReturnValue(component)
-  }
 
   sealed trait SingleVerificationResult
   object SingleVerificationResult {
     def join(
         a: SingleVerificationResult,
         b: => SingleVerificationResult
-    ): SingleVerificationResult = (a, b) match {
+      ): SingleVerificationResult = (a, b) match {
       case (a, b) if a == b => a
       case (Top, _)         => Top
       case (_, Top)         => Top
@@ -248,10 +212,10 @@ trait ScModSemantics
     }
   }
 
-  case object Bottom        extends SingleVerificationResult
+  case object Bottom extends SingleVerificationResult
   case object VerifiedFalse extends SingleVerificationResult
-  case object VerifiedTrue  extends SingleVerificationResult
-  case object Top           extends SingleVerificationResult
+  case object VerifiedTrue extends SingleVerificationResult
+  case object Top extends SingleVerificationResult
 
   type VerifyIdentity = (Identity, Identity)
   var verificationResults: Map[Identity, Map[VerifyIdentity, SingleVerificationResult]] =
@@ -261,26 +225,24 @@ trait ScModSemantics
       monIdn: Identity,
       contractIdn: VerifyIdentity,
       value: SingleVerificationResult
-  ): Unit = {
-    val monEntry      = verificationResults(monIdn)
+    ): Unit = {
+    val monEntry = verificationResults(monIdn)
     val contractEntry = monEntry(contractIdn)
     verificationResults += (monIdn -> (monEntry + (contractIdn ->
       SingleVerificationResult
         .join(contractEntry, value))))
   }
 
-  def addVerified(monIdn: Identity, contractIdn: VerifyIdentity): Unit = {
+  def addVerified(monIdn: Identity, contractIdn: VerifyIdentity): Unit =
     addSingleVerificationResult(monIdn, contractIdn, VerifiedTrue)
-  }
 
-  def addUnverified(monIdn: Identity, contractIdn: VerifyIdentity): Unit = {
+  def addUnverified(monIdn: Identity, contractIdn: VerifyIdentity): Unit =
     addSingleVerificationResult(monIdn, contractIdn, VerifiedFalse)
-  }
 
   def getVerificationResults(
       result: SingleVerificationResult,
       context: Option[Identity] = None
-  ): List[VerifyIdentity] = {
+    ): List[VerifyIdentity] = {
     val results = if (context.isEmpty) {
       verificationResults.values.flatten
     } else {
@@ -292,8 +254,8 @@ trait ScModSemantics
         case (_, `result`) => true
         case _             => false
       }
-      .map {
-        case (idn, _) => idn
+      .map { case (idn, _) =>
+        idn
       }
       .toList
   }

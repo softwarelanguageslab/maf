@@ -504,11 +504,14 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
         case (_, _) => throw new Exception("Invalid closure application")
       }
 
+    var counter = 0
     def applyFn(
         operator: PostValue,
         operands: List[PostValue],
         syntacticOperands: List[ScExp] = List()
       ): ScEvalM[PostValue] = {
+
+      println(s"function ap $operator $operands")
       // we have five distinct cases
       // 1. Primitive application
       // 2. User-defined function application
@@ -543,6 +546,13 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       val arrAp = lattice.getArr(operator._1).map { arr =>
         for {
           contract <- options(read(arr.contract).map((c) => lattice.getGrd(c._1)))
+          _ <- effectful {
+            if (contract.domain.length != operands.length) {
+              // TODO: maybe use a blame here instead of crashing the analysis
+              throw new Exception("Arity of contract does not match arity of operands in application")
+            }
+          }
+
           values <- sequence {
             contract.domain.map(read).zip(operands.zip(syntacticOperands)).map { case (domain, (value, syn)) =>
               domain.flatMap(d => applyMon(d, value, arr.contract.idn, syn.idn))
