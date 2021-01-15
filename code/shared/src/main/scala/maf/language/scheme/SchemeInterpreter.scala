@@ -93,9 +93,9 @@ class FileIO(val files: Map[String, String]) extends IO {
   val console = Handle.ConsoleHandle
 
   def read(h: Handle): Option[SExp] = h match {
-    case ConsoleHandle   => None
-    case h: FileHandle   => readUsingString(files(h.filename), h)
-    case h: StringHandle => readUsingString(h.content, h)
+    case Handle.ConsoleHandle   => None
+    case h: Handle.FileHandle   => readUsingString(files(h.filename), h)
+    case h: Handle.StringHandle => readUsingString(h.content, h)
   }
   private def readUsingString(str: String, hdl: Handle): Option[SExp] = {
     val pos = positions(hdl)
@@ -144,7 +144,7 @@ class FileIO(val files: Map[String, String]) extends IO {
  * This interpreter dictates the concrete semantics of the Scheme language analyzed by MAF.
  */
 class SchemeInterpreter(
-    cb: (Identity, SchemeInterpreter.Value) => Unit = (_,_) => (),
+    cb: (Identity, SchemeInterpreter.Value) => Unit = (_, _) => (),
     io: IO = new EmptyIO(),
     stack: Boolean = false) {
   import scala.util.control.TailCalls._
@@ -521,9 +521,9 @@ class SchemeInterpreter(
   }
 
   def evalSExp(sexp: SExp, exp: SchemeExp): SchemeInterpreter.Value = sexp match {
-    case SExpId(id)               => Value.Symbol(id.name)
-    case SExpValue(value, _)      => evalLiteral(value) 
-    case SExpPair(car, cdr, idn)  =>
+    case SExpId(id)          => Value.Symbol(id.name)
+    case SExpValue(value, _) => evalLiteral(value)
+    case SExpPair(car, cdr, _) =>
       val carValue = evalSExp(car, exp)
       val cdrValue = evalSExp(cdr, exp)
       allocateCons(exp, carValue, cdrValue)
@@ -1315,10 +1315,10 @@ class SchemeInterpreter(
     object `read` extends Prim {
       val name = "read"
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
-        case Nil => 
-          io.read(io.console).map(sexp => evalSExp(sexp,fexp)).getOrElse(Value.EOF)
-        case (_, Value.InputPort(port: io.Handle @unchecked)) :: Nil =>
-          io.read(port).map(sexp => evalSExp(sexp,fexp)).getOrElse(Value.EOF)
+        case Nil =>
+          io.read(io.console).map(sexp => evalSExp(sexp, fexp)).getOrElse(Value.EOF)
+        case (_, Value.InputPort(port)) :: Nil =>
+          io.read(port).map(sexp => evalSExp(sexp, fexp)).getOrElse(Value.EOF)
         case _ => stackedException(s"$name (${fexp.idn.pos}): wrong number of arguments, 0 or 1 expected, got ${args.length}")
       }
     }

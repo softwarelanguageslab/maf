@@ -762,11 +762,9 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                     }
         )
 
-    case object `current-input-port`
-        extends NoStore0Operation("current-input-port", () => unaryOp(SchemeOp.MakeInputPort)(string("__console__")))
+    case object `current-input-port` extends NoStore0Operation("current-input-port", () => unaryOp(SchemeOp.MakeInputPort)(string("__console__")))
 
-    case object `current-output-port`
-        extends NoStore0Operation("current-output-port", () => unaryOp(SchemeOp.MakeOutputPort)(string("__console__")))
+    case object `current-output-port` extends NoStore0Operation("current-output-port", () => unaryOp(SchemeOp.MakeOutputPort)(string("__console__")))
 
     class ReadOrPeekChar(name: String) extends NoStoreLOperation(name) {
       def call(args: List[V]): MayFail[V, Error] = args match {
