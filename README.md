@@ -84,8 +84,9 @@ The original idea behind MAF comes from the following work on modular analysis: 
 The MAF framework is presented in the following publication:
   * _MAF: A Framework for Modular Static Analysis of Higher-Order Languages_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf).
  
-MAF is a complete rework of the Scala-AM framework, which was not focused on modular static analysis but was primarily used to experiment with AAM-style analyses. 
-Scala-AM is described in the following publications:
+MAF is a complete rework of the [Scala-AM framework](https://github.com/acieroid/scala-am), which was not focused on
+modular static analysis but was primarily used to experiment with AAM-style analyses. Scala-AM is described in the
+following publications:
   * _Scala-AM: A Modular Static Analysis Framework_. SCAM 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf), [doi](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am).
   * _Building a Modular Static Analysis Framework in Scala_. Scala@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf), [doi](http://doi.acm.org/10.1145/2998392.3001579).
 
