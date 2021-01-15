@@ -18,6 +18,12 @@ trait SchemeAssertSemantics extends BigStepModFSemantics {
     assertionsFailed = assertionsFailed - ((component, exp))
   }
 
+  def printAssertions(): Unit = {
+    println(s"${assertionsVerified.size} assertions were verified, ${assertionsFailed.size} assertions could not be verified.")
+    assertionsVerified.foreach({ case (cmp, a) => println(s"Verified $a ($cmp)") })
+    assertionsFailed.foreach({ case (cmp, a) => println(s"Failed $a ($cmp)") })
+  }
+
   override def intraAnalysis(cmp: Component): AssertionModFIntra
 
   trait AssertionModFIntra extends IntraAnalysis with BigStepModFIntra {
