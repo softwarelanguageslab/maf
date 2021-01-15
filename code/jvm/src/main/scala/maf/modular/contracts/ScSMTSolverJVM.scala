@@ -4,13 +4,12 @@ import maf.language.contracts.{ScExp, ScFunctionAp, ScIdentifier, ScNil, ScValue
 import maf.language.sexp.{ValueBoolean, ValueInteger, ValueString}
 
 /**
-  * Transforms a condition built using basic predicates from the soft contract language
-  * into valid assertions for Z3,
-  * @param condition the condition which must be checked
-  * @param primitives: a map of primitives to names in Z3
-  */
-class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
-    extends ScSmtSolver {
+ * Transforms a condition built using basic predicates from the soft contract language
+ * into valid assertions for Z3,
+ * @param condition the condition which must be checked
+ * @param primitives: a map of primitives to names in Z3
+ */
+class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map()) extends ScSmtSolver {
 
   val DEBUG_MODE = false
 
@@ -34,6 +33,7 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
         (VBool (unwrap-bool Bool))
         (VProc (unwrap-proc Int))
         (VPai  (car V) (cdr V))
+        (VNil)
         (VString (unwrap-string String))
         (VPrim (unwrap-prim String)))))
 
@@ -64,6 +64,9 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
      (or ((_ is VPrim) v1)
          ((_ is VProc) v1)))
          
+   (define-fun null?/c ((v1 V)) V
+     (VBool ((_ is VNil) v1)))
+
    (define-fun nonzero?/c ((v1 V)) V
      (VBool (not (= (unwrap-int v1) 0))))
 
@@ -119,7 +122,7 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
      (VBool true))
     """.stripMargin
 
-  def transformExpression(exp: ScExp, operand: Boolean = false): Option[String] = {
+  def transformExpression(exp: ScExp, operand: Boolean = false): Option[String] =
     exp match {
       case ScIdentifier(name, _) =>
         primitives.get(name) match {
@@ -142,7 +145,6 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
 
       case ScNil(_) => None
     }
-  }
 
   def transform(exp: ScExp): String = exp match {
     case ScAnd(e1, e2) =>
@@ -156,19 +158,19 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
   }
 
   /**
-    * Transforms the condition into valid Z3 assertions
-    * @return valid Z3 assertions
-    */
+   * Transforms the condition into valid Z3 assertions
+   * @return valid Z3 assertions
+   */
   private def transformed: String = {
     val assertions = transform(condition)
-    val constants  = variables.toSet.map((v: String) => s"(declare-const ${v} V)").mkString("\n")
+    val constants = variables.toSet.map((v: String) => s"(declare-const ${v} V)").mkString("\n")
     constants ++ "\n" ++ assertions
   }
 
   /**
-    * Checks if the current formula is satisfiable
-    * @return true if the formale is satisfiable otherwise false
-    */
+   * Checks if the current formula is satisfiable
+   * @return true if the formale is satisfiable otherwise false
+   */
   def isSat: Boolean = {
     // transform the code
     val userCode = transformed
@@ -180,7 +182,7 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
 
     // create a new context and solver
     val context = new Context()
-    val solver  = context.mkSolver()
+    val solver = context.mkSolver()
 
     // transform the textual representation of the assertions to the internal format of Z3
     val e: Array[BoolExpr] = context.parseSMTLIB2String(smtCode, null, null, null, null)
@@ -209,10 +211,8 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map())
 object ScSMTSolverJVM {
   import com.microsoft.z3._
   implicit class Z3Solver(solver: Solver) {
-    def assert_(expressions: Array[BoolExpr]): Unit = {
-      for (expression <- expressions) {
+    def assert_(expressions: Array[BoolExpr]): Unit =
+      for (expression <- expressions)
         solver.add(expression)
-      }
-    }
   }
 }

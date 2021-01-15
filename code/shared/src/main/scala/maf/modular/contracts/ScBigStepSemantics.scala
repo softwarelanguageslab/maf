@@ -211,10 +211,15 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
       ): ScExp =
       ScDependentContract(List(domain), ScLambda(List(ScIdentifier("\"x", Identity.none)), range, range.idn), idn)
 
-    def evalAnd(operands: List[ScExp]): ScEvalM[PostValue] = operands match {
-      case List(expr)    => eval(expr)
-      case expr :: exprs => eval(expr).flatMap(value => cond(value, enrichOpaqueInStore(expr, evalAnd(exprs)), result(lattice.injectBoolean(false))))
-    }
+    def evalAnd(operands: List[ScExp]): ScEvalM[PostValue] =
+      operands match {
+        case List(expr) =>
+          eval(expr)
+        case expr :: exprs =>
+          eval(expr).flatMap { value =>
+            cond(value, enrichOpaqueInStore(expr, evalAnd(exprs)), result(lattice.injectBoolean(false)))
+          }
+      }
 
     def evalCons(car: ScExp, cdr: ScExp): ScEvalM[PostValue] = for {
       evaluatedCar <- eval(car)
@@ -237,7 +242,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
 
     def evalCar(pai: ScExp): ScEvalM[PostValue] =
       eval(pai).flatMap { (pai) =>
-        val topValue = if (lattice.top == pai) { Set(result(lattice.top)) }
+        val topValue = if (lattice.top == pai._1) { Set(result(lattice.top)) }
         else { Set() }
         val opqValue = if (lattice.isDefinitelyOpq(pai._1)) { Set(pure((lattice.injectOpq(Opq()), ScModSemantics.freshIdent))) }
         else { Set() }
@@ -454,13 +459,7 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
     def evalFunctionAp(operator: ScExp, operands: List[ScExp]): ScEvalM[PostValue] = for {
       evaluatedOperator <- eval(operator)
       evaluatedOperands <- sequence(operands.map(eval))
-      _ <- debug {
-        println(s"Doing application of ${evaluatedOperator} on ${evaluatedOperands}")
-      }
       res <- applyFn(evaluatedOperator, evaluatedOperands, operands)
-      _ <- debug {
-        println(s"result of evaluating function ${operator} is ${res}")
-      }
     } yield res
 
     def evalIf(
@@ -553,9 +552,6 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
           rangeMaker <- read(contract.rangeMaker)
           rangeContract <- applyFn(rangeMaker, values, syntacticOperands)
           fn <- read(arr.e)
-          _ <- debug {
-            println(s"applying function ${fn}")
-          }
           resultValue <- applyFn(fn, values, syntacticOperands)
           checkedResultValue <- applyMon(rangeContract, resultValue, contract.rangeMaker.idn, arr.e.idn)
         } yield checkedResultValue
@@ -686,8 +682,10 @@ trait ScBigStepSemantics extends ScModSemantics with ScPrimitives with ScSemanti
 
     private def feasible(op: Prim, value: PostValue)(pc: PC): Option[PC] =
       value._2 match {
-        case _ if !lattice.isTrue(lattice.applyPrimitive(op)(value._1)) => None
-        case ScNil(_)                                                   => Some(pc)
+        case _ if !lattice.isTrue(lattice.applyPrimitive(op)(value._1)) =>
+          None
+
+        case ScNil(_) => Some(pc)
         case _ =>
           val newPc = pc.and(ScFunctionAp(ScIdentifier(op.operation, Identity.none), List(value._2), Identity.none))
           val solver = newSmtSolver(newPc)

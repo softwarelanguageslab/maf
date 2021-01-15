@@ -22,7 +22,8 @@ trait ScSemanticsMonad extends ScModSemantics {
   object ScEvalM {
     def pure[X](v: => X): ScEvalM[X] = ScEvalM((context) => List((context, v)).toSet)
     def unit: ScEvalM[()] = pure(())
-    def void[X]: ScEvalM[X] = ScEvalM((context) => Set[(Context, X)]())
+    def void[X]: ScEvalM[X] =
+      ScEvalM((context) => Set[(Context, X)]())
 
     case class ScEvalM[X](run: Context => Set[(Context, X)]) {
       def map[Y](f: X => Y): ScEvalM[Y] = ScEvalM { (context) =>

@@ -398,4 +398,12 @@ trait ScBigStepSemanticsTest extends ScTests with ScAnalysisTests {
       machine.summary.returnValues.get(ScMain) shouldEqual Some(machine.lattice.injectInteger(10))
     }
   }
+
+  /** Test for issue with car where top would not be propably recognized, return zero successors state */
+  eval("""
+    (define (list-of-test cc) (lambda (v) (letrec (loop (lambda (lst) (if (null? lst) #t (and (cc (car lst)) (loop (cdr lst)))))) (loop v)))) 
+
+    ((list-of-test int?) '(1 2 #t))""").tested { machine =>
+    machine.summary.returnValues.get(ScMain) shouldEqual Some(machine.lattice.boolTop)
+  }
 }

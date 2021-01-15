@@ -7,7 +7,10 @@ class ScTestAnalysisGlobalStoreTest extends ScTestsJVMGlobalStore with ScBigStep
 class ScTestAnalysisLocalStoreTest extends ScTestsJVMLocalStore with ScBigStepSemanticsTest
 
 class ScSmallTestSuite extends ScTestsJVMGlobalStore {
-  eval("(define (f x) #t) (provide/contract (f (-> any? number?))) (f 5)").tested { machine =>
-    assert(machine.summary.blames.nonEmpty)
+  eval("""
+    (define (list-of-test cc) (lambda (v) (letrec (loop (lambda (lst) (if (null? lst) #t (and (cc (car lst)) (loop (cdr lst)))))) (loop v)))) 
+
+    ((list-of-test int?) '(1 2 #t))""").tested { machine =>
+    machine.summary.returnValues.get(ScMain) shouldEqual Some(machine.lattice.boolTop)
   }
 }

@@ -185,7 +185,18 @@ object ScPrelude {
     "any/c" -> "(define (any/c a) #t)",
     "not/c" -> "(define (not/c contract) (lambda (v) (not (contract v))))",
     ">=/c" -> "(define (>=/c v) (lambda (w) (>= w v)))",
-    "=/c" -> "(define (=/c v) (lambda (w) (= v w)))"
+    "=/c" -> "(define (=/c v) (lambda (w) (= v w)))",
+    "list-of" -> """
+      (define (list-of contract) 
+        (lambda (v)
+          (letrec 
+            (loop (lambda (lst)
+              (if (null? lst)
+                #t
+                (and (contract (car lst)) (loop (cdr lst))))))
+
+            (loop v))))
+      """
   )
 
   val prelude: List[ScExp] = preludeFunctions.map(_._2).map(SCExpCompiler.read).toList

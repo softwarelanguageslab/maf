@@ -11,7 +11,8 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
 
     def collectDomainContracts(
         implies: Implies
-    )(implicit lattice: ScLattice[Value, Addr]): List[ScAddresses[Addr]] = implies match {
+      )(implicit lattice: ScLattice[Value, Addr]
+      ): List[ScAddresses[Addr]] = implies match {
       case StringImplication(prim) => List(ScPrimAddr(prim))
       case Implication(left, right) =>
         collectDomainContracts(left) ++ collectDomainContracts(right)
@@ -19,7 +20,7 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
 
     def asGrd(name: String)(implicit lattice: ScLattice[Value, Addr]): Value = this match {
       case Implication(left, StringImplication(range)) =>
-        val rangeMaker     = lattice.injectThunk(Thunk(ScPrimAddr(range)))
+        val rangeMaker = lattice.injectThunk(Thunk(ScPrimAddr(range)))
         val rangeMakerAddr = ScPrimRangeAddr(name)
 
         store += rangeMakerAddr -> rangeMaker
@@ -43,50 +44,47 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
 
   def primitives =
     Map(
-      "+"                   -> ("int?" ~> "int?" ~> "int?"),
-      "-"                   -> ("int?" ~> "int?" ~> "int?"),
-      "*"                   -> ("int?" ~> "int?" ~> "int?"),
-      "/"                   -> ("int?" ~> "nonzero?" ~> "int?"),
-      "="                   -> ("int?" ~> "int?" ~> "bool?"),
-      "int?"                -> ("any?" ~> "bool?"),
-      "proc?"               -> ("any?" ~> "bool?"),
-      "bool?"               -> ("any?" ~> "bool?"),
-      ">"                   -> ("int?" ~> "int?" ~> "bool?"),
-      "<"                   -> ("int?" ~> "int?" ~> "bool?"),
-      "=<"                  -> ("int?" ~> "int?" ~> "bool?"),
+      "+" -> ("int?" ~> "int?" ~> "int?"),
+      "-" -> ("int?" ~> "int?" ~> "int?"),
+      "*" -> ("int?" ~> "int?" ~> "int?"),
+      "/" -> ("int?" ~> "nonzero?" ~> "int?"),
+      "=" -> ("int?" ~> "int?" ~> "bool?"),
+      "int?" -> ("any?" ~> "bool?"),
+      "proc?" -> ("any?" ~> "bool?"),
+      "bool?" -> ("any?" ~> "bool?"),
+      ">" -> ("int?" ~> "int?" ~> "bool?"),
+      "<" -> ("int?" ~> "int?" ~> "bool?"),
+      "=<" -> ("int?" ~> "int?" ~> "bool?"),
       "dependent-contract?" -> ("any?" ~> "bool?"),
-      "any?"                -> ("any?" ~> "bool?"),
-      "and"                 -> ("any?" ~> "any?" ~> "any?"),
-      "or"                  -> ("any?" ~> "any?" ~> "any?"),
-      "nonzero?"            -> ("int?" ~> "bool?"),
-      "pair?"               -> ("any?" ~> "bool?"),
-      "number?"             -> ("any?" ~> "bool?"),
-      "not"                 -> ("any?" ~> "bool?"),
-      "char?"               -> ("any?" ~> "bool?"),
-      "vector?"             -> ("any?" ~> "bool?"),
-      "string?"             -> ("any?" ~> "bool?"),
-      "string-length"       -> ("string?" ~> "int?"),
-      "symbol?"             -> ("any?" ~> "bool?"),
-      "true?"               -> ("any?" ~> "bool?"),
-      "false?"              -> ("any?" ~> "bool?")
+      "any?" -> ("any?" ~> "bool?"),
+      "and" -> ("any?" ~> "any?" ~> "any?"),
+      "or" -> ("any?" ~> "any?" ~> "any?"),
+      "nonzero?" -> ("int?" ~> "bool?"),
+      "pair?" -> ("any?" ~> "bool?"),
+      "number?" -> ("any?" ~> "bool?"),
+      "not" -> ("any?" ~> "bool?"),
+      "char?" -> ("any?" ~> "bool?"),
+      "vector?" -> ("any?" ~> "bool?"),
+      "string?" -> ("any?" ~> "bool?"),
+      "string-length" -> ("string?" ~> "int?"),
+      "symbol?" -> ("any?" ~> "bool?"),
+      "true?" -> ("any?" ~> "bool?"),
+      "false?" -> ("any?" ~> "bool?"),
+      "null?" -> ("any?" ~> "any?")
     )
 
-  /**
-    * Wraps the primitives into monitors
-    */
-  def setupMonitoredPrimitives(): Unit = {
-    primitives.foreach {
-      case (name, implies) =>
-        val contractAddr = ScGrdAddr(name)
-        val primAddr     = ScPrimAddr(name)
-        val grd          = implies.asGrd(name)
-        store += contractAddr -> grd
-        store += primAddr     -> lattice.injectPrim(Prim(name))
-        store += ScMonitoredPrimAddr(name) -> lattice.injectArr(
-          Arr(Identity.none, Identity.none, contractAddr, primAddr)
-        )
+  /** Wraps the primitives into monitors */
+  def setupMonitoredPrimitives(): Unit =
+    primitives.foreach { case (name, implies) =>
+      val contractAddr = ScGrdAddr(name)
+      val primAddr = ScPrimAddr(name)
+      val grd = implies.asGrd(name)
+      store += contractAddr -> grd
+      store += primAddr -> lattice.injectPrim(Prim(name))
+      store += ScMonitoredPrimAddr(name) -> lattice.injectArr(
+        Arr(Identity.none, Identity.none, contractAddr, primAddr)
+      )
     }
-  }
 
   def primBindings: Iterable[(String, Addr)] =
     primitives.keys.map(name => (name, ScMonitoredPrimAddr(name)))

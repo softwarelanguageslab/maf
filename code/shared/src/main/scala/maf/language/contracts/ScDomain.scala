@@ -283,6 +283,7 @@ trait ScDomain[I, B, Addr <: Address] {
       "string?" -> (_ => Bool(BoolLattice[B].top)), // TODO
       "not" -> bUnOp(BoolLattice[B].not),
       "string-length" -> (_ => Number(IntLattice[I].top)),
+      "null?" -> pred { case Nils => },
       "nonzero?" -> ((value) =>
         value match {
           case Number(a) =>
