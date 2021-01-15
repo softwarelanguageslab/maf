@@ -4,7 +4,8 @@ import maf.core.Lattice
 
 /** A lattice for integers */
 trait IntLattice[I] extends Lattice[I] { self =>
-  def inject(n: Int): I
+  def inject(n: BigInt): I
+
   def toReal[R: RealLattice](n: I): R
   def random(n: I): I
   def plus(n1: I, n2: I): I

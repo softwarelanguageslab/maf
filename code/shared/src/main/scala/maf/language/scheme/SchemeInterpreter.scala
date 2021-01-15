@@ -1,19 +1,21 @@
 package maf.language.scheme
 
 import java.util.concurrent.TimeUnit
-
 import maf.core.Position.Position
 import maf.core._
 import maf.language.CScheme._
 import maf.language.change.CodeVersion._
 import maf.util._
+import maf.language.sexp
 import maf.language.sexp._
+import maf.lattice.MathOps
 import maf.util.benchmarks.Timeout
 
 import scala.concurrent.TimeoutException
 import scala.concurrent._
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
+import scala.util.parsing.input.CharSequenceReader
 
 case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"A child thread has tragically died with ${e.getMessage}.")
 case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpreter encountered an unexpected value during its execution: $v.")
@@ -46,6 +48,7 @@ trait IO {
   def close(f: Handle): Unit
   val console: Handle
 
+  def read(f: Handle): Option[SExp]
   def readChar(f: Handle): SchemeInterpreter.Value
   def peekChar(f: Handle): SchemeInterpreter.Value
   def writeChar(c: Char, f: Handle): Unit
@@ -58,6 +61,7 @@ class EmptyIO extends IO {
   def close(h: Handle): Unit = ()
   val console = Handle.ConsoleHandle
 
+  def read(h: Handle): Option[SExp] = None
   def readChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
   def peekChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
   def writeChar(c: Char, h: Handle): Unit = ()
@@ -81,12 +85,29 @@ class FileIO(val files: Map[String, String]) extends IO {
       throw new Exception(s"Cannot open virtual file $filename")
     }
   def close(h: Handle): Unit = h match {
-    case Handle.ConsoleHandle   => SchemeInterpreter.Value.EOF
-    case h: Handle.FileHandle   => positions = positions + (h -> files(h.filename).size)
-    case h: Handle.StringHandle => positions = positions + (h -> h.content.size)
+    case Handle.ConsoleHandle   => ()
+    case h: Handle.FileHandle   => positions += h -> files(h.filename).size
+    case h: Handle.StringHandle => positions += h -> h.content.size
   }
 
   val console = Handle.ConsoleHandle
+
+  def read(h: Handle): Option[SExp] = h match {
+    case ConsoleHandle   => None
+    case h: FileHandle   => readUsingString(files(h.filename), h)
+    case h: StringHandle => readUsingString(h.content, h)
+  }
+  private def readUsingString(str: String, hdl: Handle): Option[SExp] = {
+    val pos = positions(hdl)
+    if (pos >= str.size) {
+      None
+    } else {
+      val reader = new CharSequenceReader(str, pos)
+      val (sexp, offset) = SExpParser.parseIn(reader)
+      positions += hdl -> offset
+      Some(sexp)
+    }
+  }
 
   def readChar(h: Handle): SchemeInterpreter.Value =
     peekChar(h) match {
@@ -123,11 +144,12 @@ class FileIO(val files: Map[String, String]) extends IO {
  * This interpreter dictates the concrete semantics of the Scheme language analyzed by MAF.
  */
 class SchemeInterpreter(
-    cb: (Identity, SchemeInterpreter.Value) => Unit,
+    cb: (Identity, SchemeInterpreter.Value) => Unit = (_,_) => (),
     io: IO = new EmptyIO(),
     stack: Boolean = false) {
   import scala.util.control.TailCalls._
   import SchemeInterpreter._
+  import maf.lattice.NumOps._
 
   /**
    * Evaluates `program`.
@@ -466,15 +488,7 @@ class SchemeInterpreter(
       //val cdrv    = eval(cdr,env,timeout)
       //Primitives.Append.append(splicev,cdrv)
       case SchemeValue(v, _) =>
-        done(v match {
-          case ValueString(s)    => Value.Str(s)
-          case ValueSymbol(s)    => Value.Symbol(s)
-          case ValueInteger(n)   => Value.Integer(n)
-          case ValueReal(r)      => Value.Real(r)
-          case ValueBoolean(b)   => Value.Bool(b)
-          case ValueCharacter(c) => Value.Character(c)
-          case ValueNil          => Value.Nil
-        })
+        done(evalLiteral(v))
       case CSchemeFork(body, _) =>
         // TODO: This is a bit hacky in terms of tailcalls
         done(Value.Thread(safeFuture(eval(body, env, timeout, version).result)))
@@ -504,6 +518,25 @@ class SchemeInterpreter(
   def makeList(values: List[(SchemeExp, Value)]): Value = values match {
     case Nil                  => Value.Nil
     case (exp, value) :: rest => allocateCons(exp, value, makeList(rest))
+  }
+
+  def evalSExp(sexp: SExp, exp: SchemeExp): SchemeInterpreter.Value = sexp match {
+    case SExpId(id)               => Value.Symbol(id.name)
+    case SExpValue(value, _)      => evalLiteral(value) 
+    case SExpPair(car, cdr, idn)  =>
+      val carValue = evalSExp(car, exp)
+      val cdrValue = evalSExp(cdr, exp)
+      allocateCons(exp, carValue, cdrValue)
+  }
+
+  def evalLiteral(lit: sexp.Value) = lit match {
+    case ValueString(s)    => Value.Str(s)
+    case ValueSymbol(s)    => Value.Symbol(s)
+    case ValueInteger(n)   => Value.Integer(n)
+    case ValueReal(r)      => Value.Real(r)
+    case ValueBoolean(b)   => Value.Bool(b)
+    case ValueCharacter(c) => Value.Character(c)
+    case ValueNil          => Value.Nil
   }
 
   object Primitives {
@@ -724,6 +757,7 @@ class SchemeInterpreter(
       `current-output-port`,
       `read-char`,
       `peek-char`,
+      `read`,
       `write`,
       `write-char`,
       `display`,
@@ -792,16 +826,19 @@ class SchemeInterpreter(
     object Div extends SimplePrim {
       val name = "/"
       def call(args: List[Value], position: Position) = args match {
-        case Nil                     => stackedException("/: wrong number of arguments")
-        case Value.Integer(1) :: Nil => Value.Integer(1)
-        case Value.Integer(x) :: Nil => Value.Real(1.0 / x)
-        case Value.Real(x) :: Nil    => Value.Real(1.0 / x)
+        case Nil                                            => stackedException("/: wrong number of arguments")
+        case Value.Integer(i) :: Nil if i.equals(BigInt(1)) => Value.Integer(BigInt(1))
+        case Value.Integer(x) :: Nil                        => Value.Real(1.0 / x)
+        case Value.Real(x) :: Nil                           => Value.Real(1.0 / x)
         case Value.Integer(x) :: rest =>
           Times.call(rest, position) match {
             case Value.Integer(y) =>
-              if (x % y == 0) { Value.Integer(x / y) }
-              else { Value.Real(x.toDouble / y) }
-            case Value.Real(y) => Value.Real(x / y)
+              if (x % y == 0) {
+                Value.Integer(x / y)
+              } else {
+                Value.Real(x.toDouble / y)
+              }
+            case Value.Real(y) => Value.Real(x.doubleValue / y)
             case v             => throw new UnexpectedValueTypeException[Value](v)
           }
         case Value.Real(x) :: rest =>
@@ -826,7 +863,7 @@ class SchemeInterpreter(
 
     object Abs extends SingleArgumentPrim("abs") {
       def fun = {
-        case Value.Integer(x) => Value.Integer(scala.math.abs(x))
+        case Value.Integer(x) => Value.Integer(x.abs)
         case Value.Real(x)    => Value.Real(scala.math.abs(x))
       }
     }
@@ -932,8 +969,8 @@ class SchemeInterpreter(
     }
     object Zerop extends SingleArgumentPrim("zero?") {
       def fun = {
-        case Value.Integer(0) => Value.Bool(true)
-        case _: Value.Integer => Value.Bool(false)
+        case Value.Integer(i) if i.equals(BigInt(0)) => Value.Bool(true)
+        case _: Value.Integer                        => Value.Bool(false)
       }
     }
 
@@ -1025,8 +1062,13 @@ class SchemeInterpreter(
     }
     object Gcd extends SimplePrim {
       val name = "gcd"
-      def gcd(a: Int, b: Int): Int = if (b == 0) { a }
-      else { gcd(b, a % b) }
+
+      def gcd(a: BigInt, b: BigInt): BigInt = if (b == 0) {
+        a
+      } else {
+        gcd(b, a % b)
+      }
+
       def call(args: List[Value], position: Position): Value.Integer = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(gcd(x, y))
         case _                                           => stackedException(s"gcd ($position): invalid arguments $args")
@@ -1079,8 +1121,9 @@ class SchemeInterpreter(
 
     object NumEq extends SimplePrim {
       val name = "="
+
       @scala.annotation.tailrec
-      def numEqInt(first: Int, l: List[Value]): Value = l match {
+      def numEqInt(first: BigInt, l: List[Value]): Value = l match {
         case Nil                                    => Value.Bool(true)
         case Value.Integer(x) :: rest if x == first => numEqInt(first, rest)
         case (_: Value.Integer) :: _                => Value.Bool(false)
@@ -1088,6 +1131,7 @@ class SchemeInterpreter(
         case (_: Value.Real) :: _                   => Value.Bool(false)
         case _                                      => stackedException(s"=: invalid type of arguments $l")
       }
+
       @scala.annotation.tailrec
       def numEqReal(first: Double, l: List[Value]): Value = l match {
         case Nil                                    => Value.Bool(true)
@@ -1268,7 +1312,16 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
       }
     }
-
+    object `read` extends Prim {
+      val name = "read"
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+        case Nil => 
+          io.read(io.console).map(sexp => evalSExp(sexp,fexp)).getOrElse(Value.EOF)
+        case (_, Value.InputPort(port: io.Handle @unchecked)) :: Nil =>
+          io.read(port).map(sexp => evalSExp(sexp,fexp)).getOrElse(Value.EOF)
+        case _ => stackedException(s"$name (${fexp.idn.pos}): wrong number of arguments, 0 or 1 expected, got ${args.length}")
+      }
+    }
     object `read-char` extends SimplePrim {
       val name = "read-char"
       def call(args: List[Value], position: Position) = args match {
@@ -1394,8 +1447,8 @@ class SchemeInterpreter(
     object MakeString extends SimplePrim {
       val name = "make-string"
       def call(args: List[Value], position: Position) = args match {
-        case Value.Integer(length) :: Nil                       => Value.Str("\u0000" * length)
-        case Value.Integer(length) :: Value.Character(c) :: Nil => Value.Str(c.toString * length)
+        case Value.Integer(length) :: Nil                       => Value.Str("\u0000" * bigIntToInt(length))
+        case Value.Integer(length) :: Value.Character(c) :: Nil => Value.Str(c.toString * bigIntToInt(length))
         case _                                                  => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
@@ -1408,7 +1461,7 @@ class SchemeInterpreter(
       val name = "string-ref"
       def call(args: List[Value], position: Position): Value.Character = args match {
         case Value.Str(x) :: Value.Integer(n) :: Nil =>
-          Value.Character(x(n))
+          Value.Character(x(bigIntToInt(n)))
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
@@ -1430,8 +1483,9 @@ class SchemeInterpreter(
     object Substring extends SimplePrim {
       val name = "substring"
       def call(args: List[Value], position: Position): Value.Str = args match {
-        case Value.Str(s) :: Value.Integer(from) :: Value.Integer(to) :: Nil if from <= to => Value.Str(s.substring(from, to))
-        case _                                                                             => stackedException(s"substring ($position): invalid arguments $args")
+        case Value.Str(s) :: Value.Integer(from) :: Value.Integer(to) :: Nil if from <= to =>
+          Value.Str(s.substring(bigIntToInt(from), bigIntToInt(to)))
+        case _ => stackedException(s"substring ($position): invalid arguments $args")
       }
     }
 
@@ -1453,8 +1507,8 @@ class SchemeInterpreter(
       val name = "vector"
       def newVector(
           fexp: SchemeFuncall,
-          siz: Int,
-          elms: Map[Int, Value],
+          siz: BigInt,
+          elms: Map[BigInt, Value],
           ini: Value
         ): Value = {
         val ptr = newAddr(AddrInfo.PtrAddr(fexp))
@@ -1463,7 +1517,7 @@ class SchemeInterpreter(
         Value.Pointer(ptr)
       }
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = {
-        val elms = args.map(_._2).zipWithIndex.map(_.swap).toMap
+        val elms = args.map(_._2).zipWithIndex.map({ case (e, i) => (BigInt(i), e) }).toMap
         newVector(fexp, args.size, elms, Value.Undefined(fexp.idn))
       }
     }
@@ -1582,7 +1636,7 @@ class SchemeInterpreter(
     ///////////
     object Random extends SingleArgumentPrim("random") {
       def fun = {
-        case Value.Integer(x) => Value.Integer((scala.math.random() * x).toInt)
+        case Value.Integer(x) => Value.Integer(MathOps.random(x))
         case Value.Real(x)    => Value.Real(scala.math.random() * x)
       }
     }
@@ -1684,9 +1738,18 @@ object SchemeInterpreter {
         extends Value { override def toString: String = name.map(n => s"#<procedure:$n>").getOrElse(s"#<procedure:${lambda.idn.pos}>") }
     case class Primitive(p: Prim) extends Value { override def toString: String = s"#<primitive:${p.name}>" }
     case class Str(str: String) extends Value { override def toString: String = str }
-    case class Symbol(sym: String) extends Value { override def toString: String = s"'$sym" }
-    case class Integer(n: Int) extends Value { override def toString: String = n.toString }
-    case class Real(r: Double) extends Value { override def toString: String = r.toString }
+
+    case class Symbol(sym: String) extends Value {
+      override def toString: String = s"'$sym"
+    }
+
+    case class Integer(n: BigInt) extends Value {
+      override def toString: String = n.toString
+    }
+
+    case class Real(r: Double) extends Value {
+      override def toString: String = r.toString
+    }
     case class Bool(b: Boolean) extends Value { override def toString: String = if (b) "#t" else "#f" }
     case class Pointer(v: Addr) extends Value { override def toString: String = s"#<ptr $v>" }
     case class Character(c: Char) extends Value {
@@ -1699,8 +1762,8 @@ object SchemeInterpreter {
     case object Nil extends Value { override def toString: String = "'()" }
     case class Cons(car: Value, cdr: Value) extends Value { override def toString: String = s"#<cons $car $cdr>" }
     case class Vector(
-        size: Int,
-        elems: Map[Int, Value],
+        size: BigInt,
+        elems: Map[BigInt, Value],
         init: Value)
         extends Value { override def toString: String = s"#<vector[size:$size]>" }
     case class InputPort(port: Handle) extends Value { override def toString: String = s"#<input-port:$port>" }

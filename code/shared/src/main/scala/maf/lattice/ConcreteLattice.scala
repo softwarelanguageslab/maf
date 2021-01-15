@@ -4,6 +4,7 @@ import maf.core._
 import maf.lattice.interfaces._
 import maf.util.Show
 import maf.util.datastructures.SmartUnion._
+import NumOps._
 
 object Concrete {
   sealed trait L[+X] {
@@ -56,7 +57,7 @@ object Concrete {
   type S = L[String]
   type Sym = L[String]
   type B = L[Boolean]
-  type I = L[Int]
+  type I = L[BigInt]
   type R = L[Double]
   type C = L[Char]
   /* TODO[easy]: the bool lattice implementation could be specialized (see the old "ConcreteBoolEfficient" implementation). Whether this results in a speed improvement should be evaluated */
@@ -139,7 +140,7 @@ object Concrete {
         case Values(vs) =>
           vs.foldLeft(MayFail.success(IntLattice[I2].bottom): MayFail[I2, Error]) { (acc, str) =>
             for {
-              numv <- MayFail.fromOption[I2, Error](str.toIntOption.map(IntLattice[I2].inject))(NotANumberString)
+              numv <- MayFail.fromOption[I2, Error](NumOps.bigIntFromString(str).map(IntLattice[I2].inject))(NotANumberString)
               accv <- acc
             } yield IntLattice[I2].join(accv, numv)
           }
@@ -159,29 +160,38 @@ object Concrete {
         case Top             => true
         case Values(content) => content.contains(true)
       }
+
       def isFalse(b: B): Boolean = b match {
         case Top             => true
         case Values(content) => content.contains(false)
       }
+
       def not(b: B): B = b.map(x => !x)
     }
 
-    implicit val intShow: Show[Int] = new Show[Int] {
-      def show(i: Int): String = s"$i"
+    implicit val intShow: Show[BigInt] = new Show[BigInt] {
+      def show(i: BigInt): String = s"$i"
     }
-    implicit val intConcrete: IntLattice[I] = new BaseInstance[Int]("Int") with IntLattice[I] {
-      def inject(x: Int): I = Values(Set(x))
+    implicit val intConcrete: IntLattice[I] = new BaseInstance[BigInt]("Int") with IntLattice[I] {
+      def inject(x: BigInt): I = Values(Set(x))
+
       def toReal[R2: RealLattice](n: I): R2 = n match {
         case Top             => RealLattice[R2].top
-        case Values(content) => content.foldMap((n: Int) => RealLattice[R2].inject(n.toDouble))
+        case Values(content) => content.foldMap((n: BigInt) => RealLattice[R2].inject(bigIntToDouble(n)))
       }
+
       def random(n: I): I = if (n == bottom) bottom else Top
+
       def plus(n1: I, n2: I): I = n2.guardBot(n1.foldMap(n1 => n2.map(n2 => n1 + n2)))
+
       def minus(n1: I, n2: I): I = n2.guardBot(n1.foldMap(n1 => n2.map(n2 => n1 - n2)))
+
       def times(n1: I, n2: I): I = n2.guardBot(n1.foldMap(n1 => n2.map(n2 => n1 * n2)))
+
       def quotient(n1: I, n2: I): I = n2.guardBot(n1.foldMap(n1 => n2.map(n2 => n1 / n2)))
+
       def div[R2: RealLattice](n1: I, n2: I): R2 = n2.guardBot {
-        n1.foldMap(n1 => n2.foldMap(n2 => RealLattice[R2].inject(n1 / n2.toDouble)))
+        n1.foldMap(n1 => n2.foldMap(n2 => RealLattice[R2].inject(bigIntToDouble(n1) / bigIntToDouble(n2))))
       }
       def expt(n1: I, n2: I): I = n2.guardBot(n1.foldMap(n1 => n2.map(n2 => Math.pow(n1.toDouble, n2.toDouble).toInt)))
       def modulo(n1: I, n2: I): I = n2.guardBot {
@@ -211,14 +221,14 @@ object Concrete {
           val c = CharLattice[C2].toString[S2](char)
           vs.foldMap(n =>
             /* Appends n times c to the empty string to construct the actual string we need */
-            1.to(n).foldLeft(StringLattice[S2].inject(""))((s, _) => StringLattice[S2].append(s, c))
+            1.to(NumOps.bigIntToInt(n)).foldLeft(StringLattice[S2].inject(""))((s, _) => StringLattice[S2].append(s, c))
           )
       }
 
       def toString[S2: StringLattice](n: I): S2 =
         n.foldMap(n => StringLattice[S2].inject(n.toString))
       def toChar[C2: CharLattice](n: I): C2 =
-        n.foldMap(n => CharLattice[C2].inject(n.asInstanceOf[Char]))
+        n.foldMap(n => CharLattice[C2].inject(NumOps.bigIntToInt(n).asInstanceOf[Char]))
     }
 
     implicit val doubleShow: Show[Double] = new Show[Double] {

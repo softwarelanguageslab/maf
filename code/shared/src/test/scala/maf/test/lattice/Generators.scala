@@ -14,7 +14,7 @@ trait LatticeGenerator[L] {
 
 object Generators {
   val str: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr, Gen.numStr))
-  val int: Gen[Int] = Gen.choose(-1000, 1000)
+  val int: Gen[BigInt] = Gen.choose(-1000, 1000)
   val double: Gen[Double] = Gen.choose(-1000.0, 1000.0)
   val char: Gen[Char] = Gen.choose(0.toChar, 255.toChar)
   val sym: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr))
@@ -75,7 +75,9 @@ class ConcreteGenerator[T](g: Gen[T])(implicit lat: Lattice[Concrete.L[T]]) exte
 }
 
 object ConcreteStringGenerator extends ConcreteGenerator[String](Generators.str)(Concrete.L.stringConcrete)
-object ConcreteIntGenerator extends ConcreteGenerator[Int](Generators.int)
+
+object ConcreteIntGenerator extends ConcreteGenerator[BigInt](Generators.int)
+
 object ConcreteRealGenerator extends ConcreteGenerator[Double](Generators.double)
 object ConcreteCharGenerator extends ConcreteGenerator[Char](Generators.char)
 object ConcreteSymbolGenerator extends ConcreteGenerator[String](Generators.sym)(Concrete.L.symConcrete)
@@ -102,7 +104,9 @@ abstract class ConstantPropagationGenerator[X](gen: Gen[X])(implicit lat: Lattic
 }
 
 object ConstantPropagationStringGenerator extends ConstantPropagationGenerator[String](Generators.str)(ConstantPropagation.L.stringCP)
-object ConstantPropagationIntGenerator extends ConstantPropagationGenerator[Int](Generators.int)
+
+object ConstantPropagationIntGenerator extends ConstantPropagationGenerator[BigInt](Generators.int)
+
 object ConstantPropagationRealGenerator extends ConstantPropagationGenerator[Double](Generators.double)
 object ConstantPropagationCharGenerator extends ConstantPropagationGenerator[Char](Generators.char)
 object ConstantPropagationSymbolGenerator extends ConstantPropagationGenerator[String](Generators.sym)(ConstantPropagation.L.symCP)

@@ -55,7 +55,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def getThreads(x: L): Set[TID]
 
   /** Injection of an integer */
-  def number(x: Int): L
+  def number(x: BigInt): L
 
   /** Top element for all integers */
   def numTop: L
@@ -63,11 +63,20 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Injection of a float */
   def real(x: Double): L
 
+  /** Top element for floats */
+  def realTop: L
+
   /** Injection of a string */
   def string(x: String): L
 
+  /** Top element for strings */
+  def stringTop: L
+
   /** Injection of a boolean */
   def bool(x: Boolean): L
+
+  /** Top element for boolean */
+  def boolTop: L = join(bool(true), bool(false))
 
   /** Injection of a character */
   def char(x: Char): L
@@ -83,6 +92,9 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
 
   /** Injection of a symbol */
   def symbol(x: String): L
+
+  /** Top element for all symbols */
+  def symbolTop: L
 
   /** Injection of a cons cell. */
   def cons(car: L, cdr: L): L

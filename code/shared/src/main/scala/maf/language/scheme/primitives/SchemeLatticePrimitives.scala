@@ -14,7 +14,8 @@ trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
 
   import lat._
 
-  implicit def fromMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
+  implicit def buildMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
+  implicit def buildMF[X](err: Error): MayFail[X, Error] = MayFail.failure(err)
 
   /* Simpler names for frequently used lattice operations. */
   def isInteger: V => MayFail[V, Error] = x => op(SchemeOp.IsInteger)(List(x))
@@ -150,6 +151,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       `current-output-port`,
       `read-char`,
       `write-char`,
+      `read`,
       `write`,
       `display`,
       `eof-object?`,
@@ -810,6 +812,45 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     case object `display` extends WriteOrDisplay("display")
     case object `write` extends WriteOrDisplay("write")
+
+    case object `read` extends SchemePrimitive[V, A] {
+      val name = "read"
+      def result(
+          fpos: SchemeExp,
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): (V, Store[A, V]) = {
+        val adr = alloc.pointer(fpos)
+        val ptr = lat.pointer(adr)
+        val vlu = lat.join(Seq(ptr, nil, numTop, realTop, charTop, stringTop, symbolTop, boolTop))
+        val cns = lat.cons(vlu, vlu)
+        // Note #1: creating a vector with these arguments is known to succeed
+        // Note #2: vector should use a different address than the cons-cell
+        val MayFailSuccess(vct) = lat.vector(numTop, vlu)
+        (vlu, store.extend(adr, cns).extend(adr, vct))
+      }
+      def argError(args: List[(SchemeExp, V)]) =
+        PrimitiveNotApplicable("read", args)
+      override def call(
+          fpos: SchemeExp,
+          args: List[(SchemeExp, V)],
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): MayFail[(V, Store[A, V]), Error] = args match {
+        case Nil =>
+          result(fpos, store, alloc)
+        case (_, inp) :: Nil =>
+          unaryOp(SchemeOp.IsInputPort)(inp) >>= { bln =>
+            (isTrue(bln), isFalse(bln)) match {
+              case (true, true)   => result(fpos, store, alloc).addError(argError(args))
+              case (true, false)  => result(fpos, store, alloc)
+              case (false, true)  => argError(args)
+              case (false, false) => (bottom, store)
+            }
+          }
+        case oth => MayFail.failure(PrimitiveArityError(name, 1, oth.size))
+      }
+    }
 
     case object `eof-object?`
         extends NoStore1Operation("eof-object?",

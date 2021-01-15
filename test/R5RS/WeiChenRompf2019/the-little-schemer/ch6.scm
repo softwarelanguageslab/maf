@@ -24,4 +24,5 @@
            (* (value (car nexp)) (value (car (cdr (cdr nexp))))))
           (else
            (^ (value (car nexp)) (value (car (cdr (cdr nexp)))))))))
+           
 (value '((5 ^ 1) * (3 + 3)))

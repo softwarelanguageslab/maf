@@ -1,30 +1,34 @@
 package maf.lattice
 
+import scala.util.Random
+
 /** Various implementations of mathematical utilities functions. */
 object MathOps {
   def ceil(a: Double): Double = scala.math.ceil(a)
 
   /**
    * Modulo in Scheme and Scala are different.
-   *      This implements the same behavior as Scheme's modulo
+   * This implements the same behavior as Scheme's modulo
    */
-  def modulo(n1: Int, n2: Int): Int =
-    if (scala.math.signum(n1) * scala.math.signum(n2) < 0) {
+  def modulo(n1: BigInt, n2: BigInt): BigInt =
+    if (n1.signum * n2.signum < 0) {
       /* different sign, behaviour not the same between Scheme and Scala, adjust it */
-      (scala.math.abs(n2) - scala.math.abs(n1) % scala.math.abs(n2)) % scala.math.abs(n2) * (if (n2 < 0) -1 else 1)
+      (n2.abs - n1.abs % n2.abs) % n2.abs * (if (n2 < 0) -1 else 1)
     } else {
       /* same sign, same behaviour */
       n1 % n2
     }
 
   /** Remainder in Scheme has the same behavior of Scala's modulo. */
-  def remainder(n1: Int, n2: Int): Int = n1 % n2
-  def random(n: Int): Int = scala.math.abs(scala.util.Random.nextInt() % n)
+  def remainder(n1: BigInt, n2: BigInt): BigInt = n1 % n2
+
+  def random(n: BigInt): BigInt = (BigInt(n.bitLength, new Random()) % n).abs
+
   def random(n: Double): Double = scala.math.abs(scala.util.Random.nextDouble() % n)
 
   /**
    * Round in Scheme and Scala are different.
-   *      This implements the same behaviour as Scheme's round.
+   * This implements the same behaviour as Scheme's round.
    */
   def round(n: Double): Double = {
     val frac = n % 1 /* Fractional part of n */
