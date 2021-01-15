@@ -20,7 +20,7 @@ trait SExpParserTestsSpec extends SchemeBenchmarkTests {
     }
 }
 
-class SExpParserTests extends SExpParserTestsSpec with SequentialBenchmarks
+class SExpParserTests extends SExpParserTestsSpec with AllSequentialBenchmarks
 
 class SExpParserSimpleTests extends AnyFlatSpec {
   "File that ends with a comment" should "be parsed without error" in {

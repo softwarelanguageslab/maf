@@ -89,7 +89,7 @@ object SchemeBenchmarkPrograms {
     "mbrotZ.sch", // Uses read.
     "solovay-strassen.scm" // Program seems erroneous.
   )
-  lazy val other: Set[String] = fromFolder("test/R5RS")(
+  lazy val various: Set[String] = fromFolder("test/R5RS/various")(
     ".DS_Store",
     "pico.scm", // Used def-macro, no main body + need to incorporate pico.ini file.
     "quasiquoting.scm", // Uses unquote-splicing.
@@ -98,7 +98,7 @@ object SchemeBenchmarkPrograms {
   )
   lazy val WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
   lazy val sequentialBenchmarks: Set[String] =
-    SmartUnion.sunionList(List(ad, gabriel, gambit, icp1, rosetta, scp1, sigscheme, WeiChenRompf2019, other))
+    SmartUnion.sunionList(List(ad, gabriel, gambit, icp1, rosetta, scp1, sigscheme, WeiChenRompf2019, various))
 
   def selectRandomSeq(n: Int): Set[String] = Random.shuffle(sequentialBenchmarks).take(n)
 
