@@ -186,6 +186,11 @@ object ScPrelude {
     "not/c" -> "(define (not/c contract) (lambda (v) (not (contract v))))",
     ">=/c" -> "(define (>=/c v) (lambda (w) (>= w v)))",
     "=/c" -> "(define (=/c v) (lambda (w) (= v w)))",
+    // car, cdr and cons are implemented as special syntactic forms,
+    // as such this is NOT an infinite recursive functions.
+    "car" -> "(define (car x) (car x))",
+    "cdr" -> "(define (cdr x) (cdr x))",
+    "cdr" -> "(define (cons x y) (cons x y))",
     "list-of" -> """
       (define (list-of contract) 
         (lambda (v)

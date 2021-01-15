@@ -70,7 +70,10 @@ trait ScPrimitives extends ScModSemantics with GlobalStore[ScExp] {
       "symbol?" -> ("any?" ~> "bool?"),
       "true?" -> ("any?" ~> "bool?"),
       "false?" -> ("any?" ~> "bool?"),
-      "null?" -> ("any?" ~> "any?")
+      "null?" -> ("any?" ~> "any?"),
+      "cons" -> ("any?" ~> "any?" ~> "pair?"),
+      "car" -> ("pair?" ~> "any?"),
+      "cdr" -> ("pair?" ~> "any?")
     )
 
   /** Wraps the primitives into monitors */
