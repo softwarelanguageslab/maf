@@ -89,7 +89,7 @@ object SchemeBenchmarkPrograms {
     "mbrotZ.sch", // Uses read.
     "solovay-strassen.scm" // Program seems erroneous.
   )
-  lazy val other: Set[String] = fromFolder("test/R5RS")(
+  lazy val other: Set[String] = fromFolder("test/R5RS/various")(
     ".DS_Store",
     "pico.scm", // Used def-macro, no main body + need to incorporate pico.ini file.
     "quasiquoting.scm", // Uses unquote-splicing.

@@ -3,15 +3,15 @@ package maf.test
 import maf.bench.scheme.{IncrementalSchemeBenchmarkPrograms, SchemeBenchmarkPrograms}
 import maf.util.datastructures.SmartUnion
 
-trait SimpleBenchmarks extends SchemeBenchmarkTests {
+trait VariousSequentialBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarkPrograms.other)
 }
 
-trait RandomBenchmarks extends SchemeBenchmarkTests {
+trait RandomSequentialBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarkPrograms.selectRandomSeq(40))
 }
 
-trait SequentialBenchmarks extends SchemeBenchmarkTests {
+trait AllSequentialBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarkPrograms.sequentialBenchmarks)
 }
 
@@ -19,7 +19,7 @@ trait ThreadBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarkPrograms.threads)
 }
 
-trait ConcurrentBenchmarks extends SchemeBenchmarkTests {
+trait AllConcurrentBenchmarks extends SchemeBenchmarkTests {
   override def benchmarks(): Set[Benchmark] = SmartUnion.sunion(super.benchmarks(), SchemeBenchmarkPrograms.concurrentBenchmarks)
 }
 
