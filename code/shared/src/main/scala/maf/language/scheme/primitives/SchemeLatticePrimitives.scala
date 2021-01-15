@@ -694,11 +694,9 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                 (cell, value, store) =>
                                   dereferencePointerGetAddressReturnStore(cell, store) { (addr, cons, store) =>
                                     for {
-                                      car <- lat.car(cons)
                                       cdr <- lat.cdr(cons)
-                                      joined = lat.join(car, value)
-                                      updated = lat.cons(joined, cdr)
-                                    } yield (bool(false), store.update(addr, updated))
+                                      updated = lat.cons(value, cdr)
+                                    } yield (unspecified, store.update(addr, updated))
                                   }
         )
 
@@ -708,10 +706,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                   dereferencePointerGetAddressReturnStore(cell, store) { (addr, cons, store) =>
                                     for {
                                       car <- lat.car(cons)
-                                      cdr <- lat.cdr(cons)
-                                      joined = lat.join(cdr, value)
-                                      updated = lat.cons(car, joined)
-                                    } yield (bool(false), store.update(addr, updated))
+                                      updated = lat.cons(car, value)
+                                    } yield (unspecified, store.update(addr, updated))
                                   }
         )
 
@@ -1020,7 +1016,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         extends NoStore1Operation("eof-object?",
                                   /* TODO: there is no specific encoding for EOF objects, but they can only arise in scenarios where charTop is produced. So we can approximate them as follows */
                                   x =>
-                                    if (subsumes(x, charTop)) { join(bool(true), bool(false)) }
+                                    if (subsumes(x, charTop)) { boolTop }
                                     else { bool(false) }
         )
 
