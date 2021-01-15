@@ -18,8 +18,29 @@ import scala.concurrent.duration.Duration
 case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"A child thread has tragically died with ${e.getMessage}.")
 case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpreter encountered an unexpected value during its execution: $v.")
 
+trait Handle {
+  // The name used by this handle in the abstract interpreter. Used to convert values.
+  val abstractName: String
+}
+
+object Handle {
+  // !! These are *not* case classes because we want different handles if we open the same file multiple times
+
+  class FileHandle(val filename: String) extends Handle {
+    val abstractName = "__file__" + filename
+    override def toString(): String = s"file:$filename"
+  }
+  class StringHandle(val content: String) extends Handle {
+    val abstractName = content
+    override def toString(): String = s"string:$content"
+  }
+  object ConsoleHandle extends Handle {
+    val abstractName = "__console__"
+    override def toString(): String = "console"
+  }
+}
+
 trait IO {
-  type Handle
   def fromString(string: String): Handle
   def open(filename: String): Handle
   def close(f: Handle): Unit
@@ -32,11 +53,10 @@ trait IO {
 }
 
 class EmptyIO extends IO {
-  type Handle = Unit
-  def fromString(string: String): Handle = ()
-  def open(filename: String): Handle = ()
+  def fromString(string: String): Handle = new Handle.StringHandle(string)
+  def open(filename: String): Handle = new Handle.FileHandle(filename)
   def close(h: Handle): Unit = ()
-  val console = ()
+  val console = Handle.ConsoleHandle
 
   def readChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
   def peekChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
@@ -47,31 +67,26 @@ class EmptyIO extends IO {
 class FileIO(val files: Map[String, String]) extends IO {
   var positions: Map[Handle, Int] = Map.empty
 
-  trait Handle
-  class FileHandle(val filename: String) extends Handle
-  class StringHandle(val content: String) extends Handle
-  object ConsoleHandle extends Handle
-
   def fromString(string: String): Handle = {
-    val handle = new StringHandle(string)
+    val handle = new Handle.StringHandle(string)
     positions = positions + (handle -> 0)
     handle
   }
   def open(filename: String): Handle =
     if (files.contains(filename)) {
-      val handle = new FileHandle(filename)
+      val handle = new Handle.FileHandle(filename)
       positions = positions + (handle -> 0)
       handle
     } else {
       throw new Exception(s"Cannot open virtual file $filename")
     }
   def close(h: Handle): Unit = h match {
-    case ConsoleHandle   => SchemeInterpreter.Value.EOF
-    case h: FileHandle   => positions = positions + (h -> files(h.filename).size)
-    case h: StringHandle => positions = positions + (h -> h.content.size)
+    case Handle.ConsoleHandle   => SchemeInterpreter.Value.EOF
+    case h: Handle.FileHandle   => positions = positions + (h -> files(h.filename).size)
+    case h: Handle.StringHandle => positions = positions + (h -> h.content.size)
   }
 
-  val console = ConsoleHandle
+  val console = Handle.ConsoleHandle
 
   def readChar(h: Handle): SchemeInterpreter.Value =
     peekChar(h) match {
@@ -81,17 +96,17 @@ class FileIO(val files: Map[String, String]) extends IO {
         c
     }
   def peekChar(h: Handle): SchemeInterpreter.Value = h match {
-    case ConsoleHandle =>
+    case Handle.ConsoleHandle =>
       /* Console is never opened with this IO class */
       SchemeInterpreter.Value.EOF
-    case h: FileHandle =>
+    case h: Handle.FileHandle =>
       val pos = positions(h)
       if (pos >= files(h.filename).size) {
         SchemeInterpreter.Value.EOF
       } else {
         SchemeInterpreter.Value.Character(files(h.filename).charAt(pos))
       }
-    case h: StringHandle =>
+    case h: Handle.StringHandle =>
       val pos = positions(h)
       if (pos >= h.content.size) {
         SchemeInterpreter.Value.EOF
@@ -1187,13 +1202,13 @@ class SchemeInterpreter(
 
     object `close-input-port` extends SingleArgumentPrim("close-input-port") {
       def fun = { case Value.InputPort(handle) =>
-        io.close(handle.asInstanceOf[io.Handle])
+        io.close(handle)
         Value.Undefined(Identity.none)
       }
     }
     object `close-output-port` extends SingleArgumentPrim("close-output-port") {
       def fun = { case Value.InputPort(handle) =>
-        io.close(handle.asInstanceOf[io.Handle])
+        io.close(handle)
         Value.Undefined(Identity.none)
       }
     }
@@ -1220,9 +1235,9 @@ class SchemeInterpreter(
           io.writeString(v.toString, io.console)
           Value.Undefined(Identity.none)
         case v :: Value.OutputPort(port) :: Nil =>
-          io.writeString(v.toString, port.asInstanceOf[io.Handle])
+          io.writeString(v.toString, port)
           Value.Undefined(Identity.none)
-        case _ => stackedException(s"$name ($position): invalid arguments")
+        case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
     object `display` extends DisplayLike("display")
@@ -1235,9 +1250,9 @@ class SchemeInterpreter(
           io.writeChar(c, io.console)
           Value.Undefined(Identity.none)
         case Value.Character(c) :: Value.OutputPort(port) :: Nil =>
-          io.writeChar(c, port.asInstanceOf[io.Handle])
+          io.writeChar(c, port)
           Value.Undefined(Identity.none)
-        case _ => stackedException(s"$name ($position): invalid arguments")
+        case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
 
@@ -1248,7 +1263,7 @@ class SchemeInterpreter(
           io.writeString("\n", io.console);
           Value.Undefined(Identity.none)
         case Value.OutputPort(port) :: Nil =>
-          io.writeString("\n", port.asInstanceOf[io.Handle])
+          io.writeString("\n", port)
           Value.Undefined(Identity.none)
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
       }
@@ -1260,7 +1275,7 @@ class SchemeInterpreter(
         case Nil =>
           io.readChar(io.console)
         case Value.InputPort(port) :: Nil =>
-          io.readChar(port.asInstanceOf[io.Handle])
+          io.readChar(port)
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 or 1 expected, got ${args.length}")
       }
     }
@@ -1270,7 +1285,7 @@ class SchemeInterpreter(
         case Nil =>
           io.peekChar(io.console)
         case Value.InputPort(port) :: Nil =>
-          io.peekChar(port.asInstanceOf[io.Handle])
+          io.peekChar(port)
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 or 1 expected, got ${args.length}")
       }
     }
@@ -1688,8 +1703,8 @@ object SchemeInterpreter {
         elems: Map[Int, Value],
         init: Value)
         extends Value { override def toString: String = s"#<vector[size:$size]>" }
-    case class InputPort(port: Any) extends Value { override def toString: String = s"#<input-port:$port>" }
-    case class OutputPort(port: Any) extends Value { override def toString: String = s"#<output-port:$port>" }
+    case class InputPort(port: Handle) extends Value { override def toString: String = s"#<input-port:$port>" }
+    case class OutputPort(port: Handle) extends Value { override def toString: String = s"#<output-port:$port>" }
     case class Thread(fut: Future[Value]) extends Value { override def toString: String = s"#<thread>" }
     case class Lock(l: java.util.concurrent.locks.Lock) extends Value { override def toString: String = "#<lock>" }
     case object EOF extends Value { override def toString: String = "#<eof>" }
