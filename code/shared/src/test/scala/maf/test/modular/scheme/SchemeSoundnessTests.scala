@@ -7,6 +7,7 @@ import maf.core._
 import maf.language.CScheme._
 import maf.language.scheme.SchemeInterpreter._
 import maf.language.scheme._
+import maf.language.scheme.lattices.SchemeOp
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular._
 import maf.modular.scheme._
@@ -84,8 +85,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       case Value.Nil            => lat.subsumes(abs, lat.nil)
       case Value.Pointer(_)     => lat.getPointerAddresses(abs).nonEmpty
       case Value.Thread(_)      => lat.getThreads(abs).nonEmpty
-      case Value.InputPort(h)   => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(lat.string(h.abstractName)).getOrElse(lat.bottom))
-      case Value.OutputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(lat.string(h.abstractName)).getOrElse(lat.bottom))
+      case Value.InputPort(h)   => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
+      case Value.OutputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
       case Value.EOF            => lat.subsumes(abs, lat.charTop)
       case v                    => throw new Exception(s"Unknown concrete value type: $v.")
     }
