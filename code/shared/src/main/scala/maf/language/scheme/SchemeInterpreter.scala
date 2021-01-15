@@ -16,6 +16,7 @@ import scala.concurrent._
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.parsing.input.CharSequenceReader
+import maf.language.scheme.SchemeInterpreter.Value.Pointer
 
 case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"A child thread has tragically died with ${e.getMessage}.")
 case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpreter encountered an unexpected value during its execution: $v.")
@@ -488,7 +489,7 @@ class SchemeInterpreter(
       //val cdrv    = eval(cdr,env,timeout)
       //Primitives.Append.append(splicev,cdrv)
       case SchemeValue(v, _) =>
-        done(evalLiteral(v))
+        done(evalLiteral(v, e))
       case CSchemeFork(body, _) =>
         // TODO: This is a bit hacky in terms of tailcalls
         done(Value.Thread(safeFuture(eval(body, env, timeout, version).result)))
@@ -504,15 +505,26 @@ class SchemeInterpreter(
         if (version == Old) tailcall(eval(old, env, timeout, version)) else tailcall(eval(nw, env, timeout, version))
     }
   }
+
+  def allocateVal(exp: SchemeExp, value: Value) = {
+    val addr = newAddr(AddrInfo.PtrAddr(exp))
+    extendStore(addr, value)
+    Value.Pointer(addr)
+  }
+
   def allocateCons(
       exp: SchemeExp,
       car: Value,
       cdr: Value
-    ): Value = {
-    val addr = newAddr(AddrInfo.PtrAddr(exp))
-    val pair = Value.Cons(car, cdr)
-    extendStore(addr, pair)
-    Value.Pointer(addr)
+    ): Value =
+    allocateVal(exp, Value.Cons(car, cdr))
+
+  def allocateStr(exp: SchemeExp, str: String) =
+    allocateVal(exp, Value.Str(str))
+
+  def getString(addr: Addr): String = lookupStore(addr) match {
+    case Value.Str(str) => str
+    case v              => throw new UnexpectedValueTypeException[Value](v)
   }
 
   def makeList(values: List[(SchemeExp, Value)]): Value = values match {
@@ -522,15 +534,15 @@ class SchemeInterpreter(
 
   def evalSExp(sexp: SExp, exp: SchemeExp): SchemeInterpreter.Value = sexp match {
     case SExpId(id)          => Value.Symbol(id.name)
-    case SExpValue(value, _) => evalLiteral(value)
+    case SExpValue(value, _) => evalLiteral(value, exp)
     case SExpPair(car, cdr, _) =>
       val carValue = evalSExp(car, exp)
       val cdrValue = evalSExp(cdr, exp)
       allocateCons(exp, carValue, cdrValue)
   }
 
-  def evalLiteral(lit: sexp.Value) = lit match {
-    case ValueString(s)    => Value.Str(s)
+  def evalLiteral(lit: sexp.Value, exp: SchemeExp) = lit match {
+    case ValueString(s)    => allocateStr(exp, s)
     case ValueSymbol(s)    => Value.Symbol(s)
     case ValueInteger(n)   => Value.Integer(n)
     case ValueReal(r)      => Value.Real(r)
@@ -764,17 +776,23 @@ class SchemeInterpreter(
       `newline`
     )
 
-    abstract class SingleArgumentPrim(val name: String) extends SimplePrim {
-      def fun: PartialFunction[Value, Value]
-      def call(args: List[Value], position: Position) = args match {
-        case x :: Nil =>
-          if (fun.isDefinedAt(x)) {
-            fun(x)
+    abstract class SingleArgumentPrimWithExp(val name: String) extends Prim {
+      def fun(fexp: SchemeFuncall): PartialFunction[Value, Value]
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+        case (_, x) :: Nil =>
+          val f = fun(fexp)
+          if (f.isDefinedAt(x)) {
+            f(x)
           } else {
-            stackedException(s"$name ($position): invalid argument type $x")
+            stackedException(s"$name (${fexp.idn.pos}): invalid argument type $x")
           }
-        case _ => stackedException(s"$name ($position): invalid arguments $args")
+        case _ => stackedException(s"$name ($fexp.idn.pos): invalid arguments $args")
       }
+    }
+
+    abstract class SingleArgumentPrim(name: String) extends SingleArgumentPrimWithExp(name) {
+      def fun: PartialFunction[Value, Value]
+      def fun(fexp: SchemeFuncall): PartialFunction[Value, Value] = fun
     }
 
     ////////////////
@@ -1174,20 +1192,20 @@ class SchemeInterpreter(
         case Value.Real(x)    => Value.Integer(x.toInt) /* TODO: fractions */
       }
     }
-    object NumberToString extends SingleArgumentPrim("number->string") {
-      def fun = {
-        case Value.Integer(x) => Value.Str(s"$x")
-        case Value.Real(x)    => Value.Str(s"$x")
+    object NumberToString extends SingleArgumentPrimWithExp("number->string") {
+      def fun(fexp: SchemeFuncall) = {
+        case Value.Integer(x) => allocateStr(fexp, s"$x")
+        case Value.Real(x)    => allocateStr(fexp, s"$x")
       }
     }
-    object SymbolToString extends SingleArgumentPrim("symbol->string") {
-      def fun = { case Value.Symbol(x) =>
-        Value.Str(x)
+    object SymbolToString extends SingleArgumentPrimWithExp("symbol->string") {
+      def fun(fexp: SchemeFuncall) = { case Value.Symbol(x) =>
+        allocateStr(fexp, x)
       }
     }
     object StringToSymbol extends SingleArgumentPrim("string->symbol") {
-      def fun = { case Value.Str(x) =>
-        Value.Symbol(x)
+      def fun = { case Value.Pointer(addr) =>
+        Value.Symbol(getString(addr))
       }
     }
     object CharToInteger extends SingleArgumentPrim("char->integer") {
@@ -1195,9 +1213,9 @@ class SchemeInterpreter(
         Value.Integer(c.toInt)
       }
     }
-    object CharToString extends SingleArgumentPrim("char->string") {
-      def fun = { case Value.Character(c) =>
-        Value.Str(c.toString)
+    object CharToString extends SingleArgumentPrimWithExp("char->string") {
+      def fun(fexp: SchemeFuncall) = { case Value.Character(c) =>
+        allocateStr(fexp, c.toString)
       }
     }
     object IntegerToChar extends SingleArgumentPrim("integer->char") {
@@ -1229,18 +1247,21 @@ class SchemeInterpreter(
     }
 
     object `open-input-file` extends SingleArgumentPrim("open-input-file") {
-      def fun = { case Value.Str(filename) =>
-        Value.InputPort(io.open(filename))
+      def fun = { case Value.Pointer(addr) =>
+        val str = getString(addr)
+        Value.InputPort(io.open(str))
       }
     }
     object `open-output-file` extends SingleArgumentPrim("open-output-file") {
-      def fun = { case Value.Str(filename) =>
-        Value.OutputPort(io.open(filename))
+      def fun = { case Value.Pointer(addr) =>
+        val str = getString(addr)
+        Value.OutputPort(io.open(str))
       }
     }
     object `open-input-string` extends SingleArgumentPrim("open-input-string") {
-      def fun = { case Value.Str(s) =>
-        Value.InputPort(io.fromString(s))
+      def fun = { case Value.Pointer(addr) =>
+        val str = getString(addr)
+        Value.InputPort(io.fromString(str))
       }
     }
 
@@ -1388,8 +1409,12 @@ class SchemeInterpreter(
     }
     object Stringp extends SingleArgumentPrim("string?") {
       def fun = {
-        case _: Value.Str => Value.Bool(true)
-        case _            => Value.Bool(false)
+        case Value.Pointer(addr) =>
+          lookupStore(addr) match {
+            case Value.Str(_) => Value.Bool(true)
+            case _            => Value.Bool(false)
+          }
+        case _ => Value.Bool(false)
       }
     }
     object Integerp extends SingleArgumentPrim("integer?") {
@@ -1432,60 +1457,80 @@ class SchemeInterpreter(
     /////////////
     // Strings //
     /////////////
-    object StringAppend extends SimplePrim {
+    object StringAppend extends Prim {
       val name = "string-append"
-      def call(args: List[Value], position: Position) =
-        Value.Str(
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value =
+        allocateStr(
+          fexp,
           args.foldLeft("")((acc, v) =>
             v match {
-              case Value.Str(x) => s"$acc$x"
-              case _            => stackedException(s"$name ($position): invalid argument $v")
+              case (_, Value.Pointer(x)) =>
+                val str = getString(x)
+                s"$acc$str"
+              case _ => stackedException(s"$name (${fexp.idn.pos}): invalid argument $v")
             }
           )
         )
     }
-    object MakeString extends SimplePrim {
+    object MakeString extends Prim {
       val name = "make-string"
-      def call(args: List[Value], position: Position) = args match {
-        case Value.Integer(length) :: Nil                       => Value.Str("\u0000" * bigIntToInt(length))
-        case Value.Integer(length) :: Value.Character(c) :: Nil => Value.Str(c.toString * bigIntToInt(length))
-        case _                                                  => stackedException(s"$name ($position): invalid arguments $args")
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+        case (_, Value.Integer(length)) :: Nil                            => allocateStr(fexp, "\u0000" * bigIntToInt(length))
+        case (_, Value.Integer(length)) :: (_, Value.Character(c)) :: Nil => allocateStr(fexp, c.toString * bigIntToInt(length))
+        case _                                                            => stackedException(s"$name (${fexp.idn.pos}): invalid arguments $args")
       }
     }
     object StringLength extends SingleArgumentPrim("string-length") {
-      def fun = { case Value.Str(x) =>
-        Value.Integer(x.length)
+      def fun = { case Value.Pointer(addr) =>
+        val str = getString(addr)
+        Value.Integer(str.length)
       }
     }
     object StringRef extends SimplePrim {
       val name = "string-ref"
       def call(args: List[Value], position: Position): Value.Character = args match {
-        case Value.Str(x) :: Value.Integer(n) :: Nil =>
-          Value.Character(x(bigIntToInt(n)))
+        case Value.Pointer(addr) :: Value.Integer(n) :: Nil =>
+          val str = getString(addr)
+          if (0 <= n && n < str.size) {
+            Value.Character(str(bigIntToInt(n)))
+          } else {
+            stackedException(s"$name ($position): index out of range")
+          }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
     object StringLt extends SimplePrim {
       val name = "string<?"
       def call(args: List[Value], position: Position): Value.Bool = args match {
-        case Value.Str(x) :: Value.Str(y) :: Nil => Value.Bool(x < y)
-        case _                                   => stackedException(s"$name ($position): invalid arguments $args")
+        case Value.Pointer(a1) :: Value.Pointer(a2) :: Nil =>
+          val str1 = getString(a1)
+          val str2 = getString(a2)
+          Value.Bool(str1 < str2)
+        case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
 
-    object StringToNumber extends SimplePrim {
-      val name = "string->number"
-      def call(args: List[Value], position: Position): Value.Integer = args match {
-        case Value.Str(x) :: Nil if x.toIntOption.nonEmpty => Value.Integer(x.toIntOption.get)
-        case _                                             => stackedException(s"$name ($position): invalid arguments $args")
+    object StringToNumber extends SingleArgumentPrim("string->number") {
+      def fun = { case Value.Pointer(addr) =>
+        val str = getString(addr)
+        if (str.toIntOption.nonEmpty) {
+          Value.Integer(str.toIntOption.get)
+        } else {
+          stackedException(s"$name: $str can not be converted into a number")
+        }
       }
     }
-    object Substring extends SimplePrim {
+    object Substring extends Prim {
       val name = "substring"
-      def call(args: List[Value], position: Position): Value.Str = args match {
-        case Value.Str(s) :: Value.Integer(from) :: Value.Integer(to) :: Nil if from <= to =>
-          Value.Str(s.substring(bigIntToInt(from), bigIntToInt(to)))
-        case _ => stackedException(s"substring ($position): invalid arguments $args")
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]) = args match {
+        case (_, Value.Pointer(a)) :: (_, Value.Integer(from)) :: (_, Value.Integer(to)) :: Nil if from <= to =>
+          val str = getString(a)
+          if (0 <= from && to <= str.size) {
+            allocateStr(fexp, str.substring(bigIntToInt(from), bigIntToInt(to)))
+          } else {
+            stackedException(s"$name (${fexp.idn.pos}): indices $from and $to are out of range")
+          }
+        case _ => stackedException(s"$name (${fexp.idn.pos}): invalid arguments $args")
       }
     }
 
