@@ -1235,7 +1235,7 @@ class SchemeInterpreter(
     }
     object `open-output-file` extends SingleArgumentPrim("open-output-file") {
       def fun = { case Value.Str(filename) =>
-        Value.InputPort(io.open(filename))
+        Value.OutputPort(io.open(filename))
       }
     }
     object `open-input-string` extends SingleArgumentPrim("open-input-string") {
@@ -1251,7 +1251,7 @@ class SchemeInterpreter(
       }
     }
     object `close-output-port` extends SingleArgumentPrim("close-output-port") {
-      def fun = { case Value.InputPort(handle) =>
+      def fun = { case Value.OutputPort(handle) =>
         io.close(handle)
         Value.Undefined(Identity.none)
       }
