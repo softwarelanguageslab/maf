@@ -222,7 +222,7 @@ trait BaseSchemeModFSemantics
       case sexp.ValueInteger(n)   => lattice.number(n)
       case sexp.ValueReal(r)      => lattice.real(r)
       case sexp.ValueBoolean(b)   => lattice.bool(b)
-      case sexp.ValueString(s)    => allocateVal(exp)(lattice.string(s))
+      case sexp.ValueString(s)    => allocateString(exp)(s)
       case sexp.ValueCharacter(c) => lattice.char(c)
       case sexp.ValueSymbol(s)    => lattice.symbol(s)
       case sexp.ValueNil          => lattice.nil

@@ -969,12 +969,14 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         ): (V, Store[A, V]) = {
         val adr = alloc.pointer(fpos)
         val ptr = lat.pointer(adr)
-        val vlu = lat.join(Seq(ptr, nil, numTop, realTop, charTop, stringTop, symbolTop, boolTop))
+        val vlu = lat.join(Seq(ptr, nil, numTop, realTop, charTop, symbolTop, boolTop))
         val cns = lat.cons(vlu, vlu)
         // Note #1: creating a vector with these arguments is known to succeed
         // Note #2: vector should use a different address than the cons-cell
         val MayFailSuccess(vct) = lat.vector(numTop, vlu)
-        (vlu, store.extend(adr, cns).extend(adr, vct))
+        (vlu, store.extend(adr, cns)
+                   .extend(adr, vct)
+                   .extend(adr, stringTop))
       }
       def argError(args: List[(SchemeExp, V)]) =
         PrimitiveNotApplicable("read", args)
