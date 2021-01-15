@@ -77,7 +77,7 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
 // concrete test suites to run ...
 
 class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with AllSequentialBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.other.contains(b)
+  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
 }
 
 class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModFPrimCSSensitivity with AllSequentialBenchmarks {
@@ -85,9 +85,9 @@ class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModF
 }
 
 class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllSequentialBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.other.contains(b)
+  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
 }
 
 class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with AllSequentialBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.other.contains(b)
+  override def isSlow(b: Benchmark) = true
 }
