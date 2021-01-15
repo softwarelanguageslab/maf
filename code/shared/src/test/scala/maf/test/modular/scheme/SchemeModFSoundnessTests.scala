@@ -81,7 +81,7 @@ class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with AllSequenti
 }
 
 class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModFPrimCSSensitivity with AllSequentialBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.other.contains(b)
+  override def isSlow(b: Benchmark) = true
 }
 
 class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllSequentialBenchmarks {
