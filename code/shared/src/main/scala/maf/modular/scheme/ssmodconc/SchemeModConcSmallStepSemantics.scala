@@ -296,7 +296,7 @@ trait SmallStepModConcSemantics
       // Single-step evaluation.
       case l @ SchemeLambda(_, _, _)          => Set(Kont(lattice.closure((l, env), None), stack))
       case l @ SchemeVarArgLambda(_, _, _, _) => Set(Kont(lattice.closure((l, env), None), stack))
-      case SchemeValue(value, _)              => Set(Kont(evalLiteralValue(value), stack))
+      case SchemeValue(value, _)              => Set(Kont(evalLiteralValue(exp, value), stack))
       case SchemeVar(id)                      => Set(Kont(lookup(id, env), stack))
 
       // Multi-step evaluation.
@@ -502,13 +502,13 @@ trait SmallStepModConcSemantics
     //--------------------//
 
     // Evaluate literals by in injecting them in the lattice.
-    private def evalLiteralValue(literal: sexp.Value): Value = literal match {
+    private def evalLiteralValue(exp: SchemeExp, literal: sexp.Value): Value = literal match {
       case sexp.ValueBoolean(b)   => lattice.bool(b)
       case sexp.ValueCharacter(c) => lattice.char(c)
       case sexp.ValueInteger(n)   => lattice.number(n)
       case sexp.ValueNil          => lattice.nil
       case sexp.ValueReal(r)      => lattice.real(r)
-      case sexp.ValueString(s)    => lattice.string(s)
+      case sexp.ValueString(s)    => allocateStr(exp)(s)
       case sexp.ValueSymbol(s)    => lattice.symbol(s)
       case _                      => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
@@ -564,12 +564,17 @@ trait SmallStepModConcSemantics
     // ALLOCATION HELPERS //
     //--------------------//
 
-    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val addr = allocPtr(pairExp, component)
-      val pair = lattice.cons(car, cdr)
-      writeAddr(addr, pair)
+    protected def allocateVal(exp: SchemeExp)(value: Value): Value = {
+      val addr = allocPtr(exp, component)
+      writeAddr(addr, value)
       lattice.pointer(addr)
     }
+
+    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value =
+      allocateVal(pairExp)(lattice.cons(car,cdr))
+
+    protected def allocateStr(strExp: SchemeExp)(str: String): Value =
+      allocateVal(strExp)(lattice.string(str))
 
     protected def allocateList(elms: List[(SchemeExp, Value)]): Value = elms match {
       case Nil                => lattice.nil
