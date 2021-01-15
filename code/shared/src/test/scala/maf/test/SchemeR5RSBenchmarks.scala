@@ -219,9 +219,9 @@ object SchemeR5RSBenchmarks {
 
     // §6.2.6 Numerical input and output
     // (number->string z)
-    ("(number->string -123.456)", "-123.456"),
-    ("(number->string .5)", "0.5"),
-    ("(number->string 0)", "0"),
+    ("(equal? (number->string -123.456) \"-123.456\")", true),
+    ("(equal? (number->string .5) \"0.5\")", true),
+    ("(equal? (number->string 0) \"0\")", true),
     // (number->string z radix) not supported
     // (string->number string)
     ("(string->number \"100\")", 100),
@@ -330,7 +330,7 @@ object SchemeR5RSBenchmarks {
     ("(symbol? (car '(a b)))", true),
     ("(symbol? \"bar\")", false),
     // (symbol->string symbol)
-    ("(symbol->string 'flying-fish)", "flying-fish"),
+    ("(equal? (symbol->string 'flying-fish) \"flying-fish\")", true),
     // (string->symbol string)
     ("(string->symbol \"flying-fish\")", Symbol("flying-fish")),
 
@@ -411,7 +411,7 @@ object SchemeR5RSBenchmarks {
     // (make-string k)
     ("(string-length (make-string 5))", 5), // The content of the string is unspecified
     // (make-string k char)
-    ("(make-string 5 #\\c)", "ccccc"),
+    ("(equal? (make-string 5 #\\c) \"ccccc\")", true),
     // (string char ...) not supported
     // (string-length string)
     ("(string-length \"foobar\")", 6),
@@ -436,18 +436,18 @@ object SchemeR5RSBenchmarks {
     // (string-ci<=? string1 string2) not supported
 
     // (substring string start end)
-    ("(substring \"foo\" 0 3)", "foo"),
-    ("(substring \"foo\" 0 2)", "fo"),
-    ("(substring \"foo\" 1 2)", "o"),
-    ("(substring \"foo\" 0 0)", ""),
+    ("(equal? (substring \"foo\" 0 3) \"foo\")", true),
+    ("(equal? (substring \"foo\" 0 2) \"fo\")", true),
+    ("(equal? (substring \"foo\" 1 2) \"o\")", true),
+    ("(equal? (substring \"foo\" 0 0) \"\")", true),
 
     // (string-append string ...)
-    ("(string-append \"foo\" \"bar\")", "foobar"),
+    ("(equal? (string-append \"foo\" \"bar\") \"foobar\")", true),
 
     // (string->list string)
     ("(equal? (string->list \"foo\") '(#\\f #\\o #\\o))", true),
     // (list->string list)
-    ("(list->string '(#\\f #\\o #\\o))", "foo"),
+    ("(equal? (list->string '(#\\f #\\o #\\o)) \"foo\")", true),
 
     // (string-copy string) not supported
     // (string-fill! string char) not supported
