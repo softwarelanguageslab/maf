@@ -686,7 +686,7 @@ class SchemeInterpreter(
       /* [x]  string-fill!: String Modification */
       StringLength, /* [vv] string-length: String Selection */
       StringRef, /* [x]  string-ref: String Selection */
-      /* [x]  string-set!: String Modification */
+      StringSet, /* [x]  string-set!: String Modification */
       /* [x]  string<=?: String Comparison */
       StringLt, /* [vv]  string<?: String Comparison */
       /* [x]  string=?: String Comparison */
@@ -1499,6 +1499,22 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+    object StringSet extends SimplePrim {
+      val name = "string-set!"
+      def call(args: List[Value], position: Position): Value.Undefined = args match {
+        case Value.Pointer(addr) :: Value.Integer(idx) :: Value.Character(chr) :: Nil =>
+          val str = getString(addr)
+          if (0 <= idx && idx < str.size) {
+            val updatedStr = str.updated(idx.toInt, chr)
+            extendStore(addr, Value.Str(updatedStr))
+            Value.Undefined(Identity.none)
+          } else {
+            stackedException(s"$name ($position): index out of range")
+          }
+        case _ => stackedException(s"$name ($position): invalid arguments $args")
+      }
+    }
+
     object StringLt extends SimplePrim {
       val name = "string<?"
       def call(args: List[Value], position: Position): Value.Bool = args match {

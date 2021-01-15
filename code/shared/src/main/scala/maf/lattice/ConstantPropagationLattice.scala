@@ -155,6 +155,19 @@ object ConstantPropagation {
             })
             .foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))
       }
+      def set[I2: IntLattice, C2: CharLattice](
+          s: S,
+          i: I2,
+          c: C2
+        ): S = s match {
+        case Bottom | _ if i == IntLattice[I2].bottom || c == CharLattice[C2].bottom => Bottom
+        case Top                                                                     => Top
+        case Constant(str) => (i,c) match {
+          case (Constant(idx: BigInt), Constant(chr: Char)) => Constant(str.updated(idx.toInt, chr))
+          // If neither the index or character are constant, don't even bother
+          case _ => Top
+        }
+      }
       def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match {
         case (Bottom, _) | (_, Bottom)  => BoolLattice[B2].bottom
         case (Top, _) | (_, Top)        => BoolLattice[B2].top

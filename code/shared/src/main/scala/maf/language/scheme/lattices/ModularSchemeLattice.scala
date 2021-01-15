@@ -548,6 +548,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Str(s), Int(n)) => MayFail.success(Char(StringLattice[S].ref(s, n)))
             case _                => MayFail.failure(OperatorNotApplicable("string-ref", args))
           }
+        case StringSet =>
+          (args(0), args(1), args(2)) match {
+            case (Str(s), Int(n), Char(c)) => MayFail.success(Str(StringLattice[S].set(s, n, c)))
+            case _                         => MayFail.failure(OperatorNotApplicable("string-set!", args))
+          }
         case StringLt =>
           (args(0), args(1)) match {
             case (Str(s1), Str(s2)) => MayFail.success(Bool(StringLattice[S].lt(s1, s2)))

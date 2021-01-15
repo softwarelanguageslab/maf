@@ -125,6 +125,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       `string-append`,
       `string-length`,
       `string-ref`,
+      `string-set!`,
       `string<?`,
       `string?`,
       `substring`,
@@ -581,6 +582,17 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
           (x, y, store) => dereferencePointer(x, store)(binaryOp(SchemeOp.StringRef)(_, y)).map(v => (v, store))
         )
 
+    case object `string-set!`
+        extends Store3Operation(
+          "string-set!",
+          (x, idx, chr, store) =>
+            dereferencePointerGetAddressReturnStore(x, store) { (addr, str, store) =>
+              for {
+                updatedStr <- ternaryOp(SchemeOp.StringSet)(str, idx, chr)
+              } yield (unspecified, store.update(addr, updatedStr))
+            }
+        )
+
     case object `string<?`
         extends Store2Operation(
           "string<?",
@@ -638,7 +650,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       }
     }
 
-    case object `char->string` extends SchemePrimitive[V,A] {
+    case object `char->string` extends SchemePrimitive[V, A] {
       val name = "char->string"
       override def call(
           fpos: SchemeExp,
@@ -646,16 +658,16 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
           store: Store[A, V],
           alloc: SchemeInterpreterBridge[V, A]
         ): MayFail[(V, Store[A, V]), Error] = args match {
-          case (_, chr) :: Nil =>
-            for {
-              str <- unaryOp(SchemeOp.CharacterToString)(chr)
-            } yield {
-              val addr = alloc.pointer(fpos)
-              (lat.pointer(addr), store.extend(addr, str))
-            }
-          case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
-        }
-    } 
+        case (_, chr) :: Nil =>
+          for {
+            str <- unaryOp(SchemeOp.CharacterToString)(chr)
+          } yield {
+            val addr = alloc.pointer(fpos)
+            (lat.pointer(addr), store.extend(addr, str))
+          }
+        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+    }
 
     case object `cons` extends SchemePrimitive[V, A] {
       val name = "cons"
@@ -974,9 +986,12 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         // Note #1: creating a vector with these arguments is known to succeed
         // Note #2: vector should use a different address than the cons-cell
         val MayFailSuccess(vct) = lat.vector(numTop, vlu)
-        (vlu, store.extend(adr, cns)
-                   .extend(adr, vct)
-                   .extend(adr, stringTop))
+        (vlu,
+         store
+           .extend(adr, cns)
+           .extend(adr, vct)
+           .extend(adr, stringTop)
+        )
       }
       def argError(args: List[(SchemeExp, V)]) =
         PrimitiveNotApplicable("read", args)

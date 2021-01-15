@@ -127,6 +127,10 @@ object Concrete {
               .foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))
           )
       }
+      def set[I2: IntLattice, C2: CharLattice](s: S, i: I2, c: C2): S = s match {
+        case _ if s == bottom || i == IntLattice[I2].bottom || c == CharLattice[C2].bottom => bottom
+        case Top => Top // TODO: more precise implementation
+      }
       def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match {
         case (Values(bot), _) if bot.isEmpty => BoolLattice[B2].bottom
         case (_, Values(bot)) if bot.isEmpty => BoolLattice[B2].bottom
