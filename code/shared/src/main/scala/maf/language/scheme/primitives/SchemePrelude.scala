@@ -58,6 +58,7 @@ object SchemePrelude {
                   |  @sensitivity:FA
                   |  (or (eq? a b)
                   |    (and (null? a) (null? b))
+                  |    (and (string? a) (string? b) (string=? a b))
                   |    (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
                   |    (and (vector? a) (vector? b)
                   |      (let ((n (vector-length a)))

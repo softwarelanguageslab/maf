@@ -314,7 +314,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `boolean?` extends NoStore1Operation("boolean?", unaryOp(SchemeOp.IsBoolean))
     case object `ceiling` extends NoStore1Operation("ceiling", unaryOp(SchemeOp.Ceiling))
     case object `char->integer` extends NoStore1Operation("char->integer", unaryOp(SchemeOp.CharacterToInteger))
-    case object `char->string` extends NoStore1Operation("char->string", unaryOp(SchemeOp.CharacterToString))
     case object `char-ci<?` extends NoStore2Operation("char-ci<?", binaryOp(SchemeOp.CharacterLtCI))
     case object `char-ci=?` extends NoStore2Operation("char-ci=?", binaryOp(SchemeOp.CharacterEqCI))
     case object `char-downcase` extends NoStore1Operation("char-downcase", unaryOp(SchemeOp.CharacterDowncase))
@@ -336,7 +335,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `log` extends NoStore1Operation("log", unaryOp(SchemeOp.Log))
     case object `modulo` extends NoStore2Operation("modulo", binaryOp(SchemeOp.Modulo))
     case object `null?` extends NoStore1Operation("null?", unaryOp(SchemeOp.IsNull))
-    case object `number->string` extends NoStore1Operation("number->string", unaryOp(SchemeOp.NumberToString))
     case object `number?` extends NoStore1Operation("number?", `real?`.call(_)) /* No support for complex number, so number? is equivalent as real? */
     case object `procedure?` extends NoStore1Operation("procedure?", unaryOp(SchemeOp.IsProcedure))
     case object `quotient` extends NoStore2Operation("quotient", binaryOp(SchemeOp.Quotient))
@@ -344,14 +342,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `remainder` extends NoStore2Operation("remainder", binaryOp(SchemeOp.Remainder))
     case object `round` extends NoStore1Operation("round", unaryOp(SchemeOp.Round))
     case object `sin` extends NoStore1Operation("sin", unaryOp(SchemeOp.Sin))
-    case object `string->number` extends NoStore1Operation("string->number", unaryOp(SchemeOp.StringToNumber))
-    case object `string->symbol` extends NoStore1Operation("string->symbol", unaryOp(SchemeOp.StringToSymbol))
-    case object `string-length` extends NoStore1Operation("string-length", unaryOp(SchemeOp.StringLength))
-    case object `string-ref` extends NoStore2Operation("string-ref", binaryOp(SchemeOp.StringRef))
-    case object `string<?` extends NoStore2Operation("string<?", binaryOp(SchemeOp.StringLt))
-    case object `string?` extends NoStore1Operation("string?", unaryOp(SchemeOp.IsString))
-    case object `substring` extends NoStore3Operation("substring", ternaryOp(SchemeOp.Substring))
-    case object `symbol->string` extends NoStore1Operation("symbol->string", unaryOp(SchemeOp.SymbolToString))
     case object `symbol?` extends NoStore1Operation("symbol?", unaryOp(SchemeOp.IsSymbol))
     case object `tan` extends NoStore1Operation("tan", unaryOp(SchemeOp.Tan))
 
@@ -497,22 +487,175 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                   }.map(v => (v, store))
         )
 
-    case object `string-append`
-        extends NoStoreLOpRec("string-append",
-                              {
-                                case (Nil, _)          => string("")
-                                case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOp.StringAppend)(x, _))
-                              }
+    case object `string-append` extends SchemePrimitive[V, A] {
+      val name = "string-append"
+      private def buildString(args: List[V], store: Store[A, V]): MayFail[V, Error] = args match {
+        case Nil => string("")
+        case x :: otherArgs =>
+          for {
+            rest <- buildString(otherArgs, store)
+            result <- dereferencePointer(x, store)(str => binaryOp(SchemeOp.StringAppend)(str, rest))
+          } yield result
+      }
+      override def call(
+          fpos: SchemeExp,
+          args: List[(SchemeExp, V)],
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): MayFail[(V, Store[A, V]), Error] =
+        for {
+          str <- buildString(args.map(_._2), store)
+        } yield {
+          val addr = alloc.pointer(fpos)
+          (lat.pointer(addr), store.extend(addr, str))
+        }
+    }
+
+    case object `make-string` extends SchemePrimitive[V, A] {
+      val name = "make-string"
+      private def makeString(
+          length: V,
+          char: V,
+          fpos: SchemeExp,
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): MayFail[(V, Store[A, V]), Error] =
+        for {
+          str <- binaryOp(SchemeOp.MakeString)(length, char)
+        } yield {
+          val addr = alloc.pointer(fpos)
+          (lat.pointer(addr), store.extend(addr, str))
+        }
+      override def call(
+          fpos: SchemeExp,
+          args: List[(SchemeExp, V)],
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): MayFail[(V, Store[A, V]), Error] = args match {
+        case (_, length) :: Nil              => makeString(length, lat.char(0.toChar), fpos, store, alloc)
+        case (_, length) :: (_, char) :: Nil => makeString(length, char, fpos, store, alloc)
+        case l                               => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+    }
+
+    case object `number->string` extends SchemePrimitive[V, A] {
+      val name = "number->string"
+      override def call(
+          fpos: SchemeExp,
+          args: List[(SchemeExp, V)],
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): MayFail[(V, Store[A, V]), Error] = args match {
+        case (_, number) :: Nil =>
+          for {
+            str <- unaryOp(SchemeOp.NumberToString)(number)
+          } yield {
+            val addr = alloc.pointer(fpos)
+            (lat.pointer(addr), store.extend(addr, str))
+          }
+        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+      }
+    }
+
+    case object `string->number`
+        extends Store1Operation(
+          "string->number",
+          (x, store) => dereferencePointer(x, store)(unaryOp(SchemeOp.StringToNumber)).map(v => (v, store))
         )
 
-    case object `make-string`
-        extends NoStoreLOp("make-string",
-                           {
-                             case length :: Nil         => binaryOp(SchemeOp.MakeString)(length, lat.char(0.toChar))
-                             case length :: char :: Nil => binaryOp(SchemeOp.MakeString)(length, char)
-                             case l                     => MayFail.failure(PrimitiveArityError("make-string", 1, l.size))
-                           }
+    case object `string->symbol`
+        extends Store1Operation(
+          "string->symbol",
+          (x, store) => dereferencePointer(x, store)(unaryOp(SchemeOp.StringToSymbol)).map(v => (v, store))
         )
+
+    case object `string-length`
+        extends Store1Operation(
+          "string-length",
+          (x, store) => dereferencePointer(x, store)(unaryOp(SchemeOp.StringLength)).map(v => (v, store))
+        )
+
+    case object `string-ref`
+        extends Store2Operation(
+          "string-ref",
+          (x, y, store) => dereferencePointer(x, store)(binaryOp(SchemeOp.StringRef)(_, y)).map(v => (v, store))
+        )
+
+    case object `string<?`
+        extends Store2Operation(
+          "string<?",
+          (x, y, store) =>
+            dereferencePointer(x, store) { xstr =>
+              dereferencePointer(y, store) { ystr =>
+                binaryOp(SchemeOp.StringLt)(xstr, ystr)
+              }
+            }.map(v => (v, store))
+        )
+
+    case object `string?`
+        extends Store1Operation(
+          "string?",
+          (x, store) => dereferencePointer(x, store)(unaryOp(SchemeOp.IsString)).map(v => (v, store))
+        )
+
+    case object `substring` extends SchemePrimitive[V, A] {
+      val name = "substring"
+      override def call(
+          fpos: SchemeExp,
+          args: List[(SchemeExp, V)],
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): MayFail[(V, Store[A, V]), Error] = args match {
+        case (_, ptr) :: (_, start) :: (_, end) :: Nil =>
+          for {
+            substr <- dereferencePointer(ptr, store) { str =>
+              ternaryOp(SchemeOp.Substring)(str, start, end)
+            }
+          } yield {
+            val addr = alloc.pointer(fpos)
+            (lat.pointer(addr), store.extend(addr, substr))
+          }
+        case _ => MayFail.failure(PrimitiveArityError(name, 3, args.size))
+      }
+    }
+
+    case object `symbol->string` extends SchemePrimitive[V, A] {
+      val name = "symbol->string"
+      override def call(
+          fpos: SchemeExp,
+          args: List[(SchemeExp, V)],
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): MayFail[(V, Store[A, V]), Error] = args match {
+        case (_, sym) :: Nil =>
+          for {
+            str <- unaryOp(SchemeOp.SymbolToString)(sym)
+          } yield {
+            val addr = alloc.pointer(fpos)
+            (lat.pointer(addr), store.extend(addr, str))
+          }
+        case _ => MayFail.failure(PrimitiveArityError(name, 1, args.size))
+      }
+    }
+
+    case object `char->string` extends SchemePrimitive[V,A] {
+      val name = "char->string"
+      override def call(
+          fpos: SchemeExp,
+          args: List[(SchemeExp, V)],
+          store: Store[A, V],
+          alloc: SchemeInterpreterBridge[V, A]
+        ): MayFail[(V, Store[A, V]), Error] = args match {
+          case (_, chr) :: Nil =>
+            for {
+              str <- unaryOp(SchemeOp.CharacterToString)(chr)
+            } yield {
+              val addr = alloc.pointer(fpos)
+              (lat.pointer(addr), store.extend(addr, str))
+            }
+          case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+        }
+    } 
 
     case object `cons` extends SchemePrimitive[V, A] {
       val name = "cons"
@@ -709,37 +852,43 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `output-port?` extends NoStore1Operation("output-port?", x => unaryOp(SchemeOp.IsOutputPort)(x))
 
     case object `open-input-file`
-        extends NoStore1Operation("open-input-file",
-                                  x =>
-                                    ifThenElse(unaryOp(SchemeOp.IsString)(x)) {
+        extends Store1Operation("open-input-file",
+                                (x, store) =>
+                                  dereferencePointer(x, store) { str =>
+                                    ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
                                       for {
                                         // TODO: this could be cleaner by having a difference between a file input port and string input port, but this would be a bit overkill
-                                        str <- binaryOp(SchemeOp.StringAppend)(string("__file__"), x)
-                                        inputPort <- unaryOp(SchemeOp.MakeInputPort)(str)
+                                        portstring <- binaryOp(SchemeOp.StringAppend)(string("__file__"), str)
+                                        inputPort <- unaryOp(SchemeOp.MakeInputPort)(portstring)
                                       } yield inputPort
                                     } {
                                       MayFail.failure(PrimitiveNotApplicable("open-input-file", List(x)))
                                     }
+                                  }.map(v => (v, store))
         )
 
     case object `open-input-string`
-        extends NoStore1Operation("open-input-string",
-                                  x =>
-                                    ifThenElse(unaryOp(SchemeOp.IsString)(x)) {
-                                      unaryOp(SchemeOp.MakeInputPort)(x)
+        extends Store1Operation("open-input-string",
+                                (x, store) =>
+                                  dereferencePointer(x, store) { str =>
+                                    ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
+                                      unaryOp(SchemeOp.MakeInputPort)(str)
                                     } {
                                       MayFail.failure(PrimitiveNotApplicable("open-input-string", List(x)))
                                     }
+                                  }.map(v => (v, store))
         )
 
     case object `open-output-file`
-        extends NoStore1Operation("open-output-file",
-                                  x =>
-                                    ifThenElse(unaryOp(SchemeOp.IsString)(x)) {
-                                      unaryOp(SchemeOp.MakeOutputPort)(x)
+        extends Store1Operation("open-output-file",
+                                (x, store) =>
+                                  dereferencePointer(x, store) { str =>
+                                    ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
+                                      unaryOp(SchemeOp.MakeOutputPort)(str)
                                     } {
                                       MayFail.failure(PrimitiveNotApplicable("open-output-file", List(x)))
                                     }
+                                  }.map(v => (v, store))
         )
 
     case object `close-input-port`

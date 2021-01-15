@@ -71,7 +71,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
       eval(fnBody).run(fnEnv).foreach(res => writeResult(res))
     // simple big-step eval
     protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
-      case SchemeValue(value, _)                     => unit(evalLiteralValue(value))
+      case SchemeValue(value, _)                     => unit(evalLiteralValue(value, exp))
       case lambda: SchemeLambdaExp                   => evalClosure(lambda)
       case SchemeVar(nam)                            => evalVariable(nam)
       case SchemeBegin(exps, _)                      => evalSequence(exps)
