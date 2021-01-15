@@ -84,6 +84,9 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       case Value.Nil            => lat.subsumes(abs, lat.nil)
       case Value.Pointer(_)     => lat.getPointerAddresses(abs).nonEmpty
       case Value.Thread(_)      => lat.getThreads(abs).nonEmpty
+      case Value.InputPort(h)   => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(lat.string(h.abstractName)).getOrElse(lat.bottom))
+      case Value.OutputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(lat.string(h.abstractName)).getOrElse(lat.bottom))
+      case Value.EOF            => lat.subsumes(abs, lat.charTop)
       case v                    => throw new Exception(s"Unknown concrete value type: $v.")
     }
   }
