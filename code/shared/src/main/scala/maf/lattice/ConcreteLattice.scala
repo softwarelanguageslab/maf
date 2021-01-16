@@ -98,7 +98,7 @@ object Concrete {
             (0.to(s.size)
               .collect({
                 case from2 if BoolLattice[B].isTrue(IntLattice[I2].eql[B](from, IntLattice[I2].inject(from2))) =>
-                  (0.to(s.size)
+                  (from2.to(s.size)
                     .collect({
                       case to2
                           if BoolLattice[B].isTrue(IntLattice[I2].eql[B](to, IntLattice[I2].inject(to2))) &&
