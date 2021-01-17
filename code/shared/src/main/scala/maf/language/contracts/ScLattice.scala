@@ -1,7 +1,8 @@
 package maf.language.contracts
 
 import maf.core.{Address, Environment, Identity, Lattice}
-import maf.lattice.interfaces.IntLattice
+import maf.language.scheme.lattices.SchemeLattice
+import maf.core.Primitive
 
 object ScLattice {
 
@@ -100,6 +101,12 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
 
   /*==================================================================================================================*/
 
+  /** Inject a guard in the abstract domain */
+  def injectGrd(grd: Grd[Addr]): L
+
+  /** Inject an arrow (monitors on functions) in the abstract domain */
+  def injectArr(arr: Arr[Addr]): L
+
   /** Inject a primitive in the abstract domain */
   def injectPrim(prim: Prim): L
 
@@ -111,12 +118,6 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
 
   /** Inject a clojure in the abstract domain */
   def injectClo(clo: Clo[Addr]): L
-
-  /** Inject a guard in the abstract domain */
-  def injectGrd(grd: Grd[Addr]): L
-
-  /** Inject an arrow (monitors on functions) in the abstract domain */
-  def injectArr(arr: Arr[Addr]): L
 
   /** Inject a scheme symbol in the abstract domain */
   def injectSymbol(symbol: Symbol): L
@@ -265,4 +266,58 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
 
   /** Retrieve a value on index `index` from  the vector */
   def vectorRef(vector: L, index: L): L
+}
+
+/** Operations that an abstract domain for soft contract should support */
+trait ScSchemeLattice[L, Addr <: Address, P <: Primitive] {
+  import ScLattice._
+
+  /** An implementation of the Scheme lattice */
+  val schemeLattice: SchemeLattice[L, Addr, P]
+
+  /*==================================================================================================================*/
+
+  /** Inject a guard in the abstract domain */
+  def grd(grd: Grd[Addr]): L
+
+  /** Inject an arrow (monitors on functions) in the abstract domain */
+  def arr(arr: Arr[Addr]): L
+
+  /** Inject a blame in the abstract domain */
+  def blame(blame: Blame): L
+
+  /** Inject an opaque value in the abstract domain */
+  def opq(opq: Opq): L
+
+  /** Inject a thunk in the abstract domain */
+  def thunk(thunk: Thunk[Addr]): L
+
+  /*==================================================================================================================*/
+
+  /** Extract a set of arrow (monitors on functions) from the abstract value */
+  def getArr(value: L): Set[Arr[Addr]]
+
+  /** Extract a set of blames from the abstract value */
+  def getBlames(value: L): Set[Blame]
+
+  /** Extract a set of guards from the abstract value */
+  def getGrd(value: L): Set[Grd[Addr]]
+
+  /** Extract a set of opaque values from the abstract value */
+  def getOpq(value: L): Set[Opq]
+
+  /** Extracts the set of thunks from the abstract domain */
+  def getThunk(value: L): Set[Thunk[Addr]]
+
+  /*==================================================================================================================*/
+
+  def isDefinitelyOpq(value: L): Boolean
+
+  def isDefinitelyArrow(value: L): Boolean
+
+  /** Returns true if the value is possible a blame */
+  def isBlame(value: L): Boolean
+
+  /** Returns true if the value is possibly a thunk */
+  def isThunk(value: L): Boolean
 }

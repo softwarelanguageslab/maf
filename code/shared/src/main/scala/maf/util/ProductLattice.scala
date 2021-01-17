@@ -47,7 +47,7 @@ object ProductLattice {
   import MonoidInstances._
   type L[V <: Ordable] = ProductLattice[V]
 
-  def apply[V](v: V): ProductLattice[V] = ProductLattice(List(v))
+  def apply[V <: Ordable](v: V): ProductLattice[V] = new ProductLattice(List(v))
 
   implicit def lMonoid[V <: Ordable](implicit valueLattice: PartialLattice[V]): Monoid[L[V]] = new Monoid[L[V]] {
     private def insert(vs: List[V], v: V): List[V] = vs match {

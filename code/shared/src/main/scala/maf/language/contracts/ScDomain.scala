@@ -924,6 +924,7 @@ class ScProductLattice[I, B, Addr <: Address](
 }
 
 trait ScSchemeDomain[A <: Address] {
+  import maf.language.scheme.lattices.Product2SchemeLattice._
   type S
   type B
   type I
@@ -932,7 +933,9 @@ trait ScSchemeDomain[A <: Address] {
   type Sym
 
   type P = SchemePrimitive[ProductLattice[ValueExt], A]
+  type Q = SchemePrimitive[Product2[L, modularLattice.Elements], A]
   type L = ProductLattice[ValueExt]
+  type V = Product2[L, modularLattice.Elements]
 
   import ScLattice._
 
@@ -950,12 +953,22 @@ trait ScSchemeDomain[A <: Address] {
     def ord = 3
   }
 
+  case class Blames(blames: Set[Blame]) extends ValueExt {
+    def ord = 4
+  }
+
+  case class Thunks(thunks: Set[Thunk[A]]) extends ValueExt {
+    def ord = 5
+  }
+
   implicit val valueExtLattice: PartialLattice[ValueExt] = new PartialLattice[ValueExt] {
     override def join(x: ValueExt, y: => ValueExt): ValueExt = (x, y) match {
-      case (Opqs(a), Opqs(b)) => Opqs(a ++ b)
-      case (Arrs(a), Arrs(b)) => Arrs(a ++ b)
-      case (Grds(a), Grds(b)) => Grds(a ++ b)
-      case _                  => throw new Exception(s"Illegal join $x $y")
+      case (Opqs(a), Opqs(b))     => Opqs(a ++ b)
+      case (Arrs(a), Arrs(b))     => Arrs(a ++ b)
+      case (Grds(a), Grds(b))     => Grds(a ++ b)
+      case (Blames(a), Blames(b)) => Blames(a ++ b)
+      case (Thunks(a), Thunks(b)) => Thunks(a ++ b)
+      case _                      => throw new Exception(s"Illegal join $x $y")
     }
 
     override def subsumes(x: ValueExt, y: => ValueExt): Boolean =
@@ -963,10 +976,12 @@ trait ScSchemeDomain[A <: Address] {
         true
       } else {
         (x, y) match {
-          case (Opqs(a), Opqs(b)) => b.subsetOf(a)
-          case (Arrs(a), Arrs(b)) => b.subsetOf(a)
-          case (Grds(a), Grds(b)) => b.subsetOf(a)
-          case _                  => false
+          case (Opqs(a), Opqs(b))     => b.subsetOf(a)
+          case (Arrs(a), Arrs(b))     => b.subsetOf(a)
+          case (Grds(a), Grds(b))     => b.subsetOf(a)
+          case (Blames(a), Blames(b)) => b.subsetOf(a)
+          case (Thunks(a), Thunks(b)) => b.subsetOf(a)
+          case _                      => false
         }
       }
 
@@ -983,8 +998,71 @@ trait ScSchemeDomain[A <: Address] {
     // TODO override op and isTrue to work with the opaque values and add some additional primitives
   }
 
-  import maf.language.scheme.lattices.Product2SchemeLattice._
   val modularLattice: ModularSchemeLattice[A, S, B, I, R, C, Sym]
-  lazy val schemeLattice: SchemeLattice[Product2[L, modularLattice.Elements], A, _] =
+  implicit val rightLattice = modularLattice.schemeLattice
+  lazy val productSchemeLattice: SchemeLattice[V, A, Q] =
     product(valueExtSchemeLattice, modularLattice.schemeLattice)
+
+  val lattice: ScSchemeLattice[V, A, Q] = new ScSchemeLattice[V, A, Q] {
+    val schemeLattice: SchemeLattice[V, A, Q] = productSchemeLattice
+
+    /*==================================================================================================================*/
+
+    def grd(grd: Grd[A]): V =
+      Product2.injectLeft(ProductLattice(Grds(Set(grd))))
+
+    def arr(arr: Arr[A]): V =
+      Product2.injectLeft(ProductLattice(Arrs(Set(arr))))
+
+    def blame(blame: Blame): V =
+      Product2.injectLeft(ProductLattice(Blames(Set(blame))))
+
+    def thunk(thunk: Thunk[A]): V =
+      Product2.injectLeft(ProductLattice(Thunks(Set(thunk))))
+
+    def opq(opq: Opq): V =
+      Product2.injectLeft(ProductLattice(Opqs(Set(opq))))
+
+    /*==================================================================================================================*/
+
+    /** Extract a set of arrow (monitors on functions) from the abstract value */
+    def getArr(value: V): Set[Arr[A]] =
+      value.left.vs.collect { case a: Arr[A] => a }.toSet
+
+    /** Extract a set of blames from the abstract value */
+    def getBlames(value: V): Set[Blame] =
+      value.left.vs.collect { case a: Blame => a }.toSet
+
+    /** Extract a set of guards from the abstract value */
+    def getGrd(value: V): Set[Grd[A]] =
+      value.left.vs.collect { case a: Grd[A] => a }.toSet
+
+    /** Extract a set of opaque values from the abstract value */
+    def getOpq(value: V): Set[Opq] =
+      value.left.vs.collect { case a: Opq => a }.toSet
+
+    /** Extracts the set of thunks from the abstract domain */
+    def getThunk(value: V): Set[Thunk[A]] =
+      value.left.vs.collect { case a: Thunk[A] => a }.toSet
+
+    def isDefinitelyOpq(value: V): Boolean =
+      value.left.vs.size == getOpq(value).size
+
+    def isDefinitelyArrow(value: V): Boolean =
+      value.left.vs.size == getArr(value).size
+
+    /** Returns true if the value is possible a blame */
+    def isBlame(value: V): Boolean =
+      value.left.vs.filter {
+        case _: Blame => true
+        case _        => false
+      }.size >= 1
+
+    /** Returns true if the value is possibly a thunk */
+    def isThunk(value: V): Boolean =
+      value.left.vs.filter {
+        case _: Thunk[A] => true
+        case _           => false
+      }.size >= 1
+  }
 }

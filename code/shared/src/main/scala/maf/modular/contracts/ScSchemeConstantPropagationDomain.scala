@@ -20,5 +20,6 @@ object ScSchemeConstantPropagationLattice extends ScSchemeDomain[Address] {
 }
 
 trait ScSchemeConstantPropagationDomain {
-  implicit val lattice = ScSchemeConstantPropagationLattice.schemeLattice
+  implicit val lattice = ScSchemeConstantPropagationLattice.lattice
+  def schemeLattice = lattice.schemeLattice
 }
