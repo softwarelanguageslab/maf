@@ -3,6 +3,20 @@ package maf.language.contracts
 import maf.core.{Address, LatticeTopUndefined}
 import maf.lattice.interfaces.{BoolLattice, IntLattice}
 import maf.util.SmartHash
+import maf.language.scheme.lattices.ModularSchemeLattice
+import maf.lattice.interfaces.CharLattice
+import maf.lattice.interfaces.RealLattice
+import maf.lattice.interfaces.StringLattice
+import maf.lattice.interfaces.SymbolLattice
+import maf.language.contracts.ScLattice.Opq
+import maf.util.Ordable
+import maf.util.PartialLattice
+import maf.core.Lattice
+import maf.util.ProductLattice
+import maf.language.scheme.lattices.SchemeLattice
+import maf.core.Primitive
+import maf.language.scheme.lattices.EmptyDomainSchemeLattice
+import maf.language.scheme.primitives.SchemePrimitive
 
 trait ScDomain[I, B, Addr <: Address] {
   import ScLattice._
@@ -907,4 +921,70 @@ class ScProductLattice[I, B, Addr <: Address](
       /** Retrieve a value on index `index` from  the vector */
       override def vectorRef(vector: ProductElements, index: ProductElements): ProductElements = ???
     }
+}
+
+trait ScSchemeDomain[A <: Address] {
+  type S
+  type B
+  type I
+  type R
+  type C
+  type Sym
+
+  type P = SchemePrimitive[ProductLattice[ValueExt], A]
+  type L = ProductLattice[ValueExt]
+
+  import ScLattice._
+
+  sealed trait ValueExt extends SmartHash with Ordable
+
+  case class Opqs(opqs: Set[Opq]) extends ValueExt {
+    def ord = 1
+  }
+
+  case class Arrs(arrs: Set[Arr[A]]) extends ValueExt {
+    def ord = 2
+  }
+
+  case class Grds(grds: Set[Grd[A]]) extends ValueExt {
+    def ord = 3
+  }
+
+  implicit val valueExtLattice: PartialLattice[ValueExt] = new PartialLattice[ValueExt] {
+    override def join(x: ValueExt, y: => ValueExt): ValueExt = (x, y) match {
+      case (Opqs(a), Opqs(b)) => Opqs(a ++ b)
+      case (Arrs(a), Arrs(b)) => Arrs(a ++ b)
+      case (Grds(a), Grds(b)) => Grds(a ++ b)
+      case _                  => throw new Exception(s"Illegal join $x $y")
+    }
+
+    override def subsumes(x: ValueExt, y: => ValueExt): Boolean =
+      if (x == y) {
+        true
+      } else {
+        (x, y) match {
+          case (Opqs(a), Opqs(b)) => b.subsetOf(a)
+          case (Arrs(a), Arrs(b)) => b.subsetOf(a)
+          case (Grds(a), Grds(b)) => b.subsetOf(a)
+          case _                  => false
+        }
+      }
+
+    // TODO[high]
+    override def eql[B: BoolLattice](x: ValueExt, y: ValueExt): B = ???
+  }
+
+  import maf.util.ProductLattice._
+  implicit val valueExtProductLattice: Lattice[L] =
+    productLattice
+
+  implicit val valueExtSchemeLattice: SchemeLattice[L, A, P] = new EmptyDomainSchemeLattice[L, A, P] {
+    val lattice = valueExtProductLattice
+    // TODO override op and isTrue to work with the opaque values and add some additional primitives
+  }
+
+  import maf.language.scheme.lattices.Product2SchemeLattice._
+  val modularLattice: ModularSchemeLattice[A, S, B, I, R, C, Sym]
+  lazy val schemeLattice: SchemeLattice[Product2[L, modularLattice.Elements], A, _] =
+    product(valueExtSchemeLattice, modularLattice.schemeLattice)
 }
