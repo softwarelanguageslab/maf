@@ -17,6 +17,11 @@ import maf.language.scheme.lattices.SchemeLattice
 import maf.core.Primitive
 import maf.language.scheme.lattices.EmptyDomainSchemeLattice
 import maf.language.scheme.primitives.SchemePrimitive
+import maf.language.scheme.primitives.SchemeLatticePrimitives
+import maf.language.scheme.primitives.SchemePrimitives
+import maf.language.scheme.lattices.SchemeOp
+import maf.core.MayFail
+import maf.language.scheme.lattices.Product2SchemeLattice
 
 trait ScDomain[I, B, Addr <: Address] {
   import ScLattice._
@@ -923,8 +928,11 @@ class ScProductLattice[I, B, Addr <: Address](
     }
 }
 
-trait ScSchemeDomain[A <: Address] {
+trait ScSchemeDomain[A <: Address] { outer =>
   import maf.language.scheme.lattices.Product2SchemeLattice._
+  import ScLattice._
+  import maf.util.ProductLattice._
+
   type S
   type B
   type I
@@ -936,8 +944,6 @@ trait ScSchemeDomain[A <: Address] {
   type Q = SchemePrimitive[Product2[L, modularLattice.Elements], A]
   type L = ProductLattice[ValueExt]
   type V = Product2[L, modularLattice.Elements]
-
-  import ScLattice._
 
   sealed trait ValueExt extends SmartHash with Ordable
 
@@ -989,22 +995,50 @@ trait ScSchemeDomain[A <: Address] {
     override def eql[B: BoolLattice](x: ValueExt, y: ValueExt): B = ???
   }
 
-  import maf.util.ProductLattice._
+  val modularLattice: ModularSchemeLattice[A, S, B, I, R, C, Sym]
+  val primitives: SchemePrimitives[V, A]
+
   implicit val valueExtProductLattice: Lattice[L] =
     productLattice
 
   implicit val valueExtSchemeLattice: SchemeLattice[L, A, P] = new EmptyDomainSchemeLattice[L, A, P] {
     val lattice = valueExtProductLattice
-    // TODO override op and isTrue to work with the opaque values and add some additional primitives
   }
 
-  val modularLattice: ModularSchemeLattice[A, S, B, I, R, C, Sym]
   implicit val rightLattice = modularLattice.schemeLattice
-  lazy val productSchemeLattice: SchemeLattice[V, A, Q] =
-    product(valueExtSchemeLattice, modularLattice.schemeLattice)
+  lazy val schemeLattice: SchemeLattice[V, A, Q] =
+    new SchemeProductLattice[L, modularLattice.Elements, A] {
+
+      implicit override val leftLattice: SchemeLattice[L, A, SchemePrimitive[L, A]] =
+        valueExtSchemeLattice
+
+      implicit override val rightLattice: SchemeLattice[modularLattice.Elements, A, SchemePrimitive[modularLattice.Elements, A]] =
+        modularLattice.schemeLattice
+
+      override def op(
+          operation: SchemeOp
+        )(
+          args: List[Product2[L, modularLattice.Elements]]
+        ): MayFail[Product2[L, modularLattice.Elements], maf.core.Error] = {
+        operation.checkArity(args)
+        operation match {
+          // if the argument list contains an opaque value, then the
+          // result of the application is an opaque value, except for
+          // when the argument list contains bottom
+          case _ if args.exists(_.left.vs.exists {
+                case _: Opqs => true
+                case _       => false
+              }) && args.forall(arg => !(arg.left.vs.contains(leftLattice.bottom) && arg.right.vs.contains(rightLattice.bottom))) =>
+            MayFail.success(outer.lattice.opq(Opq()))
+
+          case _ =>
+            super.op(operation)(args)
+        }
+      }
+    }
 
   val lattice: ScSchemeLattice[V, A, Q] = new ScSchemeLattice[V, A, Q] {
-    val schemeLattice: SchemeLattice[V, A, Q] = productSchemeLattice
+    val schemeLattice: SchemeLattice[V, A, Q] = outer.schemeLattice
 
     /*==================================================================================================================*/
 
@@ -1027,23 +1061,53 @@ trait ScSchemeDomain[A <: Address] {
 
     /** Extract a set of arrow (monitors on functions) from the abstract value */
     def getArr(value: V): Set[Arr[A]] =
-      value.left.vs.collect { case a: Arr[A] => a }.toSet
+      value.left.vs
+        .flatMap {
+          case v @ Arrs(_) => Some(v)
+          case _           => None
+        }
+        .flatMap(_.arrs)
+        .toSet
 
     /** Extract a set of blames from the abstract value */
     def getBlames(value: V): Set[Blame] =
-      value.left.vs.collect { case a: Blame => a }.toSet
+      value.left.vs
+        .flatMap {
+          case v @ Blames(_) => Some(v)
+          case _             => None
+        }
+        .flatMap(_.blames)
+        .toSet
 
     /** Extract a set of guards from the abstract value */
     def getGrd(value: V): Set[Grd[A]] =
-      value.left.vs.collect { case a: Grd[A] => a }.toSet
+      value.left.vs
+        .flatMap {
+          case v @ Grds(_) => Some(v)
+          case _           => None
+        }
+        .flatMap(_.grds)
+        .toSet
 
     /** Extract a set of opaque values from the abstract value */
     def getOpq(value: V): Set[Opq] =
-      value.left.vs.collect { case a: Opq => a }.toSet
+      value.left.vs
+        .flatMap {
+          case v @ Opqs(_) => Some(v)
+          case _           => None
+        }
+        .flatMap(_.opqs)
+        .toSet
 
     /** Extracts the set of thunks from the abstract domain */
     def getThunk(value: V): Set[Thunk[A]] =
-      value.left.vs.collect { case a: Thunk[A] => a }.toSet
+      value.left.vs
+        .flatMap {
+          case v @ Thunks(_) => Some(v)
+          case _             => None
+        }
+        .flatMap(_.thunks)
+        .toSet
 
     def isDefinitelyOpq(value: V): Boolean =
       value.left.vs.size == getOpq(value).size
