@@ -54,7 +54,7 @@ object SchemeTypeDomain extends ModularSchemeLatticeWrapper {
   type I = Type.I
   type R = Type.R
   type C = Type.C
-  type Sym = Concrete.Sym
+  type Sym = Type.Sym
   // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
@@ -75,7 +75,7 @@ object SchemeConstantPropagationDomain extends ModularSchemeLatticeWrapper {
   type I = ConstantPropagation.I
   type R = ConstantPropagation.R
   type C = ConstantPropagation.C
-  type Sym = Concrete.Sym
+  type Sym = ConstantPropagation.Sym
   // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)

@@ -59,7 +59,7 @@ object AnalysisComparison1
       ConstantPropagation.B,
       ConstantPropagation.C,
       ConstantPropagation.S,
-      Concrete.Sym
+      ConstantPropagation.Sym
     ] {
   def baseAnalysis(prg: SchemeExp): Analysis =
     SchemeAnalyses.contextInsensitiveAnalysis(prg)
