@@ -75,7 +75,7 @@ object SchemeBenchmarkPrograms {
   lazy val toplas98: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/toplas98")(
     "graphs.scm", // Uses read
     "handle.scm", // Uses defmacro (not standard r5rs).
-    "maze.scm", // Uses read
+    "maze.scm", // Uses read, bitwise-and and bitwise-or (not standard R5RS, but racket-specific)
     "nbody.scm", // Apply cannot handle this (call to (apply append (map ...))
     "nbody-processed.scm", // Apply cannot handle this (call to (apply append (map ...))
     "nucleic.sch", // Made it parse by replacing vector literals, but does not have proper main code.
@@ -86,7 +86,7 @@ object SchemeBenchmarkPrograms {
   lazy val WCR2019: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019")(
     ".DS_Store",
     "earley.sch", // Uses read.
-    "mbrotZ.sch", // Uses read.
+    "mbrotZ.sch", // Uses read, complex numbers
     "solovay-strassen.scm" // Program seems erroneous.
   )
   lazy val various: Set[String] = fromFolder("test/R5RS/various")(

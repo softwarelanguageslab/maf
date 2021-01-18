@@ -9,6 +9,27 @@ import maf.modular.scheme.modf._
 import maf.modular.scheme.modconc._
 import maf.modular.worklist._
 
+object SchemeAnalysesBoundedDomain {
+  def contextInsensitiveTypeAnalysis(
+    prg: SchemeExp
+  ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain with RandomWorklistAlgorithm[SchemeExp] {
+    lazy val bound = 0
+    override def toString() = "no-sensitivity"
+  }
+  def contextInsensitiveConstantPropagationAnalysis(
+    prg: SchemeExp
+  ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain with RandomWorklistAlgorithm[SchemeExp] {
+    lazy val bound = 1
+    override def toString() = "no-sensitivity"
+  }
+  def contextInsensitiveBound2Analysis(
+    prg: SchemeExp
+  ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain with RandomWorklistAlgorithm[SchemeExp] {
+    lazy val bound = 2
+    override def toString() = "no-sensitivity"
+  }
+}
+
 object SchemeAnalyses {
 
   // Incremental analyses in maf.modular.incremental.scheme.SchemeAnalyses

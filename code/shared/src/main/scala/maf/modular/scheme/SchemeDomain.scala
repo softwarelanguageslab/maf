@@ -106,3 +106,23 @@ object SchemePowersetDomain extends ModularSchemeLatticeWrapper {
 trait SchemePowersetDomain extends ModularSchemeDomain {
   lazy val modularLatticeWrapper = SchemePowersetDomain
 }
+
+//
+// BOUNDED SET DOMAIN
+//
+class SchemeBoundedDomainWrapper(val bound: Int) extends ModularSchemeLatticeWrapper {
+  object Bounded extends BoundedLattice(bound)
+  type S = Bounded.S
+  type B = Bounded.B
+  type I = Bounded.I
+  type R = Bounded.R
+  type C = Bounded.C
+  type Sym = Bounded.Sym
+  lazy val modularLattice = new ModularSchemeLattice
+  lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
+}
+
+trait SchemeBoundedDomain extends ModularSchemeDomain {
+  val bound: Int
+  lazy val modularLatticeWrapper = new SchemeBoundedDomainWrapper(bound)
+}
