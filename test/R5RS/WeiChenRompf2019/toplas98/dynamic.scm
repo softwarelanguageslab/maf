@@ -2339,5 +2339,5 @@
       (tag-ast*-show foo)
       (counters-show))))
 
-(time (doit))
+(doit)
 
