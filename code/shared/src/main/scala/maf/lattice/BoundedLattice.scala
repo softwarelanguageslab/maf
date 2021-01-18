@@ -10,4 +10,3 @@ class BoundedLattice(val k: Int) extends ConcreteLattice {
       Top
     }
 }
-

@@ -571,7 +571,7 @@ trait SmallStepModConcSemantics
     }
 
     protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value =
-      allocateVal(pairExp)(lattice.cons(car,cdr))
+      allocateVal(pairExp)(lattice.cons(car, cdr))
 
     protected def allocateStr(strExp: SchemeExp)(str: String): Value =
       allocateVal(strExp)(lattice.string(str))

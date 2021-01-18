@@ -72,9 +72,6 @@ class ConcreteLattice {
         content.foldLeft(Lattice[Y].bottom)((acc, v) => Lattice[Y].join(acc, f(v)))
     }
 
-    implicit val stringShow: Show[String] = new Show[String] {
-      def show(s: String): String = s""""$s""""
-    }
     implicit val stringConcrete: StringLattice[S] = new BaseInstance[String]("Str") with StringLattice[S] {
       def inject(x: String): S = makeValues(Set(x))
       def length[I2: IntLattice](s: S): I2 = s.foldMap(s => IntLattice[I2].inject(s.length))
@@ -100,7 +97,8 @@ class ConcreteLattice {
             (0.to(s.size)
               .collect({
                 case from2 if BoolLattice[B].isTrue(IntLattice[I2].eql[B](from, IntLattice[I2].inject(from2))) =>
-                  (from2.to(s.size)
+                  (from2
+                    .to(s.size)
                     .collect({
                       case to2
                           if BoolLattice[B].isTrue(IntLattice[I2].eql[B](to, IntLattice[I2].inject(to2))) &&
@@ -129,9 +127,13 @@ class ConcreteLattice {
               .foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))
           )
       }
-      def set[I2: IntLattice, C2: CharLattice](s: S, i: I2, c: C2): S = s match {
+      def set[I2: IntLattice, C2: CharLattice](
+          s: S,
+          i: I2,
+          c: C2
+        ): S = s match {
         case _ if s == bottom || i == IntLattice[I2].bottom || c == CharLattice[C2].bottom => bottom
-        case Top => Top // TODO: more precise implementation
+        case Top                                                                           => Top // TODO: more precise implementation
       }
       def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match {
         case (Values(bot), _) if bot.isEmpty => BoolLattice[B2].bottom
@@ -152,14 +154,6 @@ class ConcreteLattice {
           }
       }
     }
-    implicit val boolShow: Show[Boolean] = new Show[Boolean] {
-      def show(b: Boolean): String =
-        if (b) {
-          "#t"
-        } else {
-          "#f"
-        }
-    }
     implicit val boolConcrete: BoolLattice[B] = new BaseInstance[Boolean]("Bool") with BoolLattice[B] {
       def inject(x: Boolean): B = makeValues(Set(x))
       def isTrue(b: B): Boolean = b match {
@@ -175,9 +169,6 @@ class ConcreteLattice {
       def not(b: B): B = b.map(x => !x)
     }
 
-    implicit val intShow: Show[BigInt] = new Show[BigInt] {
-      def show(i: BigInt): String = s"$i"
-    }
     implicit val intConcrete: IntLattice[I] = new BaseInstance[BigInt]("Int") with IntLattice[I] {
       def inject(x: BigInt): I = makeValues(Set(x))
 
@@ -237,9 +228,6 @@ class ConcreteLattice {
         n.foldMap(n => CharLattice[C2].inject(NumOps.bigIntToInt(n).asInstanceOf[Char]))
     }
 
-    implicit val doubleShow: Show[Double] = new Show[Double] {
-      def show(d: Double): String = s"$d"
-    }
     implicit val realConcrete: RealLattice[R] = new BaseInstance[Double]("Real") with RealLattice[R] {
       def inject(x: Double): R = makeValues(Set(x))
       def toInt[I2: IntLattice](n: R): I2 = n.foldMap(n => IntLattice[I2].inject(n.toInt))
@@ -268,9 +256,6 @@ class ConcreteLattice {
       def toString[S2: StringLattice](n: R): S2 =
         n.foldMap(n => StringLattice[S2].inject(n.toString))
     }
-    implicit val charShow: Show[Char] = new Show[Char] {
-      def show(c: Char): String = s"#\\$c"
-    }
     implicit val charConcrete: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char): C = makeValues(Set(x))
       def downCase(c: C): C = c.map(_.toLower)
@@ -291,9 +276,6 @@ class ConcreteLattice {
       def charLtCI[B2: BoolLattice](c1: C, c2: C): B2 = c2.guardBot {
         c1.foldMap(char1 => c2.foldMap(char2 => BoolLattice[B2].inject(char1.toUpper < char2.toUpper)))
       }
-    }
-    val symShow: Show[String] = new Show[String] {
-      def show(s: String): String = s"'$s"
     }
     implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")(symShow) with SymbolLattice[Sym] {
       def inject(x: String): Sym = makeValues(Set(x))

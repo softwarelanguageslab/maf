@@ -607,7 +607,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `string?`
         extends Store1Operation(
           "string?",
-          (x, store) => 
+          (x, store) =>
             ifThenElse(unaryOp(SchemeOp.IsPointer)(x)) {
               dereferencePointer(x, store)(unaryOp(SchemeOp.IsString))
             } {

@@ -18,7 +18,11 @@ trait StringLattice[S] extends Lattice[S] {
   // TODO[easy]: in practice, ref can result in an error and should use MayFail
   def ref[I: IntLattice, C: CharLattice](s: S, i: I): C
   // TODO[easy]: in practice, set can result in an error and should use MayFail
-  def set[I: IntLattice, C: CharLattice](s: S, i: I, c: C): S
+  def set[I: IntLattice, C: CharLattice](
+      s: S,
+      i: I,
+      c: C
+    ): S
   def lt[B: BoolLattice](s1: S, s2: S): B
   def toSymbol[Sym: SymbolLattice](s: S): Sym
   def toNumber[I: IntLattice](s: S): MayFail[I, Error]

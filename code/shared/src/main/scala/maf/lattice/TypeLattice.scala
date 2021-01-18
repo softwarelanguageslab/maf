@@ -63,8 +63,12 @@ object Type {
         case Top if i == IntLattice[I2].bottom => CharLattice[C2].bottom
         case Top                               => CharLattice[C2].top
       }
-      def set[I2: IntLattice, C2: CharLattice](s: S, i: I2, c: C2): S =
-        if(s == Bottom || i == IntLattice[I2].bottom || c == CharLattice[C2].bottom) {
+      def set[I2: IntLattice, C2: CharLattice](
+          s: S,
+          i: I2,
+          c: C2
+        ): S =
+        if (s == Bottom || i == IntLattice[I2].bottom || c == CharLattice[C2].bottom) {
           Bottom
         } else {
           Top
