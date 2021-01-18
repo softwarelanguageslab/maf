@@ -22,6 +22,11 @@ import maf.language.scheme.primitives.SchemePrimitives
 import maf.language.scheme.lattices.SchemeOp
 import maf.core.MayFail
 import maf.language.scheme.lattices.Product2SchemeLattice
+import maf.lattice.interfaces.Operation
+import maf.lattice.interfaces.Operation1
+import maf.language.contracts.ScCoProductLattice.Bottom
+import maf.core.OperatorNotApplicable
+import maf.language.scheme.lattices.SchemeOp.IsInputPort
 
 trait ScDomain[I, B, Addr <: Address] {
   import ScLattice._
@@ -430,6 +435,7 @@ trait ScDomain[I, B, Addr <: Address] {
     }
   }
 }
+
 class ScCoProductLattice[I, B, Addr <: Address](
     implicit val intLattice: IntLattice[I],
     implicit val boolLattice: BoolLattice[B])
@@ -928,23 +934,8 @@ class ScProductLattice[I, B, Addr <: Address](
     }
 }
 
-trait ScSchemeDomain[A <: Address] { outer =>
-  import maf.language.scheme.lattices.Product2SchemeLattice._
+trait ScAbstractValues[A <: Address] {
   import ScLattice._
-  import maf.util.ProductLattice._
-
-  type S
-  type B
-  type I
-  type R
-  type C
-  type Sym
-
-  type P = SchemePrimitive[ProductLattice[ValueExt], A]
-  type Q = SchemePrimitive[Product2[L, modularLattice.Elements], A]
-  type L = ProductLattice[ValueExt]
-  type V = Product2[L, modularLattice.Elements]
-
   sealed trait ValueExt extends SmartHash with Ordable
 
   case class Opqs(opqs: Set[Opq]) extends ValueExt {
@@ -967,39 +958,130 @@ trait ScSchemeDomain[A <: Address] { outer =>
     def ord = 5
   }
 
-  implicit val valueExtLattice: PartialLattice[ValueExt] = new PartialLattice[ValueExt] {
-    override def join(x: ValueExt, y: => ValueExt): ValueExt = (x, y) match {
-      case (Opqs(a), Opqs(b))     => Opqs(a ++ b)
-      case (Arrs(a), Arrs(b))     => Arrs(a ++ b)
-      case (Grds(a), Grds(b))     => Grds(a ++ b)
-      case (Blames(a), Blames(b)) => Blames(a ++ b)
-      case (Thunks(a), Thunks(b)) => Thunks(a ++ b)
-      case _                      => throw new Exception(s"Illegal join $x $y")
-    }
-
-    override def subsumes(x: ValueExt, y: => ValueExt): Boolean =
-      if (x == y) {
-        true
-      } else {
-        (x, y) match {
-          case (Opqs(a), Opqs(b))     => b.subsetOf(a)
-          case (Arrs(a), Arrs(b))     => b.subsetOf(a)
-          case (Grds(a), Grds(b))     => b.subsetOf(a)
-          case (Blames(a), Blames(b)) => b.subsetOf(a)
-          case (Thunks(a), Thunks(b)) => b.subsetOf(a)
-          case _                      => false
-        }
+  object Values {
+    implicit val partialLattice: PartialLattice[ValueExt] = new PartialLattice[ValueExt] {
+      override def join(x: ValueExt, y: => ValueExt): ValueExt = (x, y) match {
+        case (Opqs(a), Opqs(b))     => Opqs(a ++ b)
+        case (Arrs(a), Arrs(b))     => Arrs(a ++ b)
+        case (Grds(a), Grds(b))     => Grds(a ++ b)
+        case (Blames(a), Blames(b)) => Blames(a ++ b)
+        case (Thunks(a), Thunks(b)) => Thunks(a ++ b)
+        case _                      => throw new Exception(s"Illegal join $x $y")
       }
 
-    // TODO[high]
-    override def eql[B: BoolLattice](x: ValueExt, y: ValueExt): B = ???
+      override def subsumes(x: ValueExt, y: => ValueExt): Boolean =
+        if (x == y) {
+          true
+        } else {
+          (x, y) match {
+            case (Opqs(a), Opqs(b))     => b.subsetOf(a)
+            case (Arrs(a), Arrs(b))     => b.subsetOf(a)
+            case (Grds(a), Grds(b))     => b.subsetOf(a)
+            case (Blames(a), Blames(b)) => b.subsetOf(a)
+            case (Thunks(a), Thunks(b)) => b.subsetOf(a)
+            case _                      => false
+          }
+        }
+
+      // TODO[high]
+      override def eql[B: BoolLattice](x: ValueExt, y: ValueExt): B = ???
+    }
+
+    sealed trait ScOp extends Operation
+    case class ScSchemeOp(op: SchemeOp) extends ScOp {
+      val arity: Int = op.arity
+      val name: String = op.name
+      override def arityException[L](args: List[L]): String =
+        op.arityException(args)
+    }
+
+    case object IsDependentContract extends Operation1("dependent-contract?") with ScOp
+
+    case object IsNonZero extends Operation1("nonzero?") with ScOp
+    case object IsPair extends Operation1("pair?") with ScOp
+    case object IsMonitored extends Operation1("monitored?") with ScOp
+
+    def isRefinedOpq(value: ValueExt, refinements: Set[String]): Boolean = value match {
+      case Opqs(opq) => opq.forall(o => o.refinementSet.intersect(refinements).nonEmpty)
+    }
+
+    def isPred[L, P](value: ValueExt, refinements: Set[String])(implicit lat: ScSchemeLattice[L, A, P]): L =
+      lat.schemeLattice.bool(isRefinedOpq(value, refinements))
+
+    def numOp[L, P](args: List[ValueExt])(implicit schemeLattice: ScSchemeLattice[L, A, P]): MayFail[L, maf.core.Error] =
+      if (args.forall(isRefinedOpq(_, Set("number?", "real?"))))
+        MayFail.success(schemeLattice.opq(Opq(Set("number?", "real?"))))
+      else MayFail.failure(OperatorNotApplicable("+", args))
+
+    /** Defines some operations between values of the Sc abstract domain */
+    def op[L, P](op: ScOp)(args: List[ValueExt])(implicit lat: ScSchemeLattice[L, A, P]): MayFail[L, maf.core.Error] = {
+      import SchemeOp._
+      op.checkArity(args)
+      op match {
+        case IsDependentContract =>
+          MayFail.success(args(0) match {
+            case _: Grds => lat.schemeLattice.bool(true)
+            case _       => lat.schemeLattice.bool(false)
+          })
+
+        case IsMonitored =>
+          MayFail.success(args(0) match {
+            case _: Grds => lat.schemeLattice.bool(true)
+            case _       => lat.schemeLattice.bool(false)
+          })
+
+        case IsPair =>
+          MayFail.success(isPred(args(0), Set("pair?", "cons?")))
+
+        case IsNonZero =>
+          MayFail.success(isPred(args(0), Set("nonzero?")))
+
+        case ScSchemeOp(op) =>
+          op match {
+            case Plus | Minus | Times | Quotient | Div => numOp(args)
+
+            case IsNull | IsBoolean | IsCons | IsPointer | IsChar | IsSymbol | IsString | IsInteger | IsReal | IsVector | IsThread | IsLock |
+                IsProcedure | IsInputPort | IsOutputPort =>
+              MayFail.success(isPred(args(0), Set(op.name)))
+
+            // if all operands are opaque values then we return an opaque value without any refinements, as  the operation might have violated some of the contracts in the refinements
+            case _ if args.forall {
+                  case Opqs(_) => true
+                  case _       => false
+                } =>
+              MayFail.success(lat.opq(Opq(Set())))
+
+            case _ => MayFail.failure(OperatorNotApplicable(op.name, args))
+          }
+        case _ => MayFail.failure(OperatorNotApplicable(op.name, args))
+      }
+    }
+
   }
+}
+
+trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
+  import maf.language.scheme.lattices.Product2SchemeLattice._
+  import ScLattice._
+  import maf.util.ProductLattice._
+
+  type S
+  type B
+  type I
+  type R
+  type C
+  type Sym
+
+  type P = SchemePrimitive[ProductLattice[ValueExt], A]
+  type Q = SchemePrimitive[Product2[L, modularLattice.Elements], A]
+  type L = ProductLattice[ValueExt]
+  type V = Product2[L, modularLattice.Elements]
 
   val modularLattice: ModularSchemeLattice[A, S, B, I, R, C, Sym]
   val primitives: SchemePrimitives[V, A]
 
   implicit val valueExtProductLattice: Lattice[L] =
-    productLattice
+    productLattice(Values.partialLattice)
 
   implicit val valueExtSchemeLattice: SchemeLattice[L, A, P] = new EmptyDomainSchemeLattice[L, A, P] {
     val lattice = valueExtProductLattice
