@@ -116,7 +116,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         cnt: Kont
       ): Set[State] = exp match {
       case SchemeValue(value, _) =>
-        val result = evalLiteralValue(value)
+        val result = evalLiteralValue(value, exp)
         Set(KontState(result, cnt))
       case lambda: SchemeLambdaExp =>
         val result = newClosure(lambda, env, None)

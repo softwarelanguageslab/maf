@@ -50,7 +50,7 @@ object AnalysisComparisonAlt1
       ConstantPropagation.B,
       ConstantPropagation.C,
       ConstantPropagation.S,
-      Concrete.Sym
+      ConstantPropagation.Sym
     ] {
   def analyses =
     // run some regular k-cfa analyses

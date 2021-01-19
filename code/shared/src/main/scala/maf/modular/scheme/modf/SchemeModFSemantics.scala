@@ -165,10 +165,13 @@ trait BaseSchemeModFSemantics
       case Nil                => lattice.nil
       case (exp, vlu) :: rest => allocateCons(exp)(vlu, allocateList(rest))
     }
-    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val addr = allocPtr(pairExp, component)
-      val pair = lattice.cons(car, cdr)
-      writeAddr(addr, pair)
+    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value =
+      allocateVal(pairExp)(lattice.cons(car, cdr))
+    protected def allocateString(stringExp: SchemeExp)(str: String): Value =
+      allocateVal(stringExp)(lattice.string(str))
+    protected def allocateVal(exp: SchemeExp)(v: Value): Value = {
+      val addr = allocPtr(exp, component)
+      writeAddr(addr, v)
       lattice.pointer(addr)
     }
     protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value =
@@ -215,11 +218,11 @@ trait BaseSchemeModFSemantics
           )
         )
     // evaluation helpers
-    protected def evalLiteralValue(literal: sexp.Value): Value = literal match {
+    protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): Value = literal match {
       case sexp.ValueInteger(n)   => lattice.number(n)
       case sexp.ValueReal(r)      => lattice.real(r)
       case sexp.ValueBoolean(b)   => lattice.bool(b)
-      case sexp.ValueString(s)    => lattice.string(s)
+      case sexp.ValueString(s)    => allocateString(exp)(s)
       case sexp.ValueCharacter(c) => lattice.char(c)
       case sexp.ValueSymbol(s)    => lattice.symbol(s)
       case sexp.ValueNil          => lattice.nil

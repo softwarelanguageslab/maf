@@ -58,6 +58,7 @@ object SchemePrelude {
                   |  @sensitivity:FA
                   |  (or (eq? a b)
                   |    (and (null? a) (null? b))
+                  |    (and (string? a) (string? b) (string=? a b))
                   |    (and (pair? a) (pair? b) (equal? (car a) (car b)) (equal? (cdr a) (cdr b)))
                   |    (and (vector? a) (vector? b)
                   |      (let ((n (vector-length a)))
@@ -202,6 +203,12 @@ object SchemePrelude {
                     |      #t
                     |      (if (pair? l)
                     |          (begin (f (car l)) (for-each f (cdr l))))))""".stripMargin,
+    "string-fill!" -> """(define (string-fill! s c)
+                        |  (let loop ((i (- (string-length s) 1)))
+                        |    (if (< i 0)
+                        |        #t
+                        |        (begin (string-set! s i c)
+                        |               (loop (- i 1))))))""".stripMargin,
     "string->list" -> """(define (string->list string)
                         |  @sensitivity:FA
                         |  (assert (string? string))

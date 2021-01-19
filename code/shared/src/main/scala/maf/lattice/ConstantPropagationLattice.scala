@@ -1,5 +1,6 @@
 package maf.lattice
 
+import maf.util._
 import maf.core._
 import maf.lattice.interfaces._
 import NumOps._
@@ -14,7 +15,7 @@ object ConstantPropagation {
 
   case object Bottom extends L[Nothing]
 
-  abstract class BaseInstance[A](typeName: String) extends Lattice[L[A]] {
+  abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]] {
     def show(x: L[A]): String = x match {
       case Top         => typeName
       case Constant(x) => x.toString
@@ -85,7 +86,6 @@ object ConstantPropagation {
   type Sym = L[String]
 
   object L {
-
     implicit val boolCP: BoolLattice[B] = new BaseInstance[Boolean]("Bool") with BoolLattice[B] {
       def inject(b: Boolean): B = Constant(b)
       def isTrue(b: B): Boolean = b match {
@@ -131,7 +131,8 @@ object ConstantPropagation {
           (0.to(s.size)
             .collect({
               case from2 if BoolLattice[B].isTrue(IntLattice[I2].eql[B](from, IntLattice[I2].inject(from2))) =>
-                (0.to(s.size)
+                (from2
+                  .to(s.size)
                   .collect({
                     case to2 if BoolLattice[B].isTrue(IntLattice[I2].eql[B](to, IntLattice[I2].inject(to2))) =>
                       inject(s.substring(from2, to2))
@@ -155,6 +156,20 @@ object ConstantPropagation {
             })
             .foldLeft(CharLattice[C2].bottom)((c1, c2) => CharLattice[C2].join(c1, c2))
       }
+      def set[I2: IntLattice, C2: CharLattice](
+          s: S,
+          i: I2,
+          c: C2
+        ): S = s match {
+        case Bottom | _ if i == IntLattice[I2].bottom || c == CharLattice[C2].bottom => Bottom
+        case Top                                                                     => Top
+        case Constant(str) =>
+          (i, c) match {
+            case (Constant(idx: BigInt), Constant(chr: Char)) => Constant(str.updated(idx.toInt, chr))
+            // If neither the index or character are constant, don't even bother
+            case _ => Top
+          }
+      }
       def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match {
         case (Bottom, _) | (_, Bottom)  => BoolLattice[B2].bottom
         case (Top, _) | (_, Top)        => BoolLattice[B2].top
@@ -172,6 +187,7 @@ object ConstantPropagation {
         case Top           => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
       }
     }
+
     implicit val intCP: IntLattice[I] = new BaseInstance[BigInt]("Int") with IntLattice[I] {
       def inject(x: BigInt): I = Constant(x)
 
@@ -248,7 +264,8 @@ object ConstantPropagation {
         case Bottom      => CharLattice[C2].bottom
       }
     }
-    implicit val floatCP: RealLattice[R] = new BaseInstance[Double]("Real") with RealLattice[R] {
+
+    implicit val realCP: RealLattice[R] = new BaseInstance[Double]("Real") with RealLattice[R] {
       def inject(x: Double) = Constant(x)
       def toInt[I2: IntLattice](n: R): I2 = n match {
         case Top         => IntLattice[I2].top
@@ -332,6 +349,7 @@ object ConstantPropagation {
         case Bottom      => StringLattice[S2].bottom
       }
     }
+
     implicit val charCP: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
       def inject(x: Char) = Constant(x)
       def downCase(c: C): C = c match {
@@ -383,7 +401,8 @@ object ConstantPropagation {
         case _                            => BoolLattice[B2].top
       }
     }
-    implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol") with SymbolLattice[Sym] {
+
+    implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol")(Show.symShow) with SymbolLattice[Sym] {
       def inject(x: String) = Constant(x)
       def toString[S2: StringLattice](s: Sym): S2 = s match {
         case Top         => StringLattice[S2].top

@@ -639,12 +639,11 @@
 (let* ((fp (open-input-file "input.txt"))
        (input (read fp)))
   (close-input-port fp)
-  (time
-   (let loop ((n 45) (v 0))
-     (if (zero? n)
-         v
-         (loop (- n 1)
-               (fold-over-rdg (if input 6 1)
-                              2 
-                              cons
-                              '()))))))
+  (let loop ((n 45) (v 0))
+    (if (zero? n)
+        v
+        (loop (- n 1)
+              (fold-over-rdg (if input 6 1)
+                             2 
+                             cons
+                             '())))))
