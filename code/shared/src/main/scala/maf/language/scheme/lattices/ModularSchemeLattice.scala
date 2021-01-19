@@ -248,11 +248,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         case IsReal =>
           MayFail.success(args(0) match {
             case _: Real => True
-            case _       => False
-          })
-        case IsNumber =>
-          MayFail.success(args(0) match {
-            case _: Real => True
             case _: Int  => True
             case _       => False
           })

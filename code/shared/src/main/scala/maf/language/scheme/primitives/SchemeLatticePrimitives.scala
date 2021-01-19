@@ -326,44 +326,26 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `char?` extends NoStore1Operation("char?", unaryOp(SchemeOp.IsChar))
     case object `cos` extends NoStore1Operation("cos", unaryOp(SchemeOp.Cos))
     case object `eq?` extends NoStore2Operation("eq?", eqq)
-
     case object `error` extends NoStore1Operation("error", x => MayFail.failure(UserError(x.toString)))
-
     case object `exact->inexact` extends NoStore1Operation("exact->inexact", unaryOp(SchemeOp.ExactToInexact))
-
     case object `expt` extends NoStore2Operation("expt", binaryOp(SchemeOp.Expt))
-
     case object `floor` extends NoStore1Operation("floor", unaryOp(SchemeOp.Floor))
-
     case object `inexact->exact` extends NoStore1Operation("inexact->exact", unaryOp(SchemeOp.InexactToExact))
-
     case object `integer->char` extends NoStore1Operation("integer->char", unaryOp(SchemeOp.IntegerToCharacter))
-
     case object `integer?` extends NoStore1Operation("integer?", unaryOp(SchemeOp.IsInteger))
-
     case object `log` extends NoStore1Operation("log", unaryOp(SchemeOp.Log))
-
     case object `modulo` extends NoStore2Operation("modulo", binaryOp(SchemeOp.Modulo))
-
     case object `null?` extends NoStore1Operation("null?", unaryOp(SchemeOp.IsNull))
-
-    case object `number?` extends NoStore1Operation("number?", unaryOp(SchemeOp.IsNumber))
-
+    case object `number?` extends NoStore1Operation("number?", unaryOp(SchemeOp.IsReal))
+    case object `real?` extends NoStore1Operation("real?", unaryOp(SchemeOp.IsReal))
     /* No support for complex number, so number? is equivalent as real? */
     case object `procedure?` extends NoStore1Operation("procedure?", unaryOp(SchemeOp.IsProcedure))
-
     case object `quotient` extends NoStore2Operation("quotient", binaryOp(SchemeOp.Quotient))
-
     case object `random` extends NoStore1Operation("random", unaryOp(SchemeOp.Random))
-
     case object `remainder` extends NoStore2Operation("remainder", binaryOp(SchemeOp.Remainder))
-
     case object `round` extends NoStore1Operation("round", unaryOp(SchemeOp.Round))
-
     case object `sin` extends NoStore1Operation("sin", unaryOp(SchemeOp.Sin))
-
     case object `symbol?` extends NoStore1Operation("symbol?", unaryOp(SchemeOp.IsSymbol))
-
     case object `tan` extends NoStore1Operation("tan", unaryOp(SchemeOp.Tan))
 
     case object `+`
@@ -474,15 +456,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                   } {
                                     bool(false)
                                   }.map(v => (v, store))
-        )
-
-    case object `real?`
-        extends NoStore1Operation("real?",
-                                  x =>
-                                    for {
-                                      isint <- isInteger(x)
-                                      isreal <- unaryOp(SchemeOp.IsReal)(x)
-                                    } yield or(isint, isreal)
         )
 
     case object `vector?`

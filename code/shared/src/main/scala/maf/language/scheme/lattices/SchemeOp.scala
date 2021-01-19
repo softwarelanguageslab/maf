@@ -27,9 +27,6 @@ object SchemeOp {
   case object IsString extends SchemeOp1("string?")
   case object IsInteger extends SchemeOp1("integer?")
   case object IsReal extends SchemeOp1("real?")
-
-  case object IsNumber extends SchemeOp1("number?")
-
   case object IsVector extends SchemeOp1("vector?")
   case object IsThread extends SchemeOp1("thread?")
   case object IsLock extends SchemeOp1("lock?")
@@ -79,7 +76,6 @@ object SchemeOp {
     IsString,
     IsInteger,
     IsReal,
-    IsNumber,
     IsVector,
     IsThread,
     IsLock,
