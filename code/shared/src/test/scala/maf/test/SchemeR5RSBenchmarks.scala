@@ -13,8 +13,6 @@ object SchemeR5RSBenchmarks {
     ("(or (= 2 2) (< 2 1))", true),
     ("(or (= 2 2) (> 2 1))", true),
     ("(quote a)", Symbol("a")),
-
-
     // §6.1 Equivalence predicates
     // (eqv? obj1 obj2)
     ("(eqv? #f 'nil)", false),
@@ -41,7 +39,6 @@ object SchemeR5RSBenchmarks {
     ("(equal? 1 2)", false),
     ("(equal? 2 2)", true),
     ("(equal? \"abc\" \"abc\")", true),
-
     // §6.2.5 Numerical operations
     // (number? obj)
     ("(number? '())", false),
@@ -216,7 +213,6 @@ object SchemeR5RSBenchmarks {
     // (inexact->exact z)
     ("(inexact->exact 0.000)", 0),
     ("(inexact->exact 5.0)", 5),
-
     // §6.2.6 Numerical input and output
     // (number->string z)
     ("(equal? (number->string -123.456) \"-123.456\")", true),
@@ -242,7 +238,6 @@ object SchemeR5RSBenchmarks {
     ("(boolean? #f)", true),
     ("(boolean? '())", false),
     ("(boolean? 0)", false),
-
     // §6.3.2 Pais and lists
     // (pair? obj)
     ("(pair? (cons 'a 'b))", true),
@@ -320,7 +315,6 @@ object SchemeR5RSBenchmarks {
     ("(equal? (assv 5 '((2 3) (5 7) (11 13))) '(5 7))", true),
     // (assoc obj alist)
     ("(equal? (assoc (list 'a) '(((a)) ((b)) ((c)))) '((a)))", true),
-
     // §6.3.3 Symbols
     // (symbol? obj)
     ("(symbol? #f)", false),
@@ -333,7 +327,6 @@ object SchemeR5RSBenchmarks {
     ("(equal? (symbol->string 'flying-fish) \"flying-fish\")", true),
     // (string->symbol string)
     ("(string->symbol \"flying-fish\")", Symbol("flying-fish")),
-
     // §6.3.4 Characters
     // (char? obj)
     ("(char? #\\a)", true),
@@ -342,7 +335,7 @@ object SchemeR5RSBenchmarks {
     ("(char=? #\\a #\\a)", true),
     ("(char=? #\\a #\\b)", false),
     ("(char=? #\\b #\\a)", false),
-      // (char<? char1 char2)
+    // (char<? char1 char2)
     ("(char<? #\\a #\\a)", false),
     ("(char<? #\\a #\\b)", true),
     ("(char<? #\\b #\\a)", false),
@@ -358,12 +351,11 @@ object SchemeR5RSBenchmarks {
     ("(char>=? #\\a #\\a)", true),
     ("(char>=? #\\a #\\b)", false),
     ("(char>=? #\\b #\\a)", true),
-
     // (char-ci=? char1 char2)
     ("(char-ci=? #\\A #\\a)", true),
     ("(char-ci=? #\\A #\\b)", false),
     ("(char-ci=? #\\B #\\a)", false),
-      // (char-ci<? char1 char2)
+    // (char-ci<? char1 char2)
     ("(char-ci<? #\\A #\\a)", false),
     ("(char-ci<? #\\A #\\b)", true),
     ("(char-ci<? #\\B #\\a)", false),
@@ -379,7 +371,6 @@ object SchemeR5RSBenchmarks {
     ("(char-ci>=? #\\A #\\a)", true),
     ("(char-ci>=? #\\A #\\b)", false),
     ("(char-ci>=? #\\B #\\a)", true),
-
     // (char-alphabetic? char)
     ("(char-alphabetic? #\\A)", true),
     ("(char-alphabetic? #\\a)", true),
@@ -431,27 +422,35 @@ object SchemeR5RSBenchmarks {
     ("(string>? \"foo\" \"bar\")", true),
     ("(string>? \"foo\" \"foo\")", false),
     // (string-ci<? string1 string2) not supported
+    //("(string-ci<? \"f\" \"foo\")", true),
+    //("(string-ci<? \"f\" \"Foo\")", false),
+    //("(string-ci<? \"foo\" \"foo\")", false),
+    //("(string-ci<? \"foo\" \"Foo\")", false),
+    //("(string-ci<? \"Foo\" \"foo\")", true),
     // (string-ci>? string1 string2) not supported
+    //("(string-ci>? \"f\" \"foo\")", false),
+    //("(string-ci>? \"f\" \"Foo\")", true),
+    //("(string-ci>? \"foo\" \"foo\")", false),
+    //("(string-ci>? \"foo\" \"Foo\")", true),
+    //("(string-ci>? \"Foo\" \"foo\")", false),
     // (string-ci<=? string1 string2) not supported
-    // (string-ci<=? string1 string2) not supported
+    // (string-ci>=? string1 string2) not supported
 
     // (substring string start end)
     ("(equal? (substring \"foo\" 0 3) \"foo\")", true),
     ("(equal? (substring \"foo\" 0 2) \"fo\")", true),
     ("(equal? (substring \"foo\" 1 2) \"o\")", true),
     ("(equal? (substring \"foo\" 0 0) \"\")", true),
-
     // (string-append string ...)
     ("(equal? (string-append \"foo\" \"bar\") \"foobar\")", true),
-
     // (string->list string)
     ("(equal? (string->list \"foo\") '(#\\f #\\o #\\o))", true),
     // (list->string list)
     ("(equal? (list->string '(#\\f #\\o #\\o)) \"foo\")", true),
-
     // (string-copy string) not supported
-    // (string-fill! string char) not supported
-
+    // (string-fill! string char)
+    ("(begin (define x \"\") (string-fill! x #\\a) (equal? x \"\"))", true),
+    ("(begin (define x \"foo\") (string-fill! x #\\a) (equal? x \"aaa\"))", true),
     // §6.3.6 Vectors
     // (vector? obj)
     ("(vector? 'a)", false),
@@ -469,21 +468,18 @@ object SchemeR5RSBenchmarks {
     ("(equal? (vector->list (vector 'a 'b 'c)) '(a b c))", true),
     // (list->vector list)
     ("(equal? (list->vector '(a b c)) (vector 'a 'b 'c))", true),
-
     // (vector-fill! vector fill) not supported
 
     // §6.4 Control features
     // (procedure? obj)
     ("(procedure? 1)", false),
     ("(procedure? (lambda (x) x))", true),
-
     // (apply proc1 arg1 ... args)
     ("(apply + (list 3 4))", 7),
-
     // (map proc list1 list2 ...)
     // ("(equal? (map cadr '((a b) (d e) (g h)) '(b e h)))", true), // TODO: test fails
     // (for-each proc list1 list2 ...)
-    ("(equal? (let ((v (make-vector 5))) (for-each (lambda (i) (vector-set! v i (* i i))) '(0 1 2 3 4)) v) (vector 0 1 4 9 16))", true),
+    ("(equal? (let ((v (make-vector 5))) (for-each (lambda (i) (vector-set! v i (* i i))) '(0 1 2 3 4)) v) (vector 0 1 4 9 16))", true)
 
     // (force promise) not supported
     // (call-with-current-continuation proc) TODO: supported but not tested

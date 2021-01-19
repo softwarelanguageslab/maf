@@ -2,6 +2,7 @@ package maf.test.language.scheme
 
 import org.scalatest.propspec.AnyPropSpec
 import maf.core._
+import maf.language.CScheme.CSchemeParser
 import maf.language.scheme._
 import maf.language.scheme.lattices.SchemeLattice
 import maf.language.scheme.primitives._
@@ -40,6 +41,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
 }
 
 class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
+
   def analysis(text: SchemeExp) =
     // Not really clean, we only want a proper ConstantPropagationLattice definition
     new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
@@ -51,7 +53,8 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 
     import l.Injector._
 
-    val interpreter = new SchemeInterpreter((_: Identity, _: SchemeInterpreter.Value) => (), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+    val interpreter =
+      new SchemeInterpreter((_: Identity, _: SchemeInterpreter.Value) => (), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
     val v = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(text))), Timeout.start(Duration(30, SECONDS)))
     val result = v match {
       case SchemeInterpreter.Value.Nil          => l.nil

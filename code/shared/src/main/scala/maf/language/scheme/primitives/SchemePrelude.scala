@@ -254,13 +254,13 @@ object SchemePrelude {
         |     (string-append (char->string (car l)) (list->string (cdr l)))))""".stripMargin,
     "string" -> "(define (string . chars) (list->string chars))",
     "truncate" -> "(define (truncate x) @sensitivity:FA (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
-    //"string-fill!" -> """(define (string-fill! s c)
-    //                    |  (let loop ((i (- (string-length s) 1)))
-    //                    |    (if (< i 0)
-    //                    |        #t
-    //                    |        (begin (string-set! s i c)
-    //                    |               (loop (- i 1))))))""".stripMargin,
-
+    "string-fill!" ->
+      """(define (string-fill! s c)
+        |  (let loop ((i (- (string-length s) 1)))
+        |    (if (< i 0)
+        |        #t
+        |        (begin (string-set! s i c)
+        |               (loop (- i 1))))))""".stripMargin,
     //    "foldr" -> """(define (foldr f base lst) (foldr-aux f base lst))""",
     //    "foldr-aux" -> """(define (foldr-aux f base lst)
     //        (if (null? lst)

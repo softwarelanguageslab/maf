@@ -133,7 +133,7 @@ class ConcreteLattice {
           c: C2
         ): S = s match {
         case _ if s == bottom || i == IntLattice[I2].bottom || c == CharLattice[C2].bottom => bottom
-        case Top                                                                           => Top // TODO: more precise implementation
+        case _                                                                             => Top // TODO: more precise implementation
       }
       def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match {
         case (Values(bot), _) if bot.isEmpty => BoolLattice[B2].bottom
