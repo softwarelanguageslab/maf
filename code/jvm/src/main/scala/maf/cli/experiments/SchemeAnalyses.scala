@@ -10,23 +10,21 @@ import maf.modular.scheme.modconc._
 import maf.modular.worklist._
 
 object SchemeAnalysesBoundedDomain {
-  def contextInsensitiveTypeAnalysis(
+  object NoSensitivity {
+    def boundAnalysis(bnd: Int)(
       prg: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain with RandomWorklistAlgorithm[SchemeExp] {
-    lazy val bound = 0
-    override def toString() = "no-sensitivity"
+    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain with LIFOWorklistAlgorithm[SchemeExp] {
+      lazy val bound = bnd
+      override def toString() = "no-sensitivity"
+    }
   }
-  def contextInsensitiveConstantPropagationAnalysis(
+  object CallSiteSensitivity {
+    def boundAnalysis(bnd: Int)(
       prg: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain with RandomWorklistAlgorithm[SchemeExp] {
-    lazy val bound = 1
-    override def toString() = "no-sensitivity"
-  }
-  def contextInsensitiveBound2Analysis(
-      prg: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain with RandomWorklistAlgorithm[SchemeExp] {
-    lazy val bound = 2
-    override def toString() = "no-sensitivity"
+    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFCallSiteSensitivity with SchemeBoundedDomain with LIFOWorklistAlgorithm[SchemeExp] {
+      lazy val bound = bnd
+      override def toString() = "call-site-sensitivity"
+    }
   }
 }
 

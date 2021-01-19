@@ -151,6 +151,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       `current-input-port`,
       `current-output-port`,
       `read-char`,
+      `peek-char`,
       `write-char`,
       `read`,
       `write`,
