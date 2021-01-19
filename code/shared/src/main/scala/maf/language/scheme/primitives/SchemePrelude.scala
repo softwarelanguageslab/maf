@@ -143,7 +143,8 @@ object SchemePrelude {
     "char-ci<=?" -> "(define (char-ci<=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char-ci<? c1 c2) (char-ci=? c1 c2)))",
     "char-ci>=?" -> "(define (char-ci>=? c1 c2) @sensitivity:FA (assert (char? c1)) (assert (char? c2)) (or (char-ci>? c1 c2) (char-ci=? c1 c2)))",
     "char-alphabetic?" -> "(define (char-alphabetic? c) @sensitivity:FA (and (char-ci>=? c #\\a) (char-ci<=? c #\\z)))",
-    "char-numeric?" -> "(define (char-alphabetic c) @sensitivity:FA (and (char<=? #\\0 c) (char<=? c #\\9)))",
+    "char-numeric?" -> "(define (char-numeric? c) @sensitivity:FA (and (char<=? #\\0 c) (char<=? c #\\9)))",
+    "char-whitespace?" -> "(define (char-whitespace? c) @sensitivity:FA (or (= (char->integer c) 9) (= (char->integer c) 10) (= (char->integer c) 32)))",
     "caar" -> "(define (caar x) @sensitivity:FA (car (car x)))",
     "cadr" -> "(define (cadr x) @sensitivity:FA (car (cdr x)))",
     "cdar" -> "(define (cdar x) @sensitivity:FA (cdr (car x)))",
@@ -251,6 +252,7 @@ object SchemePrelude {
         |   (if (null? l)
         |     ""
         |     (string-append (char->string (car l)) (list->string (cdr l)))))""".stripMargin,
+    "string" -> "(define (string . chars) (list->string chars))",
     "truncate" -> "(define (truncate x) @sensitivity:FA (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
     //"string-fill!" -> """(define (string-fill! s c)
     //                    |  (let loop ((i (- (string-length s) 1)))
