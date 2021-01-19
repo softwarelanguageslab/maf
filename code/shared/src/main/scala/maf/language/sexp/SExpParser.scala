@@ -2,7 +2,7 @@ package maf.language.sexp
 
 import maf.core.Position._
 import maf.core._
-import maf.lattice.NumOps
+import maf.lattice._
 
 /**
  * Implementation of a simple s-expression parser, which supports some
