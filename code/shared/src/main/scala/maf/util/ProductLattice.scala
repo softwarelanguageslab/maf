@@ -3,7 +3,9 @@ package maf.util
 import maf.core.Lattice
 import maf.core.MayFail
 import maf.core.LatticeTopUndefined
+import maf.lattice.interfaces.Operation
 import maf.lattice.interfaces.BoolLattice
+import scala.collection.immutable.Range.Partial
 
 /**
  * A partial lattice is the same as a lattice (it must have a subsumes, join, eql, ...)
@@ -41,13 +43,31 @@ case class ProductLattice[V <: Ordable](vs: List[V]) extends SmartHash {
 
   def foldMapL[X](f: V => X)(implicit monoid: Monoid[X]): X =
     vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
+
 }
 
 object ProductLattice {
   import MonoidInstances._
+
   type L[V <: Ordable] = ProductLattice[V]
 
   def apply[V <: Ordable](v: V): ProductLattice[V] = new ProductLattice(List(v))
+
+  def op[V <: Ordable, W](
+      args: List[ProductLattice[V]],
+      call: List[V] => MayFail[W, maf.core.Error]
+    )(implicit monoid: Monoid[W]
+    ): MayFail[W, maf.core.Error] = {
+    def fold(argsToProcess: List[ProductLattice[V]], argsvRev: List[V]): MayFail[W, maf.core.Error] = argsToProcess match {
+      case arg :: args =>
+        arg.foldMapL(argv => fold(args, argv :: argsvRev))(mayFail)
+      case List() =>
+        val argsv = argsvRev.reverse
+        call(argsv)
+    }
+
+    fold(args, List())
+  }
 
   implicit def lMonoid[V <: Ordable](implicit valueLattice: PartialLattice[V]): Monoid[L[V]] = new Monoid[L[V]] {
     private def insert(vs: List[V], v: V): List[V] = vs match {

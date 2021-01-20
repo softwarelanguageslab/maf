@@ -24,7 +24,6 @@ import maf.core.MayFail
 import maf.language.scheme.lattices.Product2SchemeLattice
 import maf.lattice.interfaces.Operation
 import maf.lattice.interfaces.Operation1
-import maf.language.contracts.ScCoProductLattice.Bottom
 import maf.core.OperatorNotApplicable
 import maf.language.scheme.lattices.SchemeOp.IsInputPort
 
@@ -1005,16 +1004,16 @@ trait ScAbstractValues[A <: Address] {
       case Opqs(opq) => opq.forall(o => o.refinementSet.intersect(refinements).nonEmpty)
     }
 
-    def isPred[L, P](value: ValueExt, refinements: Set[String])(implicit lat: ScSchemeLattice[L, A, P]): L =
+    def isPred[L, P <: Primitive](value: ValueExt, refinements: Set[String])(implicit lat: ScSchemeLattice[L, A, P]): L =
       lat.schemeLattice.bool(isRefinedOpq(value, refinements))
 
-    def numOp[L, P](args: List[ValueExt])(implicit schemeLattice: ScSchemeLattice[L, A, P]): MayFail[L, maf.core.Error] =
+    def numOp[L, P <: Primitive](args: List[ValueExt])(implicit schemeLattice: ScSchemeLattice[L, A, P]): MayFail[L, maf.core.Error] =
       if (args.forall(isRefinedOpq(_, Set("number?", "real?"))))
         MayFail.success(schemeLattice.opq(Opq(Set("number?", "real?"))))
       else MayFail.failure(OperatorNotApplicable("+", args))
 
     /** Defines some operations between values of the Sc abstract domain */
-    def op[L, P](op: ScOp)(args: List[ValueExt])(implicit lat: ScSchemeLattice[L, A, P]): MayFail[L, maf.core.Error] = {
+    def op[L, P <: Primitive](op: ScOp)(args: List[ValueExt])(implicit lat: ScSchemeLattice[L, A, P]): MayFail[L, maf.core.Error] = {
       import SchemeOp._
       op.checkArity(args)
       op match {
@@ -1044,7 +1043,8 @@ trait ScAbstractValues[A <: Address] {
                 IsProcedure | IsInputPort | IsOutputPort =>
               MayFail.success(isPred(args(0), Set(op.name)))
 
-            // if all operands are opaque values then we return an opaque value without any refinements, as  the operation might have violated some of the contracts in the refinements
+            // if all operands are opaque values then we return an opaque value without any refinements,
+            // as the operation might have violated some of the contracts in the refinements
             case _ if args.forall {
                   case Opqs(_) => true
                   case _       => false
@@ -1064,6 +1064,8 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
   import maf.language.scheme.lattices.Product2SchemeLattice._
   import ScLattice._
   import maf.util.ProductLattice._
+  import maf.util.MonoidInstances._
+  import maf.util.MonoidImplicits
 
   type S
   type B
@@ -1085,6 +1087,7 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
 
   implicit val valueExtSchemeLattice: SchemeLattice[L, A, P] = new EmptyDomainSchemeLattice[L, A, P] {
     val lattice = valueExtProductLattice
+
   }
 
   implicit val rightLattice = modularLattice.schemeLattice
@@ -1104,6 +1107,19 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
         ): MayFail[Product2[L, modularLattice.Elements], maf.core.Error] = {
         operation.checkArity(args)
         operation match {
+
+          // Apply the operation on the left side of the product2lattice. This is normally automatically done by the
+          // leftLattice lattice, but then we cannot return things from the right lattice, as such these types of operations,
+          // that work on values from the leftLattice but need to return something from the right lattice must be defined here.
+          case _ =>
+            val op = Values.ScSchemeOp(operation)
+            val result = ProductLattice
+              .op(args.map(_.left), (args: List[ValueExt]) => Values.op(op)(args)(lattice))(
+                latticeMonoid(lattice.schemeLattice)
+              )
+
+            mayFail(latticeMonoid(lattice.schemeLattice)).append(result, super.op(operation)(args))
+
           // if the argument list contains an opaque value, then the
           // result of the application is an opaque value, except for
           // when the argument list contains bottom
@@ -1112,9 +1128,6 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
                 case _       => false
               }) && args.forall(arg => !(arg.left.vs.contains(leftLattice.bottom) && arg.right.vs.contains(rightLattice.bottom))) =>
             MayFail.success(outer.lattice.opq(Opq()))
-
-          case _ =>
-            super.op(operation)(args)
         }
       }
     }
