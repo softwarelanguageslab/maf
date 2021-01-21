@@ -194,8 +194,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     /** First removes outdated read dependencies before performing the actual commit. */
     @nonMonotonicUpdate
     override def commit(): Unit = {
-      refineDependencies() // First, remove excess dependencies if this is a reanalysis.
-      refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
+      if (optimisationFlag) {
+        refineDependencies() // First, remove excess dependencies if this is a reanalysis.
+        refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
+      }
       super.commit() // Then commit and trigger dependencies.
     }
   }

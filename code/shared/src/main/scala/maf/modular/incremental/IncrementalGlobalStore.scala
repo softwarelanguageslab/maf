@@ -129,7 +129,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     intra =>
 
     abstract override def analyze(timeout: Timeout.T): Unit = {
-      addressDependencies = addressDependencies - component // Otherwise data might become wrong after an incremental update.
+      if (tarjanFlag) addressDependencies = addressDependencies - component // Otherwise data might become wrong after an incremental update.
       super.analyze()
     }
 
