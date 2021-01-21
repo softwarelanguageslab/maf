@@ -138,6 +138,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ************************************************************************* */
 
   var optimisationFlag: Boolean = true // This flag can be used to enable or disable certain optimisations (for testing purposes).
+  var tarjanFlag: Boolean = false
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(
@@ -193,10 +194,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     /** First removes outdated read dependencies before performing the actual commit. */
     @nonMonotonicUpdate
     override def commit(): Unit = {
-      if (optimisationFlag) {
-        refineDependencies() // First, remove excess dependencies if this is a reanalysis.
-        refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
-      }
+      refineDependencies() // First, remove excess dependencies if this is a reanalysis.
+      refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
       super.commit() // Then commit and trigger dependencies.
     }
   }

@@ -4,6 +4,8 @@ import maf.core.Expression
 import maf.language.change.CodeVersion._
 import maf.modular._
 import maf.util.Annotations._
+import maf.util.benchmarks.Timeout
+import maf.util.graph.Tarjan
 
 /**
  * This trait improves upon a basic incremental analysis (with dependency and component invalidation) by introducing
@@ -19,6 +21,17 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
   /** Caches the addresses written by every component. Used to find addresses that are no longer written by a component. */
   var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
+
+  /**
+   * Approximates the value flow of the analysis. Stores tuples of (A, B), if B was the most recent write after reading A.
+   * The data is also put into a map, so it can be reset upon the reanalysis of a component.
+   */
+  var addressDependencies: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
+
+  /** Gets all addresses depending on a given address. */
+  def outGoing(addr: Addr): Set[Addr] = addressDependencies.values.flatMap(_(addr)).toSet
+
+  var sccs: Set[Set[Addr]] = Set()
 
   /** Computes the value that should reside at a given address according to the provenance information. */
   def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
@@ -105,8 +118,41 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     true
   }
 
+  override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean): Unit = {
+    if (tarjanFlag)
+      sccs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (k, v) => (k, v.flatMap(_._2).toSet) }))
+    super.updateAnalysis(timeout, optimisedExecution)
+    if (tarjanFlag) sccs = Set()
+  }
+
   trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra {
     intra =>
+
+    abstract override def analyze(timeout: Timeout.T): Unit = {
+      addressDependencies = addressDependencies - component // Otherwise data might become wrong after an incremental update.
+      super.analyze()
+    }
+
+    var reads: Set[Addr] = Set()
+
+    override def readAddr(addr: Addr): Value = {
+      if (tarjanFlag) {
+        reads += addr
+        if (version == New)
+          sccs.find(_.contains(addr)) match {
+            case Some(scc) =>
+              trigger(AddrDependency(addr))
+              scc.foreach { addr =>
+                inter.store += addr -> lattice.bottom
+                store += addr -> lattice.bottom
+                provenance -= addr
+              }
+              sccs -= scc
+            case _ =>
+          }
+      }
+      super.readAddr(addr)
+    }
 
     /**
      * Keep track of the values written by a component to an address.
@@ -117,6 +163,14 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     override def writeAddr(addr: Addr, value: Value): Boolean = {
       // Update the intra-provenance: for every address, keep the join of the values written to the address.
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
+      // Update the value flow information and reset the reads information.
+      if (tarjanFlag) {
+        reads.foreach(a =>
+          addressDependencies =
+            addressDependencies + (component -> (addressDependencies(component) + (a -> (addressDependencies(component)(a) + addr))))
+        )
+        reads = Set()
+      }
       super.writeAddr(addr,
                       value
       ) // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
