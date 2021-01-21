@@ -30,7 +30,6 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     super.updateAnalysis(timeout, optimisedExecution)
   }
 
-  /*
   override def updateAddrInc(
       cmp: Component,
       addr: Addr,
@@ -40,7 +39,6 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     logger.log(c(s"J $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)"))
     b
   }
-   */
 
   trait IncrementalLoggingIntra extends IncrementalGlobalStoreIntraAnalysis {
     intra =>

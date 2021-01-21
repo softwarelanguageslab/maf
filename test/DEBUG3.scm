@@ -1,10 +1,3 @@
-(define (a n)
-  (assert (integer? n))
-  (b n))
-
-(define (b m)
-  (if (= m 0)
-      (a (- m 1))
-      #t))
-
-(a (<change> 10.5 10))
+(define lst (cons (<change> 1.5 1) '()))
+(set-car! lst (+ (car lst) 1))
+(assert (integer? (car lst)))
