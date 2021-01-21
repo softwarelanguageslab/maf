@@ -26,6 +26,14 @@ object SchemeAnalysesBoundedDomain {
       override def toString() = "call-site-sensitivity"
     }
   }
+  object TwoCallSiteSensitivity {
+    def boundAnalysis(bnd: Int)(
+      prg: SchemeExp
+    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFCallSiteSensitivity with SchemeBoundedDomain with LIFOWorklistAlgorithm[SchemeExp] {
+      lazy val bound = bnd
+      override def toString() = "call-site-sensitivity"
+    }
+  }
 }
 
 object SchemeAnalyses {
