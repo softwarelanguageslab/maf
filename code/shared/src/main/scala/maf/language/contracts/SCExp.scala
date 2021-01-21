@@ -3,6 +3,7 @@ package maf.language.contracts
 import maf.core.{Expression, Identifier, Identity, Label}
 import maf.language.sexp.Value
 import maf.util.{Monoid, PrettyPrinter}
+import maf.language.scheme.SchemeExp
 
 case object FLAT_CONTRACT extends Label
 case object HIGHER_ORDER_CONTRACT extends Label
@@ -33,7 +34,7 @@ case object CDR extends Label
 case object VARARG_IDENTIFIER extends Label
 
 /** A language for defining software contracts */
-trait ScExp extends Expression {
+trait ScExp extends SchemeExp {
   implicit class FreeVariablesList(list: List[Expression]) {
     def fv: Set[String] = list.foldLeft(Set[String]())((a, b) => a ++ b.fv)
   }

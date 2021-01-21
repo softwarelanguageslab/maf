@@ -44,6 +44,9 @@ case class ProductLattice[V <: Ordable](vs: List[V]) extends SmartHash {
   def foldMapL[X](f: V => X)(implicit monoid: Monoid[X]): X =
     vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
 
+  def contains(f: V => Boolean): Boolean =
+    vs.contains(v => f(v))
+
 }
 
 object ProductLattice {

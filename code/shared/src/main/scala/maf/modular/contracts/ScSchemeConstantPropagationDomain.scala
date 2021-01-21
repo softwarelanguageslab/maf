@@ -17,5 +17,5 @@ trait ScSchemeConstantPropagationDomain extends ScSchemeDomain[Address] {
   type Sym = Concrete.Sym
 
   lazy val modularLattice: ModularSchemeLattice[Address, S, B, I, R, C, Sym] = new ModularSchemeLattice
-  lazy val primitives = new SchemeLatticePrimitives()(schemeLattice)
+  lazy val schemePrimitives = new SchemeLatticePrimitives()(schemeLattice)
 }

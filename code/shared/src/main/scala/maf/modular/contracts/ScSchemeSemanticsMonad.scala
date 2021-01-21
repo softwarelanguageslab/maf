@@ -5,7 +5,7 @@ import maf.language.contracts.{ScExp, ScIdentifier, ScNil}
 import maf.core.Identity
 
 /** This trait provides a monad that aids with defining a big step semantics for soft contract verification */
-trait ScSemanticsMonad extends ScModSemantics { outer =>
+trait ScSchemeSemanticsMonad extends ScModSemanticsScheme { outer =>
   type PC = ScExp
   type PostValue = (Value, ScExp)
   type StoreCache = Map[Addr, PostValue]

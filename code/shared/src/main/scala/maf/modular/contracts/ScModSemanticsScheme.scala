@@ -7,6 +7,7 @@ import maf.language.contracts.{ScExp, ScIdentifier, ScLambda, ScLattice, ScParam
 import maf.modular.{DestructiveStore, GlobalStore, LocalStore, LocalStoreMap, ModAnalysis, ReturnAddr, ReturnValue}
 import maf.core.Lattice
 import maf.lattice.interfaces.BoolLattice
+import maf.language.contracts.ScSchemeDomain
 import maf.language.scheme.primitives.SchemeInterpreterBridge
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.SchemeLambdaExp
@@ -14,7 +15,7 @@ import maf.language.CScheme.TID
 import maf.language.scheme.primitives.SchemePrimitive
 import maf.language.contracts.ScNil
 
-object ScModSemantics {
+object ScModSemanticsScheme {
   var r = 0
   def genSym: String = {
     r += 1
@@ -25,9 +26,9 @@ object ScModSemantics {
     ScIdentifier(genSym, Identity.none)
 }
 
-trait ScModSemantics
+trait ScModSemanticsScheme
     extends ModAnalysis[ScExp]
-       with ScDomain
+       with ScSchemeDomain[Address]
        with GlobalStore[ScExp]
        with ReturnValue[ScExp]
        with DestructiveStore[ScExp]
@@ -111,7 +112,43 @@ trait ScModSemantics
   implicit def toScIdentifier(p: ScParam): ScIdentifier =
     ScIdentifier(p.name, p.idn)
 
-  trait IntraScAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra with DestructiveStoreIntra with LocalStoreIntra { intra =>
+  /** An adapter for the "old" store interface, that actually does nothing */
+  case object NoStoreAdapter extends maf.core.Store[Addr, Value] {
+    def lookup(addr: Addr): Option[Value] = None
+    def extend(addr: Addr, value: Value): maf.core.Store[Addr, Value] = NoStoreAdapter
+  }
+
+  trait IntraScAnalysisScheme
+      extends IntraAnalysis
+         with GlobalStoreIntra
+         with ReturnResultIntra
+         with DestructiveStoreIntra
+         with LocalStoreIntra
+         with SchemeInterpreterBridge[Value, Addr] { intra =>
+
+    def pointer(exp: SchemeExp): Addr =
+      ScGenericAddr(exp.idn, context(component))
+
+    def callcc(
+        clo: (SchemeLambdaExp, Environment[Address]),
+        nam: Option[String],
+        pos: Position
+      ): Value =
+      throw new Exception("call/cc is not supported by the contract language")
+
+    def currentThread: TID =
+      throw new Exception("Threading is not supported by the contract language")
+
+    implicit class CallNoStorePrimitive(prim: SchemePrimitive[Value, Addr]) {
+      def callNoStore(args: List[Value]): Value =
+        prim
+          .call(ScNil(), args.zip(Stream.continually(List(ScNil()).toStream).flatten).map { case (a, b) => (b, a) }, NoStoreAdapter, intra)
+          .map(_._1)
+          .getOrElse(lattice.bottom)
+
+      def callNoStore(arg: Value): Value =
+        callNoStore(List(arg))
+    }
 
     /** Remove a blame of a certain component from the store */
     def removeBlame(component: Component, idn: Identity): Unit =
@@ -123,7 +160,7 @@ trait ScModSemantics
               lattice
                 .getBlames(value)
                 .filter(_.blamedPosition != idn)
-                .map(lattice.injectBlame(_))
+                .map(lattice.blame(_))
                 .foldLeft(lattice.bottom)((a, b) => lattice.join(a, b))
             )
           case v => v
@@ -134,7 +171,7 @@ trait ScModSemantics
         }
 
     def writeBlame(blame: Blame) =
-      writeAddr(ExceptionAddr(component, expr(component).idn), lattice.injectBlame(blame))
+      writeAddr(ExceptionAddr(component, expr(component).idn), lattice.blame(blame))
 
     /**
      * Compute the body of the component under analysis
@@ -159,7 +196,7 @@ trait ScModSemantics
     def fv: Set[String] = expr(component).fv
   }
 
-  override def intraAnalysis(component: Component): IntraScAnalysis
+  override def intraAnalysis(component: Component): IntraScAnalysisScheme
 
   def summary: ScAnalysisSummary[Value] = {
     var returnValues = Map[Any, Value]()

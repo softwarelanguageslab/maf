@@ -3,6 +3,11 @@ package maf.language.contracts
 import maf.core.{Address, Environment, Identity, Lattice}
 import maf.language.scheme.lattices.SchemeLattice
 import maf.core.Primitive
+import maf.lattice.interfaces.BoolLattice
+import maf.core.LatticeTopUndefined
+import javax.management.ValueExp
+import maf.language.contracts.lattices.ScOp
+import maf.core.MayFail
 
 object ScLattice {
 
@@ -269,7 +274,7 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
 }
 
 /** Operations that an abstract domain for soft contract should support */
-trait ScSchemeLattice[L, Addr <: Address, P <: Primitive] {
+trait ScSchemeLattice[L, Addr <: Address, P <: Primitive] extends Lattice[L] {
   import ScLattice._
 
   /** An implementation of the Scheme lattice */
@@ -292,6 +297,12 @@ trait ScSchemeLattice[L, Addr <: Address, P <: Primitive] {
   /** Inject a thunk in the abstract domain */
   def thunk(thunk: Thunk[Addr]): L
 
+  /** Inject a flat contract in the abstract domain */
+  def flat(flat: Flat[Addr]): L
+
+  /** Inject a closure in the abstract domain */
+  def closure(clo: Clo[Addr]): L
+
   /*==================================================================================================================*/
 
   /** Extract a set of arrow (monitors on functions) from the abstract value */
@@ -309,6 +320,12 @@ trait ScSchemeLattice[L, Addr <: Address, P <: Primitive] {
   /** Extracts the set of thunks from the abstract domain */
   def getThunk(value: L): Set[Thunk[Addr]]
 
+  /** Extracts the set of flat contracts from the abtract values */
+  def getFlat(value: L): Set[Flat[Addr]]
+
+  /** Extrracts a closure from the abstract domai n */
+  def getClosure(value: L): Set[Clo[Addr]]
+
   /*==================================================================================================================*/
 
   def isDefinitelyOpq(value: L): Boolean
@@ -320,4 +337,29 @@ trait ScSchemeLattice[L, Addr <: Address, P <: Primitive] {
 
   /** Returns true if the value is possibly a thunk */
   def isThunk(value: L): Boolean
+
+  /** Returns true if the value is possible a flat contract */
+  def isFlat(value: L): Boolean
+
+  /** Returns true iof the value is possibly a closure */
+  def isClosure(value: L): Boolean
+
+  /*==================================================================================================================*/
+
+  def join(x: L, y: => L): L =
+    schemeLattice.join(x, y)
+
+  def bottom: L = schemeLattice.bottom
+
+  def eql[B: BoolLattice](x: L, y: L): B = schemeLattice.eql(x, y)
+
+  def subsumes(x: L, y: => L): Boolean = schemeLattice.subsumes(x, y)
+
+  def top: L = throw LatticeTopUndefined
+
+  def show(v: L): String = schemeLattice.show(v)
+
+  /*==================================================================================================================*/
+
+  def op(op: ScOp)(args: List[L]): MayFail[L, maf.core.Error]
 }
