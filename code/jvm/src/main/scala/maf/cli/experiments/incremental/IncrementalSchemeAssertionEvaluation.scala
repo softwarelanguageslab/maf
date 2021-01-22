@@ -104,10 +104,16 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
         results.get(row, columnName(veriS, inc1S)) != results.get(row, columnName(veriS, inc2S))
         || results.get(row, columnName(failS, inc1S)) != results.get(row, columnName(failS, inc2S))
       ) {
-        results = results.add(row, "diff", "x")
+        results = results.add(row, "diff inc", "x")
+      }
+      if (
+        results.get(row, columnName(veriS, reanS)) != results.get(row, columnName(veriS, inc2S))
+        || results.get(row, columnName(failS, reanS)) != results.get(row, columnName(failS, inc2S))
+      ) {
+        results = results.add(row, "diff rean", "x")
       }
     }
-    results.prettyString(columns = columns ++ Set("diff"))
+    results.prettyString(columns = columns ++ Set("diff inc", "diff rean"))
   }
 }
 

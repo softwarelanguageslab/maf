@@ -13,11 +13,16 @@ object SoundnessTest extends Tag("SoundnessTest")
 
 // Tags by language.
 object SchemeModFTest extends Tag("SchemeModFTest")
+
 object SchemeModConcTest extends Tag("SchemeModConcTest")
 
 // Tags by semantic type.
 object SmallStepTest extends Tag("SmallStepTest")
+
 object BigStepTest extends Tag("BigStepTest")
 
 // Tags by analysis variation.
 object IncrementalTest extends Tag("IncrementalTest")
+
+// Other tags
+object UtilityTest extends Tag("UtilityTest")

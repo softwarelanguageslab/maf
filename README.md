@@ -61,6 +61,7 @@ maf/test
 To allow specific tests to be run, tags have been added to the test suite. 
  * Following tags can be used to select the component of the framework that should (not) be tested: `ParserTest`, `LatticeTest`, `PrimitiveTest` and `SoundnessTest`.
  * Following tags can be used to select which benchmark programs (not) to run: `SlowTest`.
+ * Following tags can be used to test utility components of the framework: `UtilTest`.
 
 The `SlowTest` tag currently is only used for some of the soundness tests. When these tests are disabled, only a part of the available benchmark programs
 will be used.

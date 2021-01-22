@@ -138,7 +138,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ************************************************************************* */
 
   var optimisationFlag: Boolean = true // This flag can be used to enable or disable certain optimisations (for testing purposes).
-  var tarjanFlag: Boolean = false
+  var tarjanFlag: Boolean = true
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(
