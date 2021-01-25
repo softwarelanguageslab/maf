@@ -103,12 +103,40 @@ object Logger {
       writer.write(string + "\n")
       writer.flush()
     }
+
     def logT(string: String): Unit = {
       writer.write(s"${Clock.nowStr()} : $string\n")
       writer.flush()
     }
+
     def close(): Unit = writer.close()
   }
 
+  class NumberedLog(private val writer: Writer) extends Log(writer) {
+
+    private var count: Int = 1
+
+    /** Adds a line number to the given string. */
+    private def addCount(s: String): String = {
+      count += 1
+      s"${toWidth(count.toString + ".", 5)} $s"
+    }
+
+    /** Ensures a string has the given width by filling with whitespaces. If the string is longer than the given width, the string will be returned. */
+    private def toWidth(s: String, w: Int): String = s + (" " * (w - s.length))
+
+    override def log(string: String): Unit = super.log(addCount(string))
+
+    def logU(string: String) = super.log(string) // Log unnumbered.
+
+    override def logT(string: String): Unit = super.logT(addCount(string))
+
+    def logTU(string: String): Unit = super.logT(string) // Log unnumbered.
+
+    def resetNumbering(): Unit = count = 1
+  }
+
   def apply(msg: String = "log"): Log = new Log(Writer.openTimeStamped(out + msg + ".txt"))
+
+  def numbered(msg: String = "log"): NumberedLog = new NumberedLog(Writer.openTimeStamped(out + msg + ".txt"))
 }
