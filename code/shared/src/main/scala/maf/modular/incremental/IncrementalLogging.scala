@@ -2,7 +2,7 @@ package maf.modular.incremental
 
 import maf.core.Expression
 import maf.util.Logger
-import maf.util.Logger.{numbered, Log, NumberedLog}
+import maf.util.Logger._
 import maf.util.benchmarks.Timeout
 
 /**
@@ -20,17 +20,15 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     logger.resetNumbering()
     logger.logU("\nUpdating analysis\n")
     try {
-      val b = super.updateAnalysis(timeout, optimisedExecution)
+      super.updateAnalysis(timeout, optimisedExecution)
       if (tarjanFlag) {
         addressDependencies.foreach({ case (cmp, map) =>
           map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
         })
       }
-      b
     } catch {
       case t: Throwable =>
-        logger.logU(t.toString)
-        t.getStackTrace.foreach(st => logger.logU(st.toString))
+        logger.logException(t)
         throw t
     }
   }

@@ -99,13 +99,22 @@ object Logger {
   private val out: String = "logs/"
 
   class Log(private val writer: Writer) {
+
+    /** Logs a message to a file. */
     def log(string: String): Unit = {
       writer.write(string + "\n")
       writer.flush()
     }
 
+    /** Logs a message to a file, and includes a timestamp. */
     def logT(string: String): Unit = {
       writer.write(s"${Clock.nowStr()} : $string\n")
+      writer.flush()
+    }
+
+    /** Logs an exception and its corresponding stacktrace to a file. */
+    def logException(t: Throwable): Unit = {
+      writer.write(t.toString + "\n" + t.getStackTrace.map(_.toString).mkString("\n"))
       writer.flush()
     }
 
@@ -114,6 +123,7 @@ object Logger {
 
   class NumberedLog(private val writer: Writer) extends Log(writer) {
 
+    /** The last used sequence number for messages. */
     private var count: Int = 0
 
     /** Adds a line number to the given string. */
@@ -125,14 +135,19 @@ object Logger {
     /** Ensures a string has the given width by filling with whitespaces. If the string is longer than the given width, the string will be returned. */
     private def toWidth(s: String, w: Int): String = s + (" " * (w - s.length))
 
+    /** Logs a message to a file and adds a sequence number. */
     override def log(string: String): Unit = super.log(addCount(string))
 
+    /** Logs a message to a file without adding a sequence number. The message is not counted in the numbering. */
     def logU(string: String): Unit = super.log(string) // Log unnumbered.
 
+    /** Logs a message to a file, and includes a timestamp and sequence number. */
     override def logT(string: String): Unit = super.logT(addCount(string))
 
+    /** Logs a message to a file, and includes a timestamp but no sequence number. The message is not counted in the numbering. */
     def logTU(string: String): Unit = super.logT(string) // Log unnumbered.
 
+    /** Resets the numbering. */
     def resetNumbering(): Unit = count = 0
   }
 

@@ -22,17 +22,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /** Caches the addresses written by every component. Used to find addresses that are no longer written by a component. */
   var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
-  /**
-   * Approximates the value flow of the analysis. Stores tuples of (A, B), if B was the most recent write after reading A.
-   * The data is also put into a map, so it can be reset upon the reanalysis of a component.
-   */
-  var addressDependencies: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
-
-  /** Gets all addresses depending on a given address. */
-  def outGoing(addr: Addr): Set[Addr] = addressDependencies.values.flatMap(_(addr)).toSet
-
-  var sccs: Set[Set[Addr]] = Set()
-
   /** Computes the value that should reside at a given address according to the provenance information. */
   def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
 
@@ -43,6 +32,15 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       value: Value
     ): Unit =
     provenance = provenance + (addr -> (provenance(addr) + (cmp -> value)))
+
+  /**
+   * Approximates the value flow of the analysis. Stores tuples of (A, B), if B was the most recent write after reading A.
+   * The data is also put into a map, so it can be reset upon the reanalysis of a component.
+   */
+  var addressDependencies: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
+
+  /** Keeps track of all inferred SCCs during an incremental update. */
+  var SCCs: Set[Set[Addr]] = Set()
 
   /**
    * To be called when a write dependency is deleted. Possibly updates the store with a new value for the given address.
@@ -59,9 +57,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     val value: Value = provenanceValue(addr)
     if (value != inter.store(addr)) {
       trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
-      if (
-        provenance(addr).isEmpty
-      ) // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
+      // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
+      if (provenance(addr).isEmpty)
         deleteAddress(addr)
       else inter.store = inter.store + (addr -> value)
     }
@@ -120,9 +117,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
   override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean): Unit = {
     if (tarjanFlag)
-      sccs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (k, v) => (k, v.flatMap(_._2).toSet) }))
+      SCCs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (k, v) => (k, v.flatMap(_._2).toSet) }))
     super.updateAnalysis(timeout, optimisedExecution)
-    if (tarjanFlag) sccs = Set()
+    if (tarjanFlag) SCCs = Set()
   }
 
   trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra {
@@ -138,22 +135,22 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     override def readAddr(addr: Addr): Value = {
       if (tarjanFlag) {
         reads += addr
-        if (version == New)
-          sccs.find(_.contains(addr)) match {
-            case Some(scc) =>
-              // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
-              trigger(AddrDependency(addr))
-              // TODO: should the thing underneath be done for all addresses in a SCC? Probably yes due to the fact that an SCC may contain "inner cycles".
-              scc.foreach { addr =>
-                inter.store += addr -> lattice.bottom
-                store += addr -> lattice.bottom
-                provenance -= addr
-              }
-              sccs -= scc
-            case _ =>
+        if (version == New) {
+          // Zero or one SCCs will be found.
+          SCCs.find(_.contains(addr)).foreach { scc =>
+            // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
+            trigger(AddrDependency(addr))
+            // TODO: should the thing underneath be done for all addresses in a SCC? Probably yes due to the fact that an SCC may contain "inner cycles".
+            scc.foreach { addr =>
+              inter.store += addr -> lattice.bottom
+              store += addr -> lattice.bottom
+              provenance -= addr
+            }
+            SCCs -= scc
           }
+        }
       }
-      // TODO: if bottom is read, will the analysis continue appropritately?
+      // TODO: if bottom is read, will the analysis continue appropriately?
       super.readAddr(addr)
     }
 
@@ -174,9 +171,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         )
         reads = Set()
       }
-      super.writeAddr(addr,
-                      value
-      ) // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
+      // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
+      super.writeAddr(addr, value)
     }
 
     /**
@@ -203,13 +199,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     /** Refines values in the store that are no longer written to by a component. */
     @nonMonotonicUpdate
     def refineWrites(): Unit = {
-      val recentWrites =
-        intraProvenance.keySet // Writes performed during this intra-component analysis. Important: this only works when the entire component is reanalysed!
+      // Writes performed during this intra-component analysis. Important: this only works when the entire component is reanalysed!
+      val recentWrites = intraProvenance.keySet
       if (version == New) {
-        val deltaW =
-          cachedWrites(
-            component
-          ) -- recentWrites // The addresses previously written to by this component, but that are no longer written by this component.
+        // The addresses previously written to by this component, but that are no longer written by this component.
+        val deltaW = cachedWrites(component) -- recentWrites
         deltaW.foreach(deleteProvenance(component, _))
       }
       cachedWrites = cachedWrites + (component -> recentWrites)
