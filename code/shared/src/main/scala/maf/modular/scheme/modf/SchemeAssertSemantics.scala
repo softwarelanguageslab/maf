@@ -36,7 +36,8 @@ trait SchemeAssertSemantics extends BigStepModFSemantics {
       for {
         v <- eval(exp)
         res <- merge(
-          guard(lattice.isTrue(v)).map { _ =>
+          // We are conservative: we only consider an assertion verified if it is certainly only true. (Putting this tests here avoids a dependency on the order in which assertViolated and assertVerified are called.Ò
+          guard(lattice.isTrue(v) && !lattice.isFalse(v)).map { _ =>
             assertVerified(component, exp)
             lattice.void
           },

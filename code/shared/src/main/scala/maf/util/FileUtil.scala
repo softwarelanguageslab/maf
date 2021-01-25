@@ -114,7 +114,7 @@ object Logger {
 
   class NumberedLog(private val writer: Writer) extends Log(writer) {
 
-    private var count: Int = 1
+    private var count: Int = 0
 
     /** Adds a line number to the given string. */
     private def addCount(s: String): String = {
@@ -127,13 +127,13 @@ object Logger {
 
     override def log(string: String): Unit = super.log(addCount(string))
 
-    def logU(string: String) = super.log(string) // Log unnumbered.
+    def logU(string: String): Unit = super.log(string) // Log unnumbered.
 
     override def logT(string: String): Unit = super.logT(addCount(string))
 
     def logTU(string: String): Unit = super.logT(string) // Log unnumbered.
 
-    def resetNumbering(): Unit = count = 1
+    def resetNumbering(): Unit = count = 0
   }
 
   def apply(msg: String = "log"): Log = new Log(Writer.openTimeStamped(out + msg + ".txt"))
