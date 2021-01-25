@@ -2,7 +2,7 @@ package maf.modular.incremental
 
 import maf.core.Expression
 import maf.util.Logger
-import maf.util.Logger.Log
+import maf.util.Logger.{numbered, Log, NumberedLog}
 import maf.util.benchmarks.Timeout
 
 /**
@@ -13,57 +13,70 @@ import maf.util.benchmarks.Timeout
 trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr] {
   inter =>
 
-  val logger: Log = Logger()
+  val logger: NumberedLog = Logger.numbered()
 
-  private var count: Int = 0
-
-  def c(s: String): String = {
-    count += 1
-    s"${toWidth(count.toString + ".", 4)} $s"
+  // Starging the incremental analysis.
+  override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean = true): Unit = {
+    logger.resetNumbering()
+    logger.logU("\nUpdating analysis\n")
+    try {
+      val b = super.updateAnalysis(timeout, optimisedExecution)
+      if (tarjanFlag) {
+        addressDependencies.foreach({ case (cmp, map) =>
+          map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
+        })
+      }
+      b
+    } catch {
+      case t: Throwable =>
+        logger.logU(t.toString)
+        t.getStackTrace.foreach(st => logger.logU(st.toString))
+        throw t
+    }
   }
 
-  private def toWidth(s: String, w: Int): String = s + (" " * (w - s.length))
-
-  override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean): Unit = {
-    count = 0
-    logger.log("\nUpdating analysis\n")
-    super.updateAnalysis(timeout, optimisedExecution)
-  }
-
+  /*
   override def updateAddrInc(
       cmp: Component,
       addr: Addr,
       nw: Value
     ): Boolean = {
     val b = super.updateAddrInc(cmp, addr, nw)
-    logger.log(c(s"J $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)"))
+    logger.log(s"J $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)")
     b
   }
+   */
 
   trait IncrementalLoggingIntra extends IncrementalGlobalStoreIntraAnalysis {
     intra =>
 
+    // Analysis of a component.
     abstract override def analyze(timeout: Timeout.T): Unit = {
-      logger.log(c(s"Analysing $component"))
+      logger.log(s"Analysing $component")
+      //if (tarjanFlag) logger.log(s"* S Resetting addressDependencies for $component.")
       super.analyze()
     }
 
+    // Reading an address.
     override def readAddr(addr: Addr): Value = {
       val v = super.readAddr(addr)
-      logger.log(c(s"R $addr => $v"))
+      //logger.log(s"R $addr => $v")
       v
     }
 
+    // Writing an address.
     override def writeAddr(addr: Addr, value: Value): Boolean = {
+      //if (tarjanFlag) reads.foreach(r => logger.log(s"* D $r -> $addr ($component)"))
       val b = super.writeAddr(addr, value)
-      if (b) logger.log(c(s"W $addr <= $value (becomes ${intra.store.getOrElse(addr, lattice.bottom)})"))
+      //if (b) logger.log(s"W $addr <= $value (becomes ${intra.store.getOrElse(addr, lattice.bottom)})")
       b
     }
 
-    override def registerProvenances(): Unit = {
-      intraProvenance.foreach({ case (addr, value) => logger.log(c(s"P $addr: $value")) })
-      super.registerProvenances()
-    }
+    // Registering of provenances.
+    //override def registerProvenances(): Unit = {
+    //  intraProvenance.foreach({ case (addr, value) => logger.log(s"P $addr: $value") })
+    // super.registerProvenances()
+    //}
 
   }
 

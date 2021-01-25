@@ -34,16 +34,16 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = newAnalysis(text)
     a.analyze(timeout())
-    a.printAssertions()
+    //a.printAssertions()
     val aC = a.deepCopy()
-    a.updateAnalysis(timeout(), false)
-    a.printAssertions()
-    aC.updateAnalysis(timeout())
+    //a.updateAnalysis(timeout(), false)
+    //a.printAssertions()
+    aC.updateAnalysis(timeout(), true)
     aC.printAssertions()
-    val b = newAnalysis(text)
-    b.version = New
-    b.analyze(timeout())
-    b.printAssertions()
+    //val b = newAnalysis(text)
+    //b.version = New
+    //b.analyze(timeout())
+    //b.printAssertions()
   }
 
   val modConcbenchmarks: List[String] = List()

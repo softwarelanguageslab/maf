@@ -141,7 +141,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         if (version == New)
           sccs.find(_.contains(addr)) match {
             case Some(scc) =>
+              // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
               trigger(AddrDependency(addr))
+              // TODO: should the thing underneath be done for all addresses in a SCC? Probably yes due to the fact that an SCC may contain "inner cycles".
               scc.foreach { addr =>
                 inter.store += addr -> lattice.bottom
                 store += addr -> lattice.bottom
@@ -151,6 +153,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             case _ =>
           }
       }
+      // TODO: if bottom is read, will the analysis continue appropritately?
       super.readAddr(addr)
     }
 
