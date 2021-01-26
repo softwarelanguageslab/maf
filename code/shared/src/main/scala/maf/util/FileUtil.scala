@@ -100,20 +100,29 @@ object Logger {
 
   class Log(private val writer: Writer) {
 
+    /** Indicates whether logging is enabled. */
+    private var enabled: Boolean = true
+
+    /** Re-enable logging. */
+    def enable(): Unit = enabled = true
+
+    /** (Temporarily disable logging) */
+    def disable(): Unit = enabled = false
+
     /** Logs a message to a file. */
-    def log(string: String): Unit = {
+    def log(string: String): Unit = if (enabled) {
       writer.write(string + "\n")
       writer.flush()
     }
 
     /** Logs a message to a file, and includes a timestamp. */
-    def logT(string: String): Unit = {
+    def logT(string: String): Unit = if (enabled) {
       writer.write(s"${Clock.nowStr()} : $string\n")
       writer.flush()
     }
 
     /** Logs an exception and its corresponding stacktrace to a file. */
-    def logException(t: Throwable): Unit = {
+    def logException(t: Throwable): Unit = if (enabled) {
       writer.write(t.toString + "\n" + t.getStackTrace.map(_.toString).mkString("\n"))
       writer.flush()
     }
