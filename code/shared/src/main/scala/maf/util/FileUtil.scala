@@ -1,7 +1,8 @@
 package maf.util
 
-import java.io._
+import maf.util.StringUtil.NumberedStrings
 
+import java.io._
 import maf.util.Writer.Writer
 import maf.util.benchmarks.Clock
 
@@ -130,34 +131,20 @@ object Logger {
     def close(): Unit = writer.close()
   }
 
-  class NumberedLog(private val writer: Writer) extends Log(writer) {
-
-    /** The last used sequence number for messages. */
-    private var count: Int = 0
-
-    /** Adds a line number to the given string. */
-    private def addCount(s: String): String = {
-      count += 1
-      s"${toWidth(count.toString + ".", 5)} $s"
-    }
-
-    /** Ensures a string has the given width by filling with whitespaces. If the string is longer than the given width, the string will be returned. */
-    private def toWidth(s: String, w: Int): String = s + (" " * (w - s.length))
+  class NumberedLog(private val writer: Writer) extends Log(writer) with NumberedStrings {
 
     /** Logs a message to a file and adds a sequence number. */
-    override def log(string: String): Unit = super.log(addCount(string))
+    override def log(string: String): Unit = super.log(addSequenceNumber(string))
 
     /** Logs a message to a file without adding a sequence number. The message is not counted in the numbering. */
     def logU(string: String): Unit = super.log(string) // Log unnumbered.
 
     /** Logs a message to a file, and includes a timestamp and sequence number. */
-    override def logT(string: String): Unit = super.logT(addCount(string))
+    override def logT(string: String): Unit = super.logT(addSequenceNumber(string))
 
     /** Logs a message to a file, and includes a timestamp but no sequence number. The message is not counted in the numbering. */
     def logTU(string: String): Unit = super.logT(string) // Log unnumbered.
 
-    /** Resets the numbering. */
-    def resetNumbering(): Unit = count = 0
   }
 
   def apply(msg: String = "log"): Log = new Log(Writer.openTimeStamped(out + msg + ".txt"))
