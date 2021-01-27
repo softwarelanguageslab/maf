@@ -42,8 +42,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ******************************************** */
 
   /**
-   * Approximates the value flow of the analysis. Stores tuples of (A, B), if B was the most recent write after reading A.
-   * The data is also put into a map, so it can be reset upon the reanalysis of a component.
+   * Approximates the value flow of the analysis. For every component, stores a map of W ~> Set[R], if W was the most recent write after reading R.
+   *
+   * @note The data is separated by components, so it can be reset upon the reanalysis of a component.
+   * @note We could also store it as R ~> Set[W], but this seems slightly easier (doesn't require a foreach over the set `reads`).
+   *       Also, there might be multiple R per W, but having multipel W per R seems more rare (though it can happen when there are branches in the code of course)
    */
   var addressDependencies: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
@@ -139,11 +142,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ***** Incremental update: actually perform the incremental analysis ***** */
   /* ************************************************************************* */
 
-  var tarjanFlag: Boolean = false // Flag to enable the latest optimization.
+  var tarjanFlag: Boolean = optimisationFlag // Flag to enable the latest optimization.
 
   override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean): Unit = {
     if (tarjanFlag)
-      SCCs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (k, v) => (k, v.flatMap(_._2).toSet) }))
+      SCCs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
     super.updateAnalysis(timeout, optimisedExecution)
     if (tarjanFlag) SCCs = Set()
   }
@@ -196,10 +199,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
       // Update the value flow information and reset the reads information.
       if (tarjanFlag) {
-        reads.foreach(a =>
-          addressDependencies =
-            addressDependencies + (component -> (addressDependencies(component) + (a -> (addressDependencies(component)(a) + addr))))
-        )
+        addressDependencies =
+          addressDependencies + (component -> (addressDependencies(component) + (addr -> (addressDependencies(component)(addr) ++ reads))))
         reads = Set()
       }
       // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
