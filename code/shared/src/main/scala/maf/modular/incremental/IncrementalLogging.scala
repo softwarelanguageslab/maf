@@ -26,9 +26,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
           map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
         })
       }
+      logger.logU("\n" + storeString())
     } catch {
       case t: Throwable =>
         logger.logException(t)
+        logger.logU("\n" + storeString())
         throw t
     }
   }

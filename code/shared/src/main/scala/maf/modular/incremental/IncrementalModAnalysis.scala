@@ -18,9 +18,9 @@ import maf.util.datastructures.SmartUnion.sunion
  */
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
-  /* ************************************************************************* */
-  /* ***** Tracking: track which components depend on which expressions. ***** */
-  /* ************************************************************************* */
+  /* ************************************************************************ */
+  /* ***** Tracking: track which components depend on which expressions ***** */
+  /* ************************************************************************ */
 
   /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
   var version: Version = Old
@@ -138,7 +138,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ************************************************************************* */
 
   var optimisationFlag: Boolean = true // This flag can be used to enable or disable certain optimisations (for testing purposes).
-  var tarjanFlag: Boolean = false // Flag to enable the latest optimization.
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
   def updateAnalysis(
