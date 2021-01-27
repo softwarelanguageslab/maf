@@ -18,9 +18,9 @@ import maf.util.datastructures.SmartUnion.sunion
  */
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
-  /* ************************************************************************* */
-  /* ***** Tracking: track which components depend on which expressions. ***** */
-  /* ************************************************************************* */
+  /* ************************************************************************ */
+  /* ***** Tracking: track which components depend on which expressions ***** */
+  /* ************************************************************************ */
 
   /** Keeps track of whether an incremental update is in progress or not. Also used to select the right expressions in a change-expression. */
   var version: Version = Old
@@ -128,7 +128,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   @nonMonotonicUpdate
   def deleteDisconnectedComponents(): Unit =
     if (deletionFlag) { // Only perform the next steps if there was a component that was unspawned but not collected.
-      // In the other case, there can be no unreachable components left.
+      //                   In the other case, there can be no unreachable components left.
       unreachableComponents().foreach(deleteComponent) // Make sure the components are actually deleted.
       deletionFlag = false
     }
@@ -161,10 +161,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     @nonMonotonicUpdate
     def refineDependencies(): Unit = {
       if (version == New) { // Check for efficiency.
-        val deltaR =
-          cachedReadDeps(
-            component
-          ) -- R // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
+        // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
+        val deltaR = cachedReadDeps(component) -- R
         deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
       }
       cachedReadDeps += (component -> R) // Update the cache. The cache also needs to be updated when the program is initially analysed.
@@ -173,17 +171,15 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     /** Removes outdated components, and components that become transitively outdated, by keeping track of spawning dependencies. */
     @nonMonotonicUpdate
     def refineComponents(): Unit = {
-      val Cdiff =
-        C - component // Subtract component to avoid circular circularities due to self-recursion (this is a circularity that can easily be spotted and hence immediately omitted).
+      // Subtract component to avoid circular circularities due to self-recursion (this is a circularity that can easily be spotted and hence immediately omitted).
+      val Cdiff = C - component
 
       // For each component not previously spawn by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
       (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
 
       if (version == New) { // Check performed for efficiency.
-        val deltaC =
-          cachedSpawns(
-            component
-          ) -- Cdiff // The components previously spawned (except probably for the component itself), but that are no longer spawned.
+        // The components previously spawned (except probably for the component itself), but that are no longer spawned.
+        val deltaC = cachedSpawns(component) -- Cdiff
         deltaC.foreach(unspawn)
       }
       cachedSpawns += (component -> Cdiff) // Update the cache.

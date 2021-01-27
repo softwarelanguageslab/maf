@@ -1,7 +1,8 @@
 package maf.util
 
-import java.io._
+import maf.util.StringUtil.NumberedStrings
 
+import java.io._
 import maf.util.Writer.Writer
 import maf.util.benchmarks.Clock
 
@@ -99,16 +100,54 @@ object Logger {
   private val out: String = "logs/"
 
   class Log(private val writer: Writer) {
-    def log(string: String): Unit = {
+
+    /** Indicates whether logging is enabled. */
+    private var enabled: Boolean = true
+
+    /** Re-enable logging. */
+    def enable(): Unit = enabled = true
+
+    /** (Temporarily disable logging) */
+    def disable(): Unit = enabled = false
+
+    /** Logs a message to a file. */
+    def log(string: String): Unit = if (enabled) {
       writer.write(string + "\n")
       writer.flush()
     }
-    def logT(string: String): Unit = {
+
+    /** Logs a message to a file, and includes a timestamp. */
+    def logT(string: String): Unit = if (enabled) {
       writer.write(s"${Clock.nowStr()} : $string\n")
       writer.flush()
     }
+
+    /** Logs an exception and its corresponding stacktrace to a file. */
+    def logException(t: Throwable): Unit = if (enabled) {
+      writer.write(t.toString + "\n" + t.getStackTrace.map(_.toString).mkString("\n"))
+      writer.flush()
+    }
+
     def close(): Unit = writer.close()
   }
 
+  class NumberedLog(private val writer: Writer) extends Log(writer) with NumberedStrings {
+
+    /** Logs a message to a file and adds a sequence number. */
+    override def log(string: String): Unit = super.log(addSequenceNumber(string))
+
+    /** Logs a message to a file without adding a sequence number. The message is not counted in the numbering. */
+    def logU(string: String): Unit = super.log(string) // Log unnumbered.
+
+    /** Logs a message to a file, and includes a timestamp and sequence number. */
+    override def logT(string: String): Unit = super.logT(addSequenceNumber(string))
+
+    /** Logs a message to a file, and includes a timestamp but no sequence number. The message is not counted in the numbering. */
+    def logTU(string: String): Unit = super.logT(string) // Log unnumbered.
+
+  }
+
   def apply(msg: String = "log"): Log = new Log(Writer.openTimeStamped(out + msg + ".txt"))
+
+  def numbered(msg: String = "log"): NumberedLog = new NumberedLog(Writer.openTimeStamped(out + msg + ".txt"))
 }

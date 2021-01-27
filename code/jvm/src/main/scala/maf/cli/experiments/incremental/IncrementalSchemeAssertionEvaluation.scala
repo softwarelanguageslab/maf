@@ -29,6 +29,8 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 
   def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
 
+  override val catchErrors: Boolean = false
+
   def runAnalysis(
       file: String,
       phase: String,
@@ -104,15 +106,22 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
         results.get(row, columnName(veriS, inc1S)) != results.get(row, columnName(veriS, inc2S))
         || results.get(row, columnName(failS, inc1S)) != results.get(row, columnName(failS, inc2S))
       ) {
-        results = results.add(row, "diff", "x")
+        results = results.add(row, "diff inc", "x")
+      }
+      if (
+        results.get(row, columnName(veriS, reanS)) != results.get(row, columnName(veriS, inc2S))
+        || results.get(row, columnName(failS, reanS)) != results.get(row, columnName(failS, inc2S))
+      ) {
+        results = results.add(row, "diff rean", "x")
       }
     }
-    results.prettyString(columns = columns ++ Set("diff"))
+    results.prettyString(columns = columns ++ Set("diff inc", "diff rean"))
   }
 }
 
 object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeAssertionEvaluation {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential
+  override def benchmarks(): Set[String] =
+    (IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential).filter(_.contains("nboyer"))
 
   override def analysis(e: SchemeExp) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e)
 

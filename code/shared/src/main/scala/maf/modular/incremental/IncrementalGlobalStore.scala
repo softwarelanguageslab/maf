@@ -4,6 +4,8 @@ import maf.core.Expression
 import maf.language.change.CodeVersion._
 import maf.modular._
 import maf.util.Annotations._
+import maf.util.benchmarks.Timeout
+import maf.util.graph.Tarjan
 
 /**
  * This trait improves upon a basic incremental analysis (with dependency and component invalidation) by introducing
@@ -13,6 +15,10 @@ import maf.util.Annotations._
  */
 trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with GlobalStore[Expr] {
   inter =>
+
+  /* ****************************************** */
+  /* ***** Provenance tracking for values ***** */
+  /* ****************************************** */
 
   /** Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
   var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
@@ -31,6 +37,23 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     ): Unit =
     provenance = provenance + (addr -> (provenance(addr) + (cmp -> value)))
 
+  /* ******************************************** */
+  /* ***** Managing cyclic value provenance ***** */
+  /* ******************************************** */
+
+  /**
+   * Approximates the value flow of the analysis. Stores tuples of (A, B), if B was the most recent write after reading A.
+   * The data is also put into a map, so it can be reset upon the reanalysis of a component.
+   */
+  var addressDependencies: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
+
+  /** Keeps track of all inferred SCCs during an incremental update. */
+  var SCCs: Set[Set[Addr]] = Set()
+
+  /* ****************************** */
+  /* ***** Write invalidation ***** */
+  /* ****************************** */
+
   /**
    * To be called when a write dependency is deleted. Possibly updates the store with a new value for the given address.
    * An address that is no longer written will be set to bottom.
@@ -46,9 +69,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     val value: Value = provenanceValue(addr)
     if (value != inter.store(addr)) {
       trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
-      if (
-        provenance(addr).isEmpty
-      ) // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
+      // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
+      if (provenance(addr).isEmpty)
         deleteAddress(addr)
       else inter.store = inter.store + (addr -> value)
     }
@@ -65,6 +87,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     deps -= AddrDependency(addr) // Given that the address is no longer in existence, dependencies on this address can be removed.
   }
 
+  /* ********************************** */
+  /* ***** Component invalidation ***** */
+  /* ********************************** */
+
   /**
    * Called when a component is deleted. Removes the provenance information corresponding to the addresses written by the
    * given component, thereby possibly refining the analysis store.
@@ -76,6 +102,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     cachedWrites = cachedWrites - cmp
     super.deleteComponent(cmp)
   }
+
+  /* *************************************************** */
+  /* ***** Incremental value update and refinement ***** */
+  /* *************************************************** */
 
   /**
    * To be called upon a commit, with the join of the values written by the component to the given address.
@@ -105,21 +135,75 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     true
   }
 
+  /* ************************************************************************* */
+  /* ***** Incremental update: actually perform the incremental analysis ***** */
+  /* ************************************************************************* */
+
+  var tarjanFlag: Boolean = false // Flag to enable the latest optimization.
+
+  override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean): Unit = {
+    if (tarjanFlag)
+      SCCs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (k, v) => (k, v.flatMap(_._2).toSet) }))
+    super.updateAnalysis(timeout, optimisedExecution)
+    if (tarjanFlag) SCCs = Set()
+  }
+
+  /* ************************************ */
+  /* ***** Intra-component analysis ***** */
+  /* ************************************ */
+
   trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra {
     intra =>
+
+    abstract override def analyze(timeout: Timeout.T): Unit = {
+      if (tarjanFlag) addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
+      super.analyze()
+    }
+
+    var reads: Set[Addr] = Set()
+
+    override def readAddr(addr: Addr): Value = {
+      if (tarjanFlag) {
+        reads += addr
+        if (version == New) {
+          // Zero or one SCCs will be found.
+          SCCs.find(_.contains(addr)).foreach { scc =>
+            // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
+            trigger(AddrDependency(addr))
+            // TODO: should the thing underneath be done for all addresses in a SCC? Probably yes due to the fact that an SCC may contain "inner cycles".
+            scc.foreach { addr =>
+              inter.store += addr -> lattice.bottom
+              store += addr -> lattice.bottom
+              provenance -= addr
+            }
+            SCCs -= scc
+          }
+        }
+      }
+      // TODO: if bottom is read, will the analysis continue appropriately?
+      super.readAddr(addr)
+    }
 
     /**
      * Keep track of the values written by a component to an address.
      * For every address, stores the join of all values written during this intra-component address.
      */
+    // TODO: Perhaps collapse this data structure in the global provenance information (requires updating the information without triggers etc, but with joining).
     var intraProvenance: Map[Addr, Value] = Map().withDefaultValue(lattice.bottom)
 
     override def writeAddr(addr: Addr, value: Value): Boolean = {
       // Update the intra-provenance: for every address, keep the join of the values written to the address.
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
-      super.writeAddr(addr,
-                      value
-      ) // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
+      // Update the value flow information and reset the reads information.
+      if (tarjanFlag) {
+        reads.foreach(a =>
+          addressDependencies =
+            addressDependencies + (component -> (addressDependencies(component) + (a -> (addressDependencies(component)(a) + addr))))
+        )
+        reads = Set()
+      }
+      // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
+      super.writeAddr(addr, value)
     }
 
     /**
@@ -146,13 +230,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     /** Refines values in the store that are no longer written to by a component. */
     @nonMonotonicUpdate
     def refineWrites(): Unit = {
-      val recentWrites =
-        intraProvenance.keySet // Writes performed during this intra-component analysis. Important: this only works when the entire component is reanalysed!
+      // Writes performed during this intra-component analysis. Important: this only works when the entire component is reanalysed!
+      val recentWrites = intraProvenance.keySet
       if (version == New) {
-        val deltaW =
-          cachedWrites(
-            component
-          ) -- recentWrites // The addresses previously written to by this component, but that are no longer written by this component.
+        // The addresses previously written to by this component, but that are no longer written by this component.
+        val deltaW = cachedWrites(component) -- recentWrites
         deltaW.foreach(deleteProvenance(component, _))
       }
       cachedWrites = cachedWrites + (component -> recentWrites)

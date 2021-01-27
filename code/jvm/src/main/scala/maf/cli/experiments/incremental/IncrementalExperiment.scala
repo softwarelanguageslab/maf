@@ -35,12 +35,15 @@ trait IncrementalExperiment[E <: Expression] {
   // Creates a string representation of the final output.
   def createOutput(): String
 
+  // Can be used for debugging.
+  val catchErrors: Boolean = true
+
   // Runs measurements on the benchmarks in a given trait, or uses specific benchmarks if passed as an argument.
   def measure(bench: Option[Set[String]] = None): Unit =
     bench.getOrElse(benchmarks()).foreach { file =>
       try onBenchmark(file)
       catch {
-        case e: Exception =>
+        case e: Exception if catchErrors =>
           writeErrln(s"Running $file resulted in an exception: ${e.getMessage}\n")
           reportError(file)
         case e: VirtualMachineError =>
