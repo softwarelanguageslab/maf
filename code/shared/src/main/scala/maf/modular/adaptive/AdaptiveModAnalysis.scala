@@ -5,6 +5,7 @@ import maf.core._
 import maf.modular._
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util._
+import maf.util.datastructures._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
@@ -82,4 +83,12 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
       acc + (keyAbs -> Monoid[V].append(acc(keyAbs), updateV(vlu)))
     }
   def updatePair[P, Q](updateA: P => P, updateB: Q => Q)(p: (P, Q)): (P, Q) = (updateA(p._1), updateB(p._2))
+  def updateMultiSet[X](update: X => X, intOp: (Int, Int) => Int)(ms: MultiSet[X]): MultiSet[X] =
+    ms.toMap.foldLeft(MultiSet.empty[X]) { case (acc, (elm, count)) =>
+      val elmAbs = update(elm)
+      acc.updateMult(elmAbs) {
+        case 0 => count
+        case n => intOp(n, count)
+      }
+    }
 }
