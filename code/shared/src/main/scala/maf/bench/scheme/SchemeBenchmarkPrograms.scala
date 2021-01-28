@@ -111,10 +111,7 @@ object SchemeBenchmarkPrograms {
   lazy val actors: Set[String] = savina ++ soter ++ fromFolder("test/concurrentScheme/actors")()
   lazy val futures: Set[String] = fromFolder("test/concurrentScheme/futures")()
   lazy val futuresVariations: Set[String] = fromFolder("test/concurrentScheme/futures/variations")()
-  lazy val threads: Set[String] = fromFolder("test/concurrentScheme/threads")(
-    "abp.scm", // Unbound reference: display-recorded.
-    "lastzero2.scm" // Uses let*, but should use something like letrec*?
-  )
+  lazy val threads: Set[String] = fromFolder("test/concurrentScheme/threads")()
   lazy val threadsVariations: Set[String] = fromFolder("test/concurrentScheme/threads/variations")()
   lazy val concurrentBenchmarks: Set[String] =
     SmartUnion.sunionList(List(actors, futures, futuresVariations, savina, soter, threads, threadsVariations))
