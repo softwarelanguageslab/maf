@@ -4,70 +4,17 @@ import maf.language.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.adaptive.scheme._
 import maf.core.Position._
-import maf.util.Monoid
-import maf.util.MonoidImplicits._
-import maf.util.benchmarks.Timeout
-import maf.core._
+import maf.util.datastructures._
 import maf.modular.scheme._
 import maf.modular._
 
-trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
+trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with AdaptiveAnalysisSummary {
   /*
-   * configured by some "budget" (which determines how quickly a function will adapt its components)
+   * configured by:
+   * - some "budget" (which, when exceeded by the "cost" of some function, triggers an adaptation)
+   *  => this parameter determines how quickly we trigger an adaptation
    */
   val budget: Int
-  /*
-   * keep track of:
-   * - the number of times a function has been analysed
-   * - through which dependencies the analysis of a function was triggered
-   * - which components correspond to a given function
-   */
-  var counts: Map[SchemeExp, Int] = Map.empty
-  var triggeredBy: Map[SchemeExp, Map[Dependency, Int]] = Map.empty
-  var triggered: Map[Dependency, Set[SchemeExp]] = Map.empty
-  var cmpsPerFn: Map[SchemeExp, Set[Component]] = Map.empty
-  private def incCount(cmp: Component): Unit = incCount(expr(cmp))
-  private def incCount(fn: SchemeExp): Unit = {
-    val updated = counts.getOrElse(fn, 0) + 1
-    counts += fn -> updated
-    if (updated > budget) {
-      toAdapt += fn
-    }
-  }
-  override def trigger(dep: Dependency): Unit = {
-    deps.getOrElse(dep, Set.empty).foreach { cmp =>
-      val fn = expr(cmp)
-      // increase the count of the corresponding function
-      incCount(fn)
-      // bookkeeping for the  dependency
-      val previous = triggeredBy.getOrElse(fn, Map.empty)
-      val updated = previous + (dep -> (previous.getOrElse(dep, 0) + 1))
-      triggeredBy += fn -> updated
-      triggered += dep -> (triggered.getOrElse(dep, Set.empty) + fn)
-    }
-    // trigger the dependency
-    super.trigger(dep)
-  }
-  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = {
-    // increase the count
-    incCount(cmp)
-    // bookkeeping: register every new component with the corresponding lambda
-    val lambda = call.clo._1
-    val lambdaCmps = cmpsPerFn.getOrElse(lambda, Set.empty)
-    val lambdaCmpsUpdated = lambdaCmps + cmp
-    cmpsPerFn += lambda -> lambdaCmpsUpdated
-  }
-  // correctly updating the analysis data
-  implicit private val intMaxMonoid: Monoid[Int] = new Monoid[Int] {
-    def zero: Int = 0 // assumption: only safe for nonnegative integers
-    def append(x: Int, y: => Int): Int = Math.max(x, y)
-  }
-  override def updateAnalysisData(update: Component => Component) = {
-    super.updateAnalysisData(update)
-    this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)
-    this.triggered = updateMap(updateDep(update), (s: Set[SchemeExp]) => s)(triggered)
-    this.triggeredBy = updateMap(updateMap(updateDep(update), (c: Int) => c))(triggeredBy)
-  }
   /*
    * contexts are call-site strings
    * after adaptation, certain strings get trimmed
@@ -102,36 +49,37 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   override protected def adaptAnalysis(): Unit = {
     super.adaptAnalysis()
     if (toAdapt.nonEmpty) {
-      // adapt the components of marked functions
+      // adapt the components of marked modules
       // 2 possibilies:
-      // - too many components for the given function
-      // - too many reanalyses of the same components (of the corresponding function)
+      // (a) too many components for the given module
+      // (b) too many reanalyses of the same components (of the corresponding module)
       toAdapt.foreach { fn =>
         // determine the root cause of the scalability problem for function fn
-        val total = counts(fn)
-        val cmps = cmpsPerFn(fn)
-        val hcount = cmps.size
+        val ms = summary.get(fn)
+        val total = ms.cost
+        val hcount = ms.numberOfCmps
         val vcount = Math.round(total.toFloat / hcount)
-        if (hcount > vcount) { // (a) too many components ...
-          reduceComponents(fn, cmps) // => reduce number of components for fn
-        } else { // (b) too many reanalyses ...
-          reduceDependencies(fn) // => reduce number of dependencies triggered for fn
+        if (hcount > vcount) {
+          // (a) too many components => reduce number of components for fn
+          reduceComponents(fn, ms)
+        } else {
+          // (b) too many reanalyses => reduce number of dependencies triggered for fn
+          reduceDependencies(ms)
         }
-        // reset budget and bookkeeping for the adapted function
-        counts += fn -> 0
-        // update the analysis data structures
         updateAnalysis()
       }
       toAdapt = Set.empty
     }
   }
-  private def reduceComponents(fn: SchemeExp): Unit = reduceComponents(fn, cmpsPerFn(fn))
-  private def reduceComponents(fn: SchemeExp, cmps: Set[Component]): Unit = reduceComponents(fn, cmps, cmps.size / 2)
+  private def reduceComponents(fn: SchemeExp): Unit = reduceComponents(fn, summary.get(fn))
+  private def reduceComponents(fn: SchemeExp, target: Int): Unit = reduceComponents(fn, summary.get(fn), target)
+  private def reduceComponents(fn: SchemeExp, ms: ModuleSummary): Unit = reduceComponents(fn, ms, ms.numberOfCmps / 2)
   private def reduceComponents(
       fn: SchemeExp,
-      cmps: Set[Component],
+      ms: ModuleSummary,
       target: Int
     ): Unit = {
+    val cmps = ms.components
     // find a fitting k
     var calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
     var k = calls.maxBy(_.ctx.length).ctx.length
@@ -146,24 +94,48 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     if (calls.size > target) {
       val parentCmps = calls.map(cll => cll.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
       val parentLambda = view(parentCmps.head).asInstanceOf[Call[ComponentContext]].clo._1
-      reduceComponents(parentLambda, parentCmps, target)
+      reduceComponents(parentLambda, target)
     }
   }
-  private def reduceDependencies(fn: SchemeExp): Unit = {
-    val dependencies = triggeredBy(fn)
-    val numberOfDeps = dependencies.size
-    val totalCount = dependencies.values.sum
+  private def reduceDependencies(ms: ModuleSummary) = {
+    // adapt to reduce number of triggered dependencies for a module
+    // two possibilities:
+    // (a) too many dependencies triggered for a given module
+    // (b) too many times triggering the same dependencies
+    val dependencies = ms.depCounts
+    val totalCount = dependencies.cardinality
+    val numberOfDeps = dependencies.distinctCount
     val averageCount = totalCount / numberOfDeps
     if (numberOfDeps > averageCount) {
-      val addrs = dependencies.keySet.collect { case AddrDependency(addr) =>
-        addr
-      }
+      // (a) too many dependencies => reduce the number of corresponding addresses
+      val addrs = dependencies.toSet.collect { case AddrDependency(addr) => addr }
       reduceAddresses(addrs)
     } else {
-      reduceValueAbs(fn, dependencies, totalCount / 2)
+      // (b) too many triggers => coarsen value abstraction to avoid triggering components
+      reduceValueAbs(dependencies)
     }
   }
-  private def takeLargest[X](
+  private def reduceAddresses(addrs: Set[Addr]) = {
+    val target: Int = addrs.size / 2
+    val perLocation = addrs.groupBy(_.idn) // TODO: by expr instead of idn?
+    val chosenAddrs = takeLargest(perLocation.toList, (g: (_, Set[_])) => g._2.size, target)
+    val chosenFuncs = chosenAddrs.map(_._2.head).flatMap(getAddrFn)
+    // assert(chosenAddrs.size == chosenFuncs.size) // <- we expect all addresses to belong to Some(fn)
+    chosenFuncs.toSet.foreach(reduceComponents)
+  }
+  private def reduceValueAbs(deps: MultiSet[Dependency]) = {
+    val target: Int = deps.cardinality / 2
+    val chosenDeps = takeLargest(deps.toList, (g: (_, Int)) => g._2, target).map(_._1)
+    val chosenSourceAddrs = chosenDeps.collect { case AddrDependency(addr) => addr }
+    val chosenTargetAddrs = chosenSourceAddrs.map(store).flatMap(lattice.getPointerAddresses)
+    chosenDeps.foreach(dep => summary = summary.clearDependency(dep))
+    reduceAddresses(chosenTargetAddrs.toSet)
+  }
+
+  /*
+   * HELPERS
+   */
+    private def takeLargest[X](
       lst: List[X],
       size: X => Int,
       target: Int
@@ -173,9 +145,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
         group :: rec(rest, todo - size(group))
       case _ => Nil
     }
-    val sortedAsc = lst.sortBy(size)
-    val sortedDsc = sortedAsc.reverse // TODO: just reverse the ordering
-    rec(sortedDsc, target)
+    rec(lst.sortBy(size)(Ordering[Int].reverse), target)
   }
   private def getAddrCmp(addr: Addr): Option[Component] = addr match {
     case returnAddr: ReturnAddr[Component] @unchecked => Some(returnAddr.cmp)
@@ -192,24 +162,4 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       case Call((fnExp, _), _, _) => Some(fnExp)
       case _                      => None
     }
-  private def reduceAddresses(addrs: Set[Addr]): Unit = {
-    val target: Int = addrs.size / 2
-    val perLocation = addrs.groupBy(_.idn)
-    val chosenAddrs = takeLargest(perLocation.toList, (g: (_, Set[_])) => g._2.size, target)
-    val chosenFuncs = chosenAddrs.map(_._2.head).flatMap(getAddrFn)
-    // assert(chosenAddrs.size == chosenFuncs.size) // <- we expect all addresses to belong to Some(fn)
-    chosenFuncs.toSet.foreach(reduceComponents)
-  }
-  private def reduceValueAbs(
-      fn: SchemeExp,
-      deps: Map[Dependency, Int],
-      target: Int
-    ): Unit = {
-    val chosenDeps = takeLargest(deps.toList, (g: (_, Int)) => g._2, target)
-    val chosenSourceAddrs = chosenDeps.map(_._1).collect { case AddrDependency(addr) =>
-      addr
-    }
-    val chosenTargetAddrs = chosenSourceAddrs.flatMap(addr => lattice.getPointerAddresses(store(addr)))
-    reduceAddresses(chosenTargetAddrs.toSet)
-  }
 }
