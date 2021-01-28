@@ -2,6 +2,7 @@ package maf.util
 
 import maf.core._
 import maf.core.worklist.WorkList
+import maf.util.datastructures._
 
 trait Monoid[M] extends Serializable {
   def append(x: M, y: => M): M
@@ -61,6 +62,14 @@ object MonoidInstances {
   def workListMonoid[M]: Monoid[WorkList[M]] = new Monoid[WorkList[M]] {
     def zero: WorkList[M] = WorkList.empty
     def append(x: WorkList[M], y: => WorkList[M]): WorkList[M] = x.addAll(y.toList)
+  }
+  def mutliSetSumMonoid[X] = new Monoid[MultiSet[X]] {
+    def zero = MultiSet.empty
+    def append(x: MultiSet[X], y: => MultiSet[X]) = x ++ y
+  }
+  def multiSetMaxMonoid[X] = new Monoid[MultiSet[X]] {
+    def zero = MultiSet.empty
+    def append(x: MultiSet[X], y: => MultiSet[X]) = x.combine(y)(Math.max)
   }
   val boolOrMonoid: Monoid[Boolean] = new Monoid[Boolean] {
     def append(x: Boolean, y: => Boolean): Boolean = x || y
