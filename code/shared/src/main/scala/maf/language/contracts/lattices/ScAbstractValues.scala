@@ -127,7 +127,6 @@ trait ScAbstractValues[A <: Address] {
             case Plus | Minus | Times | Quotient | Div => numOp(args)
 
             case IsProcedure =>
-              println("is procedure!")
               args(0) match {
                 case Arrs(_) | Flats(_) | Clos(_) =>
                   MayFail.success(lat.schemeLattice.bool(true))

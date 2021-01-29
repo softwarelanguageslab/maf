@@ -67,7 +67,7 @@ trait ScSchemePrimitives extends ScModSemanticsScheme with GlobalStore[ScExp] {
       "string?" -> ("any?" ~> "bool?"),
       "string-length" -> ("string?" ~> "number?"),
       "symbol?" -> ("any?" ~> "bool?"),
-      //"true?" -> ("any?" ~> "bool?"),
+      "true?" -> ("any?" ~> "bool?"),
       "false?" -> ("any?" ~> "bool?"),
       "null?" -> ("any?" ~> "any?"),
       "cons" -> ("any?" ~> "any?" ~> "pair?"),

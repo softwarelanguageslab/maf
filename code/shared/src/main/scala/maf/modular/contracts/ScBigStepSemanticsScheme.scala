@@ -500,16 +500,12 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
       // 4. Flat contract application
       // 5. Application of an OPQ value
 
-      println(s"Got applyfn $operator")
-      println(s"Arrs inside value are: ${lattice.getArr(operator._1)}")
       // 1. Primitive application
       val primitiveAp = lattice.schemeLattice.getPrimitives(operator._1).map { prim =>
-        println(s"calling prim $prim with operands $operands and $syntacticOperands")
         withStoreCacheAdapter { adapter =>
           prim
             .call(syntacticOperator, syntacticOperands.zip(operands.map(_._1)), adapter, this)
             .map { case (value, store) =>
-              println(s"got value ${value}")
               (value, StoreWrapper.unwrap(store).asInstanceOf[StoreCacheAdapter])
             }
             .getOrElse((lattice.bottom, adapter))
@@ -540,9 +536,6 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
       val arrAp = lattice.getArr(operator._1).map { arr =>
         for {
           contract <- options(read(arr.contract).map((c) => lattice.getGrd(c._1)))
-          _ <- debug {
-            println(s"Got contract $contract")
-          }
           _ <- effectful {
             if (contract.domain.length != operands.length) {
               // TODO: maybe use a blame here instead of crashing the analysis
@@ -554,9 +547,6 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
             contract.domain.map(read).zip(operands.zip(syntacticOperands)).map { case (domain, (value, syn)) =>
               domain.flatMap(d => applyMon(d, value, arr.contract.idn, syn.idn))
             }
-          }
-          _ <- debug {
-            println(s"Got values ${values}")
           }
 
           rangeMaker <- read(contract.rangeMaker)
@@ -600,10 +590,8 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
         exprIdn: Identity
       ): ScEvalM[PostValue] = {
 
-      println(s"Apply mon proc ${evaluatedContract}")
       // flat contract
       val flatContract = ifFeasible(primProc, evaluatedContract) {
-        println(s"Prim proc ${evaluatedContract}")
         monFlat(evaluatedContract, evaluatedExpression, exprIdn, contractIdn)
       }
 
@@ -699,7 +687,6 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
     private def feasible(op: Prim, value: PostValue)(pc: PC): Option[PC] =
       value._2 match {
         case _ if !lattice.schemeLattice.isTrue(op.callNoStore(value._1)) =>
-          println(s"Unfeasible according to lattice $op $value")
           None
 
         case ScNil(_) => Some(pc)
