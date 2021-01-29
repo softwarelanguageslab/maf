@@ -80,7 +80,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case SchemeInterpreter.Value.Undefined(_) => baseLattice.bottom
     case SchemeInterpreter.Value.Clo(l, _, _) =>
       baseLattice.closure((l, emptyEnv), None) // TODO: when names are added to the abstract interpreter, preserve that information here
-    case SchemeInterpreter.Value.Primitive(p) => baseLattice.primitive(p.name)
+    case SchemeInterpreter.Value.Primitive(p) => baseLattice.primitive(p)
     case SchemeInterpreter.Value.Str(s)       => baseLattice.string(s)
     case SchemeInterpreter.Value.Symbol(s)    => baseLattice.symbol(s)
     case SchemeInterpreter.Value.Integer(i)   => baseLattice.number(i)

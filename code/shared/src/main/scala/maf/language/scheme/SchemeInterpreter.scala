@@ -3,7 +3,6 @@ package maf.language.scheme
 import java.util.concurrent.TimeUnit
 import maf.core.Position.Position
 import maf.core._
-import maf.language.CScheme._
 import maf.language.change.CodeVersion._
 import maf.util._
 import maf.language.sexp
@@ -170,9 +169,9 @@ class SchemeInterpreter(
   lazy val (initialEnv, initialSto) = {
     val emptyEnv = Map.empty[String, Addr]
     val emptySto = Map.empty[Addr, Value]
-    Primitives.allPrimitives.foldLeft((emptyEnv, emptySto)) { case ((env: Env, sto: Store), prim: Prim) =>
-      val addr = newAddr(AddrInfo.PrmAddr(prim.name))
-      (env + (prim.name -> addr), sto + (addr -> Value.Primitive(prim)))
+    Primitives.allPrimitives.foldLeft((emptyEnv, emptySto)) { case ((env: Env, sto: Store), (name: String, _: Prim)) =>
+      val addr = newAddr(AddrInfo.PrmAddr(name))
+      (env + (name -> addr), sto + (addr -> Value.Primitive(name)))
     }
   }
 
@@ -385,11 +384,11 @@ class SchemeInterpreter(
               } yield res
             case Value.Primitive(p) =>
               tailcall(
-                stackedCall(Some(p.name),
+                stackedCall(Some(p),
                             Identity.none,
                             for {
                               argsv <- tailcall(evalArgs(args, env, timeout, version))
-                            } yield p.call(call, args.zip(argsv))
+                            } yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
                 )
               )
             case v =>
@@ -552,7 +551,7 @@ class SchemeInterpreter(
 
   object Primitives {
     //def primitiveMap: Map[String, Prim] = allPrimitives.map(p => (p.name, p)).toMap
-    def allPrimitives: List[Prim] = List(
+    def allPrimitives: Map[String, Prim] = List(
       Times, /* [vv] *: Arithmetic */
       Plus, /* [vv] +: Arithmetic */
       Minus, /* [vv] -: Arithmetic */
@@ -773,7 +772,8 @@ class SchemeInterpreter(
       `write-char`,
       `display`,
       `newline`
-    )
+    ).map(prim => (prim.name, prim)).toMap
+
 
     abstract class SingleArgumentPrimWithExp(val name: String) extends Prim {
       def fun(fexp: SchemeFuncall): PartialFunction[Value, Value]
@@ -1796,7 +1796,7 @@ object SchemeInterpreter {
         env: Env,
         name: Option[String] = None)
         extends Value { override def toString: String = name.map(n => s"#<procedure:$n>").getOrElse(s"#<procedure:${lambda.idn.pos}>") }
-    case class Primitive(p: Prim) extends Value { override def toString: String = s"#<primitive:${p.name}>" }
+    case class Primitive(p: String) extends Value { override def toString: String = s"#<primitive:$p>" }
     case class Str(str: String) extends Value { override def toString: String = str }
 
     case class Symbol(sym: String) extends Value {
