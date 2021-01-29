@@ -7,18 +7,6 @@ import maf.modular.scheme.modf._
 import maf.language.scheme._
 import maf.modular.adaptive._
 
-case class WrappedEnv[A <: Address, D](
-    env: Environment[A],
-    depth: Int,
-    data: D)
-    extends Environment[A] {
-  def restrictTo(keys: Set[String]): Environment[A] = this.copy(env = env.restrictTo(keys))
-  def lookup(name: String): Option[A] = env.lookup(name)
-  def extend(name: String, a: A): Environment[A] = this.copy(env = env.extend(name, a))
-  def extend(values: Iterable[(String, A)]): Environment[A] = this.copy(env = env.extend(values))
-  def mapAddrs(f: A => A): Environment[A] = this.copy(env = env.mapAddrs(f))
-}
-
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics
     extends AdaptiveModAnalysis[SchemeExp]
