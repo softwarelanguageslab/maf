@@ -526,7 +526,7 @@ trait SmallStepModConcSemantics
           .getPrimitives(fval)
           .map(prm =>
             Kont(
-              prm.call(fexp, args, StoreAdapter, interpreterBridge) match {
+              primitives(prm).call(fexp, args, StoreAdapter, interpreterBridge) match {
                 case MayFailSuccess((vlu, _)) => vlu
                 case MayFailBoth((vlu, _), _) => vlu
                 case MayFailError(_)          => lattice.bottom

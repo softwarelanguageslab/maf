@@ -210,7 +210,7 @@ trait BaseSchemeModFSemantics
         .foldLeft(lattice.bottom)((acc, prm) =>
           lattice.join(
             acc,
-            prm.call(fexp, args, StoreAdapter, interpreterBridge) match {
+            primitives(prm).call(fexp, args, StoreAdapter, interpreterBridge) match {
               case MayFailSuccess((vlu, _)) => vlu
               case MayFailBoth((vlu, _), _) => vlu
               case MayFailError(_)          => lattice.bottom
