@@ -10,26 +10,35 @@ import maf.util.MonoidInstances
 
 trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
 
+  trait SchemeModule
+  case object MainModule extends SchemeModule
+  case class LambdaModule(fun: SchemeLambdaExp) extends SchemeModule
+
+  def module(cmp: Component): SchemeModule = view(cmp) match {
+    case Main => MainModule
+    case call: Call[_] => LambdaModule(call.clo._1)
+  }
+
 /**
   * Summarizes analysis information by:
   * - keeping track of a `ModuleSummary` for each module 
   * - keeping track, for each dependency, which modules have components (at least one) that have been triggered (at least once) by that dependency
   */
-  case class AnalysisSummary(content: Map[SchemeExp, ModuleSummary], depFns: Map[Dependency, Set[SchemeExp]]) {
-    def apply(fn: SchemeExp) = content(fn)
-    def get(fn: SchemeExp) =
+  case class AnalysisSummary(content: Map[SchemeModule, ModuleSummary], depFns: Map[Dependency, Set[SchemeModule]]) {
+    def apply(fn: SchemeModule) = content(fn)
+    def get(fn: SchemeModule) =
       content.getOrElse(fn, ModuleSummary.empty)
     def addComponent(cmp: Component): AnalysisSummary =
-      addComponent(expr(cmp), cmp)
-    def addComponent(fun: SchemeExp, cmp: Component): AnalysisSummary = {
+      addComponent(module(cmp), cmp)
+    def addComponent(fun: SchemeModule, cmp: Component): AnalysisSummary = {
       val prv = this.get(fun)
       val upd = prv.addComponent(cmp)
       onCostIncrease(fun, upd.cost)
       AnalysisSummary(content + (fun -> upd), depFns)
     }
     def addDependency(cmp: Component, dep: Dependency): AnalysisSummary =
-      addDependency(expr(cmp), cmp, dep)
-    def addDependency(fun: SchemeExp, cmp: Component, dep: Dependency): AnalysisSummary = {
+      addDependency(module(cmp), cmp, dep)
+    def addDependency(fun: SchemeModule, cmp: Component, dep: Dependency): AnalysisSummary = {
       // update content
       val prv = content(fun) // guaranteed to have a module summary already!
       val upd = prv.addDependency(cmp, dep)
@@ -87,7 +96,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
 
   private def updateAnalysisSummary(update: Component => Component)(as: AnalysisSummary): AnalysisSummary = {
     AnalysisSummary(updateMap(updateModuleSummary(update))(as.content),
-                    updateMap(updateDep(update), (s: Set[SchemeExp]) => s)(as.depFns))
+                    updateMap(updateDep(update), (s: Set[SchemeModule]) => s)(as.depFns))
   }
   private def updateModuleSummary(update: Component => Component)(ms: ModuleSummary): ModuleSummary = {
     val updated = updateMap(update, updateMultiSet(updateDep(update), Math.max))(ms.content)(MonoidInstances.multiSetMaxMonoid)
@@ -99,10 +108,10 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   // keep track of a summary for the current analysis
   var summary: AnalysisSummary = AnalysisSummary.empty.addComponent(initialComponent)
   // allow to detect when the cost of a given module increases
-  def onCostIncrease(fn: SchemeExp, newCost: Int)
+  def onCostIncrease(fn: SchemeModule, newCost: Int)
   // update the summary each time a new component is discovered
   override def onNewComponent(cmp: Component, call: Call[ComponentContext]) =
-    summary = summary.addComponent(call.clo._1, cmp)
+    summary = summary.addComponent(LambdaModule(call.clo._1), cmp)
   // update the summary each time a dependency triggers a component
   override def trigger(dep: Dependency): Unit = {
     deps.getOrElse(dep, Set.empty).foreach { cmp =>

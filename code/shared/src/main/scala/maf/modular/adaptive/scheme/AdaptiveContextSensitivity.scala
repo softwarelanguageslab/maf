@@ -20,7 +20,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
    * after adaptation, certain strings get trimmed
    */
   type ComponentContext = List[Position]
-  var kPerFn = Map[SchemeExp, Int]()
+  var kPerFn = Map[SchemeLambdaExp, Int]()
   def getContext(cmp: Component): ComponentContext = view(cmp) match {
     case Main                                   => List.empty
     case cll: Call[ComponentContext] @unchecked => cll.ctx
@@ -45,10 +45,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext = ctx
 
   /** Adapting the analysis */
-  var toAdapt: Set[SchemeExp] = Set.empty
-  def onCostIncrease(fun: SchemeExp, newCost: Int) =
+
+  var toAdapt: Set[SchemeModule] = Set.empty
+  def onCostIncrease(module: SchemeModule, newCost: Int) =
     if(newCost > budget) {
-      toAdapt += fun
+      toAdapt += module
     }
 
   override protected def adaptAnalysis(): Unit = {
@@ -58,16 +59,15 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       // 2 possibilies:
       // (a) too many components for the given module
       // (b) too many reanalyses of the same components (of the corresponding module)
-      toAdapt.foreach { fn =>
-        println(s"Adapting $fn")
+      toAdapt.foreach { module =>
         // determine the root cause of the scalability problem for function fn
-        val ms = summary.get(fn)
+        val ms = summary(module)
         val total = ms.cost
         val hcount = ms.numberOfCmps
         val vcount = Math.round(total.toFloat / hcount)
         if (hcount > vcount) {
           // (a) too many components => reduce number of components for fn
-          reduceComponents(fn, ms)
+          reduceComponents(module.asInstanceOf[LambdaModule], ms) //only a lambda can have multiple components
         } else {
           // (b) too many reanalyses => reduce number of dependencies triggered for fn
           reduceDependencies(ms)
@@ -77,11 +77,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       toAdapt = Set.empty
     }
   }
-  private def reduceComponents(fn: SchemeExp): Unit = reduceComponents(fn, summary.get(fn))
-  private def reduceComponents(fn: SchemeExp, target: Int): Unit = reduceComponents(fn, summary.get(fn), target)
-  private def reduceComponents(fn: SchemeExp, ms: ModuleSummary): Unit = reduceComponents(fn, ms, ms.numberOfCmps / 2)
+  private def reduceComponents(fn: LambdaModule): Unit = reduceComponents(fn, summary.get(fn))
+  private def reduceComponents(fn: LambdaModule, target: Int): Unit = reduceComponents(fn, summary.get(fn), target)
+  private def reduceComponents(fn: LambdaModule, ms: ModuleSummary): Unit = reduceComponents(fn, ms, ms.numberOfCmps / 2)
   private def reduceComponents(
-      fn: SchemeExp,
+      module: LambdaModule,
       ms: ModuleSummary,
       target: Int
     ): Unit = {
@@ -93,13 +93,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       k = k - 1
       calls = calls.map(adaptCall(_, Some(k)))
     }
-    //println(s"$fn -> $k")
-    kPerFn += fn -> k // register the new k
+    kPerFn += module.fun -> k // register the new k
     // if lowering context does not work => adapt parent components
     // TODO: do this earlier without dropping all context first
     if (calls.size > target) {
-      val parentCmps = calls.map(cll => cll.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
-      val parentLambda = view(parentCmps.head).asInstanceOf[Call[ComponentContext]].clo._1
+      val parentLambda = getParentModule(calls.head).asInstanceOf[LambdaModule] // guaranteed to have a lambda parent!
       reduceComponents(parentLambda, target)
     }
   }
@@ -125,7 +123,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val target: Int = addrs.size / 2
     val perLocation = addrs.groupBy(_.idn) // TODO: by expr instead of idn?
     val chosenAddrs = takeLargest(perLocation.toList, (g: (_, Set[_])) => g._2.size, target)
-    val chosenFuncs = chosenAddrs.map(_._2.head).flatMap(getAddrFn)
+    val chosenFuncs = chosenAddrs.map(addr => getAddrModule(addr._2.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
     // assert(chosenAddrs.size == chosenFuncs.size) // <- we expect all addresses to belong to Some(fn)
     chosenFuncs.toSet.foreach(reduceComponents)
   }
@@ -153,19 +151,26 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     }
     rec(lst.sortBy(size)(Ordering[Int].reverse), target)
   }
-  private def getAddrCmp(addr: Addr): Option[Component] = addr match {
-    case returnAddr: ReturnAddr[Component] @unchecked => Some(returnAddr.cmp)
+  private def getAddrCmp(addr: Addr): Component = addr match {
+    case returnAddr: ReturnAddr[Component] @unchecked => returnAddr.cmp
     case schemeAddr: SchemeAddr[Component] @unchecked =>
       schemeAddr match {
-        case VarAddr(_, ctx) => Some(ctx)
-        case PtrAddr(_, ctx) => Some(ctx)
-        case _               => None
+        case VarAddr(_, ctx) => ctx
+        case PtrAddr(_, ctx) => ctx
+        case _               => mainComponent
       }
-    case _ => None
+    case _ => initialComponent
   }
-  private def getAddrFn(addr: Addr): Option[SchemeExp] =
-    getAddrCmp(addr).map(view).flatMap {
-      case Call((fnExp, _), _, _) => Some(fnExp)
-      case _                      => None
+  private def getAddrModule(addr: Addr): SchemeModule =
+    view(getAddrCmp(addr)) match {
+      case call: Call[_]  => LambdaModule(call.clo._1)
+      case _              => MainModule
     }
+  private def getParentModule(call: Call[_]): SchemeModule = {
+    val parent = call.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data
+    view(parent) match {
+      case Main => MainModule
+      case Call(clo, _, _) => LambdaModule(clo._1)
+    }
+  }
 }

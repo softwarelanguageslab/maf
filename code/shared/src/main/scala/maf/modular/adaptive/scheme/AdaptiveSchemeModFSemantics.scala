@@ -6,6 +6,7 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.language.scheme._
 import maf.modular.adaptive._
+import maf.modular.components.IndirectComponents.ComponentPointer
 
 case class WrappedEnv[A <: Address, D](
     env: Environment[A],
@@ -30,7 +31,9 @@ trait AdaptiveSchemeModFSemantics
 
   // Definition of components
   type ComponentData = SchemeModFComponent
-  lazy val initialComponent: Component = { init(); ref(Main) } // Need init to initialize reference bookkeeping information.
+  // TODO: clean up this mess!
+  var mainComponent: Component = ComponentPointer(0) // nope
+  lazy val initialComponent: Component = { init(); mainComponent = ref(Main); mainComponent } // Need init to initialize reference bookkeeping information.
   def newComponent(call: Call[ComponentContext]): Component = ref(call)
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
@@ -85,8 +88,9 @@ trait AdaptiveSchemeModFSemantics
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)
     this.toProcess = updateSet(update)(toProcess)
+    this.mainComponent = update(mainComponent)
   }
-  override def baseEnv = WrappedEnv(super.baseEnv, 0, initialComponent)
+  override def baseEnv = WrappedEnv(super.baseEnv, 0, mainComponent)
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFIntra = new AdaptiveSchemeModFIntra(cmp)
   class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra {
     override protected def newClosure(
