@@ -6,6 +6,7 @@ import maf.core.Address
 import maf.lattice.ConstantPropagation
 import maf.lattice.Concrete
 import maf.language.scheme.primitives.SchemeLatticePrimitives
+import maf.lattice.interfaces.BoolLattice
 
 trait ScSchemeConstantPropagationDomain extends ScSchemeDomain[Address] {
 
@@ -16,6 +17,7 @@ trait ScSchemeConstantPropagationDomain extends ScSchemeDomain[Address] {
   type C = ConstantPropagation.C
   type Sym = Concrete.Sym
 
+  implicit lazy val boolLattice = ConstantPropagation.L.boolCP
   lazy val modularLattice: ModularSchemeLattice[Address, S, B, I, R, C, Sym] = new ModularSchemeLattice
   lazy val schemePrimitives = new SchemeLatticePrimitives()(schemeLattice)
 }

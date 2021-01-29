@@ -3,7 +3,7 @@ package maf.modular.contracts
 import maf.core.Identity
 import maf.language.contracts.{ScExp, ScProgram}
 
-trait ScAnalysisWithPrelude extends ScModSemantics {
+trait ScAnalysisWithPrelude extends ScModSemanticsScheme {
   import maf.language.contracts.ScPrelude._
   override def program: ScExp = {
     val prg = super.program

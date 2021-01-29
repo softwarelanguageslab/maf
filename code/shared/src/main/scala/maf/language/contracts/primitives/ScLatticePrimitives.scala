@@ -14,7 +14,12 @@ class ScLatticePrimitives[L, A <: Address]()(implicit val scLattice: ScSchemeLat
   val allPrimitives: List[ScPrimitive[L, A]] = List(
     `dependent-contract?`,
     `nonzero?`,
-    `monitored?`
+    `monitored?`,
+    `number?`,
+    `bool?`,
+    `true?`,
+    `false?`,
+    `any?`
   )
 
   abstract class latticeOp(op: ScOp) extends ScPrimitive[L, A] {
@@ -29,6 +34,11 @@ class ScLatticePrimitives[L, A <: Address]()(implicit val scLattice: ScSchemeLat
 
   }
   case object `dependent-contract?` extends latticeOp(ScOp.IsDependentContract)
-  case object `nonzero?` extends latticeOp(ScOp.IsDependentContract)
-  case object `monitored?` extends latticeOp(ScOp.IsDependentContract)
+  case object `nonzero?` extends latticeOp(ScOp.IsNonZero)
+  case object `monitored?` extends latticeOp(ScOp.IsMonitored)
+  case object `number?` extends latticeOp(ScOp.IsNumber)
+  case object `bool?` extends latticeOp(ScOp.IsBool)
+  case object `true?` extends latticeOp(ScOp.IsTrue)
+  case object `false?` extends latticeOp(ScOp.IsFalse)
+  case object `any?` extends latticeOp(ScOp.IsAny)
 }

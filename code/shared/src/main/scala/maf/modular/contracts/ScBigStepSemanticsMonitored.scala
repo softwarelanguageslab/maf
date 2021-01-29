@@ -4,33 +4,29 @@ import maf.util.benchmarks.Timeout
 import maf.language.contracts._
 
 /**
-  * A trait that can be mixed in to provide some metrics
-  * and measurements about the analysis.
-  */
-trait ScBigStepSemanticsMonitored extends ScBigStepSemantics {
+ * A trait that can be mixed in to provide some metrics
+ * and measurements about the analysis.
+ */
+trait ScBigStepSemanticsMonitored extends ScBigStepSemanticsScheme {
 
   import ScEvalM._
 
-  /**
-    * Keeps track of how many contracts where checked
-    */
+  /** Keeps track of how many contracts where checked */
   var contractApplications: Int = 0
 
-  /**
-    * Keeps track of how many disctinct contracts were checked
-    */
+  /** Keeps track of how many disctinct contracts were checked */
   var distinctContractApplications: Map[Identity, SingleVerificationResult] = Map()
 
   /**
-    * Keeps track of the number of components
-    * that where analysed.
-    */
+   * Keeps track of the number of components
+   * that where analysed.
+   */
   var analysedComponents: Int = 0
 
   /**
-    * This flag keeps track whether the program under analysis
-    * has indicated that all its functions and function calls should be safe
-    */
+   * This flag keeps track whether the program under analysis
+   * has indicated that all its functions and function calls should be safe
+   */
   var allSafe: Boolean = false
 
   def distinctContracts: Int =
@@ -54,7 +50,7 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemantics {
           println("Got non-empty blames map, program is not validated as safe!")
           println(summary.blames.values)
         }
-        pure(value(lattice.injectNil))
+        pure(value(lattice.schemeLattice.nil))
 
       case ScFunctionAp(_, args, _, annotation) if annotation == Some("@unchecked") =>
         addIgnored(args.map(_.idn)) >>
@@ -69,12 +65,11 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemantics {
         expressionValue: (Value, PC),
         blamedIdentity: Identity,
         blamingIdentity: Identity = Identity.none
-    ): ScEvalM.ScEvalM[(Value, PC)] = {
+      ): ScEvalM.ScEvalM[(Value, PC)] = {
       import maf.util.MapUtil._
 
       contractApplications += 1
-      distinctContractApplications =
-        distinctContractApplications.weakPut(blamingIdentity, VerifiedTrue)
+      distinctContractApplications = distinctContractApplications.weakPut(blamingIdentity, VerifiedTrue)
 
       super.monFlat(contract, expressionValue, blamedIdentity)
     }
@@ -82,14 +77,12 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemantics {
     override def blame[X](
         blamedIdentity: Identity,
         blamingIdentity: Identity
-    ): ScEvalM.ScEvalM[X] = {
+      ): ScEvalM.ScEvalM[X] = {
       import maf.util.MapUtil._
-      withIgnoredIdentities(
-        ignored =>
-          if (!ignored.contains(blamedIdentity)) {
-            distinctContractApplications =
-              distinctContractApplications.weakPut(blamingIdentity, VerifiedFalse)
-          }
+      withIgnoredIdentities(ignored =>
+        if (!ignored.contains(blamedIdentity)) {
+          distinctContractApplications = distinctContractApplications.weakPut(blamingIdentity, VerifiedFalse)
+        }
       ) >> super.blame(blamedIdentity, blamingIdentity)
     }
   }

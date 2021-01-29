@@ -1,5 +1,5 @@
 package maf.modular.contracts
 
-trait ScGlobalStoreAnalysis extends ScModSemantics {
+trait ScGlobalStoreAnalysis extends ScModSemanticsScheme {
   override val GLOBAL_STORE_ENABLED: Boolean = true
 }

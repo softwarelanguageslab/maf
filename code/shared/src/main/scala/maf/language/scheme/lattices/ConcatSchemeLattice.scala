@@ -5,7 +5,7 @@ import maf.language.CScheme.TID
 import maf.lattice.interfaces.BoolLattice
 import maf.language.scheme._
 import maf.language.scheme.primitives.SchemePrimitive
-import maf.language.scheme.primitives.SchemeInterpreterBridge
+import maf.language.scheme.lattices.SchemeOp.IsProcedure
 
 /**
  * Creates the product of two scheme lattices and
@@ -15,199 +15,37 @@ object Product2SchemeLattice {
 
   import maf.util.MonoidInstances._
 
+  trait StoreWrapper[A <: Address, L] {
+    val store: Store[A, L]
+  }
+
+  object StoreWrapper {
+
+    /** Unwraps an arbitrary nested store */
+    def unwrap(store: Any): Any = store match {
+      case v: StoreWrapper[_, _] => unwrap(v.store)
+      case _                     => store
+    }
+  }
+
   /** The abstract value from the combined lattice. */
-  case class Product2[L, R](left: L, right: R)
+  sealed trait Product2[L, R] extends Serializable {
+    def left(implicit leftLattice: Lattice[L]): L =
+      leftLattice.bottom
+
+    def right(implicit rightLattice: Lattice[R]): R =
+      rightLattice.bottom
+  }
+  case class Product2Elements[L, R](l: L, r: R) extends Product2[L, R] {
+    override def left(implicit leftLattice: Lattice[L]): L = l
+    override def right(implicit rightLattice: Lattice[R]): R = r
+  }
+  case class Product2Primitive[L, R, A <: Address](prim: Set[SchemePrimitive[Product2[L, R], A]]) extends Product2[L, R]
+
   object Product2 {
     def injectLeft[L, R](left: L)(implicit rightLattice: Lattice[R]): Product2[L, R] = Product2(left, rightLattice.bottom)
     def injectRight[L, R](right: R)(implicit leftLattice: Lattice[L]): Product2[L, R] = Product2(leftLattice.bottom, right)
-  }
-
-  implicit def injectStoreL[L, R, A <: Address](store: Store[A, L])(implicit lattice: Lattice[R]): Store[A, Product2[L, R]] =
-    new Store[A, Product2[L, R]] {
-
-      override def canEqual(that: Any): Boolean = store.canEqual(that)
-
-      override def productArity: Int = store.productArity
-
-      override def productElement(n: Int): Any = store.productElement(n)
-
-      def lookup(a: A): Option[Product2[L, R]] =
-        store.lookup(a).map(Product2.injectLeft(_))
-
-      def extend(a: A, v: Product2[L, R]): Store[A, Product2[L, R]] =
-        injectStoreL[L, R, A](store.extend(a, v.left))
-    }
-
-  implicit def injectStoreR[L, R, A <: Address](store: Store[A, R])(implicit lattice: Lattice[L]): Store[A, Product2[L, R]] =
-    new Store[A, Product2[L, R]] {
-      override def canEqual(that: Any): Boolean = store.canEqual(that)
-
-      override def productArity: Int = store.productArity
-
-      override def productElement(n: Int): Any = store.productElement(n)
-
-      def lookup(a: A): Option[Product2[L, R]] =
-        store.lookup(a).map(Product2.injectRight(_))
-
-      def extend(a: A, v: Product2[L, R]): Store[A, Product2[L, R]] =
-        injectStoreR[L, R, A](store.extend(a, v.right))
-    }
-
-  implicit def projStoreL[L, R, A <: Address](
-      store: Store[A, Product2[L, R]]
-    )(implicit rightLattice: SchemeLattice[R, A, SchemePrimitive[R, A]]
-    ): Store[A, L] =
-    new Store[A, L] {
-      override def canEqual(that: Any): Boolean = store.canEqual(that)
-
-      override def productArity: Int = store.productArity
-
-      override def productElement(n: Int): Any = store.productElement(n)
-      def lookup(a: A): Option[L] = store.lookup(a).map(_.left)
-      def extend(a: A, v: L): Store[A, L] = projStoreL(store.extend(a, Product2(v, rightLattice.bottom)))
-    }
-
-  implicit def projStoreR[L, R, A <: Address](
-      store: Store[A, Product2[L, R]]
-    )(implicit leftLattice: SchemeLattice[L, A, SchemePrimitive[L, A]]
-    ): Store[A, R] =
-    new Store[A, R] {
-      override def canEqual(that: Any): Boolean = store.canEqual(that)
-
-      override def productArity: Int = store.productArity
-
-      override def productElement(n: Int): Any = store.productElement(n)
-      def lookup(a: A): Option[R] = store.lookup(a).map(_.right)
-      def extend(a: A, v: R): Store[A, R] = projStoreR(store.extend(a, Product2(leftLattice.bottom, v)))
-    }
-
-  implicit def injBridgeL[L, R, A <: Address](
-      bridge: SchemeInterpreterBridge[L, A]
-    )(implicit lattice: Lattice[R]
-    ): SchemeInterpreterBridge[Product2[L, R], A] = new SchemeInterpreterBridge[Product2[L, R], A] {
-    override type Closure = bridge.Closure
-    def pointer(exp: SchemeExp): A = bridge.pointer(exp)
-    def callcc(
-        clo: (SchemeLambdaExp, Environment[A]),
-        nam: Option[String],
-        pos: Position.Position
-      ): Product2[L, R] = Product2.injectLeft(bridge.callcc(clo, nam, pos))
-    def currentThread: TID = bridge.currentThread
-  }
-
-  implicit def injBridgeR[L, R, A <: Address](
-      bridge: SchemeInterpreterBridge[R, A]
-    )(implicit lattice: Lattice[L]
-    ): SchemeInterpreterBridge[Product2[L, R], A] = new SchemeInterpreterBridge[Product2[L, R], A] {
-    override type Closure = bridge.Closure
-    def pointer(exp: SchemeExp): A = bridge.pointer(exp)
-    def callcc(
-        clo: (SchemeLambdaExp, Environment[A]),
-        nam: Option[String],
-        pos: Position.Position
-      ): Product2[L, R] = Product2.injectRight(bridge.callcc(clo, nam, pos))
-    def currentThread: TID = bridge.currentThread
-  }
-
-  implicit def projBridgeL[L, R, A <: Address](
-      bridge: SchemeInterpreterBridge[Product2[L, R], A]
-    ): SchemeInterpreterBridge[L, A] = new SchemeInterpreterBridge[L, A] {
-    override type Closure = bridge.Closure
-    def pointer(exp: SchemeExp): A = bridge.pointer(exp)
-    def callcc(
-        clo: (SchemeLambdaExp, Environment[A]),
-        nam: Option[String],
-        pos: Position.Position
-      ): L = bridge.callcc(clo, nam, pos).left
-
-    def currentThread: TID = bridge.currentThread
-  }
-
-  implicit def projBridgeR[L, R, A <: Address](
-      bridge: SchemeInterpreterBridge[Product2[L, R], A]
-    ): SchemeInterpreterBridge[R, A] = new SchemeInterpreterBridge[R, A] {
-    override type Closure = bridge.Closure
-    def pointer(exp: SchemeExp): A = bridge.pointer(exp)
-    def callcc(
-        clo: (SchemeLambdaExp, Environment[A]),
-        nam: Option[String],
-        pos: Position.Position
-      ): R = bridge.callcc(clo, nam, pos).right
-
-    def currentThread: TID = bridge.currentThread
-  }
-
-  /** Projection of SchemePrimitive from Product2[L,R] to L */
-  implicit def projL[L, R, A <: Address](
-      value: SchemePrimitive[Product2[L, R], A]
-    )(implicit rightLattice: SchemeLattice[R, A, SchemePrimitive[R, A]]
-    ): SchemePrimitive[L, A] = new SchemePrimitive[L, A] {
-    def name: String = value.name
-
-    def call(
-        fexp: SchemeExp,
-        args: List[(SchemeExp, L)],
-        store: Store[A, L],
-        scheme: SchemeInterpreterBridge[L, A]
-      ): MayFail[(L, Store[A, L]), maf.core.Error] =
-      value
-        .call(fexp, args.map { case (exp, v) => (exp, Product2.injectLeft(v)) }, injectStoreL(store), scheme)
-        .map { case (v, store) =>
-          (v.left, projStoreL(store))
-        }
-  }
-
-  implicit def projR[L, R, A <: Address](
-      value: SchemePrimitive[Product2[L, R], A]
-    )(implicit leftLattice: SchemeLattice[L, A, SchemePrimitive[L, A]]
-    ): SchemePrimitive[R, A] = new SchemePrimitive[R, A] {
-    def name: String = value.name
-
-    def call(
-        fexp: SchemeExp,
-        args: List[(SchemeExp, R)],
-        store: Store[A, R],
-        scheme: SchemeInterpreterBridge[R, A]
-      ): MayFail[(R, Store[A, R]), maf.core.Error] =
-      value
-        .call(fexp, args.map { case (exp, v) => (exp, Product2.injectRight(v)) }, injectStoreR(store), scheme)
-        .map { case (v, store) =>
-          (v.right, projStoreR(store))
-        }
-  }
-
-  implicit def injL[L, R, A <: Address](
-      value: SchemePrimitive[L, A]
-    )(implicit lattice: SchemeLattice[R, A, SchemePrimitive[R, A]]
-    ): SchemePrimitive[Product2[L, R], A] = new SchemePrimitive[Product2[L, R], A] {
-    def name: String = value.name
-
-    def call(
-        fexp: SchemeExp,
-        args: List[(SchemeExp, Product2[L, R])],
-        store: Store[A, Product2[L, R]],
-        scheme: SchemeInterpreterBridge[Product2[L, R], A]
-      ): MayFail[(Product2[L, R], Store[A, Product2[L, R]]), Error] =
-      value
-        .call(fexp, args.map { case (exp, v) => (exp, v.left) }, store, scheme)
-        .map { case (v, store) => (Product2.injectLeft(v), store) }
-  }
-
-  implicit def injR[L, R, A <: Address](
-      value: SchemePrimitive[R, A]
-    )(implicit lattice: SchemeLattice[L, A, SchemePrimitive[L, A]]
-    ): SchemePrimitive[Product2[L, R], A] = new SchemePrimitive[Product2[L, R], A] {
-    def name: String = value.name
-
-    def call(
-        fexp: SchemeExp,
-        args: List[(SchemeExp, Product2[L, R])],
-        store: Store[A, Product2[L, R]],
-        scheme: SchemeInterpreterBridge[Product2[L, R], A]
-      ): MayFail[(Product2[L, R], Store[A, Product2[L, R]]), Error] =
-      value
-        .call(fexp, args.map { case (exp, v) => (exp, v.right) }, store, scheme)
-        .map { case (v, store) => (Product2.injectRight(v), store) }
+    def apply[L, R](left: L, right: R): Product2[L, R] = Product2Elements(left, right)
   }
 
   implicit def product[L, R, A <: Address](
@@ -222,6 +60,9 @@ object Product2SchemeLattice {
     implicit val leftLattice: SchemeLattice[L, A, SchemePrimitive[L, A]]
     implicit val rightLattice: SchemeLattice[R, A, SchemePrimitive[R, A]]
 
+    private lazy val leftBottom: L = leftLattice.bottom
+    private lazy val rightBottom: R = rightLattice.bottom
+
     override def show(v: Product2[L, R]): String = v match {
       case v: Product2[_, _] => s"${v.left} x ${v.right}"
     }
@@ -231,68 +72,85 @@ object Product2SchemeLattice {
     override def top: Product2[L, R] = throw LatticeTopUndefined
 
     override def join(x: Product2[L, R], y: => Product2[L, R]): Product2[L, R] = (x, y) match {
-      case (Product2(left1, right1), Product2(left2, right2)) =>
+      case (Product2Elements(left1, right1), Product2Elements(left2, right2)) =>
         Product2(leftLattice.join(left1, left2), rightLattice.join(right1, right2))
+      case (Product2Elements(`leftBottom`, `rightBottom`), Product2Primitive(_)) =>
+        y
+
+      case (Product2Primitive(_), Product2Elements(`leftBottom`, `rightBottom`)) =>
+        x
+      case (Product2Primitive(a), Product2Primitive(b)) =>
+        Product2Primitive(a ++ b)
+
+      // anything else cannot be joined
+      case (_, _) =>
+        println("warning invalid join happening")
+        bottom
     }
 
     override def subsumes(x: Product2[L, R], y: => Product2[L, R]): Boolean = (x, y) match {
-      case (Product2(left1, right1), Product2(left2, right2)) =>
+      case (Product2Elements(left1, right1), Product2Elements(left2, right2)) =>
         leftLattice.subsumes(left1, left2) && rightLattice.subsumes(right1, right2)
+      case (Product2Primitive(prims1), Product2Primitive(prims2)) =>
+        prims2.subsetOf(prims1)
+
       case (_, _) => false
     }
 
     override def eql[B: BoolLattice](x: Product2[L, R], y: Product2[L, R]): B = ???
 
     override def isTrue(x: Product2[L, R]): Boolean = x match {
-      case Product2(left, right) => leftLattice.isTrue(left) || rightLattice.isTrue(right)
-      case _                     => false
+      case Product2Elements(left, right) => leftLattice.isTrue(left) || rightLattice.isTrue(right)
+      case _                             => false
     }
 
     override def isFalse(x: Product2[L, R]): Boolean = x match {
-      case Product2(left, right) => leftLattice.isFalse(left) || rightLattice.isTrue(right)
-      case _                     => false
+      case Product2Elements(left, right) => leftLattice.isFalse(left) || rightLattice.isFalse(right)
+      case _                             => false
     }
 
     override def op(operation: SchemeOp)(args: List[Product2[L, R]]): MayFail[Product2[L, R], maf.core.Error] = {
-      val leftArgs = args.map { case Product2(left, _) =>
-        left
-      }
-
-      val rightArgs = args.map { case Product2(_, right) =>
-        right
-      }
+      val leftArgs = args.map(_.left)
+      val rightArgs = args.map(_.right)
 
       // TODO: if both are bottom, return error
       val left = leftLattice.op(operation)(leftArgs).getOrElse(leftLattice.bottom)
       val right = rightLattice.op(operation)(rightArgs).getOrElse(rightLattice.bottom)
+      val isProcedure = operation match {
+        case IsProcedure =>
+          args(0) match {
+            case Product2Primitive(_) => bool(true)
+            case _                    => bottom
+          }
+        case _ => bottom
+      }
 
-      MayFailSuccess(Product2(left, right))
+      MayFailSuccess(join(isProcedure, Product2(left, right)))
     }
 
     override def getClosures(x: Product2[L, R]): Set[((SchemeLambdaExp, Environment[A]), Option[String])] = x match {
-      case Product2(left, right) => leftLattice.getClosures(left) ++ rightLattice.getClosures(right)
-      case _                     => Set()
+      case Product2Elements(left, right) => leftLattice.getClosures(left) ++ rightLattice.getClosures(right)
+      case _                             => Set()
     }
 
     override def getPrimitives(x: Product2[L, R]): Set[SchemePrimitive[Product2[L, R], A]] = x match {
-      case Product2(left, right) =>
-        leftLattice.getPrimitives(left).map(injL(_)(rightLattice)) ++ rightLattice.getPrimitives(right).map(injR(_)(leftLattice))
-      case _ => Set()
+      case p: Product2Primitive[L, R, A] => p.prim
+      case _                             => Set()
     }
 
     override def getContinuations(x: Product2[L, R]): Set[Any] = x match {
-      case Product2(left, right) => leftLattice.getContinuations(left) ++ rightLattice.getContinuations(right)
-      case _                     => Set()
+      case Product2Elements(left, right) => leftLattice.getContinuations(left) ++ rightLattice.getContinuations(right)
+      case _                             => Set()
     }
 
     override def getPointerAddresses(x: Product2[L, R]): Set[A] = x match {
-      case Product2(left, right) => leftLattice.getPointerAddresses(left) ++ rightLattice.getPointerAddresses(right)
-      case _                     => Set()
+      case Product2Elements(left, right) => leftLattice.getPointerAddresses(left) ++ rightLattice.getPointerAddresses(right)
+      case _                             => Set()
     }
 
     override def getThreads(x: Product2[L, R]): Set[TID] = x match {
-      case Product2(left, right) => leftLattice.getThreads(left) ++ rightLattice.getThreads(right)
-      case _                     => Set()
+      case Product2Elements(left, right) => leftLattice.getThreads(left) ++ rightLattice.getThreads(right)
+      case _                             => Set()
     }
 
     override def number(x: Int): Product2[L, R] =
@@ -317,7 +175,7 @@ object Product2SchemeLattice {
       Product2(leftLattice.charTop, rightLattice.charTop)
 
     override def primitive(x: SchemePrimitive[Product2[L, R], A]): Product2[L, R] =
-      Product2(leftLattice.primitive(projL(x)(rightLattice)), rightLattice.primitive(projR(x)(leftLattice)))
+      Product2Primitive(Set((x)))
 
     override def closure(x: (SchemeLambdaExp, Environment[A]), name: Option[String]): Product2[L, R] =
       Product2(leftLattice.closure(x, name), rightLattice.closure(x, name))
@@ -326,7 +184,7 @@ object Product2SchemeLattice {
       Product2(leftLattice.symbol(x), rightLattice.symbol(x))
 
     override def cons(car: Product2[L, R], cdr: Product2[L, R]): Product2[L, R] = (car, cdr) match {
-      case (Product2(left, right), Product2(left1, right1)) =>
+      case (Product2Elements(left, right), Product2Elements(left1, right1)) =>
         Product2(leftLattice.cons(left, left1), rightLattice.cons(right, right1))
     }
 

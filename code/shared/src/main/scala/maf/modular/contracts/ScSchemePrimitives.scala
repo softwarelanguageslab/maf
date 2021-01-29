@@ -1,8 +1,8 @@
 package maf.modular.contracts
 
 import maf.core.{Environment, Identity}
-import maf.language.contracts.{ScExp, ScLattice}
-import maf.language.contracts.ScLattice.{Arr, Grd, Prim, Thunk}
+import maf.language.contracts.{ScExp}
+import maf.language.contracts.ScLattice.{Arr, Grd, Thunk}
 import maf.modular.GlobalStore
 
 trait ScSchemePrimitives extends ScModSemanticsScheme with GlobalStore[ScExp] {
@@ -43,31 +43,31 @@ trait ScSchemePrimitives extends ScModSemanticsScheme with GlobalStore[ScExp] {
 
   def primitives =
     Map(
-      "+" -> ("int?" ~> "int?" ~> "int?"),
-      "-" -> ("int?" ~> "int?" ~> "int?"),
-      "*" -> ("int?" ~> "int?" ~> "int?"),
-      "/" -> ("int?" ~> "nonzero?" ~> "int?"),
-      "=" -> ("int?" ~> "int?" ~> "bool?"),
-      "int?" -> ("any?" ~> "bool?"),
-      "proc?" -> ("any?" ~> "bool?"),
+      //"+" -> ("number?" ~> "number?" ~> "number?"),
+      "-" -> ("number?" ~> "number?" ~> "number?"),
+      "*" -> ("number?" ~> "number?" ~> "number?"),
+      "/" -> ("number?" ~> "nonzero?" ~> "number?"),
+      "=" -> ("number?" ~> "number?" ~> "bool?"),
+      "number?" -> ("any?" ~> "bool?"),
+      //"procedure?" -> ("any?" ~> "bool?"),
       "bool?" -> ("any?" ~> "bool?"),
-      ">" -> ("int?" ~> "int?" ~> "bool?"),
-      "<" -> ("int?" ~> "int?" ~> "bool?"),
-      "=<" -> ("int?" ~> "int?" ~> "bool?"),
+      //">" -> ("number?" ~> "number?" ~> "bool?"),
+      "<" -> ("number?" ~> "number?" ~> "bool?"),
+      //"=<" -> ("number?" ~> "number?" ~> "bool?"),
       "dependent-contract?" -> ("any?" ~> "bool?"),
-      "any?" -> ("any?" ~> "bool?"),
-      "and" -> ("any?" ~> "any?" ~> "any?"),
-      "or" -> ("any?" ~> "any?" ~> "any?"),
-      "nonzero?" -> ("int?" ~> "bool?"),
+      //"any?" -> ("any?" ~> "bool?"),
+      // "and" -> ("any?" ~> "any?" ~> "any?"),
+      //"or" -> ("any?" ~> "any?" ~> "any?"),
+      "nonzero?" -> ("number?" ~> "bool?"),
       "pair?" -> ("any?" ~> "bool?"),
       "number?" -> ("any?" ~> "bool?"),
-      "not" -> ("any?" ~> "bool?"),
+      //"not" -> ("any?" ~> "bool?"),
       "char?" -> ("any?" ~> "bool?"),
       "vector?" -> ("any?" ~> "bool?"),
       "string?" -> ("any?" ~> "bool?"),
-      "string-length" -> ("string?" ~> "int?"),
+      "string-length" -> ("string?" ~> "number?"),
       "symbol?" -> ("any?" ~> "bool?"),
-      "true?" -> ("any?" ~> "bool?"),
+      //"true?" -> ("any?" ~> "bool?"),
       "false?" -> ("any?" ~> "bool?"),
       "null?" -> ("any?" ~> "any?"),
       "cons" -> ("any?" ~> "any?" ~> "pair?"),
@@ -82,18 +82,30 @@ trait ScSchemePrimitives extends ScModSemanticsScheme with GlobalStore[ScExp] {
       val primAddr = ScPrimAddr(name)
       val grd = implies.asGrd(name)
       store += contractAddr -> grd
+      println(s"looking up ${name}")
       store += primAddr -> lattice.schemeLattice.primitive(primMap(name))
       store += ScMonitoredPrimAddr(name) -> lattice.arr(
         Arr(Identity.none, Identity.none, contractAddr, primAddr)
       )
     }
 
+  private lazy val otherPrimitives =
+    primMap.keys.toSet -- primitives.map(_._1)
+
+  /** Inject the other scheme primitives that do not have a contract (yet) */
+  def setupOtherPrimitives(): Unit =
+    otherPrimitives.foreach { name =>
+      store += ScPrimAddr(name) -> lattice.schemeLattice.primitive(primMap(name))
+    }
+
   def primBindings: Iterable[(String, Addr)] =
-    primitives.keys.map(name => (name, ScMonitoredPrimAddr(name)))
+    primitives.keys.map(name => (name, ScMonitoredPrimAddr(name))) ++
+      otherPrimitives.map(name => (name, ScPrimAddr(name)))
 
   def baseEnv: Env = Environment(primBindings)
   def setup(): Unit = {
     println("Setting up analysis")
     setupMonitoredPrimitives()
+    setupOtherPrimitives()
   }
 }

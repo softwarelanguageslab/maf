@@ -191,8 +191,10 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         store: Store[A, V],
         alloc: SchemeInterpreterBridge[V, A]
       ): MayFail[(V, Store[A, V]), Error] = args match {
-      case x :: Nil => call(x._2).map(v => (v, store))
-      case _        => MayFail.failure(PrimitiveArityError(name, 1, args.length))
+      case x :: Nil =>
+        println(s"original args $args with x $x")
+        call(x._2).map(v => (v, store))
+      case _ => MayFail.failure(PrimitiveArityError(name, 1, args.length))
     }
   }
 

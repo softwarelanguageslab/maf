@@ -10,6 +10,7 @@ import maf.modular.contracts.ScConstantPropagationDomain
 import maf.modular.contracts.ScMain
 import maf.language.contracts.ScPrelude
 import maf.modular.contracts.ScAnalysisWithPrelude
+import maf.modular.contracts.ScSchemeConstantPropagationDomain
 
 /** A tiny REPL for testing soft contract verification on smaller programs */
 object SoftContractConsole extends App {
@@ -28,7 +29,7 @@ object SoftContractConsole extends App {
       println(s"Analysing ${exp}")
 
       val analyser = new SimpleScSemantics(exp)
-        with ScConstantPropagationDomain
+        with ScSchemeConstantPropagationDomain
         with ScCallInsensitivity
         with ScJVMAnalysis
         with ScGlobalStoreAnalysis
@@ -43,6 +44,7 @@ object SoftContractConsole extends App {
         println(s"Blames map ${analyser.summary.blames}")
       } catch {
         case e: Exception =>
+          e.printStackTrace()
           println(s"an error occured during the analysis '${e.getMessage()}'")
       }
       repl()

@@ -10,6 +10,13 @@ import maf.core.MayFail
 import maf.core.Lattice
 import maf.language.contracts.lattices.ScAbstractValues
 import maf.language.contracts.primitives.ScLatticePrimitives
+import maf.language.contracts.lattices.ScOp.ScSchemeOp
+import maf.core.OperatorNotApplicable
+import maf.language.contracts.lattices.ScOp.IsNumber
+import maf.language.scheme.lattices.SchemeOp.IsInteger
+import maf.language.scheme.lattices.SchemeOp.IsReal
+import maf.language.contracts.lattices.ScOp.IsBool
+import maf.language.scheme.lattices.SchemeOp.IsBoolean
 
 trait ScDomain[I, B, Addr <: Address] {
   import ScLattice._
@@ -938,27 +945,39 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
   type Value = V
   type Prim = SchemePrimitive[V, A]
 
-  val modularLattice: ModularSchemeLattice[A, S, B, I, R, C, Sym]
+  implicit val boolLattice: BoolLattice[B]
+
+  /** Acccess to Scheme primitives */
   val schemePrimitives: SchemePrimitives[V, A]
+
+  /** The collection of Sc language specific primitives */
   lazy val scPrimitives = new ScLatticePrimitives[V, A]()(lattice)
 
+  /*
+   * A map from names of primitives to the primitives themselves
+   */
   val primMap: Map[String, SchemePrimitive[V, A]] =
     (schemePrimitives.allPrimitives.map(p => (p.name, p)) ++ scPrimitives.allPrimitives.map(p => (p.name, p))).toMap
 
-  implicit val valueExtProductLattice: Lattice[L] =
+  val modularLattice: ModularSchemeLattice[A, S, B, I, R, C, Sym]
+
+  implicit lazy val valueExtProductLattice: Lattice[L] =
     productLattice(Values.partialLattice)
 
-  implicit val leftLattice: SchemeLattice[L, A, P] = new EmptyDomainSchemeLattice[L, A, P] {
+  implicit lazy val leftLattice: SchemeLattice[L, A, P] = new EmptyDomainSchemeLattice[L, A, P] {
     val lattice = valueExtProductLattice
   }
 
-  implicit val rightLattice = modularLattice.schemeLattice
+  implicit lazy val rightLattice = modularLattice.schemeLattice
+
+  private def mayFailJoin(x: MayFail[V, maf.core.Error], y: => MayFail[V, maf.core.Error]): MayFail[V, maf.core.Error] =
+    mayFail(latticeMonoid(lattice.schemeLattice)).append(x, y)
+
+  private def mayFailJoin(xs: Seq[MayFail[V, maf.core.Error]]): MayFail[V, maf.core.Error] =
+    xs.reduce((a, b) => mayFailJoin(a, b))
 
   implicit lazy val schemeLattice: SchemeLattice[V, A, Q] =
     new SchemeProductLattice[L, modularLattice.Elements, A] {
-      private def mayFailJoin(x: MayFail[V, maf.core.Error], y: => MayFail[V, maf.core.Error]): MayFail[V, maf.core.Error] =
-        mayFail(latticeMonoid(lattice.schemeLattice)).append(x, y)
-
       private val rightBottom = outer.rightLattice.bottom
 
       /**
@@ -989,13 +1008,33 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
         operation.checkArity(args)
         operation match {
           case Plus | Minus | Times | Quotient | Div =>
+            println(s"executing arith with args $args")
             arithOp(operation)(args(0), args(1))
+
+          /*
+          case IsProcedure =>
+            mayFailJoin(
+              MayFail.success(schemeLattice.bool(args(0).right.vs.exists {
+                case modularLattice.Prim(_) | modularLattice.Clo(_) => true
+                case _                                              => false
+              })),
+              super.op(operation)(args)
+            )
+           */
 
           // Computations on leftLattice values that return values from the Product2lattice
           case _ =>
             val op = ScOp.ScSchemeOp(operation)
+
+            println(s"executing $op with args $args")
+
             val result = ProductLattice
-              .op(args.map(_.left), (args: List[ValueExt]) => Values.op(op)(args)(lattice))(
+              .op(args.map(_.left),
+                  (args: List[ValueExt]) => {
+                    println(s"executing $op with args $args")
+                    Values.op(op)(args)(lattice)
+                  }
+              )(
                 latticeMonoid(lattice.schemeLattice)
               )
 
@@ -1004,7 +1043,7 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
       }
     }
 
-  val lattice: ScSchemeLattice[V, A, Q] = new ScSchemeLattice[V, A, Q] {
+  lazy val lattice: ScSchemeLattice[V, A, Q] = new ScSchemeLattice[V, A, Q] {
     val schemeLattice: SchemeLattice[V, A, Q] = outer.schemeLattice
 
     /*==================================================================================================================*/
@@ -1103,10 +1142,12 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
     /*==================================================================================================================*/
 
     def isDefinitelyOpq(value: V): Boolean =
-      value.left.vs.size == getOpq(value).size
+      value.left.vs.size != 0 &&
+        value.left.vs.size == getOpq(value).size
 
     def isDefinitelyArrow(value: V): Boolean =
-      value.left.vs.size == getArr(value).size
+      value.left.vs.size != 0 &&
+        value.left.vs.size == getArr(value).size
 
     /** Returns true if the value is possible a blame */
     def isBlame(value: V): Boolean =
@@ -1135,12 +1176,65 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
       }.size >= 1
 
     /*==================================================================================================================*/
+    private def isRefinedTo(value: V, set: Set[String]): V =
+      if (getOpq(value).flatMap(_.refinementSet).intersect(set).size >= 1) {
+        schemeLattice.bool(true)
+      } else if (getOpq(value).size >= 1) {
+        Product2.injectRight(modularLattice.Element(modularLattice.Bool(boolLattice.top)))
+      } else bottom
+
+    private def specialOp(op: ScOp)(args: List[V]): MayFail[V, maf.core.Error] = {
+      op.checkArity(args)
+      op match {
+        case ScOp.IsTrue =>
+          mayFailJoin(
+            List(
+              MayFail.success(schemeLattice.bool(schemeLattice.isTrue(args(0)))),
+              MayFail.success(isRefinedTo(args(0), Set("true?")))
+            )
+          )
+
+        case ScOp.IsFalse =>
+          println(s"args for isfalse? ${args(0)}")
+          MayFail.success(schemeLattice.bool(schemeLattice.isFalse(args(0))))
+
+        case ScOp.IsNumber =>
+          mayFailJoin(
+            List(
+              MayFail.success(
+                schemeLattice.bool(
+                  List(schemeLattice.op(IsInteger)(args), schemeLattice.op(IsReal)(args))
+                    .foldLeft(false)((a, b) => b.map(v => a || schemeLattice.isTrue(v)).getOrElse(false))
+                )
+              ),
+              MayFail.success(isRefinedTo(args(0), Set("integer?", "real?")))
+            )
+          )
+
+        case ScOp.IsAny =>
+          MayFail.success(schemeLattice.bool(true))
+
+        case ScOp.IsBool =>
+          schemeLattice.op(IsBoolean)(args)
+
+        case _ => MayFail.success(bottom)
+      }
+    }
 
     def op(op: ScOp)(args: List[V]): MayFail[V, maf.core.Error] =
-      ProductLattice
-        .op(args.map(_.left), (args: List[ValueExt]) => Values.op(op)(args)(lattice))(
-          latticeMonoid(lattice.schemeLattice)
+      mayFailJoin(
+        List(
+          ProductLattice
+            .op(args.map(_.left), (args: List[ValueExt]) => Values.op(op)(args)(lattice))(
+              latticeMonoid(lattice.schemeLattice)
+            ),
+          op match {
+            case ScSchemeOp(op) => schemeLattice.op(op)(args)
+            case _              => MayFail.success(bottom)
+          },
+          specialOp(op)(args)
         )
+      )
 
   }
 }

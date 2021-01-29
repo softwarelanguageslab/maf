@@ -18,4 +18,16 @@ object ScOp {
   case object IsNonZero extends Operation1("nonzero?") with ScOp
   case object IsPair extends Operation1("pair?") with ScOp
   case object IsMonitored extends Operation1("monitored?") with ScOp
+  case object IsTrue extends Operation1("true?") with ScOp
+  case object IsFalse extends Operation1("false?") with ScOp
+  case object IsAny extends Operation1("any?") with ScOp
+
+  /**
+   * Replacement for `int?`, which checks whether the value is a number (integer or real)
+   * or an opaque that is refined as such.
+   */
+  case object IsNumber extends Operation1("number?") with ScOp
+
+  /** For compability with older sc language programs */
+  case object IsBool extends Operation1("bool?") with ScOp
 }

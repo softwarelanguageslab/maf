@@ -3,7 +3,7 @@ package maf.language.contracts
 object ScPrelude {
   val preludeFunctions = List(
     "list?" -> "(define (list? l) (or (and (pair? l) (list? (cdr l))) (null? l)))",
-    "abs" -> "(define/contract (abs x) (~> int? int?) (if (< x 0) (- 0 x) x))",
+    "abs" -> "(define/contract (abs x) (~> number? number?) (if (< x 0) (- 0 x) x))",
     "append" -> """(define (append l1 l2)
                 |  (if (null? l1)
                 |      l2
@@ -137,15 +137,17 @@ object ScPrelude {
                  |      '()
                  |      (append (reverse (cdr l))
                  |              (list (car l)))))""".stripMargin,
-    "map" -> """(define/contract (map f l) (~> proc? list? list?)
+    /*
+    "map" -> """(define/contract (map f l) (~> procedure? list? list?)
               |  (if (null? l)
               |      '()
               |      (cons (f (car l)) (map f (cdr l)))))""".stripMargin,
-    "for-each" -> """(define/contract (for-each f l) (~> proc? list? list?)
+    "for-each" -> """(define/contract (for-each f l) (~> procedure? list? list?)
                   |  (if (null? l)
                   |      #t
                   |      (if (pair? l)
                   |          (begin (f (car l)) (for-each f (cdr l))))))""".stripMargin,
+     */
     "string->list" -> """(define/contract (string->list string) (~> string? list)
                       |  (define len (string-length string))
                       |  (let convert ((n (- len 1))
@@ -179,9 +181,9 @@ object ScPrelude {
     "or/c" -> "(define (or/c a b) (lambda (v) (or (a v) (b v))))",
     "and/c" -> "(define (and/c a b) (lambda (v) (and (a v) (b v))))",
     "else" -> "(define else #t)",
-    "zero?" -> "(define/contract (zero? x) (-> int? bool?) (= x 0))",
-    "sub1" -> "(define/contract (sub1 x) (-> int? int?) (- x 1))",
-    "add1" -> "(define/contract (add1 x) (-> int? int?) (+ x 1))",
+    "zero?" -> "(define/contract (zero? x) (-> number? bool?) (= x 0))",
+    "sub1" -> "(define/contract (sub1 x) (-> number? number?) (- x 1))",
+    "add1" -> "(define/contract (add1 x) (-> number? number?) (+ x 1))",
     "any/c" -> "(define (any/c a) #t)",
     "not/c" -> "(define (not/c contract) (lambda (v) (not (contract v))))",
     ">=/c" -> "(define (>=/c v) (lambda (w) (>= w v)))",

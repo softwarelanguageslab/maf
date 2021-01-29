@@ -54,6 +54,7 @@ trait ScAbstractValues[A <: Address] {
         case (Blames(a), Blames(b)) => Blames(a ++ b)
         case (Thunks(a), Thunks(b)) => Thunks(a ++ b)
         case (Flats(a), Flats(b))   => Flats(a ++ b)
+        case (Clos(a), Clos(b))     => Clos(a ++ b)
         case _                      => throw new Exception(s"Illegal join $x $y")
       }
 
@@ -67,6 +68,7 @@ trait ScAbstractValues[A <: Address] {
             case (Grds(a), Grds(b))     => b.subsetOf(a)
             case (Blames(a), Blames(b)) => b.subsetOf(a)
             case (Thunks(a), Thunks(b)) => b.subsetOf(a)
+            case (Clos(a), Clos(b))     => b.subsetOf(a)
             case _                      => false
           }
         }
@@ -124,8 +126,17 @@ trait ScAbstractValues[A <: Address] {
           op match {
             case Plus | Minus | Times | Quotient | Div => numOp(args)
 
+            case IsProcedure =>
+              println("is procedure!")
+              args(0) match {
+                case Arrs(_) | Flats(_) | Clos(_) =>
+                  MayFail.success(lat.schemeLattice.bool(true))
+                case _ =>
+                  MayFail.success(isPred(args(0), Set(op.name)))
+              }
+
             case IsNull | IsBoolean | IsCons | IsPointer | IsChar | IsSymbol | IsString | IsInteger | IsReal | IsVector | IsThread | IsLock |
-                IsProcedure | IsInputPort | IsOutputPort =>
+                IsInputPort | IsOutputPort =>
               MayFail.success(isPred(args(0), Set(op.name)))
 
             // if all operands are opaque values then we return an opaque value without any refinements,

@@ -4,8 +4,8 @@ import maf.core.Identity
 import maf.core.Position.Position
 import maf.language.contracts.{ScIdentifier, ScLattice}
 
-trait ScCallInsensitivity extends ScModSemantics {
-  type AllocationContext    = Component
+trait ScCallInsensitivity extends ScModSemanticsScheme {
+  type AllocationContext = Component
   type VarAllocationContext = ComponentContext
   def allocVar(id: ScIdentifier, cmp: ComponentContext): ScVarAddr[VarAllocationContext] =
     ScVarAddr(id, cmp)
@@ -18,7 +18,7 @@ trait ScCallInsensitivity extends ScModSemantics {
       args: List[Value],
       call: Position,
       caller: Component
-  ): ComponentContext = ()
+    ): ComponentContext = ()
 
   def context(_cmp: Component): ComponentContext = ()
 }

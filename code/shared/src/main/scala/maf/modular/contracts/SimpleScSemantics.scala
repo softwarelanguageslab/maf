@@ -7,10 +7,10 @@ import maf.util.benchmarks.Timeout
 
 abstract class SimpleScSemantics(prg: ScExp)
     extends ModAnalysis(prg)
-       with ScBigStepSemantics
+       with ScBigStepSemanticsScheme
        with ScBigStepSemanticsMonitored
        with ScStandardComponents
-       with ScPrimitives
+       with ScSchemePrimitives
        with FIFOWorklistAlgorithm[ScExp] {
 
   val primitivesMap = Map(
@@ -22,13 +22,13 @@ abstract class SimpleScSemantics(prg: ScExp)
     "*" -> "*/c",
     "/" -> "//c",
     "string=?" -> "string=?/c",
-    "int?" -> "int?/c",
+    "number?" -> "int?/c",
     "string?" -> "string?/c",
     "nonzero?" -> "nonzero?/c",
     "any?" -> "any?/c",
     "true?" -> "true?/c",
     "false?" -> "false?/c",
-    "proc?" -> "proc?/c",
+    "procedure?" -> "proc?/c",
     "bool?" -> "bool?/c",
     "and" -> "and/c",
     "or" -> "or/c",
