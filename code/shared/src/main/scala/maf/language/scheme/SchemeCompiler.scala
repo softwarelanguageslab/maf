@@ -181,13 +181,13 @@ trait BaseSchemeCompiler {
         restv <- tailcall(compileArgs(rest))
       } yield (id :: restv._1, restv._2)
     case SExpValue(Value.Nil, _) => done((Nil, None))
-    case SExpId(id)             => done((Nil, Some(id)))
-    case _                      => throw new SchemeCompilerException(s"Invalid Scheme argument list: $args", args.idn)
+    case SExpId(id)              => done((Nil, Some(id)))
+    case _                       => throw new SchemeCompilerException(s"Invalid Scheme argument list: $args", args.idn)
   }
 
   def compileBodyNonEmpty(body: SExp): TailRec[List[SchemeExp]] = body match {
     case SExpValue(Value.Nil, _) => throw new SchemeCompilerException(s"Empty body is not allowed", body.idn)
-    case _                      => tailcall(compileBody(body))
+    case _                       => tailcall(compileBody(body))
   }
 
   def compileBody(body: SExp): TailRec[List[SchemeExp]] = body match {
@@ -197,7 +197,7 @@ trait BaseSchemeCompiler {
         restv <- tailcall(compileBody(rest))
       } yield expv :: restv
     case SExpValue(Value.Nil, _) => done(Nil)
-    case _                      => throw new SchemeCompilerException(s"Invalid Scheme body: $body", body.idn)
+    case _                       => throw new SchemeCompilerException(s"Invalid Scheme body: $body", body.idn)
   }
 
   def compileBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp)]] = bindings match {
@@ -208,7 +208,7 @@ trait BaseSchemeCompiler {
         restv <- tailcall(compileBindings(rest))
       } yield (v, valuev) :: restv
     case SExpValue(Value.Nil, _) => done(Nil)
-    case _                      => throw new SchemeCompilerException(s"Invalid Scheme bindings: $bindings", bindings.idn)
+    case _                       => throw new SchemeCompilerException(s"Invalid Scheme bindings: $bindings", bindings.idn)
   }
 
   def compileDoBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp, Option[SchemeExp])]] =

@@ -310,7 +310,7 @@ object SchemeCond {
       clauses.foldRight[SchemeExp](SchemeValue(Value.Boolean(false /* undefined */ ), NoCodeIdentity))((clause, acc) =>
         clause match {
           case (SchemeValue(Value.Boolean(true), _), body) => SchemeBody(body)
-          case (cond, Nil)                                =>
+          case (cond, Nil)                                 =>
             /* Body is empty. R5RS states that "If the selected clause contains only the
              * test and no expressions ,then the value of the test is returned
              * as the result" */
@@ -570,14 +570,14 @@ case class SchemePair(
   override def toString: String = s"`($contentToString)"
   private def contentToString: String = cdr match {
     case SchemeValue(Value.Nil, _) => printElement(car)
-    case pair: SchemePair         => s"${printElement(car)} ${pair.contentToString}"
-    case _                        => s"${printElement(car)} . ${printElement(cdr)}"
+    case pair: SchemePair          => s"${printElement(car)} ${pair.contentToString}"
+    case _                         => s"${printElement(car)} . ${printElement(cdr)}"
   }
   private def printElement(elm: SchemeExp): String = elm match {
     case SchemeValue(Value.Symbol(sym), _) => sym
-    case SchemeValue(v, _)                => v.toString
-    case pair: SchemePair                 => s"(${pair.contentToString})"
-    case _                                => s",$elm"
+    case SchemeValue(v, _)                 => v.toString
+    case pair: SchemePair                  => s"(${pair.contentToString})"
+    case _                                 => s",$elm"
   }
   def fv: Set[String] = car.fv ++ cdr.fv
   val label: Label = PAI
@@ -619,8 +619,7 @@ case class SchemeCodeChange(
     nw: SchemeExp,
     idn: Identity)
     extends ChangeExp[SchemeExp]
-    with SchemeExp
-
+       with SchemeExp
 
 trait CSchemeExp extends SchemeExp
 

@@ -16,9 +16,9 @@ case class MultiSet[X](content: Map[X, Int], cardinality: Int) {
   def -(elm: X) = updateMult(elm)(_ - 1)
   def ++(ms: MultiSet[X]) = combine(ms)(_ + _)
   def --(ms: MultiSet[X]) = combine(ms)(_ - _)
-  def combine(ms: MultiSet[X])(f: (Int,Int) => Int) =
+  def combine(ms: MultiSet[X])(f: (Int, Int) => Int) =
     ms.content.foldLeft(this) { case (acc, (elm, cnt)) =>
-      acc.updateMult(elm) { f(_, cnt) }
+      acc.updateMult(elm)(f(_, cnt))
     }
   def removeAll(elm: X) =
     MultiSet(content - elm, cardinality - getMult(elm))

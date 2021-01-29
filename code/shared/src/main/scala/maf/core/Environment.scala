@@ -45,7 +45,6 @@ case class WrappedEnv[A <: Address, D](
   def mapAddrs(f: A => A): WrappedEnv[A, D] = this.copy(env = env.mapAddrs(f))
 }
 
-
 object Environment {
   def apply[A <: Address](bds: Iterable[(String, A)]): Environment[A] = BasicEnvironment(bds.toMap)
 }

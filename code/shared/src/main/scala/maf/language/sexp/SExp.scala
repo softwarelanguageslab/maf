@@ -64,7 +64,7 @@ case class SExpPair(
         val rest = pair.toStringRest
         s"$car $rest"
       case SExpValue(Value.Nil, _) => s"$car"
-      case _                      => s"$car . $cdr"
+      case _                       => s"$car . $cdr"
     }
   val label: Label = PAI
   def subexpressions: List[Expression] = List(car, cdr)

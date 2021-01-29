@@ -11,25 +11,31 @@ import maf.modular.worklist._
 
 object SchemeAnalysesBoundedDomain {
   object NoSensitivity {
-    def boundAnalysis(bnd: Int)(
-      prg: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain with LIFOWorklistAlgorithm[SchemeExp] {
+    def boundAnalysis(
+        bnd: Int
+      )(
+        prg: SchemeExp
+      ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain with LIFOWorklistAlgorithm[SchemeExp] {
       lazy val bound = bnd
       override def toString() = "no-sensitivity"
     }
   }
   object CallSiteSensitivity {
-    def boundAnalysis(bnd: Int)(
-      prg: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFCallSiteSensitivity with SchemeBoundedDomain with LIFOWorklistAlgorithm[SchemeExp] {
+    def boundAnalysis(
+        bnd: Int
+      )(
+        prg: SchemeExp
+      ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFCallSiteSensitivity with SchemeBoundedDomain with LIFOWorklistAlgorithm[SchemeExp] {
       lazy val bound = bnd
       override def toString() = "call-site-sensitivity"
     }
   }
   object TwoCallSiteSensitivity {
-    def boundAnalysis(bnd: Int)(
-      prg: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFCallSiteSensitivity with SchemeBoundedDomain with LIFOWorklistAlgorithm[SchemeExp] {
+    def boundAnalysis(
+        bnd: Int
+      )(
+        prg: SchemeExp
+      ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFCallSiteSensitivity with SchemeBoundedDomain with LIFOWorklistAlgorithm[SchemeExp] {
       lazy val bound = bnd
       override def toString() = "call-site-sensitivity"
     }

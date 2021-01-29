@@ -774,7 +774,6 @@ class SchemeInterpreter(
       `newline`
     ).map(prim => (prim.name, prim)).toMap
 
-
     abstract class SingleArgumentPrimWithExp(val name: String) extends Prim {
       def fun(fexp: SchemeFuncall): PartialFunction[Value, Value]
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {

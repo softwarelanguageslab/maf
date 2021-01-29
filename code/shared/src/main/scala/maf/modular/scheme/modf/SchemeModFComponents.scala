@@ -14,9 +14,9 @@ trait SchemeModFComponents {
   }
   // A call to a specific closure
   case class Call(
-    clo: (SchemeLambdaExp, Environment[Address]),
-    nam: Option[String],
-    ctx: ComponentContext)
+      clo: (SchemeLambdaExp, Environment[Address]),
+      nam: Option[String],
+      ctx: ComponentContext)
       extends SchemeModFComponent {
     // convenience accessors
     lazy val (lambda, env) = clo

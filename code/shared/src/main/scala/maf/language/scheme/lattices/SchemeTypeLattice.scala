@@ -204,47 +204,49 @@ class TypeSchemeLattice[A <: Address, K] {
   }
 
   object Primitives extends SchemeLatticePrimitives[L, A] with PrimitiveBuildingBlocks[L, A] {
-    override def allPrimitives = super.allPrimitives ++ ofList(List(
-      `abs`,
-      // `assoc`, // TODO
-      // `assq`, // TODO
-      // `assv`, // TODO
-      `display`,
-      `equal?`,
-      `eqv?`,
-      `even?`,
-      `gcd`,
-      `lcm`,
-      `length`,
-      // `list-ref`, // TODO
-      // `list->vector`, // TODO? or not
-      // `list-tail`, // TODO
-      `list?`,
-      // `member`, // TODO
-      // `memq`, // TODO
-      // `memv`, // TODO
-      `negative?`,
-      `newline`,
-      `not`,
-      `odd?`,
-      `positive?`,
-      `zero?`,
-      `<=`,
-      `>`,
-      `>=`,
-      `caar`,
-      `cadr`,
-      `cdar`,
-      `cddr`,
-      `caddr`,
-      `cdddr`,
-      `caadr`,
-      `cdadr`,
-      `cadddr`
-      // TODO: other cxr
-      // `vector->list // TODO
-      // We decided not to implement some primitives as they can't be properly supported in the framework: reverse, map, for-each, apply
-    ))
+    override def allPrimitives = super.allPrimitives ++ ofList(
+      List(
+        `abs`,
+        // `assoc`, // TODO
+        // `assq`, // TODO
+        // `assv`, // TODO
+        `display`,
+        `equal?`,
+        `eqv?`,
+        `even?`,
+        `gcd`,
+        `lcm`,
+        `length`,
+        // `list-ref`, // TODO
+        // `list->vector`, // TODO? or not
+        // `list-tail`, // TODO
+        `list?`,
+        // `member`, // TODO
+        // `memq`, // TODO
+        // `memv`, // TODO
+        `negative?`,
+        `newline`,
+        `not`,
+        `odd?`,
+        `positive?`,
+        `zero?`,
+        `<=`,
+        `>`,
+        `>=`,
+        `caar`,
+        `cadr`,
+        `cdar`,
+        `cddr`,
+        `caddr`,
+        `cdddr`,
+        `caadr`,
+        `cdadr`,
+        `cadddr`
+        // TODO: other cxr
+        // `vector->list // TODO
+        // We decided not to implement some primitives as they can't be properly supported in the framework: reverse, map, for-each, apply
+      )
+    )
     class SimplePrim(val name: String, ret: L) extends SchemePrimitive[L, A] {
       def call(
           fexp: SchemeExp,

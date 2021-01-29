@@ -45,7 +45,6 @@ object SchemeBenchmarkPrograms {
   lazy val gabriel: Set[String] = fromFolder("test/R5RS/gabriel")()
   lazy val gambit: Set[String] = fromFolder("test/R5RS/gambit")(
     "trav1.scm", // Needs append in the abstract interpreter (not as a preluded primitive)
-
     "compiler.scm", // Can be analyzed. Need input model in concrete.
     "scheme.scm", // Can be analyzed. "Error in program" -> what error?
     "slatex.scm", // Can be analyzed, but requires the input file to be modelled in concrete
@@ -78,7 +77,6 @@ object SchemeBenchmarkPrograms {
     "nucleic.sch", // Made it parse by replacing vector literals, but does not have proper main code.
     "nucleic2.sch", // Uses macros (define-syntax).
     "splay.scm", // Uses () instead of '(), and #(1 2 3) syntax for vectors, also has unsupported match functions.
-
     "graphs.scm", // Can be analyzed. Uses read.
     "nbody.scm", // Can be analyzed. Uses read
     "nbody-processed.scm", // Can be analyzed. Uses read.
@@ -88,8 +86,7 @@ object SchemeBenchmarkPrograms {
     ".DS_Store",
     "mbrotZ.sch", // Uses read, complex numbers
     "solovay-strassen.scm", // Program seems erroneous.
-
-    "earley.sch", // Can be analyzed. Uses read.
+    "earley.sch" // Can be analyzed. Uses read.
   )
   lazy val various: Set[String] = fromFolder("test/R5RS/various")(
     ".DS_Store",
