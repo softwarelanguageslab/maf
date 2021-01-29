@@ -5,7 +5,7 @@ import maf.language.change.ChangeExp
 import maf.language.sexp._
 
 /** Abstract syntax of Scheme programs */
-trait SchemeExp extends Expression
+sealed trait SchemeExp extends Expression
 
 case object AND extends Label // And
 case object BEG extends Label // Begin
@@ -55,7 +55,7 @@ case object ASS extends Label // Assertion
  * A lambda expression: (lambda (args...) body...)
  * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
  */
-trait SchemeLambdaExp extends SchemeExp {
+sealed trait SchemeLambdaExp extends SchemeExp {
   // a lambda takes arguments, and has a non-empty body
   def args: List[Identifier]
   def body: List[SchemeExp]

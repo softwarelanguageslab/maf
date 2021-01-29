@@ -22,7 +22,7 @@ object DailyPrecisionBenchmarks
   def baseAnalysis(prg: SchemeExp): Analysis =
     SchemeAnalyses.contextInsensitiveAnalysis(prg)
   def otherAnalyses() = List(
-    (SchemeAnalyses.callSiteContextSensitiveAnalysis, "S_2CS_0")
+    (SchemeAnalyses.callSiteContextSensitiveAnalysis, "1CS")
     //(SchemeAnalyses.adaptiveAnalysisPolicy3(_, 5), "adaptive-policy-3")
   )
 
