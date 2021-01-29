@@ -17,6 +17,11 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
                         libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "1.1.2",
                         libraryDependencies += "com.opencsv" % "opencsv" % "5.3",
                         libraryDependencies += "com.typesafe.akka" %% "akka-actor-typed" % "2.6.10",
+                        libraryDependencies += "io.bullet" %% "borer-core" % "1.6.2",
+                        libraryDependencies += "io.bullet" %% "borer-derivation" % "1.6.2",
+                        libraryDependencies += "io.bullet" %% "borer-compat-akka" % "1.6.2",
+                        libraryDependencies += "io.bullet" %% "borer-compat-circe" % "1.6.2",
+                        libraryDependencies += "io.bullet" %% "borer-compat-scodec" % "1.6.2",
                         libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
                         libraryDependencies += "com.typesafe" % "config" % "1.4.1",
                         /** Compilation options */

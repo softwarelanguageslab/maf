@@ -54,7 +54,7 @@ trait UniqueIdentity {
 }
  */
 
-trait PositionalIdentity {
+sealed trait PositionalIdentity {
   type IDN = Position
   def apply(p: scala.util.parsing.input.Position, t: PTag = noTag): Identity = SimpleIdentity(Position(p.line, p.column, t))
   def newId(pos: Position): IDN = pos

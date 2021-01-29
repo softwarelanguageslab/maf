@@ -3,9 +3,9 @@ package maf.modular.scheme.modf
 import maf.core._
 import maf.util._
 import maf.language.scheme._
+import maf.modular.components._
 
-trait SchemeModFComponents {
-  type ComponentContext
+trait SchemeModFComponents extends ContextSensitiveComponents[SchemeExp]{
   // A SchemeModFComponent represents function calls
   sealed trait SchemeModFComponent extends SmartHash
   // The main function call, i.e. the entry point of the program (corresponding to all top-level code)

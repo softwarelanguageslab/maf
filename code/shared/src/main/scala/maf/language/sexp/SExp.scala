@@ -6,12 +6,10 @@ import maf.language.scheme._
 /** S-expressions and related values */
 sealed trait Value
 object Value {
-  type SString = scala.Predef.String
-  type SBoolean = scala.Boolean
-  case class String(value: SString) extends Value {
+  case class String(value: scala.Predef.String) extends Value {
     override def toString = s""""$value""""
   }
-  case class Symbol(sym: SString) extends Value {
+  case class Symbol(sym: scala.Predef.String) extends Value {
     override def toString = s"'$sym"
   }
   case class Integer(value: BigInt) extends Value {
@@ -20,7 +18,7 @@ object Value {
   case class Real(value: Double) extends Value {
     override def toString = f"$value%e".replace(",", ".") // Might not preserve full precision, but will be in a Scheme-compatible format
   }
-  case class Boolean(value: SBoolean) extends Value {
+  case class Boolean(value: scala.Boolean) extends Value {
     override def toString = if (value) "#t" else "#f"
   }
   case class Character(value: Char) extends Value {
