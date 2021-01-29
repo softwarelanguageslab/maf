@@ -541,13 +541,13 @@ class SchemeInterpreter(
   }
 
   def evalLiteral(lit: sexp.Value, exp: SchemeExp) = lit match {
-    case ValueString(s)    => allocateStr(exp, s)
-    case ValueSymbol(s)    => Value.Symbol(s)
-    case ValueInteger(n)   => Value.Integer(n)
-    case ValueReal(r)      => Value.Real(r)
-    case ValueBoolean(b)   => Value.Bool(b)
-    case ValueCharacter(c) => Value.Character(c)
-    case ValueNil          => Value.Nil
+    case maf.language.sexp.Value.String(s)    => allocateStr(exp, s)
+    case maf.language.sexp.Value.Symbol(s)    => Value.Symbol(s)
+    case maf.language.sexp.Value.Integer(n)   => Value.Integer(n)
+    case maf.language.sexp.Value.Real(r)      => Value.Real(r)
+    case maf.language.sexp.Value.Boolean(b)   => Value.Bool(b)
+    case maf.language.sexp.Value.Character(c) => Value.Character(c)
+    case maf.language.sexp.Value.Nil          => Value.Nil
   }
 
   object Primitives {

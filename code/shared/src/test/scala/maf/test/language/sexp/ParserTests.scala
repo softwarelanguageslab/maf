@@ -29,7 +29,7 @@ class SExpParserSimpleTests extends AnyFlatSpec {
     val parsed = SExpParser.parse(program)
     assert(parsed.size == 1)
     assert(parsed(0).isInstanceOf[SExpValue])
-    assert(parsed(0).asInstanceOf[SExpValue].value == ValueBoolean(true))
+    assert(parsed(0).asInstanceOf[SExpValue].value == Value.Boolean(true))
   }
   "Use of backets or parenthesis" should "not changed the parsed expression" in {
     val program1 = SExpParser.parse("((foo) bar)")

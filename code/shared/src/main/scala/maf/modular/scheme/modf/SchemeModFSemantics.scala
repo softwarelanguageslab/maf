@@ -220,13 +220,13 @@ trait BaseSchemeModFSemantics
         )
     // evaluation helpers
     protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): Value = literal match {
-      case sexp.ValueInteger(n)   => lattice.number(n)
-      case sexp.ValueReal(r)      => lattice.real(r)
-      case sexp.ValueBoolean(b)   => lattice.bool(b)
-      case sexp.ValueString(s)    => allocateString(exp)(s)
-      case sexp.ValueCharacter(c) => lattice.char(c)
-      case sexp.ValueSymbol(s)    => lattice.symbol(s)
-      case sexp.ValueNil          => lattice.nil
+      case sexp.Value.Integer(n)   => lattice.number(n)
+      case sexp.Value.Real(r)      => lattice.real(r)
+      case sexp.Value.Boolean(b)   => lattice.bool(b)
+      case sexp.Value.String(s)    => allocateString(exp)(s)
+      case sexp.Value.Character(c) => lattice.char(c)
+      case sexp.Value.Symbol(s)    => lattice.symbol(s)
+      case sexp.Value.Nil          => lattice.nil
       case _                      => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
     // The current component serves as the lexical environment of the closure.

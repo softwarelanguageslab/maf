@@ -211,21 +211,21 @@ object SExpParser extends TokenParsers {
   import lexical._
 
   def bool: Parser[Value] = elem("boolean", _.isInstanceOf[TBoolean]) ^^ { case TBoolean(b) =>
-    ValueBoolean(b)
+    Value.Boolean(b)
   }
   def integer: Parser[Value] = elem("integer", _.isInstanceOf[TInteger]) ^^ { case TInteger(n) =>
-    ValueInteger(n)
+    Value.Integer(n)
   }
   def real: Parser[Value] = elem("real", _.isInstanceOf[TReal]) ^^ { case TReal(n) =>
-    ValueReal(n)
+    Value.Real(n)
   }
   def character: Parser[Value] = elem("character", _.isInstanceOf[TCharacter]) ^^ { case TCharacter(c) =>
-    ValueCharacter(c)
+    Value.Character(c)
   }
   def string: Parser[Value] = elem("string", _.isInstanceOf[TString]) ^^ { case TString(s) =>
-    ValueString(s)
+    Value.String(s)
   }
-  def nil: Parser[Value] = ((leftParen ~ rightParen) | (leftBracket ~ rightBracket)) ^^^ ValueNil
+  def nil: Parser[Value] = ((leftParen ~ rightParen) | (leftBracket ~ rightBracket)) ^^^ Value.Nil
 
   def value(tag: PTag): Parser[SExp] = Parser { in =>
     (bool | real | integer | character | string | nil)(in) match {
