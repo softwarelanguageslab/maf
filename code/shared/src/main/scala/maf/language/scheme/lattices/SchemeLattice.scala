@@ -5,7 +5,7 @@ import maf.language.CScheme.TID
 import maf.language.scheme._
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
+trait SchemeLattice[L, A <: Address] extends Lattice[L] {
 
   // TODO: make this a type parameter for type safety!
   type K = Any
@@ -43,7 +43,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def getClosures(x: L): Set[(Closure, Option[String])]
 
   /** Extract primitives contained in this value */
-  def getPrimitives(x: L): Set[P]
+  def getPrimitives(x: L): Set[String]
 
   /** Extract continuations contained in this value */
   def getContinuations(x: L): Set[K]
@@ -85,7 +85,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def charTop: L
 
   /** Injection of a primitive function */
-  def primitive(x: P): L
+  def primitive(x: String): L
 
   /** Injection of a closure */
   def closure(x: Closure, name: Option[String]): L
@@ -160,7 +160,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
 }
 
 object SchemeLattice {
-  def apply[L, A <: Address, P <: Primitive](
-      implicit lat: SchemeLattice[L, A, P]
-    ): SchemeLattice[L, A, P] = lat
+  def apply[L, A <: Address](
+      implicit lat: SchemeLattice[L, A]
+    ): SchemeLattice[L, A] = lat
 }

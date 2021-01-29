@@ -1,7 +1,7 @@
 package maf.modular.adaptive.scheme
 
+import maf.core._
 import maf.language.scheme._
-import maf.modular.scheme.modf._
 import maf.modular.adaptive.scheme._
 import maf.core.Position._
 import maf.util.datastructures._
@@ -22,12 +22,12 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   type ComponentContext = List[Position]
   var kPerFn = Map[SchemeLambdaExp, Int]()
   def getContext(cmp: Component): ComponentContext = view(cmp) match {
-    case Main                                   => List.empty
-    case cll: Call[ComponentContext] @unchecked => cll.ctx
+    case Main                 => List.empty
+    case cll: Call @unchecked => cll.ctx
   }
-  def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
+  def adaptCall(cll: Call): Call =
     adaptCall(cll, kPerFn.get(cll.clo._1))
-  def adaptCall(cll: Call[ComponentContext], kLimit: Option[Int]): Call[ComponentContext] =
+  def adaptCall(cll: Call, kLimit: Option[Int]): Call =
     cll.copy(ctx = adaptCtx(cll.ctx, kLimit))
   def allocCtx(
       nam: Option[String],
@@ -48,7 +48,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
 
   var toAdapt: Set[SchemeModule] = Set.empty
   def onCostIncrease(module: SchemeModule, newCost: Int) =
-    if(newCost > budget) {
+    if (newCost > budget) {
       toAdapt += module
     }
 
@@ -87,7 +87,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     ): Unit = {
     val cmps = ms.components
     // find a fitting k
-    var calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
+    var calls = cmps.map(view(_).asInstanceOf[Call])
     var k = calls.maxBy(_.ctx.length).ctx.length
     while (calls.size > target && k > 0) { // TODO: replace with binary search?
       k = k - 1
@@ -139,7 +139,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   /*
    * HELPERS
    */
-    private def takeLargest[X](
+  private def takeLargest[X](
       lst: List[X],
       size: X => Int,
       target: Int
@@ -163,13 +163,13 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   }
   private def getAddrModule(addr: Addr): SchemeModule =
     view(getAddrCmp(addr)) match {
-      case call: Call[_]  => LambdaModule(call.clo._1)
-      case _              => MainModule
+      case call: Call => LambdaModule(call.clo._1)
+      case _          => MainModule
     }
-  private def getParentModule(call: Call[_]): SchemeModule = {
+  private def getParentModule(call: Call): SchemeModule = {
     val parent = call.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data
     view(parent) match {
-      case Main => MainModule
+      case Main            => MainModule
       case Call(clo, _, _) => LambdaModule(clo._1)
     }
   }

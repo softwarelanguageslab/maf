@@ -54,7 +54,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ReturnValue[Sch
   def allocCtx(
       exp: SchemeExp,
       env: Env,
-      modFCmp: SchemeModFComponent,
+      modFCmp: InnerModFAnalysis#SchemeModFComponent,
       caller: Component
     ): ComponentContext
 
@@ -62,12 +62,12 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ReturnValue[Sch
   type AllocationContext
   def allocVar(
       id: Identifier,
-      modFCmp: SchemeModFComponent,
+      modFCmp: InnerModFAnalysis#SchemeModFComponent,
       cmp: Component
     ): VarAddr[AllocationContext]
   def allocPtr(
       exp: SchemeExp,
-      modFCmp: SchemeModFComponent,
+      modFCmp: InnerModFAnalysis#SchemeModFComponent,
       cmp: Component
     ): PtrAddr[AllocationContext]
 

@@ -6,7 +6,7 @@ import maf.language.scheme.lattices._
 import maf.test.lattice._
 
 // inherits the standard lattice tests from `LatticeTest`
-class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeLattice: SchemeLattice[L, _, _]) extends LatticeTest(gen) {
+class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeLattice: SchemeLattice[L, _]) extends LatticeTest(gen) {
   // because of higher entropy in Scheme lattice values, verify each property with more examples!
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 1000)

@@ -17,7 +17,7 @@ trait SchemeDomain extends AbstractDomain[SchemeExp] {
   val primitives: SchemePrimitives[Value, Address]
 
   /** Implementation of abstract values. */
-  implicit val lattice: SchemeLattice[Value, Address, Prim]
+  implicit val lattice: SchemeLattice[Value, Address]
 }
 
 trait ModularSchemeDomain extends SchemeDomain {

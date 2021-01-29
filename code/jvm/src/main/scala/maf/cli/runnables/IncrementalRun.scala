@@ -1,11 +1,9 @@
 package maf.cli.runnables
 
 import maf.language.CScheme.CSchemeParser
-import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
 import maf.modular.incremental.IncrementalLogging
 import maf.modular.incremental.scheme.SchemeAnalyses._
-import maf.modular.scheme.modf.SchemeModFComponent
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
