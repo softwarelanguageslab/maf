@@ -16,21 +16,26 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   * - keeping track, for each dependency, which modules have components (at least one) that have been triggered (at least once) by that dependency
   */
   case class AnalysisSummary(content: Map[SchemeExp, ModuleSummary], depFns: Map[Dependency, Set[SchemeExp]]) {
+    def apply(fn: SchemeExp) = content(fn)
     def get(fn: SchemeExp) =
       content.getOrElse(fn, ModuleSummary.empty)
-    def addComponent(cmp: Component) = {
-      val fun = expr(cmp)
+    def addComponent(cmp: Component): AnalysisSummary =
+      addComponent(expr(cmp), cmp)
+    def addComponent(fun: SchemeExp, cmp: Component): AnalysisSummary = {
       val prv = this.get(fun)
       val upd = prv.addComponent(cmp)
+      onCostIncrease(fun, upd.cost)
       AnalysisSummary(content + (fun -> upd), depFns)
     }
-    def addDependency(cmp: Component, dep: Dependency) = {
-      val fun = expr(cmp)
+    def addDependency(cmp: Component, dep: Dependency): AnalysisSummary =
+      addDependency(expr(cmp), cmp, dep)
+    def addDependency(fun: SchemeExp, cmp: Component, dep: Dependency): AnalysisSummary = {
       // update content
       val prv = content(fun) // guaranteed to have a module summary already!
       val upd = prv.addDependency(cmp, dep)
       // update depFns
       val fns = depFns.getOrElse(dep, Set.empty) + fun
+      onCostIncrease(fun, upd.cost)
       AnalysisSummary(content + (fun -> upd), depFns + (dep -> fns))
     }
     def clearDependency(dep: Dependency) = {
@@ -92,10 +97,12 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   }
 
   // keep track of a summary for the current analysis
-  var summary: AnalysisSummary = AnalysisSummary.empty
+  var summary: AnalysisSummary = AnalysisSummary.empty.addComponent(initialComponent)
+  // allow to detect when the cost of a given module increases
+  def onCostIncrease(fn: SchemeExp, newCost: Int)
   // update the summary each time a new component is discovered
   override def onNewComponent(cmp: Component, call: Call[ComponentContext]) =
-    summary = summary.addComponent(cmp)
+    summary = summary.addComponent(call.clo._1, cmp)
   // update the summary each time a dependency triggers a component
   override def trigger(dep: Dependency): Unit = {
     deps.getOrElse(dep, Set.empty).foreach { cmp =>

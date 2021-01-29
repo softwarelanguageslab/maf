@@ -46,6 +46,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
 
   /** Adapting the analysis */
   var toAdapt: Set[SchemeExp] = Set.empty
+  def onCostIncrease(fun: SchemeExp, newCost: Int) =
+    if(newCost > budget) {
+      toAdapt += fun
+    }
+
   override protected def adaptAnalysis(): Unit = {
     super.adaptAnalysis()
     if (toAdapt.nonEmpty) {
@@ -54,6 +59,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       // (a) too many components for the given module
       // (b) too many reanalyses of the same components (of the corresponding module)
       toAdapt.foreach { fn =>
+        println(s"Adapting $fn")
         // determine the root cause of the scalability problem for function fn
         val ms = summary.get(fn)
         val total = ms.cost
