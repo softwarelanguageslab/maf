@@ -17,6 +17,7 @@ trait BaseSchemeModFSemantics
        with GlobalStore[SchemeExp]
        with ReturnValue[SchemeExp]
        with SchemeDomain
+       with SchemeModFComponents
        with ContextSensitiveComponents[SchemeExp] {
 
   // the environment in which the ModF analysis is executed
@@ -30,22 +31,22 @@ trait BaseSchemeModFSemantics
   def expr(cmp: Component): SchemeExp = body(cmp)
   def body(cmp: Component): SchemeExp = body(view(cmp))
   def body(cmp: SchemeModFComponent): SchemeExp = cmp match {
-    case Main                      => program
-    case c: Call[ComponentContext] => SchemeBody(c.lambda.body)
+    case Main    => program
+    case c: Call => SchemeBody(c.lambda.body)
   }
 
   type ComponentContent = Option[lattice.Closure]
   def content(cmp: Component) = view(cmp) match {
-    case Main                      => None
-    case c: Call[ComponentContext] => Some(c.clo)
+    case Main    => None
+    case c: Call => Some(c.clo)
   }
   def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
-    case Main                      => None
-    case c: Call[ComponentContext] => Some(c.ctx)
+    case Main    => None
+    case c: Call => Some(c.ctx)
   }
 
   /** Creates a new component, given a closure, context and an optional name. */
-  def newComponent(call: Call[ComponentContext]): Component
+  def newComponent(call: Call): Component
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
   def allocCtx(
@@ -72,7 +73,7 @@ trait BaseSchemeModFSemantics
     protected def fnBody: SchemeExp = body(view(component))
     protected def fnEnv: Env = view(component) match {
       case Main => baseEnv
-      case c: Call[ComponentContext] =>
+      case c: Call =>
         val extEnv = c.env.extend(c.lambda.args.map { id =>
           (id.name, allocVar(id, component))
         })

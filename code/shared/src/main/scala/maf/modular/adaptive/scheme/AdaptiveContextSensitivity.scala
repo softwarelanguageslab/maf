@@ -48,7 +48,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     // trigger the dependency
     super.trigger(dep)
   }
-  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = {
+  override def onNewComponent(cmp: Component, call: Call) = {
     // increase the count
     incCount(cmp)
     // bookkeeping: register every new component with the corresponding lambda
@@ -76,11 +76,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   var kPerFn = Map[SchemeExp, Int]()
   def getContext(cmp: Component): ComponentContext = view(cmp) match {
     case Main                                   => List.empty
-    case cll: Call[ComponentContext] @unchecked => cll.ctx
+    case cll: Call @unchecked => cll.ctx
   }
-  def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
+  def adaptCall(cll: Call): Call =
     adaptCall(cll, kPerFn.get(cll.clo._1))
-  def adaptCall(cll: Call[ComponentContext], kLimit: Option[Int]): Call[ComponentContext] =
+  def adaptCall(cll: Call, kLimit: Option[Int]): Call =
     cll.copy(ctx = adaptCtx(cll.ctx, kLimit))
   def allocCtx(
       nam: Option[String],
@@ -133,7 +133,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       target: Int
     ): Unit = {
     // find a fitting k
-    var calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
+    var calls = cmps.map(view(_).asInstanceOf[Call])
     var k = calls.maxBy(_.ctx.length).ctx.length
     while (calls.size > target && k > 0) { // TODO: replace with binary search?
       k = k - 1
@@ -145,7 +145,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     // TODO: do this earlier without dropping all context first
     if (calls.size > target) {
       val parentCmps = calls.map(cll => cll.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
-      val parentLambda = view(parentCmps.head).asInstanceOf[Call[ComponentContext]].clo._1
+      val parentLambda = view(parentCmps.head).asInstanceOf[Call].clo._1
       reduceComponents(parentLambda, parentCmps, target)
     }
   }

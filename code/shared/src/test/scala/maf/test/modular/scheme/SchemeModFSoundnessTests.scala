@@ -23,14 +23,6 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
     ) = new SimpleSchemeModFAnalysis(program) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 }
 
-trait BigStepSchemeModFPrimCSSensitivity extends SchemeModFSoundnessTests {
-  def name = "big-step semantics with call-site sensitivity for primitives"
-  def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
-    with SchemeConstantPropagationDomain
-    with SchemeModFCompoundSensitivities.TrackLowToHighSensitivity.S_CS_0
-    with LIFOWorklistAlgorithm[SchemeExp]
-}
-
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "small-step semantics"
   def analysis(program: SchemeExp) = new ModAnalysis(program)
@@ -78,10 +70,6 @@ trait SimpleAdaptiveSchemeModF extends SchemeModFSoundnessTests {
 
 class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with AllSequentialBenchmarks {
   override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
-}
-
-class BigStepSchemeModFPrimCSSensitivitySoundnessTests extends BigStepSchemeModFPrimCSSensitivity with AllSequentialBenchmarks {
-  override def isSlow(b: Benchmark) = true
 }
 
 class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllSequentialBenchmarks {
