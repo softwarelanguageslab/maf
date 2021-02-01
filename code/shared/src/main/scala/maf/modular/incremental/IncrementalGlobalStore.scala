@@ -142,7 +142,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ***** Incremental update: actually perform the incremental analysis ***** */
   /* ************************************************************************* */
 
-  var tarjanFlag: Boolean = optimisationFlag // Flag to enable the latest optimization.
+  var tarjanFlag: Boolean = true //optimisationFlag // Flag to enable the latest optimization.
 
   override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean): Unit = {
     if (tarjanFlag)
@@ -174,9 +174,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
             trigger(AddrDependency(addr))
             // TODO: should the thing underneath be done for all addresses in a SCC? Probably yes due to the fact that an SCC may contain "inner cycles".
+            // However, doing so for every address leads to ElementNotFoundExceptions in deleteProvenance (predicate of first if test).
             scc.foreach { addr =>
               inter.store += addr -> lattice.bottom
-              store += addr -> lattice.bottom
+              intra.store += addr -> lattice.bottom
               provenance -= addr
             }
             SCCs -= scc

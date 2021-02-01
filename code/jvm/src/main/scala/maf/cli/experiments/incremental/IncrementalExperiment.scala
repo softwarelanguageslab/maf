@@ -44,7 +44,8 @@ trait IncrementalExperiment[E <: Expression] {
       try onBenchmark(file)
       catch {
         case e: Exception if catchErrors =>
-          writeErrln(s"Running $file resulted in an exception: ${e.getMessage}\n")
+          writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
+          e.getStackTrace.take(5).foreach(ste => writeErrln(ste.toString))
           reportError(file)
         case e: VirtualMachineError =>
           writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
