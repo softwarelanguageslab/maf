@@ -15,8 +15,6 @@ trait AdaptiveSchemeModFSemantics
        with SchemeModFSemantics
        with BigStepModFSemantics
        with ModularSchemeDomain {
-  // Environments with components
-
   // Definition of components
   type ComponentData = SchemeModFComponent
   // TODO: clean up this mess!

@@ -5,6 +5,7 @@ import maf.language.scheme._
 import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util.benchmarks._
+import maf.util.Writer
 
 import scala.concurrent.duration._
 
@@ -56,15 +57,22 @@ object AnalysisComparisonAlt1
     // run some regular k-cfa analyses
     List(0, 1, 2).map { k =>
       (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
+    } ++
+    // run some adaptive analyses
+    List(10,50,100,5000).map { b =>
+      (SchemeAnalyses.adaptiveAnalysis(_, b), s"adaptive (b = $b)")
     }
   def main(args: Array[String]) = runBenchmarks(
     Set(
-      "test/R5RS/mceval.scm"
+      "test/R5RS/various/mceval.scm"
     )
   )
 
   def runBenchmarks(benchmarks: Set[Benchmark]) = {
     benchmarks.foreach(runBenchmark)
     println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
+    Writer.setDefaultWriter(Writer.open("benchOutput/precision/adaptive-precision-benchmarks-alt.csv"))
+    Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
+    Writer.closeDefaultWriter()
   }
 }

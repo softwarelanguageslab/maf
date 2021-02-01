@@ -70,13 +70,13 @@ object SchemeAnalyses {
     with RandomWorklistAlgorithm[SchemeExp] {
     override def toString() = "full-argument-sensitivity"
   }
-  def adaptiveAnalysis(prg: SchemeExp, k: Int) = new AdaptiveModAnalysis(prg)
+  def adaptiveAnalysis(prg: SchemeExp, b: Int) = new AdaptiveModAnalysis(prg)
     with AdaptiveSchemeModFSemantics
     with AdaptiveContextSensitivity
     with SchemeConstantPropagationDomain
     with RandomWorklistAlgorithm[SchemeExp] {
-    val budget = k
-    override def toString() = "adaptive-analysis"
+    lazy val budget = b
+    override def toString() = s"adaptive-analysis (budget = $b)"
   }
   def parallelKCFAAnalysis(
       prg: SchemeExp,
