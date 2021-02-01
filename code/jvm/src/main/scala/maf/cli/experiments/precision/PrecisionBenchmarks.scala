@@ -47,17 +47,6 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       throw new Exception("Stub primitive: call not supported")
   }
   val emptyEnv = Environment[BaseAddr](Iterable.empty)
-  case class LambdaIdnEq(lambda: SchemeLambdaExp) extends SchemeLambdaExp {
-    def idn = lambda.idn
-    def args = lambda.args
-    def body = lambda.body
-    def varArgId = lambda.varArgId
-    override def hashCode() = lambda.idn.hashCode()
-    override def equals(that: Any) = that match {
-      case LambdaIdnEq(l) => l.idn == this.lambda.idn
-      case _              => false
-    }
-  }
   private def convertV(analysis: Analysis)(value: analysis.modularLatticeWrapper.modularLattice.Value): baseDomain.Value = value match {
     case analysis.modularLatticeWrapper.modularLattice.Nil          => baseDomain.Nil
     case analysis.modularLatticeWrapper.modularLattice.Bool(b)      => baseDomain.Bool(b)
@@ -66,8 +55,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case analysis.modularLatticeWrapper.modularLattice.Char(c)      => baseDomain.Char(c)
     case analysis.modularLatticeWrapper.modularLattice.Str(s)       => baseDomain.Str(s)
     case analysis.modularLatticeWrapper.modularLattice.Symbol(s)    => baseDomain.Symbol(s)
-    case analysis.modularLatticeWrapper.modularLattice.Prim(ps)     => baseDomain.Prim(ps.map(p => StubPrimitive(p.name)))
-    case analysis.modularLatticeWrapper.modularLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((LambdaIdnEq(c._1._1), emptyEnv), None)))
+    case analysis.modularLatticeWrapper.modularLattice.Prim(ps)     => baseDomain.Prim(ps)
+    case analysis.modularLatticeWrapper.modularLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((c._1._1, emptyEnv), None)))
     case analysis.modularLatticeWrapper.modularLattice.Cons(a, d)   => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
     case analysis.modularLatticeWrapper.modularLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
     case analysis.modularLatticeWrapper.modularLattice.Vec(s, e)    => baseDomain.Vec(s, e.view.mapValues(convertValue(analysis)).toMap)
@@ -90,8 +79,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case SchemeInterpreter.Value.Void         => baseLattice.void
     case SchemeInterpreter.Value.Undefined(_) => baseLattice.bottom
     case SchemeInterpreter.Value.Clo(l, _, _) =>
-      baseLattice.closure((LambdaIdnEq(l), emptyEnv), None) // TODO: when names are added to the abstract interpreter, preserve that information here
-    case SchemeInterpreter.Value.Primitive(p) => baseLattice.primitive(StubPrimitive(p.name))
+      baseLattice.closure((l, emptyEnv), None) // TODO: when names are added to the abstract interpreter, preserve that information here
+    case SchemeInterpreter.Value.Primitive(p) => baseLattice.primitive(p)
     case SchemeInterpreter.Value.Str(s)       => baseLattice.string(s)
     case SchemeInterpreter.Value.Symbol(s)    => baseLattice.symbol(s)
     case SchemeInterpreter.Value.Integer(i)   => baseLattice.number(i)

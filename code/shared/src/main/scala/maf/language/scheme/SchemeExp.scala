@@ -5,7 +5,7 @@ import maf.language.change.ChangeExp
 import maf.language.sexp._
 
 /** Abstract syntax of Scheme programs */
-trait SchemeExp extends Expression
+sealed trait SchemeExp extends Expression
 
 case object AND extends Label // And
 case object BEG extends Label // Begin
@@ -55,7 +55,7 @@ case object ASS extends Label // Assertion
  * A lambda expression: (lambda (args...) body...)
  * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
  */
-trait SchemeLambdaExp extends SchemeExp {
+sealed trait SchemeLambdaExp extends SchemeExp {
   // a lambda takes arguments, and has a non-empty body
   def args: List[Identifier]
   def body: List[SchemeExp]
@@ -292,7 +292,7 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp {
 /** Used to create a begin if there are multiple statements, and a single exp if there is only one */
 object SchemeBody {
   def apply(exps: List[SchemeExp]): SchemeExp = exps match {
-    case Nil        => SchemeValue(ValueBoolean(false), NoCodeIdentity) /* undefined */
+    case Nil        => SchemeValue(Value.Boolean(false), NoCodeIdentity) /* undefined */
     case exp :: Nil => exp
     case exp :: _   => SchemeBegin(exps, exp.idn)
   }
@@ -307,10 +307,10 @@ object SchemeCond {
     if (clauses.isEmpty) {
       throw new Exception(s"Invalid Scheme cond without clauses ($idn)")
     } else {
-      clauses.foldRight[SchemeExp](SchemeValue(ValueBoolean(false /* undefined */ ), NoCodeIdentity))((clause, acc) =>
+      clauses.foldRight[SchemeExp](SchemeValue(Value.Boolean(false /* undefined */ ), NoCodeIdentity))((clause, acc) =>
         clause match {
-          case (SchemeValue(ValueBoolean(true), _), body) => SchemeBody(body)
-          case (cond, Nil)                                =>
+          case (SchemeValue(Value.Boolean(true), _), body) => SchemeBody(body)
+          case (cond, Nil)                                 =>
             /* Body is empty. R5RS states that "If the selected clause contains only the
              * test and no expressions ,then the value of the test is returned
              * as the result" */
@@ -336,7 +336,7 @@ object SchemeWhen {
       body: List[SchemeExp],
       idn: Identity
     ): SchemeExp =
-    SchemeIf(pred, SchemeBody(body), SchemeValue(ValueBoolean(false), idn), idn)
+    SchemeIf(pred, SchemeBody(body), SchemeValue(Value.Boolean(false), idn), idn)
 }
 
 /**
@@ -349,7 +349,7 @@ object SchemeUnless {
       body: List[SchemeExp],
       idn: Identity
     ): SchemeExp =
-    SchemeIf(pred, SchemeValue(ValueBoolean(false), idn), SchemeBody(body), idn)
+    SchemeIf(pred, SchemeValue(Value.Boolean(false), idn), SchemeBody(body), idn)
 }
 
 /**
@@ -569,15 +569,15 @@ case class SchemePair(
     extends SchemeExp {
   override def toString: String = s"`($contentToString)"
   private def contentToString: String = cdr match {
-    case SchemeValue(ValueNil, _) => printElement(car)
-    case pair: SchemePair         => s"${printElement(car)} ${pair.contentToString}"
-    case _                        => s"${printElement(car)} . ${printElement(cdr)}"
+    case SchemeValue(Value.Nil, _) => printElement(car)
+    case pair: SchemePair          => s"${printElement(car)} ${pair.contentToString}"
+    case _                         => s"${printElement(car)} . ${printElement(cdr)}"
   }
   private def printElement(elm: SchemeExp): String = elm match {
-    case SchemeValue(ValueSymbol(sym), _) => sym
-    case SchemeValue(v, _)                => v.toString
-    case pair: SchemePair                 => s"(${pair.contentToString})"
-    case _                                => s",$elm"
+    case SchemeValue(Value.Symbol(sym), _) => sym
+    case SchemeValue(v, _)                 => v.toString
+    case pair: SchemePair                  => s"(${pair.contentToString})"
+    case _                                 => s",$elm"
   }
   def fv: Set[String] = car.fv ++ cdr.fv
   val label: Label = PAI
@@ -620,3 +620,24 @@ case class SchemeCodeChange(
     idn: Identity)
     extends ChangeExp[SchemeExp]
        with SchemeExp
+
+trait CSchemeExp extends SchemeExp
+
+case object FRK extends Label // Fork
+case object JOI extends Label // Join
+
+/** Fork a thread with an expression to evaluate. */
+case class CSchemeFork(body: SchemeExp, idn: Identity) extends CSchemeExp {
+  def fv: Set[String] = body.fv
+  def label: Label = FRK
+  def subexpressions: List[Expression] = List(body)
+  override val height: Int = body.height + 1
+}
+
+/** Join a thread, given an expression that should evaluate to a TID. */
+case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp {
+  def fv: Set[String] = tExp.fv
+  def label: Label = JOI
+  def subexpressions: List[Expression] = List(tExp)
+  override val height: Int = tExp.height + 1
+}

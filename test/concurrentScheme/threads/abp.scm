@@ -84,4 +84,3 @@
 (join s)
 (join c)
 
-(display-recorded)

@@ -2,32 +2,47 @@ package maf.core
 
 import maf.util.SmartHash
 
-trait Environment[A <: Address] extends SmartHash {
+sealed trait Environment[A <: Address] extends SmartHash {
+  type This <: Environment[A]
 
   /** Restrict the environment to only certain keys */
-  def restrictTo(keys: Set[String]): Environment[A]
+  def restrictTo(keys: Set[String]): This
 
   /** Looks up a value in the environment */
   def lookup(name: String): Option[A]
 
   /** Extend the environment */
-  def extend(name: String, a: A): Environment[A]
-  def extend(values: Iterable[(String, A)]): Environment[A]
+  def extend(name: String, a: A): This
+  def extend(values: Iterable[(String, A)]): This
 
   /** Mapping over the environment */
-  def mapAddrs(f: A => A): Environment[A]
+  def mapAddrs(f: A => A): This
 }
 
 /** Mapping from variable name to addresses */
 case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Environment[A] {
-  def restrictTo(keys: Set[String]): Environment[A] = this.copy(content = content.view.filterKeys(keys).toMap)
+  type This = BasicEnvironment[A]
+  def restrictTo(keys: Set[String]): BasicEnvironment[A] = this.copy(content = content.view.filterKeys(keys).toMap)
   def lookup(name: String): Option[A] = content.get(name)
-  def extend(name: String, a: A): Environment[A] = this.copy(content = content + (name -> a))
-  def extend(values: Iterable[(String, A)]): Environment[A] = this.copy(content = content ++ values)
-  def mapAddrs(f: A => A): Environment[A] = this.copy(content.view.mapValues(f).toMap)
+  def extend(name: String, a: A): BasicEnvironment[A] = this.copy(content = content + (name -> a))
+  def extend(values: Iterable[(String, A)]): BasicEnvironment[A] = this.copy(content = content ++ values)
+  def mapAddrs(f: A => A): BasicEnvironment[A] = this.copy(content.view.mapValues(f).toMap)
 
   /** Better printing. */
   override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
+}
+
+case class WrappedEnv[A <: Address, D](
+    env: Environment[A],
+    depth: Int,
+    data: D)
+    extends Environment[A] {
+  type This = WrappedEnv[A, D]
+  def restrictTo(keys: Set[String]): WrappedEnv[A, D] = this.copy(env = env.restrictTo(keys))
+  def lookup(name: String): Option[A] = env.lookup(name)
+  def extend(name: String, a: A): WrappedEnv[A, D] = this.copy(env = env.extend(name, a))
+  def extend(values: Iterable[(String, A)]): WrappedEnv[A, D] = this.copy(env = env.extend(values))
+  def mapAddrs(f: A => A): WrappedEnv[A, D] = this.copy(env = env.mapAddrs(f))
 }
 
 object Environment {

@@ -18,7 +18,7 @@ trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
   implicit val arbBinop: Arbitrary[SchemeOp.SchemeOp2] = Arbitrary(anyBinaryOp)
   /* ternary ops */
   val anyTernaryOp: Gen[SchemeOp.SchemeOp3] = Gen.oneOf(SchemeOp.ternaryOperators)
-  implicit val arbTernop: Arbitrary[SchemeOp.SchemeOp3]= Arbitrary(anyTernaryOp)
+  implicit val arbTernop: Arbitrary[SchemeOp.SchemeOp3] = Arbitrary(anyTernaryOp)
   /* generators for specific values */
   def anyPai: Gen[L]
   def anyVec: Gen[L]
@@ -113,7 +113,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     val anyAddr: Gen[SimpleAddr] = Gen.choose(0, 100).map(SimpleAddr(_)) // addresses are faked in 100 different variations
     val anyClosure: Gen[(valLat.Closure, Option[String])] = for {
       nm1 <- Gen.choose(0, 100) // lambdas are faked in 100 different variations
-      lam = SchemeLambda(List(), List(SchemeValue(ValueInteger(nm1), Identity.none)), Identity.none)
+      lam = SchemeLambda(List(), List(SchemeValue(Value.Integer(nm1), Identity.none)), Identity.none)
       nm2 <- Gen.choose(0, 100) // environments are faked in 100 different variations
     } yield ((lam, emptyEnv), None)
     // a generator for each type of value
@@ -124,7 +124,8 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     val anyReaV: Gen[V] = reaGen.any.retryUntil(_ != RealLattice[R].bottom).map(modularLattice.Real)
     val anyChrV: Gen[V] = chrGen.any.retryUntil(_ != CharLattice[C].bottom).map(modularLattice.Char)
     val anySymV: Gen[V] = symGen.any.retryUntil(_ != SymbolLattice[Sym].bottom).map(modularLattice.Symbol)
-    val anyPrmV: Gen[V] = pickAtMost(3, Gen.oneOf(primitives.allPrimitives)).retryUntil(_.nonEmpty).map(ps => modularLattice.Prim(ps.toSet))
+    val anyPrmV: Gen[V] =
+      pickAtMost(3, Gen.oneOf(primitives.allPrimitives.toList.map(_._1))).retryUntil(_.nonEmpty).map(ps => modularLattice.Prim(ps.toSet))
     val anyPtrV: Gen[V] = pickAtMost(3, anyAddr).retryUntil(_.nonEmpty).map(ps => modularLattice.Pointer(ps.toSet))
     val anyCloV: Gen[V] = pickAtMost(3, anyClosure).retryUntil(_.nonEmpty).map(cs => modularLattice.Clo(cs.toSet))
     lazy val anyPaiV: Gen[V] = for {

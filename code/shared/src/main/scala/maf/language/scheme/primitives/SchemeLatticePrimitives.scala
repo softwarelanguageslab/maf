@@ -8,7 +8,7 @@ import maf.util.Monoid
 /** Help code for manually implementing Scheme primitives. */
 trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
 
-  val lat: SchemeLattice[V, A, SchemePrimitive[V, A]]
+  val lat: SchemeLattice[V, A]
   lazy val latMon: Monoid[V] = maf.util.MonoidInstances.latticeMonoid[V](lat)
   lazy val mfMon: Monoid[MayFail[V, Error]] = maf.util.MonoidInstances.mayFail[V](latMon)
 
@@ -60,107 +60,109 @@ trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
     )
 }
 
-class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V, A]])
+class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A])
     extends SchemePrimitives[V, A]
        with PrimitiveBuildingBlocks[V, A] {
-  val lat: SchemeLattice[V, A, SchemePrimitive[V, A]] = schemeLattice
+  val lat: SchemeLattice[V, A] = schemeLattice
 
   // See comments in SchemeR5RSBenchmarks.scala for a list of all supported and unsupported primitives
-  def allPrimitives: List[SchemePrimitive[V, A]] = {
+  def allPrimitives: Map[String, SchemePrimitive[V, A]] = {
     import PrimitiveDefs._
-    List(
-      `modulo`,
-      `*`,
-      `+`,
-      `-`,
-      `/`,
-      `acos`,
-      `asin`,
-      `atan`,
-      `boolean?`,
-      `call/cc`,
-      `car`,
-      `cdr`,
-      `ceiling`,
-      `char->integer`,
-      `char->string`,
-      `char-ci<?`,
-      `char-ci=?`,
-      `char-downcase`,
-      `char-lower-case?`,
-      `char-upcase`,
-      `char-upper-case?`,
-      `char<?`,
-      `char=?`,
-      `char?`,
-      `cons`,
-      `cos`,
-      `eq?`,
-      `exact->inexact`,
-      `expt`,
-      `floor`,
-      `inexact->exact`,
-      `integer->char`,
-      `integer?`,
-      `list`,
-      `log`,
-      `make-string`,
-      `max`,
-      `min`,
-      `null?`,
-      `number->string`,
-      `number?`,
-      `pair?`,
-      `procedure?`,
-      `quotient`,
-      `real?`,
-      `remainder`,
-      `round`,
-      `set-car!`,
-      `set-cdr!`,
-      `sin`,
-      `sqrt`,
-      `string->number`,
-      `string->symbol`,
-      `string-append`,
-      `string-length`,
-      `string-ref`,
-      `string-set!`,
-      `string<?`,
-      `string?`,
-      `substring`,
-      `symbol->string`,
-      `symbol?`,
-      `tan`,
-      `make-vector`,
-      `vector`,
-      `vector-length`,
-      `vector-ref`,
-      `vector-set!`,
-      `vector?`,
-      `<`,
-      `=`,
-      /* IO primitives */
-      `input-port?`,
-      `output-port?`,
-      `open-input-file`,
-      `open-input-string`,
-      `open-output-file`,
-      `close-input-port`,
-      `close-output-port`,
-      `current-input-port`,
-      `current-output-port`,
-      `read-char`,
-      `peek-char`,
-      `write-char`,
-      `read`,
-      `write`,
-      `display`,
-      `eof-object?`,
-      /* Other primitives that are not R5RS */
-      `random`,
-      `error`
-    ) ++ CSchemePrimitives
+    ofList(
+      List(
+        `modulo`,
+        `*`,
+        `+`,
+        `-`,
+        `/`,
+        `acos`,
+        `asin`,
+        `atan`,
+        `boolean?`,
+        `call/cc`,
+        `car`,
+        `cdr`,
+        `ceiling`,
+        `char->integer`,
+        `char->string`,
+        `char-ci<?`,
+        `char-ci=?`,
+        `char-downcase`,
+        `char-lower-case?`,
+        `char-upcase`,
+        `char-upper-case?`,
+        `char<?`,
+        `char=?`,
+        `char?`,
+        `cons`,
+        `cos`,
+        `eq?`,
+        `exact->inexact`,
+        `expt`,
+        `floor`,
+        `inexact->exact`,
+        `integer->char`,
+        `integer?`,
+        `list`,
+        `log`,
+        `make-string`,
+        `max`,
+        `min`,
+        `null?`,
+        `number->string`,
+        `number?`,
+        `pair?`,
+        `procedure?`,
+        `quotient`,
+        `real?`,
+        `remainder`,
+        `round`,
+        `set-car!`,
+        `set-cdr!`,
+        `sin`,
+        `sqrt`,
+        `string->number`,
+        `string->symbol`,
+        `string-append`,
+        `string-length`,
+        `string-ref`,
+        `string-set!`,
+        `string<?`,
+        `string?`,
+        `substring`,
+        `symbol->string`,
+        `symbol?`,
+        `tan`,
+        `make-vector`,
+        `vector`,
+        `vector-length`,
+        `vector-ref`,
+        `vector-set!`,
+        `vector?`,
+        `<`,
+        `=`,
+        /* IO primitives */
+        `input-port?`,
+        `output-port?`,
+        `open-input-file`,
+        `open-input-string`,
+        `open-output-file`,
+        `close-input-port`,
+        `close-output-port`,
+        `current-input-port`,
+        `current-output-port`,
+        `read-char`,
+        `peek-char`,
+        `write-char`,
+        `read`,
+        `write`,
+        `display`,
+        `eof-object?`,
+        /* Other primitives that are not R5RS */
+        `random`,
+        `error`
+      ) ++ CSchemePrimitives
+    )
 
   }
 
@@ -294,7 +296,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
   object PrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
 
-    val lat: SchemeLattice[V, A, SchemePrimitive[V, A]] = schemeLattice
+    val lat: SchemeLattice[V, A] = schemeLattice
 
     import schemeLattice._
     val unspecified = bool(false) /* TODO: introduce an "unspecified" value */

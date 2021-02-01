@@ -503,14 +503,14 @@ trait SmallStepModConcSemantics
 
     // Evaluate literals by in injecting them in the lattice.
     private def evalLiteralValue(exp: SchemeExp, literal: sexp.Value): Value = literal match {
-      case sexp.ValueBoolean(b)   => lattice.bool(b)
-      case sexp.ValueCharacter(c) => lattice.char(c)
-      case sexp.ValueInteger(n)   => lattice.number(n)
-      case sexp.ValueNil          => lattice.nil
-      case sexp.ValueReal(r)      => lattice.real(r)
-      case sexp.ValueString(s)    => allocateStr(exp)(s)
-      case sexp.ValueSymbol(s)    => lattice.symbol(s)
-      case _                      => throw new Exception(s"Unsupported Scheme literal: $literal")
+      case sexp.Value.Boolean(b)   => lattice.bool(b)
+      case sexp.Value.Character(c) => lattice.char(c)
+      case sexp.Value.Integer(n)   => lattice.number(n)
+      case sexp.Value.Nil          => lattice.nil
+      case sexp.Value.Real(r)      => lattice.real(r)
+      case sexp.Value.String(s)    => allocateStr(exp)(s)
+      case sexp.Value.Symbol(s)    => lattice.symbol(s)
+      case _                       => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
 
     // Function application.
@@ -526,7 +526,7 @@ trait SmallStepModConcSemantics
           .getPrimitives(fval)
           .map(prm =>
             Kont(
-              prm.call(fexp, args, StoreAdapter, interpreterBridge) match {
+              primitives(prm).call(fexp, args, StoreAdapter, interpreterBridge) match {
                 case MayFailSuccess((vlu, _)) => vlu
                 case MayFailBoth((vlu, _), _) => vlu
                 case MayFailError(_)          => lattice.bottom

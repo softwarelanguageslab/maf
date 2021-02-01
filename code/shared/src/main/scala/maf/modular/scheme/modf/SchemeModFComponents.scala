@@ -4,32 +4,35 @@ import maf.core._
 import maf.util._
 import maf.language.scheme._
 
-// A SchemeModFComponent represents function calls
-sealed trait SchemeModFComponent extends SmartHash
-// The main function call, i.e. the entry point of the program (corresponding to all top-level code)
-case object Main extends SchemeModFComponent {
-  override def toString: String = "main"
-}
-// A call to a specific closure
-case class Call[Context](
-    clo: (SchemeLambdaExp, Environment[Address]),
-    nam: Option[String],
-    ctx: Context)
-    extends SchemeModFComponent {
-  // convenience accessors
-  lazy val (lambda, env) = clo
-  // TODO: move this to SchemeLambdaExp
-  def lambdaName: String = nam match {
-    case None       => s"λ@${lambda.idn}"
-    case Some(name) => name
+trait SchemeModFComponents {
+  type ComponentContext
+  // A SchemeModFComponent represents function calls
+  sealed trait SchemeModFComponent extends SmartHash
+  // The main function call, i.e. the entry point of the program (corresponding to all top-level code)
+  case object Main extends SchemeModFComponent {
+    override def toString: String = "main"
   }
-  override def toString: String = s"$lambdaName [$ctx]"
+  // A call to a specific closure
+  case class Call(
+      clo: (SchemeLambdaExp, Environment[Address]),
+      nam: Option[String],
+      ctx: ComponentContext)
+      extends SchemeModFComponent {
+    // convenience accessors
+    lazy val (lambda, env) = clo
+    // TODO: move this to SchemeLambdaExp
+    def lambdaName: String = nam match {
+      case None       => s"λ@${lambda.idn}"
+      case Some(name) => name
+    }
+    override def toString: String = s"$lambdaName [$ctx]"
+  }
 }
 
 trait StandardSchemeModFComponents extends BaseSchemeModFSemantics {
   type Component = SchemeModFComponent
   lazy val initialComponent = Main
-  def newComponent(call: Call[ComponentContext]) = call
+  def newComponent(call: Call) = call
   def view(cmp: Component): SchemeModFComponent = cmp
 }
 

@@ -42,7 +42,9 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     try for (_ <- 1 to times) {
-      val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+      val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
+                                              io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
+      )
       endResults += runInterpreter(interpreter, program, timeout)
     } catch {
       case _: TimeoutException =>
@@ -75,7 +77,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       case Value.Unbound(_)     => true
       case Value.Void           => lat.subsumes(abs, lat.void)
       case Value.Clo(lam, _, _) => lat.getClosures(abs).exists(_._1._1.idn == lam.idn)
-      case Value.Primitive(p)   => lat.getPrimitives(abs).exists(_.name == p.name)
+      case Value.Primitive(p)   => lat.getPrimitives(abs).exists(_ == p)
       case Value.Str(s)         => lat.subsumes(abs, lat.string(s))
       case Value.Symbol(s)      => lat.subsumes(abs, lat.symbol(s))
       case Value.Integer(i)     => lat.subsumes(abs, lat.number(i))

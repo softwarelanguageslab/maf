@@ -6,18 +6,7 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.language.scheme._
 import maf.modular.adaptive._
-
-case class WrappedEnv[A <: Address, D](
-    env: Environment[A],
-    depth: Int,
-    data: D)
-    extends Environment[A] {
-  def restrictTo(keys: Set[String]): Environment[A] = this.copy(env = env.restrictTo(keys))
-  def lookup(name: String): Option[A] = env.lookup(name)
-  def extend(name: String, a: A): Environment[A] = this.copy(env = env.extend(name, a))
-  def extend(values: Iterable[(String, A)]): Environment[A] = this.copy(env = env.extend(values))
-  def mapAddrs(f: A => A): Environment[A] = this.copy(env = env.mapAddrs(f))
-}
+import maf.modular.components.IndirectComponents.ComponentPointer
 
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics
@@ -30,8 +19,12 @@ trait AdaptiveSchemeModFSemantics
 
   // Definition of components
   type ComponentData = SchemeModFComponent
-  lazy val initialComponent: Component = { init(); ref(Main) } // Need init to initialize reference bookkeeping information.
-  def newComponent(call: Call[ComponentContext]): Component = ref(call)
+  // TODO: clean up this mess!
+  var mainComponent: Component = ComponentPointer(0) // nope
+  lazy val initialComponent: Component = {
+    init(); mainComponent = ref(Main); mainComponent
+  } // Need init to initialize reference bookkeeping information.
+  def newComponent(call: Call): Component = ref(call)
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
     case (lambda, env: WrappedEnv[Addr, Component] @unchecked) => (lambda, env.copy(data = update(env.data)).mapAddrs(updateAddr(update)))
@@ -64,12 +57,12 @@ trait AdaptiveSchemeModFSemantics
     }
   // adapting a component
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
-    case Main                                 => Main
-    case c: Call[ComponentContext] @unchecked => adaptCall(c)
+    case Main               => Main
+    case c: Call @unchecked => adaptCall(c)
   }
-  protected def adaptCall(c: Call[ComponentContext]): Call[ComponentContext]
+  protected def adaptCall(c: Call): Call
   // callback function that can adapt the analysis whenever a new component is 'discovered'
-  protected def onNewComponent(cmp: Component, call: Call[ComponentContext]): Unit = ()
+  protected def onNewComponent(cmp: Component, call: Call): Unit = ()
   // go over all new components after each step of the analysis, passing them to `onNewComponent`
   // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
   var toProcess = Set[Component]()
@@ -78,15 +71,16 @@ trait AdaptiveSchemeModFSemantics
     while (toProcess.nonEmpty) {
       val cmp = toProcess.head
       toProcess = toProcess.tail
-      val call = view(cmp).asInstanceOf[Call[ComponentContext]]
+      val call = view(cmp).asInstanceOf[Call]
       onNewComponent(cmp, call)
     }
   }
   override def updateAnalysisData(update: Component => Component) = {
     super.updateAnalysisData(update)
     this.toProcess = updateSet(update)(toProcess)
+    this.mainComponent = update(mainComponent)
   }
-  override def baseEnv = WrappedEnv(super.baseEnv, 0, initialComponent)
+  override def baseEnv = WrappedEnv(super.baseEnv, 0, mainComponent)
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFIntra = new AdaptiveSchemeModFIntra(cmp)
   class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra {
     override protected def newClosure(
