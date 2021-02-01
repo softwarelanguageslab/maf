@@ -96,7 +96,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     kPerFn += module.fun -> k // register the new k
     // if lowering context does not work => adapt parent components
     // TODO: do this earlier without dropping all context first
-    if (calls.size > target) {
+    if (calls.size > target && target > 0) {
       val parentLambda = getParentModule(calls.head).asInstanceOf[LambdaModule] // guaranteed to have a lambda parent!
       reduceComponents(parentLambda, target)
     }
@@ -123,8 +123,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val target: Int = addrs.size / 2
     val perLocation = addrs.groupBy(_.idn) // TODO: by expr instead of idn?
     val chosenAddrs = takeLargest(perLocation.toList, (g: (_, Set[_])) => g._2.size, target)
-    val chosenFuncs = chosenAddrs.collect { 
-      case (_, s) if s.size > 1 => getAddrModule(s.head).asInstanceOf[LambdaModule] // guaranteed to be a lambda module!
+    val chosenFuncs = chosenAddrs.map(addr => getAddrModule(addr._2.head)).collect { 
+      case l: LambdaModule => l // guaranteed to be a lambda module!
      } 
     // assert(chosenAddrs.size == chosenFuncs.size) // <- we expect all addresses to belong to Some(fn)
     chosenFuncs.toSet.foreach(reduceComponents)
@@ -164,15 +164,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     case _ => mainComponent
   }
   private def getAddrModule(addr: Addr): SchemeModule =
-    view(getAddrCmp(addr)) match {
-      case call: Call => LambdaModule(call.clo._1)
-      case _          => MainModule
-    }
-  private def getParentModule(call: Call): SchemeModule = {
-    val parent = call.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data
-    view(parent) match {
-      case Main            => MainModule
-      case Call(clo, _, _) => LambdaModule(clo._1)
-    }
-  }
+    module(getAddrCmp(addr))
+  private def getParentModule(call: Call): SchemeModule =
+    module(call.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
 }
