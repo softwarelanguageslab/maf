@@ -48,33 +48,33 @@ object SchemeAnalyses {
 
   def contextInsensitiveAnalysis(
       prg: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with RandomWorklistAlgorithm[SchemeExp] {
+    ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
     override def toString() = "no-sensitivity"
   }
   def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
     with SchemeModFCallSiteSensitivity
     with SchemeConstantPropagationDomain
-    with RandomWorklistAlgorithm[SchemeExp] {
+    with FIFOWorklistAlgorithm[SchemeExp] {
     override def toString() = "call-site-sensitivity"
   }
   def kCFAAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModFAnalysis(prg)
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain
-    with RandomWorklistAlgorithm[SchemeExp] {
+    with FIFOWorklistAlgorithm[SchemeExp] {
     override def toString() = s"kCFA (k = $kcfa)"
     val k = kcfa
   }
   def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
     with SchemeModFFullArgumentSensitivity
     with SchemeConstantPropagationDomain
-    with RandomWorklistAlgorithm[SchemeExp] {
+    with FIFOWorklistAlgorithm[SchemeExp] {
     override def toString() = "full-argument-sensitivity"
   }
   def adaptiveAnalysis(prg: SchemeExp, b: Int) = new AdaptiveModAnalysis(prg)
     with AdaptiveSchemeModFSemantics
     with AdaptiveContextSensitivity
     with SchemeConstantPropagationDomain
-    with RandomWorklistAlgorithm[SchemeExp] {
+    with FIFOWorklistAlgorithm[SchemeExp] {
     lazy val budget = b
     override def toString() = s"adaptive-analysis (budget = $b)"
   }

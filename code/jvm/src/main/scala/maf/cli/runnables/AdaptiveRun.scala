@@ -43,8 +43,8 @@ object AdaptiveRun {
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
       with SchemeConstantPropagationDomain
-      with RandomWorklistAlgorithm[SchemeExp] {
-      lazy val budget = 2000
+      with FIFOWorklistAlgorithm[SchemeExp] {
+      lazy val budget = 1000
       override def step(timeout: Timeout.T): Unit = {
         //val cmp = workList.head
         //println(s"Analysing ${view(cmp)}")
