@@ -2,7 +2,6 @@ package maf.test.language.scheme
 
 import org.scalatest.propspec.AnyPropSpec
 import maf.core._
-import maf.language.CScheme.CSchemeParser
 import maf.language.scheme._
 import maf.language.scheme.lattices.SchemeLattice
 import maf.language.scheme.primitives._

@@ -28,6 +28,7 @@ object Tarjan {
 
     @tailrec
     def pop(node: Node, stack: List[Node]): Unit = stack match {
+      case Nil => throw new Error("Unexpected empty stack")
       case `node` :: t =>
         stk = t
       case h :: t =>

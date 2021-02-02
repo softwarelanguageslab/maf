@@ -6,11 +6,11 @@ import org.scalatest.propspec.AnyPropSpec
 
 class TarjanSCCTests extends AnyPropSpec {
 
-  case class TarjanGraph[Node](
+  case class TarjanGraph[N](
       id: Int,
-      nodes: Set[Node],
-      edges: Map[Node, Set[Node]],
-      expectedResult: Set[Set[Node]]) {
+      nodes: Set[N],
+      edges: Map[N, Set[N]],
+      expectedResult: Set[Set[N]]) {
     def test(): Unit = property(s"Tarjan correctly computes SCCs for graph $id.", UtilityTest) {
       val scc = Tarjan.scc(nodes, edges)
       assert(scc == expectedResult, s"Tarjan SCC returned $scc for graph $id, whilst $expectedResult was expected.")

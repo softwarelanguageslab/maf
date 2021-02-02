@@ -12,9 +12,6 @@ import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
-import maf.cli.experiments.SchemeAnalyses
-import maf.language.sexp.SExpParser
-import scala.util.parsing.input.CharSequenceReader
 import maf.language.scheme.SchemeInterpreter
 import maf.language.scheme.FileIO
 

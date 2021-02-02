@@ -2,7 +2,6 @@ package maf.modular.scheme.modconc
 
 import maf.language.scheme._
 import maf.modular.scheme.modf._
-import maf.modular.scheme.modf._
 
 trait SchemeModConcNoSensitivity extends SchemeModConcSemantics {
   type ComponentContext = NoContext.type

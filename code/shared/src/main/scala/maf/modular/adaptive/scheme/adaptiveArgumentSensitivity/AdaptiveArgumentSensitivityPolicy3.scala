@@ -1,6 +1,5 @@
 package maf.modular.adaptive.scheme.adaptiveArgumentSensitivity
 
-import maf.modular.scheme.modf._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.MonoidImplicits._
 

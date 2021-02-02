@@ -2,10 +2,12 @@ package maf.cli.runnables
 
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.SchemeExp
+import maf.modular.scheme.modf._
 import maf.modular.incremental.IncrementalLogging
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
+
 
 import scala.concurrent.duration._
 

@@ -6,7 +6,6 @@ import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util._
 import maf.util.benchmarks._
-import maf.bench.scheme.SchemeBenchmarkPrograms
 
 import scala.concurrent.duration._
 
