@@ -4,19 +4,19 @@ import maf.core._
 import maf.util._
 import maf.language.scheme._
 
-trait SchemeModFComponents {
-  type ComponentContext
-  // A SchemeModFComponent represents function calls
-  sealed trait SchemeModFComponent extends SmartHash
+// A SchemeModFComponent represents function calls
+sealed trait SchemeModFComponent extends SmartHash
+
+object SchemeModFComponent {
   // The main function call, i.e. the entry point of the program (corresponding to all top-level code)
   case object Main extends SchemeModFComponent {
     override def toString: String = "main"
   }
   // A call to a specific closure
-  case class Call(
-      clo: (SchemeLambdaExp, Environment[Address]),
-      nam: Option[String],
-      ctx: ComponentContext)
+  case class Call[Context](
+    clo: (SchemeLambdaExp, Environment[Address]),
+    nam: Option[String],
+    ctx: Context)
       extends SchemeModFComponent {
     // convenience accessors
     lazy val (lambda, env) = clo
@@ -30,9 +30,10 @@ trait SchemeModFComponents {
 }
 
 trait StandardSchemeModFComponents extends BaseSchemeModFSemantics {
+  import SchemeModFComponent._
   type Component = SchemeModFComponent
   lazy val initialComponent = Main
-  def newComponent(call: Call) = call
+  def newComponent(call: Call[ComponentContext]) = call
   def view(cmp: Component): SchemeModFComponent = cmp
 }
 

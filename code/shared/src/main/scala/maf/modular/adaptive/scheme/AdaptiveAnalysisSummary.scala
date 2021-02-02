@@ -2,6 +2,7 @@ package maf.modular.adaptive.scheme
 
 import maf.language.scheme._
 import maf.modular.scheme.modf._
+import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.modular.adaptive.scheme._
 import maf.util.MonoidImplicits._
 import maf.util.datastructures._
@@ -16,7 +17,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
 
   def module(cmp: Component): SchemeModule = view(cmp) match {
     case Main       => MainModule
-    case call: Call => LambdaModule(call.clo._1)
+    case call: Call[ComponentContext] => LambdaModule(call.clo._1)
   }
 
   /**
@@ -111,7 +112,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   // allow to detect when the cost of a given module increases
   def onCostIncrease(fn: SchemeModule, newCost: Int)
   // update the summary each time a new component is discovered
-  override def onNewComponent(cmp: Component, call: Call) =
+  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) =
     summary = summary.addComponent(LambdaModule(call.clo._1), cmp)
   // update the summary each time a dependency triggers a component
   override def trigger(dep: Dependency): Unit = {

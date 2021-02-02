@@ -4,6 +4,7 @@ import maf.core._
 import maf.modular._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
+import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.language.scheme._
 import maf.modular.adaptive._
 
@@ -16,9 +17,9 @@ trait AdaptiveSchemeModFSemantics
        with ModularSchemeDomain {
   // Definition of components
   type ComponentData = SchemeModFComponent
-  lazy val initialComponentData = Main 
+  lazy val initialComponentData = Main
   // Need init to initialize reference bookkeeping information.
-  def newComponent(call: Call): Component = ref(call)
+  def newComponent(call: Call[ComponentContext]): Component = ref(call)
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
     case (lambda, env: WrappedEnv[Addr, Component] @unchecked) => (lambda, env.copy(data = update(env.data)).mapAddrs(updateAddr(update)))
@@ -52,11 +53,11 @@ trait AdaptiveSchemeModFSemantics
   // adapting a component
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
     case Main               => Main
-    case c: Call @unchecked => adaptCall(c)
+    case c: Call[ComponentContext] @unchecked => adaptCall(c)
   }
-  protected def adaptCall(c: Call): Call
+  protected def adaptCall(c: Call[ComponentContext]): Call[ComponentContext]
   // callback function that can adapt the analysis whenever a new component is 'discovered'
-  protected def onNewComponent(cmp: Component, call: Call): Unit = ()
+  protected def onNewComponent(cmp: Component, call: Call[ComponentContext]): Unit = ()
   // go over all new components after each step of the analysis, passing them to `onNewComponent`
   // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
   var toProcess = Set[Component]()
@@ -65,7 +66,7 @@ trait AdaptiveSchemeModFSemantics
     while (toProcess.nonEmpty) {
       val cmp = toProcess.head
       toProcess = toProcess.tail
-      val call = view(cmp).asInstanceOf[Call]
+      val call = view(cmp).asInstanceOf[Call[ComponentContext]]
       onNewComponent(cmp, call)
     }
   }
