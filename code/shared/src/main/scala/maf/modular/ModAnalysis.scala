@@ -32,7 +32,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
   // the intra-analysis of a component can discover new components
   // when we discover a component that has not yet been analyzed, we add it to the worklist
   // concretely, we keep track of a set `visited` of all components that have already been visited
-  var visited: Set[Component] = Set(initialComponent)
+  var visited: Set[Component] = Set()
   def spawn(cmp: Component, from: Component): Unit = spawn(cmp)
   def spawn(cmp: Component): Unit =
     if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
@@ -106,6 +106,12 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
     out.writeObject(this)
     out.close()
   }
+
+  def init() = {
+    visited = visited + initialComponent
+  }
+
+  init()
 }
 
 object ModAnalysis {

@@ -37,23 +37,23 @@ object AdaptiveRun {
   }
 
   def testAbstract(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/various/fact.scm")
+    val txt = Reader.loadFile("test/R5RS/various/mceval.scm")
     val prg = CSchemeParser.parse(txt)
     val anl = new AdaptiveModAnalysis(prg)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
-      lazy val budget = 3
+      lazy val budget = 1000
       override def step(timeout: Timeout.T): Unit = {
-        val cmp = workList.head
-        println(s"Analysing ${view(cmp)}")
+        //val cmp = workList.head
+        //println(s"Analysing ${view(cmp)}")
         super.step(timeout)
       }
     }
-    anl.analyze(Timeout.start(Duration(30, SECONDS)))
+    anl.analyze(Timeout.start(Duration(300, SECONDS)))
     //debugClosures(analysis)
-    debugResults(anl, true)
+    debugResults(anl, false)
   }
 
   def debugResults(machine: SchemeModFSemantics, printMore: Boolean = false): Unit =

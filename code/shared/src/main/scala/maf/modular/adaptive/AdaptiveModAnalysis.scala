@@ -17,6 +17,8 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
 
   import maf.modular.components.IndirectComponents._
 
+  var mainComponent: Component = _
+
   // after every step, the adaptive analysis gets an opportunity to reflect on (introspection) and possible change (intercession) the analysis behaviour
   // the method `adaptAnalysis` needs to be implemented to decide when and how this is carried out
   protected def adaptAnalysis(): Unit
@@ -69,6 +71,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
     newComponents = updateSet(update)(newComponents)
     dependencies = updateMap(update, updateSet(update))(dependencies)
     deps = updateMap(updateDep(update), updateSet(update))(deps)
+    mainComponent = update(mainComponent)
   }
   // the analysis' data structures need to be updated after adaptation, as some components may now be equal
   // the following methods need to be implemented by a subclass, since they depend on the representation of 'ComponentData' and 'Dependency'
@@ -91,4 +94,9 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
         case n => intOp(n, count)
       }
     }
+
+  override def init() {
+    super.init()
+    mainComponent = initialComponent
+  }
 }

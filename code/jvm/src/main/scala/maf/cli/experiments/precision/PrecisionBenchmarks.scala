@@ -126,45 +126,48 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
    *  @param b2 the more precise store
    *  @return the set of addresses that have been refined in b2 w.r.t. b1
    */
-  protected def compareOrdered(b1: BaseStore, b2: BaseStore): Set[BaseAddr] =
-    b1.foldLeft(Set.empty[BaseAddr]) { case (acc, (addr1, value1)) =>
-      val value2 = b2.getOrElse(addr1, baseLattice.bottom)
-      if (value1 != value2) {
-        if (!baseLattice.subsumes(value1, value2)) {
-          println(addr1)
-          println(value1)
-          println(value2)
-        }
-        assert(baseLattice.subsumes(value1, value2))
-        //println(s"[$addr1] value $value1 has been refined to $value2")
-        acc + addr1
-      } else {
-        acc
-      }
+  protected def compareOrdered(b1: BaseStore, b2: BaseStore): Set[BaseAddr] = {
+    def errorMessage(addr: BaseAddr): String = {
+      val value1 = b1.getOrElse(addr, baseLattice.bottom)
+      val value2 = b2.getOrElse(addr, baseLattice.bottom)
+      s"""
+        | At addr $addr: value v2 of b2 is not subsumed by value v1 of b1.
+        | where v1 = $value1
+        |       v2 = $value2 
+      """.stripMargin
     }
+    val (_, morePrecise, lessPrecise, unrelated) = compare(b1, b2)
+    assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
+    assert(unrelated.isEmpty, errorMessage(unrelated.head))
+    morePrecise
+  }
 
   /**
-   * A more generic version of 'compareOrdered' to compare any two stores b1 and b2
-   * (i.e., without any assumption on one being more/less precise than the other)
+   * Compare the precision of any two stores b1 and b2
    *  @param b1 a base store
    *  @param b2 a base store
-   *  @return a pair of:
-   *  - the set of addresses whose abstract values have been refined (= are now more precise)
-   *  - the set of addresses whose abstract values have lost precision
+   *  @return a quadruple of:
+   *  - the set of addresses whose abstract values have remained unchanged
+   *  - the set of addresses whose abstract values are more precise in b2
+   *  - the set of addresses whose abstract values are less precise in b2
+   *  - the set of addresses whose abstract values are not comparable between b1 and b2
    */
-  protected def compareAny(b1: BaseStore, b2: BaseStore): (Set[BaseAddr], Set[BaseAddr]) = {
+  protected def compare(b1: BaseStore, b2: BaseStore): (Set[BaseAddr], Set[BaseAddr], Set[BaseAddr], Set[BaseAddr]) = {
     val allKeys = b1.keySet ++ b2.keySet
-    allKeys.foldLeft((Set.empty[BaseAddr], Set.empty[BaseAddr])) { (acc, addr) =>
+    allKeys.foldLeft((Set.empty[BaseAddr], 
+                      Set.empty[BaseAddr], 
+                      Set.empty[BaseAddr],
+                      Set.empty[BaseAddr])) { (acc, addr) =>
       val value1 = b1.getOrElse(addr, baseLattice.bottom)
       val value2 = b2.getOrElse(addr, baseLattice.bottom)
       if (value1 == value2) {
-        acc
+        (acc._1 + addr, acc._2, acc._3, acc._4)
       } else if (baseLattice.subsumes(value1, value2)) {
-        (acc._1 + addr, acc._2)
+        (acc._1, acc._2 + addr, acc._3, acc._4)
       } else if (baseLattice.subsumes(value2, value1)) {
-        (acc._1, acc._2 + addr)
+        (acc._1, acc._2, acc._3 + addr, acc._4)
       } else { // neither value is more precise than the other
-        acc
+        (acc._1, acc._2, acc._3, acc._4 + addr)
       }
     }
   }

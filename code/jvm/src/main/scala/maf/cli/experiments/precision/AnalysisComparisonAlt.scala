@@ -5,6 +5,7 @@ import maf.language.scheme._
 import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util.benchmarks._
+import maf.util.Writer
 
 import scala.concurrent.duration._
 
@@ -17,7 +18,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
   def analyses: List[(SchemeExp => Analysis, String)]
 
   // and can, optionally, be configured in its timeouts (default: 20min.) and the number of concrete runs
-  def timeout() = Timeout.start(Duration(20, MINUTES)) // timeout for the analyses
+  def timeout() = Timeout.start(Duration(10, MINUTES)) // timeout for the analyses
   def runs = 3 // number of runs for the concrete interpreter
 
   // keep the results of the benchmarks in a table
@@ -54,17 +55,24 @@ object AnalysisComparisonAlt1
     ] {
   def analyses =
     // run some regular k-cfa analyses
-    List(0, 1, 2).map { k =>
+    List(0, 1, 2, 3).map { k =>
       (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
+    } ++
+    // run some adaptive analyses
+    List(100, 500, 1000, 5000).map { b =>
+      (SchemeAnalyses.adaptiveAnalysis(_, b), s"adaptive (b = $b)")
     }
   def main(args: Array[String]) = runBenchmarks(
     Set(
-      "test/R5RS/mceval.scm"
+      "test/R5RS/various/mceval.scm"
     )
   )
 
   def runBenchmarks(benchmarks: Set[Benchmark]) = {
     benchmarks.foreach(runBenchmark)
     println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
+    Writer.setDefaultWriter(Writer.open("benchOutput/precision/adaptive-precision-benchmarks-alt.csv"))
+    Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
+    Writer.closeDefaultWriter()
   }
 }
