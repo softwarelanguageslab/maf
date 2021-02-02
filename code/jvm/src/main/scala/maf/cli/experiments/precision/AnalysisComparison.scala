@@ -67,14 +67,16 @@ object AnalysisComparison1
     List(0, 1, 2, 3).map { k =>
       (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
     } ++
-    // run some adaptive analyses
-    List(1000, 2000).map { b =>
-      (SchemeAnalyses.adaptiveAnalysis(_, b), s"adaptive (b = $b)")
-    }
+      // run some adaptive analyses
+      List(1000, 2000).map { b =>
+        (SchemeAnalyses.adaptiveAnalysis(_, b), s"adaptive (b = $b)")
+      }
 
-  def main(args: Array[String]) = runBenchmarks(Set(
-    "test/R5RS/various/mceval.scm"
-  ))
+  def main(args: Array[String]) = runBenchmarks(
+    Set(
+      "test/R5RS/various/mceval.scm"
+    )
+  )
 
   def check(path: Benchmark) = {
     val txt = Reader.loadFile(path)

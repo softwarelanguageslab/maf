@@ -23,7 +23,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   type ComponentContext = List[Position]
   var kPerFn = Map[SchemeLambdaExp, Int]()
   def getContext(cmp: Component): ComponentContext = view(cmp) match {
-    case Main                 => List.empty
+    case Main                                   => List.empty
     case cll: Call[ComponentContext] @unchecked => cll.ctx
   }
   def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
@@ -124,9 +124,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val target: Int = addrs.size / 2
     val perLocation = addrs.groupBy(_.idn) // TODO: by expr instead of idn?
     val chosenAddrs = takeLargest(perLocation.toList, (g: (_, Set[_])) => g._2.size, target)
-    val chosenFuncs = chosenAddrs.map(addr => getAddrModule(addr._2.head)).collect { 
-      case l: LambdaModule => l // guaranteed to be a lambda module!
-     } 
+    val chosenFuncs = chosenAddrs.map(addr => getAddrModule(addr._2.head)).collect { case l: LambdaModule =>
+      l // guaranteed to be a lambda module!
+    }
     // assert(chosenAddrs.size == chosenFuncs.size) // <- we expect all addresses to belong to Some(fn)
     chosenFuncs.toSet.foreach(reduceComponents)
   }

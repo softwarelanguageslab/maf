@@ -52,7 +52,7 @@ trait AdaptiveSchemeModFSemantics
     }
   // adapting a component
   def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
-    case Main               => Main
+    case Main                                 => Main
     case c: Call[ComponentContext] @unchecked => adaptCall(c)
   }
   protected def adaptCall(c: Call[ComponentContext]): Call[ComponentContext]

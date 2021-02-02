@@ -31,17 +31,17 @@ trait BaseSchemeModFSemantics
   def expr(cmp: Component): SchemeExp = body(cmp)
   def body(cmp: Component): SchemeExp = body(view(cmp))
   def body(cmp: SchemeModFComponent): SchemeExp = cmp match {
-    case Main    => program
+    case Main                      => program
     case c: Call[ComponentContext] => SchemeBody(c.lambda.body)
   }
 
   type ComponentContent = Option[lattice.Closure]
   def content(cmp: Component) = view(cmp) match {
-    case Main    => None
+    case Main                      => None
     case c: Call[ComponentContext] => Some(c.clo)
   }
   def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
-    case Main    => None
+    case Main                      => None
     case c: Call[ComponentContext] => Some(c.ctx)
   }
 

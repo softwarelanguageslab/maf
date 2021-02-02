@@ -64,7 +64,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
   }
   private def extractComponentRefs(addr: Addr): Set[Component] = ??? //TODO
   private def getClosure(cmp: Component): Option[lattice.Closure] = view(cmp) match {
-    case Main       => None
+    case Main                         => None
     case call: Call[ComponentContext] => Some(call.clo)
   }
   var toJoin = List[Set[Component]]()

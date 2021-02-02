@@ -14,9 +14,9 @@ object SchemeModFComponent {
   }
   // A call to a specific closure
   case class Call[Context](
-    clo: (SchemeLambdaExp, Environment[Address]),
-    nam: Option[String],
-    ctx: Context)
+      clo: (SchemeLambdaExp, Environment[Address]),
+      nam: Option[String],
+      ctx: Context)
       extends SchemeModFComponent {
     // convenience accessors
     lazy val (lambda, env) = clo

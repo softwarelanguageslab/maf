@@ -8,7 +8,6 @@ import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
-
 import scala.concurrent.duration._
 
 object IncrementalRun extends App {

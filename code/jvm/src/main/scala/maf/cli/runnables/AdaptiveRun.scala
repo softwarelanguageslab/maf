@@ -42,11 +42,10 @@ object AdaptiveRun {
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
       lazy val budget = 1000
-      override def step(timeout: Timeout.T): Unit = {
+      override def step(timeout: Timeout.T): Unit =
         //val cmp = workList.head
         //println(s"Analysing ${view(cmp)}")
         super.step(timeout)
-      }
     }
     anl.analyze(Timeout.start(Duration(300, SECONDS)))
     //debugClosures(analysis)

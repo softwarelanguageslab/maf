@@ -304,7 +304,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     def unaryOp(op: SchemeOp)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
     def binaryOp(op: SchemeOp)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
     def ternaryOp(
-      op: SchemeOp
+        op: SchemeOp
       )(
         x: V,
         y: V,
