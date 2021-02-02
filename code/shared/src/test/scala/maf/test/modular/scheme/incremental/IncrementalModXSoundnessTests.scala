@@ -36,6 +36,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     with IncrementalModAnalysis[SchemeExp]
 
   override def analysis(b: SchemeExp): IncrementalAnalysis
+
   override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
   private var version: Version = Old
@@ -46,7 +47,8 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       t: Timeout.T
     ): SchemeInterpreter.Value = i.run(p, t, version)
 
-  override def onBenchmark(benchmark: Benchmark): Unit =
+  override def onBenchmark(benchmark: Benchmark): Unit = {
+    info(s"Checking $benchmark using $name.")
     property(s"Incremental (re-)analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
@@ -66,6 +68,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       compareResult(anlNew, cResultNew)
       compareIdentities(anlNew, cPosResultsNew)
     }
+  }
 
   private def updateAnalysis(program: SchemeExp, benchmark: Benchmark): IncrementalAnalysis =
     try {
