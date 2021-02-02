@@ -29,7 +29,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 
   def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
 
-  override val catchErrors: Boolean = false
+  override val catchErrors: Boolean = true // Put to false for debugging.
 
   def runAnalysis(
       file: String,
@@ -120,8 +120,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 }
 
 object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeAssertionEvaluation {
-  override def benchmarks(): Set[String] =
-    (IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential).filter(_.contains("nboyer"))
+  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential
 
   override def analysis(e: SchemeExp) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e)
 
