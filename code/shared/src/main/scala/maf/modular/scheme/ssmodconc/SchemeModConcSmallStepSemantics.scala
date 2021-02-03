@@ -114,6 +114,7 @@ trait SmallStepModConcSemantics
       while (work.nonEmpty && !timeout.reached) {
         val state = work.head
         work = work.tail
+        println(s"  - $state")
         state match {
           case Kont(vl, KEmpty) =>
             result = lattice.join(result, vl)
