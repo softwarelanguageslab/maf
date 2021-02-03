@@ -17,6 +17,8 @@ sealed trait Environment[A <: Address] extends SmartHash {
 
   /** Mapping over the environment */
   def mapAddrs(f: A => A): This
+
+  def size: Int
 }
 
 /** Mapping from variable name to addresses */
@@ -27,6 +29,7 @@ case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Envir
   def extend(name: String, a: A): BasicEnvironment[A] = this.copy(content = content + (name -> a))
   def extend(values: Iterable[(String, A)]): BasicEnvironment[A] = this.copy(content = content ++ values)
   def mapAddrs(f: A => A): BasicEnvironment[A] = this.copy(content.view.mapValues(f).toMap)
+  def size: Int = content.size
 
   /** Better printing. */
   override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
@@ -43,6 +46,7 @@ case class WrappedEnv[A <: Address, D](
   def extend(name: String, a: A): WrappedEnv[A, D] = this.copy(env = env.extend(name, a))
   def extend(values: Iterable[(String, A)]): WrappedEnv[A, D] = this.copy(env = env.extend(values))
   def mapAddrs(f: A => A): WrappedEnv[A, D] = this.copy(env = env.mapAddrs(f))
+  def size: Int = env.size
 }
 
 object Environment {
