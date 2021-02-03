@@ -8,17 +8,17 @@ trait SchemeModConcNoSensitivity extends SchemeModConcSemantics {
   def allocCtx(
       exp: SchemeExp,
       env: Env,
-      modFCmp: InnerModFAnalysis#SchemeModFComponent,
+      modFCmp: SchemeModFComponent,
       caller: Component
     ) = NoContext
 }
 
 trait SchemeModConcStandardSensitivity extends SchemeModConcSemantics {
-  type ComponentContext = InnerModFAnalysis#SchemeModFComponent
+  type ComponentContext = SchemeModFComponent
   def allocCtx(
       exp: SchemeExp,
       env: Env,
-      modFCmp: InnerModFAnalysis#SchemeModFComponent,
+      modFCmp: SchemeModFComponent,
       caller: Component
     ) = modFCmp
 }

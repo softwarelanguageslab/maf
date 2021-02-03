@@ -301,10 +301,10 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     import schemeLattice._
     val unspecified = bool(false) /* TODO: introduce an "unspecified" value */
 
-    def unaryOp(op: SchemeOp.SchemeOp1)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
-    def binaryOp(op: SchemeOp.SchemeOp2)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
+    def unaryOp(op: SchemeOp)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
+    def binaryOp(op: SchemeOp)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
     def ternaryOp(
-        op: SchemeOp.SchemeOp3
+        op: SchemeOp
       )(
         x: V,
         y: V,

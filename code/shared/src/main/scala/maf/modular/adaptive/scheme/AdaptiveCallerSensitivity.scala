@@ -2,6 +2,7 @@ package maf.modular.adaptive.scheme
 
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
+import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.core.Position._
 import maf.language.scheme._
 
@@ -26,8 +27,8 @@ trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
       caller: Component
     ) =
     adaptCaller(clo, caller, call)
-  override def onNewComponent(cmp: Component, call: Call) = ???
-  protected def adaptCall(cmp: Call): Call = cmp match {
+  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = ???
+  protected def adaptCall(cmp: Call[ComponentContext]): Call[ComponentContext] = cmp match {
     case Call(clo, nam, ctx) => Call(clo, nam, adaptCaller(clo, ctx._1, ctx._2))
   }
   def registerCall(source: (Component, Position), target: Component) = ???

@@ -7,6 +7,7 @@ import maf.core.Position._
 import maf.util.datastructures._
 import maf.modular.scheme._
 import maf.modular._
+import maf.modular.scheme.modf.SchemeModFComponent._
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with AdaptiveAnalysisSummary {
   /*
@@ -22,12 +23,12 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   type ComponentContext = List[Position]
   var kPerFn = Map[SchemeLambdaExp, Int]()
   def getContext(cmp: Component): ComponentContext = view(cmp) match {
-    case Main                 => List.empty
-    case cll: Call @unchecked => cll.ctx
+    case Main                                   => List.empty
+    case cll: Call[ComponentContext] @unchecked => cll.ctx
   }
-  def adaptCall(cll: Call): Call =
+  def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
     adaptCall(cll, kPerFn.get(cll.clo._1))
-  def adaptCall(cll: Call, kLimit: Option[Int]): Call =
+  def adaptCall(cll: Call[ComponentContext], kLimit: Option[Int]): Call[ComponentContext] =
     cll.copy(ctx = adaptCtx(cll.ctx, kLimit))
   def allocCtx(
       nam: Option[String],
@@ -87,7 +88,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     ): Unit = {
     val cmps = ms.components
     // find a fitting k
-    var calls = cmps.map(view(_).asInstanceOf[Call])
+    var calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
     var k = calls.maxBy(_.ctx.length).ctx.length
     while (calls.size > target && k > 0) { // TODO: replace with binary search?
       k = k - 1
@@ -123,9 +124,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val target: Int = addrs.size / 2
     val perLocation = addrs.groupBy(_.idn) // TODO: by expr instead of idn?
     val chosenAddrs = takeLargest(perLocation.toList, (g: (_, Set[_])) => g._2.size, target)
-    val chosenFuncs = chosenAddrs.map(addr => getAddrModule(addr._2.head)).collect { 
-      case l: LambdaModule => l // guaranteed to be a lambda module!
-     } 
+    val chosenFuncs = chosenAddrs.map(addr => getAddrModule(addr._2.head)).collect { case l: LambdaModule =>
+      l // guaranteed to be a lambda module!
+    }
     // assert(chosenAddrs.size == chosenFuncs.size) // <- we expect all addresses to belong to Some(fn)
     chosenFuncs.toSet.foreach(reduceComponents)
   }
@@ -165,6 +166,6 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   }
   private def getAddrModule(addr: Addr): SchemeModule =
     module(getAddrCmp(addr))
-  private def getParentModule(call: Call): SchemeModule =
+  private def getParentModule(call: Call[ComponentContext]): SchemeModule =
     module(call.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
 }

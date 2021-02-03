@@ -12,9 +12,6 @@ import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
-import maf.cli.experiments.SchemeAnalyses
-import maf.language.sexp.SExpParser
-import scala.util.parsing.input.CharSequenceReader
 import maf.language.scheme.SchemeInterpreter
 import maf.language.scheme.FileIO
 
@@ -45,11 +42,10 @@ object AdaptiveRun {
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
       lazy val budget = 1000
-      override def step(timeout: Timeout.T): Unit = {
+      override def step(timeout: Timeout.T): Unit =
         //val cmp = workList.head
         //println(s"Analysing ${view(cmp)}")
         super.step(timeout)
-      }
     }
     anl.analyze(Timeout.start(Duration(300, SECONDS)))
     //debugClosures(analysis)

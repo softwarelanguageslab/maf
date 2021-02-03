@@ -154,10 +154,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
    */
   protected def compare(b1: BaseStore, b2: BaseStore): (Set[BaseAddr], Set[BaseAddr], Set[BaseAddr], Set[BaseAddr]) = {
     val allKeys = b1.keySet ++ b2.keySet
-    allKeys.foldLeft((Set.empty[BaseAddr], 
-                      Set.empty[BaseAddr], 
-                      Set.empty[BaseAddr],
-                      Set.empty[BaseAddr])) { (acc, addr) =>
+    allKeys.foldLeft((Set.empty[BaseAddr], Set.empty[BaseAddr], Set.empty[BaseAddr], Set.empty[BaseAddr])) { (acc, addr) =>
       val value1 = b1.getOrElse(addr, baseLattice.bottom)
       val value2 = b2.getOrElse(addr, baseLattice.bottom)
       if (value1 == value2) {
