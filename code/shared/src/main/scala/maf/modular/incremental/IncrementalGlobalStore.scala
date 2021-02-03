@@ -50,8 +50,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    */
   var addressDependencies: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
-  /** Keeps track of all inferred SCCs during an incremental update. */
-  var SCCs: Set[Set[Addr]] = Set()
+  /**
+   * Keeps track of all inferred SCCs during an incremental update.
+   * To avoid confusion with analysis components, we call these Strongly Connected Addresses (SCC containing addresses).
+   */
+  var SCAs: Set[Set[Addr]] = Set()
 
   /* ****************************** */
   /* ***** Write invalidation ***** */
@@ -142,13 +145,13 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ***** Incremental update: actually perform the incremental analysis ***** */
   /* ************************************************************************* */
 
-  var tarjanFlag: Boolean = true //optimisationFlag // Flag to enable the latest optimization.
+  var tarjanFlag: Boolean = false //optimisationFlag // Flag to enable the latest optimization.
 
   override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean): Unit = {
     if (tarjanFlag)
-      SCCs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
+      SCAs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
     super.updateAnalysis(timeout, optimisedExecution)
-    if (tarjanFlag) SCCs = Set()
+    if (tarjanFlag) SCAs = Set()
   }
 
   /* ************************************ */
@@ -170,17 +173,20 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         reads += addr
         if (version == New) {
           // Zero or one SCCs will be found.
-          SCCs.find(_.contains(addr)).foreach { scc =>
+          SCAs.find(_.contains(addr)).foreach { sca =>
             // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
             trigger(AddrDependency(addr))
-            // TODO: should the thing underneath be done for all addresses in a SCC? Probably yes due to the fact that an SCC may contain "inner cycles".
-            // However, doing so for every address leads to ElementNotFoundExceptions in deleteProvenance (predicate of first if test).
-            scc.foreach { addr =>
+            // Should be done for every address in the SCA because an SCC/SCA may contain "inner cycles".
+            sca.foreach { addr =>
               inter.store += addr -> lattice.bottom
               intra.store += addr -> lattice.bottom
               provenance -= addr
+              updateProvenance(component,
+                               addr,
+                               lattice.bottom
+              ) // Avoid spurious deletions?! TODO investigate: leads to double the no of assertions in some situations...
             }
-            SCCs -= scc
+            SCAs -= sca
           }
         }
       }
