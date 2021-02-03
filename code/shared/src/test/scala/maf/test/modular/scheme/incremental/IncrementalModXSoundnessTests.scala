@@ -63,13 +63,15 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       compareIdentities(anlOld, cPosResultsOld)
     }
 
-    // Check soundness on the updated version of the program.
-    property(s"Incremental reanalysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
-      version = New
-      val (cResultNew, cPosResultsNew) = evalConcrete(program, benchmark)
-      val anlNew = updateAnalysis(anlOld, benchmark)
-      compareResult(anlNew, cResultNew)
-      compareIdentities(anlNew, cPosResultsNew)
+    if (anlOld != null) {
+      // Check soundness on the updated version of the program.
+      property(s"Incremental reanalysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
+        version = New
+        val (cResultNew, cPosResultsNew) = evalConcrete(program, benchmark)
+        val anlNew = updateAnalysis(anlOld, benchmark)
+        compareResult(anlNew, cResultNew)
+        compareIdentities(anlNew, cPosResultsNew)
+      }
     }
   }
 
