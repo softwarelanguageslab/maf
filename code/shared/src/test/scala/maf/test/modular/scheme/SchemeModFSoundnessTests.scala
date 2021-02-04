@@ -9,7 +9,7 @@ import maf.modular.adaptive.scheme._
 import maf.modular.adaptive.scheme.adaptiveArgumentSensitivity._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
-import maf.modular.worklist.{LIFOWorklistAlgorithm, ParallelWorklistAlgorithm}
+import maf.modular.worklist._
 import maf.test._
 
 trait SchemeModFSoundnessTests extends SchemeSoundnessTests {
@@ -41,7 +41,7 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
     with SchemeConstantPropagationDomain
     with SchemeModFNoSensitivity
-    with ParallelWorklistAlgorithm[SchemeExp] {
+    with ParallelWorklistAlgorithm[SchemeExp] with CallDepthFirstWorklistAlgorithm[SchemeExp] {
     override def workers = 8
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
   }
