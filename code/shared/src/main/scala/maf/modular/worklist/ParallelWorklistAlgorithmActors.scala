@@ -123,7 +123,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
         extends WorkerMessage
     def apply(): Behaviour[WorkerMessage] = Behaviours.setup { context =>
       Behaviours.receiveMessage { case DoWork(intra, timeout, master) =>
-        intra.analyze(timeout)
+        intra.analyzeWithTimeout(timeout)
         if (timeout.reached) {
           master ! Master.TimedOut(intra.component)
         } else {

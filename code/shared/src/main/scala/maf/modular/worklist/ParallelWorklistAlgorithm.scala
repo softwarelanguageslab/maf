@@ -31,7 +31,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     override def run(): Unit = try while (true) {
       val cmp = popWorklist()
       val intra = intraAnalysis(cmp)
-      intra.analyze(currentTimeout)
+      intra.analyzeWithTimeout(currentTimeout)
       if (currentTimeout.reached) {
         pushResult(TimedOut(cmp))
       } else {

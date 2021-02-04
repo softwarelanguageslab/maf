@@ -96,9 +96,9 @@ object Main {
         cmp: SchemeModFComponent
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with VisualisableIntraAnalysis {
 
-      override def analyze(timeout: Timeout.T): Unit = {
+      override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
         println(s"Analysing $cmp")
-        super.analyze(timeout)
+        super.analyzeWithTimeout(timeout)
       }
 
       override def trigger(dep: Dependency): Unit = {

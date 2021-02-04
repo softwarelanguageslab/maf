@@ -67,7 +67,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
   override def intraAnalysis(cmp: Component): BigStepModFIntra
   trait BigStepModFIntra extends IntraAnalysis with SchemeModFSemanticsIntra {
     // analysis entry point
-    def analyze(timeout: Timeout.T = Timeout.none): Unit = // Timeout is just ignored here.
+    def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
       eval(fnBody).run(fnEnv).foreach(res => writeResult(res))
     // simple big-step eval
     protected def eval(exp: SchemeExp): EvalM[Value] = exp match {

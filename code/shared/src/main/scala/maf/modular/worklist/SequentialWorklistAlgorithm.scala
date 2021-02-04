@@ -24,7 +24,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
     // do the intra-analysis
     // intraCount = intraCount + 1
     val intra = intraAnalysis(current)
-    intra.analyze(timeout)
+    intra.analyzeWithTimeout(timeout)
     if (timeout.reached) {
       // analysis timed out => we need to add it to the worklist again
       addToWorkList(current)
@@ -80,7 +80,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
     val current = pop()
     // do the intra-analysis
     val intra = intraAnalysis(current)
-    intra.analyze(timeout)
+    intra.analyzeWithTimeout(timeout)
     if (timeout.reached) {
       // analysis timed out => we need to add it to the worklist again
       addToWorkList(current)

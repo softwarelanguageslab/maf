@@ -19,9 +19,9 @@ object IncrementalRun extends App {
       override def intraAnalysis(
           cmp: Component
         ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis {
-        override def analyze(timeout: Timeout.T): Unit = {
+        override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
           println(s"Analyzing $cmp")
-          super.analyze(timeout)
+          super.analyzeWithTimeout(timeout)
         }
       }
     }

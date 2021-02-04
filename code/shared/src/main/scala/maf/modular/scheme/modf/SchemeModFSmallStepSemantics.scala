@@ -74,7 +74,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
     case class SplicedCdrFrm(carValue: Value, pairExp: SchemeSplicedPair) extends Frame
 
     // the main analyze method
-    def analyze(timeout: Timeout.T = Timeout.none): Unit = {
+    def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       // determine the initial state
       val initialState = EvalState(fnBody, fnEnv, Nil)
       // standard worklist algorithm

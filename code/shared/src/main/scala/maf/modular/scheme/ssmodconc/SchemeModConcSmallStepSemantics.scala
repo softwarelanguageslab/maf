@@ -99,7 +99,7 @@ trait SmallStepModConcSemantics
     // ANALYSIS //
     //----------//
 
-    def analyze(timeout: Timeout.T = Timeout.none): Unit = {
+    def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       // Create an initial state based on the component's expression and environment, together with an empty continuation stack.
       val initialState = component match {
         case MainComponent                => Eval(program, initialEnv, KEmpty)

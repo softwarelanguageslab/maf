@@ -85,11 +85,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     intra =>
 
     // Analysis of a component.
-    abstract override def analyze(timeout: Timeout.T): Unit = {
+    abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       if (version == Old) intraC += 1 else intraCU += 1
       logger.log(s"Analysing $component")
       if (tarjanFlag) logger.log(s"* S Resetting addressDependencies for $component.")
-      super.analyze(timeout)
+      super.analyzeWithTimeout(timeout)
     }
 
     // Reading an address.

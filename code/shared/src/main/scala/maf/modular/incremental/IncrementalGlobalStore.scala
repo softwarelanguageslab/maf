@@ -161,9 +161,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra {
     intra =>
 
-    abstract override def analyze(timeout: Timeout.T): Unit = {
+    abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       if (tarjanFlag) addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
-      super.analyze(timeout)
+      super.analyzeWithTimeout(timeout)
     }
 
     var reads: Set[Addr] = Set()

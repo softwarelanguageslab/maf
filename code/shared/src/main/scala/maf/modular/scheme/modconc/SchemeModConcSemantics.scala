@@ -79,7 +79,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ReturnValue[Sch
   class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp) with GlobalStoreIntra with ReturnResultIntra {
     // create a ModF analysis to analyze the thread
     val modFAnalysis = inter.modFAnalysis(this)
-    def analyze(timeout: Timeout.T): Unit = {
+    def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       modFAnalysis.analyzeWithTimeout(timeout)
       writeResult(modFAnalysis.finalResult)
     }
