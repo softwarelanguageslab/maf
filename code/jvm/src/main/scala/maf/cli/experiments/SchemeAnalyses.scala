@@ -114,7 +114,7 @@ object SchemeAnalyses {
     ) = new SimpleSchemeModConcAnalysis(prg)
     with SchemeModConcStandardSensitivity
     with SchemeConstantPropagationDomain
-    with ParallelWorklistAlgorithm[SchemeExp] with CallDepthFirstWorklistAlgorithm[SchemeExp] {
+    with CallDepthFirstWorklistAlgorithm[SchemeExp] with ParallelWorklistAlgorithm[SchemeExp]  {
     override def workers = n
     override def toString = s"parallel modconc (n = $n ; m = $m)"
     override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
