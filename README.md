@@ -34,15 +34,17 @@ with full argument sensitivity and a type domain:
 val machine = new ModAnalysis(prog) with BigStepSemantics
                                     with StandardSchemeModFSemantics
                                     with FullArgumentSensitivity
-                                    with TypePropagationDomain
-machine.analyze()
+  with TypePropagationDomain
+machine.analyze(<timeout>)
 ```
-The `analyze` function can take an optional parameter to specify a timeout, which is obtained from a Java Duration
-like `Timeout.start(duration)`. The analysis will stop approximately when the timeout has been reached, that is,
-the analysis may be run a bit longer than is specified by the timeout, but never shorter unless it finishes.
 
-Currently, no explicit result is returned by the analysis. Rather, information can be retrieved by fields of the machine,
-such as the final store and dependencies between components.
+The `analyze` function takes a parameter to specify a timeout, which is obtained from a Java Duration
+like `Timeout.start(<duration>)`. The analysis will stop approximately when the timeout has been reached, that is, the
+analysis may be run a bit longer than is specified by the timeout, but never shorter unless it finishes. When no timeout
+is wanted, the argument `Timeout.none` can be supplied, which lets the analysis run until termination.
+
+Currently, no explicit result is returned by the analysis. Rather, information can be retrieved by fields of the
+machine, such as the final store and dependencies between components.
 
 # Running the test suite
 This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a specific subset of benchmark programs (MAF tests on action). 

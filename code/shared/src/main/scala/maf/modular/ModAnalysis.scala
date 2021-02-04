@@ -95,7 +95,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
   /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
   def finished(): Boolean
 
-  /** Runs the analysis with an optional timeout (default value: no timeout). Implementation should be provided by the work list algorithm. */
+  /** Runs the analysis with an optional timeout. Implementation should be provided by the work list algorithm. */
   def analyze(timeout: Timeout.T): Unit // <= run the analysis (with given timeout)
 
   // Exporting an analysis to a file.
