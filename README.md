@@ -32,9 +32,9 @@ Now, the MODF instance can be created. For example, to analyze `prog` using a bi
 with full argument sensitivity and a type domain:
 ```scala
 val analysis = new ModAnalysis(prog) with BigStepSemantics
-                                    with StandardSchemeModFSemantics
-                                    with FullArgumentSensitivity
-  with TypePropagationDomain
+                                     with StandardSchemeModFSemantics
+                                     with FullArgumentSensitivity
+                                     with TypePropagationDomain
 analysis.analyze()
 ```
 Method `analyze` computes the full (and sound) analysis result for the program that `ModAnalysis` is constructed with. 
