@@ -31,20 +31,21 @@ Additional preprocessing steps are performed by the modular analysis itself and 
 Now, the MODF instance can be created. For example, to analyze `prog` using a big-step MODF analysis
 with full argument sensitivity and a type domain:
 ```scala
-val machine = new ModAnalysis(prog) with BigStepSemantics
+val analysis = new ModAnalysis(prog) with BigStepSemantics
                                     with StandardSchemeModFSemantics
                                     with FullArgumentSensitivity
   with TypePropagationDomain
-machine.analyze(<timeout>)
+analysis.analyze()
 ```
+Method `analyze` computes the full (and sound) analysis result for the program that `ModAnalysis` is constructed with. 
+This method does not return the analysis results directly.
+Rather, after calling `analyze`, the computed analysis results (e.g., the final store and dependencies) can be accessed through the properties of the `analysis` object (e.g., through `analysis.store` and `analysis.deps`).
 
-The `analyze` function takes a parameter to specify a timeout, which is obtained from a Java Duration
-like `Timeout.start(<duration>)`. The analysis will stop approximately when the timeout has been reached, that is, the
-analysis may be run a bit longer than is specified by the timeout, but never shorter unless it finishes. When no timeout
-is wanted, the argument `Timeout.none` can be supplied, which lets the analysis run until termination.
-
-Currently, no explicit result is returned by the analysis. Rather, information can be retrieved by fields of the
-machine, such as the final store and dependencies between components.
+Alternatively, one can use the `analyzeWithTimeout(<timeout>)` method to run the analysis with a given timeout. This timeout is obtained from a Java Duration
+(using `Timeout.start(<duration>)`). 
+The method returns when either the analysis has terminated or when the timeout has been reached (approximately, meaning in practice it may run a bit longer than the specified timeout). 
+Extra care should be taken when using this method, as the (partial) analysis results are not guaranteed to be sound when the timeout is triggered. 
+Therefore, when using this method, it is recommended to explicitly check afterwards if the analysis terminated using the `finished` method.
 
 # Running the test suite
 This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a specific subset of benchmark programs (MAF tests on action). 
