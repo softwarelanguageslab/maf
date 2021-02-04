@@ -225,6 +225,7 @@ class SchemeInterpreter(
   // Keep an artificial call stack to ease debugging.
   var callStack: List[String] = List()
   // TODO: The stack mechanism might have been broken due to the use of TailRec
+  // TODO: This may not work with concurrent programs at all.
   def stackedCall(
       name: Option[String],
       idn: Identity,

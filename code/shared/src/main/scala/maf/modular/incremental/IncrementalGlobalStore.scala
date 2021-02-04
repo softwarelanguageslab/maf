@@ -163,7 +163,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
     abstract override def analyze(timeout: Timeout.T): Unit = {
       if (tarjanFlag) addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
-      super.analyze()
+      super.analyze(timeout)
     }
 
     var reads: Set[Addr] = Set()
