@@ -77,7 +77,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
      * Performs the intra-component analysis of the given component.<br>
      * <b>Important:</b> should only update the *local* analysis state, and must not modify the global analysis state directly.
      */
-    def analyze(timeout: Timeout.T = Timeout.none): Unit
+    def analyze(timeout: Timeout.T): Unit
 
     /** Pushes the local changes to the global analysis state. */
     def commit(): Unit = {
@@ -96,7 +96,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
   def finished(): Boolean
 
   /** Runs the analysis with an optional timeout (default value: no timeout). Implementation should be provided by the work list algorithm. */
-  def analyze(timeout: Timeout.T = Timeout.none): Unit // <= run the analysis (with given timeout)
+  def analyze(timeout: Timeout.T): Unit // <= run the analysis (with given timeout)
 
   // Exporting an analysis to a file.
 

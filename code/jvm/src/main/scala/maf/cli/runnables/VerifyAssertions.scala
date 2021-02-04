@@ -6,6 +6,7 @@ import maf.modular.scheme.SchemeTypeDomain
 import maf.modular.scheme.modf._
 import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.util.Reader
+import maf.util.benchmarks.Timeout
 
 object VerifyAssertions {
 
@@ -26,7 +27,7 @@ object VerifyAssertions {
       override def intraAnalysis(cmp: Component) =
         new IntraAnalysis(cmp) with AssertionModFIntra
     }
-    analysis.analyze()
+    analysis.analyze(Timeout.none)
     val failed = analysis.assertionsFailed
     println(s"There are ${failed.size} violations")
     failed.foreach(v => println(s"Violation of ${v._2} in component ${v._1}"))

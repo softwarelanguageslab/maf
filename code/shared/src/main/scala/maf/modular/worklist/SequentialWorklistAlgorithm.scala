@@ -33,8 +33,9 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
       intra.commit()
     }
   }
+
   // step until worklist is empty or timeout is reached
-  def analyze(timeout: Timeout.T = Timeout.none): Unit =
+  def analyze(timeout: Timeout.T): Unit =
     while (!finished() && !timeout.reached)
       step(timeout)
 }
@@ -88,8 +89,9 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
       intra.commit()
     }
   }
+
   // step until worklist is empty or timeout is reached
-  def analyze(timeout: Timeout.T = Timeout.none): Unit =
+  def analyze(timeout: Timeout.T): Unit =
     while (!finished() && !timeout.reached)
       step(timeout)
 }
@@ -122,8 +124,7 @@ trait MostVisitedFirstWorklistAlgorithm[Expr <: Expression] extends LeastVisited
 
 trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   def computeDepths(exp: Expression, depths: Map[Identity, Int] = Map.empty): Map[Identity, Int] =
-    exp.subexpressions.foldLeft(depths)((depths, exp) =>
-      computeDepths(exp, depths)).map({ case (k, v) => (k, v+1) }) + (exp.idn -> 0)
+    exp.subexpressions.foldLeft(depths)((depths, exp) => computeDepths(exp, depths)).map({ case (k, v) => (k, v + 1) }) + (exp.idn -> 0)
   val depths: Map[Identity, Int] = computeDepths(program)
   var cmps: Map[Component, Int] = Map.empty.withDefaultValue(0)
   lazy val ordering: Ordering[Component] = Ordering.by(cmps)
@@ -164,7 +165,7 @@ object BiggerEnvironmentFirstWorklistAlgorithm {
   import maf.language.scheme._
   trait ModF extends BiggerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModFComponents {
     def environmentSize(cmp: Component): Int = cmp match {
-      case Main => 0
+      case Main                 => 0
       case Call((_, env), _, _) => env.size
     }
   }
@@ -172,7 +173,7 @@ object BiggerEnvironmentFirstWorklistAlgorithm {
   import maf.modular.scheme.modconc._
   trait ModConc extends BiggerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModConcComponents {
     def environmentSize(cmp: Component): Int = cmp match {
-      case MainThread => 0
+      case MainThread        => 0
       case Thread(_, env, _) => env.size
     }
   }
