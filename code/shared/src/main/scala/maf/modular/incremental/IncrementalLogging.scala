@@ -89,7 +89,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       if (version == Old) intraC += 1 else intraCU += 1
       logger.log(s"Analysing $component")
       if (tarjanFlag) logger.log(s"* S Resetting addressDependencies for $component.")
-      super.analyze()
+      super.analyze(timeout)
     }
 
     // Reading an address.
