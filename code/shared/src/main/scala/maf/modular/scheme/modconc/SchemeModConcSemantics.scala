@@ -80,7 +80,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ReturnValue[Sch
     // create a ModF analysis to analyze the thread
     val modFAnalysis = inter.modFAnalysis(this)
     def analyze(timeout: Timeout.T): Unit = {
-      modFAnalysis.analyze(timeout)
+      modFAnalysis.analyzeWithTimeout(timeout)
       writeResult(modFAnalysis.finalResult)
     }
   }

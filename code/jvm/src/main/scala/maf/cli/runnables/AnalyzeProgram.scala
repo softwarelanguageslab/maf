@@ -26,7 +26,7 @@ object AnalyzeProgram extends App {
       with SchemeConstantPropagationDomain
       with SchemeModFCallSiteSensitivity
       with LIFOWorklistAlgorithm[SchemeExp]
-    analysis.analyze(timeout())
+    analysis.analyzeWithTimeout(timeout())
     val r = analysis.finalResult
     analysis.visited.foreach(println)
     analysis.deps.foreach(println)

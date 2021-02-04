@@ -30,7 +30,7 @@ object SimpleTimingTest extends App {
     val text = CSchemeParser.parse(Reader.loadFile(benchmark))
     val a = analysis(text)
     val to = Timeout.start(Duration(1, MINUTES))
-    val time = Timer.timeOnly(a.analyze(to))
+    val time = Timer.timeOnly(a.analyzeWithTimeout(to))
     if (to.reached) {
       System.out.println("timed out.")
     } else {

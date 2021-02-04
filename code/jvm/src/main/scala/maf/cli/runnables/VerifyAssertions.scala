@@ -27,7 +27,7 @@ object VerifyAssertions {
       override def intraAnalysis(cmp: Component) =
         new IntraAnalysis(cmp) with AssertionModFIntra
     }
-    analysis.analyze(Timeout.none)
+    analysis.analyzeWithTimeout(Timeout.none)
     val failed = analysis.assertionsFailed
     println(s"There are ${failed.size} violations")
     failed.foreach(v => println(s"Violation of ${v._2} in component ${v._1}"))

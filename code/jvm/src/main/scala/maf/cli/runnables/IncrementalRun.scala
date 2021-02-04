@@ -25,7 +25,7 @@ object IncrementalRun extends App {
         }
       }
     }
-    a.analyze(timeout())
+    a.analyzeWithTimeout(timeout())
     print(a.finalResult)
     //a.updateAnalysis(timeout())
   }
@@ -42,7 +42,7 @@ object IncrementalRun extends App {
     println(s"***** $bench *****")
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = newAnalysis(text)
-    a.analyze(timeout())
+    a.analyzeWithTimeout(timeout())
     //a.printAssertions()
     val aC = a.deepCopy()
     //a.updateAnalysis(timeout(), false)

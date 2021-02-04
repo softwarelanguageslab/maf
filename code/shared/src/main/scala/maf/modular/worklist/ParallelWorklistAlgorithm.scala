@@ -103,7 +103,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
 
   override def finished(): Boolean = todo.isEmpty
 
-  override def analyze(timeout: Timeout.T): Unit =
+  override def analyzeWithTimeout(timeout: Timeout.T): Unit =
     if (!finished()) {
       // initialize timeout and initial analysis state
       currentTimeout = timeout

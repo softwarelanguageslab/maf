@@ -29,7 +29,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
 
     import l.Injector._
 
-    a.analyze(Timeout.start(Duration(30, SECONDS)))
+    a.analyzeWithTimeout(Timeout.start(Duration(30, SECONDS)))
     // All R5RS tests should terminate, no matter the analysis, because they're so simple.
     assert(a.finished(), s"Analysis of $program should finish within the given time bound out.")
     val result = a.finalResult.asInstanceOf[V]

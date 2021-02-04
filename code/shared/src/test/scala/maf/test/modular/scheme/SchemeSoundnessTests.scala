@@ -62,7 +62,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       // analyze the program using a ModF analysis
       val anl = analysis(program)
       val timeout = analysisTimeout(benchmark)
-      anl.analyze(timeout)
+      anl.analyzeWithTimeout(timeout)
       assume(anl.finished(), "Analysis timed out")
       anl
     } catch {

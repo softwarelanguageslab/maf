@@ -1,7 +1,6 @@
 package maf.modular.adaptive.scheme
 
 import maf.language.scheme._
-import maf.modular.scheme.modf._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.modular.adaptive.scheme._
 import maf.util.MonoidImplicits._

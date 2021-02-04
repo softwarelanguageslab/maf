@@ -221,7 +221,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     try {
       val anl = analysis(program)
       println(s"... analysing $path using $name ...")
-      anl.analyze(timeout)
+      anl.analyzeWithTimeout(timeout)
       if (anl.finished()) {
         Some(extract(anl))
       } else {

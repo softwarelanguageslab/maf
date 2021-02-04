@@ -51,7 +51,7 @@ trait PerformanceEvaluation {
     for (i <- 1 to maxWarmupRuns) {
       print(s"$i ")
       System.gc() // It never hurts (hopefully, because it may cause GC errors...)
-      analysis(program).analyze(warmupTimeout)
+      analysis(program).analyzeWithTimeout(warmupTimeout)
     }
     print("\n")
     // Actual timing
@@ -61,7 +61,7 @@ trait PerformanceEvaluation {
       print(s"$i ")
       val a = analysis(program)
       System.gc()
-      val t = Timer.timeOnly(a.analyze(analysisTime))
+      val t = Timer.timeOnly(a.analyzeWithTimeout(analysisTime))
       if (a.finished()) {
         times = (t.toDouble / 1000000) :: times
       } else {

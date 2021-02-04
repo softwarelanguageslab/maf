@@ -108,7 +108,7 @@ object Main {
     }
     try {
       println("Starting initial analysis.") // Will be logged to console.
-      analyze(Timeout.start(Duration(5, MINUTES)))
+      analyzeWithTimeout(Timeout.start(Duration(5, MINUTES)))
       println("Finished initial analysis. Preparing for reanalysis.")
       version = New
       optimisationFlag = true

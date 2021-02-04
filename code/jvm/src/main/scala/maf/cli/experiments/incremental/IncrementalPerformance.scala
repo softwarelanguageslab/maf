@@ -70,7 +70,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
       print(s"$w ")
       System.gc()
       val a = analysis(program)
-      a.analyze(timeoutWarmup)
+      a.analyzeWithTimeout(timeoutWarmup)
       analyses = a :: analyses
     }
     print(s"\n* Warm-up incremental analysis (max. ${analyses.length}): ")
@@ -108,7 +108,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
       var a = analysis(program)
 
       // Run the initial analysis.
-      runAnalysis(false, timeOut => a.analyze(timeOut)) match {
+      runAnalysis(false, timeOut => a.analyzeWithTimeout(timeOut)) match {
         case Some(t) => timesInit = t :: timesInit
         case None =>
           println(" => Base analysis timed out.")
@@ -135,7 +135,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
       a = analysis(program) // Create a new analysis and set the flag to "New".
       a.version = New
-      runAnalysis(reanTimeout, timeOut => a.analyze(timeOut)) match {
+      runAnalysis(reanTimeout, timeOut => a.analyzeWithTimeout(timeOut)) match {
         case Some(t) => timesRean = t :: timesRean
         case None    => reanTimeout = true
       }

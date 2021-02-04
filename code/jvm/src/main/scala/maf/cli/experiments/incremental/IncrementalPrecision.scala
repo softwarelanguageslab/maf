@@ -76,7 +76,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     a2.version = New
 
     // Run the initial analysis and full reanalysis. They both need to finish.
-    if (runAnalysis("init ", timeOut => a1.analyze(timeOut)) || runAnalysis("rean ", timeOut => a2.analyze(timeOut))) {
+    if (runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) || runAnalysis("rean ", timeOut => a2.analyzeWithTimeout(timeOut))) {
       print("timed out.")
       columns.foreach(c => results = results.add(file, c, infS))
       return

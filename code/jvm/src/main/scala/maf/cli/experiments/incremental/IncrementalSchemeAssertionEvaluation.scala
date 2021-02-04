@@ -65,7 +65,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
       runAnalysis(file,
                   "init",
                   timeOut => {
-                    a1.analyze(timeOut);
+                    a1.analyzeWithTimeout(timeOut);
                     a1
                   }
       )
@@ -93,7 +93,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     runAnalysis(file,
                 "rean",
                 timeOut => {
-                  a2.analyze(timeOut);
+                  a2.analyzeWithTimeout(timeOut);
                   a2
                 }
     )

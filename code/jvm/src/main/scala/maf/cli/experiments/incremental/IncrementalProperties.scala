@@ -62,7 +62,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     a2.version = New
 
     // Run the initial analysis.
-    if (!runAnalysis("init ", file, a1, timeOut => a1.analyze(timeOut), initS)) return
+    if (!runAnalysis("init ", file, a1, timeOut => a1.analyzeWithTimeout(timeOut), initS)) return
 
     val a1Copy = a1.deepCopy()
 
@@ -73,7 +73,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     runAnalysis("inc2 ", file, a1Copy, timeOut => a1Copy.updateAnalysis(timeOut, true), inc2S)
 
     // Run a full reanalysis
-    runAnalysis("rean ", file, a2, timeOut => a2.analyze(timeOut), reanS)
+    runAnalysis("rean ", file, a2, timeOut => a2.analyzeWithTimeout(timeOut), reanS)
   }
 
   def interestingAddress[A <: Address](a: A): Boolean

@@ -14,10 +14,11 @@ import maf.util.benchmarks.Timeout
 import scala.concurrent.duration._
 import maf.language.scheme.SchemeInterpreter
 import maf.language.scheme.FileIO
+import maf.cli.experiments.SchemeAnalyses
 
 object AdaptiveRun {
 
-  def main(args: Array[String]): Unit = testAbstract()
+  def main(args: Array[String]): Unit = testModConc()
 
   def testConcrete() {
     val txt = """
@@ -31,6 +32,14 @@ object AdaptiveRun {
         println(s"${addr} -> ${value}")
       case _ => ()
     }
+  }
+
+  def testModConc(): Unit = {
+    val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")
+    val prg = CSchemeParser.parse(txt)
+    val anl = SchemeAnalyses.modConcAnalysis(prg, 0)
+    anl.analyzeWithTimeout(Timeout.start(Duration(60, SECONDS)))
+    print(anl.store)
   }
 
   def testAbstract(): Unit = {
@@ -47,7 +56,7 @@ object AdaptiveRun {
         //println(s"Analysing ${view(cmp)}")
         super.step(timeout)
     }
-    anl.analyze(Timeout.start(Duration(300, SECONDS)))
+    anl.analyzeWithTimeout(Timeout.start(Duration(300, SECONDS)))
     //debugClosures(analysis)
     debugResults(anl, false)
   }
