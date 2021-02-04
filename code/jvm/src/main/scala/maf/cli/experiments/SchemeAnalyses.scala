@@ -86,7 +86,7 @@ object SchemeAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with ParallelWorklistAlgorithm[SchemeExp]
+    with BiggerEnvironmentFirstWorklistAlgorithm.ModF with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -114,13 +114,13 @@ object SchemeAnalyses {
     ) = new SimpleSchemeModConcAnalysis(prg)
     with SchemeModConcStandardSensitivity
     with SchemeConstantPropagationDomain
-    with ParallelWorklistAlgorithm[SchemeExp] {
+    with ParallelWorklistAlgorithm[SchemeExp] with CallDepthFirstWorklistAlgorithm[SchemeExp] {
     override def workers = n
     override def toString = s"parallel modconc (n = $n ; m = $m)"
     override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
     override def modFAnalysis(
         intra: SchemeModConcIntra
-      ) = new InnerModFAnalysis(intra) with SchemeModFKCallSiteSensitivity with ParallelWorklistAlgorithm[SchemeExp] {
+      ) = new InnerModFAnalysis(intra) with SchemeModFKCallSiteSensitivity with ParallelWorklistAlgorithm[SchemeExp] with CallDepthFirstWorklistAlgorithm[SchemeExp] {
       val k = kcfa
       override def workers = m
       override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra

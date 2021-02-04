@@ -7,7 +7,7 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.scheme.modconc._
 import maf.modular.scheme.ssmodconc._
-import maf.modular.worklist.{LIFOWorklistAlgorithm, ParallelWorklistAlgorithm, RandomWorklistAlgorithm}
+import maf.modular.worklist._
 import maf.test._
 
 trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
@@ -28,7 +28,7 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
   def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program)
     with SchemeModConcStandardSensitivity
     with SchemeConstantPropagationDomain
-    with ParallelWorklistAlgorithm[SchemeExp] {
+    with ParallelWorklistAlgorithm[SchemeExp] with CallDepthFirstWorklistAlgorithm[SchemeExp] {
     override def workers: Int = 4
     override def intraAnalysis(cmp: SchemeModConcComponent) = new SchemeModConcIntra(cmp) with ParallelIntra
     def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra) with SchemeModFNoSensitivity with RandomWorklistAlgorithm[SchemeExp]
