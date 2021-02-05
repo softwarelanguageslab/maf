@@ -3,55 +3,60 @@ package maf.cli.experiments.parallel
 import maf.language.scheme._
 import maf.cli.experiments._
 import maf.cli.experiments.performance._
+import maf.util.benchmarks._
+import scala.concurrent.duration._
 
-object ParallelModFPerformance1 extends PerformanceEvaluation {
-  def benchmarks = Set(
-    "test/R5RS/gambit/scheme.scm",
-    "test/R5RS/gambit/peval.scm",
-    "test/R5RS/gambit/sboyer.scm",
-    "test/R5RS/icp/icp_1c_ontleed.scm",
-    "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
-    "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
-    "test/R5RS/icp/icp_7_eceval.scm"
-  )
-  def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.kCFAAnalysis(_, 0), "base ModF"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 1, 0), "parallel (n = 1)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 2, 0), "parallel (n = 2)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 4, 0), "parallel (n = 4)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 8, 0), "parallel (n = 8)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 16, 0), "parallel (n = 16)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 32, 0), "parallel (n = 32)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 64, 0), "parallel (n = 64)")
-  )
+trait ParallelModFPerformance extends PerformanceEvaluation {
+  override def analysisTime = Timeout.start(Duration(10, MINUTES)) // TODO: increase for actual evaluation
+  def k: Int
+  def cores = List(1, 2, 4, 6)
+  def benchmarks: Set[String]
+  def analyses: List[(SchemeExp => Analysis, String)] = {
+    (SchemeAnalyses.kCFAAnalysis(_, k), "base ModF ($k-CFA)") ::
+    cores.map(n => (SchemeAnalyses.parallelKCFAAnalysis(_, n, k), s"parallel (n = $n, $k-CFA)"))
+  }
   def main(args: Array[String]) = run()
 }
 
-object ParallelModFPerformance2 extends PerformanceEvaluation {
+object ParallelModFPerformance0CFA extends ParallelModFPerformance {
+  def k = 0
   def benchmarks = Set(
-    "test/R5RS/gambit/graphs.scm",
-    "test/R5RS/gambit/matrix.scm",
-    "test/R5RS/gambit/nboyer.scm",
+    "test/R5RS/WeiChenRompf2019/meta-circ.scm",
+    "test/R5RS/WeiChenRompf2019/earley.sch",
+    "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
+    "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
+    "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm",
+    "test/R5RS/gambit/peval.scm",
+    "test/R5RS/gambit/scheme.scm",
     "test/R5RS/gambit/sboyer.scm",
-    "test/R5RS/gambit/browse.scm",
+    "test/R5RS/gambit/nboyer.scm",
+    "test/R5RS/scp1-compressed/all.scm",
+    "test/R5RS/ad/all.scm",
+    "test/R5RS/various/SICP-compiler.scm",
+    "test/R5RS/icp/icp_1c_ambeval.scm",
+    "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+    "test/R5RS/icp/icp_1c_ontleed.scm",
+    "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+    "test/R5RS/icp/icp_7_eceval.scm",
     "test/R5RS/icp/icp_8_compiler.scm",
-    "test/R5RS/icp/icp_3_leval.scm"
+    "test/R5RS/icp/icp_5_regsim.scm",
+    "test/R5RS/icp/icp_3_leval.scm",
+    "test/R5RS/icp/icp_2_aeval.scm",
   )
-  def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.kCFAAnalysis(_, 2), "base ModF (2-CFA)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 1, 2), "parallel (n = 1) (2-CFA)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 2, 2), "parallel (n = 2) (2-CFA)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 4, 2), "parallel (n = 4) (2-CFA)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 8, 2), "parallel (n = 8) (2-CFA)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 16, 2), "parallel (n = 16) (2-CFA)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 32, 2), "parallel (n = 32) (2-CFA)"),
-    (SchemeAnalyses.parallelKCFAAnalysis(_, 64, 2), "parallel (n = 64) (2-CFA)")
-  )
-  def main(args: Array[String]) = run()
+}
+
+object ParallelModFPerformance1CFA extends ParallelModFPerformance {
+  def k = 1
+  def benchmarks = ParallelModFPerformance0CFA.benchmarks
+}
+
+object ParallelModFPerformance2CFA extends ParallelModFPerformance {
+  def k = 2
+  def benchmarks = ParallelModFPerformance0CFA.benchmarks
 }
 
 object ParallelModConcPerformance extends PerformanceEvaluation {
-  def benchmarks = Set(
+  def benchmarks: Set[String] = Set(
     "test/concurrentScheme/threads/crypt.scm",
     "test/concurrentScheme/threads/actors.scm",
     "test/concurrentScheme/threads/matmul.scm",
