@@ -9,10 +9,10 @@ import scala.concurrent.duration._
 trait ParallelModFPerformance extends PerformanceEvaluation {
   override def analysisTime = Timeout.start(Duration(10, MINUTES)) // TODO: increase for actual evaluation
   def k: Int
-  def cores = List(1, 2, 4, 6)
-  def benchmarks: Set[String]
+  def cores = List(1, 2, 4, 8)
+  def benchmarks: Set[Benchmark]
   def analyses: List[(SchemeExp => Analysis, String)] = {
-    (SchemeAnalyses.kCFAAnalysis(_, k), "base ModF ($k-CFA)") ::
+    (SchemeAnalyses.kCFAAnalysis(_, k), s"base ModF ($k-CFA)") ::
     cores.map(n => (SchemeAnalyses.parallelKCFAAnalysis(_, n, k), s"parallel (n = $n, $k-CFA)"))
   }
   def main(args: Array[String]) = run()
