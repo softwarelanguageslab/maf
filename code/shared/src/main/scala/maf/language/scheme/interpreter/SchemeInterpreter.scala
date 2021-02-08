@@ -342,9 +342,9 @@ class SchemeInterpreter(
           case Some(addr) =>
             lookupStoreOption(addr) match {
               case Some(v) => done(v)
-              case None    => stackedException(s"Unbound variable $id at position ${id.idn}")
+              case None    => stackedException(s"Unbound variable $id at position ${id.idn}.")
             }
-          case None => stackedException(s"Undefined variable $id at position ${id.idn}")
+          case None => stackedException(s"Undefined variable $id at position ${id.idn}.")
         }
       case SchemePair(car, cdr, _) =>
         for {

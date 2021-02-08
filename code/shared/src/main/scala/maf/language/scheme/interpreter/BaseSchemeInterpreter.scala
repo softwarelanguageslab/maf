@@ -1,15 +1,23 @@
 package maf.language.scheme.interpreter
 
 import maf.core.Identity
+import maf.language.change.CodeVersion.{New, Version}
 import maf.language.scheme._
 import maf.language.sexp
 import maf.language.sexp.{SExp, SExpId, SExpPair, SExpValue}
+import maf.util.benchmarks.Timeout
 
 /** Common functionality for different Scheme interpreters, and interface methods needed for the primitives. */
 trait BaseSchemeInterpreter[V] {
   // TODO: Maybe not all these definitions need to be abstract as some can be shared with the CPS interpreter.
 
   import ConcreteValues._
+
+  def run(
+      program: SchemeExp,
+      timeout: Timeout.T,
+      version: Version = New
+    ): Value
 
   // Both access to 'lastAddr' and 'store' should be synchronized on 'this'!
   var lastAddr = 0

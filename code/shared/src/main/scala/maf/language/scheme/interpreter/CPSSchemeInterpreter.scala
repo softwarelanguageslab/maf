@@ -65,9 +65,10 @@ class CPSSchemeInterpreter(
     case SchemeSetLex(variable, lexAddr, value, _)               => ???
     case SchemeSplicedPair(splice, cdr, _)                       => ???
     case SchemeValue(value, _)                                   => Kont(evalLiteral(value, exp), cc)
-    case SchemeVar(id)                                           => ???
-    case SchemeVarArgLambda(args, vararg, body, _)               => ???
-    case SchemeVarLex(id, lexAddr)                               => ???
+    case SchemeVar(id) =>
+      env.get(id.name).flatMap(lookupStoreOption).map(Kont(_, cc)).getOrElse(stackedException(s"Unbound variable $id at position ${id.idn}."))
+    case SchemeVarArgLambda(args, vararg, body, _) => ???
+    case SchemeVarLex(id, lexAddr)                 => ???
 
     case CSchemeFork(body, _) => ???
     case CSchemeJoin(tExp, _) => ???
