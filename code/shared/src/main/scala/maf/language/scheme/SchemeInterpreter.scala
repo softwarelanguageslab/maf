@@ -443,9 +443,7 @@ class SchemeInterpreter(
         val lambda = SchemeLambda(prs, body, pos)
         val clo = Value.Clo(lambda, env2, Some(name.name))
         extendStore(addr, clo)
-        for {
-          res <- tailcall(eval(SchemeFuncall(lambda, ags, pos), env2, timeout, version))
-        } yield res
+        tailcall(eval(SchemeFuncall(lambda, ags, pos), env2, timeout, version))
       case SchemeSet(id, v, pos) =>
         /* TODO: primitives can be reassigned with set! without being redefined */
         val addr = env.get(id.name) match {
@@ -522,7 +520,7 @@ class SchemeInterpreter(
     }
   }
 
-  def allocateVal(exp: SchemeExp, value: Value) = {
+  def allocateVal(exp: SchemeExp, value: Value): Value.Pointer = {
     val addr = newAddr(AddrInfo.PtrAddr(exp))
     extendStore(addr, value)
     Value.Pointer(addr)
@@ -535,7 +533,7 @@ class SchemeInterpreter(
     ): Value =
     allocateVal(exp, Value.Cons(car, cdr))
 
-  def allocateStr(exp: SchemeExp, str: String) =
+  def allocateStr(exp: SchemeExp, str: String): Value.Pointer =
     allocateVal(exp, Value.Str(str))
 
   def getString(addr: Addr): String = lookupStore(addr) match {
@@ -594,20 +592,13 @@ class SchemeInterpreter(
       Ceiling, /* [vv] ceiling: Arithmetic */
       CharToInteger, /* [vv]  char->integer: Characters */
       CharToString,
-      /* [x]  char-alphabetic?: Characters */
-      /* [x]  char-ci<=?: Characters */
       CharCILt, /* [x]  char-ci<?: Characters */
       CharCIEq, /* [x]  char-ci=?: Characters */
-      /* [x]  char-ci>=?: Characters */
-      /* [x]  char-ci>?: Characters */
       /* [x]  char-downcase: Characters */
       /* [x]  char-lower-case?: Characters */
-      /* [x]  char-numeric?: Characters */
       /* [x]  char-ready?: Reading */
       /* [x]  char-upcase: Characters */
       /* [x]  char-upper-case?: Characters */
-      /* [x]  char-whitespace?: Characters */
-      /* [x]  char<=?: Characters */
       CharLt, /* [x]  char<?: Characters */
       CharEq, /* [x]  char=?: Characters */
       /* [x]  char>=?: Characters */
@@ -632,13 +623,11 @@ class SchemeInterpreter(
       /* [x]  exp: Scientific */
       Expt, /* [vv] expt: Scientific */
       Floor, /* [vv] floor: Arithmetic */
-      /* [x]  for-each: List Mapping */
       /* [x]  force: Delayed Evaluation */
       Gcd, /* [vx] gcd: Integer Operations */
       /* [x]  imag-part: Complex */
       InexactToExact, /* [vv] inexact->exact: Exactness */
       /* [x]  inexact?: Exactness */
-      /* [x]  input-port?: Ports */
       IntegerToChar, /* [vv]  integer->char: Characters */
       Integerp, /* [vv] integer?: Integers */
       /* [x]  interaction-environment: Fly Evaluation */
@@ -669,9 +658,6 @@ class SchemeInterpreter(
       NumberToString, /* [vx] number->string: Conversion: does not support two arguments */
       Numberp, /* [vv] number?: Numerical Tower */
       Oddp, /* [vv] odd?: Integer Operations */
-      /* [x]  open-input-file: File Ports */
-      /* [x]  open-output-file: File Ports */
-      /* [x]  output-port?: Ports */
       Pairp, /* [vv] pair?: Pairs */
       /* [x]  peek-char?: Reading */
       Positivep, /* [vv] positive?: Comparison */
@@ -695,7 +681,6 @@ class SchemeInterpreter(
       StringToSymbol, /* [vv] string->symbol: Symbol Primitives */
       StringAppend, /* [vx] string-append: Appending Strings: only two arguments supported */
       /* [x]  string-ci<: String Comparison */
-      /* [x]  string-ci=?: String Comparison */
       /* [x]  string-ci>=?: String Comparison */
       /* [x]  string-ci>?: String Comparison */
       /* [x]  string-copy: String Selection */
@@ -703,11 +688,7 @@ class SchemeInterpreter(
       StringLength, /* [vv] string-length: String Selection */
       StringRef, /* [x]  string-ref: String Selection */
       StringSet, /* [x]  string-set!: String Modification */
-      /* [x]  string<=?: String Comparison */
       StringLt, /* [vv]  string<?: String Comparison */
-      /* [x]  string=?: String Comparison */
-      /* [x]  string>=?: String Comparison */
-      /* [x]  string>?: String Comparison */
       Stringp, /* [vv]  string?: String Predicates */
       Substring, /* [x]  substring: String Selection */
       SymbolToString, /* [vv] symbol->string: Symbol Primitives */
@@ -717,15 +698,11 @@ class SchemeInterpreter(
       /* [x]  values: Multiple Values */
       MakeVector, /* [vv] make-vector: Vector Creation */
       Vector, /* [vv] vector: Vector Creation */
-      /* [x]  vector->list: Vector Creation */
       /* [x]  vector-fill!: Vector Accessors */
       VectorLength, /* [vv] vector-length: Vector Accessors */
       VectorRef, /* [vv] vector-ref: Vector Accessors */
       VectorSet, /* [vv] vector-set!: Vector Accessors */
       Vectorp, /* [vv] vector?: Vector Creation */
-      /* [x]  with-input-from-file: File Ports */
-      /* [x]  with-output-to-file: File Ports */
-      /* [x]  write-char: Writing */
       Zerop, /* [vv] zero?: Comparison */
       LessThan, /* [vv]  < */
       LessOrEqual, /* [vv]  <= */
@@ -739,40 +716,7 @@ class SchemeInterpreter(
       /* [x]  null-environment */
       /* [x]  write transcript-on */
       /* [x]  transcript-off */
-      //Caar,
-      //Cadr, /* [v]  caar etc. */
-      //Cdar,
-      //Cddr,
-      //Caaar,
-      //Caadr,
-      //Cadar,
-      //Caddr,
-      //Cdaar,
-      //Cdadr,
-      //Cddar,
-      //Cdddr,
-      //Caaaar,
-      //Caaadr,
-      //Caadar,
-      //Caaddr,
-      //Cadaar,
-      //Cadadr,
-      //Caddar,
-      //Cadddr,
-      //Cdaaar,
-      //Cdaadr,
-      //Cdadar,
-      //Cdaddr,
-      //Cddaar,
-      //Cddadr,
-      //Cdddar,
-      //Cddddr,
-      /* Other primitives that are not R5RS */
-      Random,
-      Error,
-      NewLock,
-      Acquire,
-      Release,
+      /* IO Primitives */
       `eof-object?`,
       `input-port?`,
       `output-port?`,
@@ -789,7 +733,15 @@ class SchemeInterpreter(
       `write`,
       `write-char`,
       `display`,
-      `newline`
+      `newline`,
+      /* [x]  with-input-from-file: File Ports */
+      /* [x]  with-output-to-file: File Ports */
+      /* Other primitives that are not R5RS */
+      Random,
+      Error,
+      NewLock,
+      Acquire,
+      Release
     ).map(prim => (prim.name, prim)).toMap
 
     abstract class SingleArgumentPrimWithExp(val name: String) extends Prim {
@@ -1853,9 +1805,10 @@ object SchemeInterpreter {
 
   import scala.concurrent.duration._
   import maf.language.scheme.primitives._
-  val timeout = Duration(30, SECONDS)
+
+  val timeout: FiniteDuration = Duration(30, SECONDS)
   def main(args: Array[String]): Unit =
-    if (args.size == 1) {
+    if (args.length == 1) {
       val text = Reader.loadFile(args(0))
       val pgm = SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display"))))
       val interpreter = new SchemeInterpreter((id, v) => ())
