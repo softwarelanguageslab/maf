@@ -4,7 +4,6 @@ import maf.core._
 import maf.language.change.CodeVersion._
 import maf.language.scheme._
 import maf.language.scheme.interpreter.ConcreteValues._
-import maf.language.sexp.SExp
 
 class CPSSchemeInterpreter(
     cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
@@ -13,41 +12,7 @@ class CPSSchemeInterpreter(
     extends BaseSchemeInterpreter[ConcreteValues.Value]
        with ConcreteSchemePrimitives {
 
-  def newAddr(meta: ConcreteValues.AddrInfo): (Int, ConcreteValues.AddrInfo) = ???
-
-  var store: Map[(Int, ConcreteValues.AddrInfo), ConcreteValues.Value] = Map()
-
-  def extendStore(a: (Int, ConcreteValues.AddrInfo), v: ConcreteValues.Value): Unit = ???
-
-  def lookupStore(a: (Int, ConcreteValues.AddrInfo)): ConcreteValues.Value = ???
-
-  def lookupStoreOption(a: (Int, ConcreteValues.AddrInfo)): Option[ConcreteValues.Value] = ???
-
-  def setStore(s: Map[(Int, ConcreteValues.AddrInfo), ConcreteValues.Value]): Unit = ???
-
-  def allocateVal(exp: SchemeExp, value: ConcreteValues.Value): Value.Pointer = ???
-
-  def allocateCons(
-      exp: SchemeExp,
-      car: ConcreteValues.Value,
-      cdr: ConcreteValues.Value
-    ): ConcreteValues.Value = ???
-
-  def allocateStr(exp: SchemeExp, str: String): Value.Pointer = ???
-
-  def getString(addr: (Int, ConcreteValues.AddrInfo)): String = ???
-
-  def makeList(values: List[(SchemeExp, ConcreteValues.Value)]): ConcreteValues.Value = ???
-
-  def stackedCall(
-      name: Option[String],
-      idn: Identity,
-      block: => ConcreteValues.Value
-    ): ConcreteValues.Value = ???
-
   def stackedException[R](msg: String): R = ???
-
-  def evalSExp(sexp: SExp, exp: SchemeExp): ConcreteValues.Value = ???
 
   sealed trait Continuation
 
@@ -62,17 +27,28 @@ class CPSSchemeInterpreter(
 
   case class AsmC(v: Identifier, cc: Continuation) extends Continuation
 
+  sealed trait State
+
+  case class Step(
+      exp: SchemeExp,
+      env: Env,
+      version: Version,
+      cc: Continuation)
+      extends State
+
+  case class Kont(v: ConcreteValues.Value, cc: Continuation) extends State
+
   def eval(
       exp: SchemeExp,
       env: Env,
       version: Version,
       cc: Continuation
-    ): ConcreteValues.Value = exp match { // TODO fix return type
+    ): State = exp match {
     case SchemeAnd(exps, _)                                      => ???
     case SchemeAssert(exp, _)                                    => ???
     case SchemeBegin(exps, _)                                    => ???
-    case SchemeCodeChange(old, _, _) if version == New           => eval(old, env, version, cc)
-    case SchemeCodeChange(_, nw, _) if version == Old            => eval(nw, env, version, cc)
+    case SchemeCodeChange(old, _, _) if version == New           => Step(old, env, version, cc)
+    case SchemeCodeChange(_, nw, _) if version == Old            => Step(nw, env, version, cc)
     case SchemeDefineFunction(name, args, body, _)               => ???
     case SchemeDefineVarArgFunction(name, args, vararg, body, _) => ???
     case SchemeDefineVariable(name, value, _)                    => ???
@@ -88,7 +64,7 @@ class CPSSchemeInterpreter(
     case SchemeSet(variable, value, _)                           => ???
     case SchemeSetLex(variable, lexAddr, value, _)               => ???
     case SchemeSplicedPair(splice, cdr, _)                       => ???
-    case SchemeValue(value, _)                                   => ???
+    case SchemeValue(value, _)                                   => Kont(evalLiteral(value, exp), cc)
     case SchemeVar(id)                                           => ???
     case SchemeVarArgLambda(args, vararg, body, _)               => ???
     case SchemeVarLex(id, lexAddr)                               => ???
@@ -99,7 +75,7 @@ class CPSSchemeInterpreter(
     case _ => throw new Exception(s"Unsupported expression type: ${exp.label}.")
   }
 
-  def apply(v: ConcreteValues.Value, cc: Continuation): ConcreteValues.Value = cc match {
+  def apply(v: ConcreteValues.Value, cc: Continuation): State = cc match {
     case RefC(cc)              => ???
     case AssC(v, bnd, env, cc) => ???
     case AsmC(v, cc)           => ???
