@@ -4,6 +4,7 @@ import org.scalatest.Tag
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme._
+import maf.language.scheme.interpreter._
 import maf.modular._
 import maf.modular.incremental.IncrementalModAnalysis
 import maf.modular.incremental.scheme.SchemeAnalyses._
@@ -45,7 +46,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       i: SchemeInterpreter,
       p: SchemeExp,
       t: Timeout.T
-    ): SchemeInterpreter.Value = i.run(p, t, version)
+    ): ConcreteValues.Value = i.run(p, t, version)
 
   override def onBenchmark(benchmark: Benchmark): Unit = {
     info(s"Checking $benchmark using $name.")

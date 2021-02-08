@@ -2,6 +2,7 @@ package maf.cli.experiments.precision
 
 import maf.core._
 import maf.language.scheme._
+import maf.language.scheme.interpreter.{ConcreteValues, FileIO, SchemeInterpreter}
 import maf.language.scheme.lattices.ModularSchemeLattice
 import maf.language.scheme.primitives._
 import maf.lattice.interfaces._
@@ -65,34 +66,38 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case analysis.modularLatticeWrapper.modularLattice.Thread(tids) => baseDomain.Thread(tids)
     case v                                                          => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
   }
+
   private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
     case analysis.modularLatticeWrapper.modularLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
   }
-  private def convertConcreteAddr(addr: SchemeInterpreter.Addr): BaseAddr = addr._2 match {
-    case SchemeInterpreter.AddrInfo.VarAddr(v) => VarAddr(v)
-    case SchemeInterpreter.AddrInfo.PrmAddr(p) => PrmAddr(p)
-    case SchemeInterpreter.AddrInfo.PtrAddr(p) => PtrAddr(p.idn)
-    case SchemeInterpreter.AddrInfo.RetAddr(r) => RetAddr(r.idn)
+
+  private def convertConcreteAddr(addr: ConcreteValues.Addr): BaseAddr = addr._2 match {
+    case ConcreteValues.AddrInfo.VarAddr(v) => VarAddr(v)
+    case ConcreteValues.AddrInfo.PrmAddr(p) => PrmAddr(p)
+    case ConcreteValues.AddrInfo.PtrAddr(p) => PtrAddr(p.idn)
+    case ConcreteValues.AddrInfo.RetAddr(r) => RetAddr(r.idn)
   }
-  private def convertConcreteValue(value: SchemeInterpreter.Value): BaseValue = value match {
-    case SchemeInterpreter.Value.Nil          => baseLattice.nil
-    case SchemeInterpreter.Value.Void         => baseLattice.void
-    case SchemeInterpreter.Value.Undefined(_) => baseLattice.bottom
-    case SchemeInterpreter.Value.Clo(l, _, _) =>
+
+  private def convertConcreteValue(value: ConcreteValues.Value): BaseValue = value match {
+    case ConcreteValues.Value.Nil          => baseLattice.nil
+    case ConcreteValues.Value.Void         => baseLattice.void
+    case ConcreteValues.Value.Undefined(_) => baseLattice.bottom
+    case ConcreteValues.Value.Clo(l, _, _) =>
       baseLattice.closure((l, emptyEnv), None) // TODO: when names are added to the abstract interpreter, preserve that information here
-    case SchemeInterpreter.Value.Primitive(p) => baseLattice.primitive(p)
-    case SchemeInterpreter.Value.Str(s)       => baseLattice.string(s)
-    case SchemeInterpreter.Value.Symbol(s)    => baseLattice.symbol(s)
-    case SchemeInterpreter.Value.Integer(i)   => baseLattice.number(i)
-    case SchemeInterpreter.Value.Real(r)      => baseLattice.real(r)
-    case SchemeInterpreter.Value.Bool(b)      => baseLattice.bool(b)
-    case SchemeInterpreter.Value.Character(c) => baseLattice.char(c)
-    case SchemeInterpreter.Value.Cons(a, d)   => baseLattice.cons(convertConcreteValue(a), convertConcreteValue(d))
-    case SchemeInterpreter.Value.Pointer(a)   => baseLattice.pointer(convertConcreteAddr(a))
-    case SchemeInterpreter.Value.Vector(siz, els, _) =>
+    case ConcreteValues.Value.Primitive(p) => baseLattice.primitive(p)
+    case ConcreteValues.Value.Str(s)       => baseLattice.string(s)
+    case ConcreteValues.Value.Symbol(s)    => baseLattice.symbol(s)
+    case ConcreteValues.Value.Integer(i)   => baseLattice.number(i)
+    case ConcreteValues.Value.Real(r)      => baseLattice.real(r)
+    case ConcreteValues.Value.Bool(b)      => baseLattice.bool(b)
+    case ConcreteValues.Value.Character(c) => baseLattice.char(c)
+    case ConcreteValues.Value.Cons(a, d)   => baseLattice.cons(convertConcreteValue(a), convertConcreteValue(d))
+    case ConcreteValues.Value.Pointer(a)   => baseLattice.pointer(convertConcreteAddr(a))
+    case ConcreteValues.Value.Vector(siz, els, _) =>
       def convertNumber(n: BigInt): Num = baseLattice.number(n) match {
         case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
       }
+
       val cSiz = convertNumber(siz)
       val cEls = els.foldLeft(Map[Num, BaseValue]()) { case (acc, (idx, vlu)) =>
         val cIdx = convertNumber(idx)

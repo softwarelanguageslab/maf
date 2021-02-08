@@ -1,569 +1,15 @@
-package maf.language.scheme
+package maf.language.scheme.interpreter
 
-import java.util.concurrent.TimeUnit
+import maf.core.Identity
 import maf.core.Position.Position
-import maf.core._
-import maf.language.change.CodeVersion._
-import maf.util._
-import maf.language.sexp
-import maf.language.sexp._
-import maf.lattice.MathOps
-import maf.util.benchmarks.Timeout
+import maf.language.scheme._
+import maf.lattice.{MathOps, NumOps}
 
-import scala.concurrent.TimeoutException
-import scala.concurrent._
-import ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.util.parsing.input.CharSequenceReader
+trait ConcreteSchemePrimitives {
+  this: BaseSchemeInterpreter[_] =>
 
-case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"A child thread has tragically died with ${e.getMessage}.")
-case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpreter encountered an unexpected value during its execution: $v.")
-
-trait Handle {
-  // The name used by this handle in the abstract interpreter. Used to convert values.
-  val abstractName: String
-}
-
-object Handle {
-  // !! These are *not* case classes because we want different handles if we open the same file multiple times
-
-  class FileHandle(val filename: String) extends Handle {
-    val abstractName: String = "__file__" + filename
-    override def toString(): String = s"file:$filename"
-  }
-  class StringHandle(val content: String) extends Handle {
-    val abstractName: String = content
-    override def toString(): String = s"string:$content"
-  }
-  object ConsoleHandle extends Handle {
-    val abstractName = "__console__"
-    override def toString(): String = "console"
-  }
-}
-
-trait IO {
-  def fromString(string: String): Handle
-  def open(filename: String): Handle
-  def close(f: Handle): Unit
-  val console: Handle
-
-  def read(f: Handle): Option[SExp]
-  def readChar(f: Handle): SchemeInterpreter.Value
-  def peekChar(f: Handle): SchemeInterpreter.Value
-  def writeChar(c: Char, f: Handle): Unit
-  def writeString(s: String, f: Handle): Unit
-}
-
-class EmptyIO extends IO {
-  def fromString(string: String): Handle = new Handle.StringHandle(string)
-  def open(filename: String): Handle = new Handle.FileHandle(filename)
-  def close(h: Handle): Unit = ()
-  val console = Handle.ConsoleHandle
-
-  def read(h: Handle): Option[SExp] = None
-  def readChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
-  def peekChar(h: Handle): SchemeInterpreter.Value = SchemeInterpreter.Value.EOF
-  def writeChar(c: Char, h: Handle): Unit = ()
-  def writeString(s: String, h: Handle): Unit = ()
-}
-
-class FileIO(val files: Map[String, String]) extends IO {
-  var positions: Map[Handle, Int] = Map.empty // Accesses to `positions` need synchronization on `this`.
-
-  def fromString(string: String): Handle = synchronized {
-    val handle = new Handle.StringHandle(string)
-    positions = positions + (handle -> 0)
-    handle
-  }
-
-  def open(filename: String): Handle = synchronized {
-    if (files.contains(filename)) {
-      val handle = new Handle.FileHandle(filename)
-      positions = positions + (handle -> 0)
-      handle
-    } else {
-      throw new Exception(s"Cannot open virtual file $filename")
-    }
-  }
-
-  def close(h: Handle): Unit = synchronized {
-    h match {
-      case Handle.ConsoleHandle   => ()
-      case h: Handle.FileHandle   => positions += h -> files(h.filename).size
-      case h: Handle.StringHandle => positions += h -> h.content.size
-    }
-  }
-
-  val console = Handle.ConsoleHandle
-
-  // Read: no need for synchronisation as long as files is immutable.
-  def read(h: Handle): Option[SExp] = h match {
-    case Handle.ConsoleHandle   => None
-    case h: Handle.FileHandle   => readUsingString(files(h.filename), h)
-    case h: Handle.StringHandle => readUsingString(h.content, h)
-  }
-
-  private def readUsingString(str: String, hdl: Handle): Option[SExp] = synchronized {
-    val pos = positions(hdl)
-    if (pos >= str.size) {
-      None
-    } else {
-      val reader = new CharSequenceReader(str, pos)
-      val (sexp, offset) = SExpParser.parseIn(reader)
-      positions += hdl -> offset
-      Some(sexp)
-    }
-  }
-
-  def readChar(h: Handle): SchemeInterpreter.Value = synchronized {
-    peekChar(h) match {
-      case SchemeInterpreter.Value.EOF => SchemeInterpreter.Value.EOF
-      case c =>
-        positions = positions + (h -> (positions(h) + 1))
-        c
-    }
-  }
-
-  def peekChar(h: Handle): SchemeInterpreter.Value = synchronized {
-    h match {
-      case Handle.ConsoleHandle =>
-        /* Console is never opened with this IO class */
-        SchemeInterpreter.Value.EOF
-      case h: Handle.FileHandle =>
-        val pos = positions(h)
-        if (pos >= files(h.filename).size) {
-          SchemeInterpreter.Value.EOF
-        } else {
-          SchemeInterpreter.Value.Character(files(h.filename).charAt(pos))
-        }
-      case h: Handle.StringHandle =>
-        val pos = positions(h)
-        if (pos >= h.content.size) {
-          SchemeInterpreter.Value.EOF
-        } else {
-          SchemeInterpreter.Value.Character(h.content.charAt(pos))
-        }
-    }
-  }
-
-  def writeChar(c: Char, h: Handle): Unit = ()
-
-  def writeString(s: String, h: Handle): Unit = ()
-}
-
-/**
- * This is an interpreter that runs a program and calls a callback at every evaluated value.
- * This interpreter dictates the concrete semantics of the Scheme language analyzed by MAF.
- */
-class SchemeInterpreter(
-    cb: (Identity, SchemeInterpreter.Value) => Unit = (_, _) => (),
-    io: IO = new EmptyIO(),
-    stack: Boolean = false) {
-  import scala.util.control.TailCalls._
-  import SchemeInterpreter._
-  import maf.lattice.NumOps._
-
-  /**
-   * Evaluates `program`.
-   * Will check the analysis result by calling `compare` on all encountered values.
-   */
-  def run(
-      program: SchemeExp,
-      timeout: Timeout.T,
-      version: Version = New
-    ): Value = {
-    setStore(initialSto)
-    val res = eval(program, initialEnv, timeout, version).result
-    val resAddr = newAddr(AddrInfo.RetAddr(program))
-    extendStore(resAddr, res)
-    res
-  }
-
-  lazy val (initialEnv, initialSto) = {
-    val emptyEnv = Map.empty[String, Addr]
-    val emptySto = Map.empty[Addr, Value]
-    Primitives.allPrimitives.foldLeft((emptyEnv, emptySto)) { case ((env: Env, sto: Store), (name: String, _: Prim)) =>
-      val addr = newAddr(AddrInfo.PrmAddr(name))
-      (env + (name -> addr), sto + (addr -> Value.Primitive(name)))
-    }
-  }
-
-  def safeFuture(bdy: => Value): Future[Value] = Future {
-    try bdy
-    catch {
-      case e: VirtualMachineError =>
-        throw ChildThreadDiedException(e)
-    }
-  }
-
-  // Access to cb should be synchronized on 'Callback'.
-  object Callback {
-    def call(i: Identity, v: Value): Unit = synchronized {
-      cb(i, v)
-    }
-  }
-
-  var compared = 0
-  def check(i: Identity, v: Value): Value = {
-    compared += 1
-    v match {
-      case Value.Undefined(idn @ _) => () // println(s"Undefined behavior arising from identity $idn seen at ${e.idn.pos}")
-      case Value.Unbound(idn)       => println(s"Seen unbound identifier $idn at ${i}")
-      case _                        => ()
-    }
-    Callback.call(i, v)
-    v
-  }
-
-  // Both access to 'lastAddr' and 'store' should be synchronized on 'this'!
-  var lastAddr = 0
-  def newAddr(meta: AddrInfo): (Int, AddrInfo) = synchronized {
-    lastAddr += 1
-    (lastAddr, meta)
-  }
-  var store = Map[Addr, Value]()
-  def extendStore(a: Addr, v: Value): Unit = synchronized {
-    store = store + (a -> v)
-  }
-  def lookupStore(a: Addr): Value = synchronized {
-    store(a)
-  }
-  def lookupStoreOption(a: Addr): Option[Value] = synchronized {
-    store.get(a)
-  }
-  def setStore(s: Map[Addr, Value]): Unit = synchronized {
-    store = s
-  }
-
-  // Keep an artificial call stack to ease debugging.
-  var callStack: List[String] = List()
-
-  // TODO: The stack mechanism might have been broken due to the use of TailRec
-  // TODO: This may not work with concurrent programs at all, but at least we make it thread-safe and avoid exceptions.
-  def stackedCall(
-      name: Option[String],
-      idn: Identity,
-      block: => TailRec[Value]
-    ): TailRec[Value] = synchronized {
-    val n = name.getOrElse("λ") + s"@${idn.pos}"
-    if (stack) callStack = n :: callStack
-    val res = block
-    if (stack) callStack match {
-      case Nil => System.err.println("The call stack tracking does currently not work correctly with concurrent programs.")
-      case _   => callStack = callStack.tail
-    }
-    res
-  }
-
-  def stackedException[R](msg: String): R = {
-    val m = if (stack) callStack.mkString(s"$msg\n Callstack:\n * ", "\n * ", "\n **********") else msg
-    throw new Exception(m)
-  }
-
-  def evalSequence(
-      exps: List[SchemeExp],
-      env: Env,
-      timeout: Timeout.T,
-      version: Version
-    ): TailRec[Value] =
-    exps match {
-      case Nil      => done(Value.Void)
-      case e :: Nil => tailcall(eval(e, env, timeout, version))
-      case e1 :: exps =>
-        for {
-          v1 <- tailcall(eval(e1, env, timeout, version))
-          vn <- tailcall(evalSequence(exps, env, timeout, version))
-        } yield vn
-    }
-  def evalLet(
-      bindings: List[(Identifier, SchemeExp)],
-      body: List[SchemeExp],
-      pos: Identity,
-      envExt: Env,
-      env: Env,
-      timeout: Timeout.T,
-      version: Version
-    ): TailRec[Value] =
-    bindings match {
-      case Nil => tailcall(eval(SchemeBegin(body, pos), envExt, timeout, version))
-      case binding :: bindings =>
-        val addr = newAddr(AddrInfo.VarAddr(binding._1))
-        for {
-          bindingv <- tailcall(eval(binding._2, env, timeout, version))
-          _ = extendStore(addr, check(binding._1.idn, bindingv))
-          res <- tailcall(evalLet(bindings, body, pos, envExt + (binding._1.name -> addr), env, timeout, version))
-        } yield res
-    }
-  def evalLetStar(
-      bindings: List[(Identifier, SchemeExp)],
-      body: List[SchemeExp],
-      pos: Identity,
-      envExt: Env,
-      env: Env,
-      timeout: Timeout.T,
-      version: Version
-    ): TailRec[Value] =
-    bindings match {
-      case Nil => tailcall(eval(SchemeBegin(body, pos), envExt, timeout, version))
-      case binding :: bindings =>
-        val addr = newAddr(AddrInfo.VarAddr(binding._1))
-        for {
-          bindingv <- tailcall(eval(binding._2, envExt, timeout, version))
-          _ = extendStore(addr, check(binding._1.idn, bindingv))
-          res <- tailcall(evalLetStar(bindings, body, pos, envExt + (binding._1.name -> addr), env, timeout, version))
-        } yield res
-    }
-  def evalLetrec(
-      bindings: List[(Identifier, SchemeExp)],
-      body: List[SchemeExp],
-      pos: Identity,
-      envExt: Env,
-      env: Env,
-      timeout: Timeout.T,
-      version: Version
-    ): TailRec[Value] =
-    bindings match {
-      case Nil => tailcall(eval(SchemeBegin(body, pos), envExt, timeout, version))
-      case binding :: bindings =>
-        for {
-          bindingv <- tailcall(eval(binding._2, envExt, timeout, version))
-          namedValue = bindingv match {
-            case Value.Clo(lambda, env, _) => Value.Clo(lambda, env, Some(binding._1.name)) // Add names to closures.
-            case _                         => bindingv
-          }
-          _ = extendStore(envExt(binding._1.name), check(binding._1.idn, namedValue))
-          res <- tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout, version))
-        } yield res
-    }
-  def evalArgs(
-      args: List[SchemeExp],
-      env: Env,
-      timeout: Timeout.T,
-      version: Version
-    ): TailRec[List[Value]] =
-    args match {
-      case Nil => done(Nil)
-      case arg :: args =>
-        for {
-          argv <- tailcall(eval(arg, env, timeout, version))
-          argsv <- tailcall(evalArgs(args, env, timeout, version))
-        } yield argv :: argsv
-    }
-  def eval(
-      e: SchemeExp,
-      env: Env,
-      timeout: Timeout.T,
-      version: Version
-    ): TailRec[Value] = {
-    if (timeout.reached) throw new TimeoutException()
-    e match {
-      case lambda: SchemeLambdaExp => done(Value.Clo(lambda, env))
-      case call @ SchemeFuncall(f, args, idn) =>
-        for {
-          fv <- tailcall(eval(f, env, timeout, version))
-          res <- fv match {
-            case Value.Clo(lambda @ SchemeLambda(argsNames, body, pos2), env2, name) =>
-              if (argsNames.length != args.length) {
-                stackedException(
-                  s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected"
-                )
-              }
-              for {
-                argsv <- evalArgs(args, env, timeout, version)
-                envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
-                  val addr = newAddr(AddrInfo.VarAddr(arg._1))
-                  extendStore(addr, check(arg._1.idn, arg._2))
-                  (env3 + (arg._1.name -> addr))
-                }
-                res <- stackedCall(name, pos2, tailcall(eval(SchemeBegin(body, pos2), envExt, timeout, version)))
-                resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
-                _ = extendStore(resAddr, res)
-              } yield res
-            case Value.Clo(lambda @ SchemeVarArgLambda(argsNames, vararg, body, pos2), env2, name) =>
-              val arity = argsNames.length
-              if (args.length < arity) {
-                stackedException(
-                  s"Invalid function call at position $idn: ${args.length} arguments given, while at least ${argsNames.length} are expected"
-                )
-              }
-              for {
-                argsv <- evalArgs(args, env, timeout, version)
-                envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
-                  val addr = newAddr(AddrInfo.VarAddr(arg._1))
-                  extendStore(addr, check(arg._1.idn, arg._2))
-                  (env3 + (arg._1.name -> addr))
-                }
-                varArgVals <- evalArgs(args.drop(arity), env, timeout, version)
-                varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
-                _ = extendStore(varArgAddr, makeList(args.zip(varArgVals)))
-                envExt2 = envExt + (vararg.name -> varArgAddr)
-                res <- stackedCall(name, pos2, eval(SchemeBegin(body, pos2), envExt2, timeout, version))
-                resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
-                _ = extendStore(resAddr, res)
-              } yield res
-            case Value.Primitive(p) =>
-              tailcall(
-                stackedCall(Some(p),
-                            Identity.none,
-                            for {
-                              argsv <- tailcall(evalArgs(args, env, timeout, version))
-                            } yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
-                )
-              )
-            case v =>
-              stackedException(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive")
-          }
-        } yield res
-      case SchemeIf(cond, cons, alt, _) =>
-        for {
-          condv <- eval(cond, env, timeout, version)
-          res <- condv match {
-            case Value.Bool(false) => tailcall(eval(alt, env, timeout, version))
-            case _                 => tailcall(eval(cons, env, timeout, version))
-          }
-        } yield res
-      case SchemeLet(bindings, body, pos) =>
-        tailcall(evalLet(bindings, body, pos, env, env, timeout, version))
-      case SchemeLetStar(bindings, body, pos) =>
-        tailcall(evalLetStar(bindings, body, pos, env, env, timeout, version))
-      case SchemeLetrec(bindings, body, pos) =>
-        /* First extend the environment with all bindings set to unbound */
-        val envExt = bindings.foldLeft(env) { (env2, binding) =>
-          val addr = newAddr(AddrInfo.VarAddr(binding._1))
-          extendStore(addr, Value.Unbound(binding._1))
-          val env3 = env2 + (binding._1.name -> addr)
-          env3
-        }
-        /* Then evaluate all bindings in the extended environment */
-        tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout, version))
-      case SchemeNamedLet(name, bindings, body, pos) =>
-        val addr = newAddr(AddrInfo.VarAddr(name))
-        val env2 = env + (name.name -> addr)
-        val (prs, ags) = bindings.unzip
-        val lambda = SchemeLambda(prs, body, pos)
-        val clo = Value.Clo(lambda, env2, Some(name.name))
-        extendStore(addr, clo)
-        tailcall(eval(SchemeFuncall(lambda, ags, pos), env2, timeout, version))
-      case SchemeSet(id, v, pos) =>
-        /* TODO: primitives can be reassigned with set! without being redefined */
-        val addr = env.get(id.name) match {
-          case Some(addr) => addr
-          case None       => stackedException(s"Unbound variable $id accessed at position $pos")
-        }
-        for {
-          v <- eval(v, env, timeout, version)
-          _ = extendStore(addr, v)
-        } yield Value.Void
-      case SchemeBegin(exps, _) =>
-        evalSequence(exps, env, timeout, version)
-      case SchemeAnd(Nil, _) =>
-        done(Value.Bool(true))
-      case SchemeAnd(e :: Nil, _) =>
-        tailcall(eval(e, env, timeout, version))
-      case SchemeAnd(e :: exps, pos) =>
-        for {
-          v1 <- eval(e, env, timeout, version)
-          v2 <- v1 match {
-            case Value.Bool(false) => done(Value.Bool(false))
-            case _                 => tailcall(eval(SchemeAnd(exps, pos), env, timeout, version))
-          }
-        } yield v2
-      case SchemeOr(Nil, _) =>
-        done(Value.Bool(false))
-      case SchemeOr(e :: exps, pos) =>
-        for {
-          v1 <- tailcall(eval(e, env, timeout, version))
-          v2 <- v1 match {
-            case Value.Bool(false) => tailcall(eval(SchemeOr(exps, pos), env, timeout, version))
-            case v                 => done(v)
-          }
-        } yield v2
-      case SchemeAssert(_, _) =>
-        done(Value.Void)
-      case SchemeDefineVariable(_, _, _)             => ???
-      case SchemeDefineFunction(_, _, _, _)          => ???
-      case SchemeDefineVarArgFunction(_, _, _, _, _) => ???
-      case SchemeVar(id) =>
-        env.get(id.name) match {
-          case Some(addr) =>
-            lookupStoreOption(addr) match {
-              case Some(v) => done(v)
-              case None    => stackedException(s"Unbound variable $id at position ${id.idn}")
-            }
-          case None => stackedException(s"Undefined variable $id at position ${id.idn}")
-        }
-      case SchemePair(car, cdr, _) =>
-        for {
-          carv <- eval(car, env, timeout, version)
-          cdrv <- eval(cdr, env, timeout, version)
-        } yield allocateCons(e, carv, cdrv)
-      case SchemeSplicedPair(_, _, _) =>
-        stackedException("NYI -- Unquote splicing")
-      //val splicev = eval(splice,env,timeout)
-      //val cdrv    = eval(cdr,env,timeout)
-      //Primitives.Append.append(splicev,cdrv)
-      case SchemeValue(v, _) =>
-        done(evalLiteral(v, e))
-      case CSchemeFork(body, _) =>
-        // TODO: This is a bit hacky in terms of tailcalls
-        done(Value.Thread(safeFuture(eval(body, env, timeout, version).result)))
-      case CSchemeJoin(tExp, _) =>
-        for {
-          threadv <- eval(tExp, env, timeout, version)
-          res <- threadv match {
-            case Value.Thread(fut) => done(Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf)))
-            case v                 => stackedException(s"Join expected thread, but got $v")
-          }
-        } yield res
-      case SchemeCodeChange(old, nw, _) =>
-        if (version == Old) tailcall(eval(old, env, timeout, version)) else tailcall(eval(nw, env, timeout, version))
-    }
-  }
-
-  def allocateVal(exp: SchemeExp, value: Value): Value.Pointer = {
-    val addr = newAddr(AddrInfo.PtrAddr(exp))
-    extendStore(addr, value)
-    Value.Pointer(addr)
-  }
-
-  def allocateCons(
-      exp: SchemeExp,
-      car: Value,
-      cdr: Value
-    ): Value =
-    allocateVal(exp, Value.Cons(car, cdr))
-
-  def allocateStr(exp: SchemeExp, str: String): Value.Pointer =
-    allocateVal(exp, Value.Str(str))
-
-  def getString(addr: Addr): String = lookupStore(addr) match {
-    case Value.Str(str) => str
-    case v              => throw new UnexpectedValueTypeException[Value](v)
-  }
-
-  def makeList(values: List[(SchemeExp, Value)]): Value = values match {
-    case Nil                  => Value.Nil
-    case (exp, value) :: rest => allocateCons(exp, value, makeList(rest))
-  }
-
-  def evalSExp(sexp: SExp, exp: SchemeExp): SchemeInterpreter.Value = sexp match {
-    case SExpId(id)          => Value.Symbol(id.name)
-    case SExpValue(value, _) => evalLiteral(value, exp)
-    case SExpPair(car, cdr, _) =>
-      val carValue = evalSExp(car, exp)
-      val cdrValue = evalSExp(cdr, exp)
-      allocateCons(exp, carValue, cdrValue)
-  }
-
-  def evalLiteral(lit: sexp.Value, exp: SchemeExp) = lit match {
-    case maf.language.sexp.Value.String(s)    => allocateStr(exp, s)
-    case maf.language.sexp.Value.Symbol(s)    => Value.Symbol(s)
-    case maf.language.sexp.Value.Integer(n)   => Value.Integer(n)
-    case maf.language.sexp.Value.Real(r)      => Value.Real(r)
-    case maf.language.sexp.Value.Boolean(b)   => Value.Bool(b)
-    case maf.language.sexp.Value.Character(c) => Value.Character(c)
-    case maf.language.sexp.Value.Nil          => Value.Nil
-  }
+  import NumOps._
+  import ConcreteValues._
 
   object Primitives {
     //def primitiveMap: Map[String, Prim] = allPrimitives.map(p => (p.name, p)).toMap
@@ -746,6 +192,7 @@ class SchemeInterpreter(
 
     abstract class SingleArgumentPrimWithExp(val name: String) extends Prim {
       def fun(fexp: SchemeFuncall): PartialFunction[Value, Value]
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
         case (_, x) :: Nil =>
           val f = fun(fexp)
@@ -760,6 +207,7 @@ class SchemeInterpreter(
 
     abstract class SingleArgumentPrim(name: String) extends SingleArgumentPrimWithExp(name) {
       def fun: PartialFunction[Value, Value]
+
       def fun(fexp: SchemeFuncall): PartialFunction[Value, Value] = fun
     }
 
@@ -769,6 +217,7 @@ class SchemeInterpreter(
     object Plus extends SimplePrim {
       val name = "+"
       val default: Value = Value.Integer(0)
+
       def call(args: List[Value], position: Position): Value = args.foldLeft(default)({
         case (Value.Integer(n1), Value.Integer(n2)) => Value.Integer(n1 + n2)
         case (Value.Integer(n1), Value.Real(n2))    => Value.Real(n1 + n2)
@@ -777,9 +226,11 @@ class SchemeInterpreter(
         case (x, y)                                 => stackedException(s"+ ($position): invalid argument types ($x and $y)")
       })
     }
+
     object Times extends SimplePrim {
       val name = "*"
       val default: Value = Value.Integer(1)
+
       def call(args: List[Value], position: Position): Value = args.foldLeft(default)({
         case (Value.Integer(n1), Value.Integer(n2)) => Value.Integer(n1 * n2)
         case (Value.Integer(n1), Value.Real(n2))    => Value.Real(n1 * n2)
@@ -788,8 +239,10 @@ class SchemeInterpreter(
         case (x, y)                                 => stackedException(s"* ($position): invalid argument types ($x and $y)")
       })
     }
+
     object Minus extends SimplePrim {
       val name = "-"
+
       def call(args: List[Value], position: Position) = args match {
         case Nil                     => stackedException("-: wrong number of arguments")
         case Value.Integer(x) :: Nil => Value.Integer(-x)
@@ -809,8 +262,10 @@ class SchemeInterpreter(
         case _ => stackedException(s"- ($position): invalid arguments $args")
       }
     }
+
     object Div extends SimplePrim {
       val name = "/"
+
       def call(args: List[Value], position: Position) = args match {
         case Nil                                            => stackedException("/: wrong number of arguments")
         case Value.Integer(i) :: Nil if i.equals(BigInt(1)) => Value.Integer(BigInt(1))
@@ -839,6 +294,7 @@ class SchemeInterpreter(
 
     object Modulo extends SimplePrim {
       val name = "modulo"
+
       def call(args: List[Value], position: Position): Value = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil if y != 0 =>
           Value.Integer(maf.lattice.MathOps.modulo(x, y))
@@ -853,18 +309,26 @@ class SchemeInterpreter(
         case Value.Real(x)    => Value.Real(scala.math.abs(x))
       }
     }
+
     abstract class DoublePrim(name: String, f: Double => Double) extends SingleArgumentPrim(name) {
       def fun = {
         case Value.Real(x)    => Value.Real(f(x))
         case Value.Integer(x) => Value.Real(f(x.toDouble))
       }
     }
+
     object Sin extends DoublePrim("sin", scala.math.sin)
+
     object ASin extends DoublePrim("asin", scala.math.asin)
+
     object Cos extends DoublePrim("cos", scala.math.cos)
+
     object ACos extends DoublePrim("acos", scala.math.acos)
+
     object Tan extends DoublePrim("tan", scala.math.tan)
+
     object ATan extends DoublePrim("atan", scala.math.atan)
+
     object Log extends DoublePrim("log", scala.math.log)
 
     object Sqrt extends SingleArgumentPrim("sqrt") {
@@ -881,8 +345,10 @@ class SchemeInterpreter(
         case Value.Real(x) => Value.Real(scala.math.sqrt(x))
       }
     }
+
     object Expt extends SimplePrim {
       val name = "expt"
+
       // TODO: expt should also preserve exactness if possible
       def call(args: List[Value], position: Position): Value = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil =>
@@ -903,56 +369,67 @@ class SchemeInterpreter(
         case Value.Real(x)    => Value.Real(x.ceil)
       }
     }
+
     object Floor extends SingleArgumentPrim("floor") {
       def fun = {
         case x: Value.Integer => x
         case Value.Real(x)    => Value.Real(x.floor)
       }
     }
+
     object Quotient extends SimplePrim {
       val name = "quotient"
+
       def call(args: List[Value], position: Position): Value = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x / y)
         case _                                           => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object Remainder extends SimplePrim {
       val name = "remainder"
+
       def call(args: List[Value], position: Position): Value = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x % y)
         case _                                           => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object Round extends SingleArgumentPrim("round") {
       def fun = {
         case x: Value.Integer => x
         case Value.Real(x)    => Value.Real(maf.lattice.MathOps.round(x))
       }
     }
+
     object Evenp extends SingleArgumentPrim("even?") {
       def fun = {
         case Value.Integer(x) if x % 2 == 0 => Value.Bool(true)
         case _: Value.Integer               => Value.Bool(false)
       }
     }
+
     object Oddp extends SingleArgumentPrim("odd?") {
       def fun = {
         case Value.Integer(x) if x % 2 == 1 => Value.Bool(true)
         case _: Value.Integer               => Value.Bool(false)
       }
     }
+
     object Negativep extends SingleArgumentPrim("negative?") {
       def fun = {
         case Value.Integer(x) if x < 0 => Value.Bool(true)
         case _: Value.Integer          => Value.Bool(false)
       }
     }
+
     object Positivep extends SingleArgumentPrim("positive?") {
       def fun = {
         case Value.Integer(x) if x > 0 => Value.Bool(true)
         case _: Value.Integer          => Value.Bool(false)
       }
     }
+
     object Zerop extends SingleArgumentPrim("zero?") {
       def fun = {
         case Value.Integer(i) if i.equals(BigInt(0)) => Value.Bool(true)
@@ -962,6 +439,7 @@ class SchemeInterpreter(
 
     object Max extends SimplePrim {
       val name = "max"
+
       def max(maximum: Value, rest: List[Value]): Value = rest match {
         case Nil => maximum
         case x :: rest =>
@@ -970,23 +448,35 @@ class SchemeInterpreter(
               case Value.Integer(n1) =>
                 maximum match {
                   case Value.Integer(n2) =>
-                    if (n1 > n2) { Value.Integer(n1) }
-                    else { maximum }
+                    if (n1 > n2) {
+                      Value.Integer(n1)
+                    } else {
+                      maximum
+                    }
                   case Value.Real(n2) =>
                     val r = n1.toDouble
-                    if (r > n2) { Value.Real(r) }
-                    else { maximum }
+                    if (r > n2) {
+                      Value.Real(r)
+                    } else {
+                      maximum
+                    }
                   case v => throw new UnexpectedValueTypeException[Value](v)
                 }
               case Value.Real(n1) =>
                 maximum match {
                   case Value.Integer(n2) =>
                     val r = n2.toDouble
-                    if (n1 > r) { Value.Real(n1) }
-                    else { maximum }
+                    if (n1 > r) {
+                      Value.Real(n1)
+                    } else {
+                      maximum
+                    }
                   case Value.Real(n2) =>
-                    if (n1 > n2) { Value.Real(n1) }
-                    else { Value.Real(n2) }
+                    if (n1 > n2) {
+                      Value.Real(n1)
+                    } else {
+                      Value.Real(n2)
+                    }
                   case v => throw new UnexpectedValueTypeException[Value](v)
                 }
               case v => throw new UnexpectedValueTypeException[Value](v)
@@ -994,6 +484,7 @@ class SchemeInterpreter(
             rest
           )
       }
+
       def call(args: List[Value], position: Position): Value = args match {
         case Nil => stackedException(s"max ($position): wrong number of arguments")
         case Value.Integer(first) :: rest =>
@@ -1003,8 +494,10 @@ class SchemeInterpreter(
         case _ => stackedException(s"max ($position): invalid arguments $args")
       }
     }
+
     object Min extends SimplePrim {
       val name = "min"
+
       def min(minimum: Value, rest: List[Value]): Value = rest match {
         case Nil => minimum
         case x :: rest =>
@@ -1013,23 +506,35 @@ class SchemeInterpreter(
               case Value.Integer(n1) =>
                 minimum match {
                   case Value.Integer(n2) =>
-                    if (n1 < n2) { Value.Integer(n1) }
-                    else { minimum }
+                    if (n1 < n2) {
+                      Value.Integer(n1)
+                    } else {
+                      minimum
+                    }
                   case Value.Real(n2) =>
                     val r = n1.toDouble
-                    if (r < n2) { Value.Real(r) }
-                    else { minimum }
+                    if (r < n2) {
+                      Value.Real(r)
+                    } else {
+                      minimum
+                    }
                   case v => throw new UnexpectedValueTypeException[Value](v)
                 }
               case Value.Real(n1) =>
                 minimum match {
                   case Value.Integer(n2) =>
                     val r = n2.toDouble
-                    if (n1 < r) { Value.Real(n1) }
-                    else { minimum }
+                    if (n1 < r) {
+                      Value.Real(n1)
+                    } else {
+                      minimum
+                    }
                   case Value.Real(n2) =>
-                    if (n1 < n2) { Value.Real(n1) }
-                    else { Value.Real(n2) }
+                    if (n1 < n2) {
+                      Value.Real(n1)
+                    } else {
+                      Value.Real(n2)
+                    }
                   case v => throw new UnexpectedValueTypeException[Value](v)
                 }
               case v => throw new UnexpectedValueTypeException[Value](v)
@@ -1037,6 +542,7 @@ class SchemeInterpreter(
             rest
           )
       }
+
       def call(args: List[Value], position: Position): Value = args match {
         case Nil => stackedException(s"min ($position): wrong number of arguments")
         case Value.Integer(first) :: rest =>
@@ -1046,6 +552,7 @@ class SchemeInterpreter(
         case _ => stackedException(s"min ($position): invalid arguments $args")
       }
     }
+
     object Gcd extends SimplePrim {
       val name = "gcd"
 
@@ -1063,6 +570,7 @@ class SchemeInterpreter(
 
     object LessThan extends SimplePrim {
       val name = "<"
+
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x < y)
         case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x < y)
@@ -1074,6 +582,7 @@ class SchemeInterpreter(
 
     object LessOrEqual extends SimplePrim {
       val name = "<="
+
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x <= y)
         case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x <= y)
@@ -1085,6 +594,7 @@ class SchemeInterpreter(
 
     object GreaterThan extends SimplePrim {
       val name = ">"
+
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x > y)
         case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x > y)
@@ -1096,6 +606,7 @@ class SchemeInterpreter(
 
     object GreaterOrEqual extends SimplePrim {
       val name = ">="
+
       def call(args: List[Value], position: Position) = args match {
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x >= y)
         case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x >= y)
@@ -1127,6 +638,7 @@ class SchemeInterpreter(
         case (_: Value.Real) :: _                   => Value.Bool(false)
         case _                                      => stackedException(s"=: invalid type of arguments $l")
       }
+
       def call(args: List[Value], position: Position): Value = args match {
         case Nil                      => Value.Bool(true)
         case Value.Integer(x) :: rest => numEqInt(x, rest)
@@ -1154,38 +666,45 @@ class SchemeInterpreter(
         case x: Value.Real    => x
       }
     }
+
     object InexactToExact extends SingleArgumentPrim("inexact->exact") {
       def fun = {
         case x: Value.Integer => x
         case Value.Real(x)    => Value.Integer(x.toInt) /* TODO: fractions */
       }
     }
+
     object NumberToString extends SingleArgumentPrimWithExp("number->string") {
       def fun(fexp: SchemeFuncall) = {
         case Value.Integer(x) => allocateStr(fexp, s"$x")
         case Value.Real(x)    => allocateStr(fexp, s"$x")
       }
     }
+
     object SymbolToString extends SingleArgumentPrimWithExp("symbol->string") {
       def fun(fexp: SchemeFuncall) = { case Value.Symbol(x) =>
         allocateStr(fexp, x)
       }
     }
+
     object StringToSymbol extends SingleArgumentPrim("string->symbol") {
       def fun = { case Value.Pointer(addr) =>
         Value.Symbol(getString(addr))
       }
     }
+
     object CharToInteger extends SingleArgumentPrim("char->integer") {
       def fun = { case Value.Character(c) =>
         Value.Integer(c.toInt)
       }
     }
+
     object CharToString extends SingleArgumentPrimWithExp("char->string") {
       def fun(fexp: SchemeFuncall) = { case Value.Character(c) =>
         allocateStr(fexp, c.toString)
       }
     }
+
     object IntegerToChar extends SingleArgumentPrim("integer->char") {
       def fun = { case Value.Integer(n) =>
         Value.Character(n.toChar)
@@ -1201,12 +720,14 @@ class SchemeInterpreter(
         case _                  => Value.Bool(false)
       }
     }
+
     object `output-port?` extends SingleArgumentPrim("output-port?") {
       def fun = {
         case _: Value.OutputPort => Value.Bool(true)
         case _                   => Value.Bool(false)
       }
     }
+
     object `eof-object?` extends SingleArgumentPrim("eof-object?") {
       def fun = {
         case Value.EOF => Value.Bool(true)
@@ -1220,12 +741,14 @@ class SchemeInterpreter(
         Value.InputPort(io.open(str))
       }
     }
+
     object `open-output-file` extends SingleArgumentPrim("open-output-file") {
       def fun = { case Value.Pointer(addr) =>
         val str = getString(addr)
         Value.OutputPort(io.open(str))
       }
     }
+
     object `open-input-string` extends SingleArgumentPrim("open-input-string") {
       def fun = { case Value.Pointer(addr) =>
         val str = getString(addr)
@@ -1239,6 +762,7 @@ class SchemeInterpreter(
         Value.Undefined(Identity.none)
       }
     }
+
     object `close-output-port` extends SingleArgumentPrim("close-output-port") {
       def fun = { case Value.OutputPort(handle) =>
         io.close(handle)
@@ -1248,6 +772,7 @@ class SchemeInterpreter(
 
     object `current-input-port` extends SimplePrim {
       val name = "current-input-port"
+
       def call(args: List[Value], position: Position) = args match {
         case Nil => Value.InputPort(io.console)
         case _   => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
@@ -1256,6 +781,7 @@ class SchemeInterpreter(
 
     object `current-output-port` extends SimplePrim {
       val name = "current-output-port"
+
       def call(args: List[Value], position: Position) = args match {
         case Nil => Value.OutputPort(io.console)
         case _   => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
@@ -1273,11 +799,14 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object `display` extends DisplayLike("display")
+
     object `write` extends DisplayLike("write")
 
     object `write-char` extends SimplePrim {
       val name = "write-char"
+
       def call(args: List[Value], position: Position) = args match {
         case Value.Character(c) :: Nil =>
           io.writeChar(c, io.console)
@@ -1291,6 +820,7 @@ class SchemeInterpreter(
 
     object `newline` extends SimplePrim {
       val name = "newline"
+
       def call(args: List[Value], position: Position) = args match {
         case Nil =>
           io.writeString("\n", io.console);
@@ -1301,8 +831,10 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
       }
     }
+
     object `read` extends Prim {
       val name = "read"
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
         case Nil =>
           io.read(io.console).map(sexp => evalSExp(sexp, fexp)).getOrElse(Value.EOF)
@@ -1311,8 +843,10 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name (${fexp.idn.pos}): wrong number of arguments, 0 or 1 expected, got ${args.length}")
       }
     }
+
     object `read-char` extends SimplePrim {
       val name = "read-char"
+
       def call(args: List[Value], position: Position) = args match {
         case Nil =>
           io.readChar(io.console)
@@ -1321,8 +855,10 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 or 1 expected, got ${args.length}")
       }
     }
+
     object `peek-char` extends SimplePrim {
       val name = "peek-char"
+
       def call(args: List[Value], position: Position) = args match {
         case Nil =>
           io.peekChar(io.console)
@@ -1334,6 +870,7 @@ class SchemeInterpreter(
 
     object Error extends SimplePrim {
       val name = "error"
+
       def call(args: List[Value], position: Position) = stackedException(s"user-raised error ($position): $args")
     }
 
@@ -1346,6 +883,7 @@ class SchemeInterpreter(
         case _             => Value.Bool(false)
       }
     }
+
     object Charp extends SingleArgumentPrim("char?") {
       def fun = {
         case _: Value.Character => Value.Bool(true)
@@ -1359,6 +897,7 @@ class SchemeInterpreter(
         case _         => Value.Bool(false)
       }
     }
+
     object Pairp extends SingleArgumentPrim("pair?") {
       def fun = {
         case Value.Pointer(addr) =>
@@ -1369,12 +908,14 @@ class SchemeInterpreter(
         case _ => Value.Bool(false)
       }
     }
+
     object Symbolp extends SingleArgumentPrim("symbol?") {
       def fun = {
         case _: Value.Symbol => Value.Bool(true)
         case _               => Value.Bool(false)
       }
     }
+
     object Stringp extends SingleArgumentPrim("string?") {
       def fun = {
         case Value.Pointer(addr) =>
@@ -1385,12 +926,14 @@ class SchemeInterpreter(
         case _ => Value.Bool(false)
       }
     }
+
     object Integerp extends SingleArgumentPrim("integer?") {
       def fun = {
         case _: Value.Integer => Value.Bool(true)
         case _                => Value.Bool(false)
       }
     }
+
     object Realp extends SingleArgumentPrim("real?") {
       def fun = {
         case _: Value.Real    => Value.Bool(true)
@@ -1398,6 +941,7 @@ class SchemeInterpreter(
         case _                => Value.Bool(false)
       }
     }
+
     object Numberp extends SingleArgumentPrim("number?") {
       def fun = {
         case _: Value.Integer => Value.Bool(true)
@@ -1405,6 +949,7 @@ class SchemeInterpreter(
         case _                => Value.Bool(false)
       }
     }
+
     object Vectorp extends SingleArgumentPrim("vector?") {
       def fun = {
         case Value.Pointer(a) =>
@@ -1415,6 +960,7 @@ class SchemeInterpreter(
         case _ => Value.Bool(false)
       }
     }
+
     object Procp extends SingleArgumentPrim("procedure?") {
       def fun = {
         case Value.Clo(_, _, _) => Value.Bool(true)
@@ -1427,6 +973,7 @@ class SchemeInterpreter(
     /////////////
     object StringAppend extends Prim {
       val name = "string-append"
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value =
         allocateStr(
           fexp,
@@ -1440,22 +987,27 @@ class SchemeInterpreter(
           )
         )
     }
+
     object MakeString extends Prim {
       val name = "make-string"
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
         case (_, Value.Integer(length)) :: Nil                            => allocateStr(fexp, "\u0000" * bigIntToInt(length))
         case (_, Value.Integer(length)) :: (_, Value.Character(c)) :: Nil => allocateStr(fexp, c.toString * bigIntToInt(length))
         case _                                                            => stackedException(s"$name (${fexp.idn.pos}): invalid arguments $args")
       }
     }
+
     object StringLength extends SingleArgumentPrim("string-length") {
       def fun = { case Value.Pointer(addr) =>
         val str = getString(addr)
         Value.Integer(str.length)
       }
     }
+
     object StringRef extends SimplePrim {
       val name = "string-ref"
+
       def call(args: List[Value], position: Position): Value.Character = args match {
         case Value.Pointer(addr) :: Value.Integer(n) :: Nil =>
           val str = getString(addr)
@@ -1467,8 +1019,10 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object StringSet extends SimplePrim {
       val name = "string-set!"
+
       def call(args: List[Value], position: Position): Value.Undefined = args match {
         case Value.Pointer(addr) :: Value.Integer(idx) :: Value.Character(chr) :: Nil =>
           val str = getString(addr)
@@ -1485,6 +1039,7 @@ class SchemeInterpreter(
 
     object StringLt extends SimplePrim {
       val name = "string<?"
+
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Pointer(a1) :: Value.Pointer(a2) :: Nil =>
           val str1 = getString(a1)
@@ -1504,8 +1059,10 @@ class SchemeInterpreter(
         }
       }
     }
+
     object Substring extends Prim {
       val name = "substring"
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]) = args match {
         case (_, Value.Pointer(a)) :: (_, Value.Integer(from)) :: (_, Value.Integer(to)) :: Nil if from <= to =>
           val str = getString(a)
@@ -1524,16 +1081,19 @@ class SchemeInterpreter(
 
     object Eq extends SimplePrim {
       val name = "eq?"
+
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case x :: y :: Nil => Value.Bool(x == y)
         case _             => stackedException(s"$name ($position): wrong number of arguments ${args.length}")
       }
     }
+
     /////////////
     // Vectors //
     /////////////
     object Vector extends Prim {
       val name = "vector"
+
       def newVector(
           fexp: SchemeFuncall,
           siz: BigInt,
@@ -1545,13 +1105,16 @@ class SchemeInterpreter(
         extendStore(ptr, vct)
         Value.Pointer(ptr)
       }
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = {
         val elms = args.map(_._2).zipWithIndex.map({ case (e, i) => (BigInt(i), e) }).toMap
         newVector(fexp, args.size, elms, Value.Undefined(fexp.idn))
       }
     }
+
     object MakeVector extends Prim {
       val name = "make-vector"
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args.map(_._2) match {
         case Value.Integer(size) :: Nil =>
           Vector.newVector(fexp, size, Map(), Value.Undefined(fexp.idn))
@@ -1560,6 +1123,7 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name (${fexp.idn.pos}): invalid arguments $args")
       }
     }
+
     object VectorLength extends SingleArgumentPrim("vector-length") {
       def fun = { case Value.Pointer(a) =>
         lookupStore(a) match {
@@ -1568,8 +1132,10 @@ class SchemeInterpreter(
         }
       }
     }
+
     object VectorRef extends SimplePrim {
       val name = "vector-ref"
+
       def call(args: List[Value], position: Position): Value = args match {
         case Value.Pointer(a) :: Value.Integer(idx) :: Nil =>
           lookupStore(a) match {
@@ -1579,8 +1145,10 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object VectorSet extends SimplePrim {
       val name = "vector-set!"
+
       def call(args: List[Value], position: Position): Value = args match {
         case Value.Pointer(a) :: Value.Integer(idx) :: v :: Nil =>
           lookupStore(a) match {
@@ -1606,6 +1174,7 @@ class SchemeInterpreter(
         }
       }
     }
+
     object Cdr extends SingleArgumentPrim("cdr") {
       def fun = { case Value.Pointer(addr) =>
         lookupStore(addr) match {
@@ -1614,16 +1183,20 @@ class SchemeInterpreter(
         }
       }
     }
+
     object Cons extends Prim {
       val name = "cons"
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
         case (_, car) :: (_, cdr) :: Nil =>
           allocateCons(fexp, car, cdr)
         case _ => stackedException(s"cons: wrong number of arguments $args")
       }
     }
+
     object SetCar extends SimplePrim {
       val name = "set-car!"
+
       def call(args: List[Value], position: Position): Value = args match {
         case Value.Pointer(addr) :: v :: Nil =>
           lookupStore(addr) match {
@@ -1635,8 +1208,10 @@ class SchemeInterpreter(
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object SetCdr extends SimplePrim {
       val name = "set-cdr!"
+
       def call(args: List[Value], position: Position): Value = args match {
         case Value.Pointer(addr) :: v :: Nil =>
           lookupStore(addr) match {
@@ -1654,12 +1229,14 @@ class SchemeInterpreter(
     ///////////
     object ListPrim extends Prim {
       val name = "list"
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
         case Nil => Value.Nil
         case (exp, head) :: rest =>
           allocateCons(exp, head, call(fexp, rest))
       }
     }
+
     ///////////
     // Other //
     ///////////
@@ -1672,27 +1249,34 @@ class SchemeInterpreter(
 
     object CharEq extends SimplePrim {
       val name = "char=?"
+
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1 == c2)
         case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object CharCIEq extends SimplePrim {
       val name = "char-ci=?"
+
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1.toLower == c2.toLower)
         case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object CharLt extends SimplePrim {
       val name = "char<?"
+
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1 < c2)
         case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
       }
     }
+
     object CharCILt extends SimplePrim {
       val name = "char-ci<?"
+
       def call(args: List[Value], position: Position): Value.Bool = args match {
         case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1.toLower < c2.toLower)
         case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
@@ -1705,6 +1289,7 @@ class SchemeInterpreter(
 
     object NewLock extends Prim {
       val name = "new-lock"
+
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
         case Nil =>
           val addr = newAddr(AddrInfo.PtrAddr(fexp))
@@ -1714,6 +1299,7 @@ class SchemeInterpreter(
         case _ => stackedException(s"new-lock: invalid arguments $args")
       }
     }
+
     case object Acquire extends SingleArgumentPrim("acquire") {
       def fun = { case Value.Pointer(ptr) =>
         lookupStore(ptr) match {
@@ -1724,6 +1310,7 @@ class SchemeInterpreter(
         }
       }
     }
+
     case object Release extends SingleArgumentPrim("release") {
       def fun = { case Value.Pointer(ptr) =>
         lookupStore(ptr) match {
@@ -1734,87 +1321,7 @@ class SchemeInterpreter(
         }
       }
     }
-  }
-}
 
-object SchemeInterpreter {
-  sealed trait Value
-  sealed trait AddrInfo
-  trait Prim {
-    val name: String
-    def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value
-  }
-  trait SimplePrim extends Prim {
-    def call(args: List[Value], position: Position): Value
-    def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = call(args.map(_._2), fexp.idn.pos)
-  }
-  type Addr = (Int, AddrInfo)
-  type Env = Map[String, Addr]
-  type Store = Map[Addr, Value]
-  object AddrInfo {
-    case class VarAddr(vrb: Identifier) extends AddrInfo
-    case class PrmAddr(nam: String) extends AddrInfo
-    case class PtrAddr(exp: SchemeExp) extends AddrInfo
-    case class RetAddr(exp: SchemeExp) extends AddrInfo
-  }
-  object Value {
-    case class Undefined(idn: Identity) extends Value { override def toString: String = "#<undef>" } /* arises from undefined behavior */
-    case class Unbound(id: Identifier) extends Value { override def toString: String = "#<unbound>" } /* only used for letrec */
-    case class Clo(
-        lambda: SchemeLambdaExp,
-        env: Env,
-        name: Option[String] = None)
-        extends Value { override def toString: String = name.map(n => s"#<procedure:$n>").getOrElse(s"#<procedure:${lambda.idn.pos}>") }
-    case class Primitive(p: String) extends Value { override def toString: String = s"#<primitive:$p>" }
-    case class Str(str: String) extends Value { override def toString: String = str }
-
-    case class Symbol(sym: String) extends Value {
-      override def toString: String = s"'$sym"
-    }
-
-    case class Integer(n: BigInt) extends Value {
-      override def toString: String = n.toString
-    }
-
-    case class Real(r: Double) extends Value {
-      override def toString: String = r.toString
-    }
-    case class Bool(b: Boolean) extends Value { override def toString: String = if (b) "#t" else "#f" }
-    case class Pointer(v: Addr) extends Value { override def toString: String = s"#<ptr $v>" }
-    case class Character(c: Char) extends Value {
-      override def toString: String = c match {
-        case ' '  => "#\\space"
-        case '\n' => "#\\newline"
-        case c    => s"#\\$c"
-      }
-    }
-    case object Nil extends Value { override def toString: String = "'()" }
-    case class Cons(car: Value, cdr: Value) extends Value { override def toString: String = s"#<cons $car $cdr>" }
-    case class Vector(
-        size: BigInt,
-        elems: Map[BigInt, Value],
-        init: Value)
-        extends Value { override def toString: String = s"#<vector[size:$size]>" }
-    case class InputPort(port: Handle) extends Value { override def toString: String = s"#<input-port:$port>" }
-    case class OutputPort(port: Handle) extends Value { override def toString: String = s"#<output-port:$port>" }
-    case class Thread(fut: Future[Value]) extends Value { override def toString: String = s"#<thread>" }
-    case class Lock(l: java.util.concurrent.locks.Lock) extends Value { override def toString: String = "#<lock>" }
-    case object EOF extends Value { override def toString: String = "#<eof>" }
-    case object Void extends Value { override def toString: String = "#<void>" }
   }
 
-  import scala.concurrent.duration._
-  import maf.language.scheme.primitives._
-
-  val timeout: FiniteDuration = Duration(30, SECONDS)
-  def main(args: Array[String]): Unit =
-    if (args.length == 1) {
-      val text = Reader.loadFile(args(0))
-      val pgm = SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text), Set("newline", "display"))))
-      val interpreter = new SchemeInterpreter((id, v) => ())
-      val res = interpreter.run(pgm, Timeout.start(timeout))
-      println(s"Result: $res")
-    } else {
-      println(s"Expected file to run as argument")
-    }
 }

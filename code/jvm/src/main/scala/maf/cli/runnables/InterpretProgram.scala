@@ -2,7 +2,7 @@ package maf.cli.runnables
 
 import maf.language.CScheme._
 import maf.language.change.CodeVersion._
-import maf.language.scheme.SchemeInterpreter
+import maf.language.scheme.interpreter._
 import maf.language.scheme.primitives.SchemePrelude
 import maf.util.Reader
 import maf.util.benchmarks.Timeout

@@ -12,9 +12,8 @@ import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
-import maf.language.scheme.SchemeInterpreter
-import maf.language.scheme.FileIO
 import maf.cli.experiments.SchemeAnalyses
+import maf.language.scheme.interpreter._
 
 object AdaptiveRun {
 
@@ -28,7 +27,7 @@ object AdaptiveRun {
     val int = new SchemeInterpreter(io = new FileIO(Map()))
     int.run(prg, Timeout.none)
     int.store.foreach {
-      case (addr, value) if !addr._2.isInstanceOf[maf.language.scheme.SchemeInterpreter.AddrInfo.PrmAddr] =>
+      case (addr, value) if !addr._2.isInstanceOf[ConcreteValues.AddrInfo.PrmAddr] =>
         println(s"${addr} -> ${value}")
       case _ => ()
     }

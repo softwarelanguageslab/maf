@@ -1,12 +1,12 @@
 package maf.test.modular.scheme
 
 import java.util.concurrent.TimeoutException
-
 import org.scalatest.Tag
 import maf.core._
 import maf.language.CScheme._
-import maf.language.scheme.SchemeInterpreter._
+import maf.language.scheme.interpreter.ConcreteValues._
 import maf.language.scheme._
+import maf.language.scheme.interpreter._
 import maf.language.scheme.lattices.SchemeOp
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular._
