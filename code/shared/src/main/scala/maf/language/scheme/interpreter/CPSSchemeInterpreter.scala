@@ -4,6 +4,7 @@ import maf.core._
 import maf.language.change.CodeVersion._
 import maf.language.scheme._
 import maf.language.scheme.interpreter.ConcreteValues._
+import maf.util.benchmarks.Timeout
 
 class CPSSchemeInterpreter(
     cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
@@ -11,6 +12,12 @@ class CPSSchemeInterpreter(
     val stack: Boolean = false)
     extends BaseSchemeInterpreter[ConcreteValues.Value]
        with ConcreteSchemePrimitives {
+
+  override def run(
+      program: SchemeExp,
+      timeout: Timeout.T,
+      version: Version
+    ): ConcreteValues.Value = ???
 
   def stackedException[R](msg: String): R = ???
 
