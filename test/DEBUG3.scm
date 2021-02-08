@@ -1,33 +1,31 @@
-(define (translate-term term)
-  (if (not (pair? term))
-         term
-        (cons (symbol->symbol-record (car term))
-                    (translate-term (cdr term)))))
+(define (a t)
+  (if (not (pair? t))
+         t
+        (cons (b (car t))
+              (a (cdr t)))))
 
-(define (symbol->symbol-record sym)
-  (let ((x (assq sym *symbol-records-alist*)))
+(define (b sym)
+  (let ((x (assq sym l1)))
     (if x
         (cdr x)
-        (begin (set! *symbol-records-alist* (list (list sym sym)))
+        (begin (set! l1 (list (list sym sym)))
                (list sym)))))
 
-(define *symbol-records-alist* '())
+(define l1 '())
 
-(define (rewrite term)
-   (rewrite-with-lemmas term (cdr (car term))))
+(define (c t lst)
+  (d t (car lst))
+  (c (car lst) '()))
 
-(define (rewrite-with-lemmas term lst)
-  (one-way-unify1 term (car (car lst)))
-  (rewrite-with-lemmas (car lst) '()))
+(define l2 '())
 
-(define unify-subst '*)
-
-(define (one-way-unify1 term1 term2)
-  (if (not (pair? term2))
+(define (d t1 t2)
+  (if (not (pair? t2))
       (begin
-        (assq term2 unify-subst)
+        (assq t2 l2)
         (<change> #t #f) ; <<==============================================
-        (set! unify-subst (cons (cons term1 term1)
-                                unify-subst)))))
+        (set! l2 (cons (cons t1 t1)
+                                l2)))))
 
-(rewrite (translate-term (list '(implies (implies x w)))))
+(define t (a (list '())))
+(c t (car t))

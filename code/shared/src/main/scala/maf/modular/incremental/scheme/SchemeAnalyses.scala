@@ -93,6 +93,15 @@ object SchemeAnalyses {
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
+  // Same as the one above, but with assertions.
+  class IncrementalSchemeModFAssertionAnalysisTypeLattice(prg: SchemeExp)
+      extends IncrementalSchemeModFAnalysisTypeLattice(prg)
+         with SchemeAssertSemantics {
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra
+  }
+
   /**
    * Builds an incremental ModF Analysis for the given Scheme program with the following properties:
    * <ul>

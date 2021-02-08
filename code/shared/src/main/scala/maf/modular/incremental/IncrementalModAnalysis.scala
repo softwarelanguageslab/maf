@@ -26,7 +26,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   var version: Version = Old
 
   /** Keeps track of which components depend on an expression. */
-  var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set())
+  var mapping: Map[Expr, Set[Component]] =
+    Map().withDefaultValue(Set()) // TODO: when a new program version causes changes, the sets may need to shrink again (~ cached dependencies etc).
 
   /**
    * Register that a component is depending on a given expression in the program.
@@ -140,10 +141,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   var optimisationFlag: Boolean = true // This flag can be used to enable or disable certain optimisations (for testing purposes).
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
-  def updateAnalysis(
-      timeout: Timeout.T,
-      optimisedExecution: Boolean = true
-    ): Unit = {
+  def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean = true): Unit = {
     optimisationFlag = optimisedExecution // Used for testing pursposes.
     version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
@@ -186,7 +184,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       if (version == New) deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
     }
 
-    /** First removes outdated read dependencies before performing the actual commit. */
+    /** First removes outdated read dependencies and components before performing the actual commit. */
     @nonMonotonicUpdate
     override def commit(): Unit = {
       if (optimisationFlag) {

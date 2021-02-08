@@ -28,11 +28,11 @@ object Handle {
   // !! These are *not* case classes because we want different handles if we open the same file multiple times
 
   class FileHandle(val filename: String) extends Handle {
-    val abstractName = "__file__" + filename
+    val abstractName: String = "__file__" + filename
     override def toString(): String = s"file:$filename"
   }
   class StringHandle(val content: String) extends Handle {
-    val abstractName = content
+    val abstractName: String = content
     override def toString(): String = s"string:$content"
   }
   object ConsoleHandle extends Handle {
@@ -68,14 +68,15 @@ class EmptyIO extends IO {
 }
 
 class FileIO(val files: Map[String, String]) extends IO {
-  var positions: Map[Handle, Int] = Map.empty
+  var positions: Map[Handle, Int] = Map.empty // Accesses to `positions` need synchronization on `this`.
 
-  def fromString(string: String): Handle = {
+  def fromString(string: String): Handle = synchronized {
     val handle = new Handle.StringHandle(string)
     positions = positions + (handle -> 0)
     handle
   }
-  def open(filename: String): Handle =
+
+  def open(filename: String): Handle = synchronized {
     if (files.contains(filename)) {
       val handle = new Handle.FileHandle(filename)
       positions = positions + (handle -> 0)
@@ -83,20 +84,26 @@ class FileIO(val files: Map[String, String]) extends IO {
     } else {
       throw new Exception(s"Cannot open virtual file $filename")
     }
-  def close(h: Handle): Unit = h match {
-    case Handle.ConsoleHandle   => ()
-    case h: Handle.FileHandle   => positions += h -> files(h.filename).size
-    case h: Handle.StringHandle => positions += h -> h.content.size
+  }
+
+  def close(h: Handle): Unit = synchronized {
+    h match {
+      case Handle.ConsoleHandle   => ()
+      case h: Handle.FileHandle   => positions += h -> files(h.filename).size
+      case h: Handle.StringHandle => positions += h -> h.content.size
+    }
   }
 
   val console = Handle.ConsoleHandle
 
+  // Read: no need for synchronisation as long as files is immutable.
   def read(h: Handle): Option[SExp] = h match {
     case Handle.ConsoleHandle   => None
     case h: Handle.FileHandle   => readUsingString(files(h.filename), h)
     case h: Handle.StringHandle => readUsingString(h.content, h)
   }
-  private def readUsingString(str: String, hdl: Handle): Option[SExp] = {
+
+  private def readUsingString(str: String, hdl: Handle): Option[SExp] = synchronized {
     val pos = positions(hdl)
     if (pos >= str.size) {
       None
@@ -108,33 +115,39 @@ class FileIO(val files: Map[String, String]) extends IO {
     }
   }
 
-  def readChar(h: Handle): SchemeInterpreter.Value =
+  def readChar(h: Handle): SchemeInterpreter.Value = synchronized {
     peekChar(h) match {
       case SchemeInterpreter.Value.EOF => SchemeInterpreter.Value.EOF
       case c =>
         positions = positions + (h -> (positions(h) + 1))
         c
     }
-  def peekChar(h: Handle): SchemeInterpreter.Value = h match {
-    case Handle.ConsoleHandle =>
-      /* Console is never opened with this IO class */
-      SchemeInterpreter.Value.EOF
-    case h: Handle.FileHandle =>
-      val pos = positions(h)
-      if (pos >= files(h.filename).size) {
-        SchemeInterpreter.Value.EOF
-      } else {
-        SchemeInterpreter.Value.Character(files(h.filename).charAt(pos))
-      }
-    case h: Handle.StringHandle =>
-      val pos = positions(h)
-      if (pos >= h.content.size) {
-        SchemeInterpreter.Value.EOF
-      } else {
-        SchemeInterpreter.Value.Character(h.content.charAt(pos))
-      }
   }
+
+  def peekChar(h: Handle): SchemeInterpreter.Value = synchronized {
+    h match {
+      case Handle.ConsoleHandle =>
+        /* Console is never opened with this IO class */
+        SchemeInterpreter.Value.EOF
+      case h: Handle.FileHandle =>
+        val pos = positions(h)
+        if (pos >= files(h.filename).size) {
+          SchemeInterpreter.Value.EOF
+        } else {
+          SchemeInterpreter.Value.Character(files(h.filename).charAt(pos))
+        }
+      case h: Handle.StringHandle =>
+        val pos = positions(h)
+        if (pos >= h.content.size) {
+          SchemeInterpreter.Value.EOF
+        } else {
+          SchemeInterpreter.Value.Character(h.content.charAt(pos))
+        }
+    }
+  }
+
   def writeChar(c: Char, h: Handle): Unit = ()
+
   def writeString(s: String, h: Handle): Unit = ()
 }
 

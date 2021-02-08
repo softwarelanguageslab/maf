@@ -72,7 +72,7 @@ object Main {
   }
 
   class IncrementalAnalysis(program: SchemeExp)
-      extends IncrementalSchemeModFAnalysisCPLattice(program)
+      extends IncrementalSchemeModFAssertionAnalysisCPLattice(program)
          with VisualisableIncrementalModAnalysis[SchemeExp] {
 
     override def updateAddrInc(
@@ -94,7 +94,11 @@ object Main {
 
     override def intraAnalysis(
         cmp: SchemeModFComponent
-      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with VisualisableIntraAnalysis {
+      ) = new IntraAnalysis(cmp)
+      with IncrementalSchemeModFBigStepIntra
+      with IncrementalGlobalStoreIntraAnalysis
+      with AssertionModFIntra
+      with VisualisableIntraAnalysis {
 
       override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
         println(s"Analysing $cmp")

@@ -55,8 +55,8 @@ object IncrementalRun extends App {
     //b.printAssertions()
   }
 
-  val modConcbenchmarks: List[String] = List("test/changes/cscheme/threads/msort.scm")
-  val modFbenchmarks: List[String] = List()
+  val modConcbenchmarks: List[String] = List()
+  val modFbenchmarks: List[String] = List("test/DEBUG3.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
   modConcbenchmarks.foreach(modconcAnalysis(_, standardTimeout))

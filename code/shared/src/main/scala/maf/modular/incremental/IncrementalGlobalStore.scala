@@ -145,7 +145,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ***** Incremental update: actually perform the incremental analysis ***** */
   /* ************************************************************************* */
 
-  var tarjanFlag: Boolean = false //optimisationFlag // Flag to enable the latest optimization.
+  var tarjanFlag: Boolean = optimisationFlag // Flag to enable the latest optimization.
 
   override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean): Unit = {
     if (tarjanFlag)
@@ -248,6 +248,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       cachedWrites = cachedWrites + (component -> recentWrites)
     }
 
+    /** First performs the commit. Then uses information inferred during the analysis of the component to refine the store if possible. */
     override def commit(): Unit = {
       super.commit() // First do the super commit, as this will cause the actual global store to be updated.
       if (optimisationFlag) {
