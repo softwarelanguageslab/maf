@@ -444,7 +444,6 @@ class SchemeInterpreter(
         val clo = Value.Clo(lambda, env2, Some(name.name))
         extendStore(addr, clo)
         for {
-          argsv <- evalArgs(ags, env, timeout, version)
           res <- tailcall(eval(SchemeFuncall(lambda, ags, pos), env2, timeout, version))
         } yield res
       case SchemeSet(id, v, pos) =>
