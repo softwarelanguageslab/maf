@@ -196,7 +196,7 @@ class SchemeInterpreter(
     }
   }
 
-  // Access to cb should be syncrhonized on 'Callback'.
+  // Access to cb should be synchronized on 'Callback'.
   object Callback {
     def call(i: Identity, v: Value): Unit = synchronized {
       cb(i, v)
@@ -237,19 +237,24 @@ class SchemeInterpreter(
 
   // Keep an artificial call stack to ease debugging.
   var callStack: List[String] = List()
+
   // TODO: The stack mechanism might have been broken due to the use of TailRec
-  // TODO: This may not work with concurrent programs at all.
+  // TODO: This may not work with concurrent programs at all, but at least we make it thread-safe and avoid exceptions.
   def stackedCall(
       name: Option[String],
       idn: Identity,
       block: => TailRec[Value]
-    ): TailRec[Value] = {
+    ): TailRec[Value] = synchronized {
     val n = name.getOrElse("λ") + s"@${idn.pos}"
     if (stack) callStack = n :: callStack
     val res = block
-    if (stack) callStack = callStack.tail
+    if (stack) callStack match {
+      case Nil => System.err.println("The call stack tracking does currently not work correctly with concurrent programs.")
+      case _   => callStack = callStack.tail
+    }
     res
   }
+
   def stackedException[R](msg: String): R = {
     val m = if (stack) callStack.mkString(s"$msg\n Callstack:\n * ", "\n * ", "\n **********") else msg
     throw new Exception(m)
