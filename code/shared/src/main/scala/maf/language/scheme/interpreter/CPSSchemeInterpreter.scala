@@ -27,18 +27,20 @@ class CPSSchemeInterpreter(
       while (!timeout.reached)
         state = state match {
           case Step(exp, env, cc) => eval(exp, env, version, cc)
-          case Kont(v, EndC())    => return v
+          case Kont(v, EndC(_))   => return v
           case Kont(v, cc)        => apply(v, cc)
         }
       throw new TimeoutException()
     } catch {
       // Use the continuations to print the stack trace.
       case StackedException(msg) =>
+        var cc = state.cc
         var msg = "$msg\n Callstack:"
         if (stack) {
           while ({
-            msg = msg + s"\n * ${state.toString}"
-            state.cc != EndC() && state.cc != TrdC()
+            msg = msg + s"\n * ${cc.toString}"
+            cc = cc.cc
+            cc != EndC() && cc != TrdC()
           }) ()
           msg += "\n **********"
         }
@@ -50,7 +52,13 @@ class CPSSchemeInterpreter(
 
   def stackedException[R](msg: String): R = throw StackedException(msg)
 
-  sealed trait Continuation
+  /* ************************* */
+  /* ***** CONTINUATIONS ***** */
+  /* ************************* */
+
+  sealed trait Continuation {
+    val cc: Continuation // Needed to support the `stackedException` functionality.
+  }
 
   case class AndC(
       exps: List[SchemeExp],
@@ -73,10 +81,14 @@ class CPSSchemeInterpreter(
       cc: Continuation)
       extends Continuation
 
-  case class EndC() extends Continuation // End of the program.
+  case class EndC(cc: Continuation = EndC()) extends Continuation // End of the program.
   case class RefC(cc: Continuation) extends Continuation
 
-  case class TrdC() extends Continuation // End of a thread.
+  case class TrdC(cc: Continuation = TrdC()) extends Continuation // End of a thread.
+
+  /* ****************** */
+  /* ***** STATES ***** */
+  /* ****************** */
 
   sealed trait State {
     val cc: Continuation
@@ -90,41 +102,45 @@ class CPSSchemeInterpreter(
 
   case class Kont(v: ConcreteValues.Value, cc: Continuation) extends State
 
+  /* ********************** */
+  /* ***** EVAL/APPLY ***** */
+  /* ********************** */
+
   def eval(
       exp: SchemeExp,
       env: Env,
       version: Version,
       cc: Continuation
     ): State = exp match {
-    case SchemeAnd(Nil, _)                                       => Kont(Value.Bool(true), cc)
-    case SchemeAnd(first :: Nil, _)                              => Step(first, env, cc)
-    case SchemeAnd(first :: rest, _)                             => Step(first, env, AndC(rest, env, cc))
-    case SchemeAssert(_, _)                                      => Kont(Value.Void, cc) // Currently ignored.
-    case SchemeBegin(Nil, _)                                     => Kont(Value.Void, cc) // Allow empty begin (same than other interpreter).
-    case SchemeBegin(first :: Nil, _)                            => Step(first, env, cc)
-    case SchemeBegin(first :: rest, _)                           => Step(first, env, BegC(rest, env, cc))
-    case SchemeCodeChange(old, _, _) if version == New           => Step(old, env, cc)
-    case SchemeCodeChange(_, nw, _) if version == Old            => Step(nw, env, cc)
-    case SchemeDefineFunction(name, args, body, _)               => stackedException("Undefined expression expected.")
-    case SchemeDefineVarArgFunction(name, args, vararg, body, _) => stackedException("Undefined expression expected.")
-    case SchemeDefineVariable(name, value, _)                    => stackedException("Undefined expression expected.")
-    case SchemeFuncall(f, args, _)                               => ???
-    case SchemeIf(cond, cons, alt, _)                            => ???
-    case SchemeLambda(args, body, _)                             => ???
-    case SchemeLet(bindings, body, _)                            => ???
-    case SchemeLetStar(bindings, body, _)                        => ???
-    case SchemeLetrec(bindings, body, _)                         => ???
-    case SchemeNamedLet(name, bindings, body, _)                 => ???
-    case SchemeOr(exps, _)                                       => ???
-    case SchemePair(car, cdr, _)                                 => ???
-    case SchemeSet(variable, value, _)                           => ???
-    case SchemeSetLex(variable, lexAddr, value, _)               => ???
-    case SchemeSplicedPair(splice, cdr, _)                       => stackedException("NYI -- Unquote splicing")
-    case SchemeValue(value, _)                                   => Kont(evalLiteral(value, exp), cc)
+    case SchemeAnd(Nil, _)                             => Kont(Value.Bool(true), cc)
+    case SchemeAnd(first :: Nil, _)                    => Step(first, env, cc)
+    case SchemeAnd(first :: rest, _)                   => Step(first, env, AndC(rest, env, cc))
+    case SchemeAssert(_, _)                            => Kont(Value.Void, cc) // Currently ignored.
+    case SchemeBegin(Nil, _)                           => Kont(Value.Void, cc) // Allow empty begin (same than other interpreter).
+    case SchemeBegin(first :: Nil, _)                  => Step(first, env, cc)
+    case SchemeBegin(first :: rest, _)                 => Step(first, env, BegC(rest, env, cc))
+    case SchemeCodeChange(old, _, _) if version == New => Step(old, env, cc)
+    case SchemeCodeChange(_, nw, _) if version == Old  => Step(nw, env, cc)
+    case SchemeDefineFunction(_, _, _, _)              => stackedException("Undefined expression expected.")
+    case SchemeDefineVarArgFunction(_, _, _, _, _)     => stackedException("Undefined expression expected.")
+    case SchemeDefineVariable(_, _, _)                 => stackedException("Undefined expression expected.")
+    case SchemeFuncall(f, args, _)                     => ???
+    case SchemeIf(cond, cons, alt, _)                  => ???
+    case SchemeLambda(args, body, _)                   => ???
+    case SchemeLet(bindings, body, _)                  => ???
+    case SchemeLetStar(bindings, body, _)              => ???
+    case SchemeLetrec(bindings, body, _)               => ???
+    case SchemeNamedLet(name, bindings, body, _)       => ???
+    case SchemeOr(exps, _)                             => ???
+    case SchemePair(car, cdr, _)                       => ???
+    case SchemeSet(variable, value, _)                 => ???
+    case SchemeSetLex(variable, lexAddr, value, _)     => stackedException("Unsupported: lexical addresses.")
+    case SchemeSplicedPair(splice, cdr, _)             => stackedException("NYI -- Unquote splicing")
+    case SchemeValue(value, _)                         => Kont(evalLiteral(value, exp), cc)
     case SchemeVar(id) =>
       env.get(id.name).flatMap(lookupStoreOption).map(Kont(_, cc)).getOrElse(stackedException(s"Unbound variable $id at position ${id.idn}."))
     case SchemeVarArgLambda(args, vararg, body, _) => ???
-    case SchemeVarLex(id, lexAddr)                 => ???
+    case SchemeVarLex(id, lexAddr)                 => stackedException("Unsupported: lexical addresses.")
 
     case CSchemeFork(body, _) => ???
     case CSchemeJoin(tExp, _) => ???
