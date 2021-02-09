@@ -15,8 +15,8 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   case class LambdaModule(fun: SchemeLambdaExp) extends SchemeModule
 
   def module(cmp: Component): SchemeModule = view(cmp) match {
-    case Main                         => MainModule
-    case call: Call[ComponentContext] => LambdaModule(call.clo._1)
+    case Main           => MainModule
+    case call: Call[_]  => LambdaModule(call.clo._1)
   }
 
   /**
