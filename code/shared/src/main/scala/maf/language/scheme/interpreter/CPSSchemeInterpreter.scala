@@ -6,24 +6,65 @@ import maf.language.scheme._
 import maf.language.scheme.interpreter.ConcreteValues._
 import maf.util.benchmarks.Timeout
 
+import scala.concurrent.TimeoutException
+
 class CPSSchemeInterpreter(
-    cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
+    cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (), // TODO: incoropate
     val io: IO = new EmptyIO(),
     val stack: Boolean = false)
     extends BaseSchemeInterpreter[ConcreteValues.Value]
        with ConcreteSchemePrimitives {
 
+  // TODO: change for multi-threaded programs.
   override def run(
       program: SchemeExp,
       timeout: Timeout.T,
       version: Version
-    ): ConcreteValues.Value = ???
+    ): ConcreteValues.Value = {
+    setStore(initialSto)
+    var state: State = Step(program, initialEnv, EndC())
+    try {
+      while (!timeout.reached)
+        state = state match {
+          case Step(exp, env, cc) => eval(exp, env, version, cc)
+          case Kont(v, EndC())    => return v
+          case Kont(v, cc)        => apply(v, cc)
+        }
+      throw new TimeoutException()
+    } catch {
+      // Use the continuations to print the stack trace.
+      case StackedException(msg) =>
+        var msg = "$msg\n Callstack:"
+        if (stack) {
+          while ({
+            msg = msg + s"\n * ${state.toString}"
+            state.cc != EndC() && state.cc != TrdC()
+          }) ()
+          msg += "\n **********"
+        }
+        throw new Exception(msg)
+    }
+  }
 
-  def stackedException[R](msg: String): R = ???
+  case class StackedException(msg: String) extends Exception
+
+  def stackedException[R](msg: String): R = throw StackedException(msg)
 
   sealed trait Continuation
 
-  case class RefC(cc: Continuation) extends Continuation
+  case class AndC(
+      exps: List[SchemeExp],
+      env: Env,
+      cc: Continuation)
+      extends Continuation
+
+  case class BegC(
+      exps: List[SchemeExp],
+      env: Env,
+      cc: Continuation)
+      extends Continuation
+
+  case class AsmC(v: Identifier, cc: Continuation) extends Continuation
 
   case class AssC(
       v: Identifier,
@@ -32,14 +73,18 @@ class CPSSchemeInterpreter(
       cc: Continuation)
       extends Continuation
 
-  case class AsmC(v: Identifier, cc: Continuation) extends Continuation
+  case class EndC() extends Continuation // End of the program.
+  case class RefC(cc: Continuation) extends Continuation
 
-  sealed trait State
+  case class TrdC() extends Continuation // End of a thread.
+
+  sealed trait State {
+    val cc: Continuation
+  }
 
   case class Step(
       exp: SchemeExp,
       env: Env,
-      version: Version,
       cc: Continuation)
       extends State
 
@@ -51,14 +96,18 @@ class CPSSchemeInterpreter(
       version: Version,
       cc: Continuation
     ): State = exp match {
-    case SchemeAnd(exps, _)                                      => ???
-    case SchemeAssert(exp, _)                                    => ???
-    case SchemeBegin(exps, _)                                    => ???
-    case SchemeCodeChange(old, _, _) if version == New           => Step(old, env, version, cc)
-    case SchemeCodeChange(_, nw, _) if version == Old            => Step(nw, env, version, cc)
-    case SchemeDefineFunction(name, args, body, _)               => ???
-    case SchemeDefineVarArgFunction(name, args, vararg, body, _) => ???
-    case SchemeDefineVariable(name, value, _)                    => ???
+    case SchemeAnd(Nil, _)                                       => Kont(Value.Bool(true), cc)
+    case SchemeAnd(first :: Nil, _)                              => Step(first, env, cc)
+    case SchemeAnd(first :: rest, _)                             => Step(first, env, AndC(rest, env, cc))
+    case SchemeAssert(_, _)                                      => Kont(Value.Void, cc) // Currently ignored.
+    case SchemeBegin(Nil, _)                                     => Kont(Value.Void, cc) // Allow empty begin (same than other interpreter).
+    case SchemeBegin(first :: Nil, _)                            => Step(first, env, cc)
+    case SchemeBegin(first :: rest, _)                           => Step(first, env, BegC(rest, env, cc))
+    case SchemeCodeChange(old, _, _) if version == New           => Step(old, env, cc)
+    case SchemeCodeChange(_, nw, _) if version == Old            => Step(nw, env, cc)
+    case SchemeDefineFunction(name, args, body, _)               => stackedException("Undefined expression expected.")
+    case SchemeDefineVarArgFunction(name, args, vararg, body, _) => stackedException("Undefined expression expected.")
+    case SchemeDefineVariable(name, value, _)                    => stackedException("Undefined expression expected.")
     case SchemeFuncall(f, args, _)                               => ???
     case SchemeIf(cond, cons, alt, _)                            => ???
     case SchemeLambda(args, body, _)                             => ???
@@ -70,7 +119,7 @@ class CPSSchemeInterpreter(
     case SchemePair(car, cdr, _)                                 => ???
     case SchemeSet(variable, value, _)                           => ???
     case SchemeSetLex(variable, lexAddr, value, _)               => ???
-    case SchemeSplicedPair(splice, cdr, _)                       => ???
+    case SchemeSplicedPair(splice, cdr, _)                       => stackedException("NYI -- Unquote splicing")
     case SchemeValue(value, _)                                   => Kont(evalLiteral(value, exp), cc)
     case SchemeVar(id) =>
       env.get(id.name).flatMap(lookupStoreOption).map(Kont(_, cc)).getOrElse(stackedException(s"Unbound variable $id at position ${id.idn}."))
@@ -84,8 +133,13 @@ class CPSSchemeInterpreter(
   }
 
   def apply(v: ConcreteValues.Value, cc: Continuation): State = cc match {
-    case RefC(cc)              => ???
-    case AssC(v, bnd, env, cc) => ???
-    case AsmC(v, cc)           => ???
+    case AndC(_, _, cc) if v == ConcreteValues.Value.Bool(false) => Kont(v, cc)
+    case AndC(first :: Nil, env, cc)                             => Step(first, env, cc)
+    case AndC(first :: rest, env, cc)                            => Step(first, env, AndC(rest, env, cc))
+    case AsmC(v, cc)                                             => ???
+    case AssC(v, bnd, env, cc)                                   => ???
+    case BegC(first :: Nil, env, cc)                             => Step(first, env, cc)
+    case BegC(first :: rest, env, cc)                            => Step(first, env, BegC(rest, env, cc))
+    case RefC(cc)                                                => ???
   }
 }

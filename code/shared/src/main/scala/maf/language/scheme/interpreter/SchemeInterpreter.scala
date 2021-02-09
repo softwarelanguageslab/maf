@@ -47,15 +47,6 @@ class SchemeInterpreter(
     res
   }
 
-  lazy val (initialEnv, initialSto) = {
-    val emptyEnv = Map.empty[String, Addr]
-    val emptySto = Map.empty[Addr, Value]
-    Primitives.allPrimitives.foldLeft((emptyEnv, emptySto)) { case ((env: Env, sto: Store), (name: String, _: Prim)) =>
-      val addr = newAddr(AddrInfo.PrmAddr(name))
-      (env + (name -> addr), sto + (addr -> Value.Primitive(name)))
-    }
-  }
-
   def safeFuture(bdy: => Value): Future[Value] = Future {
     try bdy
     catch {

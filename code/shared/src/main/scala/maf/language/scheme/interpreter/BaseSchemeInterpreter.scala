@@ -9,6 +9,7 @@ import maf.util.benchmarks.Timeout
 
 /** Common functionality for different Scheme interpreters, and interface methods needed for the primitives. */
 trait BaseSchemeInterpreter[V] {
+  this: ConcreteSchemePrimitives => // Needed for initialEnv and initialSto
   // TODO: Maybe not all these definitions need to be abstract as some can be shared with the CPS interpreter.
 
   import ConcreteValues._
@@ -18,6 +19,15 @@ trait BaseSchemeInterpreter[V] {
       timeout: Timeout.T,
       version: Version = New
     ): Value
+
+  lazy val (initialEnv, initialSto) = {
+    val emptyEnv = Map.empty[String, Addr]
+    val emptySto = Map.empty[Addr, Value]
+    Primitives.allPrimitives.foldLeft((emptyEnv, emptySto)) { case ((env: Env, sto: Store), (name: String, _: Prim)) =>
+      val addr = newAddr(AddrInfo.PrmAddr(name))
+      (env + (name -> addr), sto + (addr -> Value.Primitive(name)))
+    }
+  }
 
   // Both access to 'lastAddr' and 'store' should be synchronized on 'this'!
   var lastAddr = 0
