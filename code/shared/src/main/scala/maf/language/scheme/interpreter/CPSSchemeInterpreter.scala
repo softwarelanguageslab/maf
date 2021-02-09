@@ -6,6 +6,7 @@ import maf.language.scheme._
 import maf.language.scheme.interpreter.ConcreteValues._
 import maf.util.benchmarks.Timeout
 
+import scala.collection.immutable.Queue
 import scala.concurrent.TimeoutException
 
 class CPSSchemeInterpreter(
@@ -15,22 +16,61 @@ class CPSSchemeInterpreter(
     extends BaseSchemeInterpreter[Value]
        with ConcreteSchemePrimitives {
 
+  type TID = Int
+
+  // Note that these variables make concurrent uses of `run` not thread safe.
+  var work: Queue[State] = _ // Round-robin scheduling.
+  var waiting: Map[TID, Either[Set[State], Value]] = _
+  var state: State = _
+  var steps: TID = _
+  var tid = 0
+
+  def scheduleNext(): Unit = {
+    steps = scala.util.Random.nextInt(10)
+    val (s, w) = work.dequeue
+    state = s
+    work = w
+  }
+
+  def allocTID(): TID = {
+    tid = tid + 1
+    tid
+  }
+
   // TODO: change for multi-threaded programs.
   override def run(
       program: SchemeExp,
       timeout: Timeout.T,
       version: Version
     ): Value = {
+    work = Queue()
+    waiting = Map().withDefaultValue(Left(Set()))
     setStore(initialSto)
-    var state: State = Step(program, initialEnv, EndC())
+    work.enqueue(Step(program, initialEnv, EndC()))
+    steps = 0
     try {
-      while (!timeout.reached)
+      while (!timeout.reached) {
+        // Let every thread perform some steps.
+        if (steps == 0) {
+          work = work.enqueue(state)
+          scheduleNext()
+        }
+        steps = steps - 1
         state = state match {
           case Step(exp, env, cc) => eval(exp, env, version, cc)
           case Kont(v, EndC(_))   => return v
-          case Kont(_, TrdC(_))   => ???
-          case Kont(v, cc)        => apply(v, cc)
+          case Kont(v, TrdC(tid, _)) =>
+            val blocked = waiting(tid)
+            waiting = waiting + (tid -> Right(v))
+            blocked match {
+              case Left(states) => work = work.enqueueAll(states)
+              case Right(_)     => throw new Exception(s"Thread with $tid already finished.")
+            }
+            scheduleNext()
+            state
+          case Kont(v, cc) => apply(v, cc)
         }
+      }
       throw new TimeoutException()
     } catch {
       // Use the continuations to print the stack trace.
@@ -68,15 +108,25 @@ class CPSSchemeInterpreter(
   case class CdrC(cdr: SchemeExp, env: Env, e: SchemeExp, cc: Continuation) extends Continuation
   case class EndC(cc: Continuation = EndC()) extends Continuation // End of the program.
   case class FunC(args: List[SchemeExp], env: Env, call: SchemeFuncall, cc: Continuation) extends Continuation
+
   case class IffC(cons: SchemeExp, alt: SchemeExp, env: Env, cc: Continuation) extends Continuation
+
+  case class JoiC(cc: Continuation) extends Continuation
+
   case class LetC(bnd: List[(Identifier, SchemeExp)], env: Env, bvals: List[Value], let: SchemeLet, cc: Continuation) extends Continuation
+
   case class LtsC(i: Identifier, bnd: List[(Identifier, SchemeExp)], env: Env, let: SchemeLetStar, cc: Continuation) extends Continuation
+
   case class LtrC(i: Identifier, bnd: List[(Identifier, SchemeExp)], env: Env, let: SchemeLetrec, cc: Continuation) extends Continuation
+
   case class OrrC(exps: List[SchemeExp], env: Env, cc: Continuation) extends Continuation
+
   case class PaiC(car: Value, e: SchemeExp, cc: Continuation) extends Continuation
+
   case class RetC(addr: Addr, cc: Continuation) extends Continuation // Allows to write the return value of a function call to the store. This breaks tail recursion...
   case class SetC(addr: Addr, cc: Continuation) extends Continuation
-  case class TrdC(cc: Continuation = TrdC()) extends Continuation // End of a thread.
+
+  case class TrdC(tid: Int = -1, cc: Continuation = TrdC()) extends Continuation // End of a thread.
   // format: on
 
   /* ****************** */
@@ -151,10 +201,13 @@ class CPSSchemeInterpreter(
       env.get(id.name).flatMap(lookupStoreOption).map(Kont(_, cc)).getOrElse(stackedException(s"Unbound variable $id at position ${id.idn}."))
     case SchemeVarLex(_, _) => stackedException("Unsupported: lexical addresses.")
 
-    case CSchemeFork(body, _) => ???
-    case CSchemeJoin(tExp, _) => ???
+    case CSchemeFork(body, _) =>
+      val tid = allocTID()
+      work = work.enqueue(Step(body, env, TrdC(tid)))
+      Kont(Value.CThread(tid), cc)
+    case CSchemeJoin(tExp, _) => Step(tExp, env, JoiC(cc))
 
-    case _ => throw new Exception(s"Unsupported expression type: ${exp.label}.")
+    case _ => stackedException(s"Unsupported expression type: ${exp.label}.")
   }
 
   def apply(v: Value, cc: Continuation): State = cc match {
@@ -169,8 +222,20 @@ class CPSSchemeInterpreter(
     case FunC(args, env, call, cc)                       => continueArgs(v, args, env, call, cc)
     case IffC(_, alt, env, cc) if v == Value.Bool(false) => Step(alt, env, cc)
     case IffC(cons, _, env, cc)                          => Step(cons, env, cc)
-    case LetC(Nil, env, bvals, let, cc)                  => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
-    case LetC((_, e) :: rest, env, bvals, let, cc)       => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
+    case JoiC(cc) =>
+      v match {
+        case Value.CThread(tid) =>
+          waiting(tid) match {
+            case Left(states) =>
+              waiting = waiting + (tid -> Left(states + Kont(v, cc)))
+              scheduleNext()
+              state
+            case Right(v) => Kont(v, cc)
+          }
+        case v => stackedException(s"Cannot join non-thread value: $v.")
+      }
+    case LetC(Nil, env, bvals, let, cc)            => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
+    case LetC((_, e) :: rest, env, bvals, let, cc) => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
     case LtrC(i1, bnd, env, let, cc) =>
       val namedV = v match { // Optional renaming to ease debugging (more functions have names).
         case Value.Clo(lambda, env, None) => Value.Clo(lambda, env, Some(i1.name))

@@ -128,6 +128,10 @@ object ConcreteValues {
       override def toString: String = "#<lock>"
     }
 
+    case class CThread(tid: Int) extends Value {
+      override def toString: String = s"#<thread:$tid>"
+    }
+
     case object EOF extends Value {
       override def toString: String = "#<eof>"
     }
