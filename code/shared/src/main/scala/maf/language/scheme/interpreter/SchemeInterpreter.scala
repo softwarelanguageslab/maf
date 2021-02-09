@@ -220,7 +220,7 @@ class SchemeInterpreter(
                   extendStore(addr, check(arg._1.idn, arg._2))
                   (env3 + (arg._1.name -> addr))
                 }
-                res <- stackedCall(name, pos2, tailcall(eval(SchemeBegin(body, pos2), envExt, timeout, version)))
+                res <- stackedCall(name, pos2, tailcall(eval(SchemeBody(body), envExt, timeout, version)))
                 resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
                 _ = extendStore(resAddr, res)
               } yield res
@@ -238,11 +238,10 @@ class SchemeInterpreter(
                   extendStore(addr, check(arg._1.idn, arg._2))
                   (env3 + (arg._1.name -> addr))
                 }
-                varArgVals <- evalArgs(args.drop(arity), env, timeout, version)
                 varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
-                _ = extendStore(varArgAddr, makeList(args.zip(varArgVals)))
+                _ = extendStore(varArgAddr, makeList(args.drop(arity).zip(argsv.drop(arity))))
                 envExt2 = envExt + (vararg.name -> varArgAddr)
-                res <- stackedCall(name, pos2, eval(SchemeBegin(body, pos2), envExt2, timeout, version))
+                res <- stackedCall(name, pos2, eval(SchemeBody(body), envExt2, timeout, version))
                 resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
                 _ = extendStore(resAddr, res)
               } yield res

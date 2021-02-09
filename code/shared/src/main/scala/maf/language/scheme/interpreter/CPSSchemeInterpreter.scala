@@ -252,7 +252,7 @@ class CPSSchemeInterpreter(
           extendStore(addr, arg._2)
           env3 + (arg._1.name -> addr)
         }
-        Step(SchemeBegin(body, pos2), envExt, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
+        Step(SchemeBody(body), envExt, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
       case Value.Clo(SchemeVarArgLambda(argNames, vararg, body, pos2), env2, _) =>
         val envExt = argNames.zip(argvs).foldLeft(env2) { (env3, arg) =>
           val addr = newAddr(AddrInfo.VarAddr(arg._1))
@@ -263,7 +263,7 @@ class CPSSchemeInterpreter(
         val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
         extendStore(varArgAddr, makeList(call.args.drop(argNames.length).zip(varArgvs)))
         val envExt2 = envExt + (vararg.name -> varArgAddr)
-        Step(SchemeBegin(body, pos2), envExt2, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
+        Step(SchemeBody(body), envExt2, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
       case Value.Primitive(p) => Kont(Primitives.allPrimitives(p).call(call, call.args.zip(argvs)), cc)
     }
   }
