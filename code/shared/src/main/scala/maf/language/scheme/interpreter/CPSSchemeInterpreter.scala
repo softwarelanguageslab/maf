@@ -90,6 +90,7 @@ class CPSSchemeInterpreter(
       extends Continuation
 
   case class EndC(cc: Continuation = EndC()) extends Continuation // End of the program.
+
   case class FunC(
       args: List[SchemeExp],
       env: Env,
@@ -101,6 +102,14 @@ class CPSSchemeInterpreter(
       cons: SchemeExp,
       alt: SchemeExp,
       env: Env,
+      cc: Continuation)
+      extends Continuation
+
+  case class LetC(
+      bnd: List[(Identifier, SchemeExp)],
+      env: Env,
+      bvals: List[Value],
+      let: SchemeLet,
       cc: Continuation)
       extends Continuation
 
@@ -161,9 +170,12 @@ class CPSSchemeInterpreter(
     case SchemeDefineVariable(_, _, _)                 => stackedException("Undefined expression expected.")
     case call @ SchemeFuncall(f, args, _)              => Step(f, env, FunC(args, env, call, cc))
     case SchemeIf(cond, cons, alt, _)                  => Step(cond, env, IffC(cons, alt, env, cc))
-    case SchemeLambda(args, body, _)                   => ???
-    case SchemeLet(bindings, body, _)                  => ???
+    case lambda: SchemeLambdaExp                       => Kont(Value.Clo(lambda, env), cc)
+    case SchemeLet(Nil, body, pos)                     => Step(SchemeBegin(body, pos), env, cc)
+    case let @ SchemeLet((_, e) :: rest, _, _)         => Step(e, env, LetC(rest, env, Nil, let, cc))
+    case SchemeLetStar(Nil, body, pos)                 => Step(SchemeBegin(body, pos), env, cc)
     case SchemeLetStar(bindings, body, _)              => ???
+    case SchemeLetrec(Nil, body, pos)                  => Step(SchemeBegin(body, pos), env, cc)
     case SchemeLetrec(bindings, body, _)               => ???
     case SchemeNamedLet(name, bindings, body, _)       => ???
     case SchemeOr(Nil, _)                              => Kont(Value.Bool(false), cc)
@@ -180,8 +192,7 @@ class CPSSchemeInterpreter(
     case SchemeValue(value, _)      => Kont(evalLiteral(value, exp), cc)
     case SchemeVar(id) =>
       env.get(id.name).flatMap(lookupStoreOption).map(Kont(_, cc)).getOrElse(stackedException(s"Unbound variable $id at position ${id.idn}."))
-    case SchemeVarArgLambda(args, vararg, body, _) => ???
-    case SchemeVarLex(_, _)                        => stackedException("Unsupported: lexical addresses.")
+    case SchemeVarLex(_, _) => stackedException("Unsupported: lexical addresses.")
 
     case CSchemeFork(body, _) => ???
     case CSchemeJoin(tExp, _) => ???
@@ -201,6 +212,8 @@ class CPSSchemeInterpreter(
     case FunC(args, env, call, cc)                       => continueArgs(v, args, env, call, cc)
     case IffC(_, alt, env, cc) if v == Value.Bool(false) => Step(alt, env, cc)
     case IffC(cons, _, env, cc)                          => Step(cons, env, cc)
+    case LetC(Nil, env, bvals, let, cc)                  => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
+    case LetC((_, e) :: rest, env, bvals, let, cc)       => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
     case OrrC(_, _, cc) if v != Value.Bool(false)        => Kont(v, cc)
     case OrrC(first :: Nil, env, cc)                     => Step(first, env, cc)
     case OrrC(first :: rest, env, cc)                    => Step(first, env, OrrC(rest, env, cc))
@@ -246,25 +259,26 @@ class CPSSchemeInterpreter(
     ): State = {
     val argvs = argvsRev.reverse
     f match {
-      case Value.Clo(SchemeLambda(argNames, body, pos2), env2, _) =>
-        val envExt = argNames.zip(argvs).foldLeft(env2) { (env3, arg) =>
-          val addr = newAddr(AddrInfo.VarAddr(arg._1))
-          extendStore(addr, arg._2)
-          env3 + (arg._1.name -> addr)
-        }
-        Step(SchemeBody(body), envExt, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
-      case Value.Clo(SchemeVarArgLambda(argNames, vararg, body, pos2), env2, _) =>
-        val envExt = argNames.zip(argvs).foldLeft(env2) { (env3, arg) =>
-          val addr = newAddr(AddrInfo.VarAddr(arg._1))
-          extendStore(addr, arg._2)
-          env3 + (arg._1.name -> addr)
-        }
-        val varArgvs = argvs.drop(argNames.length)
+      case Value.Clo(SchemeLambda(argNames, body, _), env2, _) =>
+        Step(SchemeBody(body), extendEnv(argNames, argvs, env2), RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
+      case Value.Clo(SchemeVarArgLambda(argNames, vararg, body, _), env2, _) =>
         val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
-        extendStore(varArgAddr, makeList(call.args.drop(argNames.length).zip(varArgvs)))
-        val envExt2 = envExt + (vararg.name -> varArgAddr)
-        Step(SchemeBody(body), envExt2, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
+        extendStore(varArgAddr, makeList(call.args.drop(argNames.length).zip(argvs.drop(argNames.length))))
+        val envExt = extendEnv(argNames, argvs, env2) + (vararg.name -> varArgAddr)
+        Step(SchemeBody(body), envExt, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
       case Value.Primitive(p) => Kont(Primitives.allPrimitives(p).call(call, call.args.zip(argvs)), cc)
     }
+  }
+
+  def extendEnv(
+      ids: List[Identifier],
+      values: List[Value],
+      env: Env
+    ): Env = ids.zip(values).foldLeft(env)(extendEnv)
+
+  def extendEnv(env: Env, idv: (Identifier, Value)): Env = {
+    val addr = newAddr(AddrInfo.VarAddr(idv._1))
+    extendStore(addr, idv._2)
+    env + (idv._1.name -> addr)
   }
 }
