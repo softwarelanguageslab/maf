@@ -63,31 +63,19 @@ class CPSSchemeInterpreter(
 
   // format: off
   case class AndC(exps: List[SchemeExp], env: Env, cc: Continuation) extends Continuation
-
   case class ArgC(exps: List[SchemeExp], env: Env, f: Value, argv: List[Value], call: SchemeFuncall, cc: Continuation) extends Continuation
-
   case class BegC(exps: List[SchemeExp], env: Env, cc: Continuation) extends Continuation
-
   case class CdrC(cdr: SchemeExp, env: Env, e: SchemeExp, cc: Continuation) extends Continuation
-
   case class EndC(cc: Continuation = EndC()) extends Continuation // End of the program.
   case class FunC(args: List[SchemeExp], env: Env, call: SchemeFuncall, cc: Continuation) extends Continuation
-
   case class IffC(cons: SchemeExp, alt: SchemeExp, env: Env, cc: Continuation) extends Continuation
-
   case class LetC(bnd: List[(Identifier, SchemeExp)], env: Env, bvals: List[Value], let: SchemeLet, cc: Continuation) extends Continuation
-
   case class LtsC(i: Identifier, bnd: List[(Identifier, SchemeExp)], env: Env, let: SchemeLetStar, cc: Continuation) extends Continuation
-
   case class LtrC(i: Identifier, bnd: List[(Identifier, SchemeExp)], env: Env, let: SchemeLetrec, cc: Continuation) extends Continuation
-
   case class OrrC(exps: List[SchemeExp], env: Env, cc: Continuation) extends Continuation
-
   case class PaiC(car: Value, e: SchemeExp, cc: Continuation) extends Continuation
-
   case class RetC(addr: Addr, cc: Continuation) extends Continuation // Allows to write the return value of a function call to the store. This breaks tail recursion...
   case class SetC(addr: Addr, cc: Continuation) extends Continuation
-
   case class TrdC(cc: Continuation = TrdC()) extends Continuation // End of a thread.
   // format: on
 
@@ -140,11 +128,17 @@ class CPSSchemeInterpreter(
       Step(e, extEnv, LtrC(i, rest, extEnv, let, cc))
     case SchemeLetStar(Nil, body, pos)             => Step(SchemeBegin(body, pos), env, cc)
     case let @ SchemeLetStar((i, e) :: rest, _, _) => Step(e, env, LtsC(i, rest, env, let, cc))
-    case SchemeNamedLet(name, bindings, body, _)   => ???
-    case SchemeOr(Nil, _)                          => Kont(Value.Bool(false), cc)
-    case SchemeOr(first :: Nil, _)                 => Step(first, env, cc)
-    case SchemeOr(first :: rest, _)                => Step(first, env, OrrC(rest, env, cc))
-    case SchemePair(car, cdr, _)                   => Step(car, env, CdrC(cdr, env, exp, cc))
+    case SchemeNamedLet(name, bindings, body, pos) =>
+      val addr = newAddr(AddrInfo.VarAddr(name))
+      val extEnv = env + (name.name -> addr)
+      val (prs, ags) = bindings.unzip
+      val lambda = SchemeLambda(prs, body, pos)
+      extendStore(addr, Value.Clo(lambda, extEnv, Some(name.name)))
+      Step(SchemeFuncall(lambda, ags, pos), extEnv, cc)
+    case SchemeOr(Nil, _)           => Kont(Value.Bool(false), cc)
+    case SchemeOr(first :: Nil, _)  => Step(first, env, cc)
+    case SchemeOr(first :: rest, _) => Step(first, env, OrrC(rest, env, cc))
+    case SchemePair(car, cdr, _)    => Step(car, env, CdrC(cdr, env, exp, cc))
     case SchemeSet(variable, value, _) =>
       env.get(variable.name) match {
         case Some(addr) => Step(value, env, SetC(addr, cc))
