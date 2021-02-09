@@ -71,6 +71,36 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 
 }
 
+class SchemeCPSInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
+
+  def analysis(text: SchemeExp) =
+    // Not really clean, we only want a proper ConstantPropagationLattice definition
+    new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+
+  override def testExpr(program: String, answer: Any): Unit = {
+    val text = SchemeParser.parse(program)
+    val a = analysis(text)
+    val l = a.lattice.asInstanceOf[L]
+
+    import l.Injector._
+
+    val interpreter =
+      new CPSSchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+    val v = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(text))), Timeout.start(Duration(30, SECONDS)))
+    val result = v match {
+      case ConcreteValues.Value.Nil          => l.nil
+      case ConcreteValues.Value.Str(s)       => l.string(s)
+      case ConcreteValues.Value.Symbol(s)    => l.symbol(s)
+      case ConcreteValues.Value.Integer(n)   => l.number(n)
+      case ConcreteValues.Value.Real(r)      => l.real(r)
+      case ConcreteValues.Value.Bool(b)      => l.bool(b)
+      case ConcreteValues.Value.Character(c) => l.char(c)
+      case _                                 => ???
+    }
+    assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
+  }
+}
+
 class ConstantPropagationBigStepModFR5RSCorrectnessTests extends SchemeR5RSTests {
   def analysis(
       text: SchemeExp
