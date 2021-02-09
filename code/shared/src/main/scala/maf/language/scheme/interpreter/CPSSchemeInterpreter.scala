@@ -113,6 +113,14 @@ class CPSSchemeInterpreter(
       cc: Continuation)
       extends Continuation
 
+  case class LtsC(
+      i: Identifier,
+      bnd: List[(Identifier, SchemeExp)],
+      env: Env,
+      let: SchemeLetStar,
+      cc: Continuation)
+      extends Continuation
+
   case class OrrC(
       exps: List[SchemeExp],
       env: Env,
@@ -174,7 +182,7 @@ class CPSSchemeInterpreter(
     case SchemeLet(Nil, body, pos)                     => Step(SchemeBegin(body, pos), env, cc)
     case let @ SchemeLet((_, e) :: rest, _, _)         => Step(e, env, LetC(rest, env, Nil, let, cc))
     case SchemeLetStar(Nil, body, pos)                 => Step(SchemeBegin(body, pos), env, cc)
-    case SchemeLetStar(bindings, body, _)              => ???
+    case let @ SchemeLetStar((i, e) :: rest, _, _)     => Step(e, env, LtsC(i, rest, env, let, cc))
     case SchemeLetrec(Nil, body, pos)                  => Step(SchemeBegin(body, pos), env, cc)
     case SchemeLetrec(bindings, body, _)               => ???
     case SchemeNamedLet(name, bindings, body, _)       => ???
@@ -214,6 +222,8 @@ class CPSSchemeInterpreter(
     case IffC(cons, _, env, cc)                          => Step(cons, env, cc)
     case LetC(Nil, env, bvals, let, cc)                  => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
     case LetC((_, e) :: rest, env, bvals, let, cc)       => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
+    case LtsC(i, Nil, env, let, cc)                      => Step(SchemeBegin(let.body, let.idn), extendEnv(env, (i, v)), cc)
+    case LtsC(i1, (i2, e) :: rest, env, let, cc)         => val extEnv = extendEnv(env, (i1, v)); Step(e, extEnv, LtsC(i2, rest, extEnv, let, cc))
     case OrrC(_, _, cc) if v != Value.Bool(false)        => Kont(v, cc)
     case OrrC(first :: Nil, env, cc)                     => Step(first, env, cc)
     case OrrC(first :: rest, env, cc)                    => Step(first, env, OrrC(rest, env, cc))
