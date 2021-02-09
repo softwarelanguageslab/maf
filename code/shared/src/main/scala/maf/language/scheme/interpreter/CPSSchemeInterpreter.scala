@@ -33,9 +33,9 @@ class CPSSchemeInterpreter(
       throw new TimeoutException()
     } catch {
       // Use the continuations to print the stack trace.
-      case StackedException(msg) =>
+      case StackedException(message) =>
         var cc = state.cc
-        var msg = "$msg\n Callstack:"
+        var msg: String = s"$message\n Callstack:"
         if (stack) {
           while ({
             msg = msg + s"\n * ${cc.toString}"
