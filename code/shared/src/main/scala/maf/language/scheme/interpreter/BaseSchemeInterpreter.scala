@@ -1,6 +1,5 @@
 package maf.language.scheme.interpreter
 
-import maf.core.Identity
 import maf.language.change.CodeVersion.{New, Version}
 import maf.language.scheme._
 import maf.language.sexp

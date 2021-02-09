@@ -210,7 +210,7 @@ class SchemeInterpreter(
             case Value.Clo(lambda @ SchemeLambda(argsNames, body, pos2), env2, name) =>
               if (argsNames.length != args.length) {
                 stackedException(
-                  s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected"
+                  s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected."
                 )
               }
               for {
@@ -228,7 +228,7 @@ class SchemeInterpreter(
               val arity = argsNames.length
               if (args.length < arity) {
                 stackedException(
-                  s"Invalid function call at position $idn: ${args.length} arguments given, while at least ${argsNames.length} are expected"
+                  s"Invalid function call at position $idn: ${args.length} arguments given, while at least ${argsNames.length} are expected."
                 )
               }
               for {
@@ -256,7 +256,7 @@ class SchemeInterpreter(
                 )
               )
             case v =>
-              stackedException(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive")
+              stackedException(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive.")
           }
         } yield res
       case SchemeIf(cond, cons, alt, _) =>

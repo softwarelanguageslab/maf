@@ -1,7 +1,7 @@
 package maf.language.scheme.interpreter
 
 import maf.core._
-import maf.language.change.CodeVersion._
+import maf.language.change.CodeVersion.{New, Old, Version}
 import maf.language.scheme._
 import maf.language.scheme.interpreter.ConcreteValues._
 import maf.util.benchmarks.Timeout
@@ -9,10 +9,10 @@ import maf.util.benchmarks.Timeout
 import scala.concurrent.TimeoutException
 
 class CPSSchemeInterpreter(
-    cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (), // TODO: incoropate
+    cb: (Identity, Value) => Unit = (_, _) => (), // TODO: incoropate
     val io: IO = new EmptyIO(),
     val stack: Boolean = false)
-    extends BaseSchemeInterpreter[ConcreteValues.Value]
+    extends BaseSchemeInterpreter[Value]
        with ConcreteSchemePrimitives {
 
   // TODO: change for multi-threaded programs.
@@ -20,7 +20,7 @@ class CPSSchemeInterpreter(
       program: SchemeExp,
       timeout: Timeout.T,
       version: Version
-    ): ConcreteValues.Value = {
+    ): Value = {
     setStore(initialSto)
     var state: State = Step(program, initialEnv, EndC())
     try {
@@ -28,6 +28,7 @@ class CPSSchemeInterpreter(
         state = state match {
           case Step(exp, env, cc) => eval(exp, env, version, cc)
           case Kont(v, EndC(_))   => return v
+          case Kont(_, TrdC(_))   => ???
           case Kont(v, cc)        => apply(v, cc)
         }
       throw new TimeoutException()
@@ -66,23 +67,57 @@ class CPSSchemeInterpreter(
       cc: Continuation)
       extends Continuation
 
+  case class ArgC(
+      exps: List[SchemeExp],
+      env: Env,
+      f: Value,
+      argv: List[Value],
+      call: SchemeFuncall,
+      cc: Continuation)
+      extends Continuation
+
   case class BegC(
       exps: List[SchemeExp],
       env: Env,
       cc: Continuation)
       extends Continuation
 
-  case class AsmC(v: Identifier, cc: Continuation) extends Continuation
-
-  case class AssC(
-      v: Identifier,
-      bnd: List[(Identifier, SchemeExp)],
+  case class CdrC(
+      cdr: SchemeExp,
       env: Env,
+      e: SchemeExp,
       cc: Continuation)
       extends Continuation
 
   case class EndC(cc: Continuation = EndC()) extends Continuation // End of the program.
-  case class RefC(cc: Continuation) extends Continuation
+  case class FunC(
+      args: List[SchemeExp],
+      env: Env,
+      call: SchemeFuncall,
+      cc: Continuation)
+      extends Continuation
+
+  case class IffC(
+      cons: SchemeExp,
+      alt: SchemeExp,
+      env: Env,
+      cc: Continuation)
+      extends Continuation
+
+  case class OrrC(
+      exps: List[SchemeExp],
+      env: Env,
+      cc: Continuation)
+      extends Continuation
+
+  case class PaiC(
+      car: Value,
+      e: SchemeExp,
+      cc: Continuation)
+      extends Continuation
+
+  case class RetC(addr: Addr, cc: Continuation) extends Continuation // Allows to write the return value of a function call to the store.
+  case class SetC(addr: Addr, cc: Continuation) extends Continuation
 
   case class TrdC(cc: Continuation = TrdC()) extends Continuation // End of a thread.
 
@@ -100,7 +135,7 @@ class CPSSchemeInterpreter(
       cc: Continuation)
       extends State
 
-  case class Kont(v: ConcreteValues.Value, cc: Continuation) extends State
+  case class Kont(v: Value, cc: Continuation) extends State
 
   /* ********************** */
   /* ***** EVAL/APPLY ***** */
@@ -124,23 +159,29 @@ class CPSSchemeInterpreter(
     case SchemeDefineFunction(_, _, _, _)              => stackedException("Undefined expression expected.")
     case SchemeDefineVarArgFunction(_, _, _, _, _)     => stackedException("Undefined expression expected.")
     case SchemeDefineVariable(_, _, _)                 => stackedException("Undefined expression expected.")
-    case SchemeFuncall(f, args, _)                     => ???
-    case SchemeIf(cond, cons, alt, _)                  => ???
+    case call @ SchemeFuncall(f, args, _)              => Step(f, env, FunC(args, env, call, cc))
+    case SchemeIf(cond, cons, alt, _)                  => Step(cond, env, IffC(cons, alt, env, cc))
     case SchemeLambda(args, body, _)                   => ???
     case SchemeLet(bindings, body, _)                  => ???
     case SchemeLetStar(bindings, body, _)              => ???
     case SchemeLetrec(bindings, body, _)               => ???
     case SchemeNamedLet(name, bindings, body, _)       => ???
-    case SchemeOr(exps, _)                             => ???
-    case SchemePair(car, cdr, _)                       => ???
-    case SchemeSet(variable, value, _)                 => ???
-    case SchemeSetLex(variable, lexAddr, value, _)     => stackedException("Unsupported: lexical addresses.")
-    case SchemeSplicedPair(splice, cdr, _)             => stackedException("NYI -- Unquote splicing")
-    case SchemeValue(value, _)                         => Kont(evalLiteral(value, exp), cc)
+    case SchemeOr(Nil, _)                              => Kont(Value.Bool(false), cc)
+    case SchemeOr(first :: Nil, _)                     => Step(first, env, cc)
+    case SchemeOr(first :: rest, _)                    => Step(first, env, OrrC(rest, env, cc))
+    case SchemePair(car, cdr, _)                       => Step(car, env, CdrC(cdr, env, exp, cc))
+    case SchemeSet(variable, value, _) =>
+      env.get(variable.name) match {
+        case Some(addr) => Step(value, env, SetC(addr, cc))
+        case None       => stackedException(s"Unbound variable $variable at position ${variable.idn}.")
+      }
+    case SchemeSetLex(_, _, _, _)   => stackedException("Unsupported: lexical addresses.")
+    case SchemeSplicedPair(_, _, _) => stackedException("NYI -- Unquote splicing")
+    case SchemeValue(value, _)      => Kont(evalLiteral(value, exp), cc)
     case SchemeVar(id) =>
       env.get(id.name).flatMap(lookupStoreOption).map(Kont(_, cc)).getOrElse(stackedException(s"Unbound variable $id at position ${id.idn}."))
     case SchemeVarArgLambda(args, vararg, body, _) => ???
-    case SchemeVarLex(id, lexAddr)                 => stackedException("Unsupported: lexical addresses.")
+    case SchemeVarLex(_, _)                        => stackedException("Unsupported: lexical addresses.")
 
     case CSchemeFork(body, _) => ???
     case CSchemeJoin(tExp, _) => ???
@@ -148,14 +189,82 @@ class CPSSchemeInterpreter(
     case _ => throw new Exception(s"Unsupported expression type: ${exp.label}.")
   }
 
-  def apply(v: ConcreteValues.Value, cc: Continuation): State = cc match {
-    case AndC(_, _, cc) if v == ConcreteValues.Value.Bool(false) => Kont(v, cc)
-    case AndC(first :: Nil, env, cc)                             => Step(first, env, cc)
-    case AndC(first :: rest, env, cc)                            => Step(first, env, AndC(rest, env, cc))
-    case AsmC(v, cc)                                             => ???
-    case AssC(v, bnd, env, cc)                                   => ???
-    case BegC(first :: Nil, env, cc)                             => Step(first, env, cc)
-    case BegC(first :: rest, env, cc)                            => Step(first, env, BegC(rest, env, cc))
-    case RefC(cc)                                                => ???
+  def apply(v: Value, cc: Continuation): State = cc match {
+    case AndC(_, _, cc) if v == Value.Bool(false)        => Kont(v, cc)
+    case AndC(first :: Nil, env, cc)                     => Step(first, env, cc)
+    case AndC(first :: rest, env, cc)                    => Step(first, env, AndC(rest, env, cc))
+    case ArgC(Nil, _, f, argv, call, cc)                 => continueBody(f, v :: argv, call, cc)
+    case ArgC(first :: rest, env, f, argv, call, cc)     => Step(first, env, ArgC(rest, env, f, v :: argv, call, cc))
+    case BegC(first :: Nil, env, cc)                     => Step(first, env, cc)
+    case BegC(first :: rest, env, cc)                    => Step(first, env, BegC(rest, env, cc))
+    case CdrC(cdr, env, exp, cc)                         => Step(cdr, env, PaiC(v, exp, cc))
+    case FunC(args, env, call, cc)                       => continueArgs(v, args, env, call, cc)
+    case IffC(_, alt, env, cc) if v == Value.Bool(false) => Step(alt, env, cc)
+    case IffC(cons, _, env, cc)                          => Step(cons, env, cc)
+    case OrrC(_, _, cc) if v != Value.Bool(false)        => Kont(v, cc)
+    case OrrC(first :: Nil, env, cc)                     => Step(first, env, cc)
+    case OrrC(first :: rest, env, cc)                    => Step(first, env, OrrC(rest, env, cc))
+    case PaiC(car, e, cc)                                => Kont(allocateCons(e, car, v), cc)
+    case RetC(addr, cc)                                  => extendStore(addr, v); Kont(v, cc)
+    case SetC(addr, cc)                                  => extendStore(addr, v); Kont(Value.Void, cc)
+  }
+
+  // Evaluate the arguments of a function.
+  def continueArgs(
+      f: Value,
+      args: List[SchemeExp],
+      env: Env,
+      call: SchemeFuncall,
+      cc: Continuation
+    ): State = {
+    // First, check the arity.
+    f match {
+      case Value.Clo(lambda @ SchemeLambda(argNames, _, _), _, name) =>
+        if (args.length != argNames.length)
+          stackedException(s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${name
+            .getOrElse("lambda")} (${lambda.idn.pos}), while exactly ${argNames.length} are expected.")
+      case Value.Clo(lambda @ SchemeVarArgLambda(argNames, _, _, _), _, name) =>
+        if (args.length < argNames.length)
+          stackedException(s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${name
+            .getOrElse("lambda")} (${lambda.idn.pos}), while at least ${argNames.length} are expected.")
+      case Value.Primitive(_) => // Arity is checked upon primitive call.
+      case v                  => stackedException(s"Invalid function call at position ${call.idn}: ${v} is not a closure or a primitive.")
+    }
+    // If the arity is ok, evaluate the arguments.
+    args match {
+      case Nil           => continueBody(f, Nil, call, cc)
+      case first :: rest => Step(first, env, ArgC(rest, env, f, Nil, call, cc))
+    }
+  }
+
+  // Evaluate the body of a function.
+  def continueBody(
+      f: Value,
+      argvsRev: List[Value],
+      call: SchemeFuncall,
+      cc: Continuation
+    ): State = {
+    val argvs = argvsRev.reverse
+    f match {
+      case Value.Clo(SchemeLambda(argNames, body, pos2), env2, _) =>
+        val envExt = argNames.zip(argvs).foldLeft(env2) { (env3, arg) =>
+          val addr = newAddr(AddrInfo.VarAddr(arg._1))
+          extendStore(addr, arg._2)
+          env3 + (arg._1.name -> addr)
+        }
+        Step(SchemeBegin(body, pos2), envExt, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
+      case Value.Clo(SchemeVarArgLambda(argNames, vararg, body, pos2), env2, _) =>
+        val envExt = argNames.zip(argvs).foldLeft(env2) { (env3, arg) =>
+          val addr = newAddr(AddrInfo.VarAddr(arg._1))
+          extendStore(addr, arg._2)
+          env3 + (arg._1.name -> addr)
+        }
+        val varArgvs = argvs.drop(argNames.length)
+        val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
+        extendStore(varArgAddr, makeList(call.args.drop(argNames.length).zip(varArgvs)))
+        val envExt2 = envExt + (vararg.name -> varArgAddr)
+        Step(SchemeBegin(body, pos2), envExt2, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
+      case Value.Primitive(p) => Kont(Primitives.allPrimitives(p).call(call, call.args.zip(argvs)), cc)
+    }
   }
 }
