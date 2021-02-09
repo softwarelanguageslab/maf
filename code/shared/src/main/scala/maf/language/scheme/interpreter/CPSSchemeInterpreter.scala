@@ -9,7 +9,7 @@ import maf.util.benchmarks.Timeout
 import scala.concurrent.TimeoutException
 
 class CPSSchemeInterpreter(
-    cb: (Identity, Value) => Unit = (_, _) => (), // TODO: incoropate
+    cb: (Identity, Value) => Unit = (_, _) => (), // TODO: incorporate
     val io: IO = new EmptyIO(),
     val stack: Boolean = false)
     extends BaseSchemeInterpreter[Value]
@@ -61,91 +61,35 @@ class CPSSchemeInterpreter(
     val cc: Continuation // Needed to support the `stackedException` functionality.
   }
 
-  case class AndC(
-      exps: List[SchemeExp],
-      env: Env,
-      cc: Continuation)
-      extends Continuation
+  // format: off
+  case class AndC(exps: List[SchemeExp], env: Env, cc: Continuation) extends Continuation
 
-  case class ArgC(
-      exps: List[SchemeExp],
-      env: Env,
-      f: Value,
-      argv: List[Value],
-      call: SchemeFuncall,
-      cc: Continuation)
-      extends Continuation
+  case class ArgC(exps: List[SchemeExp], env: Env, f: Value, argv: List[Value], call: SchemeFuncall, cc: Continuation) extends Continuation
 
-  case class BegC(
-      exps: List[SchemeExp],
-      env: Env,
-      cc: Continuation)
-      extends Continuation
+  case class BegC(exps: List[SchemeExp], env: Env, cc: Continuation) extends Continuation
 
-  case class CdrC(
-      cdr: SchemeExp,
-      env: Env,
-      e: SchemeExp,
-      cc: Continuation)
-      extends Continuation
+  case class CdrC(cdr: SchemeExp, env: Env, e: SchemeExp, cc: Continuation) extends Continuation
 
   case class EndC(cc: Continuation = EndC()) extends Continuation // End of the program.
+  case class FunC(args: List[SchemeExp], env: Env, call: SchemeFuncall, cc: Continuation) extends Continuation
 
-  case class FunC(
-      args: List[SchemeExp],
-      env: Env,
-      call: SchemeFuncall,
-      cc: Continuation)
-      extends Continuation
+  case class IffC(cons: SchemeExp, alt: SchemeExp, env: Env, cc: Continuation) extends Continuation
 
-  case class IffC(
-      cons: SchemeExp,
-      alt: SchemeExp,
-      env: Env,
-      cc: Continuation)
-      extends Continuation
+  case class LetC(bnd: List[(Identifier, SchemeExp)], env: Env, bvals: List[Value], let: SchemeLet, cc: Continuation) extends Continuation
 
-  case class LetC(
-      bnd: List[(Identifier, SchemeExp)],
-      env: Env,
-      bvals: List[Value],
-      let: SchemeLet,
-      cc: Continuation)
-      extends Continuation
+  case class LtsC(i: Identifier, bnd: List[(Identifier, SchemeExp)], env: Env, let: SchemeLetStar, cc: Continuation) extends Continuation
 
-  case class LtsC(
-      i: Identifier,
-      bnd: List[(Identifier, SchemeExp)],
-      env: Env,
-      let: SchemeLetStar,
-      cc: Continuation)
-      extends Continuation
+  case class LtrC(i: Identifier, bnd: List[(Identifier, SchemeExp)], env: Env, let: SchemeLetrec, cc: Continuation) extends Continuation
 
-  case class LtrC(
-      i: Identifier,
-      bnd: List[(Identifier, SchemeExp)],
-      env: Env,
-      let: SchemeLetrec,
-      cc: Continuation)
-      extends Continuation
+  case class OrrC(exps: List[SchemeExp], env: Env, cc: Continuation) extends Continuation
 
-  case class OrrC(
-      exps: List[SchemeExp],
-      env: Env,
-      cc: Continuation)
-      extends Continuation
+  case class PaiC(car: Value, e: SchemeExp, cc: Continuation) extends Continuation
 
-  case class PaiC(
-      car: Value,
-      e: SchemeExp,
-      cc: Continuation)
-      extends Continuation
-
-  case class RetC(addr: Addr, cc: Continuation)
-      extends Continuation // Allows to write the return value of a function call to the store. This breaks tail recursion...
+  case class RetC(addr: Addr, cc: Continuation) extends Continuation // Allows to write the return value of a function call to the store. This breaks tail recursion...
   case class SetC(addr: Addr, cc: Continuation) extends Continuation
 
   case class TrdC(cc: Continuation = TrdC()) extends Continuation // End of a thread.
+  // format: on
 
   /* ****************** */
   /* ***** STATES ***** */
