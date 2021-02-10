@@ -6,7 +6,7 @@ import maf.language.CScheme._
 import maf.language.scheme._
 import maf.language.scheme.interpreter._
 import maf.language.scheme.primitives.SchemePrelude
-import maf.test.InterpreterTest
+import maf.test.{InterpreterTest, SlowTest}
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 import org.scalatest.propspec.AnyPropSpec
@@ -39,13 +39,14 @@ class InterpreterTests() extends AnyPropSpec {
 
   def onBenchmark(benchmark: String): Unit = {
     val program: SchemeExp = CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(Reader.loadFile(benchmark)))))
-    property(s"The Scheme interpreters give the same result for $benchmark", InterpreterTest) {
+    property(s"The Scheme interpreters give the same result for $benchmark", InterpreterTest, SlowTest) {
       try {
         val r1: ConcreteValues.Value = interpreter.run(program, Timeout.start(Duration(60, SECONDS)))
         val r2: ConcreteValues.Value = CPSinterpreter.run(program, Timeout.start(Duration(60, SECONDS)))
         compareValues(r1, r2) match {
-          case Some(b) => assert(b)
-          case None    => cancel(s"Cannot compare results of $benchmark as they involve threads.")
+          case Some(b) =>
+            assert(b, s"The return value of the CPS interpreter ($r2) did not match the return value of the recursive interpreter ($r1).")
+          case None => cancel(s"Cannot compare results of $benchmark as they involve threads.")
         }
       } catch {
         case _: TimeoutException    => cancel(s"One of the interpreters timed out on $benchmark.")
