@@ -25,10 +25,14 @@ object Statistics {
   }
 
   /** Computes the mean value of a list of measurements. */
-  def mean(l: List[Double]): Double = l.sum / l.length
+  def mean(l: List[Double]): Double = {
+    if (l.length == 0) 0.0
+    l.sum / l.length
+  }
 
   /** Computes the median value of a list of measurements. */
   def median(l: List[Double]): Double = {
+    if (l.length < 2) 0.0
     val s = l.sorted
     val split: Int = s.length / 2
     if (s.length % 2 == 0) (s(split - 1) + s(split)) / 2 else s(split)
@@ -36,7 +40,7 @@ object Statistics {
 
   /** Computes the standard deviation of a list of measurements. */
   def stddev(l: List[Double]): Double =
-    if (l.length == 1) 0
+    if (l.length < 2) 0
     else {
       val mea: Double = mean(l)
       val sqDiffs: List[Double] = l.map(v => scala.math.pow(v - mea, 2))
