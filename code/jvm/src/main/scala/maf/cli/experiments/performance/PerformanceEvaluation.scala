@@ -84,12 +84,14 @@ trait PerformanceEvaluation {
   // Runs the evaluation
   def measureBenchmark(
       benchmark: Benchmark,
-      timeoutFast: Boolean = true,
-      failFast: Boolean = true
+      current: Int,
+      total: Int,
+      timeoutFast: Boolean,
+      failFast: Boolean
     ): Unit =
     analyses.foreach { case (analysis, name) =>
       try {
-        println(s"***** Running $name on $benchmark *****")
+        println(s"***** Running $name on $benchmark [$current/$total] *****")
         val result = measureAnalysis(benchmark, analysis)
         results = results.add(benchmark, name, result)
         result match {
@@ -107,12 +109,22 @@ trait PerformanceEvaluation {
       }
     }
 
-  def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true) =
-    benchmarks.foreach(b => measureBenchmark(b, timeoutFast, failFast))
+  def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true) = {
+    var current = 0
+    val total = benchmarks.size
+    benchmarks.foreach { b =>
+      current += 1
+      measureBenchmark(b, current, total, timeoutFast, failFast)
+    }
+  }
 
   def printResults() =
     println(results.prettyString(format = format))
-  def exportCSV(path: String, format: PerformanceResult => String, timestamped: Boolean = true) = {
+  def exportCSV(
+      path: String,
+      format: PerformanceResult => String,
+      timestamped: Boolean = true
+    ) = {
     val hdl = if (timestamped) Writer.openTimeStamped(path) else Writer.open(path)
     val csv = results.toCSVString(format = format)
     Writer.write(hdl, csv)

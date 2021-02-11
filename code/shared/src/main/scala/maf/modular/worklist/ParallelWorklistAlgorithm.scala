@@ -6,7 +6,8 @@ import maf.util.benchmarks.Timeout
 
 import scala.collection.mutable.PriorityQueue
 
-trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] with GlobalStore[Expr] with PriorityQueueWorklistAlgorithm[Expr] { inter =>
+trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] with GlobalStore[Expr] with PriorityQueueWorklistAlgorithm[Expr] {
+  inter =>
 
   def workers: Int = Runtime.getRuntime.availableProcessors() // <- number of workers for the threadpool
   var workerThreads: List[Worker] = Nil // <- we only instantiate this upon calling `analyze`

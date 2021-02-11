@@ -124,7 +124,9 @@ trait MostVisitedFirstWorklistAlgorithm[Expr <: Expression] extends LeastVisited
 
 trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   def computeDepths(exp: Expression, depths: Map[Identity, Int] = Map.empty): Map[Identity, Int] =
-    exp.subexpressions.foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths)).map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
+    exp.subexpressions
+      .foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
+      .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
   val depths: Map[Identity, Int] = computeDepths(program)
   var cmps: Map[Component, Int] = Map.empty.withDefaultValue(0)
   lazy val ordering: Ordering[Component] = Ordering.by(cmps)

@@ -19,7 +19,8 @@ object ParallelModFAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with CallDepthFirstWorklistAlgorithm[SchemeExp] with ParallelWorklistAlgorithm[SchemeExp]
+    with CallDepthFirstWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -36,7 +37,8 @@ object ParallelModFAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with LeastVisitedFirstWorklistAlgorithm[SchemeExp] with ParallelWorklistAlgorithm[SchemeExp]
+    with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -54,7 +56,8 @@ object ParallelModFAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with MostVisitedFirstWorklistAlgorithm[SchemeExp] with ParallelWorklistAlgorithm[SchemeExp]
+    with MostVisitedFirstWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -72,7 +75,8 @@ object ParallelModFAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with MostVisitedFirstWorklistAlgorithm[SchemeExp] with ParallelWorklistAlgorithm[SchemeExp]
+    with MostVisitedFirstWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -90,7 +94,8 @@ object ParallelModFAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp] with ParallelWorklistAlgorithm[SchemeExp]
+    with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -108,7 +113,8 @@ object ParallelModFAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with MostDependenciesFirstWorklistAlgorithm[SchemeExp] with ParallelWorklistAlgorithm[SchemeExp]
+    with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -126,7 +132,8 @@ object ParallelModFAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with LeastVisitedFirstWorklistAlgorithm[SchemeExp] with ParallelWorklistAlgorithm[SchemeExp]
+    with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -144,7 +151,8 @@ object ParallelModFAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with BiggerEnvironmentFirstWorklistAlgorithm.ModF with ParallelWorklistAlgorithm[SchemeExp]
+    with BiggerEnvironmentFirstWorklistAlgorithm.ModF
+    with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -162,7 +170,8 @@ object ParallelModFAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with SmallerEnvironmentFirstWorklistAlgorithm.ModF with ParallelWorklistAlgorithm[SchemeExp]
+    with SmallerEnvironmentFirstWorklistAlgorithm.ModF
+    with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
 
@@ -211,7 +220,7 @@ object ParallelModFBenchmarks {
     "test/R5RS/gambit/peval.scm",
     "test/R5RS/gambit/scheme.scm",
     "test/R5RS/gambit/sboyer.scm",
-    "test/R5RS/gambit/nboyer.scm",
+    "test/R5RS/gambit/nboyer.scm"
 //    "test/R5RS/gambit/matrix.scm",
 //    "test/R5RS/gambit/browse.scm",
 //    "test/R5RS/scp1-compressed/all.scm",
@@ -237,7 +246,7 @@ object ParallelModFBenchmarks {
     "test/R5RS/icp/icp_1c_ambeval.scm", // Times out with n = 1, 60min timeout
     "test/R5RS/icp/icp_1c_multiple-dwelling.scm", // Times out with n = 1, 60min timeout
     "test/R5RS/icp/icp_1c_ontleed.scm", // Times out with n = 1, 60min timeout
-    "test/R5RS/icp/icp_1c_prime-sum-pair.scm", // Times out with n = 1, 60min timeout
+    "test/R5RS/icp/icp_1c_prime-sum-pair.scm" // Times out with n = 1, 60min timeout
   )
 
   def for2CFA = all.filter(b => !(excludedFor2CFA.contains(b)))
@@ -279,8 +288,8 @@ object BaseResultsModF {
   }
   def formatResult(result: PerformanceResult) = result match {
     case Completed(res) => s"${formatInMinuteSeconds(res.mean)} \\pm ${formatInMinuteSeconds(res.stddev)}"
-    case TimedOut => "\\infty"
-    case NoData => "\\infty"
+    case TimedOut       => "\\infty"
+    case NoData         => "\\infty"
   }
   def main(args: Array[String]): Unit = {
     BaseResultsModF0CFA.run()
@@ -293,7 +302,7 @@ object BaseResultsModF {
       val shortName = ParallelModFBenchmarks.paperName(benchmark)
       val loc = loccount(benchmark)
       val zeroCFA = BaseResultsModF0CFA.results.get(benchmark, "base ModF (0-CFA)").get
-      val twoCFA =  BaseResultsModF2CFA.results.get(benchmark, "base ModF (2-CFA)").get
+      val twoCFA = BaseResultsModF2CFA.results.get(benchmark, "base ModF (2-CFA)").get
       println(s"\\prog{$shortName} & $loc & ${formatResult(zeroCFA)} & ${formatResult(twoCFA)} \\\\ \\hline")
     }
   }
@@ -306,9 +315,8 @@ trait ParallelModFPerformance extends PerformanceEvaluation {
   def outputFile: String
   def cores = List(1, 2, 4, 8)
   def benchmarks: Iterable[Benchmark]
-  def analyses: List[(SchemeExp => Analysis, String)] = {
+  def analyses: List[(SchemeExp => Analysis, String)] =
     cores.map(n => (SchemeAnalyses.parallelKCFAAnalysis(_, n, k), s"parallel (n = $n, $k-CFA)"))
-  }
   def main(args: Array[String]) = {
     run()
     exportCSV(outputFile, format _, timestamped = false)
@@ -340,7 +348,7 @@ trait ParallelModFPerformanceMetrics extends ParallelModFPerformance {
     (ParallelModFAnalyses.mostDependenciesFirst(_, n, k), "most-deps"),
     (ParallelModFAnalyses.leastDependenciesFirst(_, n, k), "least-deps"),
     (ParallelModFAnalyses.biggerEnvironmentFirst(_, n, k), "bigger-env"),
-    (ParallelModFAnalyses.smallerEnvironmentFirst(_, n, k), "smaller-env"),
+    (ParallelModFAnalyses.smallerEnvironmentFirst(_, n, k), "smaller-env")
   )
 }
 
@@ -360,7 +368,7 @@ object ParallelPerformanceModConc extends PerformanceEvaluation {
   override def analysisRuns = 10 // reduced for getting results faster
   override def analysisTime = Timeout.start(Duration(10, MINUTES))
   def benchmarks: Iterable[String] = List(
-    "test/concurrentScheme/threads/crypt.scm",
+    "test/concurrentScheme/threads/crypt.scm"
 //    "test/concurrentScheme/threads/actors.scm",
 //    "test/concurrentScheme/threads/matmul.scm",
 //    "test/concurrentScheme/threads/minimax.scm",
@@ -380,7 +388,7 @@ object ParallelPerformanceModConc extends PerformanceEvaluation {
 //    "test/concurrentScheme/threads/pps.scm",
   )
 
-  def cores = List(1, 2)// TODO: 1, 2, 4, 8 for 64-core eval
+  def cores = List(1, 2) // TODO: 1, 2, 4, 8 for 64-core eval
   def analyses: List[(SchemeExp => Analysis, String)] =
     List((SchemeAnalyses.modConcAnalysis(_, 5), "base ModConc")) ++
       cores.flatMap { n =>
