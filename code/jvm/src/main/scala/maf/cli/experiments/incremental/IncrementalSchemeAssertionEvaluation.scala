@@ -4,9 +4,8 @@ import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
-import maf.modular.GlobalStore
-import maf.modular.incremental.IncrementalModAnalysis
-import maf.modular.incremental.scheme.SchemeAnalyses.IncrementalSchemeModFAssertionAnalysisCPLattice
+import maf.modular.incremental._
+import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme.modf.SchemeAssertSemantics
 import maf.util.Reader
 import maf.util.benchmarks._
@@ -23,7 +22,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
   var results: Table[String] = Table.empty.withDefaultValue(" ")
   val error: String = errS
 
-  type A = IncrementalModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with SchemeAssertSemantics
+  type A = IncrementalModAnalysis[SchemeExp] with IncrementalGlobalStore[SchemeExp] with SchemeAssertSemantics
 
   override def analysis(e: SchemeExp): A
 
@@ -79,13 +78,15 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     runAnalysis(file,
                 "inc1",
                 timeOut => {
-                  a1.updateAnalysis(timeOut, false);
+                  a1.tarjanFlag = false
+                  a1.updateAnalysis(timeOut, true);
                   a1
                 }
     )
     runAnalysis(file,
                 "inc2",
                 timeOut => {
+                  a1Copy.tarjanFlag = true
                   a1Copy.updateAnalysis(timeOut, true);
                   a1Copy
                 }
@@ -119,12 +120,21 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
   }
 }
 
-object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeAssertionEvaluation {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential
-
-  override def analysis(e: SchemeExp) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e)
+trait IncrementalSchemeModFAssertionEvaluation extends IncrementalSchemeAssertionEvaluation {
+  def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 
+}
+
+object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation {
+  override def analysis(e: SchemeExp) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e)
+
   override val outputFile: String = s"assertions/modf-CP.txt"
+}
+
+object IncrementalSchemeBigStepTypeAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation {
+  override def analysis(e: SchemeExp) = new IncrementalSchemeModFAssertionAnalysisTypeLattice(e)
+
+  override val outputFile: String = s"assertions/modf-Type.txt"
 }

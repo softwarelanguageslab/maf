@@ -11,6 +11,8 @@ object LatticeTest extends Tag("LatticeTest")
 object PrimitiveTest extends Tag("PrimitiveTest")
 object SoundnessTest extends Tag("SoundnessTest")
 
+object InterpreterTest extends Tag("InterpreterTest")
+
 // Tags by language.
 object SchemeModFTest extends Tag("SchemeModFTest")
 
