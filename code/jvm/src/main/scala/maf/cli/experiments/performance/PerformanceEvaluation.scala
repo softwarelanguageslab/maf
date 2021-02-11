@@ -8,6 +8,12 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
+// A variable that holds the results
+sealed trait PerformanceResult
+case class Completed(results: Statistics.Stats) extends PerformanceResult
+case object TimedOut extends PerformanceResult
+case object NoData extends PerformanceResult
+
 trait PerformanceEvaluation {
 
   type Analysis = ModAnalysis[SchemeExp]
@@ -27,16 +33,15 @@ trait PerformanceEvaluation {
   // The analyses that are evaluated (and their names)
   def analyses: List[(SchemeExp => Analysis, String)]
 
-  // A variable that holds the results
-  sealed trait PerformanceResult
-  case class Completed(results: Statistics.Stats) extends PerformanceResult
-  case object TimedOut extends PerformanceResult
-  case object NoData extends PerformanceResult
-
   var results = Table.empty[PerformanceResult].withDefaultValue(NoData)
 
   def format(res: PerformanceResult): String = res match {
     case Completed(results) => scala.math.round(results.mean).toString
+    case TimedOut           => "TIMEOUT"
+    case NoData             => "_"
+  }
+  def formatStddev(res: PerformanceResult): String = res match {
+    case Completed(results) => scala.math.round(results.stddev).toString
     case TimedOut           => "TIMEOUT"
     case NoData             => "_"
   }
@@ -107,8 +112,8 @@ trait PerformanceEvaluation {
 
   def printResults() =
     println(results.prettyString(format = format))
-  def exportCSV(path: String) = {
-    val hdl = Writer.openTimeStamped(path)
+  def exportCSV(path: String, format: PerformanceResult => String, timestamped: Boolean = true) = {
+    val hdl = if (timestamped) Writer.openTimeStamped(path) else Writer.open(path)
     val csv = results.toCSVString(format = format)
     Writer.write(hdl, csv)
     Writer.close(hdl)
@@ -121,6 +126,7 @@ trait PerformanceEvaluation {
     ) = {
     measureBenchmarks(timeoutFast, failFast)
     printResults()
-    exportCSV(path)
+    exportCSV(path, format _)
+    exportCSV(path + "-stddev", formatStddev _)
   }
 }
