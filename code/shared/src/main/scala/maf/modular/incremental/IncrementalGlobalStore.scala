@@ -74,7 +74,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     // Compute the new value for the address and update it in the store.
     val value: Value = provenanceValue(addr)
     if (value != inter.store(addr)) {
-      trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
+      trigger(???, AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
       // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
       if (provenance(addr).isEmpty)
         deleteAddress(addr)

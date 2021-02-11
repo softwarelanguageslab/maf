@@ -114,11 +114,11 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   override def onNewComponent(cmp: Component, call: Call[ComponentContext]) =
     summary = summary.addComponent(LambdaModule(call.clo._1), cmp)
   // update the summary each time a dependency triggers a component
-  override def trigger(dep: Dependency): Unit = {
+  override def trigger(src: Component, dep: Dependency): Unit = {
     deps.getOrElse(dep, Set.empty).foreach { cmp =>
       summary = summary.addDependency(cmp, dep)
     }
-    super.trigger(dep)
+    super.trigger(src, dep)
   }
   // correctly update the summary after adaptation
   override def updateAnalysisData(update: Component => Component) = {

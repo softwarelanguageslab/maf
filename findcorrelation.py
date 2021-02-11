@@ -64,14 +64,12 @@ def find_correlation(variant, heuristic, metric):
     heuristic_data = []
     metric_data = []
     for benchmark in benchmarks:
-        heuristic_data.append(heuristics_results[benchmark][heuristic] / heuristics_results[benchmark]['call-depth'])
+        heuristic_data.append(heuristics_results[benchmark]['random'] / heuristics_results[benchmark][heuristic])
         metric_data.append(metrics_results[benchmark][metric])
     assert len(heuristic_data) == len(metric_data)
     rho, p = stats.spearmanr(metric_data, heuristic_data)
     if p < 0.05:
-        print(f'Possible correlation between {heuristic} and {metric} ({variant}): rho = {rho}, p = {p}')
-        print(heuristic_data)
-        print(metric_data)
+        print(f'Correlation between heuristic {heuristic} and metric {metric} ({variant}): rho = {rho}, p = {p}')
 
 if __name__ == '__main__':
     for metric_variant in ['mean', 'max', 'stddev']:

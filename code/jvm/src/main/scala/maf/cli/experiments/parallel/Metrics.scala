@@ -16,12 +16,12 @@ trait Metric {
 }
 
 object Metric {
-  case class SequenceBasedMetric(vs: List[Int]) {
-    def mean = Statistics.mean(vs.map(_.toDouble)).toInt
-    def median = Statistics.median(vs.map(_.toDouble)).toInt
-    def stddev = Statistics.stddev(vs.map(_.toDouble)).toInt
-    def max = vs.max.toInt
-    def add(v: Int): SequenceBasedMetric = SequenceBasedMetric(v :: vs)
+  case class SequenceBasedMetric(vs: List[Double]) {
+    def mean = Statistics.mean(vs)
+    def median = Statistics.median(vs)
+    def stddev = Statistics.stddev(vs)
+    def max = vs.max
+    def add(v: Double): SequenceBasedMetric = SequenceBasedMetric(v :: vs)
     override def toString = s"$mean [$median±$stddev] <= $max"
   }
 
@@ -33,7 +33,7 @@ object Metric {
         .foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
         .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
     def forProgram(program: SchemeExp): M =
-      SequenceBasedMetric(computeDepths(program).values.toList)
+      SequenceBasedMetric(computeDepths(program).values.toList.map(_.toDouble))
   }
 
   class CallDepth(val kCFA: Int) extends Metric {
@@ -52,7 +52,7 @@ object Metric {
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
       analysis.analyze()
-      SequenceBasedMetric(analysis.depth.values.toList)
+      SequenceBasedMetric(analysis.depth.values.toList.map(_.toDouble))
     }
   }
 
@@ -72,7 +72,7 @@ object Metric {
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
       analysis.analyze()
-      SequenceBasedMetric(analysis.count.values.toList)
+      SequenceBasedMetric(analysis.count.values.toList.map(_.toDouble))
     }
   }
   class MostVisited(kCFA: Int) extends Metric {
@@ -91,7 +91,7 @@ object Metric {
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
       analysis.analyze()
-      SequenceBasedMetric(analysis.count.values.toList)
+      SequenceBasedMetric(analysis.count.values.toList.map(_.toDouble))
     }
   }
 
@@ -111,7 +111,7 @@ object Metric {
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
       analysis.analyze()
-      SequenceBasedMetric(analysis.depCount.values.toList)
+      SequenceBasedMetric(analysis.depCount.values.toList.map(_.toDouble))
     }
   }
 
@@ -131,7 +131,27 @@ object Metric {
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
       analysis.analyze()
-      SequenceBasedMetric(analysis.visited.map(analysis.environmentSize).toList)
+      SequenceBasedMetric(analysis.visited.map(analysis.environmentSize).toList.map(_.toDouble))
+    }
+  }
+
+  class RatioOfDependencies(kCFA: Int) extends Metric {
+    type M = SequenceBasedMetric
+    def name = s"dep-ratio"
+
+    def forProgram(program: SchemeExp): M = {
+      val analysis = new ModAnalysis(program)
+        with SchemeModFSemantics
+        with StandardSchemeModFComponents
+        with BigStepModFSemantics
+        with TriggerRegisterRatioWorklistAlgorithm[SchemeExp]
+        with SchemeModFKCallSiteSensitivity
+        with SchemeConstantPropagationDomain {
+        val k = kCFA
+        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
+      }
+      analysis.analyze()
+      SequenceBasedMetric(analysis.ratios.values.toList)
     }
   }
 }
@@ -192,6 +212,7 @@ trait ParallelMetrics extends Metrics {
     new Metric.LeastVisited(k),
     new Metric.MostVisited(k),
     new Metric.NumberOfDependencies(k),
+    new Metric.RatioOfDependencies(k),
     new Metric.EnvironmentSize(k)
   )
   def formatMean(m: Metric.SequenceBasedMetric): String = m.mean.toString()

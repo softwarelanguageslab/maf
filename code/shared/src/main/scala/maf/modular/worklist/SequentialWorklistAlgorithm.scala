@@ -58,7 +58,7 @@ trait RandomWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgo
 // TODO: use an immutable priority queue, or reuse SequentialWorklistAlgorithm differently here
 trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {
   // choose the priority ordering of components
-  implicit val ordering: Ordering[Component]
+  implicit def ordering: Ordering[Component]
   // worklist is a priority queue
   var worklistSet: Set[Component] = Set(initialComponent)
   lazy val worklist: PriorityQueue[Component] = PriorityQueue(initialComponent)
@@ -96,10 +96,21 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
       step(timeout)
 }
 
+trait RandomPriorityWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
+  var random: Map[Component, Int] = Map.empty.withDefaultValue(0)
+  def ordering: Ordering[Component] = Ordering.by(random)
+  override def spawn(cmp: Component, from: Component): Unit = {
+    super.spawn(cmp)
+    if (!random.contains(cmp)) {
+      random = random + ((cmp -> scala.util.Random.nextInt()))
+    }
+  }
+}
+
 /** Provides a work list that prioritises nested calls by call depth to a modular analysis. */
 trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)
-  lazy val ordering: Ordering[Component] = Ordering.by(depth)
+  def ordering: Ordering[Component] = Ordering.by(depth)
   override def spawn(cmp: Component, from: Component): Unit =
     if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
       visited += cmp
@@ -110,7 +121,7 @@ trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueW
 
 trait LeastVisitedFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var count: Map[Component, Int] = Map.empty.withDefaultValue(0)
-  lazy val ordering: Ordering[Component] = Ordering.by(count).reverse
+  def ordering: Ordering[Component] = Ordering.by(count).reverse
   override def pop(): Component = {
     val cmp = super.pop()
     count += cmp -> (count(cmp) + 1)
@@ -119,7 +130,7 @@ trait LeastVisitedFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQue
 }
 
 trait MostVisitedFirstWorklistAlgorithm[Expr <: Expression] extends LeastVisitedFirstWorklistAlgorithm[Expr] {
-  override lazy val ordering: Ordering[Component] = Ordering.by(count)
+  override def ordering: Ordering[Component] = Ordering.by(count)
 }
 
 trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
@@ -129,7 +140,7 @@ trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends Priority
       .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
   val depths: Map[Identity, Int] = computeDepths(program)
   var cmps: Map[Component, Int] = Map.empty.withDefaultValue(0)
-  lazy val ordering: Ordering[Component] = Ordering.by(cmps)
+  def ordering: Ordering[Component] = Ordering.by(cmps)
   override def pop(): Component = {
     val cmp = super.pop()
     cmps += cmp -> depths(expr(cmp).idn)
@@ -138,13 +149,13 @@ trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends Priority
 }
 
 trait ShallowExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends DeepExpressionsFirstWorklistAlgorithm[Expr] {
-  override lazy val ordering: Ordering[Component] = Ordering.by(cmps).reverse
+  override def ordering: Ordering[Component] = Ordering.by(cmps).reverse
 }
 
 trait MostDependenciesFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var cmpDeps: Map[Component, Set[Dependency]] = Map.empty.withDefaultValue(Set.empty)
   var depCount: Map[Component, Int] = Map.empty.withDefaultValue(0)
-  lazy val ordering: Ordering[Component] = Ordering.by(depCount)
+  def ordering: Ordering[Component] = Ordering.by(depCount)
   override def register(cmp: Component, dep: Dependency): Unit = {
     super.register(cmp, dep)
     cmpDeps += (cmp -> (cmpDeps(cmp) + dep))
@@ -153,12 +164,34 @@ trait MostDependenciesFirstWorklistAlgorithm[Expr <: Expression] extends Priorit
 }
 
 trait LeastDependenciesFirstWorklistAlgorithm[Expr <: Expression] extends MostDependenciesFirstWorklistAlgorithm[Expr] {
-  override lazy val ordering: Ordering[Component] = Ordering.by(depCount).reverse
+  override def ordering: Ordering[Component] = Ordering.by(depCount).reverse
+}
+
+trait TriggerRegisterRatioWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
+  var cmpDepsTrigger: Map[Component, Set[Dependency]] = Map.empty.withDefaultValue(Set.empty)
+  var cmpDepsRegister: Map[Component, Set[Dependency]] = Map.empty.withDefaultValue(Set.empty)
+  var ratios: Map[Component, Double] = Map.empty.withDefaultValue(0)
+  def ordering: Ordering[Component] = Ordering.by(ratios)
+  def updateRatios(cmp: Component): Unit = {
+    val triggers = cmpDepsTrigger(cmp).size.toDouble
+    val registers = cmpDepsRegister(cmp).size.toDouble
+    ratios = ratios + (cmp -> (triggers / (triggers + registers)))
+  }
+  override def register(cmp: Component, dep: Dependency): Unit = {
+    super.register(cmp, dep)
+    cmpDepsRegister += (cmp -> (cmpDepsRegister(cmp) + dep))
+    updateRatios(cmp)
+  }
+  override def trigger(cmp: Component, dep: Dependency): Unit = {
+    super.trigger(cmp, dep)
+    cmpDepsTrigger += (cmp -> (cmpDepsTrigger(cmp) + dep))
+    updateRatios(cmp)
+  }
 }
 
 trait BiggerEnvironmentFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   def environmentSize(cmp: Component): Int
-  lazy val ordering: Ordering[Component] = Ordering.by(environmentSize)
+  def ordering: Ordering[Component] = Ordering.by(environmentSize)
 }
 
 object BiggerEnvironmentFirstWorklistAlgorithm {
@@ -182,7 +215,7 @@ object BiggerEnvironmentFirstWorklistAlgorithm {
 }
 
 trait SmallerEnvironmentFirstWorklistAlgorithm[Expr <: Expression] extends BiggerEnvironmentFirstWorklistAlgorithm[Expr] {
-  override lazy val ordering: Ordering[Component] = Ordering.by(environmentSize).reverse
+  override def ordering: Ordering[Component] = Ordering.by(environmentSize).reverse
 }
 
 object SmallerEnvironmentFirstWorklistAlgorithm {

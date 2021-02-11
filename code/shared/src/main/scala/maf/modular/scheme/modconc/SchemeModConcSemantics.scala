@@ -110,8 +110,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ReturnValue[Sch
       super.register(target, dep)
       intra.register(dep)
     }
-    override def trigger(dep: Dependency) = {
-      super.trigger(dep)
+    override def trigger(src: Component, dep: Dependency) = {
+      super.trigger(src, dep)
       intra.trigger(dep)
     }
     // MODF INTRA-ANALYSIS EXTENDED WITH SUPPORT FOR THREADS

@@ -11,6 +11,25 @@ import maf.modular.scheme.modf._
 import maf.modular.worklist._
 
 object ParallelModFAnalyses {
+  def random(
+      prg: SchemeExp,
+      n: Int,
+      kcfa: Int
+    ) = new ModAnalysis(prg)
+    with SchemeModFSemantics
+    with StandardSchemeModFComponents
+    with BigStepModFSemantics
+    with RandomPriorityWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp]
+    with SchemeModFKCallSiteSensitivity
+    with SchemeConstantPropagationDomain {
+
+    override def toString() = s"call-depth-first (n = $n ; k = $kcfa)"
+    val k = kcfa
+    override def workers = n
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
+  }
+
   def callDepthFirst(
       prg: SchemeExp,
       n: Int,
@@ -29,6 +48,26 @@ object ParallelModFAnalyses {
     override def workers = n
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
   }
+
+  def depRatio(
+      prg: SchemeExp,
+      n: Int,
+      kcfa: Int
+    ) = new ModAnalysis(prg)
+    with SchemeModFSemantics
+    with StandardSchemeModFComponents
+    with BigStepModFSemantics
+    with TriggerRegisterRatioWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp]
+    with SchemeModFKCallSiteSensitivity
+    with SchemeConstantPropagationDomain {
+
+    override def toString() = s"dep-ratio (n = $n ; k = $kcfa)"
+    val k = kcfa
+    override def workers = n
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
+  }
+
   def leastVisitedFirst(
       prg: SchemeExp,
       n: Int,
@@ -210,7 +249,6 @@ object ParallelModFBenchmarks {
     ("test/R5RS/icp/icp_2_aeval.scm", "aeval")
   ).toMap
   def all = List(
-    // TODO: commented for locally testing only, everything should be uncommented here
     "test/R5RS/WeiChenRompf2019/meta-circ.scm",
     "test/R5RS/WeiChenRompf2019/earley.sch",
     "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
@@ -220,21 +258,21 @@ object ParallelModFBenchmarks {
     "test/R5RS/gambit/peval.scm",
     "test/R5RS/gambit/scheme.scm",
     "test/R5RS/gambit/sboyer.scm",
-    "test/R5RS/gambit/nboyer.scm"
-//    "test/R5RS/gambit/matrix.scm",
-//    "test/R5RS/gambit/browse.scm",
-//    "test/R5RS/scp1-compressed/all.scm",
-//    "test/R5RS/ad/all.scm",
-//    "test/R5RS/various/SICP-compiler.scm",
-//    "test/R5RS/icp/icp_1c_ambeval.scm",
-//    "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
-//    "test/R5RS/icp/icp_1c_ontleed.scm",
-//    "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
-//    "test/R5RS/icp/icp_7_eceval.scm",
-//    "test/R5RS/icp/icp_8_compiler.scm",
-//    "test/R5RS/icp/icp_5_regsim.scm",
-//    "test/R5RS/icp/icp_3_leval.scm",
-//    "test/R5RS/icp/icp_2_aeval.scm",
+    "test/R5RS/gambit/nboyer.scm",
+    "test/R5RS/gambit/matrix.scm",
+    "test/R5RS/gambit/browse.scm",
+    "test/R5RS/scp1-compressed/all.scm",
+    "test/R5RS/ad/all.scm",
+    "test/R5RS/various/SICP-compiler.scm",
+    "test/R5RS/icp/icp_1c_ambeval.scm",
+    "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+    "test/R5RS/icp/icp_1c_ontleed.scm",
+    "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+    "test/R5RS/icp/icp_7_eceval.scm",
+    "test/R5RS/icp/icp_8_compiler.scm",
+    "test/R5RS/icp/icp_5_regsim.scm",
+    "test/R5RS/icp/icp_3_leval.scm",
+    "test/R5RS/icp/icp_2_aeval.scm",
   )
   val excludedFor2CFA: Set[String] = Set(
     "test/R5RS/WeiChenRompf2019/earley.sch", // Times out with n = 1, 60min timeout
@@ -340,7 +378,9 @@ trait ParallelModFPerformanceMetrics extends ParallelModFPerformance {
   def n = 8
   override def cores = List(n)
   override def analyses = List(
+    (ParallelModFAnalyses.random(_, n, k), "random"),
     (ParallelModFAnalyses.callDepthFirst(_, n, k), "call-depth"),
+    (ParallelModFAnalyses.depRatio(_, n, k), "dep-ratio"),
     (ParallelModFAnalyses.leastVisitedFirst(_, n, k), "least-visited"),
     (ParallelModFAnalyses.mostVisitedFirst(_, n, k), "most-visited"),
     (ParallelModFAnalyses.deepExpressionsFirst(_, n, k), "deep-exp"),
