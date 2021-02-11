@@ -4,6 +4,7 @@ import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.core.Identity
 import maf.language.CScheme._
 import maf.language.scheme._
+import maf.language.scheme.interpreter.ConcreteValues.Addr
 import maf.language.scheme.interpreter._
 import maf.language.scheme.primitives.SchemePrelude
 import maf.test.{InterpreterTest, SlowTest}
@@ -16,22 +17,43 @@ import scala.concurrent.duration._
 
 class InterpreterTests() extends AnyPropSpec {
 
-  val benchmarks: Set[String] = SchemeBenchmarkPrograms.sequentialBenchmarks
+  val benchmarks: Set[String] = SchemeBenchmarkPrograms.sequentialBenchmarks -- Set(
+    "test/R5RS/various/my-test.scm" // Result depends on random numbers.
+  )
 
   val interpreter = new SchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new EmptyIO())
   val CPSinterpreter = new CPSSchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new EmptyIO())
 
   /** Comparison of values that can also handle pointers. */
-  def compareValues(v1: ConcreteValues.Value, v2: ConcreteValues.Value): Option[Boolean] = (v1, v2) match {
+  def compareValues(
+      v1: ConcreteValues.Value,
+      v2: ConcreteValues.Value,
+      visited: Map[Addr, Addr] = Map()
+    ): Option[Boolean] = (v1, v2) match {
     case (ConcreteValues.Value.Cons(car1, cdr1), ConcreteValues.Value.Cons(car2, cdr2)) =>
-      compareValues(car1, car2).flatMap(b => if (b) compareValues(cdr1, cdr2) else Some(b))
+      compareValues(car1, car2, visited).flatMap(b => if (b) compareValues(cdr1, cdr2, visited) else Some(b))
     case (ConcreteValues.Value.Pointer(p1), ConcreteValues.Value.Pointer(p2)) =>
-      compareValues(interpreter.store(p1), CPSinterpreter.store(p2)) // Check the values in the store.
+      compareValues(interpreter.store(p1), CPSinterpreter.store(p2), visited) // Check the values in the store.
+    case (ConcreteValues.Value.Clo(l1, e1, n1), ConcreteValues.Value.Clo(l2, e2, n2)) =>
+      if (l1 == l2 && n1 == n2 && e1.keySet == e2.keySet)
+        // When comparing procedures, the addresses in the environment may differ. Therefore, for every variable, we have
+        // to check the value at the given address. However, this may cause looping. Therefore, we keep a visited map
+        // that breaks loops and considers them as verified (which is the case if all other comparisons succeed).
+        e1.toList.map(_._2).zip(e2.toList.map(_._2)).foldLeft[Option[Boolean]](Some(true)) { case (prev, (a1, a2)) =>
+          prev.flatMap(b =>
+            if (b)
+              if (visited.contains(a1)) // TODO Maybe visited should be a set of tuples, and when (a1, a2) is not present, the check should continue?
+                Some(visited(a1) == a2) // Perform an extra check that the cycle is "real", and hence that both addresses are the same.
+              else compareValues(interpreter.store(a1), CPSinterpreter.store(a2), visited + (a1 -> a2))
+            else Some(b)
+          )
+        }
+      else Some(false)
     case (ConcreteValues.Value.Thread(_), ConcreteValues.Value.CThread(_)) => None // Cannot be compared.
     case (ConcreteValues.Value.Vector(s1, m1, i1), ConcreteValues.Value.Vector(s2, m2, i2)) =>
       if (s1 == s2 && i1 == i2)
         m1.toList.map(_._2).zip(m2.toList.map(_._2)).foldLeft[Option[Boolean]](Some(true)) { case (prev, (vv1, vv2)) =>
-          prev.flatMap(b => if (b) compareValues(vv1, vv2) else Some(b))
+          prev.flatMap(b => if (b) compareValues(vv1, vv2, visited) else Some(b))
         }
       else Some(false)
     case _ => Some(v1 == v2)
