@@ -30,7 +30,7 @@ object Writer {
 
   def open(path: String): Writer = {
     val file = new File(path)
-    file.mkdir() // Creates the directory containing the file if it does not exists
+    file.getParentFile().mkdirs() // Creates the directory containing the file if it does not exists
     new BufferedWriter(new FileWriter(file))
   }
 
