@@ -63,6 +63,7 @@ class InterpreterTests() extends AnyPropSpec {
     val program: SchemeExp = CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(Reader.loadFile(benchmark)))))
     property(s"The Scheme interpreters give the same result for $benchmark", InterpreterTest, SlowTest) {
       try {
+        // TODO (maybe): run in parallel?
         val r1: ConcreteValues.Value = interpreter.run(program, Timeout.start(Duration(60, SECONDS)))
         val r2: ConcreteValues.Value = CPSinterpreter.run(program, Timeout.start(Duration(60, SECONDS)))
         compareValues(r1, r2) match {
