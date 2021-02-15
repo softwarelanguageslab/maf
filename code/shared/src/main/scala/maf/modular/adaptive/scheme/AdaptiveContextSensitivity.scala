@@ -73,8 +73,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
           // (b) too many reanalyses => reduce number of dependencies triggered for fn
           reduceDependencies(ms)
         }
-        updateAnalysis()
       }
+      updateAnalysis() //TODO: move this back inside the foreach or adapt reduceComponents
       toAdapt = Set.empty
     }
   }
@@ -94,6 +94,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       k = k - 1
       calls = calls.map(adaptCall(_, Some(k)))
     }
+    //println(s"${module.fun} -> $k")
     kPerFn += module.fun -> k // register the new k
     // if lowering context does not work => adapt parent components
     // TODO: do this earlier without dropping all context first
@@ -134,8 +135,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val chosenDeps = takeLargest(deps.toList, (g: (_, Int)) => g._2, target).map(_._1)
     val chosenSourceAddrs = chosenDeps.collect { case AddrDependency(addr) => addr }
     val chosenTargetAddrs = chosenSourceAddrs.map(store).flatMap(lattice.getPointerAddresses)
+    reduceAddresses(chosenTargetAddrs.toSet) // TODO: what about closures?
     chosenDeps.foreach(dep => summary = summary.clearDependency(dep))
-    reduceAddresses(chosenTargetAddrs.toSet)
   }
 
   /*
