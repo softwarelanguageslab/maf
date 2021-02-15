@@ -70,7 +70,7 @@ trait AdaptiveSchemeModFSemantics
       onNewComponent(cmp, call)
     }
   }
-  override def updateAnalysisData(update: Component => Component) = {
+  override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     this.toProcess = updateSet(update)(toProcess)
   }

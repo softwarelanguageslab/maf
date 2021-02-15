@@ -30,17 +30,19 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
   // the idea is that the definition/results of `adaptComponent` can change during the analysis itself ...
   def adaptComponent(cmp: ComponentData): ComponentData
   // .. and that when this happens, one needs to call `updateAnalysis`
-  def updateAnalysis(): Unit = {
+  def updateAnalysis() = {
     // update the indirection maps and calculate the "new component pointer" for every "old component pointer"
     val (updated, moved) = updateComponentMapping(this.cMapR, adaptComponent, Map.empty)
     this.cMap = updated.map(_.swap)
     this.cMapR = updated
     // update all components pointers in the analysis
     // println(moved)
-    updateAnalysisData(cmp => moved.get(cmp.addr).map(ComponentPointer).getOrElse(cmp))
+    val lifted = moved.map(p => (ComponentPointer(p._1), ComponentPointer(p._2)))
+    updateAnalysisData(lifted.withDefault(ptr => ptr))
   }
 
   //TODO: use freed up addresses for new allocations
+  //TODO: use a disjoint set?
   @scala.annotation.tailrec
   private def updateComponentMapping(
       current: Map[ComponentData, Address],
@@ -67,7 +69,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
   }
 
   // ... which in turn calls `updateAnalysisData` to update the component pointers
-  def updateAnalysisData(update: Component => Component) = {
+  def updateAnalysisData(update: Map[Component,Component]) = {
     workList = workList.map(update)
     visited = updateSet(update)(visited)
     newComponents = updateSet(update)(newComponents)
@@ -97,7 +99,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
       }
     }
 
-  override def init() {
+  override def init() = {
     super.init()
     mainComponent = initialComponent
   }

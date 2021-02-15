@@ -18,7 +18,7 @@ object WebVisualisationAdaptive {
 
 trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
   var webvis: WebVisualisationAdaptive = null
-  override def updateAnalysisData(update: Component => Component) = {
+  override def updateAnalysisData(update: Map[Component,Component]) = {
     super.updateAnalysisData(update)
     webvis.adapted = true
   }

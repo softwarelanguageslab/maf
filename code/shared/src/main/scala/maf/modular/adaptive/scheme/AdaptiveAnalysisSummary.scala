@@ -121,7 +121,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
     super.trigger(dep)
   }
   // correctly update the summary after adaptation
-  override def updateAnalysisData(update: Component => Component) = {
+  override def updateAnalysisData(update: Map[Component,Component]) = {
     super.updateAnalysisData(update)
     this.summary = updateAnalysisSummary(update)(summary)
   }

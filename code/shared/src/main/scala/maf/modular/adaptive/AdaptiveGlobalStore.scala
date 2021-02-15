@@ -15,7 +15,7 @@ trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
     case _                    => super.updateDep(update)(dep)
   }
   // when abstraction map changes, need to update the store
-  override def updateAnalysisData(update: Component => Component): Unit = {
+  override def updateAnalysisData(update: Map[Component, Component]): Unit = {
     val oldStore = store
     val oldDeps = deps
     super.updateAnalysisData(update)
