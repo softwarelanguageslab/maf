@@ -38,6 +38,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
     // update all components pointers in the analysis
     // println(moved)
     val lifted = moved.map(p => (ComponentPointer(p._1), ComponentPointer(p._2)))
+    moved.keys.foreach(dealloc)
     updateAnalysisData(lifted.withDefault(ptr => ptr))
   }
 
@@ -99,7 +100,22 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
       }
     }
 
+  private var free: List[Address] = _
+  override protected def alloc() =
+    if(free.isEmpty) {
+      super.alloc()
+    } else {
+      val first = free.head
+      free = free.tail
+      first
+    }
+
+  private def dealloc(addr: Address) = {
+    free = addr :: free
+  }
+
   override def init() = {
+    free = Nil
     super.init()
     mainComponent = initialComponent
   }

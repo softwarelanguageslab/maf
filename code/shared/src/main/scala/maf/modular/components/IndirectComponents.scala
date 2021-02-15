@@ -29,7 +29,7 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
   protected var cMapR: Map[ComponentData, Address] = _
 
   /** Returns the next unused address. */
-  private def alloc(): Address = {
+  protected def alloc(): Address = {
     val addr = count
     count += 1
     addr
