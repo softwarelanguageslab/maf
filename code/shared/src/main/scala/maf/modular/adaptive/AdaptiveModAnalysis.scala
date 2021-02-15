@@ -32,41 +32,51 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
   // .. and that when this happens, one needs to call `updateAnalysis`
   def updateAnalysis() = {
     // update the indirection maps and calculate the "new component pointer" for every "old component pointer"
-    val (updated, moved) = updateComponentMapping(this.cMapR, adaptComponent, Map.empty)
-    this.cMap = updated.map(_.swap)
-    this.cMapR = updated
+    val moved = updateComponentMapping()
     // update all components pointers in the analysis
     // println(moved)
-    val lifted = moved.map(p => (ComponentPointer(p._1), ComponentPointer(p._2)))
     moved.keys.foreach(dealloc)
+    val lifted = moved.map(p => (ComponentPointer(p._1), ComponentPointer(p._2)))
     updateAnalysisData(lifted.withDefault(ptr => ptr))
   }
 
-  //TODO: use freed up addresses for new allocations
-  //TODO: use a disjoint set?
-  @scala.annotation.tailrec
-  private def updateComponentMapping(
-      current: Map[ComponentData, Address],
-      update: ComponentData => ComponentData,
-      moved: Map[Address, Address]
-    ): (Map[ComponentData, Address], Map[Address, Address]) = {
-    var mapping = Map.empty[Address, Address]
-    var updated = Map.empty[ComponentData, Address]
-    current.foreach { case (oldCmp, oldAddr) =>
-      val newCmp = update(oldCmp)
-      updated.get(newCmp) match {
-        case None           => updated += newCmp -> oldAddr
-        case Some(newAddr)  => mapping += oldAddr -> newAddr
+  private def updateComponentMapping() = {
+    // the current mapping, and the current function to update components
+    var update: ComponentData => ComponentData = adaptComponent
+    // bookkeeping to keep track of "joined"/moved component pointers
+    val ds = new DisjointSet[Address]()
+    var destinations = Map.empty[Address, Address]
+    var moved = Set.empty[Address]
+    def updateAddr(addr: Address): Address = 
+      if(moved.contains(addr)) {
+        destinations(ds.find(addr))
+      } else {
+        addr
       }
-    }
-    if (mapping.isEmpty) { // no changes, just return
-      (updated, moved)
-    } else {
-      val updateAddress = (addr: Address) => mapping.getOrElse(addr, addr)
-      val updatePointer = (ptr: ComponentPointer) => ComponentPointer(updateAddress(ptr.addr))
-      val updatedMoved = moved.view.mapValues(updateAddress).toMap ++ mapping
-      updateComponentMapping(updated, updateCmp(updatePointer), updatedMoved)
-    }
+    // the actual fixed-point computation
+    var dirty = false
+    do {
+      dirty = false
+      val previous = this.cMapR
+      this.cMapR = Map.empty[ComponentData, Address]
+      // compute updated components
+      previous.foreach { case (oldCmp, oldAddr) =>
+        val newCmp = update(oldCmp)
+        this.cMapR.get(newCmp) match {
+          case None => this.cMapR += newCmp -> oldAddr
+          case Some(newAddr) =>
+            val parent = ds.merge(newAddr, oldAddr)
+            destinations += parent -> newAddr
+            moved += oldAddr
+            dirty = true
+        }
+      }
+      update = updateCmp(ptr => ComponentPointer(updateAddr(ptr.addr)))
+    } while(dirty)
+    // compute cMap
+    this.cMap = this.cMapR.map(_.swap)
+    // return a map representing all moved addresses
+    moved.map(addr => (addr, updateAddr(addr))).toMap
   }
 
   // ... which in turn calls `updateAnalysisData` to update the component pointers
