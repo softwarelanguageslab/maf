@@ -20,7 +20,7 @@ class CPSSchemeInterpreter(
 
   // Note that these variables make concurrent uses of `run` not thread safe.
   var work: Queue[State] = _ // Round-robin scheduling.
-  var waiting: Map[TID, Either[Set[State], Value]] = _
+  var waiting: Map[TID, Either[Set[Continuation], Value]] = _
   var state: State = _
   var steps: TID = _
   var tid = 0
@@ -62,8 +62,8 @@ class CPSSchemeInterpreter(
             val blocked = waiting(tid)
             waiting = waiting + (tid -> Right(v))
             blocked match {
-              case Left(states) => work = work.enqueueAll(states)
-              case Right(_)     => throw new Exception(s"Thread with $tid already finished.")
+              case Left(continuations) => work = work.enqueueAll(continuations.map(Kont(v, _)))
+              case Right(_)            => throw new Exception(s"Thread with $tid already finished.")
             }
             scheduleNext()
             state
@@ -231,8 +231,8 @@ class CPSSchemeInterpreter(
       v match {
         case Value.CThread(tid) =>
           waiting(tid) match {
-            case Left(states) =>
-              waiting = waiting + (tid -> Left(states + Kont(v, cc)))
+            case Left(continuations) =>
+              waiting = waiting + (tid -> Left(continuations + cc))
               scheduleNext()
               state
             case Right(v) => Kont(v, cc)

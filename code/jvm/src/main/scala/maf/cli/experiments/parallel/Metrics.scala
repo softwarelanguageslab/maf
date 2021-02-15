@@ -11,9 +11,8 @@ import maf.modular.scheme.modf._
 import maf.modular.worklist._
 
 trait Metric {
-  type M
   def name: String
-  def forProgram(program: SchemeExp): M
+  def forProgram(program: SchemeExp): Metric.SequenceBasedMetric
 }
 
 object Metric {
@@ -26,18 +25,29 @@ object Metric {
     override def toString = s"$mean [$median±$stddev] <= $max"
   }
 
+  object ExpressionDepth extends Metric {
+    type M = SequenceBasedMetric
+    def name = "exp-depth"
+    def computeDepths(exp: Expression, depths: Map[Identity, Int] = Map.empty): Map[Identity, Int] =
+      exp.subexpressions
+        .foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
+        .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
+    def forProgram(program: SchemeExp): M =
+      SequenceBasedMetric(computeDepths(program).values.toList)
+  }
+
   class CallDepth(val kCFA: Int) extends Metric {
-    def name = s"call-depth($kCFA)"
+    def name = s"call-depth"
     type M = SequenceBasedMetric
 
     def forProgram(program: SchemeExp): M = {
       val analysis = new ModAnalysis(program)
-          with SchemeModFSemantics
-          with StandardSchemeModFComponents
-          with BigStepModFSemantics
-          with CallDepthFirstWorklistAlgorithm[SchemeExp]
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain {
+        with SchemeModFSemantics
+        with StandardSchemeModFComponents
+        with BigStepModFSemantics
+        with CallDepthFirstWorklistAlgorithm[SchemeExp]
+        with SchemeModFKCallSiteSensitivity
+        with SchemeConstantPropagationDomain {
         val k = kCFA
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
@@ -46,21 +56,37 @@ object Metric {
     }
   }
 
-  class Visited(kCFA: Int) extends Metric {
-    // TODO: two concerns for this metric:
-    //   - Can the number of visits may change between different analyses of the same file? If everything is deterministic, I guess not
-    //   - Does the number of visit depend on whether we use LeastVisited/MostVisited? I guess so, so do we need two different metrics?
-    def name = s"visited($kCFA)"
+  class LeastVisited(kCFA: Int) extends Metric {
+    def name = s"least-visited"
     type M = SequenceBasedMetric
 
     def forProgram(program: SchemeExp): M = {
       val analysis = new ModAnalysis(program)
-          with SchemeModFSemantics
-          with StandardSchemeModFComponents
-          with BigStepModFSemantics
-          with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain {
+        with SchemeModFSemantics
+        with StandardSchemeModFComponents
+        with BigStepModFSemantics
+        with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
+        with SchemeModFKCallSiteSensitivity
+        with SchemeConstantPropagationDomain {
+        val k = kCFA
+        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
+      }
+      analysis.analyze()
+      SequenceBasedMetric(analysis.count.values.toList)
+    }
+  }
+  class MostVisited(kCFA: Int) extends Metric {
+    def name = s"most-visited"
+    type M = SequenceBasedMetric
+
+    def forProgram(program: SchemeExp): M = {
+      val analysis = new ModAnalysis(program)
+        with SchemeModFSemantics
+        with StandardSchemeModFComponents
+        with BigStepModFSemantics
+        with MostVisitedFirstWorklistAlgorithm[SchemeExp]
+        with SchemeModFKCallSiteSensitivity
+        with SchemeConstantPropagationDomain {
         val k = kCFA
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
@@ -69,29 +95,18 @@ object Metric {
     }
   }
 
-  object ExpressionDepth extends Metric {
-    type M = SequenceBasedMetric
-    def name = "exp-depth"
-    def computeDepths(exp: Expression, depths: Map[Identity, Int] = Map.empty): Map[Identity, Int] =
-      exp.subexpressions.foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths)).map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
-    def forProgram(program: SchemeExp): M = {
-      SequenceBasedMetric(computeDepths(program).values.toList)
-    }
-  }
-
   class NumberOfDependencies(kCFA: Int) extends Metric {
-    // TODO: this metric should not change for different runs on the same benchmark, nor for different strategies, but this should be checked
     type M = SequenceBasedMetric
-    def name = s"dependencies($kCFA)"
+    def name = s"deps"
 
     def forProgram(program: SchemeExp): M = {
       val analysis = new ModAnalysis(program)
-          with SchemeModFSemantics
-          with StandardSchemeModFComponents
-          with BigStepModFSemantics
-          with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain {
+        with SchemeModFSemantics
+        with StandardSchemeModFComponents
+        with BigStepModFSemantics
+        with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
+        with SchemeModFKCallSiteSensitivity
+        with SchemeConstantPropagationDomain {
         val k = kCFA
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
@@ -101,18 +116,17 @@ object Metric {
   }
 
   class EnvironmentSize(kCFA: Int) extends Metric {
-    // TODO: this is a metric that should not change for multiple runs of the same benchmark, and should not be influenced by the strategy, but better check it
     type M = SequenceBasedMetric
-    def name = s"env-size($kCFA)"
+    def name = s"env-size"
 
     def forProgram(program: SchemeExp): M = {
       val analysis = new ModAnalysis(program)
-          with SchemeModFSemantics
-          with StandardSchemeModFComponents
-          with BigStepModFSemantics
-          with BiggerEnvironmentFirstWorklistAlgorithm.ModF
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain {
+        with SchemeModFSemantics
+        with StandardSchemeModFComponents
+        with BigStepModFSemantics
+        with BiggerEnvironmentFirstWorklistAlgorithm.ModF
+        with SchemeModFKCallSiteSensitivity
+        with SchemeConstantPropagationDomain {
         val k = kCFA
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
@@ -122,25 +136,25 @@ object Metric {
   }
 }
 
-trait ParallelMetric {
+trait Metrics {
   def benchmarks: Iterable[String]
 
   def metrics: List[Metric]
 
-  var results = Table.empty[String].withDefaultValue("_")
+  var results = Table.empty[Metric.SequenceBasedMetric].withDefaultValue(Metric.SequenceBasedMetric(List()))
 
-  def metricForFile(file: String, metric: Metric): metric.M = {
+  def metricForFile(file: String, metric: Metric): Metric.SequenceBasedMetric = {
     val program = CSchemeParser.parse(Reader.loadFile(file))
     metric.forProgram(program)
   }
 
   def metricsForFile(file: String): Unit =
-    metrics.foreach(metric => {
+    metrics.foreach { metric =>
       try {
         println(s"***** Computing metric ${metric.name} on $file *****")
         val result = metricForFile(file, metric)
         println(result)
-        results = results.add(file, metric.name, result.toString())
+        results = results.add(file, metric.name, result)
       } catch {
         case e: Exception =>
           println(s"Encountered an exception: ${e.getMessage}")
@@ -148,13 +162,17 @@ trait ParallelMetric {
           System.gc()
           println(s"VM Error: ${e.getMessage}")
       }
-    })
+    }
 
   def printResults() =
     println(results.prettyString())
-  def exportCSV(path: String) = {
-    val hdl = Writer.openTimeStamped(path)
-    val csv = results.toCSVString()
+  def exportCSV(
+      path: String,
+      format: Metric.SequenceBasedMetric => String,
+      timestamped: Boolean = true
+    ) = {
+    val hdl = if (timestamped) Writer.openTimeStamped(path) else Writer.open(path)
+    val csv = results.toCSVString(format = format)
     Writer.write(hdl, csv)
     Writer.close(hdl)
   }
@@ -162,25 +180,48 @@ trait ParallelMetric {
   def run(path: String = "benchOutput/metrics/output.csv") = {
     benchmarks.foreach(metricsForFile)
     printResults()
-    exportCSV(path)
+    exportCSV(path, format = _.toString())
   }
 }
 
-object ComputeParallelMetrics extends ParallelMetric {
-  def k = 0
-  def benchmarks = List(
-    "test/R5RS/WeiChenRompf2019/meta-circ.scm",
-    "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm",
-    "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
-  )
+trait ParallelMetrics extends Metrics {
+  def k: Int
   def metrics = List(
-    new Metric.CallDepth(k),
-    new Metric.Visited(k),
     Metric.ExpressionDepth,
+    new Metric.CallDepth(k),
+    new Metric.LeastVisited(k),
+    new Metric.MostVisited(k),
     new Metric.NumberOfDependencies(k),
     new Metric.EnvironmentSize(k)
   )
+  def formatMean(m: Metric.SequenceBasedMetric): String = m.mean.toString()
+  def formatStddev(m: Metric.SequenceBasedMetric): String = m.stddev.toString()
+  def formatMax(m: Metric.SequenceBasedMetric): String = m.max.toString()
+  def main(args: Array[String]): Unit = {
+    run()
+    exportCSV("data/modf-context-insensitive-metrics-mean.csv", formatMean _, timestamped = false)
+    exportCSV("data/modf-context-insensitive-metrics-stddev.csv", formatStddev _, timestamped = false)
+    exportCSV("data/modf-context-insensitive-metrics-max.csv", formatMax _, timestamped = false)
+    ParallelModFBenchmarks.all.foreach { (benchmark: String) =>
+      val shortName = ParallelModFBenchmarks.paperName(benchmark)
+      val expDepth = results.get(benchmark, "exp-depth").get
+      val callDepth = results.get(benchmark, "call-depth").get
+      val leastVisited = results.get(benchmark, "least-visited").get
+      val mostVisited = results.get(benchmark, "most-visited").get
+      val deps = results.get(benchmark, "deps").get
+      val envSize = results.get(benchmark, "env-size").get
+      // TODO: find a way to have an understandable formatting for the metrics
+      println(s"\\prog{$shortName} & $expDepth & $callDepth & $leastVisited & $mostVisited & $deps & $envSize \\\\")
+    }
+  }
+}
 
+object ParallelMetrics0CFA extends ParallelMetrics {
+  def k = 0
+  def benchmarks = ParallelModFBenchmarks.all
+}
 
-  def main(args: Array[String]) = run()
+object ParallelMetrics2CFA extends ParallelMetrics {
+  def k = 2
+  def benchmarks = ParallelModFBenchmarks.for2CFA
 }

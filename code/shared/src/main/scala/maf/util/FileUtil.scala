@@ -28,8 +28,11 @@ object Writer {
   private var defaultWriter: Writer = _
   var report: Boolean = false
 
-  def open(path: String): Writer =
-    new BufferedWriter(new FileWriter(path))
+  def open(path: String): Writer = {
+    val file = new File(path)
+    file.getParentFile().mkdirs() // Creates the directory containing the file if it does not exists
+    new BufferedWriter(new FileWriter(file))
+  }
 
   def openTimeStamped(path: String): Writer =
     path.split("\\.") match {

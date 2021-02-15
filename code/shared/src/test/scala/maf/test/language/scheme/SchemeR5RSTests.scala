@@ -66,7 +66,10 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
       case ConcreteValues.Value.Character(c) => l.char(c)
       case _                                 => ???
     }
-    assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
+    assert(
+      l.tryCompare(answer, result).contains(0),
+      s"Primitive computation test failed on program: $program with result $result (expected $answer)."
+    )
   }
 
 }
@@ -97,7 +100,9 @@ class SchemeCPSInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
       case ConcreteValues.Value.Character(c) => l.char(c)
       case _                                 => ???
     }
-    assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
+    assert(l.tryCompare(answer, result).contains(0),
+           s"Primitive computation test failed on program: $program with result $result (expected $answer)."
+    )
   }
 }
 
