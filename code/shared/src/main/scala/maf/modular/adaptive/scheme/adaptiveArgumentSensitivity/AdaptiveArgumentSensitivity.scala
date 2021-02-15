@@ -110,7 +110,7 @@ trait AdaptiveArgumentSensitivity extends AdaptiveSchemeModFSemantics {
     if (adapted) { updateAnalysis() }
   }
   // we need to update the adaptedArgs mapping when the analysis is adapted
-  override def updateAnalysisData(update: Map[Component,Component]) = {
+  override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     this.adaptedArgs = updateMap(updateSet(updateValue(update)))(adaptedArgs)
     this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)

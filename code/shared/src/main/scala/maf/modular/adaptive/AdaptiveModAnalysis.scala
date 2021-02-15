@@ -47,8 +47,8 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
     val ds = new DisjointSet[Address]()
     var destinations = Map.empty[Address, Address]
     var moved = Set.empty[Address]
-    def updateAddr(addr: Address): Address = 
-      if(moved.contains(addr)) {
+    def updateAddr(addr: Address): Address =
+      if (moved.contains(addr)) {
         destinations(ds.find(addr))
       } else {
         addr
@@ -72,7 +72,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
         }
       }
       update = updateCmp(ptr => ComponentPointer(updateAddr(ptr.addr)))
-    } while(dirty)
+    } while (dirty)
     // compute cMap
     this.cMap = this.cMapR.map(_.swap)
     // return a map representing all moved addresses
@@ -80,7 +80,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
   }
 
   // ... which in turn calls `updateAnalysisData` to update the component pointers
-  def updateAnalysisData(update: Map[Component,Component]) = {
+  def updateAnalysisData(update: Map[Component, Component]) = {
     workList = workList.map(update)
     visited = updateSet(update)(visited)
     newComponents = updateSet(update)(newComponents)
@@ -112,7 +112,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
 
   private var free: List[Address] = _
   override protected def alloc() =
-    if(free.isEmpty) {
+    if (free.isEmpty) {
       super.alloc()
     } else {
       val first = free.head
@@ -120,9 +120,8 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
       first
     }
 
-  private def dealloc(addr: Address) = {
+  private def dealloc(addr: Address) =
     free = addr :: free
-  }
 
   override def init() = {
     free = Nil

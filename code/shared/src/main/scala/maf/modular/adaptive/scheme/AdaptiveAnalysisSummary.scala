@@ -15,8 +15,8 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   case class LambdaModule(fun: SchemeLambdaExp) extends SchemeModule
 
   def module(cmp: Component): SchemeModule = view(cmp) match {
-    case Main           => MainModule
-    case call: Call[_]  => LambdaModule(call.clo._1)
+    case Main          => MainModule
+    case call: Call[_] => LambdaModule(call.clo._1)
   }
 
   /**
@@ -121,7 +121,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
     super.trigger(dep)
   }
   // correctly update the summary after adaptation
-  override def updateAnalysisData(update: Map[Component,Component]) = {
+  override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     this.summary = updateAnalysisSummary(update)(summary)
   }

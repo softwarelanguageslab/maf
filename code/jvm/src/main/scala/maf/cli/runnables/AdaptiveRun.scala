@@ -51,12 +51,11 @@ object AdaptiveRun {
       with FIFOWorklistAlgorithm[SchemeExp] {
       lazy val budget = 100
       var step = 0
-      override def step(timeout: Timeout.T): Unit = {
+      override def step(timeout: Timeout.T): Unit =
         //val cmp = workList.head
         //println(s"[$step] Analysing ${view(cmp)}")
         //step += 1
         super.step(timeout)
-      }
     }
     anl.analyze()
     //debugClosures(analysis)

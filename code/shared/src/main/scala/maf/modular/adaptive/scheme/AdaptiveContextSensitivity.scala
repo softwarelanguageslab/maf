@@ -125,9 +125,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val target: Int = addrs.size / 2
     val perLocation = addrs.groupBy(getAddrExp) // TODO: by expr instead of idn?
     val chosenAddrs = takeLargest(perLocation.toList, (g: (_, Set[_])) => g._2.size, target)
-    val chosenFuncs = chosenAddrs.map(_._2)
-                                 .filter(_.size > 1)
-                                 .map(addrs => getAddrModule(addrs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
+    val chosenFuncs = chosenAddrs
+      .map(_._2)
+      .filter(_.size > 1)
+      .map(addrs => getAddrModule(addrs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
     chosenFuncs.toSet.foreach(reduceComponents)
   }
   private def reduceValueAbs(deps: MultiSet[Dependency]) = {

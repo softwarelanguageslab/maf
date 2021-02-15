@@ -51,7 +51,7 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
     }
   }
   // we need to update the `calledBy` data structure whenever the analysis is adapted
-  override def updateAnalysisData(update: Map[Component,Component]) = {
+  override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     calledBy = updateMap(update, updateSet(update))(calledBy)
   }
