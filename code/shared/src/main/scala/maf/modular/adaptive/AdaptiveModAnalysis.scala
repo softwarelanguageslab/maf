@@ -32,35 +32,37 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
   // .. and that when this happens, one needs to call `updateAnalysis`
   def updateAnalysis(): Unit = {
     // update the indirection maps and calculate the "new component pointer" for every "old component pointer"
-    val current = this.cMap.map({ case (addr, _) => (addr, addr) }).toMap
-    val (updated, moved) = updateComponentMapping(this.cMapR, adaptComponent, current)
+    val (updated, moved) = updateComponentMapping(this.cMapR, adaptComponent, Map.empty)
     this.cMap = updated.map(_.swap)
     this.cMapR = updated
     // update all components pointers in the analysis
-    updateAnalysisData(cmp => ComponentPointer(moved(cmp.addr)))
+    // println(moved)
+    updateAnalysisData(cmp => moved.get(cmp.addr).map(ComponentPointer).getOrElse(cmp))
   }
 
+  //TODO: use freed up addresses for new allocations
   @scala.annotation.tailrec
   private def updateComponentMapping(
       current: Map[ComponentData, Address],
       update: ComponentData => ComponentData,
       moved: Map[Address, Address]
     ): (Map[ComponentData, Address], Map[Address, Address]) = {
-    var mapping = Map[Address, Address]()
-    var updated = Map[ComponentData, Address]()
+    var mapping = Map.empty[Address, Address]
+    var updated = Map.empty[ComponentData, Address]
     current.foreach { case (oldCmp, oldAddr) =>
       val newCmp = update(oldCmp)
       updated.get(newCmp) match {
-        case None          => updated += (newCmp -> oldAddr)
-        case Some(newAddr) => mapping += (oldAddr -> newAddr)
+        case None           => updated += newCmp -> oldAddr
+        case Some(newAddr)  => mapping += oldAddr -> newAddr
       }
     }
-    if (mapping.isEmpty) {
+    if (mapping.isEmpty) { // no changes, just return
       (updated, moved)
     } else {
       val updateAddress = (addr: Address) => mapping.getOrElse(addr, addr)
       val updatePointer = (ptr: ComponentPointer) => ComponentPointer(updateAddress(ptr.addr))
-      updateComponentMapping(updated, updateCmp(updatePointer), moved.view.mapValues(updateAddress).toMap)
+      val updatedMoved = moved.view.mapValues(updateAddress).toMap ++ mapping
+      updateComponentMapping(updated, updateCmp(updatePointer), updatedMoved)
     }
   }
 
