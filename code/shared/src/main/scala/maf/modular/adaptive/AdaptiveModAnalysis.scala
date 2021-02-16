@@ -41,8 +41,6 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
   }
 
   private def updateComponentMapping() = {
-    // the current mapping, and the current function to update components
-    var update: ComponentData => ComponentData = adaptComponent
     // bookkeeping to keep track of "joined"/moved component pointers
     val ds = new DisjointSet[Address]()
     var destinations = Map.empty[Address, Address]
@@ -54,8 +52,9 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
         addr
       }
     // the actual fixed-point computation
-    var dirty = false
-    do {
+    var update: ComponentData => ComponentData = adaptComponent
+    var dirty = true
+    while(dirty) {
       dirty = false
       val previous = this.cMapR
       this.cMapR = Map.empty[ComponentData, Address]
@@ -72,7 +71,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
         }
       }
       update = updateCmp(ptr => ComponentPointer(updateAddr(ptr.addr)))
-    } while (dirty)
+    }
     // compute cMap
     this.cMap = this.cMapR.map(_.swap)
     // return a map representing all moved addresses
