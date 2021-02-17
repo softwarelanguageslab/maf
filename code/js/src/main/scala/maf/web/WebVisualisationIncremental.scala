@@ -2,9 +2,10 @@ package maf.web
 
 import maf.core.Expression
 import maf.modular.DependencyTracking
-import maf.modular.incremental.IncrementalModAnalysis
+import maf.modular.incremental.{IncrementalGlobalStore, IncrementalModAnalysis}
 import maf.web.WebVisualisation._
 import maf.web.WebVisualisationIncremental._
+
 import scala.scalajs.js
 
 trait VisualisableIncrementalModAnalysis[Expr <: Expression] extends IncrementalModAnalysis[Expr] with DependencyTracking[Expr] {
@@ -26,7 +27,8 @@ object WebVisualisationIncremental {
   val __CSS_MAIN_NODE__ = "node_main"
 }
 
-class WebVisualisationIncremental[Expr <: Expression](override val analysis: VisualisableIncrementalModAnalysis[Expr])
+class WebVisualisationIncremental[Expr <: Expression](
+    override val analysis: VisualisableIncrementalModAnalysis[Expr] with IncrementalGlobalStore[Expr])
     extends WebVisualisation(analysis) {
 
   def deletedComponent(cmp: analysis.Component): Boolean = !analysis.visited.contains(cmp) && !analysis.workList.contains(cmp)

@@ -13,34 +13,56 @@
         stroke: gold;
         fill: gold;
       }
+
       .nodes .in_worklist {
         fill: lightblue;
       }
+
       .nodes .in_worklist.next_component {
         fill: darkblue;
       }
+
       .nodes .not_visited {
         stroke: red;
       }
+
+      .nodes .address_node {
+        fill: none;
+        stroke: tan;
+      }
+
       .nodes .node_deleted {
         stroke: darkgray;
       }
+
       .nodes text {
         fill: black;
         stroke: none;
       }
+
       .nodes .node_deleted text {
         fill: darkgray;
       }
+
       .nodes .node_main text {
         fill: gold
       }
+
+      .nodes .address_node text {
+        fill: tan;
+      }
+
       .links {
         stroke: black;
         stroke-width: 2;
         fill: none;
         marker-end: url(#endarrow);
       }
+
+      .links .read_edge {
+        stroke: wheat;
+      }
+
       .links .edge_deleted {
         stroke: darkgray;
         stroke-dasharray: 2;

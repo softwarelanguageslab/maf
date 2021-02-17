@@ -1,6 +1,7 @@
 package maf.web
 
 import maf.core._
+import maf.modular.GlobalStore
 import maf.modular.adaptive._
 
 // Scala.js-related imports
@@ -16,12 +17,14 @@ object WebVisualisationAdaptive {
     .range(__NODE_COLORS__)
 }
 
-trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
+trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] {
   var webvis: WebVisualisationAdaptive = null
+
   override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     webvis.adapted = true
   }
+
   def key(cmp: Component): Any
 }
 

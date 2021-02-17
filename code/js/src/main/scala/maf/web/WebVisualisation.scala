@@ -43,7 +43,7 @@ object WebVisualisation {
   }
 }
 
-class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_]) {
+class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_]) {
 
   // TODO: make these abstract
   def componentText(cmp: analysis.Component): String = cmp.toString
@@ -70,7 +70,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   // BOOKKEEPING (needed to play nice with Scala.js and d3.js)
   //
 
-  sealed trait Node extends js.Object {
+  trait Node extends js.Object {
     def displayText(): String
 
     def data(): Any
@@ -87,7 +87,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
   var nodesData: Set[Node] = Set()
   var edgesData: Set[Edge] = Set()
   // TODO: use weak maps here to prevent memory leaks?
-  var nodesColl: Map[analysis.Component, Node] = Map()
+  var nodesColl: Map[analysis.Component, CmpNode] = Map()
   var edgesColl: Map[(Node, Node), Edge] = Map()
 
   def getNode(cmp: analysis.Component): CmpNode = nodesColl.get(cmp) match {
@@ -95,7 +95,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with SequentialWorklistAlgor
       val newNode = new CmpNode(cmp)
       nodesColl += (cmp -> newNode)
       newNode
-    case Some(existingNode) => existingNode.asInstanceOf[CmpNode]
+    case Some(existingNode) => existingNode
   }
 
   def getEdge(source: Node, target: Node): Edge = edgesColl.get((source, target)) match {
