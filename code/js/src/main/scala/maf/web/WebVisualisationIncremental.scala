@@ -33,8 +33,20 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Vis
 
   override def classifyNodes(): Unit = {
     super.classifyNodes()
-    nodes.classed(__CSS_DELETED_NODE__, (node: Node) => deletedComponent(node.component))
-    nodes.classed(__CSS_MAIN_NODE__, (node: Node) => node.component == analysis.initialComponent)
+    nodes.classed(__CSS_DELETED_NODE__,
+                  (node: Node) =>
+                    node match {
+                      case node: CmpNode => deletedComponent(node.component);
+                      case _: Node       => false
+                    }
+    )
+    nodes.classed(__CSS_MAIN_NODE__,
+                  (node: Node) =>
+                    node match {
+                      case node: CmpNode => node.component == analysis.initialComponent;
+                      case _: Node       => false
+                    }
+    )
   }
 
   override def classifyEdges(): Unit = {
@@ -42,20 +54,26 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Vis
     edges.classed(
       __CSS_DELETED_EDGE__,
       (edge: Edge) =>
-        deletedComponent(edge.source.component)
-          || deletedComponent(edge.target.component)
-          || (!analysis
-            .cachedSpawns(edge.source.component)
-            .contains(
-              edge.target.component
-            )) // The edge has been deleted. We cannot use dependencies from the DependencyTracking trait as currently this map only grows monotonically.
-          && !(edge.source.component == edge.target.component && analysis.recursive.contains(edge.source.component))
+        (edge.source, edge.target) match {
+          case (source, target) if source.isInstanceOf[CmpNode] && target.isInstanceOf[CmpNode] =>
+            val src = source.asInstanceOf[CmpNode].component
+            val trg = target.asInstanceOf[CmpNode].component
+            deletedComponent(src) || deletedComponent(trg) || (
+              !analysis
+                .cachedSpawns(src)
+                .contains(
+                  trg
+                )
+            ) && !(src == trg && analysis.recursive.contains(src))
+          case _ =>
+        }
     ) // Check that it is not a currently existing self-edge.
   }
 
   /**
    * Ensures all new nodes and edges in the analysis are drawn. May not shown nodes that have ceased to exist.
-   * @note No nodes and edges are deleted. Those that are deleted by the analysis will still be drawn, but in will be visualised differently.
+   *
+   * @note No nodes and edges are deleted. Those that are deleted by the analysis will still be drawn, but will be visualised differently.
    * @note Nodes and edges that were created and deleted by the analysis since the last update of the visualisation data will not be shown using this method.
    */
   override def refreshData(): Unit = {
@@ -65,13 +83,15 @@ class WebVisualisationIncremental[Expr <: Expression](override val analysis: Vis
       nodesData += node
     }
     // Add all edges currently in the analysis.
-    nodesData.foreach { sourceNode =>
-      val targets = analysis.dependencies(sourceNode.component)
-      targets.foreach { target =>
-        val targetNode = getNode(target)
-        val edge = getEdge(sourceNode, targetNode)
-        edgesData += edge
-      }
+    nodesData.foreach {
+      case sourceNode: CmpNode =>
+        val targets = analysis.dependencies(sourceNode.component)
+        targets.foreach { target =>
+          val targetNode = getNode(target)
+          val edge = getEdge(sourceNode, targetNode)
+          edgesData += edge
+        }
+      case _ =>
     }
   }
 
