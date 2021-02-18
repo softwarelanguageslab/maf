@@ -27,8 +27,8 @@ object WebVisualisationIncremental {
   val __CSS_MAIN_NODE__ = "node_main"
 }
 
-class WebVisualisationIncremental[Expr <: Expression](
-    override val analysis: VisualisableIncrementalModAnalysis[Expr] with IncrementalGlobalStore[Expr])
+class WebVisualisationIncremental(
+    override val analysis: VisualisableIncrementalModAnalysis[_] with IncrementalGlobalStore[_])
     extends WebVisualisation(analysis) {
 
   def deletedComponent(cmp: analysis.Component): Boolean = !analysis.visited.contains(cmp) && !analysis.workList.contains(cmp)

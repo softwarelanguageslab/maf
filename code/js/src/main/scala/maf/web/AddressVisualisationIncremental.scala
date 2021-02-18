@@ -7,4 +7,12 @@ object AddressVisualisationIncremental {
   val __CSS_DELWRITE_EDGE__ = "del_write"
 }
 
-trait AddressVisualisationIncremental extends AddressVisualisation {}
+trait AddressVisualisationIncremental extends WebVisualisationIncremental with AddressVisualisation {
+
+  // Now also add edges for writes.
+  override def refreshData(): Unit = {
+    super.refreshData()
+    nodesData.foreach { case addrNode: AddrNode =>
+    }
+  }
+}

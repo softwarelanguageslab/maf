@@ -216,18 +216,12 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     analysis.visited.foreach { cmp =>
       val node = getNode(cmp)
       nodesData += node
-    }
-    // refresh the edges
-    edgesData = Set.empty[Edge]
-    nodesData.foreach {
-      case sourceNode: CmpNode =>
-        val targets = analysis.dependencies(sourceNode.component)
-        targets.foreach { target =>
-          val targetNode = getNode(target)
-          val edge = getEdge(sourceNode, targetNode)
-          edgesData += edge
-        }
-      case _ =>
+      val targets = analysis.dependencies(cmp)
+      targets.foreach { target =>
+        val targetNode = getNode(target)
+        val edge = getEdge(node, targetNode)
+        edgesData += edge
+      }
     }
   }
 
@@ -253,7 +247,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
   // updates the visualisation: draws all nodes/edges, sets correct CSS classes, etc.
   def refreshVisualisation(): Unit = {
     // update the nodes
-    val nodesUpdate = nodes.data(nodesData, (n: Node) => n.data)
+    val nodesUpdate = nodes.data(nodesData, (n: Node) => n.data())
     val newGroup = nodesUpdate
       .enter()
       .append("g")
@@ -272,7 +266,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     nodesUpdate.exit().remove()
     classifyNodes()
     // update the edges
-    val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.data, e.target.data))
+    val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.data(), e.target.data()))
     edges = edgesUpdate.enter().append("path").merge(edgesUpdate)
     classifyEdges()
     edgesUpdate.exit().remove()

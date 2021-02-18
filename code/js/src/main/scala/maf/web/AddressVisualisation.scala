@@ -41,18 +41,14 @@ trait AddressVisualisation extends WebVisualisation {
       if (!addr.isInstanceOf[PrmAddr]) {
         val node = getNode(addr)
         nodesData += node
-      }
-    }
-    nodesData.foreach {
-      case addrNode: AddrNode =>
         // Using the standard Global Store, we can only visualise read dependencies.
-        val readers: Set[analysis.Component] = analysis.deps(AddrDependency(addrNode.address))
+        val readers: Set[analysis.Component] = analysis.deps(AddrDependency(addr))
         readers.foreach { reader =>
           val readerNode = getNode(reader)
-          val edge = getEdge(addrNode, readerNode) // Edges from addr -> reader.
+          val edge = getEdge(node, readerNode) // Edges from addr -> reader.
           edgesData += edge
         }
-      case _ => // Other cases may be handled in super-/subclasses
+      }
     }
   }
 
