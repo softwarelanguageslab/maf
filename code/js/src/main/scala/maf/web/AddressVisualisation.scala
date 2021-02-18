@@ -2,15 +2,18 @@ package maf.web
 
 import maf.modular._
 import maf.modular.scheme.PrmAddr
-import maf.web.AddressVisualisation.{__CSS_ADDRESS_NODE__, __CSS_READ_EDGE__}
+import maf.web.AddressVisualisation._
+import maf.web.WebVisualisation.JsAny
+
+import scala.scalajs.js
 
 object AddressVisualisation {
   val __CSS_ADDRESS_NODE__ = "address_node"
   val __CSS_READ_EDGE__ = "read_edge"
-  //val __CSS_DELADDR_NODE__ = "deladdr_node" // TODO for incremental variant
+  val __SVG_READ_ARROW__ = "readarrow"
 }
 
-/** Adds the visualisation of addresses to the web visualisation. */
+/** Adds the visualisation of addresses to the web visualisation: visualises the addresses read by a component. */
 trait AddressVisualisation extends WebVisualisation {
 
   var adrNodesColl: Map[analysis.Addr, AddrNode] = Map()
@@ -53,6 +56,7 @@ trait AddressVisualisation extends WebVisualisation {
   }
 
   override def refreshDataAfterStep(cmp: analysis.Component, oldCmpDeps: Set[analysis.Component]): Unit = {
+    super.refreshDataAfterStep(cmp, oldCmpDeps)
     val readerNode = getNode(cmp)
     // Remove old edges.
     oldDeps.filter(_._2.contains(cmp)).keySet.foreach {
@@ -62,7 +66,15 @@ trait AddressVisualisation extends WebVisualisation {
         edgesData -= edge
       case _ =>
     }
-    super.refreshDataAfterStep(cmp, oldCmpDeps) // Do this after deleting the nodes, as this adds the new nodes.
+    // Add the new edges.
+    oldDeps.filter(_._2.contains(cmp)).keySet.foreach {
+      case AddrDependency(addr) =>
+        val addrNode: AddrNode = getNode(addr)
+        val edge = getEdge(addrNode, readerNode)
+        nodesData += addrNode
+        edgesData += edge
+      case _ =>
+    }
     oldDeps = analysis.deps // Avoid having to override stepAnalysis etc. by saving the new state of the dependencies.
   }
 
@@ -80,5 +92,22 @@ trait AddressVisualisation extends WebVisualisation {
   override def classifyEdges(): Unit = {
     super.classifyEdges()
     edges.classed(__CSS_READ_EDGE__, (edge: Edge) => edge.source.isInstanceOf[AddrNode] && edge.target.isInstanceOf[CmpNode])
+  }
+
+  override def setupMarker(svg: JsAny): js.Dynamic = {
+    super.setupMarker(svg)
+    val marker = svg
+      .select("defs")
+      .append("marker")
+      .attr("id", __SVG_READ_ARROW__)
+      .attr("viewBox", "-0 -5 10 10")
+      .attr("refX", 0)
+      .attr("refY", 0)
+      .attr("orient", "auto")
+      .attr("markerWidth", 5)
+      .attr("markerHeight", 5)
+      .attr("fill", "wheat")
+      .attr("stroke", "wheat")
+    marker.append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5")
   }
 }
