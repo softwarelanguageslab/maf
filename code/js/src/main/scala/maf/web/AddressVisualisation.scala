@@ -55,17 +55,13 @@ trait AddressVisualisation extends WebVisualisation {
     }
   }
 
+  def deleteOnStep(component: analysis.Component): Unit
+
   override def refreshDataAfterStep(cmp: analysis.Component, oldCmpDeps: Set[analysis.Component]): Unit = {
     super.refreshDataAfterStep(cmp, oldCmpDeps)
     val readerNode = getNode(cmp)
-    // Remove old edges.
-    oldDeps.filter(_._2.contains(cmp)).keySet.foreach {
-      case AddrDependency(addr) =>
-        val addrNode: AddrNode = getNode(addr)
-        val edge = getEdge(addrNode, readerNode)
-        edgesData -= edge
-      case _ =>
-    }
+    // Remove old edges (and possiblye nodes).
+    deleteOnStep(cmp)
     // Add the new edges.
     oldDeps.filter(_._2.contains(cmp)).keySet.foreach {
       case AddrDependency(addr) =>
@@ -109,5 +105,37 @@ trait AddressVisualisation extends WebVisualisation {
       .attr("fill", "wheat")
       .attr("stroke", "wheat")
     marker.append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5")
+  }
+}
+
+/** Allows selecting which address nodes (and corresponding edges) are deleted upon a step in the analysis. */
+sealed trait AddressRetentionPolicy {
+  this: AddressVisualisation =>
+
+  /** Allows selecting which address nodes (and corresponding edges) are deleted upon a step in the analysis. */
+  def deleteOnStep(cmp: analysis.Component): Unit
+}
+
+// Ensures all edges and addresses remain shown.
+trait RetainAll extends AddressRetentionPolicy {
+  this: AddressVisualisation =>
+  override def deleteOnStep(cmp: analysis.Component): Unit = {
+    val readerNode = getNode(cmp)
+    oldDeps.filter(_._2.contains(cmp)).keySet.foreach {
+      case AddrDependency(addr) =>
+        val addrNode: AddrNode = getNode(addr)
+        val edge = getEdge(addrNode, readerNode)
+        edgesData -= edge
+      case _ =>
+    }
+  }
+}
+
+// Only shows the addresses read by the component last analysed.
+trait RetainUpdated extends AddressRetentionPolicy {
+  this: AddressVisualisation =>
+  override def deleteOnStep(cmp: analysis.Component): Unit = {
+    nodesData = nodesData.filterNot(_.isInstanceOf[AddrNode])
+    edgesData = edgesData.filterNot(_.source.isInstanceOf[AddrNode])
   }
 }
