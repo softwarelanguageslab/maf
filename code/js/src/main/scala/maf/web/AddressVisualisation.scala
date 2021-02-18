@@ -19,6 +19,7 @@ trait AddressVisualisation extends WebVisualisation {
   var adrNodesColl: Map[analysis.Addr, AddrNode] = Map()
   var oldDeps: Map[Dependency, Set[analysis.Component]] = Map()
 
+  // TODO (BUG) address nodes are not draggable...
   class AddrNode(val address: analysis.Addr) extends Node {
     def displayText(): String = s"${address.toString} [${analysis.store.getOrElse(address, analysis.lattice.bottom).toString.take(10)}]"
 
