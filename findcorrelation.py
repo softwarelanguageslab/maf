@@ -49,15 +49,15 @@ def load_data(base_csv_file, data_csv_file, metrics_csv_file):
     for benchmark in data:
         name = benchmark[0]
 
-        base_results[name] = int(find_data(base_data, name)[1])
+        base_results[name] = float(find_data(base_data, name)[1])
 
         metric_res = find_data(metrics_data, name)
         metrics_results[name] = {}
         for (metric, col) in metrics_columns.items():
-            metrics_results[name][metric] = int(metric_res[col])
+            metrics_results[name][metric] = float(metric_res[col])
         heuristics_results[name] = {}
         for (heuristic, col) in heuristics_columns.items():
-            heuristics_results[name][heuristic] = int(benchmark[col])
+            heuristics_results[name][heuristic] = float(benchmark[col])
         benchmarks.append(name)
 
 def find_correlation(variant, heuristic, metric):
@@ -68,12 +68,12 @@ def find_correlation(variant, heuristic, metric):
         metric_data.append(metrics_results[benchmark][metric])
     assert len(heuristic_data) == len(metric_data)
     rho, p = stats.spearmanr(metric_data, heuristic_data)
-    if p < 0.05:
+    if rho > 0 and p < 0.05:
         print(f'Correlation between heuristic {heuristic} and metric {metric} ({variant}): rho = {rho}, p = {p}')
 
 if __name__ == '__main__':
     for metric_variant in ['mean', 'max', 'stddev']:
-        load_data('data/modf-base-context-insensitive.csv', 'data/modf-context-insensitive-metrics.csv', 'data/modf-context-insensitive-metrics-' + metric_variant + '.csv')
+        load_data('data/modf-base-context-sensitive.csv', 'data/modf-context-sensitive-metrics.csv', 'data/modf-context-sensitive-metrics-' + metric_variant + '.csv')
         for metric in metrics_columns.keys():
             for heuristic in heuristics_columns.keys():
                 find_correlation(metric_variant, heuristic, metric)

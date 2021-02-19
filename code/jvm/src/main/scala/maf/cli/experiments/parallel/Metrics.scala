@@ -218,31 +218,28 @@ trait ParallelMetrics extends Metrics {
   def formatMean(m: Metric.SequenceBasedMetric): String = m.mean.toString()
   def formatStddev(m: Metric.SequenceBasedMetric): String = m.stddev.toString()
   def formatMax(m: Metric.SequenceBasedMetric): String = m.max.toString()
-  def main(args: Array[String]): Unit = {
-    run()
-    exportCSV("data/modf-context-insensitive-metrics-mean.csv", formatMean _, timestamped = false)
-    exportCSV("data/modf-context-insensitive-metrics-stddev.csv", formatStddev _, timestamped = false)
-    exportCSV("data/modf-context-insensitive-metrics-max.csv", formatMax _, timestamped = false)
-    ParallelModFBenchmarks.all.foreach { (benchmark: String) =>
-      val shortName = ParallelModFBenchmarks.paperName(benchmark)
-      val expDepth = results.get(benchmark, "exp-depth").get
-      val callDepth = results.get(benchmark, "call-depth").get
-      val leastVisited = results.get(benchmark, "least-visited").get
-      val mostVisited = results.get(benchmark, "most-visited").get
-      val deps = results.get(benchmark, "deps").get
-      val envSize = results.get(benchmark, "env-size").get
-      // TODO: find a way to have an understandable formatting for the metrics
-      println(s"\\prog{$shortName} & $expDepth & $callDepth & $leastVisited & $mostVisited & $deps & $envSize \\\\")
-    }
-  }
 }
 
 object ParallelMetrics0CFA extends ParallelMetrics {
   def k = 0
   def benchmarks = ParallelModFBenchmarks.all
+  def main(args: Array[String]): Unit = {
+    run()
+    exportCSV("data/modf-context-insensitive-metrics-mean.csv", formatMean _, timestamped = false)
+    exportCSV("data/modf-context-insensitive-metrics-stddev.csv", formatStddev _, timestamped = false)
+    exportCSV("data/modf-context-insensitive-metrics-max.csv", formatMax _, timestamped = false)
+  }
+
 }
 
 object ParallelMetrics2CFA extends ParallelMetrics {
   def k = 2
   def benchmarks = ParallelModFBenchmarks.for2CFA
+  def main(args: Array[String]): Unit = {
+    run()
+    exportCSV("data/modf-context-sensitive-metrics-mean.csv", formatMean _, timestamped = false)
+    exportCSV("data/modf-context-sensitive-metrics-stddev.csv", formatStddev _, timestamped = false)
+    exportCSV("data/modf-context-sensitive-metrics-max.csv", formatMax _, timestamped = false)
+  }
+
 }

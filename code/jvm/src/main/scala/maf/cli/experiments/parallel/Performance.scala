@@ -277,7 +277,7 @@ object ParallelModFBenchmarks {
   val excludedFor2CFA: Set[String] = Set(
     "test/R5RS/WeiChenRompf2019/earley.sch", // Times out with n = 1, 60min timeout
     "test/R5RS/WeiChenRompf2019/meta-circ.scm", // Times out with n = 1, 60min timeout
-    "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", // Takes 23min with n = 1
+//    "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", // Takes 23min with n = 1
     "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm", // Times out with n = 1, 60min timeout
     "test/R5RS/gambit/peval.scm", // Times out with n = 1, 60min timeout
     "test/R5RS/gambit/scheme.scm", // Times out with n = 1, 60min timeout
@@ -292,7 +292,7 @@ object ParallelModFBenchmarks {
 
 trait BaseResultsModFSetup extends PerformanceEvaluation {
   override def analysisRuns = 10 // reduced for getting results faster
-  override def analysisTime = Timeout.start(Duration(10, MINUTES))
+  override def analysisTime = Timeout.start(Duration(30, MINUTES))
   def k: Int
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.kCFAAnalysis(_, k), s"base ModF ($k-CFA)")
@@ -347,11 +347,11 @@ object BaseResultsModF {
 }
 
 trait ParallelModFPerformance extends PerformanceEvaluation {
-  override def analysisRuns = 10 // reduced for getting results faster
-  override def analysisTime = Timeout.start(Duration(10, MINUTES))
+  override def analysisRuns = 20 // reduced for getting results faster
+  override def analysisTime = Timeout.start(Duration(30, MINUTES))
   def k: Int
   def outputFile: String
-  def cores = List(1, 2, 4, 8)
+  def cores = List(1, 2, 4, 8, 16, 32, 64, 128)
   def benchmarks: Iterable[Benchmark]
   def analyses: List[(SchemeExp => Analysis, String)] =
     cores.map(n => (SchemeAnalyses.parallelKCFAAnalysis(_, n, k), s"parallel (n = $n, $k-CFA)"))
@@ -375,7 +375,7 @@ object ParallelModFPerformance2CFA extends ParallelModFPerformance {
 }
 
 trait ParallelModFPerformanceMetrics extends ParallelModFPerformance {
-  def n = 8
+  def n = 4
   override def cores = List(n)
   override def analyses = List(
     (ParallelModFAnalyses.random(_, n, k), "random"),
@@ -406,29 +406,29 @@ object ParallelPerformanceMetrics2CFA extends ParallelModFPerformanceMetrics {
 
 object ParallelPerformanceModConc extends PerformanceEvaluation {
   override def analysisRuns = 10 // reduced for getting results faster
-  override def analysisTime = Timeout.start(Duration(10, MINUTES))
+  override def analysisTime = Timeout.start(Duration(30, MINUTES))
   def benchmarks: Iterable[String] = List(
-    "test/concurrentScheme/threads/crypt.scm"
-//    "test/concurrentScheme/threads/actors.scm",
-//    "test/concurrentScheme/threads/matmul.scm",
-//    "test/concurrentScheme/threads/minimax.scm",
-//    "test/concurrentScheme/threads/msort.scm",
-//    "test/concurrentScheme/threads/randomness2.scm",
-//    "test/concurrentScheme/threads/sieve.scm",
-//    "test/concurrentScheme/threads/stm.scm",
-//    "test/concurrentScheme/threads/sudoku.scm",
-//    "test/concurrentScheme/threads/tsp.scm",
-//    "test/concurrentScheme/threads/abp.scm",
-//    "test/concurrentScheme/threads/sieve.scm",
-//    "test/concurrentScheme/threads/life.scm",
-//    "test/concurrentScheme/threads/nbody.scm",
-//    "test/concurrentScheme/threads/phild.scm",
-//    "test/concurrentScheme/threads/atoms.scm",
-//    "test/concurrentScheme/threads/pp.scm",
-//    "test/concurrentScheme/threads/pps.scm",
+    "test/concurrentScheme/threads/crypt.scm",
+    "test/concurrentScheme/threads/actors.scm",
+    "test/concurrentScheme/threads/matmul.scm",
+    "test/concurrentScheme/threads/minimax.scm",
+    "test/concurrentScheme/threads/msort.scm",
+    "test/concurrentScheme/threads/randomness2.scm",
+    "test/concurrentScheme/threads/sieve.scm",
+    "test/concurrentScheme/threads/stm.scm",
+    "test/concurrentScheme/threads/sudoku.scm",
+    "test/concurrentScheme/threads/tsp.scm",
+    "test/concurrentScheme/threads/abp.scm",
+    "test/concurrentScheme/threads/sieve.scm",
+    "test/concurrentScheme/threads/life.scm",
+    "test/concurrentScheme/threads/nbody.scm",
+    "test/concurrentScheme/threads/phild.scm",
+    "test/concurrentScheme/threads/atoms.scm",
+    "test/concurrentScheme/threads/pp.scm",
+    "test/concurrentScheme/threads/pps.scm",
   )
 
-  def cores = List(1, 2) // TODO: 1, 2, 4, 8 for 64-core eval
+  def cores = List(1, 2, 4, 8)
   def analyses: List[(SchemeExp => Analysis, String)] =
     List((SchemeAnalyses.modConcAnalysis(_, 5), "base ModConc")) ++
       cores.flatMap { n =>

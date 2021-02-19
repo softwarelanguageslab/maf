@@ -1,12 +1,12 @@
 #!/bin/sh
 echo "=== RQ3 ==="
-echo "Producing ModF metrics for 0CFA (expected time: 30min)"
+echo "Producing ModF metrics for 0CFA (expected time: 45min)"
 START_METRICS_0CFA=$(date +"%T")
 sbt 'maf/runMain maf.cli.experiments.parallel.ParallelMetrics0CFA'
 END_METRICS_0CFA=$(date +"%T")
 echo "Started at $START_METRICS_0CFA, ended at $END_METRICS_0CFA"
 
-echo "Producing data for 0CFA (expected time: TODO, started on $(date))"
+echo "Producing data for 0CFA (expected time: 2h)"
 START_DATA_0CFA=$(date +"%T")
 sbt 'maf/runMain maf.cli.experiments.parallel.ParallelPerformanceMetrics0CFA'
 END_DATA_0CFA=$(date +"%T")
@@ -18,3 +18,6 @@ echo "To find correlations, run:"
 echo "python findcorrelations.py"
 
 # TODO: reproduce for 2CFA (same script)
+# For 2CFA, expected time:
+# Metrics: 3h
+# Analysis: 6h

@@ -60,7 +60,7 @@ object SchemeAnalyses {
   def kCFAAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModFAnalysis(prg)
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain
-    with FIFOWorklistAlgorithm[SchemeExp] {
+    with RandomWorklistAlgorithm[SchemeExp] {
     override def toString() = s"kCFA (k = $kcfa)"
     val k = kcfa
   }
@@ -86,7 +86,7 @@ object SchemeAnalyses {
     with SchemeModFSemantics
     with StandardSchemeModFComponents
     with BigStepModFSemantics
-    with CallDepthFirstWorklistAlgorithm[SchemeExp]
+    with RandomPriorityWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
     with SchemeConstantPropagationDomain {
