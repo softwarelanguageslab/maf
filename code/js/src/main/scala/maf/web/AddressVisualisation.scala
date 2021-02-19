@@ -17,9 +17,8 @@ object AddressVisualisation {
 trait AddressVisualisation extends WebVisualisation {
 
   var adrNodesColl: Map[analysis.Addr, AddrNode] = Map()
-  var oldDeps: Map[Dependency, Set[analysis.Component]] = Map()
+  var oldReadDeps: Map[Dependency, Set[analysis.Component]] = Map()
 
-  // TODO (BUG) address nodes are not draggable...
   class AddrNode(val address: analysis.Addr) extends Node {
     def displayText(): String = s"${address.toString} [${analysis.store.getOrElse(address, analysis.lattice.bottom).toString.take(10)}]"
 
@@ -45,7 +44,7 @@ trait AddressVisualisation extends WebVisualisation {
         val readers: Set[analysis.Component] = analysis.deps(AddrDependency(addr))
         readers.foreach { reader =>
           val readerNode = getNode(reader)
-          val edge = getEdge(node, readerNode) // Edges from addr -> reader.
+          val edge = getEdge(node, readerNode) // Edge from addr -> reader.
           edgesData += edge
         }
       }
@@ -60,7 +59,7 @@ trait AddressVisualisation extends WebVisualisation {
     // Remove old edges (and possiblye nodes).
     deleteOnStep(cmp)
     // Add the new edges.
-    oldDeps.filter(_._2.contains(cmp)).keySet.foreach {
+    analysis.deps.filter(_._2.contains(cmp)).keySet.foreach {
       case AddrDependency(addr) =>
         val addrNode: AddrNode = getNode(addr)
         val edge = getEdge(addrNode, readerNode)
@@ -68,7 +67,7 @@ trait AddressVisualisation extends WebVisualisation {
         edgesData += edge
       case _ =>
     }
-    oldDeps = analysis.deps // Avoid having to override stepAnalysis etc. by saving the new state of the dependencies.
+    oldReadDeps = analysis.deps // Avoid having to override stepAnalysis etc. by saving the new state of the dependencies.
   }
 
   override def classifyNodes(): Unit = {
@@ -89,24 +88,12 @@ trait AddressVisualisation extends WebVisualisation {
 
   override def setupMarker(svg: JsAny): js.Dynamic = {
     super.setupMarker(svg)
-    val marker = svg
-      .select("defs")
-      .append("marker")
-      .attr("id", __SVG_READ_ARROW__)
-      .attr("viewBox", "-0 -5 10 10")
-      .attr("refX", 0)
-      .attr("refY", 0)
-      .attr("orient", "auto")
-      .attr("markerWidth", 5)
-      .attr("markerHeight", 5)
-      .attr("fill", "wheat")
-      .attr("stroke", "wheat")
-    marker.append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5")
+    newMarker(svg, __SVG_READ_ARROW__).attr("fill", "tan").attr("stroke", "tan")
   }
 }
 
 /** Allows selecting which address nodes (and corresponding edges) are deleted upon a step in the analysis. */
-sealed trait AddressRetentionPolicy {
+trait AddressRetentionPolicy {
   this: AddressVisualisation =>
 
   /** Allows selecting which address nodes (and corresponding edges) are deleted upon a step in the analysis. */
@@ -116,9 +103,9 @@ sealed trait AddressRetentionPolicy {
 // Ensures all edges and addresses remain shown.
 trait RetainAll extends AddressRetentionPolicy {
   this: AddressVisualisation =>
-  override def deleteOnStep(cmp: analysis.Component): Unit = {
+  def deleteOnStep(cmp: analysis.Component): Unit = {
     val readerNode = getNode(cmp)
-    oldDeps.filter(_._2.contains(cmp)).keySet.foreach {
+    oldReadDeps.filter(_._2.contains(cmp)).keySet.foreach {
       case AddrDependency(addr) =>
         val addrNode: AddrNode = getNode(addr)
         val edge = getEdge(addrNode, readerNode)
@@ -131,7 +118,7 @@ trait RetainAll extends AddressRetentionPolicy {
 // Only shows the addresses read by the component last analysed.
 trait RetainUpdated extends AddressRetentionPolicy {
   this: AddressVisualisation =>
-  override def deleteOnStep(cmp: analysis.Component): Unit = {
+  def deleteOnStep(cmp: analysis.Component): Unit = {
     nodesData = nodesData.filterNot(_.isInstanceOf[AddrNode])
     edgesData = edgesData.filterNot(_.source.isInstanceOf[AddrNode])
   }

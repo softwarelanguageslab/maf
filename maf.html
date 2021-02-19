@@ -5,9 +5,9 @@
     <title>MAF Component Visualisation</title>
     <style>
       .nodes {
-        fill: white;
         stroke-width: 2;
         stroke: black;
+        fill: black;
       }
       .nodes .node_main {
         stroke: gold;
@@ -33,6 +33,11 @@
 
       .nodes .node_deleted {
         stroke: darkgray;
+        fill: darkgray;
+      }
+
+      .nodes .del_addr_node {
+        stroke: lightgray;
       }
 
       .nodes text {
@@ -52,6 +57,10 @@
         fill: tan;
       }
 
+      .nodes .del_addr_node text {
+        fill: lightgray;
+      }
+
       .links {
         stroke: black;
         stroke-width: 2;
@@ -60,16 +69,34 @@
       }
 
       .links .read_edge {
-        stroke: wheat;
+        stroke: tan;
         stroke-width: 2;
         fill: none;
         marker-end: url(#readarrow);
       }
 
+      .links .write_edge {
+        stroke: tan;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#writearrow);
+      }
+
       .links .edge_deleted {
         stroke: darkgray;
-        stroke-dasharray: 2;
         marker-end: url(#endarrow_deleted);
+      }
+
+      .links .del_read {
+        stroke: lightgray;
+        stroke-dasharray: 2;
+        marker-end: url(#delreadarrow);
+      }
+
+      .links .del_write {
+        stroke: lightgray;
+        stroke-dasharray: 2;
+        marker-end: url(#delwritearrow);
       }
 
       .links text {

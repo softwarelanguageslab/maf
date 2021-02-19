@@ -145,12 +145,13 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     refresh()
   }
 
-  def setupMarker(svg: JsAny) = {
+  // Adds a new base marker to the given svg. The marker is returned, so extra attributes can be added later.
+  def newMarker(svg: JsAny, id: String): js.Dynamic = {
     // adapted from http://bl.ocks.org/fancellu/2c782394602a93921faff74e594d1bb1
-    val marker = svg
+    val marker: js.Dynamic = svg
       .append("defs")
       .append("marker")
-      .attr("id", __SVG_ARROW_ID__)
+      .attr("id", id)
       .attr("viewBox", "-0 -5 10 10")
       .attr("refX", 0)
       .attr("refY", 0)
@@ -160,9 +161,14 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     marker
       .append("svg:path")
       .attr("d", "M 0,-5 L 10 ,0 L 0,5")
-    //.attr("fill", "#999")
-    //.style("stroke","none")
+    marker
   }
+
+  def setupMarker(svg: JsAny): js.Dynamic =
+    newMarker(svg, __SVG_ARROW_ID__)
+
+  //.attr("fill", "#999")
+  //.style("stroke","none")
 
   private def onTick() = {
     // update the nodes
