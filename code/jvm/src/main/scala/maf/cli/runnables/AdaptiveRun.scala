@@ -17,9 +17,9 @@ import maf.language.scheme.interpreter._
 
 object AdaptiveRun {
 
-  def main(args: Array[String]): Unit = testModConc()
+  def main(args: Array[String]): Unit = testAbstract()
 
-  def testConcrete() {
+  def testConcrete() = {
     val txt = """
     (define x 2) x
     """
@@ -49,14 +49,17 @@ object AdaptiveRun {
       with AdaptiveContextSensitivity
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
-      lazy val budget = 1000
+      lazy val budget = 100
+      var step = 0
       override def step(timeout: Timeout.T): Unit =
         //val cmp = workList.head
-        //println(s"Analysing ${view(cmp)}")
+        //println(s"[$step] Analysing ${view(cmp)}")
+        //step += 1
         super.step(timeout)
     }
-    anl.analyzeWithTimeout(Timeout.start(Duration(300, SECONDS)))
+    anl.analyze()
     //debugClosures(analysis)
+    println(anl.finished())
     debugResults(anl, false)
   }
 

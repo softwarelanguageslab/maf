@@ -178,7 +178,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             trigger(AddrDependency(addr))
             // Should be done for every address in the SCA because an SCC/SCA may contain "inner cycles".
             sca.foreach { addr =>
-              inter.store += addr -> lattice.bottom
+              inter.store += addr -> lattice.bottom // Todo, but value of the entrance of the cycle??????
               intra.store += addr -> lattice.bottom
               provenance -= addr
               updateProvenance(component,

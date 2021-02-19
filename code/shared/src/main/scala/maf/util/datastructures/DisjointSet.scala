@@ -37,10 +37,10 @@ class DisjointSet[A] {
       }
     }
 
-  def merge(e1: A, e2: A) =
+  def merge(e1: A, e2: A): A =
     union(find(e1), find(e2))
   def mergeAll(elms: Iterable[A]): A =
-    elms.tail.foldLeft(elms.head)(union)
+    elms.reduce(merge)
 
   def singleton(r: A): Boolean = (ranks(r) == 0)
 }

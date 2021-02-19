@@ -32,9 +32,6 @@ trait AdaptiveCallerSensitivity extends AdaptiveSchemeModFSemantics {
     case Call(clo, nam, ctx) => Call(clo, nam, adaptCaller(clo, ctx._1, ctx._2))
   }
   def registerCall(source: (Component, Position), target: Component) = ???
-  // we need to update the `calledBy` data structure whenever the analysis is adapted
-  override def updateAnalysisData(update: Component => Component) =
-    super.updateAnalysisData(update)
   // we instrument the intra-analysis to perform the necessary bookkeeping for 'calledBy' whenever a function is called
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFAnalysisIntra = new AdaptiveSchemeModFAnalysisIntra(cmp)
   class AdaptiveSchemeModFAnalysisIntra(component: Component) extends AdaptiveSchemeModFIntra(component) {

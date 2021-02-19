@@ -42,7 +42,7 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
     val callStack = calledBy(cmp)
     val prevCmps: Set[Component] = callStack.collect(c =>
       view(c) match {
-        case cll: Call[ComponentContext] if cll.clo._1.idn == call.clo._1.idn => c
+        case cll: Call[_] if cll.clo._1.idn == call.clo._1.idn => c
       }
     )
     val updatedCmps = prevCmps + cmp
@@ -51,7 +51,7 @@ trait AdaptiveArgumentSensitivityPolicy3 extends AdaptiveArgumentSensitivity {
     }
   }
   // we need to update the `calledBy` data structure whenever the analysis is adapted
-  override def updateAnalysisData(update: Component => Component) = {
+  override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     calledBy = updateMap(update, updateSet(update))(calledBy)
   }

@@ -73,8 +73,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
           // (b) too many reanalyses => reduce number of dependencies triggered for fn
           reduceDependencies(ms)
         }
-        updateAnalysis()
       }
+      updateAnalysis() //TODO: move this back inside the foreach or adapt reduceComponents
       toAdapt = Set.empty
     }
   }
@@ -94,6 +94,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       k = k - 1
       calls = calls.map(adaptCall(_, Some(k)))
     }
+    //println(s"${module.fun} -> $k")
     kPerFn += module.fun -> k // register the new k
     // if lowering context does not work => adapt parent components
     // TODO: do this earlier without dropping all context first
@@ -122,12 +123,12 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   }
   private def reduceAddresses(addrs: Set[Addr]) = {
     val target: Int = addrs.size / 2
-    val perLocation = addrs.groupBy(_.idn) // TODO: by expr instead of idn?
+    val perLocation = addrs.groupBy(getAddrExp) // TODO: by expr instead of idn?
     val chosenAddrs = takeLargest(perLocation.toList, (g: (_, Set[_])) => g._2.size, target)
-    val chosenFuncs = chosenAddrs.map(addr => getAddrModule(addr._2.head)).collect { case l: LambdaModule =>
-      l // guaranteed to be a lambda module!
-    }
-    // assert(chosenAddrs.size == chosenFuncs.size) // <- we expect all addresses to belong to Some(fn)
+    val chosenFuncs = chosenAddrs
+      .map(_._2)
+      .filter(_.size > 1)
+      .map(addrs => getAddrModule(addrs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
     chosenFuncs.toSet.foreach(reduceComponents)
   }
   private def reduceValueAbs(deps: MultiSet[Dependency]) = {
@@ -135,8 +136,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val chosenDeps = takeLargest(deps.toList, (g: (_, Int)) => g._2, target).map(_._1)
     val chosenSourceAddrs = chosenDeps.collect { case AddrDependency(addr) => addr }
     val chosenTargetAddrs = chosenSourceAddrs.map(store).flatMap(lattice.getPointerAddresses)
+    reduceAddresses(chosenTargetAddrs.toSet) // TODO: what about closures?
     chosenDeps.foreach(dep => summary = summary.clearDependency(dep))
-    reduceAddresses(chosenTargetAddrs.toSet)
   }
 
   /*
@@ -158,11 +159,19 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     case returnAddr: ReturnAddr[Component] @unchecked => returnAddr.cmp
     case schemeAddr: SchemeAddr[Component] @unchecked =>
       schemeAddr match {
-        case VarAddr(_, ctx) => ctx
-        case PtrAddr(_, ctx) => ctx
-        case _               => mainComponent
+        case VarAddr(_, cmp) => cmp
+        case PtrAddr(_, cmp) => cmp
+        case PrmAddr(_)      => mainComponent
       }
-    case _ => mainComponent
+  }
+  private def getAddrExp(addr: Addr): Expression = addr match {
+    case returnAddr: ReturnAddr[Component] @unchecked => expr(returnAddr.cmp)
+    case schemeAddr: SchemeAddr[Component] @unchecked =>
+      schemeAddr match {
+        case VarAddr(idf, _) => idf
+        case PtrAddr(exp, _) => exp
+        case PrmAddr(nam)    => Identifier(nam, Identity.none)
+      }
   }
   private def getAddrModule(addr: Addr): SchemeModule =
     module(getAddrCmp(addr))

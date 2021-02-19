@@ -41,6 +41,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
   // Starting the incremental analysis.
   override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean = true): Unit = {
+    logger.logU("\n" + storeString())
     logger.resetNumbering()
     logger.logU("\nUpdating analysis\n")
     try {

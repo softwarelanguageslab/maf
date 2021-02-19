@@ -133,7 +133,10 @@ object Main {
   }
 
   def createVisualisation(text: String) = new WebVisualisation(newStandardAnalysis(text))
-  def createIncrementalVisualisation(text: String) = new WebVisualisationIncremental(newIncrementalReanalysis(text))
+
+  def createIncrementalVisualisation(
+      text: String
+    ) = new WebVisualisationIncremental(newIncrementalReanalysis(text)) with RetainAllIncremental with AddressVisualisationIncremental
 
   def loadFile(text: String): Unit = {
     val visualisation = createIncrementalVisualisation(text)

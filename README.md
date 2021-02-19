@@ -86,17 +86,27 @@ can be executed.
 # References and Relevant publications
 The original idea behind MAF comes from the following work on modular analysis: [Effect-Driven Flow Analysis](https://doi.org/10.1007/978-3-030-11245-5_12), and [A general method for rendering static analyses for diverse concurrency models modular](https://doi.org/10.1016/j.jss.2018.10.001).
 The MAF framework is presented in the following publication:
-  * _MAF: A Framework for Modular Static Analysis of Higher-Order Languages_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf).
+
+* _MAF: A Framework for Modular Static Analysis of Higher-Order Languages_. SCAM
+  2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf). _See release: `SCAM 2020`_
  
 MAF is a complete rework of the [Scala-AM framework](https://github.com/acieroid/scala-am), which was not focused on
 modular static analysis but was primarily used to experiment with AAM-style analyses. Scala-AM is described in the
 following publications:
-  * _Scala-AM: A Modular Static Analysis Framework_. SCAM 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf), [doi](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am).
-  * _Building a Modular Static Analysis Framework in Scala_. Scala@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf), [doi](http://doi.acm.org/10.1145/2998392.3001579).
+
+* _Scala-AM: A Modular Static Analysis Framework_. SCAM
+  2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf)
+  , [doi](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am).
+* _Building a Modular Static Analysis Framework in Scala_. Scala@SPLASH
+  2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf)
+        , [doi](http://doi.acm.org/10.1145/2998392.3001579).
 
 **MAF has been used for evaluating modular static analysis approaches in the following publications:**
-  * _A Parallel Worklist Algorithm for Modular Analyses_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-10.pdf)
-  * _Incremental Flow Analysis through Computational Dependency Reification_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-12.pdf)
+
+* _A Parallel Worklist Algorithm for Modular Analyses_. SCAM
+  2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-10.pdf). _See release: `SCAM 2020`_
+* _Incremental Flow Analysis through Computational Dependency Reification_. SCAM
+  2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-12.pdf). _See release: `SCAM 2020`_
 
 **Scala-AM has been used for evaluating static analysis approaches in the following publications:**
   * _Garbage-Free Abstract Interpretation through Abstract Reference Counting_. ECOOP 2019. [pdf](http://drops.dagstuhl.de/opus/volltexte/2019/10784/).

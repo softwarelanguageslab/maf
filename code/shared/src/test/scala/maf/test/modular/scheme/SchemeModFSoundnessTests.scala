@@ -41,7 +41,8 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
     with SchemeConstantPropagationDomain
     with SchemeModFNoSensitivity
-    with CallDepthFirstWorklistAlgorithm[SchemeExp] with ParallelWorklistAlgorithm[SchemeExp] {
+    with CallDepthFirstWorklistAlgorithm[SchemeExp]
+    with ParallelWorklistAlgorithm[SchemeExp] {
     override def workers = 8
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
   }
