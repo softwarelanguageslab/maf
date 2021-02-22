@@ -20,6 +20,11 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
   // parameterized by some store that can be accessed and modified
   var store: Map[Addr, Value]
 
+  def writeAddr(addr: Addr, value: Value): Boolean =
+    updateAddr(inter.store, addr, value)
+      .map(updated => inter.store = updated)
+      .isDefined
+
   private def updateAddr(
       store: Map[Addr, Value],
       addr: Addr,
@@ -54,10 +59,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
       }.isDefined
 
     override def doWrite(dep: Dependency): Boolean = dep match {
-      case AddrDependency(addr) =>
-        updateAddr(inter.store, addr, intra.store(addr))
-          .map(updated => inter.store = updated)
-          .isDefined
+      case AddrDependency(addr) => inter.writeAddr(addr, intra.store(addr))
       case _ => super.doWrite(dep)
     }
 
