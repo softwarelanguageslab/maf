@@ -112,13 +112,13 @@ object Main {
     }
     try {
       println("Starting initial analysis.") // Will be logged to console.
-      analyzeWithTimeout(Timeout.start(Duration(5, MINUTES)))
+      // analyzeWithTimeout(Timeout.start(Duration(5, MINUTES)))
       println("Finished initial analysis. Preparing for reanalysis.")
       version = New
       optimisationFlag = true
-      val affected = findUpdatedExpressions(program).flatMap(mapping)
-      affected.foreach(addToWorkList)
-      println(s"Directly affected components: ${affected.toList.mkString(", ")}")
+      // val affected = findUpdatedExpressions(program).flatMap(mapping)
+      // affected.foreach(addToWorkList)
+      // println(s"Directly affected components: ${affected.toList.mkString(", ")}")
       println("Preparation finished. Starting reanalysis.")
     } catch {
       case t: Throwable =>
@@ -133,7 +133,10 @@ object Main {
   }
 
   def createVisualisation(text: String) = new WebVisualisation(newStandardAnalysis(text))
-  def createIncrementalVisualisation(text: String) = new WebVisualisationIncremental(newIncrementalReanalysis(text))
+
+  def createIncrementalVisualisation(
+      text: String
+    ) = new WebVisualisationIncremental(newIncrementalReanalysis(text)) with RetainAllIncremental with AddressVisualisationIncremental
 
   def loadFile(text: String): Unit = {
     val visualisation = createIncrementalVisualisation(text)

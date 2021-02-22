@@ -1,11 +1,13 @@
 package maf.web
 
 import maf.core._
+import maf.modular.GlobalStore
 import maf.modular.adaptive._
 
 // Scala.js-related imports
 import scala.scalajs.js
 import maf.modular.DependencyTracking
+import maf.modular.components.IndirectComponents
 
 object WebVisualisationAdaptive {
   val d3 = js.Dynamic.global.d3
@@ -17,13 +19,18 @@ object WebVisualisationAdaptive {
     .range(__NODE_COLORS__)
 }
 
-trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with DependencyTracking[Expr] {
+trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with DependencyTracking[Expr] with GlobalStore[Expr] {
+  
   var webvis: WebVisualisationAdaptive = null
+
+  def key(cmp: Component): Any
+
   override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     webvis.adapted = true
   }
-  def key(cmp: Component): Any
+
+  override def intraAnalysis(cmp: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
 }
 
 class WebVisualisationAdaptive(override val analysis: WebAdaptiveAnalysis[_]) extends WebVisualisation(analysis) {
@@ -35,7 +42,7 @@ class WebVisualisationAdaptive(override val analysis: WebAdaptiveAnalysis[_]) ex
 
   var adapted = false
 
-  override def displayText(cmp: analysis.Component) =
+  override def componentText(cmp: analysis.Component) =
     s"[$cmp] ${analysis.deref(cmp).toString()}"
 
   override def refreshDataAfterStep(cmp: analysis.Component, dps: Set[analysis.Component]) =
