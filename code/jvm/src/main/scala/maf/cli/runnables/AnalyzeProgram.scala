@@ -45,7 +45,7 @@ object AnalyzeProgram extends App {
       with SchemeConstantPropagationDomain
       with DependencyTracking[SchemeExp]
       with FIFOWorklistAlgorithm[SchemeExp] {
-      override def intraAnalysis(cmp: SchemeModFComponent): IntraAnalysis with BigStepModFIntra =
+      override def intraAnalysis(cmp: SchemeModFComponent) =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
     }
   }

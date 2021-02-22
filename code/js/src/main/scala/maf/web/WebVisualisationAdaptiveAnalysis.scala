@@ -5,6 +5,7 @@ import maf.modular.adaptive._
 
 // Scala.js-related imports
 import scala.scalajs.js
+import maf.modular.DependencyTracking
 
 object WebVisualisationAdaptive {
   val d3 = js.Dynamic.global.d3
@@ -16,7 +17,7 @@ object WebVisualisationAdaptive {
     .range(__NODE_COLORS__)
 }
 
-trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] {
+trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with DependencyTracking[Expr] {
   var webvis: WebVisualisationAdaptive = null
   override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
