@@ -12,6 +12,8 @@ object AddressVisualisationIncremental {
   val __CSS_DELREAD_EDGE__ = "del_read" // Deleted read.
   val __CSS_DELWRITE_EDGE__ = "del_write"
   val __CSS_DELETED_EDGE__ = "del_addr_edge"
+  val __CSS_EXISTING_WRITE__ = "existingwrite"
+  val __CSS_FORMER_WRITE__ = "formerwrite"
   val __SVG_WRITE_ARROW__ = "writearrow"
   val __SVG_DREAD_ARROW__ = "delreadarrow"
   val __SVG_DWRITE_ARROW__ = "delwritearrow"
@@ -20,6 +22,14 @@ object AddressVisualisationIncremental {
 trait AddressVisualisationIncremental extends WebVisualisationIncremental with AddressVisualisation {
 
   var oldWriteDeps: Map[analysis.Component, Set[analysis.Addr]] = Map().withDefaultValue(Set.empty)
+
+  def isWriteEdge(edge: Edge): Boolean = edge.source.isInstanceOf[CmpNode] && edge.target.isInstanceOf[AddrNode]
+
+  def isExistingReadEdge(edge: Edge): Boolean =
+    analysis.cachedReadDeps(edge.target.asInstanceOf[CmpNode].component).contains(AddrDependency(edge.source.asInstanceOf[AddrNode].address))
+
+  def isExistingWriteEdge(edge: Edge): Boolean =
+    analysis.cachedWrites(edge.source.asInstanceOf[CmpNode].component).contains(edge.target.asInstanceOf[AddrNode].address)
 
   // Now also add edges for writes.
   override def refreshData(): Unit = {
@@ -61,26 +71,16 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
   override def classifyEdges(): Unit = {
     super.classifyEdges()
     edges
-      .classed(
-        __CSS_DELREAD_EDGE__,
-        (edge: Edge) =>
-          edge.source.isInstanceOf[AddrNode] && edge.target.isInstanceOf[CmpNode] &&
-            !analysis.cachedReadDeps(edge.target.asInstanceOf[CmpNode].component).contains(AddrDependency(edge.source.asInstanceOf[AddrNode].address))
-      )
-      .classed(
-        __CSS_WRITE_EDGE__,
-        (edge: Edge) =>
-          edge.source.isInstanceOf[CmpNode] && edge.target.isInstanceOf[AddrNode] &&
-            analysis.cachedWrites(edge.source.asInstanceOf[CmpNode].component).contains(edge.target.asInstanceOf[AddrNode].address) //&&
-        // analysis.provenance(edge.target.asInstanceOf[AddrNode].address)(edge.source.asInstanceOf[CmpNode].component) != analysis.lattice.bottom
-      )
-      .classed(
-        __CSS_DELWRITE_EDGE__,
-        (edge: Edge) =>
-          edge.source.isInstanceOf[CmpNode] && edge.target.isInstanceOf[AddrNode] &&
-            !analysis.cachedWrites(edge.source.asInstanceOf[CmpNode].component).contains(edge.target.asInstanceOf[AddrNode].address) //&&
-        // analysis.provenance(edge.target.asInstanceOf[AddrNode].address)(edge.source.asInstanceOf[CmpNode].component) == analysis.lattice.bottom
-      )
+      .classed(__CSS_DELREAD_EDGE__, (edge: Edge) => isReadEdge(edge) && isExistingReadEdge(edge))
+      .classed(__CSS_WRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && isExistingWriteEdge(edge))
+      .classed(__CSS_DELWRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && !isExistingWriteEdge(edge))
+  }
+
+  override def classifyLabels(): Unit = {
+    super.classifyLabels()
+    labels
+      .classed(__CSS_EXISTING_WRITE__, (edge: Edge) => isWriteEdge(edge) && isExistingWriteEdge(edge))
+      .classed(__CSS_FORMER_WRITE__, (edge: Edge) => isWriteEdge(edge) && !isExistingWriteEdge(edge))
   }
 
   override def setupMarker(svg: JsAny): js.Dynamic = {
@@ -88,39 +88,33 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
     newMarker(svg, __SVG_WRITE_ARROW__).attr("fill", "tan").attr("stroke", "tan")
     newMarker(svg, __SVG_DREAD_ARROW__).attr("fill", "lightgray").attr("stroke", "lightgray")
     newMarker(svg, __SVG_DWRITE_ARROW__).attr("fill", "lightgray").attr("stroke", "lightgray")
-
   }
 
-  /*
   // Based on http://bl.ocks.org/jhb/5955887.
+  // TODO: get text in the right place, in the right colour and remove old text.
   override def refreshHook(): Unit = {
     super.refreshHook()
     // Update the labels on the edges
     val labelsUpdate = labels.data(edgesData, (e: Edge) => (e.source.data(), e.target.data()))
     labels = labelsUpdate
       .enter()
+      .remove("text")
       .append("text")
       .style("pointer-events", "none")
       .attr("class", "labels")
-      .attr("fill", "black")
     labelsUpdate
       .append("textPath")
       .attr("xlink:href", (e: Edge) => "#" + e.id)
-      .text(
-        "Hello world"
-        //(e: Edge) =>
-        //e.target match {
-        //  case node: AddrNode => analysis.provenance(node.address)(e.source.asInstanceOf[CmpNode].component).toString
-        //  case _              => "NONE"
-        // }
+      .text((e: Edge) =>
+        e.target match {
+          case node: AddrNode => analysis.provenance(node.address)(e.source.asInstanceOf[CmpNode].component).toString.take(15)
+          case _              => ""
+        }
       )
+    classifyLabels()
     labelsUpdate.exit().remove()
   }
 
-  override def onTickHook(): Unit =
-    super.onTickHook()
-  //TODO
-   */
 }
 
 // Ensures all edges and addresses remain shown.

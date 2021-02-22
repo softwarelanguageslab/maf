@@ -298,6 +298,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     edgesUpdate.exit().remove()
     // Possible perform more updates.
     refreshHook()
+    classifyLabels()
     // update the simulation
     simulation.nodes(nodesData)
     simulation.force(__FORCE_LINKS__).links(edgesData)
@@ -329,10 +330,13 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
                    case _             => false
                  }
       )
+
   //.style("fill", (node: Node) => colorFor(node.component))
 
   /** Classifies every edge based on its role in the analysis, so the edge can be coloured correctly. */
   def classifyEdges(): Unit = ()
+
+  def classifyLabels(): Unit = ()
 
   //
   // INPUT HANDLING

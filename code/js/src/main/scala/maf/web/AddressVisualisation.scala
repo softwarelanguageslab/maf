@@ -25,6 +25,8 @@ trait AddressVisualisation extends WebVisualisation {
     def data(): Any = address
   }
 
+  def isReadEdge(edge: Edge): Boolean = edge.source.isInstanceOf[AddrNode] && edge.target.isInstanceOf[CmpNode]
+
   def getNode(addr: analysis.Addr): AddrNode = adrNodesColl.get(addr) match {
     case None =>
       val newNode = new AddrNode(addr)
@@ -83,12 +85,12 @@ trait AddressVisualisation extends WebVisualisation {
 
   override def classifyEdges(): Unit = {
     super.classifyEdges()
-    edges.classed(__CSS_READ_EDGE__, (edge: Edge) => edge.source.isInstanceOf[AddrNode] && edge.target.isInstanceOf[CmpNode])
+    edges.classed(__CSS_READ_EDGE__, isReadEdge(_))
   }
 
   override def setupMarker(svg: JsAny): js.Dynamic = {
     super.setupMarker(svg)
-    newMarker(svg, __SVG_READ_ARROW__).attr("fill", "tan").attr("stroke", "tan")
+    newMarker(svg, __SVG_READ_ARROW__).attr("fill", "navajowhite").attr("stroke", "navajowhite")
   }
 }
 
