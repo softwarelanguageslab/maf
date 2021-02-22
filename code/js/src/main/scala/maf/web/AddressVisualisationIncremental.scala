@@ -71,7 +71,7 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
   override def classifyEdges(): Unit = {
     super.classifyEdges()
     edges
-      .classed(__CSS_DELREAD_EDGE__, (edge: Edge) => isReadEdge(edge) && isExistingReadEdge(edge))
+      .classed(__CSS_DELREAD_EDGE__, (edge: Edge) => isReadEdge(edge) && !isExistingReadEdge(edge))
       .classed(__CSS_WRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && isExistingWriteEdge(edge))
       .classed(__CSS_DELWRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && !isExistingWriteEdge(edge))
   }
