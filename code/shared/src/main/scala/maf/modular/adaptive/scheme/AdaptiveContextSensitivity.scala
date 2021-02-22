@@ -52,9 +52,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     if (newCost > budget) {
       toAdapt += module
     }
-
-  override protected def adaptAnalysis(): Unit = {
-    super.adaptAnalysis()
+    
+  def adaptAnalysis(): Unit = {
     if (toAdapt.nonEmpty) {
       // adapt the components of marked modules
       // 2 possibilies:

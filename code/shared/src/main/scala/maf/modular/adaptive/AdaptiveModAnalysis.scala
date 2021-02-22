@@ -9,22 +9,28 @@ import maf.util.datastructures._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
-abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
+abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, rate: Int = 1000)
     extends ModAnalysis(program)
        with IndirectComponents[Expr]
-       with SequentialWorklistAlgorithm[Expr]
-       with DependencyTracking[Expr] {
+       with SequentialWorklistAlgorithm[Expr] {
 
   import maf.modular.components.IndirectComponents._
 
   var mainComponent: Component = _
 
-  // after every step, the adaptive analysis gets an opportunity to reflect on (introspection) and possible change (intercession) the analysis behaviour
+  // after every `rate` steps, the adaptive analysis gets an opportunity to reflect on (introspection) and possible change (intercession) the analysis behaviour
   // the method `adaptAnalysis` needs to be implemented to decide when and how this is carried out
   protected def adaptAnalysis(): Unit
+
+  private var stepCount = 0
   override def step(timeout: Timeout.T): Unit = {
     super.step(timeout)
-    adaptAnalysis()
+    if(stepCount == rate) {
+      stepCount = 0
+      adaptAnalysis()
+    } else {
+      stepCount += 1
+    }
   }
   // the core of the adaptive analysis: one needs to implement how components are to be "adapted"
   // the idea is that the definition/results of `adaptComponent` can change during the analysis itself ...
@@ -82,8 +88,6 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr)
   def updateAnalysisData(update: Map[Component, Component]) = {
     workList = workList.map(update)
     visited = updateSet(update)(visited)
-    newComponents = updateSet(update)(newComponents)
-    dependencies = updateMap(update, updateSet(update))(dependencies)
     deps = updateMap(updateDep(update), updateSet(update))(deps)
     mainComponent = update(mainComponent)
   }

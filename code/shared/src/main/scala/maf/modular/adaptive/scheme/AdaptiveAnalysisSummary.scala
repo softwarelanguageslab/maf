@@ -111,14 +111,18 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   // allow to detect when the cost of a given module increases
   def onCostIncrease(fn: SchemeModule, newCost: Int)
   // update the summary each time a new component is discovered
-  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) =
-    summary = summary.addComponent(LambdaModule(call.clo._1), cmp)
+  override def spawn(cmp: Component) = {
+    super.spawn(cmp)
+    if(!visited(cmp)) {
+      summary = summary.addComponent(cmp)
+    }
+  }
   // update the summary each time a dependency triggers a component
   override def trigger(dep: Dependency): Unit = {
+    super.trigger(dep)
     deps.getOrElse(dep, Set.empty).foreach { cmp =>
       summary = summary.addDependency(cmp, dep)
     }
-    super.trigger(dep)
   }
   // correctly update the summary after adaptation
   override def updateAnalysisData(update: Map[Component, Component]) = {

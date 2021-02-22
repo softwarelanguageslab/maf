@@ -7,6 +7,7 @@ import maf.modular.scheme.modf._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.language.scheme._
 import maf.modular.adaptive._
+import maf.util.benchmarks._
 
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics
@@ -56,27 +57,11 @@ trait AdaptiveSchemeModFSemantics
     case c: Call[ComponentContext] @unchecked => adaptCall(c)
   }
   protected def adaptCall(c: Call[ComponentContext]): Call[ComponentContext]
-  // callback function that can adapt the analysis whenever a new component is 'discovered'
-  protected def onNewComponent(cmp: Component, call: Call[ComponentContext]): Unit = ()
   // go over all new components after each step of the analysis, passing them to `onNewComponent`
   // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
-  var toProcess = Set[Component]()
-  override protected def adaptAnalysis() = {
-    this.toProcess = this.newComponents
-    while (toProcess.nonEmpty) {
-      val cmp = toProcess.head
-      toProcess = toProcess.tail
-      val call = view(cmp).asInstanceOf[Call[ComponentContext]]
-      onNewComponent(cmp, call)
-    }
-  }
-  override def updateAnalysisData(update: Map[Component, Component]) = {
-    super.updateAnalysisData(update)
-    this.toProcess = updateSet(update)(toProcess)
-  }
   override def baseEnv = WrappedEnv(super.baseEnv, 0, mainComponent)
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFIntra = new AdaptiveSchemeModFIntra(cmp)
-  class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra {
+  class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra {
     override protected def newClosure(
         lambda: SchemeLambdaExp,
         env: Env,
