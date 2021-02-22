@@ -2,7 +2,7 @@ package maf.web
 
 import maf.modular._
 import maf.web.AddressVisualisationIncremental._
-import maf.web.WebVisualisation.JsAny
+import maf.web.WebVisualisation._
 
 import scala.scalajs.js
 
@@ -90,6 +90,37 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
     newMarker(svg, __SVG_DWRITE_ARROW__).attr("fill", "lightgray").attr("stroke", "lightgray")
 
   }
+
+  /*
+  // Based on http://bl.ocks.org/jhb/5955887.
+  override def refreshHook(): Unit = {
+    super.refreshHook()
+    // Update the labels on the edges
+    val labelsUpdate = labels.data(edgesData, (e: Edge) => (e.source.data(), e.target.data()))
+    labels = labelsUpdate
+      .enter()
+      .append("text")
+      .style("pointer-events", "none")
+      .attr("class", "labels")
+      .attr("fill", "black")
+    labelsUpdate
+      .append("textPath")
+      .attr("xlink:href", (e: Edge) => "#" + e.id)
+      .text(
+        "Hello world"
+        //(e: Edge) =>
+        //e.target match {
+        //  case node: AddrNode => analysis.provenance(node.address)(e.source.asInstanceOf[CmpNode].component).toString
+        //  case _              => "NONE"
+        // }
+      )
+    labelsUpdate.exit().remove()
+  }
+
+  override def onTickHook(): Unit =
+    super.onTickHook()
+  //TODO
+   */
 }
 
 // Ensures all edges and addresses remain shown.

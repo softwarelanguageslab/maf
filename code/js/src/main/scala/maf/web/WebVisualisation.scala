@@ -70,6 +70,13 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
   // BOOKKEEPING (needed to play nice with Scala.js and d3.js)
   //
 
+  var edgeID: Int = 0 // Last unused edge id.
+  def newEdgeID(): String = {
+    val id = s"edge$edgeID"
+    edgeID += 1
+    id
+  }
+
   trait Node extends js.Object {
     def displayText(): String
 
@@ -82,7 +89,10 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     def data(): Any = component
   }
 
-  class Edge(val source: Node, val target: Node) extends js.Object
+  // An edge contains an id so it can be referenced (e.g., to add text).
+  class Edge(val source: Node, val target: Node) extends js.Object {
+    val id: String = newEdgeID() // Linking errors arise when adding this as a class argument...
+  }
 
   var nodesData: Set[Node] = Set()
   var edgesData: Set[Edge] = Set()
@@ -110,7 +120,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
   // VISUALISATION SETUP
   //
 
-  var nodes, edges: JsAny = _ // will be used to keep selections of nodes/edges in the visualisation
+  var nodes, edges, labels: JsAny = _ // will be used to keep selections of nodes/edges/labels in the visualisation
   val simulation: JsAny = d3.forceSimulation() // create a d3 force simulation
 
   def init(
@@ -125,8 +135,10 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     val innerContainer = outerContainer.append("g").attr("transform", s"translate(${width / 2},${height / 2})")
     val nodesContainer = innerContainer.append("g").attr("class", "nodes")
     val edgesContainer = innerContainer.append("g").attr("class", "links")
+    val labelsContainer = innerContainer.append("g").attr("class", "labels")
     nodes = nodesContainer.selectAll("g")
     edges = edgesContainer.selectAll("path")
+    labels = labelsContainer.selectAll("label")
     setupMarker(svg)
     // setup the click handler
     svg.on("click", () => onClick())
@@ -170,6 +182,8 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
   //.attr("fill", "#999")
   //.style("stroke","none")
 
+  def onTickHook(): Unit = ()
+
   private def onTick() = {
     // update the nodes
     nodes.attr("transform", (node: JsAny) => s"translate(${node.x},${node.y})")
@@ -202,6 +216,8 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
           s"M$x1 $y1 L$x2 $y2"
         }
     )
+    // Maybe perform other updates.
+    onTickHook()
   }
 
   //
@@ -250,6 +266,9 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     }
   }
 
+  // Can be overridden to do perform extra updates upon the refresh of the visualisation.
+  def refreshHook(): Unit = ()
+
   // updates the visualisation: draws all nodes/edges, sets correct CSS classes, etc.
   def refreshVisualisation(): Unit = {
     // update the nodes
@@ -274,8 +293,11 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     // update the edges
     val edgesUpdate = edges.data(edgesData, (e: Edge) => (e.source.data(), e.target.data()))
     edges = edgesUpdate.enter().append("path").merge(edgesUpdate)
+    edges.attr("id", (e: Edge) => e.id)
     classifyEdges()
     edgesUpdate.exit().remove()
+    // Possible perform more updates.
+    refreshHook()
     // update the simulation
     simulation.nodes(nodesData)
     simulation.force(__FORCE_LINKS__).links(edgesData)
