@@ -23,30 +23,28 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   var deletedC: Set[Component] = Set()
 
   def getSummary(): String =
-    s"""##########################################
-       |Analysis Summary:
-       |  - mode:
-       |      * optimised: $optimisationFlag
-       |      * cycle opt: $tarjanFlag
-       |  - components: ${visited.size}
-       |      ${visited.mkString(", ")}
-       |  - intra-component analyses: 
-       |      * initial: $intraC
-       |      * update:  $intraCU
-       |  - deleted components: ${deletedC.size} (might have been recreated later)
-       |      ${deletedC.mkString(", ")}
-       |  - deleted Addresses:  ${deletedA.size} (might have been recreated later)
-       |      ${deletedA.mkString(", ")}
+    configuration.toString + "\n" +
+      s"""##########################################
+         |Analysis Summary:
+         |  - components: ${visited.size}
+         |      ${visited.mkString(", ")}
+         |  - intra-component analyses: 
+         |      * initial: $intraC
+         |      * update:  $intraCU
+         |  - deleted components: ${deletedC.size} (might have been recreated later)
+         |      ${deletedC.mkString(", ")}
+         |  - deleted Addresses:  ${deletedA.size} (might have been recreated later)
+         |      ${deletedA.mkString(", ")}
        |##########################################""".stripMargin
 
   // Starting the incremental analysis.
-  override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean = true): Unit = {
+  override def updateAnalysis(timeout: Timeout.T): Unit = {
     logger.logU("\n" + storeString())
     logger.resetNumbering()
     logger.logU("\nUpdating analysis\n")
     try {
-      super.updateAnalysis(timeout, optimisedExecution)
-      if (tarjanFlag) {
+      super.updateAnalysis(timeout)
+      if (configuration.cyclicValueInvalidation) {
         addressDependencies.foreach({ case (cmp, map) =>
           map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
         })
@@ -89,7 +87,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       if (version == Old) intraC += 1 else intraCU += 1
       logger.log(s"Analysing $component")
-      if (tarjanFlag) logger.log(s"* S Resetting addressDependencies for $component.")
+      if (configuration.cyclicValueInvalidation) logger.log(s"* S Resetting addressDependencies for $component.")
       super.analyzeWithTimeout(timeout)
     }
 
@@ -102,7 +100,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
     // Writing an address.
     override def writeAddr(addr: Addr, value: Value): Boolean = {
-      if (tarjanFlag) reads.foreach(r => logger.log(s"* D $addr -> $r ($component)"))
+      if (configuration.cyclicValueInvalidation) reads.foreach(r => logger.log(s"* D $addr -> $r ($component)"))
       val b = super.writeAddr(addr, value)
       if (b) logger.log(s"W $addr <= $value (becomes ${intra.store.getOrElse(addr, lattice.bottom)})")
       b

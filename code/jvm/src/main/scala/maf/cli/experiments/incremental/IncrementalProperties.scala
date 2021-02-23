@@ -5,6 +5,7 @@ import maf.core._
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme._
+import maf.modular.incremental._
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme._
 import maf.util.datastructures.ListOps.Crossable
@@ -55,22 +56,23 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     val program = parse(file)
 
     // Initial analysis: analyse + update.
-    val a1 = analysis(program)
+    val a1 = analysis(program, NoOptimisations)
 
     // Base case: analysis of new program version.
-    val a2 = analysis(program)
+    val a2 = analysis(program, NoOptimisations) // The configuration does not matter here.
     a2.version = New
 
     // Run the initial analysis.
     if (!runAnalysis("init ", file, a1, timeOut => a1.analyzeWithTimeout(timeOut), initS)) return
 
     val a1Copy = a1.deepCopy()
+    a1Copy.configuration = AllOptimisations
 
     // Update the initial analysis.
-    runAnalysis("inc1 ", file, a1, timeOut => a1.updateAnalysis(timeOut, false), inc1S)
+    runAnalysis("inc1 ", file, a1, timeOut => a1.updateAnalysis(timeOut), inc1S)
 
     // Run the second incremental update.
-    runAnalysis("inc2 ", file, a1Copy, timeOut => a1Copy.updateAnalysis(timeOut, true), inc2S)
+    runAnalysis("inc2 ", file, a1Copy, timeOut => a1Copy.updateAnalysis(timeOut), inc2S)
 
     // Run a full reanalysis
     runAnalysis("rean ", file, a2, timeOut => a2.analyzeWithTimeout(timeOut), reanS)
@@ -99,7 +101,7 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
 
   val outputFile: String = s"properties/modf-type.txt"
 }
@@ -107,7 +109,7 @@ object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
 object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
 
   val outputFile: String = s"properties/modf-CP.txt"
 }
@@ -115,7 +117,7 @@ object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties {
 object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysisTypeLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
 
   val outputFile: String = s"properties/modconc-type.txt"
 }
@@ -123,7 +125,7 @@ object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
 object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysisCPLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
 
   val outputFile: String = s"properties/modconc-CP.txt"
 }

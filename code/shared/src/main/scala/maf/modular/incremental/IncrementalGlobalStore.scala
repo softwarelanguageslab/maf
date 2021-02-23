@@ -145,13 +145,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ***** Incremental update: actually perform the incremental analysis ***** */
   /* ************************************************************************* */
 
-  var tarjanFlag: Boolean = optimisationFlag // Flag to enable the latest optimization.
-
-  override def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean): Unit = {
-    if (tarjanFlag)
+  override def updateAnalysis(timeout: Timeout.T): Unit = {
+    if (configuration.cyclicValueInvalidation)
       SCAs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
-    super.updateAnalysis(timeout, optimisedExecution)
-    if (tarjanFlag) SCAs = Set()
+    super.updateAnalysis(timeout)
+    if (configuration.cyclicValueInvalidation) SCAs = Set()
   }
 
   /* ************************************ */
@@ -162,14 +160,15 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     intra =>
 
     abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
-      if (tarjanFlag) addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
+      if (configuration.cyclicValueInvalidation)
+        addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
       super.analyzeWithTimeout(timeout)
     }
 
     var reads: Set[Addr] = Set()
 
     override def readAddr(addr: Addr): Value = {
-      if (tarjanFlag) {
+      if (configuration.cyclicValueInvalidation) {
         reads += addr
         if (version == New) {
           // Zero or one SCCs will be found.
@@ -205,7 +204,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       // Update the intra-provenance: for every address, keep the join of the values written to the address.
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
       // Update the value flow information and reset the reads information.
-      if (tarjanFlag) {
+      if (configuration.cyclicValueInvalidation) {
         addressDependencies =
           addressDependencies + (component -> (addressDependencies(component) + (addr -> (addressDependencies(component)(addr) ++ reads))))
         reads = Set()
@@ -221,7 +220,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
      *       Otherwise this function could be merged into refineWrites.
      */
     override def doWrite(dep: Dependency): Boolean = dep match {
-      case AddrDependency(addr) if optimisationFlag =>
+      case AddrDependency(addr) if (configuration.writeInvalidation) =>
         // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
         // Also, this would not work, as updateAddr only performs monotonic updates.
         updateAddrInc(component, addr, intraProvenance(addr))
@@ -251,7 +250,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     /** First performs the commit. Then uses information inferred during the analysis of the component to refine the store if possible. */
     override def commit(): Unit = {
       super.commit() // First do the super commit, as this will cause the actual global store to be updated.
-      if (optimisationFlag) {
+      if (configuration.writeInvalidation) {
         refineWrites() // Refine the store by removing extra addresses or using the provenance information to refine the values in the store.
         registerProvenances() // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
       }

@@ -24,7 +24,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 
   type A = IncrementalModAnalysis[SchemeExp] with IncrementalGlobalStore[SchemeExp] with SchemeAssertSemantics
 
-  override def analysis(e: SchemeExp): A
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration): A
 
   def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
 
@@ -56,8 +56,8 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     print(s"Analysing $file: ")
     val program = parse(file)
 
-    val a1 = analysis(program)
-    val a2 = analysis(program)
+    val a1 = analysis(program, CustomOptimisations(cyclicValueInvalidation = false))
+    val a2 = analysis(program, NoOptimisations) // This configuration does not matter.
     a2.version = New
 
     if (
@@ -74,20 +74,19 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     }
 
     val a1Copy = a1.deepCopy()
+    a1Copy.configuration = AllOptimisations
 
     runAnalysis(file,
                 "inc1",
                 timeOut => {
-                  a1.tarjanFlag = false
-                  a1.updateAnalysis(timeOut, true);
+                  a1.updateAnalysis(timeOut);
                   a1
                 }
     )
     runAnalysis(file,
                 "inc2",
                 timeOut => {
-                  a1Copy.tarjanFlag = true
-                  a1Copy.updateAnalysis(timeOut, true);
+                  a1Copy.updateAnalysis(timeOut);
                   a1Copy
                 }
     )
@@ -128,13 +127,13 @@ trait IncrementalSchemeModFAssertionEvaluation extends IncrementalSchemeAssertio
 }
 
 object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation {
-  override def analysis(e: SchemeExp) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e, config)
 
   override val outputFile: String = s"assertions/modf-CP.txt"
 }
 
 object IncrementalSchemeBigStepTypeAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation {
-  override def analysis(e: SchemeExp) = new IncrementalSchemeModFAssertionAnalysisTypeLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAssertionAnalysisTypeLattice(e, config)
 
   override val outputFile: String = s"assertions/modf-Type.txt"
 }

@@ -10,6 +10,7 @@ import maf.modular.scheme.modf._
 import maf.modular.worklist._
 import maf.util.benchmarks.Timeout
 import maf.language.change.CodeVersion._
+import maf.modular.incremental._
 
 import scala.concurrent.duration._
 
@@ -71,8 +72,8 @@ object Main {
     }
   }
 
-  class IncrementalAnalysis(program: SchemeExp)
-      extends IncrementalSchemeModFAssertionAnalysisCPLattice(program)
+  class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfiguration)
+      extends IncrementalSchemeModFAssertionAnalysisCPLattice(program, configuration)
          with VisualisableIncrementalModAnalysis[SchemeExp] {
 
     override def updateAddrInc(
@@ -112,13 +113,12 @@ object Main {
     }
     try {
       println("Starting initial analysis.") // Will be logged to console.
-      // analyzeWithTimeout(Timeout.start(Duration(5, MINUTES)))
+      analyzeWithTimeout(Timeout.start(Duration(5, MINUTES)))
       println("Finished initial analysis. Preparing for reanalysis.")
       version = New
-      optimisationFlag = true
-      // val affected = findUpdatedExpressions(program).flatMap(mapping)
-      // affected.foreach(addToWorkList)
-      // println(s"Directly affected components: ${affected.toList.mkString(", ")}")
+      val affected = findUpdatedExpressions(program).flatMap(mapping)
+      affected.foreach(addToWorkList)
+      println(s"Directly affected components: ${affected.toList.mkString(", ")}")
       println("Preparation finished. Starting reanalysis.")
     } catch {
       case t: Throwable =>
@@ -129,7 +129,7 @@ object Main {
 
   def newIncrementalReanalysis(text: String): IncrementalSchemeModFAnalysisCPLattice with VisualisableIncrementalModAnalysis[SchemeExp] = {
     val program: SchemeExp = CSchemeParser.parse(text)
-    new IncrementalAnalysis(program)
+    new IncrementalAnalysis(program, AllOptimisations)
   }
 
   def createVisualisation(text: String) = new WebVisualisation(newStandardAnalysis(text))

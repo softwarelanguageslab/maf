@@ -2,7 +2,7 @@ package maf.cli.experiments.incremental
 
 import maf.core.Expression
 import maf.modular.GlobalStore
-import maf.modular.incremental.{IncrementalGlobalStore, IncrementalModAnalysis}
+import maf.modular.incremental.{IncrementalConfiguration, IncrementalGlobalStore, IncrementalModAnalysis}
 import maf.util.Writer._
 import maf.util.benchmarks.Timeout
 
@@ -14,7 +14,7 @@ trait IncrementalExperiment[E <: Expression] {
   type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
   // Analysis construction.
-  def analysis(e: E): Analysis
+  def analysis(e: E, config: IncrementalConfiguration): Analysis
 
   // Parsing.
   def parse(string: String): E

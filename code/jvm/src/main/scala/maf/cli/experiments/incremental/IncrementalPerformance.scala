@@ -5,6 +5,7 @@ import maf.core.Expression
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
+import maf.modular.incremental._
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.util.Reader
 import maf.util.benchmarks._
@@ -69,7 +70,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     for (w <- 1 to maxWarmupRuns) {
       print(s"$w ")
       System.gc()
-      val a = analysis(program)
+      val a = analysis(program, NoOptimisations)
       a.analyzeWithTimeout(timeoutWarmup)
       analyses = a :: analyses
     }
@@ -80,13 +81,14 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     for (w <- analyses.indices) {
       val a = analyses(w) // We need an analysis that has already been (partially) run.
       val b = a.deepCopy()
+      b.configuration = AllOptimisations
       print(s"*")
       System.gc()
-      a.updateAnalysis(timeoutWarmup, false)
+      a.updateAnalysis(timeoutWarmup)
       if (multiInc) {
         print(s"* ")
         System.gc()
-        b.updateAnalysis(timeoutWarmup, true)
+        b.updateAnalysis(timeoutWarmup)
       }
     }
 
@@ -105,7 +107,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     for (i <- 1 to measuredRuns) {
 
       print(s"$i")
-      var a = analysis(program)
+      var a = analysis(program, NoOptimisations)
 
       // Run the initial analysis.
       runAnalysis(false, timeOut => a.analyzeWithTimeout(timeOut)) match {
@@ -121,19 +123,20 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
       }
 
       val aCopy = a.deepCopy()
+      aCopy.configuration = AllOptimisations
 
-      runAnalysis(inc1Timeout, timeOut => a.updateAnalysis(timeOut, false)) match {
+      runAnalysis(inc1Timeout, timeOut => a.updateAnalysis(timeOut)) match {
         case Some(t) => timesInc1 = t :: timesInc1
         case None    => inc1Timeout = true
       }
 
       if (multiInc)
-        runAnalysis(inc2Timeout, timeOut => aCopy.updateAnalysis(timeOut, true)) match {
+        runAnalysis(inc2Timeout, timeOut => aCopy.updateAnalysis(timeOut)) match {
           case Some(t) => timesInc2 = t :: timesInc2
           case None    => inc2Timeout = true
         }
 
-      a = analysis(program) // Create a new analysis and set the flag to "New".
+      a = analysis(program, NoOptimisations) // Create a new analysis and set the flag to "New". The configuration does not matter here.
       a.version = New
       runAnalysis(reanTimeout, timeOut => a.analyzeWithTimeout(timeOut)) match {
         case Some(t) => timesRean = t :: timesRean
@@ -172,7 +175,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
 
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
@@ -182,7 +185,7 @@ object IncrementalSchemeModFPerformance extends IncrementalTime[SchemeExp] {
 object IncrementalSchemeModFCPPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
 
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
@@ -192,7 +195,7 @@ object IncrementalSchemeModFCPPerformance extends IncrementalTime[SchemeExp] {
 object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysisTypeLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
 
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
@@ -202,7 +205,7 @@ object IncrementalSchemeModConcPerformance extends IncrementalTime[SchemeExp] {
 object IncrementalSchemeModConcCPPerformance extends IncrementalTime[SchemeExp] {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
-  override def analysis(e: SchemeExp): Analysis = new IncrementalModConcAnalysisCPLattice(e)
+  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
 
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))

@@ -6,7 +6,7 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme._
 import maf.language.scheme.interpreter._
 import maf.modular._
-import maf.modular.incremental.IncrementalModAnalysis
+import maf.modular.incremental._
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme._
 import maf.test._
@@ -36,7 +36,9 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     with SchemeDomain
     with IncrementalModAnalysis[SchemeExp]
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis
+  def analysis(b: SchemeExp): IncrementalAnalysis = analysis(b, AllOptimisations)
+
+  def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis
 
   override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
@@ -95,7 +97,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
   def name = "Incremental ModConc"
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b)
+  override def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b, config)
 
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
   override def isSlow(b: Benchmark): Boolean =
@@ -111,14 +113,14 @@ class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with Con
 class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConc {
   override def name = "Incremental ModConc CP"
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b)
+  override def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, config)
 }
 
 /** Implements soundness tests for an incremental ModF type analysis. */
 class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
   def name = "Incremental ModF Type"
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b)
+  override def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, config)
 
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
@@ -137,5 +139,5 @@ class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncre
 class IncrementalModFCP extends IncrementalModF {
   override def name = "Incremental ModF CP"
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b)
+  override def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, config)
 }

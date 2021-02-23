@@ -18,6 +18,8 @@ import maf.util.datastructures.SmartUnion.sunion
  */
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
+  var configuration: IncrementalConfiguration // Allows a configuration to be swapped.
+
   /* ************************************************************************ */
   /* ***** Tracking: track which components depend on which expressions ***** */
   /* ************************************************************************ */
@@ -138,11 +140,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ***** Incremental update: actually perform the incremental analysis ***** */
   /* ************************************************************************* */
 
-  var optimisationFlag: Boolean = true // This flag can be used to enable or disable certain optimisations (for testing purposes).
-
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
-  def updateAnalysis(timeout: Timeout.T, optimisedExecution: Boolean = true): Unit = {
-    optimisationFlag = optimisedExecution // Used for testing pursposes.
+  def updateAnalysis(timeout: Timeout.T): Unit = {
     version = New // Make sure the new program version is analysed upon reanalysis (i.e. 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
@@ -187,10 +186,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     /** First removes outdated read dependencies and components before performing the actual commit. */
     @nonMonotonicUpdate
     override def commit(): Unit = {
-      if (optimisationFlag) {
-        refineDependencies() // First, remove excess dependencies if this is a reanalysis.
-        refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
-      }
+      if (configuration.dependencyInvalidation) refineDependencies() // First, remove excess dependencies if this is a reanalysis.
+      if (configuration.componentInvalidation) refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
       super.commit() // Then commit and trigger dependencies.
     }
   }
