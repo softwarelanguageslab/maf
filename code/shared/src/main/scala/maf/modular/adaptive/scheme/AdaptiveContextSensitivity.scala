@@ -52,7 +52,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
 
   /** Adapting the analysis */
 
-  var reduceCmpsWork: Set[Module] = Set.empty
+  var reduceCmpsWork: Set[SchemeModule] = Set.empty
 
   def adaptAnalysis() = {
     // reset everything
