@@ -1,8 +1,9 @@
-package maf.web
+package maf.web.visualisations.incremental
 
 import maf.modular._
-import maf.web.AddressVisualisationIncremental._
-import maf.web.WebVisualisation._
+import maf.web.visualisations.incremental.AddressVisualisationIncremental._
+import maf.web.visualisations.WebVisualisation._
+
 
 import scala.scalajs.js
 
@@ -37,7 +38,7 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
     analysis.provenance.foreach { case (addr, prov) =>
       val addrNode = getNode(addr)
       nodesData += addrNode // Should normally already be there.
-      prov.foreach { case (cmp, value) =>
+      prov.foreach { case (cmp, _) =>
         val writerNode = getNode(cmp)
         val edge = getEdge(writerNode, addrNode) // Edge from writer -> addr.
         edgesData += edge

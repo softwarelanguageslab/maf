@@ -33,7 +33,6 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
     def addComponent(fun: SchemeModule, cmp: Component): AnalysisSummary = {
       val prv = this.get(fun)
       val upd = prv.addComponent(cmp)
-      onCostIncrease(fun, upd.cost)
       AnalysisSummary(content + (fun -> upd), depFns)
     }
     def addDependency(cmp: Component, dep: Dependency): AnalysisSummary =
@@ -48,7 +47,6 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
       val upd = prv.addDependency(cmp, dep)
       // update depFns
       val fns = depFns.getOrElse(dep, Set.empty) + fun
-      onCostIncrease(fun, upd.cost)
       AnalysisSummary(content + (fun -> upd), depFns + (dep -> fns))
     }
     def clearDependency(dep: Dependency) = {
@@ -108,8 +106,6 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
 
   // keep track of a summary for the current analysis
   var summary: AnalysisSummary = AnalysisSummary.empty.addComponent(initialComponent)
-  // allow to detect when the cost of a given module increases
-  def onCostIncrease(fn: SchemeModule, newCost: Int)
   // update the summary each time a new component is discovered
   override def spawn(cmp: Component) = {
     super.spawn(cmp)

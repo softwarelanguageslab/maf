@@ -16,6 +16,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
    *  => this parameter determines how quickly we trigger an adaptation
    */
   val budget: Int
+
+  def modulesToAdapt = summary.content.collect {
+    case (module, moduleSummary) if moduleSummary.cost > budget => module
+  }
+
   /*
    * contexts are call-site strings
    * after adaptation, certain strings get trimmed
@@ -47,13 +52,14 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
 
   /** Adapting the analysis */
 
-  var toAdapt: Set[SchemeModule] = Set.empty
-  def onCostIncrease(module: SchemeModule, newCost: Int) =
-    if (newCost > budget) {
-      toAdapt += module
-    }
-    
-  def adaptAnalysis(): Unit = {
+  var reduceCmpsWork: Set[Module] = Set.empty
+
+  def adaptAnalysis() = {
+    // reset everything
+    reduceCmpsWork = Set.empty
+  }
+
+  /*
     if (toAdapt.nonEmpty) {
       // adapt the components of marked modules
       // 2 possibilies:
@@ -77,6 +83,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       toAdapt = Set.empty
     }
   }
+  */
   private def reduceComponents(fn: LambdaModule): Unit = reduceComponents(fn, summary.get(fn))
   private def reduceComponents(fn: LambdaModule, target: Int): Unit = reduceComponents(fn, summary.get(fn), target)
   private def reduceComponents(fn: LambdaModule, ms: ModuleSummary): Unit = reduceComponents(fn, ms, ms.numberOfCmps / 2)

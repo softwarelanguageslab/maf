@@ -1,4 +1,4 @@
-package maf.web
+package maf.web.visualisations
 
 import maf.core._
 import maf.modular.GlobalStore
@@ -7,7 +7,6 @@ import maf.modular.adaptive._
 // Scala.js-related imports
 import scala.scalajs.js
 import maf.modular.DependencyTracking
-import maf.modular.components.IndirectComponents
 
 object WebVisualisationAdaptive {
   val d3 = js.Dynamic.global.d3

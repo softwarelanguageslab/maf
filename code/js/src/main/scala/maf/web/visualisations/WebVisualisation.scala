@@ -1,4 +1,4 @@
-package maf.web
+package maf.web.visualisations
 
 import maf.modular._
 import maf.modular.worklist.SequentialWorklistAlgorithm
