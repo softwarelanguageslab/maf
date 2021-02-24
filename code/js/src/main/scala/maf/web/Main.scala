@@ -139,7 +139,7 @@ object Main {
     ) = new WebVisualisationIncremental(newIncrementalReanalysis(text)) with RetainAllIncremental with AddressVisualisationIncremental
 
   def loadFile(text: String): Unit = {
-    val visualisation = createIncrementalVisualisation(text)
+    val visualisation = createVisualisation(text)
     // parameters for the visualisation
     val body = document.body
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
