@@ -129,7 +129,7 @@ object Main {
 
   def newIncrementalReanalysis(text: String): IncrementalSchemeModFAnalysisCPLattice with VisualisableIncrementalModAnalysis[SchemeExp] = {
     val program: SchemeExp = CSchemeParser.parse(text)
-    new IncrementalAnalysis(program, AllOptimisations)
+    new IncrementalAnalysis(program, IncrementalConfiguration.allOptimisations)
   }
 
   def createVisualisation(text: String) = new WebVisualisation(newStandardAnalysis(text))

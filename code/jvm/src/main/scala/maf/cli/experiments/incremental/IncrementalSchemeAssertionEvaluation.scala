@@ -4,6 +4,7 @@ import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
+import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.incremental._
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme.modf.SchemeAssertSemantics
@@ -56,8 +57,8 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     print(s"Analysing $file: ")
     val program = parse(file)
 
-    val a1 = analysis(program, CustomOptimisations(cyclicValueInvalidation = false))
-    val a2 = analysis(program, NoOptimisations) // This configuration does not matter.
+    val a1 = analysis(program, Config(cyclicValueInvalidation = false))
+    val a2 = analysis(program, noOptimisations) // This configuration does not matter.
     a2.version = New
 
     if (
@@ -74,7 +75,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     }
 
     val a1Copy = a1.deepCopy()
-    a1Copy.configuration = AllOptimisations
+    a1Copy.configuration = allOptimisations
 
     runAnalysis(file,
                 "inc1",

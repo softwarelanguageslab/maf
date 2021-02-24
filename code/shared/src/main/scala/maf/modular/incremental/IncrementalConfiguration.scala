@@ -39,23 +39,15 @@ trait IncrementalConfiguration {
        |***************************************""".stripMargin
 }
 
-object NoOptimisations extends IncrementalConfiguration {
-  val componentInvalidation: Boolean = false
-  val dependencyInvalidation: Boolean = false
-  val writeInvalidation: Boolean = false
-  val cyclicValueInvalidation: Boolean = false
-}
+object IncrementalConfiguration {
 
-object AllOptimisations extends IncrementalConfiguration {
-  val componentInvalidation: Boolean = true
-  val dependencyInvalidation: Boolean = true
-  val writeInvalidation: Boolean = true
-  val cyclicValueInvalidation: Boolean = true
-}
+  case class Config(
+      componentInvalidation: Boolean = true,
+      dependencyInvalidation: Boolean = true,
+      writeInvalidation: Boolean = true,
+      cyclicValueInvalidation: Boolean = true)
+      extends IncrementalConfiguration
 
-case class CustomOptimisations(
-    componentInvalidation: Boolean = true,
-    dependencyInvalidation: Boolean = true,
-    writeInvalidation: Boolean = true,
-    cyclicValueInvalidation: Boolean = true)
-    extends IncrementalConfiguration
+  val noOptimisations: Config = Config(false, false, false, false)
+  val allOptimisations: Config = Config(true, true, true, true)
+}

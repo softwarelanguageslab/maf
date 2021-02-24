@@ -3,6 +3,7 @@ package maf.cli.runnables
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
+import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.scheme.modf._
 import maf.modular.incremental._
 import maf.modular.incremental.scheme.SchemeAnalyses._
@@ -47,7 +48,7 @@ object IncrementalRun extends App {
 
     println(s"***** $bench *****")
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a = newAnalysis(text, CustomOptimisations(cyclicValueInvalidation = false))
+    val a = newAnalysis(text, Config(cyclicValueInvalidation = false))
     a.analyzeWithTimeout(timeout())
     a.printAssertions()
     //val aC = a.deepCopy()
@@ -66,6 +67,6 @@ object IncrementalRun extends App {
   val modFbenchmarks: List[String] = List("test/DEBUG2.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
-  modConcbenchmarks.foreach(modconcAnalysis(_, AllOptimisations, standardTimeout))
+  modConcbenchmarks.foreach(modconcAnalysis(_, allOptimisations, standardTimeout))
   modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
 }

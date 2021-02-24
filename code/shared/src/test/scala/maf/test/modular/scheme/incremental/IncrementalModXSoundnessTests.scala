@@ -6,6 +6,7 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme._
 import maf.language.scheme.interpreter._
 import maf.modular._
+import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.incremental._
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme._
@@ -36,7 +37,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     with SchemeDomain
     with IncrementalModAnalysis[SchemeExp]
 
-  def analysis(b: SchemeExp): IncrementalAnalysis = analysis(b, AllOptimisations)
+  def analysis(b: SchemeExp): IncrementalAnalysis = analysis(b, allOptimisations)
 
   def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis
 

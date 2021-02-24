@@ -5,6 +5,7 @@ import maf.core._
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme._
+import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.incremental._
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme._
@@ -70,10 +71,10 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     print(s"Testing $file ")
     val program = parse(file)
     // Initial analysis: analyse + update.
-    val a1 = analysis(program, NoOptimisations)
+    val a1 = analysis(program, noOptimisations)
 
     // Base case: analysis of new program version.
-    val a2 = analysis(program, NoOptimisations) // The configuration does not matter here.
+    val a2 = analysis(program, noOptimisations) // The configuration does not matter here.
     a2.version = New
 
     // Run the initial analysis and full reanalysis. They both need to finish.
@@ -84,7 +85,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     }
 
     val a1Copy = a1.deepCopy()
-    a1Copy.configuration = AllOptimisations
+    a1Copy.configuration = allOptimisations
 
     // First incremental update.
     if (!runAnalysis("inc1 ", timeOut => a1.updateAnalysis(timeOut))) compareAnalyses(inc1S, file, a1, a2)
