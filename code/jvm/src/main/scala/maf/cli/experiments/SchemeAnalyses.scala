@@ -99,7 +99,7 @@ object SchemeAnalyses {
   def modConcAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModConcAnalysis(prg)
     with SchemeModConcStandardSensitivity
     with SchemeConstantPropagationDomain
-    with CallDepthFirstWorklistAlgorithm[SchemeExp] {
+    with RandomPriorityWorklistAlgorithm[SchemeExp] {
     override def toString = s"base modconc"
     override def modFAnalysis(
         intra: SchemeModConcIntra
