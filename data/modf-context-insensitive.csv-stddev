@@ -1,0 +1,25 @@
+,parallel (n = 1, 0-CFA),parallel (n = 128, 0-CFA),parallel (n = 16, 0-CFA),parallel (n = 2, 0-CFA),parallel (n = 32, 0-CFA),parallel (n = 4, 0-CFA),parallel (n = 64, 0-CFA),parallel (n = 8, 0-CFA)
+test/R5RS/WeiChenRompf2019/earley.sch,12,2,2,9,2,5,2,3
+test/R5RS/WeiChenRompf2019/meta-circ.scm,433,16,34,447,22,196,19,69
+test/R5RS/WeiChenRompf2019/toplas98/boyer.scm,249,17,18,312,24,158,21,117
+test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm,1514,29,63,619,36,344,42,136
+test/R5RS/WeiChenRompf2019/toplas98/graphs.scm,2,1,1,2,1,1,1,1
+test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm,20,4,3,14,3,7,3,4
+test/R5RS/ad/all.scm,24,9,14,30,15,15,18,23
+test/R5RS/gambit/browse.scm,10,2,3,4,2,4,2,4
+test/R5RS/gambit/matrix.scm,7,1,1,4,2,2,1,2
+test/R5RS/gambit/nboyer.scm,276,9,34,144,14,86,11,78
+test/R5RS/gambit/peval.scm,3708,82,187,1582,71,1802,39,557
+test/R5RS/gambit/sboyer.scm,8676,151,151,4073,148,768,141,202
+test/R5RS/gambit/scheme.scm,4647,123,262,3263,256,1557,126,658
+test/R5RS/icp/icp_1c_ambeval.scm,1933,19,55,925,17,472,32,224
+test/R5RS/icp/icp_1c_multiple-dwelling.scm,3202,28,88,1473,42,593,30,344
+test/R5RS/icp/icp_1c_ontleed.scm,2955,52,173,1697,39,1016,40,370
+test/R5RS/icp/icp_1c_prime-sum-pair.scm,2921,39,109,1207,21,687,42,266
+test/R5RS/icp/icp_2_aeval.scm,206,10,14,88,10,51,8,26
+test/R5RS/icp/icp_3_leval.scm,179,18,18,89,15,74,14,27
+test/R5RS/icp/icp_5_regsim.scm,39,6,5,16,4,8,6,6
+test/R5RS/icp/icp_7_eceval.scm,22646,77,816,7025,189,5170,122,2290
+test/R5RS/icp/icp_8_compiler.scm,202,17,27,135,20,58,17,37
+test/R5RS/scp1-compressed/all.scm,13472,83,71,3669,83,243,98,84
+test/R5RS/various/SICP-compiler.scm,258,9,17,166,15,63,15,39

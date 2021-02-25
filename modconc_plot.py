@@ -5,8 +5,8 @@ import numpy as np
 import csv
 
 matplotlib.use("pdf")
-workers = [1,2] # TODO: [1,2,4,8]
-ROWS=2
+workers = [1,2,4,8]
+ROWS=4
 COLS=4
 
 def read_csv(csv_file):
@@ -28,18 +28,20 @@ def make_speedup_matrix(row):
 def build_heatmaps(csv_file, out_file, w, h):
     data = read_csv(csv_file)
     fig, axs = plt.subplots(w,h)
-    plt.subplots_adjust(hspace=-0.1, wspace=2)
+    fig.set_figwidth(7)
+    fig.set_figheight(7)
+    plt.subplots_adjust(hspace=20, wspace=20)
     k = 0
     for i in range(0,w):
         for j in range(0,h):
             (benchmark_name, benchmark_data) = data[k]
             k = k + 1
             benchmark_axis = axs[i,j]
-            benchmark_axis.set_title(benchmark_name, y=-0.25, fontsize=9)
-            im = heatmap(benchmark_data, workers, workers, ax=benchmark_axis, cmap="RdYlGn", norm=MidPointLogNorm(vmin=0.2, midpoint=1, vmax=16))
+            benchmark_axis.set_title(benchmark_name, y=-0.2, fontsize=9)
+            im = heatmap(benchmark_data, workers, workers, ax=benchmark_axis, cmap="RdYlGn", norm=MidPointLogNorm(vmin=0.2, midpoint=1, vmax=30))
             annotate_heatmap(im, valfmt="{x:.1f}x", textcolors=["black","black"],threshold=8,fontsize=7)
     fig.tight_layout()
-    fig.savefig(out_file, pad_inches = 0, bbox_inches='tight')
+    fig.savefig(out_file, pad_inches = 0.1, bbox_inches='tight')
 
 ##
 ## ADAPTED FROM https://matplotlib.org/3.1.1/gallery/images_contours_and_fields/image_annotated_heatmap.html

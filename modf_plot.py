@@ -1,5 +1,6 @@
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import numpy as np
 import csv
 
@@ -11,7 +12,7 @@ def read_csv(csv_file):
         _ = next(reader, None) # skip the headers
         return list(reader)
 
-xticks = [1,2,4,8]
+xticks = [1,2,4,8,16,32,64,128]
 
 def find_data(data, name):
     for d in data:
@@ -27,26 +28,37 @@ def calculcate_speedups_and_error(benchmark, error_data, base_data):
     yerr = [speedups[i] - (base / (float(benchmark[i+1])+float(err[i]))) for i in range(0, len(xticks))]
     return speedups, yerr
 
+colors = ['#000000','#004949','#009292','#ff6db6','#ffb6db',
+ '#490092','#006ddb','#b66dff','#6db6ff','#b6dbff',
+ '#920000','#924900','#db6d00','#24ff24','#ffff6d']
+
+markers = ['o', 'v', '^', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd']
+
+line_style = ['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':']
+
 MIN_TIME = 1000 # We don't want to plot benchmarks that take less than 1s in base modf
 def plot_from_csv(base_csv_file, data_csv_file, error_csv_file, pdf_out_file, yticks):
     base_data = read_csv(base_csv_file)
     data = read_csv(data_csv_file)
     error_data = read_csv(error_csv_file)
     ax = plt.gca()
+    ax.set_yscale('log', nonpositive='clip')
     ax.set_xscale('log', nonpositive='clip')
+    plot_number = 0
     for benchmark in data:
         if float(benchmark[1]) < MIN_TIME:
             continue
         speedups, yerr = calculcate_speedups_and_error(benchmark, error_data, base_data)
-        (_, caps, _) = plt.errorbar(xticks,speedups, yerr=yerr, fmt='--o',label=benchmark[0], markersize=8, capsize=8) # , base=2
+        (_, caps, _) = plt.errorbar(xticks,speedups, yerr=yerr, color=colors[plot_number], fmt=line_style[plot_number] + 'o',label=benchmark[0], markersize=4, capsize=6) # , base=2
         for cap in caps:
             cap.set_markeredgewidth(1)
+        plot_number = plot_number + 1
     plt.xlabel('Number of workers')
     plt.xticks(xticks,xticks)
     plt.ylabel('Speedup')
     plt.yticks(yticks,yticks)
     plt.grid()
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1,1), loc='upper left')
     plt.savefig(pdf_out_file, pad_inches = 0, bbox_inches='tight')
 
 
