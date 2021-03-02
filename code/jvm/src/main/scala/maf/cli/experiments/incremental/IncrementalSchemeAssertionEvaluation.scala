@@ -23,9 +23,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
   var results: Table[String] = Table.empty.withDefaultValue(" ")
   val error: String = errS
 
-  type A = IncrementalModAnalysis[SchemeExp] with IncrementalGlobalStore[SchemeExp] with SchemeAssertSemantics
-
-  override def analysis(e: SchemeExp, config: IncrementalConfiguration): A
+  type Analysis = IncrementalModAnalysis[SchemeExp] with IncrementalGlobalStore[SchemeExp] with SchemeAssertSemantics
 
   def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
 
@@ -34,7 +32,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
   def runAnalysis(
       file: String,
       phase: String,
-      block: Timeout.T => A
+      block: Timeout.T => Analysis
     ): Boolean = {
     print(phase)
     val timeOut = timeout()

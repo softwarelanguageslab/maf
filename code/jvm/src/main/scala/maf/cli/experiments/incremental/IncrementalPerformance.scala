@@ -34,6 +34,8 @@ case object Errored extends Result {
 
 trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with TableOutput[Result] {
 
+  type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
+
   // The maximal number of warm-up runs.
   val maxWarmupRuns = 5
   // The number of actually measured runs.

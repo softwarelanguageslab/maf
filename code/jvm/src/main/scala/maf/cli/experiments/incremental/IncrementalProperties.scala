@@ -17,6 +17,8 @@ import scala.concurrent.duration._
 
 trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String] {
 
+  type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E] with CountIntraAnalyses[E]
+
   final val co: String = "#Components" // Number of components
   final val an: String = "#Analyses" // Number of intra-component analyses
   final val ad: String = "|Store|" // Store size
@@ -24,7 +26,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
 
   final val propertiesS = List(ad, co, dp, an) // Properties
 
-  override lazy val columns = propertiesS.cartesian(analysesS).map(e => columnName(e._1, e._2)).toList
+  override lazy val columns: List[String] = propertiesS.cartesian(analysesS).map(e => columnName(e._1, e._2)).toList
 
   var results: Table[String] = Table.empty.withDefaultValue(" ")
   val error: String = errS
@@ -46,7 +48,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     }
     results = results
       .add(file, columnName(co, marker), s"${analysis.visited.size}")
-      //.add(file, columnName(an, marker), s"${analysis.intraCount - cnt}")
+      .add(file, columnName(an, marker), s"${analysis.intraAnalysisCount}")
       .add(file, columnName(ad, marker), s"${analysis.store.size}")
       .add(file, columnName(dp, marker), s"${analysis.deps.values.map(_.size).sum}")
     true
@@ -66,6 +68,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     // Run the initial analysis.
     if (!runAnalysis("init ", file, a1, timeOut => a1.analyzeWithTimeout(timeOut), initS)) return
 
+    a1.resetIntraAnalysisCount()
     val a1Copy = a1.deepCopy()
     a1Copy.configuration = allOptimisations
 
@@ -82,6 +85,19 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
   def interestingAddress[A <: Address](a: A): Boolean
 
   def createOutput(): String = results.prettyString()
+}
+
+/** Counts the number of intra-component analyses run by the analysis. */
+trait CountIntraAnalyses[Expr <: Expression] extends IncrementalModAnalysis[Expr] {
+  var intraAnalysisCount: Int = 0
+
+  // Method of the sequential worklist algorithm.
+  override def step(timeout: Timeout.T): Unit = {
+    intraAnalysisCount = intraAnalysisCount + 1
+    super.step(timeout)
+  }
+
+  def resetIntraAnalysisCount(): Unit = intraAnalysisCount = 0
 }
 
 /* ************************** */
@@ -103,6 +119,7 @@ object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
+    with CountIntraAnalyses[SchemeExp]
 
   val outputFile: String = s"properties/modf-type.txt"
 }
@@ -111,6 +128,7 @@ object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
+    with CountIntraAnalyses[SchemeExp]
 
   val outputFile: String = s"properties/modf-CP.txt"
 }
@@ -119,6 +137,7 @@ object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
+    with CountIntraAnalyses[SchemeExp]
 
   val outputFile: String = s"properties/modconc-type.txt"
 }
@@ -127,6 +146,7 @@ object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties 
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
+    with CountIntraAnalyses[SchemeExp]
 
   val outputFile: String = s"properties/modconc-CP.txt"
 }

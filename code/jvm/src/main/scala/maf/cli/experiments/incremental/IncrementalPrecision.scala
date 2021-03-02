@@ -16,6 +16,8 @@ import scala.concurrent.duration._
 
 trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String] {
 
+  type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
+
   final val eqS: String = "Equal" // Precision of incremental update equals the one of a full reanalysis.
   final val mpS: String = "More precise" // Precision of incremental update is better than the one of a full reanalysis.
   final val lpS: String = "Less precise" // Precision of incremental update is lower than the one of a full reanalysis.

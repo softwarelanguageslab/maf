@@ -10,8 +10,8 @@ trait IncrementalExperiment[E <: Expression] {
   // A list of programs on which the benchmark should be executed.
   def benchmarks(): Set[String]
 
-  // Type of an analysis.
-  type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
+  // Type bound for an analysis.
+  type Analysis <: IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
   // Analysis construction.
   def analysis(e: E, config: IncrementalConfiguration): Analysis
