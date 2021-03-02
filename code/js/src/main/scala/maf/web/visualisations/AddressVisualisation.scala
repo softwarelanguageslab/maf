@@ -1,10 +1,9 @@
-package maf.web.visualisations.incremental
+package maf.web.visualisations
 
 import maf.modular._
 import maf.modular.scheme.PrmAddr
-import maf.web.visualisations.incremental.AddressVisualisation._
+import maf.web.visualisations.AddressVisualisation._
 import maf.web.visualisations.WebVisualisation.JsAny
-import maf.web.visualisations._
 
 import scala.scalajs.js
 
