@@ -56,6 +56,69 @@ class TarjanSCCTests extends AnyPropSpec {
                 Set(1, 2, 3, 4, 5, 6, 7, 8, 9),
                 Map((1, Set(2)), (2, Set(3)), (3, Set(1)), (4, Set(6)), (5, Set(5)), (7, Set(8)), (8, Set(7))),
                 Set(Set(1, 2, 3), Set(5), Set(7, 8))
+    ),
+    // `sedgewick172` from the AD course.
+    TarjanGraph(5,
+                Set(0, 1, 2, 3, 4, 5),
+                Map((0, Set(2, 5)), (1, Set(0)), (2, Set(1)), (3, Set(2, 4)), (4, Set(5)), (5, Set(4))),
+                Set(Set(0, 1, 2), Set(4, 5))
+    ),
+    // `sedgewick172-bis` from the AD course.
+    TarjanGraph(6,
+                Set(0, 1, 2, 3, 4, 5),
+                Map((0, Set(2, 4, 5)), (1, Set(0)), (2, Set(1)), (3, Set(2, 4)), (4, Set(5)), (5, Set(4))),
+                Set(Set(0, 1, 2), Set(4, 5))
+    ),
+    // `sedgewick172-tris` from the AD course.
+    TarjanGraph(7,
+                Set(0, 1, 2, 3, 4, 5),
+                Map((0, Set(0, 2, 4, 5)), (1, Set(0)), (2, Set(1)), (3, Set(2, 4)), (4, Set(2, 5)), (5, Set(4))),
+                Set(Set(0, 1, 2, 4, 5))
+    ),
+    // `full-cycle` from the AD course.
+    TarjanGraph(8,
+                Set(0, 1, 2, 3, 4, 5),
+                Map((0, Set(1)), (1, Set(2)), (2, Set(5)), (5, Set(4)), (4, Set(3)), (3, Set(0))),
+                Set(Set(0, 1, 2, 3, 4, 5))
+    ),
+    // `a-list` from the AD course.
+    TarjanGraph[Int](9, Set(0, 1, 2, 3, 4, 5), Map((0, Set(1)), (1, Set(2)), (2, Set(5)), (5, Set(4)), (4, Set(3))), Set()),
+    // `dag-1` from the AD course.
+    TarjanGraph[Int](
+      10,
+      Set(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12),
+      Map(
+        (0, Set(1, 2, 3, 5, 6)),
+        (2, Set(3)),
+        (3, Set(4, 5)),
+        (4, Set(9)),
+        (6, Set(4, 9)),
+        (7, Set(6)),
+        (8, Set(7)),
+        (9, Set(10, 11, 12)),
+        (11, Set(12))
+      ),
+      Set()
+    ),
+    // `scc-4` from the AD course.
+    TarjanGraph(
+      11,
+      Set(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12),
+      Map(
+        (0, Set(1, 5, 6)),
+        (2, Set(0, 3)),
+        (3, Set(2, 5)),
+        (4, Set(2, 3, 11)),
+        (5, Set(4)),
+        (6, Set(4, 9)),
+        (7, Set(6, 8)),
+        (8, Set(7, 9)),
+        (9, Set(10, 11)),
+        (10, Set(12)),
+        (11, Set(12)),
+        (12, Set(9))
+      ),
+      Set(Set(0, 2, 3, 4, 5, 6), Set(7, 8), Set(9, 10, 11, 12))
     )
   )
 
