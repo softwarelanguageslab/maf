@@ -115,7 +115,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       reducedDeps += dep
       dep match {
         case AddrDependency(addr) => reduceValueAbs(store(addr))
-        case _ => throw new Exception("Unknown dependency for adaptive analysis")
+        case _                    => throw new Exception("Unknown dependency for adaptive analysis")
       }
     }
 
@@ -139,15 +139,23 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val perLocation = addrs.groupBy(getAddrExp) // TODO: by expr instead of idn?
     val chosenAddrs = takeLargest[(Expression, Set[Addr])](perLocation.toList, _._2.size, target)
     val chosenFuncs =
-      chosenAddrs.map(_._2).filter(_.size > 1).map(addrs => getAddrModule(addrs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
+      chosenAddrs
+        .map(_._2)
+        .filter(_.size > 1)
+        .map(addrs => getAddrModule(addrs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
     chosenFuncs.toSet.foreach(reduceComponents)
   }
 
   private def reduceClosures(cls: Set[ClosureWithName]) = {
     val target: Int = cls.size / 2
-    val perFunction = cls.groupMapReduce(module)(_ => 1)(_ + _)
-    val chosenFuncs = takeLargest[(LambdaModule, Int)](perFunction, _._2, target).map(_._1)
-    chosenFuncs.toSet.foreach(reduceComponents)
+    val perFunction = cls.groupBy(_._1._1)
+    val chosenFuncs = takeLargest[(SchemeLambdaExp, Set[ClosureWithName])](perFunction, _._2.size, target)
+    val chosenParents =
+      chosenFuncs
+        .map(_._2)
+        .filter(_.size > 1)
+        .map(funs => getParentModule(funs.head._1).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
+    chosenParents.toSet.foreach(reduceComponents)
   }
 
   private def reduceComponents(module: LambdaModule): Unit =
