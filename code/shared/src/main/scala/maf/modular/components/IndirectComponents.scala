@@ -1,14 +1,11 @@
 package maf.modular.components
 
-import maf.modular.components.IndirectComponents.ComponentPointer
 import maf.core._
 import maf.modular.ModAnalysis
 
-object IndirectComponents {
-  // A component pointer just is an integer.
-  case class ComponentPointer(addr: Int) extends AnyVal {
-    override def toString: String = s"#$addr"
-  }
+// A component pointer just is an integer.
+case class ComponentPointer(addr: Int) { //TODO: extends AnyVal doesn't work anymore (Scala bug?)
+  override def toString: String = s"#$addr"
 }
 
 /** Provides the ability to reference components 'by pointer'. */
