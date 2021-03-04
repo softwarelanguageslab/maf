@@ -128,6 +128,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       } else {
         reduceValueAbs(cdr)
       }
+    case modularLatticeWrapper.modularLattice.Vec(_, elms) =>
+      val value = elms.map(_._2).maxBy(sizeOfValue) // assume elms is not empty!
+      reduceValueAbs(value)
     case v => throw new Exception(s"Unsupported value in reduceValueAbs: $v")
   }
 
