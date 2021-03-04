@@ -100,7 +100,6 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val vcount = deps.cardinality / hcount
     if (hcount > vcount) { // TODO: is this branch ever taken?
       // (a) too many dependencies => reduce the number of corresponding addresses
-      throw new Exception("This branch should never be taken?")
       val addrs = deps.toSet.collect { case AddrDependency(addr) => addr }
       reduceAddresses(addrs)
     } else {

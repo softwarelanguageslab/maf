@@ -42,7 +42,7 @@ object AdaptiveRun {
   }
 
   def testAbstract(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/various/fact.scm")
+    val txt = Reader.loadFile("test/R5RS/various/mceval.scm")
     val prg = CSchemeParser.parse(txt)
     val anl = new AdaptiveModAnalysis(prg)
       with AdaptiveSchemeModFSemantics
