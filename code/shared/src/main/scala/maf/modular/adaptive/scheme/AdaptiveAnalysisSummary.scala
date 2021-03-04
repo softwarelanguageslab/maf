@@ -7,16 +7,30 @@ import maf.util.MonoidImplicits._
 import maf.util.datastructures._
 import maf.modular._
 import maf.util.MonoidInstances
+import maf.core.WrappedEnv
 
 trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
 
+  // for convenience (TODO: move this elsewhere...)
+  type Closure = modularLatticeWrapper.modularLattice.schemeLattice.Closure
+  type ClosureWithName = (Closure, Option[String])
+
   trait SchemeModule
-  case object MainModule extends SchemeModule
-  case class LambdaModule(fun: SchemeLambdaExp) extends SchemeModule
+  case object MainModule extends SchemeModule { 
+    override def toString = "main"
+  }
+  case class LambdaModule(fun: SchemeLambdaExp, name: Option[String], depth: Int) extends SchemeModule {
+    override def toString = name.getOrElse(s"lambda@${fun.idn.pos}")
+  }
 
   def module(cmp: Component): SchemeModule = view(cmp) match {
-    case Main          => MainModule
-    case call: Call[_] => LambdaModule(call.clo._1)
+    case Main               => MainModule
+    case Call(clo, name, _) => module((clo,name))
+    case _                  => throw new Exception("Should not happen!")
+  }
+
+  def module(clo: ClosureWithName): LambdaModule = clo match {
+    case ((lam, env: WrappedEnv[Addr, _] @unchecked), name) => LambdaModule(lam, name, env.depth)
   }
 
   /**
@@ -56,6 +70,8 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
       }
       AnalysisSummary(upd, depFns - dep)
     }
+    def clearDependencies(deps: Iterable[Dependency]) =
+      deps.foldLeft(this)((acc,dep) => acc.clearDependency(dep))
   }
 
   object AnalysisSummary {
@@ -77,6 +93,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
     def components = content.keys
     def numberOfCmps = content.size
     def depCounts = content.values.reduce(_ ++ _) // only safe if cost > 0
+    def apply(cmp: Component) = content(cmp)
     def addComponent(cmp: Component) =
       ModuleSummary(content + (cmp -> MultiSet.empty), depCmps, totalDepCount)
     def addDependency(cmp: Component, dep: Dependency) =
@@ -108,17 +125,17 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   var summary: AnalysisSummary = AnalysisSummary.empty.addComponent(initialComponent)
   // update the summary each time a new component is discovered
   override def spawn(cmp: Component) = {
-    super.spawn(cmp)
     if(!visited(cmp)) {
       summary = summary.addComponent(cmp)
     }
+    super.spawn(cmp) // TODO: move inside if test?
   }
   // update the summary each time a dependency triggers a component
-  override def trigger(dep: Dependency): Unit = {
-    super.trigger(dep)
+  override def trigger(dep: Dependency) = {
     deps.getOrElse(dep, Set.empty).foreach { cmp =>
       summary = summary.addDependency(cmp, dep)
     }
+    super.trigger(dep)
   }
   // correctly update the summary after adaptation
   override def updateAnalysisData(update: Map[Component, Component]) = {

@@ -1,20 +1,19 @@
 package maf.modular.adaptive
 
-import maf.modular.components.IndirectComponents
 import maf.core._
 import maf.modular._
-import maf.modular.worklist.SequentialWorklistAlgorithm
+import maf.modular.worklist._
+import maf.modular.components._
 import maf.util._
 import maf.util.datastructures._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
+
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, rate: Int = 1000)
     extends ModAnalysis(program)
        with IndirectComponents[Expr]
        with SequentialWorklistAlgorithm[Expr] {
-
-  import maf.modular.components.IndirectComponents._
 
   var mainComponent: Component = _
 

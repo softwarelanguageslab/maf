@@ -22,6 +22,7 @@ case class MultiSet[X](content: Map[X, Int], cardinality: Int) {
     }
   def removeAll(elm: X) =
     MultiSet(content - elm, cardinality - getMult(elm))
+  def distinctElements = content.keys
   def distinctCount = content.size
   def toList = content.toList
   def toSet = content.keySet
