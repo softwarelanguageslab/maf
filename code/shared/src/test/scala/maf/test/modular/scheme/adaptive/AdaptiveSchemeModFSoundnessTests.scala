@@ -24,5 +24,5 @@ trait AdaptiveSchemeModF extends SchemeModFSoundnessTests { outer =>
 
 class AdaptiveSchemeModFSoundnessTests extends AdaptiveSchemeModF with AllSequentialBenchmarks {
     def budget = 100
-    override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
+    override def isSlow(b: Benchmark) = true
 }
