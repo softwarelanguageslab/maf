@@ -93,7 +93,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
   // Specific to the worklist algorithm:
 
   /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
-  def finished(): Boolean
+  def finished: Boolean
 
   /**
    * Runs the analysis with a timeout. Implementation should be provided by the worklist algorithm.

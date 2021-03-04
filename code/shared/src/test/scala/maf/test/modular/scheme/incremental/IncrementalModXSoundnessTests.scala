@@ -83,7 +83,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     try {
       val timeout = analysisTimeout(benchmark)
       anl.updateAnalysis(timeout)
-      assume(anl.finished(), "Reanalysis timed out.")
+      assume(anl.finished, "Reanalysis timed out.")
       anl
     } catch {
       case e: VirtualMachineError =>

@@ -67,7 +67,7 @@ trait PerformanceEvaluation {
       val a = analysis(program)
       System.gc()
       val t = Timer.timeOnly(a.analyzeWithTimeout(analysisTime))
-      if (a.finished()) {
+      if (a.finished) {
         times = (t.toDouble / 1000000) :: times
       } else {
         return TimedOut // immediately return

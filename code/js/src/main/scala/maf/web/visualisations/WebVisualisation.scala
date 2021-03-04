@@ -354,7 +354,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
   def onClick(): Unit = stepAnalysis()
 
   protected def stepAnalysis(): Unit =
-    if (!analysis.finished()) {
+    if (!analysis.finished) {
       val component = analysis.workList.head
       val oldDeps = analysis.dependencies(component)
       analysis.step(Timeout.none)
@@ -367,7 +367,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
   protected def stepMultiple(n: Int): Unit = {
     breakable {
       for (i <- 1 to n)
-        if (!analysis.finished()) {
+        if (!analysis.finished) {
           val component = analysis.workList.head
           val oldDeps = analysis.dependencies(component)
           analysis.step(Timeout.none)
@@ -383,10 +383,10 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
   // TODO: Even when the visualisation is refreshed more, it seems that it becomes only visible afterwards.
   //       It would be nice to see it grow, though this might slow down the lot.
   protected def runAnalysis(timeout: Timeout.T): Unit =
-    if (analysis.finished()) {
+    if (analysis.finished) {
       println("The analysis has already terminated.")
     } else {
-      while (!analysis.finished() && !timeout.reached) {
+      while (!analysis.finished && !timeout.reached) {
         val component = analysis.workList.head
         val oldDeps = analysis.dependencies(component)
         analysis.step(Timeout.none)

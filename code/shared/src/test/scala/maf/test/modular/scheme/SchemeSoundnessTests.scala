@@ -63,7 +63,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       val anl = analysis(program)
       val timeout = analysisTimeout(benchmark)
       anl.analyzeWithTimeout(timeout)
-      assume(anl.finished(), "Analysis timed out")
+      assume(anl.finished, "Analysis timed out")
       anl
     } catch {
       case e: VirtualMachineError =>

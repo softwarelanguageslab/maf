@@ -14,7 +14,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
   // adding elements to the worklist
   var workList: WorkList[Component] = emptyWorkList.add(initialComponent)
   def addToWorkList(cmp: Component) = workList = workList.add(cmp)
-  def finished(): Boolean = workList.isEmpty
+  def finished: Boolean = workList.isEmpty
   // a single step in the worklist algorithm iteration
   // var intraCount: Long = 0L
   def step(timeout: Timeout.T): Unit = {
@@ -36,7 +36,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
 
   // step until worklist is empty or timeout is reached
   def analyzeWithTimeout(timeout: Timeout.T): Unit =
-    while (!finished() && !timeout.reached)
+    while (!finished && !timeout.reached)
       step(timeout)
 }
 
@@ -73,7 +73,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
     cmp
   }
   def addToWorkList(cmp: Component): Unit = push(cmp)
-  def finished(): Boolean = worklist.isEmpty
+  def finished: Boolean = worklist.isEmpty
   // a single step in the worklist algorithm iteration
   def step(timeout: Timeout.T): Unit = {
     // take the next component
@@ -92,7 +92,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
 
   // step until worklist is empty or timeout is reached
   def analyzeWithTimeout(timeout: Timeout.T): Unit =
-    while (!finished() && !timeout.reached)
+    while (!finished && !timeout.reached)
       step(timeout)
 }
 
