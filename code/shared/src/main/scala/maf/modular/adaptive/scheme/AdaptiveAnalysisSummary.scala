@@ -16,16 +16,20 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   type ClosureWithName = (Closure, Option[String])
 
   trait SchemeModule
-  case object MainModule extends SchemeModule { 
+  case object MainModule extends SchemeModule {
     override def toString = "main"
   }
-  case class LambdaModule(fun: SchemeLambdaExp, name: Option[String], depth: Int) extends SchemeModule {
+  case class LambdaModule(
+      fun: SchemeLambdaExp,
+      name: Option[String],
+      depth: Int)
+      extends SchemeModule {
     override def toString = name.getOrElse(s"lambda@${fun.idn.pos}")
   }
 
   def module(cmp: Component): SchemeModule = view(cmp) match {
     case Main               => MainModule
-    case Call(clo, name, _) => module((clo,name))
+    case Call(clo, name, _) => module((clo, name))
     case _                  => throw new Exception("Should not happen!")
   }
 
@@ -71,7 +75,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
       AnalysisSummary(upd, depFns - dep)
     }
     def clearDependencies(deps: Iterable[Dependency]) =
-      deps.foldLeft(this)((acc,dep) => acc.clearDependency(dep))
+      deps.foldLeft(this)((acc, dep) => acc.clearDependency(dep))
   }
 
   object AnalysisSummary {
@@ -125,7 +129,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
   var summary: AnalysisSummary = AnalysisSummary.empty.addComponent(initialComponent)
   // update the summary each time a new component is discovered
   override def spawn(cmp: Component) = {
-    if(!visited(cmp)) {
+    if (!visited(cmp)) {
       summary = summary.addComponent(cmp)
     }
     super.spawn(cmp) // TODO: move inside if test?

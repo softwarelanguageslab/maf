@@ -9,7 +9,6 @@ import maf.util.datastructures._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
-
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, rate: Int = 1000)
     extends ModAnalysis(program)
        with IndirectComponents[Expr]
@@ -24,7 +23,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, rate: Int 
   private var stepCount = 0
   override def step(timeout: Timeout.T): Unit = {
     super.step(timeout)
-    if(stepCount == rate) {
+    if (stepCount == rate) {
       stepCount = 0
       adaptAnalysis()
     } else {
@@ -59,7 +58,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, rate: Int 
     // the actual fixed-point computation
     var update: ComponentData => ComponentData = adaptComponent
     var dirty = true
-    while(dirty) {
+    while (dirty) {
       dirty = false
       val previous = this.cMapR
       this.cMapR = Map.empty[ComponentData, Address]

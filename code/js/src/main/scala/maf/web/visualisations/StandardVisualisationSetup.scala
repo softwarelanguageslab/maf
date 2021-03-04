@@ -15,7 +15,7 @@ import scala.scalajs.js.annotation._
 @JSExportTopLevel("standardVisualisationSetup")
 object StandardVisualisationSetup extends VisualisationSetup {
 
-  def createVisualisation(text: String) = 
+  def createVisualisation(text: String) =
     new WebVisualisation(newAnalysis(text))
 
   private def newAnalysis(text: String) = {
@@ -39,4 +39,3 @@ object StandardVisualisationSetup extends VisualisationSetup {
     }
   }
 }
-

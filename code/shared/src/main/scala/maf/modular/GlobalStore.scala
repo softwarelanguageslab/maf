@@ -60,7 +60,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
 
     override def doWrite(dep: Dependency): Boolean = dep match {
       case AddrDependency(addr) => inter.writeAddr(addr, intra.store(addr))
-      case _ => super.doWrite(dep)
+      case _                    => super.doWrite(dep)
     }
 
     // An adapter for the "old" store interface

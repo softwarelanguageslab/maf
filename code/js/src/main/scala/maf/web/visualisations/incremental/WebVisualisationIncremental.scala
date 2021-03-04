@@ -9,7 +9,10 @@ import maf.web.visualisations.incremental.WebVisualisationIncremental._
 
 import scala.scalajs.js
 
-trait VisualisableIncrementalModAnalysis[Expr <: Expression] extends IncrementalModAnalysis[Expr] with DependencyTracking[Expr] with IncrementalGlobalStore[Expr] {
+trait VisualisableIncrementalModAnalysis[Expr <: Expression]
+    extends IncrementalModAnalysis[Expr]
+       with DependencyTracking[Expr]
+       with IncrementalGlobalStore[Expr] {
   var recursive: Set[Component] = Set() // Collects the set of recursive components, since self-edges are omitted in the set `cachedSpawns`.
 
   override def intraAnalysis(cmp: Component): VisualisableIntraAnalysis

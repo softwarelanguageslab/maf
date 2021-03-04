@@ -19,7 +19,7 @@ object WebVisualisationAdaptive {
 }
 
 trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with DependencyTracking[Expr] with GlobalStore[Expr] {
-  
+
   var webvis: WebVisualisationAdaptive = null
 
   def key(cmp: Component): Any

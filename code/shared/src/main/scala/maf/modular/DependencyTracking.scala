@@ -12,7 +12,7 @@ trait DependencyTracking[Expr <: Expression] extends ModAnalysis[Expr] { inter =
     val visited: Set[Component] = inter.visited
     override def commit(): Unit = {
       super.commit()
-      dependencies += component -> (dependencies(component) ++ C)  // update the bookkeeping
+      dependencies += component -> (dependencies(component) ++ C) // update the bookkeeping
     }
   }
 }

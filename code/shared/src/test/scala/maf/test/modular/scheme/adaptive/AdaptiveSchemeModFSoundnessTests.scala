@@ -12,7 +12,7 @@ import maf.test._
 trait AdaptiveSchemeModF extends SchemeModFSoundnessTests { outer =>
   def budget: Int
   def name = s"adaptive analysis (b = $budget)"
-  def analysis(program: SchemeExp) = 
+  def analysis(program: SchemeExp) =
     new AdaptiveModAnalysis(program)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
@@ -23,6 +23,6 @@ trait AdaptiveSchemeModF extends SchemeModFSoundnessTests { outer =>
 }
 
 class AdaptiveSchemeModFSoundnessTests extends AdaptiveSchemeModF with AllSequentialBenchmarks {
-    def budget = 100
-    override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
+  def budget = 100
+  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
 }
