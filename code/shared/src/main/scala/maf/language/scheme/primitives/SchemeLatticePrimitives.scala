@@ -847,8 +847,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         ): MayFail[(V, Store[A, V]), Error] = args match {
         case (_, fun) :: Nil =>
           val closures = lat.getClosures(fun)
-          val results = closures.collect { case (clo @ (SchemeLambda(_ :: Nil, _, _), _), nam) =>
-            scheme.callcc(clo, nam, fpos.idn.pos)
+          val results = closures.collect { case clo @ (SchemeLambda(_, _ :: Nil, _, _), _) =>
+            scheme.callcc(clo, fpos.idn.pos)
           }
           (lat.join(results), store)
         case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))

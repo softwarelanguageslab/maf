@@ -187,8 +187,8 @@ class CPSSchemeInterpreter(
       val addr = newAddr(AddrInfo.VarAddr(name))
       val extEnv = env + (name.name -> addr)
       val (prs, ags) = bindings.unzip
-      val lambda = SchemeLambda(prs, body, pos)
-      extendStore(addr, Value.Clo(lambda, extEnv, Some(name.name)))
+      val lambda = SchemeLambda(Some(name.name), prs, body, pos)
+      extendStore(addr, Value.Clo(lambda, extEnv))
       Step(SchemeFuncall(lambda, ags, pos), extEnv, cc)
     case SchemeOr(Nil, _)           => Kont(Value.Bool(false), cc)
     case SchemeOr(first :: Nil, _)  => Step(first, env, cc)
@@ -242,11 +242,7 @@ class CPSSchemeInterpreter(
     case LetC(Nil, env, bvals, let, cc)            => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
     case LetC((_, e) :: rest, env, bvals, let, cc) => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
     case LtrC(i1, bnd, env, let, cc) =>
-      val namedV = v match { // Optional renaming to ease debugging (more functions have names).
-        case Value.Clo(lambda, env, None) => Value.Clo(lambda, env, Some(i1.name))
-        case _                            => v
-      }
-      extendStore(env(i1.name), namedV) // Overwrite the previous binding.
+      extendStore(env(i1.name), v) // Overwrite the previous binding.
       bnd match {
         case Nil             => Step(SchemeBegin(let.body, let.idn), env, cc)
         case (i2, e) :: rest => Step(e, env, LtrC(i2, rest, env, let, cc))
@@ -271,14 +267,16 @@ class CPSSchemeInterpreter(
     ): State = {
     // First, check the arity.
     f match {
-      case Value.Clo(lambda @ SchemeLambda(argNames, _, _), _, name) =>
+      case Value.Clo(lambda @ SchemeLambda(_, argNames, _, _), _) =>
         if (args.length != argNames.length)
-          stackedException(s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${name
-            .getOrElse("lambda")} (${lambda.idn.pos}), while exactly ${argNames.length} are expected.")
-      case Value.Clo(lambda @ SchemeVarArgLambda(argNames, _, _, _), _, name) =>
+          stackedException(
+            s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${lambda.lambdaName}, while exactly ${argNames.length} are expected."
+          )
+      case Value.Clo(lambda @ SchemeVarArgLambda(_, argNames, _, _, _), _) =>
         if (args.length < argNames.length)
-          stackedException(s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${name
-            .getOrElse("lambda")} (${lambda.idn.pos}), while at least ${argNames.length} are expected.")
+          stackedException(
+            s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${lambda.lambdaName}, while at least ${argNames.length} are expected."
+          )
       case Value.Primitive(_) => // Arity is checked upon primitive call.
       case v                  => stackedException(s"Invalid function call at position ${call.idn}: ${v} is not a closure or a primitive.")
     }
@@ -298,9 +296,9 @@ class CPSSchemeInterpreter(
     ): State = {
     val argvs = argvsRev.reverse
     f match {
-      case Value.Clo(SchemeLambda(argNames, body, _), env2, _) =>
+      case Value.Clo(SchemeLambda(_, argNames, body, _), env2) =>
         Step(SchemeBody(body), extendEnv(argNames, argvs, env2), RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
-      case Value.Clo(SchemeVarArgLambda(argNames, vararg, body, _), env2, _) =>
+      case Value.Clo(SchemeVarArgLambda(_, argNames, vararg, body, _), env2) =>
         val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
         extendStore(varArgAddr, makeList(call.args.drop(argNames.length).zip(argvs.drop(argNames.length))))
         val envExt = extendEnv(argNames, argvs, env2) + (vararg.name -> varArgAddr)

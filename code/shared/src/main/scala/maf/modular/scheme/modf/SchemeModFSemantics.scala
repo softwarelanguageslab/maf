@@ -31,18 +31,18 @@ trait BaseSchemeModFSemantics
   def expr(cmp: Component): SchemeExp = body(cmp)
   def body(cmp: Component): SchemeExp = body(view(cmp))
   def body(cmp: SchemeModFComponent): SchemeExp = cmp match {
-    case Main                      => program
-    case c: Call[ComponentContext] => SchemeBody(c.lambda.body)
+    case Main       => program
+    case c: Call[_] => SchemeBody(c.lambda.body)
   }
 
   type ComponentContent = Option[lattice.Closure]
   def content(cmp: Component) = view(cmp) match {
-    case Main                      => None
-    case c: Call[ComponentContext] => Some(c.clo)
+    case Main       => None
+    case c: Call[_] => Some(c.clo)
   }
   def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
-    case Main                      => None
-    case c: Call[ComponentContext] => Some(c.ctx)
+    case Main                                 => None
+    case c: Call[ComponentContext] @unchecked => Some(c.ctx)
   }
 
   /** Creates a new component, given a closure, context and an optional name. */
@@ -50,7 +50,6 @@ trait BaseSchemeModFSemantics
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
   def allocCtx(
-      nam: Option[String],
       clo: lattice.Closure,
       args: List[Value],
       call: Position,
@@ -73,7 +72,7 @@ trait BaseSchemeModFSemantics
     protected def fnBody: SchemeExp = body(view(component))
     protected def fnEnv: Env = view(component) match {
       case Main => baseEnv
-      case c: Call[ComponentContext] =>
+      case c: Call[_] =>
         val extEnv = c.env.extend(c.lambda.args.map { id =>
           (id.name, allocVar(id, component))
         })
@@ -140,19 +139,19 @@ trait BaseSchemeModFSemantics
         lattice.join(
           acc,
           clo match {
-            case (clo @ (SchemeLambda(prs, _, _), _), nam) if prs.length == arity =>
+            case (SchemeLambda(_, prs, _, _), _) if prs.length == arity =>
               val argVals = args.map(_._2)
-              val context = allocCtx(nam, clo, argVals, cll, component)
-              val targetCall = Call(clo, nam, context)
+              val context = allocCtx(clo, argVals, cll, component)
+              val targetCall = Call(clo, context)
               val targetCmp = newComponent(targetCall)
               bindArgs(targetCmp, prs, argVals)
               call(targetCmp)
-            case (clo @ (SchemeVarArgLambda(prs, vararg, _, _), _), nam) if prs.length <= arity =>
+            case (SchemeVarArgLambda(_, prs, vararg, _, _), _) if prs.length <= arity =>
               val (fixedArgs, varArgs) = args.splitAt(prs.length)
               val fixedArgVals = fixedArgs.map(_._2)
               val varArgVal = allocateList(varArgs)
-              val context = allocCtx(nam, clo, fixedArgVals :+ varArgVal, cll, component)
-              val targetCall = Call(clo, nam, context)
+              val context = allocCtx(clo, fixedArgVals :+ varArgVal, cll, component)
+              val targetCall = Call(clo, context)
               val targetCmp = newComponent(targetCall)
               bindArgs(targetCmp, prs, fixedArgVals)
               bindArg(targetCmp, vararg, varArgVal)
@@ -195,9 +194,8 @@ trait BaseSchemeModFSemantics
       def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
       def callcc(
           clo: lattice.Closure,
-          nam: Option[String],
           fpos: Position
-        ): Value = modf.callcc(clo, nam, fpos)
+        ): Value = modf.callcc(clo, fpos)
       def currentThread = throw new Exception("Concurrency not available in ModF")
     }
     // TODO[minor]: use foldMap instead of foldLeft
@@ -232,18 +230,16 @@ trait BaseSchemeModFSemantics
     // The current component serves as the lexical environment of the closure.
     protected def newClosure(
         lambda: SchemeLambdaExp,
-        env: Env,
-        name: Option[String]
+        env: Env
       ): Value =
-      lattice.closure((lambda, env.restrictTo(lambda.fv)), name)
+      lattice.closure((lambda, env.restrictTo(lambda.fv)))
 
     protected def callcc(
         closure: lattice.Closure,
-        nam: Option[String],
         fpos: Position
       ): Value = {
-      val ctx = allocCtx(nam, closure, Nil, fpos, component)
-      val cll = Call(closure, nam, ctx)
+      val ctx = allocCtx(closure, Nil, fpos, component)
+      val cll = Call(closure, ctx)
       val cmp = newComponent(cll)
       val cnt = lattice.cont(cmp)
       val par = closure._1.args.head

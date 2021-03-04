@@ -294,10 +294,10 @@ trait SmallStepModConcSemantics
         stack: Stack
       ): Set[State] = exp match {
       // Single-step evaluation.
-      case l @ SchemeLambda(_, _, _)          => Set(Kont(lattice.closure((l, env), None), stack))
-      case l @ SchemeVarArgLambda(_, _, _, _) => Set(Kont(lattice.closure((l, env), None), stack))
-      case SchemeValue(value, _)              => Set(Kont(evalLiteralValue(exp, value), stack))
-      case SchemeVar(id)                      => Set(Kont(lookup(id, env), stack))
+      case l @ SchemeLambda(_, _, _, _)          => Set(Kont(lattice.closure((l, env)), stack))
+      case l @ SchemeVarArgLambda(_, _, _, _, _) => Set(Kont(lattice.closure((l, env)), stack))
+      case SchemeValue(value, _)                 => Set(Kont(evalLiteralValue(exp, value), stack))
+      case SchemeVar(id)                         => Set(Kont(lookup(id, env), stack))
 
       // Multi-step evaluation.
       case c @ SchemeFuncall(f, args, _)           => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
@@ -429,9 +429,9 @@ trait SmallStepModConcSemantics
         stack: Stack
       ): Set[State] = {
       val (form, actu) = bindings.unzip
-      val lambda = SchemeLambda(form, body, name.idn)
+      val lambda = SchemeLambda(Some(name.name), form, body, name.idn)
       val env2 = define(name, lattice.bottom, env)
-      val clo = lattice.closure((lambda, env2), Some(name.name))
+      val clo = lattice.closure((lambda, env2))
       assign(name, clo, env2)
       val call = SchemeFuncall(lambda, actu, name.idn)
       evalArgs(actu, call, clo, Nil, env, stack)
@@ -541,10 +541,10 @@ trait SmallStepModConcSemantics
         lattice
           .getClosures(fval)
           .flatMap({
-            case ((SchemeLambda(prs, body, _), env), _) if prs.length == args.length =>
+            case (SchemeLambda(_, prs, body, _), env) if prs.length == args.length =>
               val env2 = prs.zip(args.map(_._2)).foldLeft(env)({ case (env, (f, a)) => define(f, a, env) })
               evalSequence(body, env2, stack)
-            case ((SchemeVarArgLambda(prs, vararg, body, _), env), _) if prs.length <= args.length =>
+            case (SchemeVarArgLambda(_, prs, vararg, body, _), env) if prs.length <= args.length =>
               val (fixedArgs, varArgs) = args.splitAt(prs.length)
               val fixedArgVals = fixedArgs.map(_._2)
               val varArgVal = allocateList(varArgs)
@@ -585,7 +585,6 @@ trait SmallStepModConcSemantics
       def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
       def callcc(
           clo: Closure,
-          nam: Option[String],
           pos: Position
         ): Value = throw new Exception("call/cc not supported here")
       def currentThread = component

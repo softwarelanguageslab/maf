@@ -57,7 +57,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case analysis.modularLatticeWrapper.modularLattice.Str(s)       => baseDomain.Str(s)
     case analysis.modularLatticeWrapper.modularLattice.Symbol(s)    => baseDomain.Symbol(s)
     case analysis.modularLatticeWrapper.modularLattice.Prim(ps)     => baseDomain.Prim(ps)
-    case analysis.modularLatticeWrapper.modularLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((c._1._1, emptyEnv), None)))
+    case analysis.modularLatticeWrapper.modularLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => (c._1, emptyEnv)))
     case analysis.modularLatticeWrapper.modularLattice.Cons(a, d)   => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
     case analysis.modularLatticeWrapper.modularLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
     case analysis.modularLatticeWrapper.modularLattice.Vec(s, e)    => baseDomain.Vec(s, e.view.mapValues(convertValue(analysis)).toMap)
@@ -82,8 +82,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case ConcreteValues.Value.Nil          => baseLattice.nil
     case ConcreteValues.Value.Void         => baseLattice.void
     case ConcreteValues.Value.Undefined(_) => baseLattice.bottom
-    case ConcreteValues.Value.Clo(l, _, _) =>
-      baseLattice.closure((l, emptyEnv), None) // TODO: when names are added to the abstract interpreter, preserve that information here
+    case ConcreteValues.Value.Clo(l, _)    => baseLattice.closure((l, emptyEnv))
     case ConcreteValues.Value.Primitive(p) => baseLattice.primitive(p)
     case ConcreteValues.Value.Str(s)       => baseLattice.string(s)
     case ConcreteValues.Value.Symbol(s)    => baseLattice.symbol(s)

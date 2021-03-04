@@ -15,17 +15,11 @@ object SchemeModFComponent {
   // A call to a specific closure
   case class Call[Context](
       clo: (SchemeLambdaExp, Environment[Address]),
-      nam: Option[String],
       ctx: Context)
       extends SchemeModFComponent {
     // convenience accessors
     lazy val (lambda, env) = clo
-    // TODO: move this to SchemeLambdaExp
-    def lambdaName: String = nam match {
-      case None       => s"λ@${lambda.idn}"
-      case Some(name) => name
-    }
-    override def toString: String = s"$lambdaName [$ctx]"
+    override def toString: String = s"${lambda.lambdaName} [$ctx]"
   }
 }
 

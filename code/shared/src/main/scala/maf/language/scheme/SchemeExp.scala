@@ -56,6 +56,8 @@ case object ASS extends Label // Assertion
  * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
  */
 sealed trait SchemeLambdaExp extends SchemeExp {
+  // optionally, a lambda has a name
+  def name: Option[String]
   // a lambda takes arguments, and has a non-empty body
   def args: List[Identifier]
   def body: List[SchemeExp]
@@ -69,6 +71,8 @@ sealed trait SchemeLambdaExp extends SchemeExp {
     } else {
       argc >= args.length
     }
+  // a short name for this function
+  def lambdaName: String = name.getOrElse(s"λ@${idn.pos}")
   // free variables
   lazy val fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
   // height
@@ -92,6 +96,7 @@ sealed trait SchemeLambdaExp extends SchemeExp {
 }
 
 case class SchemeLambda(
+    name: Option[String],
     args: List[Identifier],
     body: List[SchemeExp],
     idn: Identity)
@@ -105,6 +110,7 @@ case class SchemeLambda(
 }
 
 case class SchemeVarArgLambda(
+    name: Option[String],
     args: List[Identifier],
     vararg: Identifier,
     body: List[SchemeExp],
@@ -498,7 +504,8 @@ object SchemeDo {
       commands: List[SchemeExp],
       idn: Identity
     ): SchemeExp = {
-    val loopId = Identifier("__do_loop", idn)
+    val loopIdName = "__do_loop"
+    val loopId = Identifier(loopIdName, idn)
     val annot = commands.take(1) match {
       case (exp @ SchemeVar(Identifier(annot, _))) :: _ if annot.startsWith("@") =>
         Some(exp)
@@ -512,6 +519,7 @@ object SchemeDo {
         (
           loopId,
           SchemeLambda(
+            Some(loopIdName),
             vars.map(_._1),
             (if (annot.isDefined) { annot.toList }
              else { List[SchemeExp]() }) ++

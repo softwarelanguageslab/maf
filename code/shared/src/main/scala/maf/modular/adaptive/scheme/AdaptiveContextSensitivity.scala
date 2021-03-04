@@ -10,6 +10,9 @@ import maf.modular._
 import maf.modular.scheme.modf.SchemeModFComponent._
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with AdaptiveAnalysisSummary {
+
+  import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
+
   /*
    * configured by:
    * - some "budget" (which, when exceeded by the "cost" of some function, triggers an adaptation)
@@ -36,7 +39,6 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   def adaptCall(cll: Call[ComponentContext], kLimit: Option[Int]): Call[ComponentContext] =
     cll.copy(ctx = adaptCtx(cll.ctx, kLimit))
   def allocCtx(
-      nam: Option[String],
       clo: lattice.Closure,
       args: List[Value],
       call: Position,
@@ -82,7 +84,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       reduceComponents(module.asInstanceOf[LambdaModule])
     } else {
       // (b) too many reanalyses => reduce number of dependencies triggered for the components
-      // CURRNET: per component
+      // CURRENT: per component
       val target = ms.totalDepCount / 2
       val chosen = takeLargest(ms.content, (p: (Component, MultiSet[Dependency])) => p._2.cardinality, target)
       chosen.foreach({ case (_, dps) => reduceReanalyses(dps) })
@@ -146,15 +148,15 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     chosenFuncs.toSet.foreach(reduceComponents)
   }
 
-  private def reduceClosures(cls: Set[ClosureWithName]) = {
+  private def reduceClosures(cls: Set[lat.Closure]) = {
     val target: Int = cls.size / 2
-    val perFunction = cls.groupBy(_._1._1)
-    val chosenFuncs = takeLargest[(SchemeLambdaExp, Set[ClosureWithName])](perFunction, _._2.size, target)
+    val perFunction = cls.groupBy(_._1)
+    val chosenFuncs = takeLargest[(SchemeLambdaExp, Set[lat.Closure])](perFunction, _._2.size, target)
     val chosenParents =
       chosenFuncs
         .map(_._2)
         .filter(_.size > 1)
-        .map(funs => getParentModule(funs.head._1).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
+        .map(funs => getParentModule(funs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
     chosenParents.toSet.foreach(reduceComponents)
   }
 
@@ -188,8 +190,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       k = k - 1
       calls = calls.map(adaptCall(_, Some(k)))
     }
-    //println(s"${module.fun} -> $k")
-    kPerFn += module.fun -> k // register the new k
+    //println(s"${module.lambda} -> $k")
+    kPerFn += module.lambda -> k // register the new k
   }
 
   /*
@@ -230,7 +232,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   }
   private def getAddrModule(addr: Addr): SchemeModule =
     module(getAddrCmp(addr))
-  private def getParentModule(clo: Closure): SchemeModule =
+  private def getParentModule(clo: lat.Closure): SchemeModule =
     module(clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
   private def sizeOfValue(value: Value): Int =
     value.vs.map(sizeOfV).sum

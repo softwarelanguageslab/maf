@@ -62,12 +62,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     override def toString: String = prims.mkString("Primitive{", ", ", "}")
   }
   // TODO: define `type Closure = (SchemeLambdaExp, Env, Option[String])` (maybe using a case class)
-  case class Clo(closures: Set[(schemeLattice.Closure, Option[String])]) extends Value {
+  case class Clo(closures: Set[schemeLattice.Closure]) extends Value {
     def ord = 7
     override def toString: String =
       closures
-        .map(namedClo => namedClo._2.getOrElse(s"λ@${namedClo._1._1.idn}"))
-        .mkString("Closure{", ", ", "}")
+        .map(_._1.lambdaName)
+        .mkString("Closures{", ", ", "}")
   }
   case object Nil extends Value {
     def ord = 8
@@ -75,7 +75,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
   }
   case class Pointer(ptrs: Set[A]) extends Value {
     def ord = 9
-    override def toString: String = ptrs.mkString("Pointer{", ", ", "}")
+    override def toString: String = ptrs.mkString("Pointers{", ", ", "}")
   }
   case class Cons(car: L, cdr: L) extends Value {
     def ord = 10
@@ -599,7 +599,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def bool(x: Boolean): Value = Bool(BoolLattice[B].inject(x))
     def char(x: scala.Char): Value = Char(CharLattice[C].inject(x))
     def primitive(x: String): Value = Prim(Set(x))
-    def closure(x: schemeLattice.Closure, name: Option[String]): Value = Clo(Set((x, name)))
+    def closure(x: schemeLattice.Closure): Value = Clo(Set(x))
     def cont(k: K): Value = Kont(Set(k))
     def symbol(x: String): Value = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value = Nil
@@ -608,7 +608,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def thread(tid: TID): Value = Thread(Set(tid))
     def lock(threads: Set[TID]): Value = Lock(threads)
     def void: Value = Void
-    def getClosures(x: Value): Set[(schemeLattice.Closure, Option[String])] = x match {
+    def getClosures(x: Value): Set[schemeLattice.Closure] = x match {
       case Clo(closures) => closures
       case _             => Set.empty
     }
@@ -806,7 +806,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       )(boolAndMonoid)
     def top: L = throw LatticeTopUndefined
 
-    def getClosures(x: L): Set[(Closure, Option[String])] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
+    def getClosures(x: L): Set[Closure] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
     def getContinuations(x: L): Set[K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)
     def getPrimitives(x: L): Set[String] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
@@ -830,7 +830,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def char(x: scala.Char): L = Element(Value.char(x))
     def bool(x: Boolean): L = Element(Value.bool(x))
     def primitive(x: String): L = Element(Value.primitive(x))
-    def closure(x: Closure, name: Option[String]): L = Element(Value.closure(x, name))
+    def closure(x: Closure): L = Element(Value.closure(x))
     def cont(x: K): L = Element(Value.cont(x))
     def symbol(x: String): L = Element(Value.symbol(x))
     def cons(car: L, cdr: L): L = Element(Value.cons(car, cdr))

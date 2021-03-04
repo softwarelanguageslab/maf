@@ -118,14 +118,14 @@ trait BaseSchemeLexicalAddresser {
 
   def translate(exp: SchemeExp, scope: Scope): SchemeExp = exp match {
     case vexp: SchemeValue => vexp
-    case SchemeLambda(prs, bdy, pos) =>
+    case SchemeLambda(nam, prs, bdy, pos) =>
       val extScp = extend(newFrame(scope), prs)
       val bdyLex = translateBody(bdy, newLocalFrame(extScp))
-      SchemeLambda(prs, bdyLex, pos)
-    case SchemeVarArgLambda(prs, vararg, bdy, pos) =>
+      SchemeLambda(nam, prs, bdyLex, pos)
+    case SchemeVarArgLambda(nam, prs, vararg, bdy, pos) =>
       val extScp = extend(extend(newFrame(scope), prs), vararg)
       val bdyLex = translateBody(bdy, newLocalFrame(extScp))
-      SchemeVarArgLambda(prs, vararg, bdyLex, pos)
+      SchemeVarArgLambda(nam, prs, vararg, bdyLex, pos)
     case SchemeVar(id) =>
       SchemeVarLex(id, resolve(id, scope))
     case SchemeBegin(eps, pos) =>

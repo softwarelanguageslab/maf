@@ -167,8 +167,8 @@ object BiggerEnvironmentFirstWorklistAlgorithm {
   import maf.language.scheme._
   trait ModF extends BiggerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModFComponents {
     def environmentSize(cmp: Component): Int = cmp match {
-      case Main                 => 0
-      case Call((_, env), _, _) => env.size
+      case Main              => 0
+      case Call((_, env), _) => env.size
     }
   }
 
@@ -191,8 +191,8 @@ object SmallerEnvironmentFirstWorklistAlgorithm {
   import maf.language.scheme._
   trait ModF extends SmallerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModFComponents {
     def environmentSize(cmp: Component): Int = cmp match {
-      case Main                 => 0
-      case Call((_, env), _, _) => env.size
+      case Main              => 0
+      case Call((_, env), _) => env.size
     }
   }
 

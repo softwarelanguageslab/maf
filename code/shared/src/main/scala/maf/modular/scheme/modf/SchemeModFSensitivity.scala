@@ -13,7 +13,6 @@ case object NoContext extends Serializable {
 trait SchemeModFNoSensitivity extends SchemeModFSensitivity {
   type ComponentContext = NoContext.type
   def allocCtx(
-      nam: Option[String],
       clo: lattice.Closure,
       args: List[Value],
       call: Position,
@@ -28,7 +27,6 @@ case class ArgContext(values: List[_]) { //TODO: preserve type information
 trait SchemeModFFullArgumentSensitivity extends SchemeModFSensitivity {
   type ComponentContext = ArgContext
   def allocCtx(
-      nam: Option[String],
       clo: lattice.Closure,
       args: List[Value],
       call: Position,
@@ -44,7 +42,6 @@ trait SchemeModFKCallSiteSensitivity extends SchemeModFSensitivity {
   val k: Int
   type ComponentContext = CallSiteContext
   def allocCtx(
-      nam: Option[String],
       clo: lattice.Closure,
       args: List[Value],
       call: Position,
@@ -72,7 +69,6 @@ case class ArgCallSiteContext(
 trait SchemeModFFullArgumentCallSiteSensitivity extends SchemeModFSensitivity {
   type ComponentContext = ArgCallSiteContext
   def allocCtx(
-      nam: Option[String],
       clo: lattice.Closure,
       args: List[Value],
       call: Position,
@@ -84,7 +80,6 @@ trait SchemeModFFullArgumentCallSiteSensitivity extends SchemeModFSensitivity {
 trait SchemeModFUserGuidedSensitivity1 extends SchemeModFSensitivity {
   type ComponentContext = Any
   def allocCtx(
-      nam: Option[String],
       clo: lattice.Closure,
       args: List[Value],
       call: Position,
@@ -114,7 +109,7 @@ trait SchemeModFUserGuidedSensitivity1 extends SchemeModFSensitivity {
       case Some(("@sensitivity", "No")) =>
         ("No", ())
       case annot =>
-        println(s"WARNING: Function has an invalid annotation: $nam ($clo), using no sensitivity instead of: $annot")
+        println(s"WARNING: Function has an invalid annotation: (${clo._1.lambdaName}), using no sensitivity instead of: $annot")
         ("No", ())
 
     }

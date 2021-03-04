@@ -73,24 +73,24 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   protected def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value): Boolean = {
     val lat = analysis.lattice
     v match {
-      case Value.Undefined(_)   => true
-      case Value.Unbound(_)     => true
-      case Value.Void           => lat.subsumes(abs, lat.void)
-      case Value.Clo(lam, _, _) => lat.getClosures(abs).exists(_._1._1.idn == lam.idn)
-      case Value.Primitive(p)   => lat.getPrimitives(abs).exists(_ == p)
-      case Value.Str(s)         => lat.subsumes(abs, lat.string(s))
-      case Value.Symbol(s)      => lat.subsumes(abs, lat.symbol(s))
-      case Value.Integer(i)     => lat.subsumes(abs, lat.number(i))
-      case Value.Real(r)        => lat.subsumes(abs, lat.real(r))
-      case Value.Bool(b)        => lat.subsumes(abs, lat.bool(b))
-      case Value.Character(c)   => lat.subsumes(abs, lat.char(c))
-      case Value.Nil            => lat.subsumes(abs, lat.nil)
-      case Value.Pointer(_)     => lat.getPointerAddresses(abs).nonEmpty
-      case Value.Thread(_)      => lat.getThreads(abs).nonEmpty
-      case Value.InputPort(h)   => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
-      case Value.OutputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
-      case Value.EOF            => lat.subsumes(abs, lat.charTop)
-      case v                    => throw new Exception(s"Unknown concrete value type: $v.")
+      case Value.Undefined(_)  => true
+      case Value.Unbound(_)    => true
+      case Value.Void          => lat.subsumes(abs, lat.void)
+      case Value.Clo(lam, _)   => lat.getClosures(abs).exists(_._1.idn == lam.idn)
+      case Value.Primitive(p)  => lat.getPrimitives(abs).exists(_ == p)
+      case Value.Str(s)        => lat.subsumes(abs, lat.string(s))
+      case Value.Symbol(s)     => lat.subsumes(abs, lat.symbol(s))
+      case Value.Integer(i)    => lat.subsumes(abs, lat.number(i))
+      case Value.Real(r)       => lat.subsumes(abs, lat.real(r))
+      case Value.Bool(b)       => lat.subsumes(abs, lat.bool(b))
+      case Value.Character(c)  => lat.subsumes(abs, lat.char(c))
+      case Value.Nil           => lat.subsumes(abs, lat.nil)
+      case Value.Pointer(_)    => lat.getPointerAddresses(abs).nonEmpty
+      case Value.Thread(_)     => lat.getThreads(abs).nonEmpty
+      case Value.InputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
+      case Value.OutputPort(h) => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
+      case Value.EOF           => lat.subsumes(abs, lat.charTop)
+      case v                   => throw new Exception(s"Unknown concrete value type: $v.")
     }
   }
 

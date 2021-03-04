@@ -27,7 +27,7 @@ object EvalM {
           rest <- xs.mapM(f)
         } yield fx :: rest
     }
-    def mapM_(f: X => EvalM[()]): EvalM[()] = xs match {
+    def mapM_(f: X => EvalM[Unit]): EvalM[Unit] = xs match {
       case Nil     => unit(())
       case x :: xs => f(x).flatMap(_ => xs.mapM_(f))
     }
@@ -92,7 +92,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
     private def evalVariable(id: Identifier): EvalM[Value] =
       getEnv.flatMap(env => inject(lookup(id, env)))
     private def evalClosure(lam: SchemeLambdaExp): EvalM[Value] =
-      for { env <- getEnv } yield newClosure(lam, env, None)
+      for { env <- getEnv } yield newClosure(lam, env)
     private def evalSequence(exps: List[SchemeExp]): EvalM[Value] =
       exps.foldLeftM(lattice.void)((_, exp) => eval(exp))
     private def evalSet(id: Identifier, exp: SchemeExp): EvalM[Value] =
@@ -131,12 +131,8 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
       withEnv(env => bindings.foldLeft(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
         for {
           extEnv <- getEnv
-          _ <- bindings.mapM_ {
-            case (id, lam: SchemeLambdaExp) =>
-              assign(id, extEnv, newClosure(lam, extEnv, Some(id.name)))
-              unit(())
-            case (id, exp) =>
-              eval(exp).map(value => assign(id, extEnv, value))
+          _ <- bindings.mapM_ { case (id, exp) =>
+            eval(exp).map(value => assign(id, extEnv, value))
           }
           res <- evalSequence(body)
         } yield res
@@ -150,9 +146,9 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
       for {
         env <- getEnv
         (prs, ags) = bindings.unzip
-        lambda = SchemeLambda(prs, body, idn)
+        lambda = SchemeLambda(Some(id.name), prs, body, idn)
         extEnv = bind(id, env, lattice.bottom)
-        closure = newClosure(lambda, extEnv, Some(id.name))
+        closure = newClosure(lambda, extEnv)
         _ = assign(id, extEnv, closure)
         call = SchemeFuncall(lambda, ags, idn)
         argVals <- ags.mapM(exp => for { vlu <- eval(exp) } yield (exp, vlu))

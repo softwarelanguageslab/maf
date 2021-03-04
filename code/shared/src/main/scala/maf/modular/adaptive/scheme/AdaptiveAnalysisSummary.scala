@@ -7,35 +7,26 @@ import maf.util.MonoidImplicits._
 import maf.util.datastructures._
 import maf.modular._
 import maf.util.MonoidInstances
-import maf.core.WrappedEnv
 
 trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
 
-  // for convenience (TODO: move this elsewhere...)
-  type Closure = modularLatticeWrapper.modularLattice.schemeLattice.Closure
-  type ClosureWithName = (Closure, Option[String])
+  import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
 
   trait SchemeModule
   case object MainModule extends SchemeModule {
     override def toString = "main"
   }
-  case class LambdaModule(
-      fun: SchemeLambdaExp,
-      name: Option[String],
-      depth: Int)
-      extends SchemeModule {
-    override def toString = name.getOrElse(s"lambda@${fun.idn.pos}")
+  case class LambdaModule(lambda: SchemeLambdaExp) extends SchemeModule {
+    override def toString = lambda.lambdaName
   }
 
   def module(cmp: Component): SchemeModule = view(cmp) match {
-    case Main               => MainModule
-    case Call(clo, name, _) => module((clo, name))
-    case _                  => throw new Exception("Should not happen!")
+    case Main         => MainModule
+    case Call(clo, _) => module(clo)
+    case _            => throw new Exception("Should not happen!")
   }
 
-  def module(clo: ClosureWithName): LambdaModule = clo match {
-    case ((lam, env: WrappedEnv[Addr, _] @unchecked), name) => LambdaModule(lam, name, env.depth)
-  }
+  def module(clo: lat.Closure): LambdaModule = LambdaModule(clo._1)
 
   /**
    * Summarizes analysis information by:

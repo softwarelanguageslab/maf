@@ -7,7 +7,6 @@ import maf.modular.scheme.modf._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.language.scheme._
 import maf.modular.adaptive._
-import maf.util.benchmarks._
 
 /** Semantics for an adaptive Scheme MODF analysis. */
 trait AdaptiveSchemeModFSemantics
@@ -26,8 +25,8 @@ trait AdaptiveSchemeModFSemantics
     case (lambda, env: WrappedEnv[Addr, Component] @unchecked) => (lambda, env.copy(data = update(env.data)).mapAddrs(updateAddr(update)))
   }
   def updateCmp(update: Component => Component)(cmp: ComponentData): ComponentData = cmp match {
-    case Main                                  => Main
-    case Call(clo, nam, ctx: ComponentContext) => Call(updateClosure(update)(clo), nam, updateCtx(update)(ctx))
+    case Main                                        => Main
+    case Call(clo, ctx: ComponentContext @unchecked) => Call(updateClosure(update)(clo), updateCtx(update)(ctx))
   }
   def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext
   def updateAddr(update: Component => Component)(addr: Addr): Addr = addr match {
@@ -44,7 +43,7 @@ trait AdaptiveSchemeModFSemantics
     value match {
       case modularLatticeWrapper.modularLattice.Pointer(ps) => modularLatticeWrapper.modularLattice.Pointer(ps.map(updateAddr(update)))
       case modularLatticeWrapper.modularLattice.Clo(cs) =>
-        modularLatticeWrapper.modularLattice.Clo(cs.map(clo => (updateClosure(update)(clo._1), clo._2)))
+        modularLatticeWrapper.modularLattice.Clo(cs.map(updateClosure(update)))
       case modularLatticeWrapper.modularLattice.Cons(car, cdr) =>
         modularLatticeWrapper.modularLattice.Cons(updateValue(update)(car), updateValue(update)(cdr))
       case modularLatticeWrapper.modularLattice.Vec(siz, els) =>
@@ -62,14 +61,10 @@ trait AdaptiveSchemeModFSemantics
   override def baseEnv = WrappedEnv(super.baseEnv, 0, mainComponent)
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFIntra = new AdaptiveSchemeModFIntra(cmp)
   class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra {
-    override protected def newClosure(
-        lambda: SchemeLambdaExp,
-        env: Env,
-        name: Option[String]
-      ): Value = {
+    override protected def newClosure(lambda: SchemeLambdaExp, env: Env): Value = {
       val trimmedEnv = env.restrictTo(lambda.fv).asInstanceOf[WrappedEnv[Addr, Component]]
       val updatedEnv = trimmedEnv.copy(depth = trimmedEnv.depth + 1, data = component)
-      lattice.closure((lambda, updatedEnv), name)
+      lattice.closure((lambda, updatedEnv))
     }
   }
 }

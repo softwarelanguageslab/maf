@@ -34,8 +34,8 @@ class InterpreterTests() extends AnyPropSpec {
       compareValues(car1, car2, visited).flatMap(b => if (b) compareValues(cdr1, cdr2, visited) else Some(b))
     case (ConcreteValues.Value.Pointer(p1), ConcreteValues.Value.Pointer(p2)) =>
       compareValues(interpreter.store(p1), CPSinterpreter.store(p2), visited) // Check the values in the store.
-    case (ConcreteValues.Value.Clo(l1, e1, n1), ConcreteValues.Value.Clo(l2, e2, n2)) =>
-      if (l1 == l2 && n1 == n2 && e1.keySet == e2.keySet)
+    case (ConcreteValues.Value.Clo(l1, e1), ConcreteValues.Value.Clo(l2, e2)) =>
+      if (l1 == l2 && e1.keySet == e2.keySet)
         // When comparing procedures, the addresses in the environment may differ. Therefore, for every variable, we have
         // to check the value at the given address. However, this may cause looping. Therefore, we keep a visited map
         // that breaks loops and considers them as verified (which is the case if all other comparisons succeed).

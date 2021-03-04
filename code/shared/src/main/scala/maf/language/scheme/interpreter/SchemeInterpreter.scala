@@ -170,11 +170,7 @@ class SchemeInterpreter(
       case binding :: bindings =>
         for {
           bindingv <- tailcall(eval(binding._2, envExt, timeout, version))
-          namedValue = bindingv match {
-            case Value.Clo(lambda, env, _) => Value.Clo(lambda, env, Some(binding._1.name)) // Add names to closures.
-            case _                         => bindingv
-          }
-          _ = extendStore(envExt(binding._1.name), check(binding._1.idn, namedValue))
+          _ = extendStore(envExt(binding._1.name), check(binding._1.idn, bindingv))
           res <- tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout, version))
         } yield res
     }
@@ -207,7 +203,7 @@ class SchemeInterpreter(
         for {
           fv <- tailcall(eval(f, env, timeout, version))
           res <- fv match {
-            case Value.Clo(lambda @ SchemeLambda(argsNames, body, pos2), env2, name) =>
+            case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, pos2), env2) =>
               if (argsNames.length != args.length) {
                 stackedException(
                   s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected."
@@ -224,7 +220,7 @@ class SchemeInterpreter(
                 resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
                 _ = extendStore(resAddr, res)
               } yield res
-            case Value.Clo(lambda @ SchemeVarArgLambda(argsNames, vararg, body, pos2), env2, name) =>
+            case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, pos2), env2) =>
               val arity = argsNames.length
               if (args.length < arity) {
                 stackedException(
@@ -284,8 +280,8 @@ class SchemeInterpreter(
         val addr = newAddr(AddrInfo.VarAddr(name))
         val env2 = env + (name.name -> addr)
         val (prs, ags) = bindings.unzip
-        val lambda = SchemeLambda(prs, body, pos)
-        val clo = Value.Clo(lambda, env2, Some(name.name))
+        val lambda = SchemeLambda(Some(name.name), prs, body, pos)
+        val clo = Value.Clo(lambda, env2)
         extendStore(addr, clo)
         tailcall(eval(SchemeFuncall(lambda, ags, pos), env2, timeout, version))
       case SchemeSet(id, v, pos) =>

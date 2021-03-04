@@ -40,7 +40,7 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] {
   type Closure = (SchemeLambdaExp, Env)
 
   /** Extract closures contained in this value */
-  def getClosures(x: L): Set[(Closure, Option[String])]
+  def getClosures(x: L): Set[Closure]
 
   /** Extract primitives contained in this value */
   def getPrimitives(x: L): Set[String]
@@ -88,7 +88,7 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] {
   def primitive(x: String): L
 
   /** Injection of a closure */
-  def closure(x: Closure, name: Option[String]): L
+  def closure(x: Closure): L
 
   /** Injection of a symbol */
   def symbol(x: String): L
@@ -142,7 +142,7 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] {
   def void: L
 
   object Injector {
-    implicit def inject(c: Closure, name: Option[String]): L = closure(c, name)
+    implicit def inject(c: Closure): L = closure(c)
     implicit def inject(car: L, cdr: L): L = cons(car, cdr)
     implicit def inject(a: Any): L = a match {
       case i: Int     => number(i)

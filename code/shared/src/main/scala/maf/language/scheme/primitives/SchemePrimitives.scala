@@ -11,7 +11,6 @@ trait SchemeInterpreterBridge[V, A <: Address] {
   def pointer(exp: SchemeExp): A
   def callcc(
       clo: Closure,
-      nam: Option[String],
       pos: Position
     ): V
   def currentThread: TID

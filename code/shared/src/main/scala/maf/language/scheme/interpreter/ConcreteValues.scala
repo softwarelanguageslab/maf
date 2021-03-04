@@ -54,10 +54,9 @@ object ConcreteValues {
     /* only used for letrec */
     case class Clo(
         lambda: SchemeLambdaExp,
-        env: Env,
-        name: Option[String] = None)
+        env: Env)
         extends Value {
-      override def toString: String = name.map(n => s"#<procedure:$n>").getOrElse(s"#<procedure:${lambda.idn.pos}>")
+      override def toString: String = s"#<procedure:${lambda.lambdaName}>"
     }
 
     case class Primitive(p: String) extends Value {

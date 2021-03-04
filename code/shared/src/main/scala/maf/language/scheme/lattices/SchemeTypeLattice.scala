@@ -19,7 +19,7 @@ class TypeSchemeLattice[A <: Address, K] {
       inputPort: Boolean = false,
       outputPort: Boolean = false,
       prims: Set[String] = Set.empty,
-      clos: Set[((SchemeLambdaExp, schemeLattice.Env), Option[String])] = Set.empty,
+      clos: Set[(SchemeLambdaExp, schemeLattice.Env)] = Set.empty,
       ptrs: Set[A] = Set.empty,
       consCells: (L, L) = (L(), L()))
       extends SmartHash {
@@ -38,7 +38,7 @@ class TypeSchemeLattice[A <: Address, K] {
     val outputPort: L = L(outputPort = true)
     def prim(p: String): L = L(prims = Set(p))
     def pointer(a: A): L = L(ptrs = Set(a))
-    def clo(clo: schemeLattice.Closure, name: Option[String]): L = L(clos = Set((clo, name)))
+    def clo(clo: schemeLattice.Closure): L = L(clos = Set(clo))
     def cons(car: L, cdr: L): L = L(consCells = (car, cdr))
   }
 
@@ -166,7 +166,7 @@ class TypeSchemeLattice[A <: Address, K] {
         subsumes(x.consCells._1, y.consCells._1) &&
         subsumes(x.consCells._1, y.consCells._2)
     def top: L = ???
-    def getClosures(x: L): Set[(Closure, Option[String])] = x.clos
+    def getClosures(x: L): Set[Closure] = x.clos
     def getPrimitives(x: L): Set[String] = x.prims
     def getPointerAddresses(x: L): Set[A] = Set()
     def getThreads(x: L): Set[TID] = throw new Exception("Not supported.")
@@ -185,7 +185,7 @@ class TypeSchemeLattice[A <: Address, K] {
     def bool(x: Boolean): L = Inject.bool
     def char(x: scala.Char): L = Inject.char
     def primitive(x: String): L = Inject.prim(x)
-    def closure(x: schemeLattice.Closure, name: Option[String]): L = Inject.clo(x, name)
+    def closure(x: schemeLattice.Closure): L = Inject.clo(x)
     def symbol(x: String): L = Inject.sym
     def nil: L = Inject.nil
     def cons(car: L, cdr: L): L = Inject.cons(car, cdr)

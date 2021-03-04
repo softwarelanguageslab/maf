@@ -31,7 +31,7 @@ trait BaseSchemeCompiler {
       for {
         argsv <- tailcall(compileArgs(args))
         bodyv <- tailcall(compileBodyNonEmpty(body))
-      } yield makeLambda(argsv, bodyv, exp.idn)
+      } yield makeLambda(None, argsv, bodyv, exp.idn)
     case SExpPair(SExpId(Identifier("lambda", _)), _, _) =>
       throw new SchemeCompilerException(s"Invalid Scheme lambda: $exp", exp.idn)
     case SExpPair(
@@ -294,12 +294,13 @@ trait BaseSchemeCompiler {
       throw new SchemeCompilerException(s"Invalid Scheme case objects: $objects", objects.idn)
   }
   private def makeLambda(
+      name: Option[String],
       args: (List[Identifier], Option[Identifier]),
       body: List[SchemeExp],
       idn: Identity
     ) = args._2 match {
-    case Some(vararg) => SchemeVarArgLambda(args._1, vararg, body, idn)
-    case None         => SchemeLambda(args._1, body, idn)
+    case Some(vararg) => SchemeVarArgLambda(name, args._1, vararg, body, idn)
+    case None         => SchemeLambda(name, args._1, body, idn)
   }
   private def makeDefineFunction(
       id: Identifier,
