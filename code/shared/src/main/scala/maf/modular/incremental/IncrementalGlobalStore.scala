@@ -104,8 +104,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @param cmp The component that is deleted.
    */
   override def deleteComponent(cmp: Component): Unit = {
-    cachedWrites(cmp).foreach(deleteProvenance(cmp, _))
-    cachedWrites = cachedWrites - cmp
+    if (configuration.writeInvalidation) {
+      cachedWrites(cmp).foreach(deleteProvenance(cmp, _))
+      cachedWrites = cachedWrites - cmp
+    }
     super.deleteComponent(cmp)
   }
 
