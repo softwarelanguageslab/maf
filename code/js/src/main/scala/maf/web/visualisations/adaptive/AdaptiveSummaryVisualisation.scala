@@ -7,6 +7,7 @@ import maf.modular.adaptive.scheme.AdaptiveContextSensitivity
 import org.scalajs.dom
 import maf.util.benchmarks.Timeout
 
+import maf.web.utils.D3Helpers._
 import maf.web.utils.JSHelpers._
 
 //
@@ -35,8 +36,6 @@ trait WebSummaryAdaptiveAnalysis extends AdaptiveContextSensitivity {
 }
 
 class AdaptiveSummaryVisualisation(val analysis: WebSummaryAdaptiveAnalysis) {
-
-    import maf.web.visualisations.WebVisualisation._
 
     // give the adaptive analysis a pointer to this visualisation
     analysis.webSummary = this
