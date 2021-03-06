@@ -5,14 +5,14 @@ import org.scalajs.dom._
 import scala.scalajs.js
 import js.DynamicImplicits.number2dynamic
 
+import maf.web.utils.D3Helpers._
+import maf.web.utils.JSHelpers._
+
 abstract class BarChart(
     width: Int,
     height: Int,
     padding: Int = 100,
     barWidth: Int = 30) {
-
-  // TODO: move this to utils as well
-  import maf.web.visualisations.WebVisualisation._
 
   // visualises of a certain kind of data ...
   type Data

@@ -3,7 +3,7 @@ package maf.web.visualisations
 import maf.modular._
 import maf.modular.scheme.PrmAddr
 import maf.web.visualisations.AddressVisualisation._
-import maf.web.visualisations.WebVisualisation.JsAny
+import maf.web.utils.JSHelpers._
 
 import scala.scalajs.js
 

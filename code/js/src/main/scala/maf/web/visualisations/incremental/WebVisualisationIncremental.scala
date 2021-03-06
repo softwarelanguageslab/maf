@@ -4,8 +4,9 @@ import maf.core.Expression
 import maf.modular.DependencyTracking
 import maf.modular.incremental.{IncrementalGlobalStore, IncrementalModAnalysis}
 import maf.web.visualisations._
-import maf.web.visualisations.WebVisualisation._
 import maf.web.visualisations.incremental.WebVisualisationIncremental._
+
+import maf.web.utils.JSHelpers._
 
 import scala.scalajs.js
 

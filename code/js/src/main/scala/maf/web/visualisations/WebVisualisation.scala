@@ -7,6 +7,9 @@ import maf.util.benchmarks.Timeout
 import scala.concurrent.duration._
 import scala.util.control.Breaks._
 
+import maf.web.utils.JSHelpers._
+import maf.web.utils.D3Helpers._
+
 // Scala.js-related imports
 import org.scalajs.dom
 import org.scalajs.dom.document
@@ -14,10 +17,6 @@ import org.scalajs.dom.document
 import scala.scalajs.js
 
 object WebVisualisation {
-  // some shorthands
-  type JsAny = js.Dynamic
-  type JsArray[E] = js.Array[E]
-  val d3: JsAny = js.Dynamic.global.d3
   // some constants
   val __CIRCLE_RADIUS__ = 15
   val __SVG_ARROW_ID__ = "endarrow"
@@ -28,19 +27,6 @@ object WebVisualisation {
   val __FORCE_CHARGE__ = "charge"
   val __FORCE_LINKS__ = "links"
   val __FORCE_CENTER__ = "center"
-  // some JS helpers
-  implicit def toJsArray[E](seq: Iterable[E]): JsArray[E] = {
-    val array = new js.Array[E]()
-    seq.foreach(item => array.push(item))
-    return array
-  }
-  // more helpers
-  def randomColor(): JsAny = {
-    val r = (scala.math.random() * 255).toInt
-    val g = (scala.math.random() * 255).toInt
-    val b = (scala.math.random() * 255).toInt
-    d3.rgb(r, g, b)
-  }
 }
 
 class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_]) {

@@ -3,7 +3,8 @@ package maf.web.visualisations.incremental
 import maf.modular._
 import maf.web.visualisations._
 import maf.web.visualisations.incremental.AddressVisualisationIncremental._
-import maf.web.visualisations.WebVisualisation._
+
+import maf.web.utils.JSHelpers._
 
 import scala.scalajs.js
 

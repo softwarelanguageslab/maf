@@ -7,6 +7,8 @@ import maf.modular.adaptive.scheme.AdaptiveContextSensitivity
 import org.scalajs.dom
 import maf.util.benchmarks.Timeout
 
+import maf.web.utils.JSHelpers._
+
 //
 // REQUIRED ANALYSIS EXTENSION 
 //
