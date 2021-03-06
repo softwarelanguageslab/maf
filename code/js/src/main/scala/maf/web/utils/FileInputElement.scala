@@ -1,6 +1,4 @@
-package maf.web
-
-import scala.scalajs.js.annotation._
+package maf.web.utils
 
 // Scala.js-related imports
 import org.scalajs.dom

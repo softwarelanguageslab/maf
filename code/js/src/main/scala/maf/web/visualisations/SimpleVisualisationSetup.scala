@@ -1,7 +1,7 @@
 package maf.web.visualisations
 
 import org.scalajs.dom._
-import maf.web._
+import maf.web.utils._
 import scala.scalajs.js.annotation._
 import scala.scalajs.js
 
