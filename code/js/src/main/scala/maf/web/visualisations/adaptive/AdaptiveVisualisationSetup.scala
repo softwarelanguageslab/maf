@@ -54,14 +54,20 @@ object AdaptiveVisualisationSetup {
       }
     }
     // load the analysis
-    analysis.analyze()
+    //analysis.analyze()
     val barChart = new BarChart(800, 600) {
-      type Data = (analysis.SchemeModule, analysis.ModuleSummary)
-      def key(d: Data) = d._1.toString
-      def value(d: Data) = d._2.cost
+      type Data = (String, Int)
+      def key(d: Data) = d._1
+      def value(d: Data) = d._2
     }
-    barChart.loadDataSorted(analysis.summary.content)
+    barChart.loadDataSorted(List(("A", 10), ("B", 7), ("C", 4)))
     document.body.appendChild(barChart.node)
+    val button = document.createElement("button").asInstanceOf[html.Button]
+    button.innerText = "Click me!"
+    button.onclick = (m: Any) => {
+      barChart.loadDataSorted(List(("B", 11), ("A", 10), ("C", 7), ("D", 2)))
+    }
+    document.body.appendChild(button)
   }
 
 }

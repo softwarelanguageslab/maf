@@ -4,7 +4,7 @@ import maf.core._
 import maf.modular._
 import maf.modular.adaptive._
 
-import maf.web.visualisations._ 
+import maf.web.visualisations._
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -20,7 +20,7 @@ object WebVisualisationAdaptive {
 }
 
 //
-// REQUIRED ANALYSIS EXTENSION 
+// REQUIRED ANALYSIS EXTENSION
 //
 
 trait WebVisualisationAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with DependencyTracking[Expr] with GlobalStore[Expr] {
