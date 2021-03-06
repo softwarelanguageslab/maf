@@ -13,7 +13,7 @@ import maf.web.visualisations._
 import scala.scalajs.js.annotation.JSExportTopLevel
 
 @JSExportTopLevel("incrementalVisualisationSetup")
-object IncrementalVisualisationSetup extends VisualisationSetup {
+object IncrementalVisualisationSetup extends SimpleVisualisationSetup {
 
   def newIncrementalReanalysis(text: String): IncrementalSchemeModFAnalysisCPLattice with VisualisableIncrementalModAnalysis[SchemeExp] = {
     val program: SchemeExp = CSchemeParser.parse(text)

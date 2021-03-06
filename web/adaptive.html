@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>MAF Component Visualisation</title>
+    <style>
+      .nodes {
+        fill: white;
+        stroke-width: 2;
+        stroke: black;
+      }
+      .nodes .in_worklist {
+        fill: lightblue;
+      }
+      .nodes .in_worklist.next_component {
+        fill: darkblue;
+      }
+      .nodes .not_visited {
+        stroke: none;
+      }
+      .nodes text {
+        fill: black;
+        stroke: none;
+      }
+      .bar {
+          fill: steelblue;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Include D3 library -->
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3-selection-multi.v1.min.js"></script>
+    <!-- Include Scala.js compiled code -->
+    <script type="text/javascript" src="../code/js/target/scala-2.13/modular-analysis-framework-maf--fastopt.js"></script>
+    <script type="text/javascript">
+      adaptiveVisualisationSetup.init()
+    </script>
+  </body>
+</html>

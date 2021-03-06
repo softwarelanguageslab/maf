@@ -1,12 +1,13 @@
-package maf.web.visualisations
+package maf.web.visualisations.adaptive
 
 import maf.core._
-import maf.modular.GlobalStore
+import maf.modular._
 import maf.modular.adaptive._
+
+import maf.web.visualisations._ 
 
 // Scala.js-related imports
 import scala.scalajs.js
-import maf.modular.DependencyTracking
 
 object WebVisualisationAdaptive {
   val d3 = js.Dynamic.global.d3
@@ -18,9 +19,13 @@ object WebVisualisationAdaptive {
     .range(__NODE_COLORS__)
 }
 
-trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with DependencyTracking[Expr] with GlobalStore[Expr] {
+//
+// REQUIRED ANALYSIS EXTENSION 
+//
 
-  var webvis: WebVisualisationAdaptive = null
+trait WebVisualisationAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with DependencyTracking[Expr] with GlobalStore[Expr] {
+
+  var webvis: WebVisualisationAdaptive = _
 
   def key(cmp: Component): Any
 
@@ -32,14 +37,18 @@ trait WebAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
   override def intraAnalysis(cmp: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
 }
 
-class WebVisualisationAdaptive(override val analysis: WebAdaptiveAnalysis[_]) extends WebVisualisation(analysis) {
+//
+// WEB VISUALISATION FOR ADAPTIVE ANALYSES
+//
 
-  override def componentKey(cmp: analysis.Component) = analysis.key(cmp)
+class WebVisualisationAdaptive(override val analysis: WebVisualisationAdaptiveAnalysis[_]) extends WebVisualisation(analysis) {
 
-  // give the analysis a pointer to the visualisation
+  // give the adaptive analysis a pointer to this webvis
   analysis.webvis = this
 
   var adapted = false
+
+  override def componentKey(cmp: analysis.Component) = analysis.key(cmp)
 
   override def componentText(cmp: analysis.Component) =
     s"[$cmp] ${analysis.deref(cmp).toString()}"

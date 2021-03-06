@@ -47,7 +47,6 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
 
   // TODO: make these abstract
   def componentText(cmp: analysis.Component): String = cmp.toString
-
   def componentKey(cmp: analysis.Component): Any = None
 
   import WebVisualisation._
@@ -77,15 +76,14 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     id
   }
 
+  // TODO: find a better interface
   trait Node extends js.Object {
     def displayText(): String
-
     def data(): Any
   }
 
   class CmpNode(val component: analysis.Component) extends Node {
     def displayText(): String = componentText(component)
-
     def data(): Any = component
   }
 
@@ -128,6 +126,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
       width: Int,
       height: Int
     ): Unit = {
+    //TODO: find a better way to clear the previous visualisation (i.e., don't do it here)
     d3.select(parent).selectAll("svg").remove() // Ensures the new analysis is shown an interacted with when a new file is loaded.
     // setup the svg
     val svg = d3.select(parent).append("svg").attr("width", width).attr("height", height)
