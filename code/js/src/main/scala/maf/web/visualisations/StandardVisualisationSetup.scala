@@ -15,25 +15,18 @@ import scala.scalajs.js.annotation._
 @JSExportTopLevel("standardVisualisationSetup")
 object StandardVisualisationSetup extends VisualisationSetup {
 
-  def create(program: String, width: Int, height: Int) =
-    new WebVisualisation(newAnalysis(program), width, height).node
+  type Analysis = ModAnalysis[_] with SequentialWorklistAlgorithm[_] with GlobalStore[_] with DependencyTracking[_]
 
-  private def newAnalysis(text: String) = {
+  def createVisualisation(analysis: Analysis, width: Int, height: Int) =
+    new WebVisualisation(analysis, width, height).node
+
+  def createAnalysis(text: String): Analysis = {
     val program = SchemeParser.parse(text)
     new SimpleSchemeModFAnalysis(program)
       with SchemeModFNoSensitivity
       with SchemeConstantPropagationDomain
       with DependencyTracking[SchemeExp]
       with FIFOWorklistAlgorithm[SchemeExp] {
-
-      def key(cmp: Component): Identity = expr(cmp).idn
-
-      override def step(t: Timeout.T) = {
-        val cmp = workList.head
-        println(cmp)
-        super.step(t)
-      }
-
       override def intraAnalysis(cmp: SchemeModFComponent) =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
     }

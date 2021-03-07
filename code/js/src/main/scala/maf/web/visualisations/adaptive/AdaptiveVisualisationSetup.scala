@@ -27,7 +27,7 @@ import org.scalajs.dom._
 object AdaptiveVisualisationSetup {
 
   @JSExport
-  def init() = {
+  def setup() = {
     val input = FileInputElement(loadFile)
     document.body.appendChild(input)
   }

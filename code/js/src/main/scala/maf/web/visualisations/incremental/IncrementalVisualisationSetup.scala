@@ -15,13 +15,15 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 @JSExportTopLevel("incrementalVisualisationSetup")
 object IncrementalVisualisationSetup extends VisualisationSetup {
 
-  def newIncrementalReanalysis(text: String): IncrementalSchemeModFAnalysisCPLattice with VisualisableIncrementalModAnalysis[SchemeExp] = {
+  type Analysis = IncrementalAnalysis
+
+  def createAnalysis(text: String) = {
     val program: SchemeExp = CSchemeParser.parse(text)
     new IncrementalAnalysis(program, IncrementalConfiguration.allOptimisations)
   }
 
-  def create(text: String, width: Int, height: Int) =
-    (new WebVisualisationIncremental(newIncrementalReanalysis(text), width: Int, height: Int) with RetainAllIncremental with AddressVisualisationIncremental).node
+  def createVisualisation(analysis: Analysis, width: Int, height: Int) =
+    (new WebVisualisationIncremental(analysis, width: Int, height: Int) with RetainAllIncremental with AddressVisualisationIncremental).node
 }
 
 class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfiguration)
