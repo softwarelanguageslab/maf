@@ -13,15 +13,15 @@ import maf.web.visualisations._
 import scala.scalajs.js.annotation.JSExportTopLevel
 
 @JSExportTopLevel("incrementalVisualisationSetup")
-object IncrementalVisualisationSetup extends SimpleVisualisationSetup {
+object IncrementalVisualisationSetup extends VisualisationSetup {
 
   def newIncrementalReanalysis(text: String): IncrementalSchemeModFAnalysisCPLattice with VisualisableIncrementalModAnalysis[SchemeExp] = {
     val program: SchemeExp = CSchemeParser.parse(text)
     new IncrementalAnalysis(program, IncrementalConfiguration.allOptimisations)
   }
 
-  def createVisualisation(text: String) =
-    new WebVisualisationIncremental(newIncrementalReanalysis(text)) with RetainAllIncremental with AddressVisualisationIncremental
+  def create(text: String, width: Int, height: Int) =
+    (new WebVisualisationIncremental(newIncrementalReanalysis(text), width: Int, height: Int) with RetainAllIncremental with AddressVisualisationIncremental).node
 }
 
 class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfiguration)
@@ -31,7 +31,7 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
   override def updateAddrInc(
       cmp: SchemeModFComponent,
       addr: Addr,
-      nw: modularLatticeWrapper.modularLattice.L
+      nw: Value,
     ): Boolean = {
     val old = provenance(addr)(cmp)
     println(s"$addr [$cmp]: $old => $nw")

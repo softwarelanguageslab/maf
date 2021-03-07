@@ -17,6 +17,8 @@ import org.scalajs.dom.document
 import scala.scalajs.js
 
 object WebVisualisation {
+  // the requirements for a visualised analysis
+  type WebAnalysis = ModAnalysis[_] with GlobalStore[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_]
   // some constants
   val __CIRCLE_RADIUS__ = 15
   val __SVG_ARROW_ID__ = "endarrow"
@@ -29,13 +31,17 @@ object WebVisualisation {
   val __FORCE_CENTER__ = "center"
 }
 
-class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_]) {
+
+class WebVisualisation(
+    val analysis: WebVisualisation.WebAnalysis,
+    width: Int,
+    height: Int) {
+
+  import WebVisualisation._
 
   // TODO: make these abstract
   def componentText(cmp: analysis.Component): String = cmp.toString
   def componentKey(cmp: analysis.Component): Any = None
-
-  import WebVisualisation._
 
   //
   // COLOR WHEEL
@@ -104,46 +110,38 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
   // VISUALISATION SETUP
   //
 
-  var nodes, edges, labels: JsAny = _ // will be used to keep selections of nodes/edges/labels in the visualisation
-  val simulation: JsAny = d3.forceSimulation() // create a d3 force simulation
-
-  def init(
-      parent: dom.Node,
-      width: Int,
-      height: Int
-    ): Unit = {
-    //TODO: find a better way to clear the previous visualisation (i.e., don't do it here)
-    d3.select(parent).selectAll("svg").remove() // Ensures the new analysis is shown an interacted with when a new file is loaded.
-    // setup the svg
-    val svg = d3.select(parent).append("svg").attr("width", width).attr("height", height)
-    val outerContainer = svg.append("g")
-    val innerContainer = outerContainer.append("g").attr("transform", s"translate(${width / 2},${height / 2})")
-    val nodesContainer = innerContainer.append("g").attr("class", "nodes")
-    val edgesContainer = innerContainer.append("g").attr("class", "links")
-    val labelsContainer = innerContainer.append("g").attr("class", "labels")
-    nodes = nodesContainer.selectAll("g")
-    edges = edgesContainer.selectAll("path")
-    labels = labelsContainer.selectAll("label")
-    setupMarker(svg)
-    // setup the click handler
-    svg.on("click", () => onClick())
-    // setup the key handler
-    d3.select(document.body).on("keypress", () => keyHandler(d3.event.key.asInstanceOf[String]))
-    // setup a fancy zoom effect
-    svg.call(d3.zoom().on("zoom", () => outerContainer.attr("transform", d3.event.transform)))
-    // setup the simulation
-    simulation
-      .force(__FORCE_COLLIDE__, d3.forceCollide().radius(__CIRCLE_RADIUS__))
-      .force(__FORCE_CHARGE__, d3.forceManyBody().strength(-500))
-      .force(__FORCE_LINKS__, d3.forceLink().distance(150))
-      .force(__FORCE_CENTER__, d3.forceCenter())
-      .on("tick", () => onTick())
-    // reload the data and visualisation
-    refresh()
-  }
+  // setup the svg and visualisation skeleton
+  val node = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+  private val svg = d3.select(node).attr("width", width).attr("height", height)
+  private val outerContainer = svg.append("g")
+  private val innerContainer = outerContainer.append("g").attr("transform", s"translate(${width / 2},${height / 2})")
+  // augment the svg capabilities
+  setupMarker(svg)                        // <- this allows us to use a fancy arrow in the svg
+  svg.on("click", () => onClick())        // <- this registers our custom click handler
+  svg.call(d3.zoom().on("zoom", () => {   // <- this sets up a fancy zoom effect
+    outerContainer.attr("transform", d3.event.transform)
+  }))
+  // TODO: move this elsewhere!
+  d3.select(document.body).on("keypress", () => keyHandler(d3.event.key.asInstanceOf[String]))
+  // setup the nodes infrastructure
+  private val nodesContainer = innerContainer.append("g").attr("class", "nodes")
+  protected var nodes = nodesContainer.selectAll("g")
+  // setup the edges infrastructure
+  private val edgesContainer = innerContainer.append("g").attr("class", "links")
+  protected var edges = edgesContainer.selectAll("path")
+  // setup the labels infrastructure
+  private val labelsContainer = innerContainer.append("g").attr("class", "labels")
+  protected var labels = labelsContainer.selectAll("label")
+  // setup the simulation
+  private val simulation = d3.forceSimulation() 
+  simulation.force(__FORCE_COLLIDE__, d3.forceCollide().radius(__CIRCLE_RADIUS__))
+    .force(__FORCE_CHARGE__, d3.forceManyBody().strength(-500))
+    .force(__FORCE_LINKS__, d3.forceLink().distance(150))
+    .force(__FORCE_CENTER__, d3.forceCenter())
+    .on("tick", () => onTick())
 
   // Adds a new base marker to the given svg. The marker is returned, so extra attributes can be added later.
-  def newMarker(svg: JsAny, id: String): js.Dynamic = {
+  protected def newMarker(svg: JsAny, id: String) = {
     // adapted from http://bl.ocks.org/fancellu/2c782394602a93921faff74e594d1bb1
     val marker: js.Dynamic = svg
       .append("defs")
@@ -161,8 +159,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     marker
   }
 
-  def setupMarker(svg: JsAny): js.Dynamic =
-    newMarker(svg, __SVG_ARROW_ID__)
+  protected def setupMarker(svg: JsAny) = newMarker(svg, __SVG_ARROW_ID__)
 
   //.attr("fill", "#999")
   //.style("stroke","none")
@@ -202,6 +199,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
         }
     )
     // Maybe perform other updates.
+    // TODO: just override the existing onTick method (using super.onTickHook())?
     onTickHook()
   }
 
@@ -252,6 +250,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
   }
 
   // Can be overridden to do perform extra updates upon the refresh of the visualisation.
+  // TODO: just override existing method?
   def refreshHook(): Unit = ()
 
   // updates the visualisation: draws all nodes/edges, sets correct CSS classes, etc.
@@ -281,7 +280,7 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     edges.attr("id", (e: Edge) => e.id)
     classifyEdges()
     edgesUpdate.exit().remove()
-    // Possible perform more updates.
+    // possibly perform more updates
     refreshHook()
     classifyLabels()
     // update the simulation
@@ -297,21 +296,21 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
       .classed(__CSS_IN_WORKLIST__,
                (node: Node) =>
                  node match {
-                   case node: CmpNode => analysis.workList.toSet.contains(node.component);
+                   case node: CmpNode => analysis.workList.toSet.contains(node.component)
                    case _             => false
                  }
       )
       .classed(__CSS_NOT_VISITED__,
                (node: Node) =>
                  node match {
-                   case node: CmpNode => !analysis.visited.contains(node.component);
+                   case node: CmpNode => !analysis.visited.contains(node.component)
                    case _             => false
                  }
       )
       .classed(__CSS_NEXT_COMPONENT__,
                (node: Node) =>
                  node match {
-                   case node: CmpNode => analysis.workList.toList.headOption.contains(node.component);
+                   case node: CmpNode => analysis.workList.toList.headOption.contains(node.component)
                    case _             => false
                  }
       )
@@ -320,7 +319,6 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
 
   /** Classifies every edge based on its role in the analysis, so the edge can be coloured correctly. */
   def classifyEdges(): Unit = ()
-
   def classifyLabels(): Unit = ()
 
   //
@@ -407,4 +405,6 @@ class WebVisualisation(val analysis: ModAnalysis[_] with GlobalStore[_] with Seq
     node.fx = null
     node.fy = null
   }
+
+  refresh()
 }

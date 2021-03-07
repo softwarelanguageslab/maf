@@ -41,7 +41,7 @@ trait WebVisualisationAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAn
 // WEB VISUALISATION FOR ADAPTIVE ANALYSES
 //
 
-class WebVisualisationAdaptive(override val analysis: WebVisualisationAdaptiveAnalysis[_]) extends WebVisualisation(analysis) {
+class WebVisualisationAdaptive(override val analysis: WebVisualisationAdaptiveAnalysis[_], width: Int, height: Int) extends WebVisualisation(analysis, width, height) {
 
   // give the adaptive analysis a pointer to this webvis
   analysis.webvis = this

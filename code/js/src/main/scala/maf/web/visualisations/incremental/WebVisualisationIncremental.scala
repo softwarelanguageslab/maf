@@ -34,8 +34,10 @@ object WebVisualisationIncremental {
 }
 
 class WebVisualisationIncremental(
-    override val analysis: VisualisableIncrementalModAnalysis[_])
-    extends WebVisualisation(analysis) {
+    override val analysis: VisualisableIncrementalModAnalysis[_],
+    width: Int, 
+    height: Int)
+    extends WebVisualisation(analysis, width, height) {
 
   def deletedComponent(cmp: analysis.Component): Boolean = !analysis.visited.contains(cmp) && !analysis.workList.contains(cmp)
 

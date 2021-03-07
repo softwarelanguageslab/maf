@@ -13,10 +13,10 @@ import maf.util.benchmarks.Timeout
 import scala.scalajs.js.annotation._
 
 @JSExportTopLevel("standardVisualisationSetup")
-object StandardVisualisationSetup extends SimpleVisualisationSetup {
+object StandardVisualisationSetup extends VisualisationSetup {
 
-  def createVisualisation(text: String) =
-    new WebVisualisation(newAnalysis(text))
+  def create(program: String, width: Int, height: Int) =
+    new WebVisualisation(newAnalysis(program), width, height).node
 
   private def newAnalysis(text: String) = {
     val program = SchemeParser.parse(text)
