@@ -17,7 +17,11 @@ object StandardVisualisationSetup extends VisualisationSetup {
 
   type Analysis = WebVisualisationAnalysis[_]
 
-  def createVisualisation(analysis: Analysis, width: Int, height: Int) =
+  def createVisualisation(
+      analysis: Analysis,
+      width: Int,
+      height: Int
+    ) =
     new WebVisualisation(analysis, width, height).node
 
   def createAnalysis(text: String): Analysis = {

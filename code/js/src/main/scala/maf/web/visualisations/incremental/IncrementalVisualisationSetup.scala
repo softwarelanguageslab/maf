@@ -22,7 +22,11 @@ object IncrementalVisualisationSetup extends VisualisationSetup {
     new IncrementalAnalysis(program, IncrementalConfiguration.allOptimisations)
   }
 
-  def createVisualisation(analysis: Analysis, width: Int, height: Int) =
+  def createVisualisation(
+      analysis: Analysis,
+      width: Int,
+      height: Int
+    ) =
     (new WebVisualisationIncremental(analysis, width: Int, height: Int) with RetainAllIncremental with AddressVisualisationIncremental).node
 }
 
@@ -33,7 +37,7 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
   override def updateAddrInc(
       cmp: SchemeModFComponent,
       addr: Addr,
-      nw: Value,
+      nw: Value
     ): Boolean = {
     val old = provenance(addr)(cmp)
     println(s"$addr [$cmp]: $old => $nw")

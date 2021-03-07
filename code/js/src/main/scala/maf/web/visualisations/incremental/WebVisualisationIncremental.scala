@@ -35,7 +35,7 @@ object WebVisualisationIncremental {
 
 class WebVisualisationIncremental(
     override val analysis: VisualisableIncrementalModAnalysis[_],
-    width: Int, 
+    width: Int,
     height: Int)
     extends WebVisualisation(analysis, width, height) {
 

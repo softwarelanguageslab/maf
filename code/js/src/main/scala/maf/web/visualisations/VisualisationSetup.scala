@@ -21,7 +21,11 @@ trait VisualisationSetup {
 
   // create some visualisation for the given program (with given dimensions)
   def createAnalysis(program: String): Analysis
-  def createVisualisation(analysis: Analysis, width: Int, height: Int): dom.Node
+  def createVisualisation(
+      analysis: Analysis,
+      width: Int,
+      height: Int
+    ): dom.Node
 
   @JSExport
   def setup() = {
@@ -38,7 +42,7 @@ trait VisualisationSetup {
     // create an analysis
     val analysis = createAnalysis(program)
     // remove the old visualisation if present
-    if(currentVis.isDefined) {
+    if (currentVis.isDefined) {
       document.body.removeChild(currentVis.get)
     }
     // create a new visualisation
@@ -53,36 +57,36 @@ trait VisualisationSetup {
   }
 
   private def keyHandler: PartialFunction[String, Unit] = {
-    case "e" | "E"        => runAnalysis(Timeout.none)
-    case "n" | "N" | " "  => stepAnalysis() // Next step.
-    case "r"              => runAnalysis(Timeout.start(Duration(5, SECONDS))) // Run 5 seconds.
-    case "R"              => runAnalysis(Timeout.start(Duration(10, SECONDS))) // Run 10 seconds.
-    case "s"              => stepMultiple(10)
-    case "S"              => stepMultiple(25)
+    case "e" | "E"       => runAnalysis(Timeout.none)
+    case "n" | "N" | " " => stepAnalysis() // Next step.
+    case "r"             => runAnalysis(Timeout.start(Duration(5, SECONDS))) // Run 5 seconds.
+    case "R"             => runAnalysis(Timeout.start(Duration(10, SECONDS))) // Run 10 seconds.
+    case "s"             => stepMultiple(10)
+    case "S"             => stepMultiple(25)
   }
 
   private def onClick() = stepAnalysis()
 
   private def stepAnalysis() = currentAnl.foreach { anl =>
-    if(!anl.finished) {
+    if (!anl.finished) {
       anl.step(Timeout.none)
     } else {
       println("The analysis has already terminated")
     }
   }
 
-  private def runAnalysis(t: Timeout.T) = 
+  private def runAnalysis(t: Timeout.T) =
     currentAnl.foreach(_.analyzeWithTimeout(t))
 
   private def stepMultiple(count: Int) = {
     def loop(anl: Analysis, current: Int): Unit =
-      if(current > 0) {
+      if (current > 0) {
         anl.step(Timeout.none)
         //js.timers.setTimeout(100) { <- uncomment to see the analysis evolve more slowly
-          loop(anl, current - 1)
+        loop(anl, current - 1)
         //}
       }
-    if(currentAnl.isDefined) {
+    if (currentAnl.isDefined) {
       loop(currentAnl.get, count)
     }
   }

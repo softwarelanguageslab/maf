@@ -23,9 +23,7 @@ object WebVisualisationAdaptive {
 // REQUIRED ANALYSIS EXTENSION
 //
 
-trait WebVisualisationAnalysisAdaptive[Expr <: Expression] 
-  extends AdaptiveModAnalysis[Expr] 
-  with WebVisualisationAnalysis[Expr] {
+trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with WebVisualisationAnalysis[Expr] {
 
   def adaptiveWebVis = webvis.asInstanceOf[WebVisualisationAdaptive]
 
@@ -43,7 +41,11 @@ trait WebVisualisationAnalysisAdaptive[Expr <: Expression]
 // WEB VISUALISATION FOR ADAPTIVE ANALYSES
 //
 
-class WebVisualisationAdaptive(override val analysis: WebVisualisationAnalysisAdaptive[_], width: Int, height: Int) extends WebVisualisation(analysis, width, height) {
+class WebVisualisationAdaptive(
+    override val analysis: WebVisualisationAnalysisAdaptive[_],
+    width: Int,
+    height: Int)
+    extends WebVisualisation(analysis, width, height) {
 
   var adapted = false
 

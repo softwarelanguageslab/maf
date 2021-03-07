@@ -12,22 +12,21 @@ import maf.web.utils.D3Helpers._
 import scala.scalajs.js
 import org.scalajs.dom.document
 
-trait WebVisualisationAnalysis[Expr <: Expression] 
-  extends ModAnalysis[Expr] 
-  with GlobalStore[Expr] 
-  with SequentialWorklistAlgorithm[Expr] 
-  with DependencyTracking[Expr] {
+trait WebVisualisationAnalysis[Expr <: Expression]
+    extends ModAnalysis[Expr]
+       with GlobalStore[Expr]
+       with SequentialWorklistAlgorithm[Expr]
+       with DependencyTracking[Expr] {
 
-    var webvis: WebVisualisation = _
+  var webvis: WebVisualisation = _
 
-    override def intraAnalysis(component: Component):
-      IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
+  override def intraAnalysis(component: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
 
-    override def step(timeout: Timeout.T): Unit = {
-      webvis.beforeStep()
-      super.step(timeout)
-      webvis.afterStep()
-    }
+  override def step(timeout: Timeout.T): Unit = {
+    webvis.beforeStep()
+    super.step(timeout)
+    webvis.afterStep()
+  }
 }
 
 object WebVisualisation {
@@ -42,7 +41,6 @@ object WebVisualisation {
   val __FORCE_LINKS__ = "links"
   val __FORCE_CENTER__ = "center"
 }
-
 
 class WebVisualisation(
     val analysis: WebVisualisationAnalysis[_],
@@ -131,10 +129,15 @@ class WebVisualisation(
   private val outerContainer = svg.append("g")
   private val innerContainer = outerContainer.append("g").attr("transform", s"translate(${width / 2},${height / 2})")
   // augment the svg capabilities
-  setupMarker(svg)                        // <- this allows us to use a fancy arrow in the svg
-  svg.call(d3.zoom().on("zoom", () => {   // <- this sets up a fancy zoom effect
-    outerContainer.attr("transform", d3.event.transform)
-  }))
+  setupMarker(svg) // <- this allows us to use a fancy arrow in the svg
+  svg.call(
+    d3.zoom()
+      .on("zoom",
+          () => { // <- this sets up a fancy zoom effect
+            outerContainer.attr("transform", d3.event.transform)
+          }
+      )
+  )
   // setup the nodes infrastructure
   private val nodesContainer = innerContainer.append("g").attr("class", "nodes")
   protected var nodes = nodesContainer.selectAll("g")
@@ -145,8 +148,9 @@ class WebVisualisation(
   private val labelsContainer = innerContainer.append("g").attr("class", "labels")
   protected var labels = labelsContainer.selectAll("label")
   // setup the simulation
-  private val simulation = d3.forceSimulation() 
-  simulation.force(__FORCE_COLLIDE__, d3.forceCollide().radius(__CIRCLE_RADIUS__))
+  private val simulation = d3.forceSimulation()
+  simulation
+    .force(__FORCE_COLLIDE__, d3.forceCollide().radius(__CIRCLE_RADIUS__))
     .force(__FORCE_CHARGE__, d3.forceManyBody().strength(-500))
     .force(__FORCE_LINKS__, d3.forceLink().distance(150))
     .force(__FORCE_CENTER__, d3.forceCenter())
@@ -245,12 +249,12 @@ class WebVisualisation(
   // More efficient than `refreshData`: updates only data that may have changed after stepping.
   protected var prevComponent: analysis.Component = _
   private var prevCalls: Set[analysis.Component] = _
-  
+
   def beforeStep(): Unit = {
     prevComponent = analysis.workList.head
     prevCalls = analysis.dependencies(prevComponent)
   }
-  
+
   def afterStep(): Unit = {
     // refresh the data
     refreshDataAfterStep()
