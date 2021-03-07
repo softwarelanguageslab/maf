@@ -23,15 +23,17 @@ object WebVisualisationAdaptive {
 // REQUIRED ANALYSIS EXTENSION
 //
 
-trait WebVisualisationAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with DependencyTracking[Expr] with GlobalStore[Expr] {
+trait WebVisualisationAnalysisAdaptive[Expr <: Expression] 
+  extends AdaptiveModAnalysis[Expr] 
+  with WebVisualisationAnalysis[Expr] {
 
-  var webvis: WebVisualisationAdaptive = _
+  def adaptiveWebVis = webvis.asInstanceOf[WebVisualisationAdaptive]
 
   def key(cmp: Component): Any
 
   override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
-    webvis.adapted = true
+    adaptiveWebVis.adapted = true
   }
 
   override def intraAnalysis(cmp: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
@@ -41,23 +43,19 @@ trait WebVisualisationAdaptiveAnalysis[Expr <: Expression] extends AdaptiveModAn
 // WEB VISUALISATION FOR ADAPTIVE ANALYSES
 //
 
-class WebVisualisationAdaptive(override val analysis: WebVisualisationAdaptiveAnalysis[_], width: Int, height: Int) extends WebVisualisation(analysis, width, height) {
-
-  // give the adaptive analysis a pointer to this webvis
-  analysis.webvis = this
+class WebVisualisationAdaptive(override val analysis: WebVisualisationAnalysisAdaptive[_], width: Int, height: Int) extends WebVisualisation(analysis, width, height) {
 
   var adapted = false
 
   override def componentKey(cmp: analysis.Component) = analysis.key(cmp)
-
   override def componentText(cmp: analysis.Component) =
     s"[$cmp] ${analysis.deref(cmp).toString()}"
 
-  override def refreshDataAfterStep(cmp: analysis.Component, dps: Set[analysis.Component]) =
+  override def refreshDataAfterStep() =
     if (this.adapted) {
       this.adapted = false
-      super.refreshData()
+      super.refreshData() // <- do a full refresh
     } else {
-      super.refreshDataAfterStep(cmp, dps)
+      super.refreshDataAfterStep()
     }
 }

@@ -55,13 +55,13 @@ trait AddressVisualisation extends WebVisualisation {
 
   def deleteOnStep(component: analysis.Component): Unit
 
-  override def refreshDataAfterStep(cmp: analysis.Component, oldCmpDeps: Set[analysis.Component]): Unit = {
-    super.refreshDataAfterStep(cmp, oldCmpDeps)
-    val readerNode = getNode(cmp)
+  override def refreshDataAfterStep(): Unit = {
+    super.refreshDataAfterStep()
+    val readerNode = getNode(prevComponent)
     // Remove old edges (and possiblye nodes).
-    deleteOnStep(cmp)
+    deleteOnStep(prevComponent)
     // Add the new edges.
-    analysis.deps.filter(_._2.contains(cmp)).keySet.foreach {
+    analysis.deps.filter(_._2.contains(prevComponent)).keySet.foreach {
       case AddrDependency(addr) =>
         val addrNode: AddrNode = getNode(addr)
         val edge = getEdge(addrNode, readerNode)

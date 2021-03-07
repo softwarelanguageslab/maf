@@ -47,10 +47,10 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
     }
   }
 
-  override def refreshDataAfterStep(cmp: analysis.Component, oldCmpDeps: Set[analysis.Component]): Unit = {
-    super.refreshDataAfterStep(cmp, oldCmpDeps)
-    val writerNode = getNode(cmp)
-    analysis.cachedWrites(cmp).foreach { addr =>
+  override def refreshDataAfterStep(): Unit = {
+    super.refreshDataAfterStep()
+    val writerNode = getNode(prevComponent)
+    analysis.cachedWrites(prevComponent).foreach { addr =>
       val addrNode: AddrNode = getNode(addr)
       val edge = getEdge(writerNode, addrNode)
       nodesData += addrNode

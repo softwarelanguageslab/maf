@@ -15,7 +15,7 @@ import scala.scalajs.js.annotation._
 @JSExportTopLevel("standardVisualisationSetup")
 object StandardVisualisationSetup extends VisualisationSetup {
 
-  type Analysis = ModAnalysis[_] with SequentialWorklistAlgorithm[_] with GlobalStore[_] with DependencyTracking[_]
+  type Analysis = WebVisualisationAnalysis[_]
 
   def createVisualisation(analysis: Analysis, width: Int, height: Int) =
     new WebVisualisation(analysis, width, height).node
@@ -25,8 +25,8 @@ object StandardVisualisationSetup extends VisualisationSetup {
     new SimpleSchemeModFAnalysis(program)
       with SchemeModFNoSensitivity
       with SchemeConstantPropagationDomain
-      with DependencyTracking[SchemeExp]
-      with FIFOWorklistAlgorithm[SchemeExp] {
+      with FIFOWorklistAlgorithm[SchemeExp]
+      with WebVisualisationAnalysis[SchemeExp] {
       override def intraAnalysis(cmp: SchemeModFComponent) =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
     }

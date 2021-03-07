@@ -12,8 +12,8 @@ import scala.scalajs.js
 
 trait VisualisableIncrementalModAnalysis[Expr <: Expression]
     extends IncrementalModAnalysis[Expr]
-       with DependencyTracking[Expr]
-       with IncrementalGlobalStore[Expr] {
+       with IncrementalGlobalStore[Expr]
+       with WebVisualisationAnalysis[Expr] {
   var recursive: Set[Component] = Set() // Collects the set of recursive components, since self-edges are omitted in the set `cachedSpawns`.
 
   override def intraAnalysis(cmp: Component): VisualisableIntraAnalysis
@@ -105,10 +105,10 @@ class WebVisualisationIncremental(
     }
   }
 
-  override def refreshDataAfterStep(cmp: analysis.Component, oldDeps: Set[analysis.Component]): Unit = {
-    val sourceNode = getNode(cmp)
+  override def refreshDataAfterStep() = {
+    val sourceNode = getNode(prevComponent)
     // Add new edges.
-    analysis.dependencies(cmp).foreach { otherCmp =>
+    analysis.dependencies(prevComponent).foreach { otherCmp =>
       val targetNode = getNode(otherCmp)
       val edge = getEdge(sourceNode, targetNode)
       nodesData += targetNode

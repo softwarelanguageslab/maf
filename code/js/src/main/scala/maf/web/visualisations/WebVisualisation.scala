@@ -1,24 +1,36 @@
 package maf.web.visualisations
 
+import maf.core._
 import maf.modular._
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util.benchmarks.Timeout
-
-import scala.concurrent.duration._
-import scala.util.control.Breaks._
 
 import maf.web.utils.JSHelpers._
 import maf.web.utils.D3Helpers._
 
 // Scala.js-related imports
-import org.scalajs.dom
+import scala.scalajs.js
 import org.scalajs.dom.document
 
-import scala.scalajs.js
+trait WebVisualisationAnalysis[Expr <: Expression] 
+  extends ModAnalysis[Expr] 
+  with GlobalStore[Expr] 
+  with SequentialWorklistAlgorithm[Expr] 
+  with DependencyTracking[Expr] {
+
+    var webvis: WebVisualisation = _
+
+    override def intraAnalysis(component: Component):
+      IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
+
+    override def step(timeout: Timeout.T): Unit = {
+      webvis.beforeStep()
+      super.step(timeout)
+      webvis.afterStep()
+    }
+}
 
 object WebVisualisation {
-  // the requirements for a visualised analysis
-  type WebAnalysis = ModAnalysis[_] with GlobalStore[_] with SequentialWorklistAlgorithm[_] with DependencyTracking[_]
   // some constants
   val __CIRCLE_RADIUS__ = 15
   val __SVG_ARROW_ID__ = "endarrow"
@@ -33,11 +45,14 @@ object WebVisualisation {
 
 
 class WebVisualisation(
-    val analysis: WebVisualisation.WebAnalysis,
+    val analysis: WebVisualisationAnalysis[_],
     width: Int,
     height: Int) {
 
   import WebVisualisation._
+
+  // give the analysis a pointer to this webvis
+  analysis.webvis = this
 
   // TODO: make these abstract
   def componentText(cmp: analysis.Component): String = cmp.toString
@@ -117,12 +132,9 @@ class WebVisualisation(
   private val innerContainer = outerContainer.append("g").attr("transform", s"translate(${width / 2},${height / 2})")
   // augment the svg capabilities
   setupMarker(svg)                        // <- this allows us to use a fancy arrow in the svg
-  svg.on("click", () => onClick())        // <- this registers our custom click handler
   svg.call(d3.zoom().on("zoom", () => {   // <- this sets up a fancy zoom effect
     outerContainer.attr("transform", d3.event.transform)
   }))
-  // TODO: move this elsewhere!
-  d3.select(document.body).on("keypress", () => keyHandler(d3.event.key.asInstanceOf[String]))
   // setup the nodes infrastructure
   private val nodesContainer = innerContainer.append("g").attr("class", "nodes")
   protected var nodes = nodesContainer.selectAll("g")
@@ -199,7 +211,7 @@ class WebVisualisation(
         }
     )
     // Maybe perform other updates.
-    // TODO: just override the existing onTick method (using super.onTickHook())?
+    // TODO: just override the existing onTick method (using super.onTick())?
     onTickHook()
   }
 
@@ -231,17 +243,30 @@ class WebVisualisation(
   }
 
   // More efficient than `refreshData`: updates only data that may have changed after stepping.
-  // Does not allow deleted components to be removed from the visualisation.
-  def refreshDataAfterStep(cmp: analysis.Component, oldDeps: Set[analysis.Component]): Unit = {
-    val sourceNode = getNode(cmp)
-    // remove old edges
-    oldDeps.foreach { otherCmp =>
+  protected var prevComponent: analysis.Component = _
+  private var prevCalls: Set[analysis.Component] = _
+  
+  def beforeStep(): Unit = {
+    prevComponent = analysis.workList.head
+    prevCalls = analysis.dependencies(prevComponent)
+  }
+  
+  def afterStep(): Unit = {
+    // refresh the data
+    refreshDataAfterStep()
+    // refresh the visualisation
+    refreshVisualisation()
+  }
+
+  protected def refreshDataAfterStep(): Unit = {
+    val sourceNode = getNode(prevComponent)
+    prevCalls.foreach { otherCmp =>
       val targetNode = getNode(otherCmp)
       val edge = getEdge(sourceNode, targetNode)
       edgesData -= edge
     }
     // add the new edges
-    analysis.dependencies(cmp).foreach { otherCmp =>
+    analysis.dependencies(prevComponent).foreach { otherCmp =>
       val targetNode = getNode(otherCmp)
       val edge = getEdge(sourceNode, targetNode)
       nodesData += targetNode
@@ -320,63 +345,6 @@ class WebVisualisation(
   /** Classifies every edge based on its role in the analysis, so the edge can be coloured correctly. */
   def classifyEdges(): Unit = ()
   def classifyLabels(): Unit = ()
-
-  //
-  // INPUT HANDLING
-  //
-
-  def keyHandler: PartialFunction[String, Unit] = {
-    case "e" | "E"       => runAnalysis(Timeout.none) // Run to end.
-    case "n" | "N" | " " => stepAnalysis() // Next step.
-    case "r"             => runAnalysis(Timeout.start(Duration(5, SECONDS))) // Run 5 seconds.
-    case "R"             => runAnalysis(Timeout.start(Duration(10, SECONDS))) // Run 10 seconds.
-    case "s"             => stepMultiple(10)
-    case "S"             => stepMultiple(25)
-  }
-
-  def onClick(): Unit = stepAnalysis()
-
-  protected def stepAnalysis(): Unit =
-    if (!analysis.finished) {
-      val component = analysis.workList.head
-      val oldDeps = analysis.dependencies(component)
-      analysis.step(Timeout.none)
-      refreshDataAfterStep(component, oldDeps)
-      refreshVisualisation()
-    } else {
-      println("The analysis has already terminated.")
-    }
-
-  protected def stepMultiple(n: Int): Unit = {
-    breakable {
-      for (i <- 1 to n)
-        if (!analysis.finished) {
-          val component = analysis.workList.head
-          val oldDeps = analysis.dependencies(component)
-          analysis.step(Timeout.none)
-          refreshDataAfterStep(component, oldDeps) // Could also use the less efficient version just once.
-        } else {
-          println("The analysis has already terminated.")
-          break()
-        }
-    }
-    refreshVisualisation() // Only refresh the visualisation once.
-  }
-
-  // TODO: Even when the visualisation is refreshed more, it seems that it becomes only visible afterwards.
-  //       It would be nice to see it grow, though this might slow down the lot.
-  protected def runAnalysis(timeout: Timeout.T): Unit =
-    if (analysis.finished) {
-      println("The analysis has already terminated.")
-    } else {
-      while (!analysis.finished && !timeout.reached) {
-        val component = analysis.workList.head
-        val oldDeps = analysis.dependencies(component)
-        analysis.step(Timeout.none)
-        refreshDataAfterStep(component, oldDeps)
-      }
-      refreshVisualisation()
-    }
 
   //
   // DRAGGING
