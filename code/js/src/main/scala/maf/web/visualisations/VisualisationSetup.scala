@@ -16,8 +16,10 @@ trait VisualisationSetup {
 
   type Analysis <: ModAnalysis[_] with SequentialWorklistAlgorithm[_]
 
-  var currentAnl: Option[Analysis] = None
-  var currentVis: Option[dom.Node] = None
+  // the current state of the visualisation setup
+  var current: Option[(Analysis, dom.Node)] = None
+  def analysis: Option[Analysis] = current.map(_._1)
+  def webvis: Option[dom.Node] = current.map(_._2)
 
   // create some visualisation for the given program (with given dimensions)
   def createAnalysis(program: String): Analysis
@@ -34,7 +36,7 @@ trait VisualisationSetup {
     document.body.appendChild(input)
     // input handling
     val body = d3.select(document.body)
-    body.on("keypress", () => keyHandler.lift(d3.event.key.asInstanceOf[String]))
+    body.on("keypress", () => keyHandler(d3.event.key.asInstanceOf[String]))
     body.on("click", () => onClick())
   }
 
@@ -42,9 +44,7 @@ trait VisualisationSetup {
     // create an analysis
     val analysis = createAnalysis(program)
     // remove the old visualisation if present
-    if (currentVis.isDefined) {
-      document.body.removeChild(currentVis.get)
-    }
+    this.webvis.foreach { document.body.removeChild(_) }
     // create a new visualisation
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
     val height = js.Dynamic.global.document.documentElement.clientHeight.asInstanceOf[Int]
@@ -52,42 +52,41 @@ trait VisualisationSetup {
     // load it in the main web page HTML
     document.body.appendChild(webvis)
     // update the state of the visualisation setup
-    currentAnl = Some(analysis)
-    currentVis = Some(webvis)
+    current = Some((analysis, webvis))
   }
 
-  private def keyHandler: PartialFunction[String, Unit] = {
-    case "e" | "E"       => runAnalysis(Timeout.none)
-    case "n" | "N" | " " => stepAnalysis() // Next step.
-    case "r"             => runAnalysis(Timeout.start(Duration(5, SECONDS))) // Run 5 seconds.
-    case "R"             => runAnalysis(Timeout.start(Duration(10, SECONDS))) // Run 10 seconds.
-    case "s"             => stepMultiple(10)
-    case "S"             => stepMultiple(25)
+  private def keyHandler(key: String) =
+    if (analysis.isDefined) {
+      analysisCommandHandler(analysis.get).lift(key)
+    }
+
+  private def analysisCommandHandler(anl: Analysis): PartialFunction[String, Unit] = {
+    case "n" | "N" | " " => stepAnalysis(anl)
+    case "e" | "E"       => stepUntil(anl)
+    case "r"             => stepUntil(anl, timeout = Timeout.start(Duration(5, SECONDS)))   // Run 5 seconds.
+    case "R"             => stepUntil(anl, timeout = Timeout.start(Duration(10, SECONDS)))  // Run 10 seconds.
+    case "s"             => stepUntil(anl, stepLimit = Some(10))
+    case "S"             => stepUntil(anl, stepLimit = Some(25))
   }
 
-  private def onClick() = stepAnalysis()
+  private def onClick() = this.analysis.foreach(stepAnalysis)
 
-  private def stepAnalysis() = currentAnl.foreach { anl =>
+  private def stepAnalysis(anl: Analysis) =
     if (!anl.finished) {
       anl.step(Timeout.none)
     } else {
       println("The analysis has already terminated")
     }
-  }
 
-  private def runAnalysis(t: Timeout.T) =
-    currentAnl.foreach(_.analyzeWithTimeout(t))
-
-  private def stepMultiple(count: Int) = {
-    def loop(anl: Analysis, current: Int): Unit =
-      if (current > 0) {
-        anl.step(Timeout.none)
-        //js.timers.setTimeout(100) { <- uncomment to see the analysis evolve more slowly
-        loop(anl, current - 1)
-        //}
+  private def stepUntil(
+      anl: Analysis,
+      timeout: Timeout.T = Timeout.none,
+      stepLimit: Option[Int] = None
+    ): Unit =
+    if (!anl.finished && !timeout.reached && stepLimit.map(_ > 0).getOrElse(true)) {
+      anl.step(Timeout.none)
+      js.timers.setTimeout(0) { // <- gives JS time to update between steps
+        stepUntil(anl, timeout, stepLimit.map(_ - 1))
       }
-    if (currentAnl.isDefined) {
-      loop(currentAnl.get, count)
     }
-  }
 }
