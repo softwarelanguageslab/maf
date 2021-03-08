@@ -46,7 +46,7 @@ abstract class BarChart(
     .attr("transform", s"translate($padding, $padding)")
 
   private val xScale = d3.scaleBand().padding(0.4)
-  private val yScale = d3.scaleLinear().range(Seq(realHeight, 0))
+  private val yScale = d3.scaleLinear().domain(Seq(0,100)).range(Seq(realHeight, 0))
   private val xAxis = d3.axisBottom(xScale)
   private val yAxis = d3.axisLeft(yScale).ticks(10)
 
@@ -54,6 +54,12 @@ abstract class BarChart(
     .append("g")
     .attr("transform", s"translate(0, $realHeight)")
   private val yAxisNode = innerNode.append("g")
+
+  private var currentMax = 1
+  private def increaseMax(max: Int) = {
+    while (currentMax < max) { currentMax *= 2 }
+    yScale.domain(Seq(0, currentMax))
+  }
 
   def loadData(data: Iterable[Data]): Unit = {
 
@@ -77,7 +83,7 @@ abstract class BarChart(
       .style("text-anchor", "start")
 
     // setup the y-axis
-    yScale.domain(Seq(0, data.maxByOption(value).map(value).getOrElse(1)))
+    if(data.nonEmpty) { increaseMax(value(data.maxBy(value))) }
     yAxisNode.call(yAxis)
 
     // draw the bars
@@ -86,11 +92,13 @@ abstract class BarChart(
       .enter()
       .append("rect")
       .attr("class", "bar")
-      .attr("x", (d: Data) => xScale(key(d)))
-      .attr("y", (d: Data) => yScale(value(d)))
       .attr("width", xScale.bandwidth())
+    selection
+      .attr("x", (d: Data) => xScale(key(d)))
+      .attr("y", (d: Data) => { yScale(value(d)) })
       .attr("height", (d: Data) => realHeight - yScale(value(d)))
-    selection.exit().remove()
+    selection.exit()
+      .remove()
   }
 
   // convencience method: arrange bars in descending order
