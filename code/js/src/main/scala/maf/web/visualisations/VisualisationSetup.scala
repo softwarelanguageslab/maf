@@ -63,8 +63,8 @@ trait VisualisationSetup {
   private def analysisCommandHandler(anl: Analysis): PartialFunction[String, Unit] = {
     case "n" | "N" | " " => stepAnalysis(anl)
     case "e" | "E"       => stepUntil(anl)
-    case "r"             => stepUntil(anl, timeout = Timeout.start(Duration(5, SECONDS)))   // Run 5 seconds.
-    case "R"             => stepUntil(anl, timeout = Timeout.start(Duration(10, SECONDS)))  // Run 10 seconds.
+    case "r"             => stepUntil(anl, timeout = Timeout.start(Duration(5, SECONDS)))
+    case "R"             => stepUntil(anl, timeout = Timeout.start(Duration(10, SECONDS)))
     case "s"             => stepUntil(anl, stepLimit = Some(10))
     case "S"             => stepUntil(anl, stepLimit = Some(25))
   }

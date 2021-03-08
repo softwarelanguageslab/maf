@@ -13,38 +13,40 @@ import maf.util.benchmarks.Timeout
 
 import maf.web._
 import maf.web.utils._
+import maf.web.utils.D3Helpers._
 
 // Scala.js related imports
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 import org.scalajs.dom._
+import maf.web.visualisations.VisualisationSetup
+import maf.modular.components.ComponentPointer
 
 //
 // VISUALISATION SETUP
 //
 
 @JSExportTopLevel("adaptiveVisualisationSetup")
-object AdaptiveVisualisationSetup {
+object AdaptiveVisualisationSetup extends VisualisationSetup {
 
-  @JSExport
-  def setup() = {
-    val input = FileInputElement(loadFile)
-    document.body.appendChild(input)
-  }
+  type Analysis = WebVisualisationAnalysisAdaptive[SchemeExp] with WebSummaryAdaptiveAnalysis
 
-  private def loadFile(text: String) = {
-    // create the analysis
+  def createAnalysis(text: String) = {
     val prg = SchemeParser.parse(text)
-    val analysis = new AdaptiveModAnalysis(prg)
+    new AdaptiveModAnalysis(prg)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
       with SchemeConstantPropagationDomain
-      with FIFOWorklistAlgorithm[SchemeExp] {
-      //with WebVisualisationAdaptiveAnalysis[SchemeExp] {
-      //with WebSummaryAdaptiveAnalysis {
+      with FIFOWorklistAlgorithm[SchemeExp]
+      with WebVisualisationAnalysisAdaptive[SchemeExp]
+      with WebSummaryAdaptiveAnalysis {
+
+      override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFIntra(cmp) with DependencyTrackingIntra
+      def key(cmp: Component) = expr(cmp)
+
+      // setup the budget
       lazy val budget = 100
-      def key(cmp: Component) = module(cmp)
-      //override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFIntra(cmp) with DependencyTrackingIntra
+      // log every step in the console
       var step = 0
       override def step(timeout: Timeout.T): Unit = {
         val cmp = workList.head
@@ -53,21 +55,20 @@ object AdaptiveVisualisationSetup {
         super.step(timeout)
       }
     }
-    // load the analysis
-    //analysis.analyze()
-    val barChart = new BarChart(800, 600) {
-      type Data = (String, Int)
-      def key(d: Data) = d._1
-      def value(d: Data) = d._2
-    }
-    barChart.loadDataSorted(List(("A", 10), ("B", 7), ("C", 4)))
-    document.body.appendChild(barChart.node)
-    val button = document.createElement("button").asInstanceOf[html.Button]
-    button.innerText = "Click me!"
-    button.onclick = (m: Any) => {
-      barChart.loadDataSorted(List(("B", 11), ("A", 10), ("C", 7), ("D", 2)))
-    }
-    document.body.appendChild(button)
   }
 
+  def createVisualisation(analysis: Analysis, width: Int, height: Int): Node = {
+    // create both a webvis and a summary vis              
+    val webWidth = Math.round(width * 0.6)
+    val sumWidth = Math.round(width * 0.35)
+    val webvis = new WebVisualisationAdaptive(analysis, webWidth.toInt, height)
+    val sumvis = new AdaptiveSummaryVisualisation(analysis, sumWidth.toInt, height)
+    // create the parent
+    val parent = document.createElement("div")
+    d3.select(webvis.node).style("float", "left")
+    d3.select(sumvis.node).style("float", "left")
+    parent.appendChild(webvis.node)
+    parent.appendChild(sumvis.node)
+    return parent
+  }
 }
