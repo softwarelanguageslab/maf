@@ -22,7 +22,10 @@ trait WebSummaryAdaptiveAnalysis extends AdaptiveContextSensitivity {
   }
 }
 
-class AdaptiveSummaryVisualisation(val analysis: WebSummaryAdaptiveAnalysis, width: Int, height: Int) {
+class AdaptiveSummaryVisualisation(
+    val analysis: WebSummaryAdaptiveAnalysis,
+    width: Int,
+    height: Int) {
 
   // give the adaptive analysis a pointer to this visualisation
   analysis.webSummary = this
@@ -43,7 +46,7 @@ class AdaptiveSummaryVisualisation(val analysis: WebSummaryAdaptiveAnalysis, wid
   // coordinating the visualisation
   //
 
-  def refresh(): Unit = 
+  def refresh(): Unit =
     ModuleCostBarChart.loadDataSorted(analysis.summary.content)
 
   refresh()

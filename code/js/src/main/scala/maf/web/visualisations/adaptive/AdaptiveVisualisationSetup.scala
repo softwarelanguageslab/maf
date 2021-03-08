@@ -57,8 +57,12 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
     }
   }
 
-  def createVisualisation(analysis: Analysis, width: Int, height: Int): Node = {
-    // create both a webvis and a summary vis              
+  def createVisualisation(
+      analysis: Analysis,
+      width: Int,
+      height: Int
+    ): Node = {
+    // create both a webvis and a summary vis
     val webWidth = Math.round(width * 0.6)
     val sumWidth = Math.round(width * 0.35)
     val webvis = new WebVisualisationAdaptive(analysis, webWidth.toInt, height)

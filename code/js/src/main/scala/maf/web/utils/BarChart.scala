@@ -46,7 +46,7 @@ abstract class BarChart(
     .attr("transform", s"translate($padding, $padding)")
 
   private val xScale = d3.scaleBand().padding(0.4)
-  private val yScale = d3.scaleLinear().domain(Seq(0,100)).range(Seq(realHeight, 0))
+  private val yScale = d3.scaleLinear().domain(Seq(0, 100)).range(Seq(realHeight, 0))
   private val xAxis = d3.axisBottom(xScale)
   private val yAxis = d3.axisLeft(yScale).ticks(10)
 
@@ -83,7 +83,7 @@ abstract class BarChart(
       .style("text-anchor", "start")
 
     // setup the y-axis
-    if(data.nonEmpty) { increaseMax(value(data.maxBy(value))) }
+    if (data.nonEmpty) { increaseMax(value(data.maxBy(value))) }
     yAxisNode.call(yAxis)
 
     // draw the bars
@@ -97,7 +97,8 @@ abstract class BarChart(
       .attr("x", (d: Data) => xScale(key(d)))
       .attr("y", (d: Data) => { yScale(value(d)) })
       .attr("height", (d: Data) => realHeight - yScale(value(d)))
-    selection.exit()
+    selection
+      .exit()
       .remove()
   }
 
