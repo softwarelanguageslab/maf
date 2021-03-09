@@ -70,12 +70,14 @@ class AdaptiveSummaryVisualisation(
     type Data = (analysis.SchemeModule, analysis.ModuleSummary)
     def key(d: Data): String = d._1.toString
     def value(d: Data): Int = d._2.cost
+    override def onClick(d: Data) = switchView(ComponentView(d._2))
   }
 
   object ComponentBarChart extends BarChart(width, height) {
     type Data = (analysis.Component, MultiSet[Dependency])
     def key(d: Data): String = d._1.toString
     def value(d: Data): Int = d._2.cardinality
+    override def onClick(d: Data) = switchView(DependencyView(d._2))
   }
 
   object DependencyBarChart extends BarChart(width, height) {
@@ -90,11 +92,13 @@ class AdaptiveSummaryVisualisation(
 
   val node = document.createElement("div")
   node.appendChild(currentView.node)
+  currentView.refresh()
 
   def switchView(view: View) {
     node.removeChild(currentView.node)
     currentView = view
     node.appendChild(currentView.node)
+    currentView.refresh()
   }
 
   //
@@ -103,5 +107,4 @@ class AdaptiveSummaryVisualisation(
 
   def refresh(): Unit = currentView.refresh()
   
-  refresh()
 }

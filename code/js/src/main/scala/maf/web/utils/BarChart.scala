@@ -62,6 +62,9 @@ abstract class BarChart(
     yScale.domain(Seq(0, currentMax))
   }
 
+  // can be override for custom behaviour when clicking an element
+  protected def onClick(d: Data): Unit = ()
+
   def loadData(data: Iterable[Data]): Unit = {
 
     val n = data.length
@@ -95,6 +98,7 @@ abstract class BarChart(
       .append("rect")
       .attr("class", "bar")
       .attr("width", xScale.bandwidth())
+      .on("click", (d: Data) => onClick(d))
       .merge(selection.transition())
       .attr("x", (d: Data) => xScale(key(d)))
       .attr("y", (d: Data) => yScale(value(d)))
