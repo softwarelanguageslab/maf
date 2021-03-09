@@ -85,12 +85,12 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
   override def analysisCommandHandler(anl: Analysis) =
     analysisCommandHandlerAdaptive(anl).orElse(super.analysisCommandHandler(anl))
 
-  private def analysisCommandHandlerAdaptive(anl: Analysis): PartialFunction[String, Unit] = {
-    case "a" | "A" => stepUntilAdapt(anl)
+  private def analysisCommandHandlerAdaptive(anl: Analysis): PartialFunction[String, Unit] = { case "a" | "A" =>
+    stepUntilAdapt(anl)
   }
 
-  private def stepUntilAdapt(anl: Analysis): Unit = 
-    if(!anl.finished && !anl.willAdapt) {
+  private def stepUntilAdapt(anl: Analysis): Unit =
+    if (!anl.finished && !anl.willAdapt) {
       anl.step(Timeout.none)
       js.timers.setTimeout(0) {
         stepUntilAdapt(anl)

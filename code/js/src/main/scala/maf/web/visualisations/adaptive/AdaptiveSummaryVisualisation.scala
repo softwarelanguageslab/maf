@@ -21,7 +21,7 @@ trait WebSummaryAdaptiveAnalysis extends AdaptiveContextSensitivity {
   var webSummary: AdaptiveSummaryVisualisation = _
 
   // checks if the adaptive analysis will adapt on its next step
-  def willAdapt: Boolean = stepCount == rate 
+  def willAdapt: Boolean = stepCount == rate
 
   // refresh the summary visualisation after stepping
   override def step(timeout: Timeout.T): Unit = {
@@ -54,7 +54,7 @@ class AdaptiveSummaryVisualisation(
       val backButton = document.createElement("button").asInstanceOf[html.Button]
       backButton.onclick = (_: dom.raw.MouseEvent) => switchView(parent)
       backButton.innerHTML = "Go back"
-      div.appendChild(backButton) 
+      div.appendChild(backButton)
       div.appendChild(this.innerNode)
       div
     }
@@ -110,7 +110,7 @@ class AdaptiveSummaryVisualisation(
   def switchView(view: View) {
     // remove previous view
     node.removeChild(currentView.node)
-    // setup new view  
+    // setup new view
     currentView = view
     node.appendChild(currentView.node)
     currentView.refresh()
@@ -121,5 +121,5 @@ class AdaptiveSummaryVisualisation(
   //
 
   def refresh(): Unit = currentView.refresh()
-  
+
 }

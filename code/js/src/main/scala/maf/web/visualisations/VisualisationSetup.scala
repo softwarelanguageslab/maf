@@ -55,8 +55,8 @@ trait VisualisationSetup {
     current = Some((analysis, webvis))
   }
 
-  protected def keyHandler(key: String): Unit = 
-    if(analysis.isDefined) {
+  protected def keyHandler(key: String): Unit =
+    if (analysis.isDefined) {
       analysisCommandHandler(analysis.get).lift(key)
     }
 
