@@ -75,4 +75,25 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
     parent.appendChild(sumvis.node)
     return parent
   }
+
+  //
+  // INPUT HANDLING
+  //
+
+  override def onClick(): Unit = () // don't do anything when clicking
+
+  override def analysisCommandHandler(anl: Analysis) =
+    analysisCommandHandlerAdaptive(anl).orElse(super.analysisCommandHandler(anl))
+
+  private def analysisCommandHandlerAdaptive(anl: Analysis): PartialFunction[String, Unit] = {
+    case "a" | "A" => stepUntilAdapt(anl)
+  }
+
+  private def stepUntilAdapt(anl: Analysis): Unit = 
+    if(!anl.finished && !anl.willAdapt) {
+      anl.step(Timeout.none)
+      js.timers.setTimeout(0) {
+        stepUntilAdapt(anl)
+      }
+    }
 }

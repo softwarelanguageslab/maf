@@ -9,7 +9,7 @@ import maf.util.datastructures._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
-abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, rate: Int = 1000)
+abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, val rate: Int = 1000)
     extends ModAnalysis(program)
        with IndirectComponents[Expr]
        with SequentialWorklistAlgorithm[Expr] {

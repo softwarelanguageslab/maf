@@ -55,12 +55,12 @@ trait VisualisationSetup {
     current = Some((analysis, webvis))
   }
 
-  private def keyHandler(key: String) =
-    if (analysis.isDefined) {
+  protected def keyHandler(key: String): Unit = 
+    if(analysis.isDefined) {
       analysisCommandHandler(analysis.get).lift(key)
     }
 
-  private def analysisCommandHandler(anl: Analysis): PartialFunction[String, Unit] = {
+  protected def analysisCommandHandler(anl: Analysis): PartialFunction[String, Unit] = {
     case "n" | "N" | " " => stepAnalysis(anl)
     case "e" | "E"       => stepUntil(anl)
     case "r"             => stepUntil(anl, timeout = Timeout.start(Duration(5, SECONDS)))
@@ -69,7 +69,7 @@ trait VisualisationSetup {
     case "S"             => stepUntil(anl, stepLimit = Some(25))
   }
 
-  private def onClick() = this.analysis.foreach(stepAnalysis)
+  protected def onClick() = this.analysis.foreach(stepAnalysis)
 
   private def stepAnalysis(anl: Analysis) =
     if (!anl.finished) {
@@ -84,7 +84,7 @@ trait VisualisationSetup {
       stepLimit: Option[Int] = None
     ): Unit =
     if (!anl.finished && !timeout.reached && stepLimit.map(_ > 0).getOrElse(true)) {
-      anl.step(Timeout.none)
+      anl.step(timeout)
       js.timers.setTimeout(0) { // <- gives JS time to update between steps
         stepUntil(anl, timeout, stepLimit.map(_ - 1))
       }
