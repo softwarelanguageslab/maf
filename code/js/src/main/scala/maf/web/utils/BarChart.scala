@@ -87,19 +87,18 @@ abstract class BarChart(
     yAxisNode.call(yAxis)
 
     // draw the bars
-    val selection = innerNode.selectAll(".bar").data(data)
+    // TODO!!!
+    val selection = innerNode.selectAll(".bar").data(data, (d: Data) => key(d))
     selection
       .enter()
       .append("rect")
       .attr("class", "bar")
       .attr("width", xScale.bandwidth())
-    selection
+      .merge(selection.transition())
       .attr("x", (d: Data) => xScale(key(d)))
-      .attr("y", (d: Data) => { yScale(value(d)) })
+      .attr("y", (d: Data) => yScale(value(d)))
       .attr("height", (d: Data) => realHeight - yScale(value(d)))
-    selection
-      .exit()
-      .remove()
+    selection.exit().remove()
   }
 
   // convencience method: arrange bars in descending order
