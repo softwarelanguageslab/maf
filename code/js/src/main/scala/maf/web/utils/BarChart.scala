@@ -12,7 +12,7 @@ abstract class BarChart(
     width: Int,
     height: Int,
     padding: Int = 100,
-    barWidth: Int = 30) {
+    barWidth: Int = 50) {
 
   // visualises of a certain kind of data ...
   type Data
@@ -45,7 +45,7 @@ abstract class BarChart(
     .append("g")
     .attr("transform", s"translate($padding, $padding)")
 
-  private val xScale = d3.scaleBand().padding(0.4)
+  private val xScale = d3.scaleBand().padding(0.25)
   private val yScale = d3.scaleLinear().domain(Seq(0, 100)).range(Seq(realHeight, 0))
   private val xAxis = d3.axisBottom(xScale)
   private val yAxis = d3.axisLeft(yScale).ticks(10)
@@ -55,6 +55,7 @@ abstract class BarChart(
     .attr("transform", s"translate(0, $realHeight)")
   private val yAxisNode = innerNode.append("g")
 
+  // TODO: parameterise this using an overridable method `setupYScale(max: Int)`
   private var currentMax = 1
   private def increaseMax(max: Int) = {
     while (currentMax < max) { currentMax *= 2 }

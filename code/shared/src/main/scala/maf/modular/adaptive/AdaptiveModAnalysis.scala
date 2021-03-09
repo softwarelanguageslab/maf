@@ -20,7 +20,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, rate: Int 
   // the method `adaptAnalysis` needs to be implemented to decide when and how this is carried out
   protected def adaptAnalysis(): Unit
 
-  private var stepCount = 0
+  protected var stepCount = 0
   override def step(timeout: Timeout.T): Unit = {
     super.step(timeout)
     if (stepCount == rate) {
