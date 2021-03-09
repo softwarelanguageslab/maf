@@ -33,7 +33,7 @@ trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAn
   override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     this.dependencies = updateMap(update, updateSet(update))(this.dependencies)
-    adaptiveWebVis.adapted = true
+    adaptiveWebVis.dirty = true // ensure the webvis will refresh its data
   }
 
   override def intraAnalysis(cmp: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
@@ -49,17 +49,21 @@ class WebVisualisationAdaptive(
     height: Int)
     extends WebVisualisation(analysis, width, height) {
 
-  var adapted = false
+  var dirty = false
 
   override def componentKey(cmp: analysis.Component) = analysis.key(cmp)
   override def componentText(cmp: analysis.Component) =
     s"[$cmp] ${analysis.deref(cmp).toString()}"
 
   override def refreshDataAfterStep() =
-    if (this.adapted) {
-      this.adapted = false
+    if (this.dirty) {
       super.refreshData() // <- do a full refresh
     } else {
       super.refreshDataAfterStep()
     }
+
+  override def refreshData() = {
+    super.refreshData()
+    this.dirty = false
+  }
 }

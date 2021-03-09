@@ -14,13 +14,11 @@ object JSHelpers {
   }
 }
 
-import JSHelpers._
-
 object D3Helpers {
   // shorthands
-  val d3: JsAny = js.Dynamic.global.d3
+  val d3: JSHelpers.JsAny = js.Dynamic.global.d3
   // more helpers
-  def randomColor(): JsAny = {
+  def randomColor(): JSHelpers.JsAny = {
     val r = (scala.math.random() * 255).toInt
     val g = (scala.math.random() * 255).toInt
     val b = (scala.math.random() * 255).toInt
