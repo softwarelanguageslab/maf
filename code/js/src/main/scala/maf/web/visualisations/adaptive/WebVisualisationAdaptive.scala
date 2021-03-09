@@ -3,6 +3,7 @@ package maf.web.visualisations.adaptive
 import maf.core._
 import maf.modular._
 import maf.modular.adaptive._
+import maf.util.MonoidImplicits._
 
 import maf.web.visualisations._
 
@@ -31,6 +32,7 @@ trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAn
 
   override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
+    this.dependencies = updateMap(update, updateSet(update))(this.dependencies)
     adaptiveWebVis.adapted = true
   }
 
