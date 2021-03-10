@@ -98,7 +98,7 @@ class AdaptiveSummaryVisualisation(
     def value(d: Data): Int = d._2
     protected def tooltipText(d: Data) = d._1 match {
       case AddrDependency(addr) => analysis.store(addr).toString
-      case d => throw new Exception(s"Unknown dependency $d")
+      case d                    => throw new Exception(s"Unknown dependency $d")
     }
     // give this bar chart a specific CSS class
     this.classed("dependency_bar_chart")

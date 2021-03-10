@@ -73,23 +73,27 @@ abstract class BarChart(
   protected def onMouseOver(node: dom.Node, data: Data) = {
     val bar = d3.select(node)
     // show the value label
-    bar.select("text")
+    bar
+      .select("text")
       .style("visibility", "visible")
     // show the border around the selected bar
-    bar.select("rect")
-       .style("stroke", "black")
-       .style("opacity", 1)
+    bar
+      .select("rect")
+      .style("stroke", "black")
+      .style("opacity", 1)
   }
   protected def onMouseMove(node: dom.Node, data: Data) = ()
   protected def onMouseLeave(node: dom.Node, data: Data) = {
     val bar = d3.select(node)
     // hide the value label
-    bar.select("text")
+    bar
+      .select("text")
       .style("visibility", "hidden")
     // hide the border around the selected bar
-    bar.select("rect")
-       .style("stroke", "none")
-       .style("opacity", 0.8)
+    bar
+      .select("rect")
+      .style("stroke", "none")
+      .style("opacity", 0.8)
   }
 
   def loadData(data: Iterable[Data]): Unit = {
@@ -116,29 +120,34 @@ abstract class BarChart(
 
     // draw the bars
     val selection = innerNode.selectAll(".bar").data(data, (d: Data) => key(d))
-    val enter = selection.enter()
-                  .append("g")
-                  .attr("class", "bar")
-                  .on("click", (d: Data) => onClick(d))
-                  .on("mouseover", { (jsthis: dom.Node, data: Data)   => onMouseOver(jsthis,data) }: js.ThisFunction)
-                  .on("mousemove", { (jsthis: dom.Node, data: Data)   => onMouseMove(jsthis,data) }: js.ThisFunction)
-                  .on("mouseleave", { (jsthis: dom.Node, data: Data)  => onMouseLeave(jsthis,data) }: js.ThisFunction)
+    val enter = selection
+      .enter()
+      .append("g")
+      .attr("class", "bar")
+      .on("click", (d: Data) => onClick(d))
+      .on("mouseover", { (jsthis: dom.Node, data: Data) => onMouseOver(jsthis, data) }: js.ThisFunction)
+      .on("mousemove", { (jsthis: dom.Node, data: Data) => onMouseMove(jsthis, data) }: js.ThisFunction)
+      .on("mouseleave", { (jsthis: dom.Node, data: Data) => onMouseLeave(jsthis, data) }: js.ThisFunction)
     // add a rectangle + value label for every new bar
-    enter.append("text")
+    enter
+      .append("text")
       .style("visibility", "hidden")
       .style("text-anchor", "middle")
       .attr("dy", -8)
-    enter.append("rect")
+    enter
+      .append("rect")
       .style("opacity", 0.8)
     // update existing bars
     val all = enter.merge(selection.transition())
     all.attr("transform", (d: Data) => s"translate(${xScale(key(d))}, ${yScale(value(d))})")
-    all.select("text")
-       .text((d: Data) => value(d).toString)
-       .attr("dx", (d: Data) => xScale.bandwidth() / 2)
-    all.select("rect")
-       .attr("width", xScale.bandwidth())
-       .attr("height", (d: Data) => realHeight - yScale(value(d)))
+    all
+      .select("text")
+      .text((d: Data) => value(d).toString)
+      .attr("dx", (d: Data) => xScale.bandwidth() / 2)
+    all
+      .select("rect")
+      .attr("width", xScale.bandwidth())
+      .attr("height", (d: Data) => realHeight - yScale(value(d)))
     selection.exit().remove()
   }
 
@@ -154,7 +163,7 @@ abstract class BarChart(
 trait BarChartTooltip extends BarChart {
 
   // should be implemented to determine corresponding text in the tooltip
-  protected def tooltipText(d: Data): String 
+  protected def tooltipText(d: Data): String
 
   override protected def onMouseOver(node: dom.Node, data: Data) = {
     super.onMouseOver(node, data)
@@ -164,8 +173,9 @@ trait BarChartTooltip extends BarChart {
 
   override protected def onMouseMove(node: dom.Node, data: Data) = {
     super.onMouseMove(node, data)
-    tooltip.style("left", s"${d3.event.pageX + 20}px")
-           .style("top", s"${d3.event.pageY}px")
+    tooltip
+      .style("left", s"${d3.event.pageX + 20}px")
+      .style("top", s"${d3.event.pageY}px")
   }
 
   override protected def onMouseLeave(node: dom.Node, data: Data) = {
@@ -174,18 +184,18 @@ trait BarChartTooltip extends BarChart {
   }
 
   // TODO: some of these fixed constants might want to be parameterised
-  lazy val tooltip = d3.select(node)
-                            .append("div")
-                            .attr("class","tooltip")
-                            .style("position","absolute")
-                            .style("visibility", "hidden")
-                            .style("background-color", "white")
-                            .style("border", "solid")
-                            .style("border-width", "2px")
-                            .style("border-radius", "5px")
-                            .style("padding", "5px")
+  lazy val tooltip = d3
+    .select(node)
+    .append("div")
+    .attr("class", "tooltip")
+    .style("position", "absolute")
+    .style("visibility", "hidden")
+    .style("background-color", "white")
+    .style("border", "solid")
+    .style("border-width", "2px")
+    .style("border-radius", "5px")
+    .style("padding", "5px")
 }
-
 
 //
 // convenience class for barcharts with simple data

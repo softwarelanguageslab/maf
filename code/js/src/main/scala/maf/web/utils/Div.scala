@@ -13,23 +13,23 @@ object Div {
 
   def apply(arrangement: Arrangement)(children: dom.Node*): html.Div = {
     val div = document.createElement("div").asInstanceOf[html.Div]
-    children.foreach { child => 
-        arrangement match {
-            case Horizontal => d3.select(child).style("float","left")
-            case Vertical => () // default is apparently vertical anyway in CSS
-        }
-        div.appendChild(child)
+    children.foreach { child =>
+      arrangement match {
+        case Horizontal => d3.select(child).style("float", "left")
+        case Vertical   => () // default is apparently vertical anyway in CSS
+      }
+      div.appendChild(child)
     }
-    return div 
+    return div
   }
 }
 
 // for convenience
 object HStack {
-    def apply(children: dom.Node*): html.Div =
-        Div(Div.Horizontal)(children :_*)
+  def apply(children: dom.Node*): html.Div =
+    Div(Div.Horizontal)(children: _*)
 }
 object VStack {
-    def apply(children: dom.Node*): html.Div =
-        Div(Div.Vertical)(children :_*)
+  def apply(children: dom.Node*): html.Div =
+    Div(Div.Vertical)(children: _*)
 }
