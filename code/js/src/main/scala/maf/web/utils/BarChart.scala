@@ -49,18 +49,19 @@ abstract class BarChart(
   private val xScale = d3.scaleBand().padding(0.25)
   private val yScale = d3.scaleLinear().domain(Seq(0, 100)).range(Seq(realHeight, 0))
   private val xAxis = d3.axisBottom(xScale)
-  private val yAxis = d3.axisLeft(yScale).ticks(10)
+  private val yAxis = d3.axisLeft(yScale).ticks(1).tickFormat(d3.format(",.0f"))
 
   private val xAxisNode = innerNode
     .append("g")
     .attr("transform", s"translate(0, $realHeight)")
   private val yAxisNode = innerNode.append("g")
 
-  // TODO: parameterise this using an overridable method `setupYScale(max: Int)`
+  // TODO: parameterise this using an overridable method `setupYAxis(max: Int)`
   private var currentMax = 1
   private def increaseMax(max: Int) = {
     while (currentMax < max) { currentMax *= 2 }
     yScale.domain(Seq(0, currentMax))
+    yAxis.ticks(Math.min(10,currentMax))
   }
 
   // convience method to give the enclosing SVG a certain class

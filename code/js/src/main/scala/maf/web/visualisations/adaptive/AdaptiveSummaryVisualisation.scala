@@ -85,7 +85,7 @@ class AdaptiveSummaryVisualisation(
   object ComponentBarChart extends BarChart(width, height) with BarChartTooltip {
     type Data = (analysis.Component, MultiSet[Dependency])
     def key(d: Data): String = d._1.toString
-    def value(d: Data): Int = d._2.cardinality + 1
+    def value(d: Data): Int = d._2.cardinality
     override def onClick(d: Data) = switchView(DependencyView(d._2, currentView))
     protected def tooltipText(d: Data) = analysis.view(d._1).toString
     // give this bar chart a specific CSS class
