@@ -1,6 +1,7 @@
 package maf.web.utils
 
 // Scala.js-related imports
+import org.scalajs.dom
 import org.scalajs.dom._
 import scala.scalajs.js
 import js.DynamicImplicits.number2dynamic
@@ -12,8 +13,7 @@ abstract class BarChart(
     width: Int,
     height: Int,
     padding: Int = 100,
-    barWidth: Int = 50,
-    barClass: String = "bar") {
+    barWidth: Int = 50) {
 
   // visualises of a certain kind of data ...
   type Data
@@ -63,8 +63,32 @@ abstract class BarChart(
     yScale.domain(Seq(0, currentMax))
   }
 
-  // can be override for custom behaviour when clicking an element
+  // convience method to give the enclosing SVG a certain class
+  def classed(className: String) = svgNode.classed(className, true)
+
+  // can be overriden for custom behaviour when clicking an element
   protected def onClick(d: Data): Unit = ()
+
+  // handlers for mouse hovering
+  protected def onMouseOver(node: dom.Node, data: Data) = {
+    val bar = d3.select(node)
+    // show the value label
+    bar.select("text")
+        .style("opacity", 1)
+    // show the border around the selected bar
+    bar.select("rect")
+       .style("stroke", "black")
+  }
+  protected def onMouseMove(node: dom.Node, data: Data) = ()
+  protected def onMouseLeave(node: dom.Node, data: Data) = {
+    val bar = d3.select(node)
+    // hide the value label
+    bar.select("text")
+       .style("opacity", 0)
+    // hide the border around the selected bar
+    bar.select("rect")
+       .style("stroke", "none")
+  }
 
   def loadData(data: Iterable[Data]): Unit = {
 
@@ -89,17 +113,29 @@ abstract class BarChart(
     yAxisNode.call(yAxis)
 
     // draw the bars
-    val selection = innerNode.selectAll(s".$barClass").data(data, (d: Data) => key(d))
-    selection
-      .enter()
-      .append("rect")
-      .attr("class", barClass)
-      .attr("width", xScale.bandwidth())
-      .on("click", (d: Data) => onClick(d))
-      .merge(selection.transition())
-      .attr("x", (d: Data) => xScale(key(d)))
-      .attr("y", (d: Data) => yScale(value(d)))
-      .attr("height", (d: Data) => realHeight - yScale(value(d)))
+    val selection = innerNode.selectAll(".bar").data(data, (d: Data) => key(d))
+    val enter = selection.enter()
+                  .append("g")
+                  .attr("class", "bar")
+                  .on("click", (d: Data) => onClick(d))
+                  .on("mouseover", { (jsthis: dom.Node, data: Data)   => onMouseOver(jsthis,data) }: js.ThisFunction)
+                  .on("mousemove", { (jsthis: dom.Node, data: Data)   => onMouseMove(jsthis,data) }: js.ThisFunction)
+                  .on("mouseleave", { (jsthis: dom.Node, data: Data)  => onMouseLeave(jsthis,data) }: js.ThisFunction)
+    // add a rectangle + value label for every new bar
+    enter.append("text")
+      .style("opacity", 0)
+      .style("text-anchor", "middle")
+      .attr("dy", -8)
+    enter.append("rect")
+    // update existing bars
+    val all = enter.merge(selection.transition())
+    all.attr("transform", (d: Data) => s"translate(${xScale(key(d))}, ${yScale(value(d))})")
+    all.select("text")
+       .text((d: Data) => value(d).toString)
+       .attr("dx", (d: Data) => xScale.bandwidth() / 2)
+    all.select("rect")
+       .attr("width", xScale.bandwidth())
+       .attr("height", (d: Data) => realHeight - yScale(value(d)))
     selection.exit().remove()
   }
 
