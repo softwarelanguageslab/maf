@@ -1,12 +1,12 @@
 package maf.web.visualisations.adaptive
 
 // MAF imports
+import maf.modular.Dependency
 import maf.modular.adaptive.scheme._
 import maf.util.datastructures.MultiSet
 import maf.util.benchmarks.Timeout
 
-import maf.web.utils.BarChart
-import maf.modular.Dependency
+import maf.web.utils._
 
 // Scala.js imports
 import org.scalajs._
@@ -49,11 +49,9 @@ class AdaptiveSummaryVisualisation(
   sealed trait ChildView extends View {
     def parent: View
     def innerNode: dom.Node
+    private lazy val backButton = Button("Go back") { switchView(parent) }
     lazy val node = {
       val div = document.createElement("div")
-      val backButton = document.createElement("button").asInstanceOf[html.Button]
-      backButton.onclick = (_: dom.raw.MouseEvent) => switchView(parent)
-      backButton.innerHTML = "Go back"
       div.appendChild(backButton)
       div.appendChild(this.innerNode)
       div
