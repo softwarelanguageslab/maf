@@ -11,6 +11,7 @@ import maf.web.utils._
 // Scala.js imports
 import org.scalajs._
 import org.scalajs.dom._
+import maf.modular.AddrDependency
 
 //
 // REQUIRED ANALYSIS EXTENSION
@@ -81,19 +82,24 @@ class AdaptiveSummaryVisualisation(
     this.classed("module_bar_chart")
   }
 
-  object ComponentBarChart extends BarChart(width, height) {
+  object ComponentBarChart extends BarChart(width, height) with BarChartTooltip {
     type Data = (analysis.Component, MultiSet[Dependency])
     def key(d: Data): String = d._1.toString
-    def value(d: Data): Int = d._2.cardinality
+    def value(d: Data): Int = d._2.cardinality + 1
     override def onClick(d: Data) = switchView(DependencyView(d._2, currentView))
+    protected def tooltipText(d: Data) = analysis.view(d._1).toString
     // give this bar chart a specific CSS class
     this.classed("component_bar_chart")
   }
 
-  object DependencyBarChart extends BarChart(width, height) {
+  object DependencyBarChart extends BarChart(width, height) with BarChartTooltip {
     type Data = (Dependency, Int)
     def key(d: Data): String = d._1.toString
     def value(d: Data): Int = d._2
+    protected def tooltipText(d: Data) = d._1 match {
+      case AddrDependency(addr) => analysis.store(addr).toString
+      case d => throw new Exception(s"Unknown dependency $d")
+    }
     // give this bar chart a specific CSS class
     this.classed("dependency_bar_chart")
   }
@@ -106,7 +112,7 @@ class AdaptiveSummaryVisualisation(
   node.appendChild(currentView.node)
   currentView.refresh()
 
-  def switchView(view: View) {
+  def switchView(view: View) = {
     // remove previous view
     node.removeChild(currentView.node)
     // setup new view
