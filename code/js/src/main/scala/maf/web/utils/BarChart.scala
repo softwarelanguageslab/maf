@@ -12,7 +12,8 @@ abstract class BarChart(
     width: Int,
     height: Int,
     padding: Int = 100,
-    barWidth: Int = 50) {
+    barWidth: Int = 50,
+    barClass: String = "bar") {
 
   // visualises of a certain kind of data ...
   type Data
@@ -91,12 +92,11 @@ abstract class BarChart(
     yAxisNode.call(yAxis)
 
     // draw the bars
-    // TODO!!!
-    val selection = innerNode.selectAll(".bar").data(data, (d: Data) => key(d))
+    val selection = innerNode.selectAll(s".$barClass").data(data, (d: Data) => key(d))
     selection
       .enter()
       .append("rect")
-      .attr("class", "bar")
+      .attr("class", barClass)
       .attr("width", xScale.bandwidth())
       .on("click", (d: Data) => onClick(d))
       .merge(selection.transition())

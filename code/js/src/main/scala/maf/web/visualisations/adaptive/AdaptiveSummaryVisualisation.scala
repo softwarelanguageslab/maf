@@ -79,21 +79,21 @@ class AdaptiveSummaryVisualisation(
   // setting up the bar charts
   //
 
-  object ModuleBarChart extends BarChart(width, height) {
+  object ModuleBarChart extends BarChart(width, height, barClass = "module_bar") {
     type Data = (analysis.SchemeModule, analysis.ModuleSummary)
     def key(d: Data): String = d._1.toString
     def value(d: Data): Int = d._2.cost
     override def onClick(d: Data) = switchView(ComponentView(d._2, currentView))
   }
 
-  object ComponentBarChart extends BarChart(width, height) {
+  object ComponentBarChart extends BarChart(width, height, barClass = "component_bar") {
     type Data = (analysis.Component, MultiSet[Dependency])
     def key(d: Data): String = d._1.toString
     def value(d: Data): Int = d._2.cardinality
     override def onClick(d: Data) = switchView(DependencyView(d._2, currentView))
   }
 
-  object DependencyBarChart extends BarChart(width, height) {
+  object DependencyBarChart extends BarChart(width, height, barClass = "dependency_bar") {
     type Data = (Dependency, Int)
     def key(d: Data): String = d._1.toString
     def value(d: Data): Int = d._2
