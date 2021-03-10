@@ -50,12 +50,7 @@ class AdaptiveSummaryVisualisation(
     def parent: View
     def innerNode: dom.Node
     private lazy val backButton = Button("Go back") { switchView(parent) }
-    lazy val node = {
-      val div = document.createElement("div")
-      div.appendChild(backButton)
-      div.appendChild(this.innerNode)
-      div
-    }
+    lazy val node = VStack(backButton, innerNode)
   }
   case object ModuleView extends View {
     def node = ModuleBarChart.node
