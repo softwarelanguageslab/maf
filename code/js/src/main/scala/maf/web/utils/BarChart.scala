@@ -81,11 +81,8 @@ abstract class BarChart(
     xAxisNode
       .call(xAxis)
       .selectAll("text") // select all text labels of the axis ...
-      .attr("y", 0)
-      .attr("x", 9)
-      .attr("dy", ".35em")
-      .attr("transform", "rotate(90)") // ... and rotate them by 90 degrees
-      .style("text-anchor", "start")
+      .attr("transform", "translate(-10,0)rotate(-45)")
+      .style("text-anchor", "end");
 
     // setup the y-axis
     if (data.nonEmpty) { increaseMax(value(data.maxBy(value))) }
