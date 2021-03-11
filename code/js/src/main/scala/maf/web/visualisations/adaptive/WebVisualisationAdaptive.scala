@@ -6,6 +6,7 @@ import maf.modular.adaptive._
 import maf.util.MonoidImplicits._
 
 import maf.web.visualisations._
+import maf.web.utils._
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -49,6 +50,7 @@ class WebVisualisationAdaptive(
     height: Int)
     extends WebVisualisation(analysis, width, height) {
 
+  // dirty flag set after visualisation needs to be refreshed due to adaptation
   var dirty = false
 
   override def componentKey(cmp: analysis.Component) = analysis.key(cmp)

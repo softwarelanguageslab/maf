@@ -124,8 +124,12 @@ class WebVisualisation(
   //
 
   // setup the svg and visualisation skeleton
-  val node = document.createElementNS("http://www.w3.org/2000/svg", "svg")
-  private val svg = d3.select(node).attr("width", width).attr("height", height)
+  val node = document.createElement("div")
+  protected val svgDiv = document.createElement("div")
+  node.appendChild(svgDiv)
+  protected val svgNode = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+  svgDiv.appendChild(svgNode)
+  protected val svg = d3.select(svgNode).attr("width", width).attr("height", height)
   private val outerContainer = svg.append("g")
   private val innerContainer = outerContainer.append("g").attr("transform", s"translate(${width / 2},${height / 2})")
   // augment the svg capabilities

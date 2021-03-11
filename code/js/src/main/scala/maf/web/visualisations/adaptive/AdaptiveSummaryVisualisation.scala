@@ -44,7 +44,10 @@ class AdaptiveSummaryVisualisation(
   //
 
   val node = document.createElement("div")
-  private val widthPerView = (width / 3) - 10
+  D3Helpers.d3.select(node).style("overflow", "scroll")
+                           .style("width", s"${width}px")
+                           .style("height", s"${height}px")
+  private val widthPerView = width / 3
 
   // keep a stack of views currently shown
   private var viewStack: List[View] = List.empty

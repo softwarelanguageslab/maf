@@ -1,26 +1,20 @@
 package maf.web.visualisations.adaptive
 
 // MAF imports
-import maf.core._
-import maf.modular._
 import maf.modular.worklist._
 import maf.modular.scheme._
-import maf.modular.scheme.modf._
 import maf.modular.adaptive._
 import maf.modular.adaptive.scheme._
 import maf.language.scheme._
 import maf.util.benchmarks.Timeout
 
-import maf.web._
 import maf.web.utils._
-import maf.web.utils.D3Helpers._
 
 // Scala.js related imports
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 import org.scalajs.dom._
-import maf.web.visualisations.VisualisationSetup
-import maf.modular.components.ComponentPointer
+import maf.web.visualisations._
 
 //
 // VISUALISATION SETUP
@@ -63,8 +57,8 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
       height: Int
     ): Node = {
     // create both a webvis and a summary vis
-    val webvis = new WebVisualisationAdaptive(analysis, width, height)
-    val sumvis = new AdaptiveSummaryVisualisation(analysis, width, height)
+    val sumvis = new AdaptiveSummaryVisualisation(analysis, width, (0.75 * height).toInt)
+    val webvis = new WebVisualisationAdaptive(analysis, width, height) with WebVisualisationWithToggle
     // create the parent
     VStack(sumvis.node, webvis.node)
   }
