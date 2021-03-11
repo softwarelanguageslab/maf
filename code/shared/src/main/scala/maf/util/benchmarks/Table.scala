@@ -71,10 +71,10 @@ case class Table[V](data: Map[(String, String), V], default: Option[V]) {
    * @return          A list of rows, where each row is represented as a list of values, containing (the string representation of) the value at each column
    */
   private def extract(
-      rows: List[String] = allRows.toList.sorted,
-      columns: List[String] = allColumns.toList.sorted,
-      rowName: String = "",
-      format: V => String = _.toString()
+      rows: List[String],
+      columns: List[String],
+      rowName: String,
+      format: V => String
     ): List[List[String]] = {
     val firstRow = rowName :: columns
     val otherRows = rows.foldRight(List[List[String]]()) { (row, restRows) =>

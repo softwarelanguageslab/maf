@@ -167,6 +167,7 @@ object SchemeOp {
 
   case object Substring extends SchemeOp3("substring")
   case object VectorSet extends SchemeOp3("vector-set!")
+  case object StringSet extends SchemeOp3("string-set!")
 
-  val ternaryOperators: Iterable[SchemeOp3] = Set(Substring, VectorSet)
+  val ternaryOperators: Iterable[SchemeOp3] = Set(Substring, VectorSet, StringSet)
 }

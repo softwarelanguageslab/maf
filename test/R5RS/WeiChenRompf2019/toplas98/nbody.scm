@@ -3,6 +3,12 @@
 ;              flushed #% prefixes, defined void,
 ;              and added nbody-benchmark.
 
+(define (foldl f base lst) (foldl-aux f base lst))
+(define (foldl-aux f base lst)
+  (if (null? lst)
+      base
+      (foldl-aux f (f base (car lst)) (cdr lst))))
+
 (define void
 	(let ((invisible (string->symbol "")))
 		(lambda () invisible)))
@@ -147,7 +153,7 @@
 					local-expansion
 					eval-local-expansion)
 	(let ((center (node-center node))
-				 (near-field (apply append (map node-particles (node-near-field node)))))
+				 (near-field (foldl append '() (map node-particles (node-near-field node)))))
 		(for-each (lambda (particle)
 								(let* ((pos (particle-position particle))
 												(far-field-accel-and-poten
@@ -167,7 +173,7 @@
 									(set-particle-potential!
 										particle
 										(+ (cdr far-field-accel-and-poten)
-											(apply + (map (lambda (near)
+											(foldl + 0 (map (lambda (near)
 																			(direct-poten
 																				(pt- (particle-position near) pos)
 																				(particle-strength near)))
@@ -490,9 +496,9 @@
 		(+ (pt-z pt1) (pt-z pt2))))
 
 (define (sum-vectors vectors)
-	(make-pt (apply + (map pt-x vectors))
-		(apply + (map pt-y vectors))
-		(apply + (map pt-z vectors))))
+	(make-pt (foldl + 0 (map pt-x vectors))
+		(foldl + 0 (map pt-y vectors))
+		(foldl + 0 (map pt-z vectors))))
 
 (define (pt- pt1 pt2)
 	(make-pt (- (pt-x pt1) (pt-x pt2))
@@ -568,14 +574,14 @@
 (define (cartesian-expansion-sum expansions)
 	(make-cartesian-expansion
 		(lambda (i j k)
-			(apply + (map (lambda (expansion)
+			(foldl + 0 (map (lambda (expansion)
 											(array-ref expansion i j k))
 								 expansions)))))
 
 (define (spherical-expansion-sum expansions)
 	(make-spherical-expansion
 		(lambda (l m)
-			(apply + (map (lambda (expansion)
+			(foldl + 0 (map (lambda (expansion)
 											(spherical-ref expansion l m))
 								 expansions)))))
 

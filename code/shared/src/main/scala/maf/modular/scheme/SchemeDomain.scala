@@ -17,7 +17,7 @@ trait SchemeDomain extends AbstractDomain[SchemeExp] {
   val primitives: SchemePrimitives[Value, Address]
 
   /** Implementation of abstract values. */
-  implicit val lattice: SchemeLattice[Value, Address, Prim]
+  implicit val lattice: SchemeLattice[Value, Address]
 }
 
 trait ModularSchemeDomain extends SchemeDomain {
@@ -54,7 +54,7 @@ object SchemeTypeDomain extends ModularSchemeLatticeWrapper {
   type I = Type.I
   type R = Type.R
   type C = Type.C
-  type Sym = Concrete.Sym
+  type Sym = Type.Sym
   // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
@@ -75,7 +75,7 @@ object SchemeConstantPropagationDomain extends ModularSchemeLatticeWrapper {
   type I = ConstantPropagation.I
   type R = ConstantPropagation.R
   type C = ConstantPropagation.C
-  type Sym = Concrete.Sym
+  type Sym = ConstantPropagation.Sym
   // make the scheme lattice
   lazy val modularLattice = new ModularSchemeLattice
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
@@ -105,4 +105,24 @@ object SchemePowersetDomain extends ModularSchemeLatticeWrapper {
 
 trait SchemePowersetDomain extends ModularSchemeDomain {
   lazy val modularLatticeWrapper = SchemePowersetDomain
+}
+
+//
+// BOUNDED SET DOMAIN
+//
+class SchemeBoundedDomainWrapper(val bound: Int) extends ModularSchemeLatticeWrapper {
+  object Bounded extends BoundedLattice(bound)
+  type S = Bounded.S
+  type B = Bounded.B
+  type I = Bounded.I
+  type R = Bounded.R
+  type C = Bounded.C
+  type Sym = Bounded.Sym
+  lazy val modularLattice = new ModularSchemeLattice
+  lazy val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
+}
+
+trait SchemeBoundedDomain extends ModularSchemeDomain {
+  val bound: Int
+  lazy val modularLatticeWrapper = new SchemeBoundedDomainWrapper(bound)
 }

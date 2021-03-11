@@ -7,7 +7,7 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.scheme.modconc._
 import maf.modular.scheme.ssmodconc._
-import maf.modular.worklist.{LIFOWorklistAlgorithm, ParallelWorklistAlgorithm, RandomWorklistAlgorithm}
+import maf.modular.worklist._
 import maf.test._
 
 trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
@@ -28,6 +28,7 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
   def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program)
     with SchemeModConcStandardSensitivity
     with SchemeConstantPropagationDomain
+    with CallDepthFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp] {
     override def workers: Int = 4
     override def intraAnalysis(cmp: SchemeModConcComponent) = new SchemeModConcIntra(cmp) with ParallelIntra
@@ -35,7 +36,11 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
   }
 }
 
-class SimpleSchemeModConcSoundnessTests extends SchemeModConcSoundnessTests with SimpleSchemeModConc with ThreadBenchmarks with SimpleBenchmarks {
+class SimpleSchemeModConcSoundnessTests
+    extends SchemeModConcSoundnessTests
+       with SimpleSchemeModConc
+       with ThreadBenchmarks
+       with VariousSequentialBenchmarks {
   override def isSlow(b: Benchmark): Boolean =
     SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
       Set(
@@ -76,7 +81,7 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   }
 }
 
-class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks with SequentialBenchmarks {
+class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks with AllSequentialBenchmarks {
   override def isSlow(b: Benchmark): Boolean =
     // (SchemeBenchmarks.sequentialBenchmarks.contains(b) && !SchemeBenchmarks.other.contains(b)) ||
     SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||

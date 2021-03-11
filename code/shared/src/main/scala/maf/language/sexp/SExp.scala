@@ -4,27 +4,31 @@ import maf.core._
 import maf.language.scheme._
 
 /** S-expressions and related values */
-sealed abstract class Value
-case class ValueString(value: String) extends Value {
-  override def toString: String = s""""$value""""
-}
-case class ValueSymbol(sym: String) extends Value {
-  override def toString: String = s"'$sym"
-}
-case class ValueInteger(value: Int) extends Value {
-  override def toString: String = value.toString
-}
-case class ValueReal(value: Double) extends Value {
-  override def toString: String = f"$value%e".replace(",", ".") // Might not preserve full precision, but will be in a Scheme-compatible format
-}
-case class ValueBoolean(value: Boolean) extends Value {
-  override def toString: String = if (value) "#t" else "#f"
-}
-case class ValueCharacter(value: Char) extends Value {
-  override def toString = s"#\\$value"
-}
-case object ValueNil extends Value {
-  override def toString = "()"
+sealed trait Value
+object Value {
+  type SString = scala.Predef.String
+  type SBoolean = scala.Boolean
+  case class String(value: SString) extends Value {
+    override def toString = s""""$value""""
+  }
+  case class Symbol(sym: SString) extends Value {
+    override def toString = s"'$sym"
+  }
+  case class Integer(value: BigInt) extends Value {
+    override def toString = value.toString
+  }
+  case class Real(value: Double) extends Value {
+    override def toString = f"$value%e".replace(",", ".") // Might not preserve full precision, but will be in a Scheme-compatible format
+  }
+  case class Boolean(value: SBoolean) extends Value {
+    override def toString = if (value) "#t" else "#f"
+  }
+  case class Character(value: Char) extends Value {
+    override def toString = s"#\\$value"
+  }
+  case object Nil extends Value {
+    override def toString = "()"
+  }
 }
 
 /**
@@ -33,7 +37,7 @@ case object ValueNil extends Value {
  * resides in the input file, and as tagging information for the abstract
  * machine.
  */
-trait SExp extends Expression {
+sealed trait SExp extends Expression {
   val idn: Identity
   def fv: Set[String] = Set()
 }
@@ -59,8 +63,8 @@ case class SExpPair(
       case pair: SExpPair =>
         val rest = pair.toStringRest
         s"$car $rest"
-      case SExpValue(ValueNil, _) => s"$car"
-      case _                      => s"$car . $cdr"
+      case SExpValue(Value.Nil, _) => s"$car"
+      case _                       => s"$car . $cdr"
     }
   val label: Label = PAI
   def subexpressions: List[Expression] = List(car, cdr)
@@ -74,7 +78,7 @@ object SExpList {
    */
   def apply(content: List[SExp], end: SExp): SExp = fromList(content, end)
   def apply(content: List[SExp], idn: Identity): SExp =
-    fromList(content, SExpValue(ValueNil, idn))
+    fromList(content, SExpValue(Value.Nil, idn))
 
   def fromList(content: List[SExp], end: SExp): SExp = content match {
     case Nil          => end

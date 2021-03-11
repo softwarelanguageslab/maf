@@ -31,7 +31,7 @@ trait BaseSchemeUndefiner {
         tailcall(
           tailcall(undefineBody(body)).flatMap(bodyv =>
             undefine(
-              SchemeDefineVariable(name, SchemeLambda(args, bodyv, exps.head.idn), pos) :: rest,
+              SchemeDefineVariable(name, SchemeLambda(Some(name.name), args, bodyv, exps.head.idn), pos) :: rest,
               defs,
               idn
             )
@@ -41,7 +41,7 @@ trait BaseSchemeUndefiner {
         tailcall(
           tailcall(undefineBody(body)).flatMap(bodyv =>
             undefine(
-              SchemeDefineVariable(name, SchemeVarArgLambda(args, vararg, bodyv, exps.head.idn), pos) :: rest,
+              SchemeDefineVariable(name, SchemeVarArgLambda(Some(name.name), args, vararg, bodyv, exps.head.idn), pos) :: rest,
               defs,
               idn
             )
@@ -68,10 +68,10 @@ trait BaseSchemeUndefiner {
   def undefine1(exp: SchemeExp): TailRec[SchemeExp] = undefine(List(exp), List(), None)
 
   def undefineExp(exp: SchemeExp): TailRec[SchemeExp] = exp match {
-    case SchemeLambda(args, body, pos) =>
-      tailcall(undefineBody(body)).map(b => SchemeLambda(args, b, pos))
-    case SchemeVarArgLambda(args, vararg, body, pos) =>
-      tailcall(undefineBody(body)).map(b => SchemeVarArgLambda(args, vararg, b, pos))
+    case SchemeLambda(name, args, body, pos) =>
+      tailcall(undefineBody(body)).map(b => SchemeLambda(name, args, b, pos))
+    case SchemeVarArgLambda(name, args, vararg, body, pos) =>
+      tailcall(undefineBody(body)).map(b => SchemeVarArgLambda(name, args, vararg, b, pos))
     case SchemeFuncall(f, args, pos) =>
       tailcall(undefine1(f)).flatMap(fun => trampolineM(undefine1, args).map(argsv => SchemeFuncall(fun, argsv, pos)))
     case SchemeIf(cond, cons, alt, pos) =>

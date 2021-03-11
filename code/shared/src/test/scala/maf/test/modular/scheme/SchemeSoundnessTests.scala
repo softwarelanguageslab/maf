@@ -1,12 +1,13 @@
 package maf.test.modular.scheme
 
 import java.util.concurrent.TimeoutException
-
 import org.scalatest.Tag
 import maf.core._
 import maf.language.CScheme._
-import maf.language.scheme.SchemeInterpreter._
+import maf.language.scheme.interpreter.ConcreteValues._
 import maf.language.scheme._
+import maf.language.scheme.interpreter._
+import maf.language.scheme.lattices.SchemeOp
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular._
 import maf.modular.scheme._
@@ -41,7 +42,9 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     try for (_ <- 1 to times) {
-      val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+      val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
+                                              io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
+      )
       endResults += runInterpreter(interpreter, program, timeout)
     } catch {
       case _: TimeoutException =>
@@ -59,8 +62,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       // analyze the program using a ModF analysis
       val anl = analysis(program)
       val timeout = analysisTimeout(benchmark)
-      anl.analyze(timeout)
-      assume(anl.finished(), "Analysis timed out")
+      anl.analyzeWithTimeout(timeout)
+      assume(anl.finished, "Analysis timed out")
       anl
     } catch {
       case e: VirtualMachineError =>
@@ -70,21 +73,24 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   protected def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value): Boolean = {
     val lat = analysis.lattice
     v match {
-      case Value.Undefined(_)   => true
-      case Value.Unbound(_)     => true
-      case Value.Void           => lat.subsumes(abs, lat.void)
-      case Value.Clo(lam, _, _) => lat.getClosures(abs).exists(_._1._1.idn == lam.idn)
-      case Value.Primitive(p)   => lat.getPrimitives(abs).exists(_.name == p.name)
-      case Value.Str(s)         => lat.subsumes(abs, lat.string(s))
-      case Value.Symbol(s)      => lat.subsumes(abs, lat.symbol(s))
-      case Value.Integer(i)     => lat.subsumes(abs, lat.number(i))
-      case Value.Real(r)        => lat.subsumes(abs, lat.real(r))
-      case Value.Bool(b)        => lat.subsumes(abs, lat.bool(b))
-      case Value.Character(c)   => lat.subsumes(abs, lat.char(c))
-      case Value.Nil            => lat.subsumes(abs, lat.nil)
-      case Value.Pointer(_)     => lat.getPointerAddresses(abs).nonEmpty
-      case Value.Thread(_)      => lat.getThreads(abs).nonEmpty
-      case v                    => throw new Exception(s"Unknown concrete value type: $v.")
+      case Value.Undefined(_)  => true
+      case Value.Unbound(_)    => true
+      case Value.Void          => lat.subsumes(abs, lat.void)
+      case Value.Clo(lam, _)   => lat.getClosures(abs).exists(_._1.idn == lam.idn)
+      case Value.Primitive(p)  => lat.getPrimitives(abs).exists(_ == p)
+      case Value.Str(s)        => lat.subsumes(abs, lat.string(s))
+      case Value.Symbol(s)     => lat.subsumes(abs, lat.symbol(s))
+      case Value.Integer(i)    => lat.subsumes(abs, lat.number(i))
+      case Value.Real(r)       => lat.subsumes(abs, lat.real(r))
+      case Value.Bool(b)       => lat.subsumes(abs, lat.bool(b))
+      case Value.Character(c)  => lat.subsumes(abs, lat.char(c))
+      case Value.Nil           => lat.subsumes(abs, lat.nil)
+      case Value.Pointer(_)    => lat.getPointerAddresses(abs).nonEmpty
+      case Value.Thread(_)     => lat.getThreads(abs).nonEmpty
+      case Value.InputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
+      case Value.OutputPort(h) => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
+      case Value.EOF           => lat.subsumes(abs, lat.charTop)
+      case v                   => throw new Exception(s"Unknown concrete value type: $v.")
     }
   }
 

@@ -99,7 +99,7 @@ trait SmallStepModConcSemantics
     // ANALYSIS //
     //----------//
 
-    def analyze(timeout: Timeout.T = Timeout.none): Unit = {
+    def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       // Create an initial state based on the component's expression and environment, together with an empty continuation stack.
       val initialState = component match {
         case MainComponent                => Eval(program, initialEnv, KEmpty)
@@ -294,10 +294,10 @@ trait SmallStepModConcSemantics
         stack: Stack
       ): Set[State] = exp match {
       // Single-step evaluation.
-      case l @ SchemeLambda(_, _, _)          => Set(Kont(lattice.closure((l, env), None), stack))
-      case l @ SchemeVarArgLambda(_, _, _, _) => Set(Kont(lattice.closure((l, env), None), stack))
-      case SchemeValue(value, _)              => Set(Kont(evalLiteralValue(value), stack))
-      case SchemeVar(id)                      => Set(Kont(lookup(id, env), stack))
+      case l @ SchemeLambda(_, _, _, _)          => Set(Kont(lattice.closure((l, env)), stack))
+      case l @ SchemeVarArgLambda(_, _, _, _, _) => Set(Kont(lattice.closure((l, env)), stack))
+      case SchemeValue(value, _)                 => Set(Kont(evalLiteralValue(exp, value), stack))
+      case SchemeVar(id)                         => Set(Kont(lookup(id, env), stack))
 
       // Multi-step evaluation.
       case c @ SchemeFuncall(f, args, _)           => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
@@ -429,9 +429,9 @@ trait SmallStepModConcSemantics
         stack: Stack
       ): Set[State] = {
       val (form, actu) = bindings.unzip
-      val lambda = SchemeLambda(form, body, name.idn)
+      val lambda = SchemeLambda(Some(name.name), form, body, name.idn)
       val env2 = define(name, lattice.bottom, env)
-      val clo = lattice.closure((lambda, env2), Some(name.name))
+      val clo = lattice.closure((lambda, env2))
       assign(name, clo, env2)
       val call = SchemeFuncall(lambda, actu, name.idn)
       evalArgs(actu, call, clo, Nil, env, stack)
@@ -502,15 +502,15 @@ trait SmallStepModConcSemantics
     //--------------------//
 
     // Evaluate literals by in injecting them in the lattice.
-    private def evalLiteralValue(literal: sexp.Value): Value = literal match {
-      case sexp.ValueBoolean(b)   => lattice.bool(b)
-      case sexp.ValueCharacter(c) => lattice.char(c)
-      case sexp.ValueInteger(n)   => lattice.number(n)
-      case sexp.ValueNil          => lattice.nil
-      case sexp.ValueReal(r)      => lattice.real(r)
-      case sexp.ValueString(s)    => lattice.string(s)
-      case sexp.ValueSymbol(s)    => lattice.symbol(s)
-      case _                      => throw new Exception(s"Unsupported Scheme literal: $literal")
+    private def evalLiteralValue(exp: SchemeExp, literal: sexp.Value): Value = literal match {
+      case sexp.Value.Boolean(b)   => lattice.bool(b)
+      case sexp.Value.Character(c) => lattice.char(c)
+      case sexp.Value.Integer(n)   => lattice.number(n)
+      case sexp.Value.Nil          => lattice.nil
+      case sexp.Value.Real(r)      => lattice.real(r)
+      case sexp.Value.String(s)    => allocateStr(exp)(s)
+      case sexp.Value.Symbol(s)    => lattice.symbol(s)
+      case _                       => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
 
     // Function application.
@@ -526,7 +526,7 @@ trait SmallStepModConcSemantics
           .getPrimitives(fval)
           .map(prm =>
             Kont(
-              prm.call(fexp, args, StoreAdapter, interpreterBridge) match {
+              primitives(prm).call(fexp, args, StoreAdapter, interpreterBridge) match {
                 case MayFailSuccess((vlu, _)) => vlu
                 case MayFailBoth((vlu, _), _) => vlu
                 case MayFailError(_)          => lattice.bottom
@@ -541,10 +541,10 @@ trait SmallStepModConcSemantics
         lattice
           .getClosures(fval)
           .flatMap({
-            case ((SchemeLambda(prs, body, _), env), _) if prs.length == args.length =>
+            case (SchemeLambda(_, prs, body, _), env) if prs.length == args.length =>
               val env2 = prs.zip(args.map(_._2)).foldLeft(env)({ case (env, (f, a)) => define(f, a, env) })
               evalSequence(body, env2, stack)
-            case ((SchemeVarArgLambda(prs, vararg, body, _), env), _) if prs.length <= args.length =>
+            case (SchemeVarArgLambda(_, prs, vararg, body, _), env) if prs.length <= args.length =>
               val (fixedArgs, varArgs) = args.splitAt(prs.length)
               val fixedArgVals = fixedArgs.map(_._2)
               val varArgVal = allocateList(varArgs)
@@ -564,12 +564,17 @@ trait SmallStepModConcSemantics
     // ALLOCATION HELPERS //
     //--------------------//
 
-    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value = {
-      val addr = allocPtr(pairExp, component)
-      val pair = lattice.cons(car, cdr)
-      writeAddr(addr, pair)
+    protected def allocateVal(exp: SchemeExp)(value: Value): Value = {
+      val addr = allocPtr(exp, component)
+      writeAddr(addr, value)
       lattice.pointer(addr)
     }
+
+    protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value =
+      allocateVal(pairExp)(lattice.cons(car, cdr))
+
+    protected def allocateStr(strExp: SchemeExp)(str: String): Value =
+      allocateVal(strExp)(lattice.string(str))
 
     protected def allocateList(elms: List[(SchemeExp, Value)]): Value = elms match {
       case Nil                => lattice.nil
@@ -580,7 +585,6 @@ trait SmallStepModConcSemantics
       def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
       def callcc(
           clo: Closure,
-          nam: Option[String],
           pos: Position
         ): Value = throw new Exception("call/cc not supported here")
       def currentThread = component

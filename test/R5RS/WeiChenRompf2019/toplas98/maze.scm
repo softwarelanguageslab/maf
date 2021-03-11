@@ -275,7 +275,7 @@
 (define (mark-path node)
   (let lp ((node node))
     (set-cell:mark node #t)
-    (cond ((cell:parent node) => lp))))
+    (cond ((cell:parent node) lp))))
 
 ;------------------------------------------------------------------------------
 ; Was file "harr.scm".
@@ -672,10 +672,10 @@
 (let* ((fp (open-input-file "input.txt"))
        (input (read fp)))
   (close-input-port fp)  
-  (time (let loop ((n 1000) (v 0))
-          (if (zero? n)
-              v
-              (begin
-                (set! output '())
-                (pmaze 20 (if input 7 0))
-                (loop (- n 1) output))))))
+  (let loop ((n 1000) (v 0))
+    (if (zero? n)
+        v
+        (begin
+          (set! output '())
+          (pmaze 20 (if input 7 0))
+          (loop (- n 1) output)))))

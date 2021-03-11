@@ -1,14 +1,17 @@
-(define (append . lsts)
-  (define (app lsts)
-    (cond ((null? lsts) '())
-          ((null? (cdr lsts)) (car lsts)) ; Structure sharing.
-          (else (let loop ((first (car lsts))
-                           (rest (app (cdr lsts))))
-                  (if (null? first)
-                      rest
-                      (cons (car first)
-                            (loop (cdr first)
-                                  rest)))))))
-  (app lsts))
+(define (fib n) ;; Simple Fibonacci
+  (if (= n 0)
+      n
+      (let ((fib-n-1 (fib (- n 1)))
+            (fib-n-2 (fib (- n 2))))
+        (+ fib-n-1 fib-n-2))))
 
-(display (append '(a b c) '(d e f) 3))
+(define (fib-loop n)
+  (define (loop i)
+    (if (< i n)
+        (begin
+          (display (fib i))
+          (display " ")
+          (loop (+ i 1)))))
+  (loop 0))
+
+(fib-loop 10) 

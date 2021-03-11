@@ -2,7 +2,7 @@ import sbt.Keys.libraryDependencies
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 lazy val root = project.in(file("."))
-                       .aggregate(mafJS,mafJVM)
+                       .aggregate(mafJVM,mafJS)
 
 lazy val maf = crossProject(JVMPlatform, JSPlatform)
                       .withoutSuffixFor(JVMPlatform)
@@ -84,9 +84,6 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
                         }
                       )
                       .jsSettings(
-                        /** General */
-                        mainClass in Compile := Some("maf.web.Main"),
-                        scalaJSUseMainModuleInitializer := true,
                         /** Dependencies */
                         libraryDependencies += "com.lihaoyi" %%% "scalatags" % "0.9.2",
                         libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.1.0",

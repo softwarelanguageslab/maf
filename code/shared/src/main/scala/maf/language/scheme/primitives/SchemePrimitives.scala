@@ -11,7 +11,6 @@ trait SchemeInterpreterBridge[V, A <: Address] {
   def pointer(exp: SchemeExp): A
   def callcc(
       clo: Closure,
-      nam: Option[String],
       pos: Position
     ): V
   def currentThread: TID
@@ -42,6 +41,9 @@ case class PrimitiveVariadicArityError(
 case class PrimitiveNotApplicable[V](name: String, args: List[V]) extends Error
 case class UserError(message: String) extends Error
 
-abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A, SchemePrimitive[V, A]]) extends Serializable {
-  def allPrimitives: List[SchemePrimitive[V, A]]
+abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A]) extends Serializable {
+  def allPrimitives: Map[String, SchemePrimitive[V, A]]
+  def apply(name: String): SchemePrimitive[V, A] = allPrimitives(name)
+  def ofList(prims: List[SchemePrimitive[V, A]]): Map[String, SchemePrimitive[V, A]] =
+    prims.map(prim => (prim.name, prim)).toMap
 }

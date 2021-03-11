@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>MAF Component Visualisation</title>
+    <style>
+      .nodes {
+        stroke-width: 2;
+        stroke: black;
+        fill: black;
+      }
+      .nodes .node_main {
+        stroke: gold;
+        fill: gold;
+      }
+
+      .nodes .in_worklist {
+        fill: lightblue;
+      }
+
+      .nodes .in_worklist.next_component {
+        fill: darkblue;
+      }
+
+      .nodes .not_visited {
+        stroke: red;
+      }
+
+      .nodes .address_node {
+        fill: none;
+        stroke: tan;
+      }
+
+      .nodes .node_deleted {
+        stroke: darkgray;
+        fill: darkgray;
+      }
+
+      .nodes .del_addr_node {
+        stroke: lightgray;
+      }
+
+      .nodes text {
+        fill: black;
+        stroke: none;
+      }
+
+      .nodes .node_deleted text {
+        fill: darkgray;
+      }
+
+      .nodes .node_main text {
+        fill: gold
+      }
+
+      .nodes .address_node text {
+        fill: tan;
+      }
+
+      .nodes .del_addr_node text {
+        fill: lightgray;
+      }
+
+      .links {
+        stroke: black;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#endarrow);
+      }
+
+      .links .read_edge {
+        stroke: navajowhite;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#readarrow);
+      }
+
+      .links .write_edge {
+        stroke: tan;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#writearrow);
+      }
+
+      .links .edge_deleted {
+        stroke: darkgray;
+        marker-end: url(#endarrow_deleted);
+      }
+
+      .links .del_read {
+        stroke: lightgray;
+        stroke-dasharray: 2;
+        marker-end: url(#delreadarrow);
+      }
+
+      .links .del_write {
+        stroke: lightgray;
+        stroke-dasharray: 2;
+        marker-end: url(#delwritearrow);
+      }
+
+      .links text {
+        fill: black;
+        stroke: none;
+      }
+
+      .labels text {
+        fill: black;
+        background-color: white;
+        text-anchor: start;
+      }
+
+      .labels .existingwrite text {
+        fill: sienna;
+      }
+
+      .labels .formerwrite text {
+        fill: none;
+        background-color: unset;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Include D3 library -->
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3-selection-multi.v1.min.js"></script>
+    <!-- Include Scala.js compiled code -->
+    <script type="text/javascript" src="../code/js/target/scala-2.13/modular-analysis-framework-maf--fastopt.js"></script>
+    <script type="text/javascript">
+      incrementalVisualisationSetup.setup()
+    </script>
+  </body>
+</html>

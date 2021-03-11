@@ -2,6 +2,7 @@ package maf.cli.experiments.precision
 
 import maf.core._
 import maf.language.scheme._
+import maf.language.scheme.interpreter.{ConcreteValues, FileIO, SchemeInterpreter}
 import maf.language.scheme.lattices.ModularSchemeLattice
 import maf.language.scheme.primitives._
 import maf.lattice.interfaces._
@@ -47,17 +48,6 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       throw new Exception("Stub primitive: call not supported")
   }
   val emptyEnv = Environment[BaseAddr](Iterable.empty)
-  case class LambdaIdnEq(lambda: SchemeLambdaExp) extends SchemeLambdaExp {
-    def idn = lambda.idn
-    def args = lambda.args
-    def body = lambda.body
-    def varArgId = lambda.varArgId
-    override def hashCode() = lambda.idn.hashCode()
-    override def equals(that: Any) = that match {
-      case LambdaIdnEq(l) => l.idn == this.lambda.idn
-      case _              => false
-    }
-  }
   private def convertV(analysis: Analysis)(value: analysis.modularLatticeWrapper.modularLattice.Value): baseDomain.Value = value match {
     case analysis.modularLatticeWrapper.modularLattice.Nil          => baseDomain.Nil
     case analysis.modularLatticeWrapper.modularLattice.Bool(b)      => baseDomain.Bool(b)
@@ -66,8 +56,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case analysis.modularLatticeWrapper.modularLattice.Char(c)      => baseDomain.Char(c)
     case analysis.modularLatticeWrapper.modularLattice.Str(s)       => baseDomain.Str(s)
     case analysis.modularLatticeWrapper.modularLattice.Symbol(s)    => baseDomain.Symbol(s)
-    case analysis.modularLatticeWrapper.modularLattice.Prim(ps)     => baseDomain.Prim(ps.map(p => StubPrimitive(p.name)))
-    case analysis.modularLatticeWrapper.modularLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => ((LambdaIdnEq(c._1._1), emptyEnv), None)))
+    case analysis.modularLatticeWrapper.modularLattice.Prim(ps)     => baseDomain.Prim(ps)
+    case analysis.modularLatticeWrapper.modularLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => (c._1, emptyEnv)))
     case analysis.modularLatticeWrapper.modularLattice.Cons(a, d)   => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
     case analysis.modularLatticeWrapper.modularLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
     case analysis.modularLatticeWrapper.modularLattice.Vec(s, e)    => baseDomain.Vec(s, e.view.mapValues(convertValue(analysis)).toMap)
@@ -76,34 +66,37 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case analysis.modularLatticeWrapper.modularLattice.Thread(tids) => baseDomain.Thread(tids)
     case v                                                          => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
   }
+
   private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
     case analysis.modularLatticeWrapper.modularLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
   }
-  private def convertConcreteAddr(addr: SchemeInterpreter.Addr): BaseAddr = addr._2 match {
-    case SchemeInterpreter.AddrInfo.VarAddr(v) => VarAddr(v)
-    case SchemeInterpreter.AddrInfo.PrmAddr(p) => PrmAddr(p)
-    case SchemeInterpreter.AddrInfo.PtrAddr(p) => PtrAddr(p.idn)
-    case SchemeInterpreter.AddrInfo.RetAddr(r) => RetAddr(r.idn)
+
+  private def convertConcreteAddr(addr: ConcreteValues.Addr): BaseAddr = addr._2 match {
+    case ConcreteValues.AddrInfo.VarAddr(v) => VarAddr(v)
+    case ConcreteValues.AddrInfo.PrmAddr(p) => PrmAddr(p)
+    case ConcreteValues.AddrInfo.PtrAddr(p) => PtrAddr(p.idn)
+    case ConcreteValues.AddrInfo.RetAddr(r) => RetAddr(r.idn)
   }
-  private def convertConcreteValue(value: SchemeInterpreter.Value): BaseValue = value match {
-    case SchemeInterpreter.Value.Nil          => baseLattice.nil
-    case SchemeInterpreter.Value.Void         => baseLattice.void
-    case SchemeInterpreter.Value.Undefined(_) => baseLattice.bottom
-    case SchemeInterpreter.Value.Clo(l, _, _) =>
-      baseLattice.closure((LambdaIdnEq(l), emptyEnv), None) // TODO: when names are added to the abstract interpreter, preserve that information here
-    case SchemeInterpreter.Value.Primitive(p) => baseLattice.primitive(StubPrimitive(p.name))
-    case SchemeInterpreter.Value.Str(s)       => baseLattice.string(s)
-    case SchemeInterpreter.Value.Symbol(s)    => baseLattice.symbol(s)
-    case SchemeInterpreter.Value.Integer(i)   => baseLattice.number(i)
-    case SchemeInterpreter.Value.Real(r)      => baseLattice.real(r)
-    case SchemeInterpreter.Value.Bool(b)      => baseLattice.bool(b)
-    case SchemeInterpreter.Value.Character(c) => baseLattice.char(c)
-    case SchemeInterpreter.Value.Cons(a, d)   => baseLattice.cons(convertConcreteValue(a), convertConcreteValue(d))
-    case SchemeInterpreter.Value.Pointer(a)   => baseLattice.pointer(convertConcreteAddr(a))
-    case SchemeInterpreter.Value.Vector(siz, els, _) =>
-      def convertNumber(n: Int): Num = baseLattice.number(n) match {
+
+  private def convertConcreteValue(value: ConcreteValues.Value): BaseValue = value match {
+    case ConcreteValues.Value.Nil          => baseLattice.nil
+    case ConcreteValues.Value.Void         => baseLattice.void
+    case ConcreteValues.Value.Undefined(_) => baseLattice.bottom
+    case ConcreteValues.Value.Clo(l, _)    => baseLattice.closure((l, emptyEnv))
+    case ConcreteValues.Value.Primitive(p) => baseLattice.primitive(p)
+    case ConcreteValues.Value.Str(s)       => baseLattice.string(s)
+    case ConcreteValues.Value.Symbol(s)    => baseLattice.symbol(s)
+    case ConcreteValues.Value.Integer(i)   => baseLattice.number(i)
+    case ConcreteValues.Value.Real(r)      => baseLattice.real(r)
+    case ConcreteValues.Value.Bool(b)      => baseLattice.bool(b)
+    case ConcreteValues.Value.Character(c) => baseLattice.char(c)
+    case ConcreteValues.Value.Cons(a, d)   => baseLattice.cons(convertConcreteValue(a), convertConcreteValue(d))
+    case ConcreteValues.Value.Pointer(a)   => baseLattice.pointer(convertConcreteAddr(a))
+    case ConcreteValues.Value.Vector(siz, els, _) =>
+      def convertNumber(n: BigInt): Num = baseLattice.number(n) match {
         case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
       }
+
       val cSiz = convertNumber(siz)
       val cEls = els.foldLeft(Map[Num, BaseValue]()) { case (acc, (idx, vlu)) =>
         val cIdx = convertNumber(idx)
@@ -137,45 +130,45 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
    *  @param b2 the more precise store
    *  @return the set of addresses that have been refined in b2 w.r.t. b1
    */
-  protected def compareOrdered(b1: BaseStore, b2: BaseStore): Set[BaseAddr] =
-    b1.foldLeft(Set.empty[BaseAddr]) { case (acc, (addr1, value1)) =>
-      val value2 = b2.getOrElse(addr1, baseLattice.bottom)
-      if (value1 != value2) {
-        if (!baseLattice.subsumes(value1, value2)) {
-          println(addr1)
-          println(value1)
-          println(value2)
-        }
-        assert(baseLattice.subsumes(value1, value2))
-        //println(s"[$addr1] value $value1 has been refined to $value2")
-        acc + addr1
-      } else {
-        acc
-      }
+  protected def compareOrdered(b1: BaseStore, b2: BaseStore): Set[BaseAddr] = {
+    def errorMessage(addr: BaseAddr): String = {
+      val value1 = b1.getOrElse(addr, baseLattice.bottom)
+      val value2 = b2.getOrElse(addr, baseLattice.bottom)
+      s"""
+        | At addr $addr: value v2 of b2 is not subsumed by value v1 of b1.
+        | where v1 = $value1
+        |       v2 = $value2 
+      """.stripMargin
     }
+    val (_, morePrecise, lessPrecise, unrelated) = compare(b1, b2)
+    assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
+    assert(unrelated.isEmpty, errorMessage(unrelated.head))
+    morePrecise
+  }
 
   /**
-   * A more generic version of 'compareOrdered' to compare any two stores b1 and b2
-   * (i.e., without any assumption on one being more/less precise than the other)
+   * Compare the precision of any two stores b1 and b2
    *  @param b1 a base store
    *  @param b2 a base store
-   *  @return a pair of:
-   *  - the set of addresses whose abstract values have been refined (= are now more precise)
-   *  - the set of addresses whose abstract values have lost precision
+   *  @return a quadruple of:
+   *  - the set of addresses whose abstract values have remained unchanged
+   *  - the set of addresses whose abstract values are more precise in b2
+   *  - the set of addresses whose abstract values are less precise in b2
+   *  - the set of addresses whose abstract values are not comparable between b1 and b2
    */
-  protected def compareAny(b1: BaseStore, b2: BaseStore): (Set[BaseAddr], Set[BaseAddr]) = {
+  protected def compare(b1: BaseStore, b2: BaseStore): (Set[BaseAddr], Set[BaseAddr], Set[BaseAddr], Set[BaseAddr]) = {
     val allKeys = b1.keySet ++ b2.keySet
-    allKeys.foldLeft((Set.empty[BaseAddr], Set.empty[BaseAddr])) { (acc, addr) =>
+    allKeys.foldLeft((Set.empty[BaseAddr], Set.empty[BaseAddr], Set.empty[BaseAddr], Set.empty[BaseAddr])) { (acc, addr) =>
       val value1 = b1.getOrElse(addr, baseLattice.bottom)
       val value2 = b2.getOrElse(addr, baseLattice.bottom)
       if (value1 == value2) {
-        acc
+        (acc._1 + addr, acc._2, acc._3, acc._4)
       } else if (baseLattice.subsumes(value1, value2)) {
-        (acc._1 + addr, acc._2)
+        (acc._1, acc._2 + addr, acc._3, acc._4)
       } else if (baseLattice.subsumes(value2, value1)) {
-        (acc._1, acc._2 + addr)
+        (acc._1, acc._2, acc._3 + addr, acc._4)
       } else { // neither value is more precise than the other
-        acc
+        (acc._1, acc._2, acc._3, acc._4 + addr)
       }
     }
   }
@@ -232,8 +225,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     try {
       val anl = analysis(program)
       println(s"... analysing $path using $name ...")
-      anl.analyze(timeout)
-      if (anl.finished()) {
+      anl.analyzeWithTimeout(timeout)
+      if (anl.finished) {
         Some(extract(anl))
       } else {
         None

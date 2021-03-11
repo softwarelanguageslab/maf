@@ -6,6 +6,7 @@ import maf.modular.ModAnalysis
 import maf.util.benchmarks.Timeout
 
 import scala.collection.mutable.PriorityQueue
+import maf.modular.Dependency
 
 trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {
   // we can choose what kind of worklist to pick
@@ -13,7 +14,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
   // adding elements to the worklist
   var workList: WorkList[Component] = emptyWorkList.add(initialComponent)
   def addToWorkList(cmp: Component) = workList = workList.add(cmp)
-  def finished(): Boolean = workList.isEmpty
+  def finished: Boolean = workList.isEmpty
   // a single step in the worklist algorithm iteration
   // var intraCount: Long = 0L
   def step(timeout: Timeout.T): Unit = {
@@ -23,7 +24,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
     // do the intra-analysis
     // intraCount = intraCount + 1
     val intra = intraAnalysis(current)
-    intra.analyze(timeout)
+    intra.analyzeWithTimeout(timeout)
     if (timeout.reached) {
       // analysis timed out => we need to add it to the worklist again
       addToWorkList(current)
@@ -32,9 +33,10 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
       intra.commit()
     }
   }
+
   // step until worklist is empty or timeout is reached
-  def analyze(timeout: Timeout.T = Timeout.none): Unit =
-    while (!finished() && !timeout.reached)
+  def analyzeWithTimeout(timeout: Timeout.T): Unit =
+    while (!finished && !timeout.reached)
       step(timeout)
 }
 
@@ -71,14 +73,14 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
     cmp
   }
   def addToWorkList(cmp: Component): Unit = push(cmp)
-  def finished(): Boolean = worklist.isEmpty
+  def finished: Boolean = worklist.isEmpty
   // a single step in the worklist algorithm iteration
   def step(timeout: Timeout.T): Unit = {
     // take the next component
     val current = pop()
     // do the intra-analysis
     val intra = intraAnalysis(current)
-    intra.analyze(timeout)
+    intra.analyzeWithTimeout(timeout)
     if (timeout.reached) {
       // analysis timed out => we need to add it to the worklist again
       addToWorkList(current)
@@ -87,9 +89,10 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
       intra.commit()
     }
   }
+
   // step until worklist is empty or timeout is reached
-  def analyze(timeout: Timeout.T = Timeout.none): Unit =
-    while (!finished() && !timeout.reached)
+  def analyzeWithTimeout(timeout: Timeout.T): Unit =
+    while (!finished && !timeout.reached)
       step(timeout)
 }
 
@@ -112,5 +115,92 @@ trait LeastVisitedFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQue
     val cmp = super.pop()
     count += cmp -> (count(cmp) + 1)
     cmp
+  }
+}
+
+trait MostVisitedFirstWorklistAlgorithm[Expr <: Expression] extends LeastVisitedFirstWorklistAlgorithm[Expr] {
+  override lazy val ordering: Ordering[Component] = Ordering.by(count)
+}
+
+trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
+  def computeDepths(exp: Expression, depths: Map[Identity, Int] = Map.empty): Map[Identity, Int] =
+    exp.subexpressions
+      .foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
+      .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
+  val depths: Map[Identity, Int] = computeDepths(program)
+  var cmps: Map[Component, Int] = Map.empty.withDefaultValue(0)
+  lazy val ordering: Ordering[Component] = Ordering.by(cmps)
+  override def pop(): Component = {
+    val cmp = super.pop()
+    cmps += cmp -> depths(expr(cmp).idn)
+    cmp
+  }
+}
+
+trait ShallowExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends DeepExpressionsFirstWorklistAlgorithm[Expr] {
+  override lazy val ordering: Ordering[Component] = Ordering.by(cmps).reverse
+}
+
+trait MostDependenciesFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
+  var cmpDeps: Map[Component, Set[Dependency]] = Map.empty.withDefaultValue(Set.empty)
+  var depCount: Map[Component, Int] = Map.empty.withDefaultValue(0)
+  lazy val ordering: Ordering[Component] = Ordering.by(depCount)
+  override def register(cmp: Component, dep: Dependency): Unit = {
+    super.register(cmp, dep)
+    cmpDeps += (cmp -> (cmpDeps(cmp) + dep))
+    depCount += (cmp -> (cmpDeps(cmp).size))
+  }
+}
+
+trait LeastDependenciesFirstWorklistAlgorithm[Expr <: Expression] extends MostDependenciesFirstWorklistAlgorithm[Expr] {
+  override lazy val ordering: Ordering[Component] = Ordering.by(depCount).reverse
+}
+
+trait BiggerEnvironmentFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
+  def environmentSize(cmp: Component): Int
+  lazy val ordering: Ordering[Component] = Ordering.by(environmentSize)
+}
+
+object BiggerEnvironmentFirstWorklistAlgorithm {
+  import maf.modular.scheme.modf._
+  import maf.modular.scheme.modf.SchemeModFComponent._
+  import maf.language.scheme._
+  trait ModF extends BiggerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModFComponents {
+    def environmentSize(cmp: Component): Int = cmp match {
+      case Main              => 0
+      case Call((_, env), _) => env.size
+    }
+  }
+
+  import maf.modular.scheme.modconc._
+  trait ModConc extends BiggerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModConcComponents {
+    def environmentSize(cmp: Component): Int = cmp match {
+      case MainThread        => 0
+      case Thread(_, env, _) => env.size
+    }
+  }
+}
+
+trait SmallerEnvironmentFirstWorklistAlgorithm[Expr <: Expression] extends BiggerEnvironmentFirstWorklistAlgorithm[Expr] {
+  override lazy val ordering: Ordering[Component] = Ordering.by(environmentSize).reverse
+}
+
+object SmallerEnvironmentFirstWorklistAlgorithm {
+  import maf.modular.scheme.modf._
+  import maf.modular.scheme.modf.SchemeModFComponent._
+  import maf.language.scheme._
+  trait ModF extends SmallerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModFComponents {
+    def environmentSize(cmp: Component): Int = cmp match {
+      case Main              => 0
+      case Call((_, env), _) => env.size
+    }
+  }
+
+  import maf.modular.scheme.modconc._
+  trait ModConc extends SmallerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModConcComponents {
+    def environmentSize(cmp: Component): Int = cmp match {
+      case MainThread        => 0
+      case Thread(_, env, _) => env.size
+    }
   }
 }

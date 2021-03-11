@@ -6,7 +6,8 @@ import maf.util.benchmarks.Timeout
 
 import scala.collection.mutable.PriorityQueue
 
-trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] with GlobalStore[Expr] { inter =>
+trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] with GlobalStore[Expr] with PriorityQueueWorklistAlgorithm[Expr] {
+  inter =>
 
   def workers: Int = Runtime.getRuntime.availableProcessors() // <- number of workers for the threadpool
   var workerThreads: List[Worker] = Nil // <- we only instantiate this upon calling `analyze`
@@ -16,12 +17,8 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
   // WORKERS
   //
 
-  var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)
-
-  implicit lazy val ordering: Ordering[Component] = Ordering.by(depth)
-
   object WorkListMonitor
-  val worklist: PriorityQueue[Component] = PriorityQueue.empty
+  // val worklist: PriorityQueue[Component] = PriorityQueue.empty
   def popWorklist(): Component = WorkListMonitor.synchronized {
     while (worklist.isEmpty)
       WorkListMonitor.wait()
@@ -35,7 +32,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     override def run(): Unit = try while (true) {
       val cmp = popWorklist()
       val intra = intraAnalysis(cmp)
-      intra.analyze(currentTimeout)
+      intra.analyzeWithTimeout(currentTimeout)
       if (currentTimeout.reached) {
         pushResult(TimedOut(cmp))
       } else {
@@ -84,16 +81,8 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
   var todo: Set[Component] = Set(initialComponent)
   var queued: Set[Component] = Set.empty
 
-  def addToWorkList(cmp: Component): Unit =
+  override def addToWorkList(cmp: Component): Unit =
     if (!queued.contains(cmp)) {
-      queued += cmp
-      pushWorklist(cmp)
-    }
-
-  override def spawn(cmp: Component, from: Component): Unit =
-    if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
-      visited += cmp
-      depth += cmp -> (depth(from) + 1)
       queued += cmp
       pushWorklist(cmp)
     }
@@ -113,10 +102,10 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     }
   }
 
-  def finished(): Boolean = todo.isEmpty
+  override def finished: Boolean = todo.isEmpty
 
-  def analyze(timeout: Timeout.T): Unit =
-    if (!finished()) {
+  override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+    if (!finished) {
       // initialize timeout and initial analysis state
       currentTimeout = timeout
       latest = (store, depVersion, deps, visited)

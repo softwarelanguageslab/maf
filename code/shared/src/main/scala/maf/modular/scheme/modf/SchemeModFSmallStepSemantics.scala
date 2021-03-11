@@ -74,7 +74,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
     case class SplicedCdrFrm(carValue: Value, pairExp: SchemeSplicedPair) extends Frame
 
     // the main analyze method
-    def analyze(timeout: Timeout.T = Timeout.none): Unit = {
+    def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       // determine the initial state
       val initialState = EvalState(fnBody, fnEnv, Nil)
       // standard worklist algorithm
@@ -116,10 +116,10 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         cnt: Kont
       ): Set[State] = exp match {
       case SchemeValue(value, _) =>
-        val result = evalLiteralValue(value)
+        val result = evalLiteralValue(value, exp)
         Set(KontState(result, cnt))
       case lambda: SchemeLambdaExp =>
-        val result = newClosure(lambda, env, None)
+        val result = newClosure(lambda, env)
         Set(KontState(result, cnt))
       case SchemeVar(id) =>
         val result = lookup(id, env)
@@ -143,9 +143,9 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         evalLetrec(bindings, body, extEnv, cnt)
       case SchemeNamedLet(id, bindings, body, pos) =>
         val (prs, ags) = bindings.unzip
-        val lambda = SchemeLambda(prs, body, pos)
+        val lambda = SchemeLambda(Some(id.name), prs, body, pos)
         val extEnv = bind(id, env, lattice.bottom)
-        val closure = newClosure(lambda, extEnv, Some(id.name))
+        val closure = newClosure(lambda, extEnv)
         assign(id, extEnv, closure)
         val call = SchemeFuncall(lambda, ags, pos)
         evalArgs(call, closure, ags, Nil, env, cnt)

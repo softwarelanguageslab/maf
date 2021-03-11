@@ -1,4 +1,4 @@
-package maf.web
+package maf.web.visualisation.softcontract
 
 import maf.core.Identity
 import maf.language.CScheme.CSchemeParser

@@ -2,6 +2,7 @@ package maf.language.sexp
 
 import maf.core.Position._
 import maf.core._
+import maf.lattice._
 
 /**
  * Implementation of a simple s-expression parser, which supports some
@@ -53,9 +54,11 @@ trait SExpTokens extends Tokens {
   case class TString(s: String) extends SExpToken {
     def chars = s""""$s""""
   }
-  case class TInteger(n: Int) extends SExpToken {
+
+  case class TInteger(n: BigInt) extends SExpToken {
     def chars = n.toString
   }
+
   case class TReal(n: Double) extends SExpToken {
     def chars = n.toString
   }
@@ -135,9 +138,8 @@ class SExpLexer extends Lexical with SExpTokens {
   def integer: Parser[SExpToken] =
     sign ~ rep1(digit) <~ guard(delimiter) ^^ { case s ~ n =>
       s match {
-        case Some('+') => TInteger(n.mkString.toInt)
-        case Some('-') => TInteger(-n.mkString.toInt)
-        case _         => TInteger(n.mkString.toInt)
+        case Some(_) => TInteger(NumOps.bigIntFromString((s ++ n).mkString).get) // Take into account an explicit sign annotation.
+        case None    => TInteger(NumOps.bigIntFromString(n.mkString).get) // No explicit sign annotation.
       }
     }
   def character: Parser[SExpToken] =
@@ -210,21 +212,21 @@ object SExpParser extends TokenParsers {
   import lexical._
 
   def bool: Parser[Value] = elem("boolean", _.isInstanceOf[TBoolean]) ^^ { case TBoolean(b) =>
-    ValueBoolean(b)
+    Value.Boolean(b)
   }
   def integer: Parser[Value] = elem("integer", _.isInstanceOf[TInteger]) ^^ { case TInteger(n) =>
-    ValueInteger(n)
+    Value.Integer(n)
   }
   def real: Parser[Value] = elem("real", _.isInstanceOf[TReal]) ^^ { case TReal(n) =>
-    ValueReal(n)
+    Value.Real(n)
   }
   def character: Parser[Value] = elem("character", _.isInstanceOf[TCharacter]) ^^ { case TCharacter(c) =>
-    ValueCharacter(c)
+    Value.Character(c)
   }
   def string: Parser[Value] = elem("string", _.isInstanceOf[TString]) ^^ { case TString(s) =>
-    ValueString(s)
+    Value.String(s)
   }
-  def nil: Parser[Value] = ((leftParen ~ rightParen) | (leftBracket ~ rightBracket)) ^^^ ValueNil
+  def nil: Parser[Value] = ((leftParen ~ rightParen) | (leftBracket ~ rightBracket)) ^^^ Value.Nil
 
   def value(tag: PTag): Parser[SExp] = Parser { in =>
     (bool | real | integer | character | string | nil)(in) match {
@@ -300,4 +302,16 @@ object SExpParser extends TokenParsers {
     case Error(msg, next) =>
       throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
   }
+
+  /*
+   * Similar to parse, but:
+   * - only parses a single SExp
+   * - doesn't require having reached the end of the reader after parsing
+   * - can use any reader as input (instead of reading a full string from the beginning)
+   */
+  def parseIn(s: Reader[Char], tag: PTag = noTag): (SExp, Int) = exp(tag)(new lexical.Scanner(s)) match {
+    case Success(res, next) => (res, next.offset)
+    case failure: NoSuccess => throw new Exception(s"cannot parse expression: $failure")
+  }
+
 }

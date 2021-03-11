@@ -1,79 +1,35 @@
 package maf.modular.adaptive.scheme
 
+import maf.core._
 import maf.language.scheme._
-import maf.modular.scheme.modf._
 import maf.modular.adaptive.scheme._
 import maf.core.Position._
-import maf.util.Monoid
-import maf.util.MonoidImplicits._
-import maf.util.benchmarks.Timeout
-import maf.core._
+import maf.util.datastructures._
 import maf.modular.scheme._
 import maf.modular._
+import maf.modular.scheme.modf.SchemeModFComponent._
 
-trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
+trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with AdaptiveAnalysisSummary {
+
+  import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
+
   /*
-   * configured by some "budget" (which determines how quickly a function will adapt its components)
+   * configured by:
+   * - some "budget" (which, when exceeded by the "cost" of some function, triggers an adaptation)
+   *  => this parameter determines how quickly we trigger an adaptation
    */
   val budget: Int
-  /*
-   * keep track of:
-   * - the number of times a function has been analysed
-   * - through which dependencies the analysis of a function was triggered
-   * - which components correspond to a given function
-   */
-  var counts: Map[SchemeExp, Int] = Map.empty
-  var triggeredBy: Map[SchemeExp, Map[Dependency, Int]] = Map.empty
-  var triggered: Map[Dependency, Set[SchemeExp]] = Map.empty
-  var cmpsPerFn: Map[SchemeExp, Set[Component]] = Map.empty
-  private def incCount(cmp: Component): Unit = incCount(expr(cmp))
-  private def incCount(fn: SchemeExp): Unit = {
-    val updated = counts.getOrElse(fn, 0) + 1
-    counts += fn -> updated
-    if (updated > budget) {
-      toAdapt += fn
-    }
+
+  def modulesToAdapt = summary.content.collect {
+    case (module, moduleSummary) if moduleSummary.cost > budget => module
   }
-  override def trigger(dep: Dependency): Unit = {
-    deps.getOrElse(dep, Set.empty).foreach { cmp =>
-      val fn = expr(cmp)
-      // increase the count of the corresponding function
-      incCount(fn)
-      // bookkeeping for the  dependency
-      val previous = triggeredBy.getOrElse(fn, Map.empty)
-      val updated = previous + (dep -> (previous.getOrElse(dep, 0) + 1))
-      triggeredBy += fn -> updated
-      triggered += dep -> (triggered.getOrElse(dep, Set.empty) + fn)
-    }
-    // trigger the dependency
-    super.trigger(dep)
-  }
-  override def onNewComponent(cmp: Component, call: Call[ComponentContext]) = {
-    // increase the count
-    incCount(cmp)
-    // bookkeeping: register every new component with the corresponding lambda
-    val lambda = call.clo._1
-    val lambdaCmps = cmpsPerFn.getOrElse(lambda, Set.empty)
-    val lambdaCmpsUpdated = lambdaCmps + cmp
-    cmpsPerFn += lambda -> lambdaCmpsUpdated
-  }
-  // correctly updating the analysis data
-  implicit private val intMaxMonoid: Monoid[Int] = new Monoid[Int] {
-    def zero: Int = 0 // assumption: only safe for nonnegative integers
-    def append(x: Int, y: => Int): Int = Math.max(x, y)
-  }
-  override def updateAnalysisData(update: Component => Component) = {
-    super.updateAnalysisData(update)
-    this.cmpsPerFn = updateMap(updateSet(update))(cmpsPerFn)
-    this.triggered = updateMap(updateDep(update), (s: Set[SchemeExp]) => s)(triggered)
-    this.triggeredBy = updateMap(updateMap(updateDep(update), (c: Int) => c))(triggeredBy)
-  }
+
   /*
    * contexts are call-site strings
    * after adaptation, certain strings get trimmed
    */
   type ComponentContext = List[Position]
-  var kPerFn = Map[SchemeExp, Int]()
+  var kPerFn = Map[SchemeLambdaExp, Int]()
   def getContext(cmp: Component): ComponentContext = view(cmp) match {
     case Main                                   => List.empty
     case cll: Call[ComponentContext] @unchecked => cll.ctx
@@ -83,7 +39,6 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   def adaptCall(cll: Call[ComponentContext], kLimit: Option[Int]): Call[ComponentContext] =
     cll.copy(ctx = adaptCtx(cll.ctx, kLimit))
   def allocCtx(
-      nam: Option[String],
       clo: lattice.Closure,
       args: List[Value],
       call: Position,
@@ -98,40 +53,136 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext = ctx
 
   /** Adapting the analysis */
-  var toAdapt: Set[SchemeExp] = Set.empty
-  override protected def adaptAnalysis(): Unit = {
-    super.adaptAnalysis()
-    if (toAdapt.nonEmpty) {
-      // adapt the components of marked functions
-      // 2 possibilies:
-      // - too many components for the given function
-      // - too many reanalyses of the same components (of the corresponding function)
-      toAdapt.foreach { fn =>
-        // determine the root cause of the scalability problem for function fn
-        val total = counts(fn)
-        val cmps = cmpsPerFn(fn)
-        val hcount = cmps.size
-        val vcount = Math.round(total.toFloat / hcount)
-        if (hcount > vcount) { // (a) too many components ...
-          reduceComponents(fn, cmps) // => reduce number of components for fn
-        } else { // (b) too many reanalyses ...
-          reduceDependencies(fn) // => reduce number of dependencies triggered for fn
-        }
-        // reset budget and bookkeeping for the adapted function
-        counts += fn -> 0
-        // update the analysis data structures
-        updateAnalysis()
-      }
-      toAdapt = Set.empty
+
+  private var reducedCmps: Set[LambdaModule] = Set.empty
+  private var reducedDeps: Set[Dependency] = Set.empty
+
+  def adaptAnalysis() = {
+    // start the adaptation
+    val modules = modulesToAdapt
+    modules.foreach(reduceModule)
+    // update the summary
+    summary = summary.clearDependencies(reducedDeps)
+    // update the analysis
+    updateAnalysis()
+    // clear the visited sets
+    reducedCmps = Set.empty
+    reducedDeps = Set.empty
+  }
+
+  // look at a module to adapt
+  def reduceModule(module: SchemeModule) = {
+    // 2 possibilies:
+    // (a) too many components for the given module
+    // (b) too many reanalyses of components corresponding to that module
+    val ms = summary(module)
+    val hcount = ms.numberOfCmps
+    val vcount = ms.cost / hcount
+    if (hcount > vcount) {
+      // (a) too many components => reduce number of components for fn
+      // note: only a lambda (i.e., not the main component) can have multiple components
+      reduceComponents(module.asInstanceOf[LambdaModule])
+    } else {
+      // (b) too many reanalyses => reduce number of dependencies triggered for the components
+      // CURRENT: per component
+      val target = ms.totalDepCount / 2
+      val chosen = takeLargest(ms.content, (p: (Component, MultiSet[Dependency])) => p._2.cardinality, target)
+      chosen.foreach({ case (_, dps) => reduceReanalyses(dps) })
+      // ALTERNATIVE CODE: aggregated for all components of that module
+      //reduceReanalyses(ms.depCounts)
     }
   }
-  private def reduceComponents(fn: SchemeExp): Unit = reduceComponents(fn, cmpsPerFn(fn))
-  private def reduceComponents(fn: SchemeExp, cmps: Set[Component]): Unit = reduceComponents(fn, cmps, cmps.size / 2)
-  private def reduceComponents(
-      fn: SchemeExp,
-      cmps: Set[Component],
-      target: Int
-    ): Unit = {
+
+  // look at all the components that were triggered too often
+  private def reduceReanalyses(deps: MultiSet[Dependency]) = {
+    // 2 possibilities:
+    // (a) too many dependencies triggered for a given component
+    // (b) too many times triggering dependencies of that component
+    val hcount = deps.distinctCount
+    val vcount = deps.cardinality / hcount
+    if (hcount > vcount) { // TODO: is this branch ever taken?
+      // (a) too many dependencies => reduce the number of corresponding addresses
+      val addrs = deps.toSet.collect { case AddrDependency(addr) => addr }
+      reduceAddresses(addrs)
+    } else {
+      // (b) too many triggers => coarsen value abstraction to avoid triggering components
+      val target = deps.cardinality / 2
+      val chosen = takeLargest(deps.content, (p: (Dependency, Int)) => p._2, target)
+      chosen.foreach { case (dep, _) => reduceDep(dep) }
+    }
+  }
+
+  private def reduceDep(dep: Dependency) =
+    if (!reducedDeps(dep)) {
+      reducedDeps += dep
+      dep match {
+        case AddrDependency(addr) => reduceValueAbs(store(addr))
+        case _                    => throw new Exception("Unknown dependency for adaptive analysis")
+      }
+    }
+
+  private def reduceValueAbs(value: Value): Unit = value.vs.maxBy(sizeOfV) match {
+    case modularLatticeWrapper.modularLattice.Pointer(pts) => reduceAddresses(pts)
+    case modularLatticeWrapper.modularLattice.Clo(cls)     => reduceClosures(cls)
+    case modularLatticeWrapper.modularLattice.Cons(car, cdr) =>
+      if (sizeOfValue(car) > sizeOfValue(cdr)) {
+        reduceValueAbs(car)
+      } else {
+        reduceValueAbs(cdr)
+      }
+    case modularLatticeWrapper.modularLattice.Vec(_, elms) =>
+      val value = elms.map(_._2).maxBy(sizeOfValue) // assume elms is not empty!
+      reduceValueAbs(value)
+    case v => throw new Exception(s"Unsupported value in reduceValueAbs: $v")
+  }
+
+  private def reduceAddresses(addrs: Set[Addr]) = {
+    val target: Int = addrs.size / 2
+    val perLocation = addrs.groupBy(getAddrExp) // TODO: by expr instead of idn?
+    val chosenAddrs = takeLargest[(Expression, Set[Addr])](perLocation.toList, _._2.size, target)
+    val chosenFuncs =
+      chosenAddrs
+        .map(_._2)
+        .filter(_.size > 1)
+        .map(addrs => getAddrModule(addrs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
+    chosenFuncs.toSet.foreach(reduceComponents)
+  }
+
+  private def reduceClosures(cls: Set[lat.Closure]) = {
+    val target: Int = cls.size / 2
+    val perFunction = cls.groupBy(_._1)
+    val chosenFuncs = takeLargest[(SchemeLambdaExp, Set[lat.Closure])](perFunction, _._2.size, target)
+    val chosenParents =
+      chosenFuncs
+        .map(_._2)
+        .filter(_.size > 1)
+        .map(funs => getParentModule(funs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
+    chosenParents.toSet.foreach(reduceComponents)
+  }
+
+  private def reduceComponents(module: LambdaModule): Unit =
+    if (!reducedCmps(module)) {
+      reducedCmps += module
+      // 2 possibilities:
+      // (a) too many closures
+      // (b) too many contexts per closure
+      val ms = summary(module)
+      val closures = ms.components.map(view).collect { case c: Call[_] => c.clo }
+      val hcount = closures.size
+      val vcount = ms.numberOfCmps / hcount
+      if (hcount > vcount) {
+        // (a) too many closures => reduce the number of components for the parent module
+        val parentModule = getParentModule(closures.head).asInstanceOf[LambdaModule] // guaranteed to be a lambda assuming that closures.size > 1
+        reduceComponents(parentModule)
+      } else {
+        // (b) too many contexts per closure => reduce context information
+        reduceContext(module, ms)
+      }
+    }
+
+  private def reduceContext(module: LambdaModule, ms: ModuleSummary) = {
+    val cmps = ms.components
+    val target = ms.numberOfCmps / 2
     // find a fitting k
     var calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
     var k = calls.maxBy(_.ctx.length).ctx.length
@@ -139,77 +190,57 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       k = k - 1
       calls = calls.map(adaptCall(_, Some(k)))
     }
-    //println(s"$fn -> $k")
-    kPerFn += fn -> k // register the new k
-    // if lowering context does not work => adapt parent components
-    // TODO: do this earlier without dropping all context first
-    if (calls.size > target) {
-      val parentCmps = calls.map(cll => cll.clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
-      val parentLambda = view(parentCmps.head).asInstanceOf[Call[ComponentContext]].clo._1
-      reduceComponents(parentLambda, parentCmps, target)
-    }
+    //println(s"${module.lambda} -> $k")
+    kPerFn += module.lambda -> k // register the new k
   }
-  private def reduceDependencies(fn: SchemeExp): Unit = {
-    val dependencies = triggeredBy(fn)
-    val numberOfDeps = dependencies.size
-    val totalCount = dependencies.values.sum
-    val averageCount = totalCount / numberOfDeps
-    if (numberOfDeps > averageCount) {
-      val addrs = dependencies.keySet.collect { case AddrDependency(addr) =>
-        addr
-      }
-      reduceAddresses(addrs)
-    } else {
-      reduceValueAbs(fn, dependencies, totalCount / 2)
-    }
-  }
+
+  /*
+   * HELPERS
+   */
   private def takeLargest[X](
-      lst: List[X],
+      elms: Iterable[X],
       size: X => Int,
       target: Int
     ): List[X] = {
-    def rec(cur: List[X], todo: Int): List[X] = cur match {
-      case group :: rest if todo > 0 =>
-        group :: rec(rest, todo - size(group))
-      case _ => Nil
-    }
-    val sortedAsc = lst.sortBy(size)
-    val sortedDsc = sortedAsc.reverse // TODO: just reverse the ordering
-    rec(sortedDsc, target)
+    val pq = scala.collection.mutable.PriorityQueue.from(elms)(Ordering.by(size))
+    def rec(todo: Int): List[X] =
+      if (todo > 0 && pq.nonEmpty) {
+        val next = pq.dequeue()
+        next :: rec(todo - size(next))
+      } else {
+        Nil
+      }
+    rec(target)
   }
-  private def getAddrCmp(addr: Addr): Option[Component] = addr match {
-    case returnAddr: ReturnAddr[Component] @unchecked => Some(returnAddr.cmp)
+  private def getAddrCmp(addr: Addr): Component = addr match {
+    case returnAddr: ReturnAddr[Component] @unchecked => returnAddr.cmp
     case schemeAddr: SchemeAddr[Component] @unchecked =>
       schemeAddr match {
-        case VarAddr(_, ctx) => Some(ctx)
-        case PtrAddr(_, ctx) => Some(ctx)
-        case _               => None
+        case VarAddr(_, cmp) => cmp
+        case PtrAddr(_, cmp) => cmp
+        case PrmAddr(_)      => mainComponent
       }
-    case _ => None
   }
-  private def getAddrFn(addr: Addr): Option[SchemeExp] =
-    getAddrCmp(addr).map(view).flatMap {
-      case Call((fnExp, _), _, _) => Some(fnExp)
-      case _                      => None
-    }
-  private def reduceAddresses(addrs: Set[Addr]): Unit = {
-    val target: Int = addrs.size / 2
-    val perLocation = addrs.groupBy(_.idn)
-    val chosenAddrs = takeLargest(perLocation.toList, (g: (_, Set[_])) => g._2.size, target)
-    val chosenFuncs = chosenAddrs.map(_._2.head).flatMap(getAddrFn)
-    // assert(chosenAddrs.size == chosenFuncs.size) // <- we expect all addresses to belong to Some(fn)
-    chosenFuncs.toSet.foreach(reduceComponents)
+  private def getAddrExp(addr: Addr): Expression = addr match {
+    case returnAddr: ReturnAddr[Component] @unchecked => expr(returnAddr.cmp)
+    case schemeAddr: SchemeAddr[Component] @unchecked =>
+      schemeAddr match {
+        case VarAddr(idf, _) => idf
+        case PtrAddr(exp, _) => exp
+        case PrmAddr(nam)    => Identifier(nam, Identity.none)
+      }
   }
-  private def reduceValueAbs(
-      fn: SchemeExp,
-      deps: Map[Dependency, Int],
-      target: Int
-    ): Unit = {
-    val chosenDeps = takeLargest(deps.toList, (g: (_, Int)) => g._2, target)
-    val chosenSourceAddrs = chosenDeps.map(_._1).collect { case AddrDependency(addr) =>
-      addr
-    }
-    val chosenTargetAddrs = chosenSourceAddrs.flatMap(addr => lattice.getPointerAddresses(store(addr)))
-    reduceAddresses(chosenTargetAddrs.toSet)
+  private def getAddrModule(addr: Addr): SchemeModule =
+    module(getAddrCmp(addr))
+  private def getParentModule(clo: lat.Closure): SchemeModule =
+    module(clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
+  private def sizeOfValue(value: Value): Int =
+    value.vs.map(sizeOfV).sum
+  private def sizeOfV(v: modularLatticeWrapper.modularLattice.Value): Int = v match {
+    case modularLatticeWrapper.modularLattice.Pointer(ptrs)    => ptrs.size
+    case modularLatticeWrapper.modularLattice.Clo(closures)    => closures.size
+    case modularLatticeWrapper.modularLattice.Cons(car, cdr)   => sizeOfValue(car) + sizeOfValue(cdr)
+    case modularLatticeWrapper.modularLattice.Vec(_, elements) => elements.map(_._2).map(sizeOfValue).sum
+    case _                                                     => 0
   }
 }

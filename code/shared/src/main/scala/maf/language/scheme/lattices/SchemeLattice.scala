@@ -5,7 +5,7 @@ import maf.language.CScheme.TID
 import maf.language.scheme._
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
+trait SchemeLattice[L, A <: Address] extends Lattice[L] {
 
   // TODO: make this a type parameter for type safety!
   type K = Any
@@ -40,10 +40,10 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   type Closure = (SchemeLambdaExp, Env)
 
   /** Extract closures contained in this value */
-  def getClosures(x: L): Set[(Closure, Option[String])]
+  def getClosures(x: L): Set[Closure]
 
   /** Extract primitives contained in this value */
-  def getPrimitives(x: L): Set[P]
+  def getPrimitives(x: L): Set[String]
 
   /** Extract continuations contained in this value */
   def getContinuations(x: L): Set[K]
@@ -55,7 +55,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def getThreads(x: L): Set[TID]
 
   /** Injection of an integer */
-  def number(x: Int): L
+  def number(x: BigInt): L
 
   /** Top element for all integers */
   def numTop: L
@@ -63,11 +63,20 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   /** Injection of a float */
   def real(x: Double): L
 
+  /** Top element for floats */
+  def realTop: L
+
   /** Injection of a string */
   def string(x: String): L
 
+  /** Top element for strings */
+  def stringTop: L
+
   /** Injection of a boolean */
   def bool(x: Boolean): L
+
+  /** Top element for boolean */
+  def boolTop: L = join(bool(true), bool(false))
 
   /** Injection of a character */
   def char(x: Char): L
@@ -76,13 +85,16 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def charTop: L
 
   /** Injection of a primitive function */
-  def primitive(x: P): L
+  def primitive(x: String): L
 
   /** Injection of a closure */
-  def closure(x: Closure, name: Option[String]): L
+  def closure(x: Closure): L
 
   /** Injection of a symbol */
   def symbol(x: String): L
+
+  /** Top element for all symbols */
+  def symbolTop: L
 
   /** Injection of a cons cell. */
   def cons(car: L, cdr: L): L
@@ -130,7 +142,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
   def void: L
 
   object Injector {
-    implicit def inject(c: Closure, name: Option[String]): L = closure(c, name)
+    implicit def inject(c: Closure): L = closure(c)
     implicit def inject(car: L, cdr: L): L = cons(car, cdr)
     implicit def inject(a: Any): L = a match {
       case i: Int     => number(i)
@@ -148,7 +160,7 @@ trait SchemeLattice[L, A <: Address, P <: Primitive] extends Lattice[L] {
 }
 
 object SchemeLattice {
-  def apply[L, A <: Address, P <: Primitive](
-      implicit lat: SchemeLattice[L, A, P]
-    ): SchemeLattice[L, A, P] = lat
+  def apply[L, A <: Address](
+      implicit lat: SchemeLattice[L, A]
+    ): SchemeLattice[L, A] = lat
 }

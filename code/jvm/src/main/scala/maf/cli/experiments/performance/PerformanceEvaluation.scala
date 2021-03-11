@@ -8,6 +8,12 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
+// A variable that holds the results
+sealed trait PerformanceResult
+case class Completed(results: Statistics.Stats) extends PerformanceResult
+case object TimedOut extends PerformanceResult
+case object NoData extends PerformanceResult
+
 trait PerformanceEvaluation {
 
   type Analysis = ModAnalysis[SchemeExp]
@@ -27,16 +33,15 @@ trait PerformanceEvaluation {
   // The analyses that are evaluated (and their names)
   def analyses: List[(SchemeExp => Analysis, String)]
 
-  // A variable that holds the results
-  sealed trait PerformanceResult
-  case class Completed(results: Statistics.Stats) extends PerformanceResult
-  case object TimedOut extends PerformanceResult
-  case object NoData extends PerformanceResult
-
   var results = Table.empty[PerformanceResult].withDefaultValue(NoData)
 
   def format(res: PerformanceResult): String = res match {
     case Completed(results) => scala.math.round(results.mean).toString
+    case TimedOut           => "TIMEOUT"
+    case NoData             => "_"
+  }
+  def formatStddev(res: PerformanceResult): String = res match {
+    case Completed(results) => scala.math.round(results.stddev).toString
     case TimedOut           => "TIMEOUT"
     case NoData             => "_"
   }
@@ -51,7 +56,7 @@ trait PerformanceEvaluation {
     for (i <- 1 to maxWarmupRuns) {
       print(s"$i ")
       System.gc() // It never hurts (hopefully, because it may cause GC errors...)
-      analysis(program).analyze(warmupTimeout)
+      analysis(program).analyzeWithTimeout(warmupTimeout)
     }
     print("\n")
     // Actual timing
@@ -61,8 +66,8 @@ trait PerformanceEvaluation {
       print(s"$i ")
       val a = analysis(program)
       System.gc()
-      val t = Timer.timeOnly(a.analyze(analysisTime))
-      if (a.finished()) {
+      val t = Timer.timeOnly(a.analyzeWithTimeout(analysisTime))
+      if (a.finished) {
         times = (t.toDouble / 1000000) :: times
       } else {
         return TimedOut // immediately return
@@ -79,12 +84,14 @@ trait PerformanceEvaluation {
   // Runs the evaluation
   def measureBenchmark(
       benchmark: Benchmark,
-      timeoutFast: Boolean = true,
-      failFast: Boolean = true
+      current: Int,
+      total: Int,
+      timeoutFast: Boolean,
+      failFast: Boolean
     ): Unit =
     analyses.foreach { case (analysis, name) =>
       try {
-        println(s"***** Running $name on $benchmark *****")
+        println(s"***** Running $name on $benchmark [$current/$total] *****")
         val result = measureAnalysis(benchmark, analysis)
         results = results.add(benchmark, name, result)
         result match {
@@ -102,13 +109,23 @@ trait PerformanceEvaluation {
       }
     }
 
-  def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true) =
-    benchmarks.foreach(b => measureBenchmark(b, timeoutFast, failFast))
+  def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true) = {
+    var current = 0
+    val total = benchmarks.size
+    benchmarks.foreach { b =>
+      current += 1
+      measureBenchmark(b, current, total, timeoutFast, failFast)
+    }
+  }
 
   def printResults() =
     println(results.prettyString(format = format))
-  def exportCSV(path: String) = {
-    val hdl = Writer.openTimeStamped(path)
+  def exportCSV(
+      path: String,
+      format: PerformanceResult => String,
+      timestamped: Boolean = true
+    ) = {
+    val hdl = if (timestamped) Writer.openTimeStamped(path) else Writer.open(path)
     val csv = results.toCSVString(format = format)
     Writer.write(hdl, csv)
     Writer.close(hdl)
@@ -121,6 +138,7 @@ trait PerformanceEvaluation {
     ) = {
     measureBenchmarks(timeoutFast, failFast)
     printResults()
-    exportCSV(path)
+    exportCSV(path, format _)
+    exportCSV(path + "-stddev", formatStddev _)
   }
 }

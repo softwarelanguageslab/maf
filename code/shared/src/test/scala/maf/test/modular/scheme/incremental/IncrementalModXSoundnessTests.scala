@@ -4,8 +4,10 @@ import org.scalatest.Tag
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion._
 import maf.language.scheme._
+import maf.language.scheme.interpreter._
 import maf.modular._
-import maf.modular.incremental.IncrementalModAnalysis
+import maf.modular.incremental.IncrementalConfiguration._
+import maf.modular.incremental._
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme._
 import maf.test._
@@ -35,44 +37,53 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     with SchemeDomain
     with IncrementalModAnalysis[SchemeExp]
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis
+  def analysis(b: SchemeExp): IncrementalAnalysis = analysis(b, allOptimisations)
+
+  def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis
+
   override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
-  private var version: Version = Old
+  private var version: Version = Old // Flag for the concrete interpreter.
 
   override def runInterpreter(
       i: SchemeInterpreter,
       p: SchemeExp,
       t: Timeout.T
-    ): SchemeInterpreter.Value = i.run(p, t, version)
+    ): ConcreteValues.Value = i.run(p, t, version)
 
-  override def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Incremental (re-)analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
-      // load the benchmark program
-      val content = Reader.loadFile(benchmark)
-      val program = CSchemeParser.parse(content)
+  override def onBenchmark(benchmark: Benchmark): Unit = {
+    info(s"Checking $benchmark using $name.")
+    // load the benchmark program
+    val content = Reader.loadFile(benchmark)
+    val program = CSchemeParser.parse(content)
+    var anlOld: IncrementalAnalysis = null
 
-      // Check soundness on the original version of the program.
+    // Check soundness on the original version of the program.
+    property(s"Incremental initial analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
       version = Old
       val (cResultOld, cPosResultsOld) = evalConcrete(program, benchmark)
-      val anlOld = runAnalysis(program, benchmark)
+      anlOld = runAnalysis(program, benchmark).asInstanceOf[IncrementalAnalysis]
       compareResult(anlOld, cResultOld)
       compareIdentities(anlOld, cPosResultsOld)
-
-      // Check soundness on the updated version of the program.
-      version = New
-      val (cResultNew, cPosResultsNew) = evalConcrete(program, benchmark)
-      val anlNew = updateAnalysis(program, benchmark)
-      compareResult(anlNew, cResultNew)
-      compareIdentities(anlNew, cPosResultsNew)
     }
 
-  private def updateAnalysis(program: SchemeExp, benchmark: Benchmark): IncrementalAnalysis =
+    if (anlOld != null) {
+      // Check soundness on the updated version of the program.
+      property(s"Incremental reanalysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
+        version = New
+        val (cResultNew, cPosResultsNew) = evalConcrete(program, benchmark)
+        val anlNew = updateAnalysis(anlOld, benchmark)
+        compareResult(anlNew, cResultNew)
+        compareIdentities(anlNew, cPosResultsNew)
+      }
+    }
+  }
+
+  private def updateAnalysis(anl: IncrementalAnalysis, benchmark: Benchmark): IncrementalAnalysis =
     try {
-      val anl: IncrementalAnalysis = analysis(program)
       val timeout = analysisTimeout(benchmark)
       anl.updateAnalysis(timeout)
-      assume(anl.finished(), "Reanalysis timed out.")
+      assume(anl.finished, "Reanalysis timed out.")
       anl
     } catch {
       case e: VirtualMachineError =>
@@ -87,7 +98,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
   def name = "Incremental ModConc"
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b)
+  override def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b, config)
 
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
   override def isSlow(b: Benchmark): Boolean =
@@ -103,14 +114,14 @@ class IncrementalSmallStepModConc extends IncrementalModXSoundnessTests with Con
 class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConc {
   override def name = "Incremental ModConc CP"
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b)
+  override def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, config)
 }
 
-/** Implements soundness tests for an incremental ModF analysis. */
+/** Implements soundness tests for an incremental ModF type analysis. */
 class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
-  def name = "Incremental ModF"
+  def name = "Incremental ModF Type"
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b)
+  override def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, config)
 
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
@@ -125,9 +136,9 @@ class IncrementalModF extends IncrementalModXSoundnessTests with SequentialIncre
     )(b)
 }
 
-/** Implements soundness tests for an incremental ModF analysis. */
+/** Implements soundness tests for an incremental ModF CP analysis. */
 class IncrementalModFCP extends IncrementalModF {
   override def name = "Incremental ModF CP"
 
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b)
+  override def analysis(b: SchemeExp, config: IncrementalConfiguration): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, config)
 }

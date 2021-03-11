@@ -26,11 +26,11 @@ object SchemeRenamer {
       names: NameMap,
       count: CountMap
     ): (SchemeExp, CountMap) = exp match {
-    case SchemeLambda(args, body, pos) =>
+    case SchemeLambda(name, args, body, pos) =>
       countl(args, names, count) match {
         case (args1, names1, count1) =>
           renameList(body, names1, count1) match {
-            case (body1, count2) => (SchemeLambda(args1, body1, pos), count2)
+            case (body1, count2) => (SchemeLambda(name.map(n => names.getOrElse(n, n)), args1, body1, pos), count2)
           }
       }
     case SchemeFuncall(f, args, pos) =>

@@ -1,4 +1,4 @@
-package maf.web
+package maf.web.visualitions.softcontract
 
 import maf.language.contracts._
 import maf.modular.contracts.{ScCallInsensitivity, ScSchemeConstantPropagationDomain, ScSmtSolver, SimpleScSemantics}

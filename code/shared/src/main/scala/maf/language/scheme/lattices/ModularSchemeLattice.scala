@@ -57,17 +57,17 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def ord = 5
     override def toString: String = SymbolLattice[Sym].show(s)
   }
-  case class Prim(prim: Set[P]) extends Value {
+  case class Prim(prims: Set[String]) extends Value {
     def ord = 6
-    override def toString: String = prim.map(_.name).mkString("Primitive{", ", ", "}")
+    override def toString: String = prims.mkString("Primitive{", ", ", "}")
   }
   // TODO: define `type Closure = (SchemeLambdaExp, Env, Option[String])` (maybe using a case class)
-  case class Clo(closures: Set[(schemeLattice.Closure, Option[String])]) extends Value {
+  case class Clo(closures: Set[schemeLattice.Closure]) extends Value {
     def ord = 7
     override def toString: String =
       closures
-        .map(namedClo => namedClo._2.getOrElse(s"λ@${namedClo._1._1.idn}"))
-        .mkString("Closure{", ", ", "}")
+        .map(_._1.lambdaName)
+        .mkString("Closures{", ", ", "}")
   }
   case object Nil extends Value {
     def ord = 8
@@ -75,7 +75,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
   }
   case class Pointer(ptrs: Set[A]) extends Value {
     def ord = 9
-    override def toString: String = ptrs.mkString("Pointer{", ", ", "}")
+    override def toString: String = ptrs.mkString("Pointers{", ", ", "}")
   }
   case class Cons(car: L, cdr: L) extends Value {
     def ord = 10
@@ -248,6 +248,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         case IsReal =>
           MayFail.success(args(0) match {
             case _: Real => True
+            case _: Int  => True
             case _       => False
           })
         case IsBoolean =>
@@ -548,6 +549,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Str(s), Int(n)) => MayFail.success(Char(StringLattice[S].ref(s, n)))
             case _                => MayFail.failure(OperatorNotApplicable("string-ref", args))
           }
+        case StringSet =>
+          (args(0), args(1), args(2)) match {
+            case (Str(s), Int(n), Char(c)) => MayFail.success(Str(StringLattice[S].set(s, n, c)))
+            case _                         => MayFail.failure(OperatorNotApplicable("string-set!", args))
+          }
         case StringLt =>
           (args(0), args(1)) match {
             case (Str(s1), Str(s2)) => MayFail.success(Bool(StringLattice[S].lt(s1, s2)))
@@ -586,13 +592,14 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       }
     }
 
-    def number(x: scala.Int): Value = Int(IntLattice[I].inject(x))
+    def number(x: BigInt): Value = Int(IntLattice[I].inject(x))
+
     def real(x: Double): Value = Real(RealLattice[R].inject(x))
     def string(x: String): Value = Str(StringLattice[S].inject(x))
     def bool(x: Boolean): Value = Bool(BoolLattice[B].inject(x))
     def char(x: scala.Char): Value = Char(CharLattice[C].inject(x))
-    def primitive(x: P): Value = Prim(Set(x))
-    def closure(x: schemeLattice.Closure, name: Option[String]): Value = Clo(Set((x, name)))
+    def primitive(x: String): Value = Prim(Set(x))
+    def closure(x: schemeLattice.Closure): Value = Clo(Set(x))
     def cont(k: K): Value = Kont(Set(k))
     def symbol(x: String): Value = Symbol(SymbolLattice[Sym].inject(x))
     def nil: Value = Nil
@@ -601,11 +608,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def thread(tid: TID): Value = Thread(Set(tid))
     def lock(threads: Set[TID]): Value = Lock(threads)
     def void: Value = Void
-    def getClosures(x: Value): Set[(schemeLattice.Closure, Option[String])] = x match {
+    def getClosures(x: Value): Set[schemeLattice.Closure] = x match {
       case Clo(closures) => closures
       case _             => Set.empty
     }
-    def getPrimitives(x: Value): Set[P] = x match {
+    def getPrimitives(x: Value): Set[String] = x match {
       case Prim(prms) => prms
       case _          => Set.empty
     }
@@ -763,7 +770,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
   }
   implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
-  val schemeLattice: SchemeLattice[L, A, P] = new SchemeLattice[L, A, P] {
+  val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] {
     def show(x: L): String = x.toString /* TODO[easy]: implement better */
     def isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
@@ -799,9 +806,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       )(boolAndMonoid)
     def top: L = throw LatticeTopUndefined
 
-    def getClosures(x: L): Set[(Closure, Option[String])] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
+    def getClosures(x: L): Set[Closure] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
     def getContinuations(x: L): Set[K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)
-    def getPrimitives(x: L): Set[P] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
+    def getPrimitives(x: L): Set[String] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
     def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
     def acquire(lock: L, tid: TID): MayFail[L, Error] =
@@ -810,15 +817,20 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       lock.foldMapL(l => Value.release(l, tid))
 
     def bottom: L = Elements(List.empty)
-    def number(x: scala.Int): L = Element(Value.number(x))
+
+    def number(x: BigInt): L = Element(Value.number(x))
+
     def numTop: L = Element(Int(IntLattice[I].top))
     def charTop: L = Element(Char(CharLattice[C].top))
+    def realTop: L = Element(Real(RealLattice[R].top))
+    def stringTop: L = Element(Str(StringLattice[S].top))
+    def symbolTop: L = Element(Symbol(SymbolLattice[Sym].top))
     def real(x: Double): L = Element(Value.real(x))
     def string(x: String): L = Element(Value.string(x))
     def char(x: scala.Char): L = Element(Value.char(x))
     def bool(x: Boolean): L = Element(Value.bool(x))
-    def primitive(x: P): L = Element(Value.primitive(x))
-    def closure(x: Closure, name: Option[String]): L = Element(Value.closure(x, name))
+    def primitive(x: String): L = Element(Value.primitive(x))
+    def closure(x: Closure): L = Element(Value.closure(x))
     def cont(x: K): L = Element(Value.cont(x))
     def symbol(x: String): L = Element(Value.symbol(x))
     def cons(car: L, cdr: L): L = Element(Value.cons(car, cdr))
@@ -831,6 +843,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
   }
 
   object L {
-    implicit val lattice: SchemeLattice[L, A, P] = schemeLattice
+    implicit val lattice: SchemeLattice[L, A] = schemeLattice
   }
 }

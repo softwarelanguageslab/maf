@@ -123,7 +123,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
         extends WorkerMessage
     def apply(): Behaviour[WorkerMessage] = Behaviours.setup { context =>
       Behaviours.receiveMessage { case DoWork(intra, timeout, master) =>
-        intra.analyze(timeout)
+        intra.analyzeWithTimeout(timeout)
         if (timeout.reached) {
           master ! Master.TimedOut(intra.component)
         } else {
@@ -137,7 +137,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
   lazy val actorSystem = ActorSystem(Master(), "analysis-actor-system", ActorConfig.config)
 
   private var done = false
-  def finished(): Boolean = done
+  def finished: Boolean = done
 
   // use this to temporarily hold items that need to be added to the worklist
   private var toDistribute: List[Component] = Nil

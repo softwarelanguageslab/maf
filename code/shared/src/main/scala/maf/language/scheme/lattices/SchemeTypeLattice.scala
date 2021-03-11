@@ -8,7 +8,6 @@ import maf.lattice.interfaces.BoolLattice
 import maf.util._
 
 class TypeSchemeLattice[A <: Address, K] {
-  type P = SchemePrimitive[L, A]
 
   case class L(
       str: Boolean = false,
@@ -19,8 +18,8 @@ class TypeSchemeLattice[A <: Address, K] {
       nil: Boolean = false,
       inputPort: Boolean = false,
       outputPort: Boolean = false,
-      prims: Set[P] = Set.empty,
-      clos: Set[((SchemeLambdaExp, schemeLattice.Env), Option[String])] = Set.empty,
+      prims: Set[String] = Set.empty,
+      clos: Set[(SchemeLambdaExp, schemeLattice.Env)] = Set.empty,
       ptrs: Set[A] = Set.empty,
       consCells: (L, L) = (L(), L()))
       extends SmartHash {
@@ -37,9 +36,9 @@ class TypeSchemeLattice[A <: Address, K] {
     val nil: L = L(nil = true)
     val inputPort: L = L(inputPort = true)
     val outputPort: L = L(outputPort = true)
-    def prim(p: P): L = L(prims = Set(p))
+    def prim(p: String): L = L(prims = Set(p))
     def pointer(a: A): L = L(ptrs = Set(a))
-    def clo(clo: schemeLattice.Closure, name: Option[String]): L = L(clos = Set((clo, name)))
+    def clo(clo: schemeLattice.Closure): L = L(clos = Set(clo))
     def cons(car: L, cdr: L): L = L(consCells = (car, cdr))
   }
 
@@ -47,7 +46,7 @@ class TypeSchemeLattice[A <: Address, K] {
     if (b) { MayFail.success(v) }
     else { MayFail.failure(OperatorNotApplicable(name, args)) }
 
-  val schemeLattice: SchemeLattice[L, A, P] = new SchemeLattice[L, A, P] {
+  val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] {
     def show(x: L): String = s"$x"
     def isTrue(x: L): Boolean = true // only "false" is not true, but we only have Bool represented
     def isFalse(x: L): Boolean = x.bool
@@ -167,21 +166,26 @@ class TypeSchemeLattice[A <: Address, K] {
         subsumes(x.consCells._1, y.consCells._1) &&
         subsumes(x.consCells._1, y.consCells._2)
     def top: L = ???
-    def getClosures(x: L): Set[(Closure, Option[String])] = x.clos
-    def getPrimitives(x: L): Set[P] = x.prims
+    def getClosures(x: L): Set[Closure] = x.clos
+    def getPrimitives(x: L): Set[String] = x.prims
     def getPointerAddresses(x: L): Set[A] = Set()
     def getThreads(x: L): Set[TID] = throw new Exception("Not supported.")
     def getContinuations(x: L): Set[K] = ???
     def bottom: L = Inject.bottom
-    def number(x: scala.Int): L = Inject.num
+
+    def number(x: BigInt): L = Inject.num
+
     def numTop: L = Inject.num
     def charTop: L = Inject.char
+    def stringTop: L = Inject.str
+    def realTop: L = Inject.num
+    def symbolTop: L = Inject.sym
     def real(x: Double): L = Inject.num
     def string(x: String): L = Inject.str
     def bool(x: Boolean): L = Inject.bool
     def char(x: scala.Char): L = Inject.char
-    def primitive(x: P): L = Inject.prim(x)
-    def closure(x: schemeLattice.Closure, name: Option[String]): L = Inject.clo(x, name)
+    def primitive(x: String): L = Inject.prim(x)
+    def closure(x: schemeLattice.Closure): L = Inject.clo(x)
     def symbol(x: String): L = Inject.sym
     def nil: L = Inject.nil
     def cons(car: L, cdr: L): L = Inject.cons(car, cdr)
@@ -196,50 +200,52 @@ class TypeSchemeLattice[A <: Address, K] {
 
   }
   object L {
-    implicit val lattice: SchemeLattice[L, A, P] = schemeLattice
+    implicit val lattice: SchemeLattice[L, A] = schemeLattice
   }
 
   object Primitives extends SchemeLatticePrimitives[L, A] with PrimitiveBuildingBlocks[L, A] {
-    override def allPrimitives = super.allPrimitives ++ List(
-      `abs`,
-      // `assoc`, // TODO
-      // `assq`, // TODO
-      // `assv`, // TODO
-      `display`,
-      `equal?`,
-      `eqv?`,
-      `even?`,
-      `gcd`,
-      `lcm`,
-      `length`,
-      // `list-ref`, // TODO
-      // `list->vector`, // TODO? or not
-      // `list-tail`, // TODO
-      `list?`,
-      // `member`, // TODO
-      // `memq`, // TODO
-      // `memv`, // TODO
-      `negative?`,
-      `newline`,
-      `not`,
-      `odd?`,
-      `positive?`,
-      `zero?`,
-      `<=`,
-      `>`,
-      `>=`,
-      `caar`,
-      `cadr`,
-      `cdar`,
-      `cddr`,
-      `caddr`,
-      `cdddr`,
-      `caadr`,
-      `cdadr`,
-      `cadddr`
-      // TODO: other cxr
-      // `vector->list // TODO
-      // We decided not to implement some primitives as they can't be properly supported in the framework: reverse, map, for-each, apply
+    override def allPrimitives = super.allPrimitives ++ ofList(
+      List(
+        `abs`,
+        // `assoc`, // TODO
+        // `assq`, // TODO
+        // `assv`, // TODO
+        `display`,
+        `equal?`,
+        `eqv?`,
+        `even?`,
+        `gcd`,
+        `lcm`,
+        `length`,
+        // `list-ref`, // TODO
+        // `list->vector`, // TODO? or not
+        // `list-tail`, // TODO
+        `list?`,
+        // `member`, // TODO
+        // `memq`, // TODO
+        // `memv`, // TODO
+        `negative?`,
+        `newline`,
+        `not`,
+        `odd?`,
+        `positive?`,
+        `zero?`,
+        `<=`,
+        `>`,
+        `>=`,
+        `caar`,
+        `cadr`,
+        `cdar`,
+        `cddr`,
+        `caddr`,
+        `cdddr`,
+        `caadr`,
+        `cdadr`,
+        `cadddr`
+        // TODO: other cxr
+        // `vector->list // TODO
+        // We decided not to implement some primitives as they can't be properly supported in the framework: reverse, map, for-each, apply
+      )
     )
     class SimplePrim(val name: String, ret: L) extends SchemePrimitive[L, A] {
       def call(

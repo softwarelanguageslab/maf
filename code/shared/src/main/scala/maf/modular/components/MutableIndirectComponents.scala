@@ -2,7 +2,6 @@ package maf.modular.components
 
 import maf.core.Expression
 import maf.modular.components.IndirectComponents
-import maf.modular.components.IndirectComponents.ComponentPointer
 
 /**
  * Extends component indirection by allowing updates to component pointers.

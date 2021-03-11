@@ -72,7 +72,7 @@
         ;; not received anything
         (client i in in-lock out out-lock ack))))
 
-(define N (random 42))
+(define N (+ (random 42) 1))
 (define data-to-send (build-vector N 0 (lambda (i) (random 100))))
 ; (printf "data to send: ~a~n" data-to-send)
 (define client->server (ref 0))
@@ -84,4 +84,3 @@
 (join s)
 (join c)
 
-(display-recorded)

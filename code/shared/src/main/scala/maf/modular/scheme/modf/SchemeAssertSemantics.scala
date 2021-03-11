@@ -18,6 +18,17 @@ trait SchemeAssertSemantics extends BigStepModFSemantics {
     assertionsFailed = assertionsFailed - ((component, exp))
   }
 
+  def printAssertions(): Unit = {
+    (assertionsVerified.size, assertionsFailed.size) match { // Not the prettiest solution but it works.
+      case (1, 1) => println(s"1 assertion was verified, 1 assertion could not be verified.")
+      case (1, n) => println(s"1 assertion was verified, $n assertions could not be verified.")
+      case (m, 1) => println(s"$m assertions were verified, 1 assertion could not be verified.")
+      case (m, n) => println(s"$m assertions were verified, $n assertions could not be verified.")
+    }
+    assertionsVerified.foreach({ case (cmp, a) => println(s"Verified $a ($cmp)") })
+    assertionsFailed.foreach({ case (cmp, a) => println(s"Failed $a ($cmp)") })
+  }
+
   override def intraAnalysis(cmp: Component): AssertionModFIntra
 
   trait AssertionModFIntra extends IntraAnalysis with BigStepModFIntra {
@@ -25,7 +36,8 @@ trait SchemeAssertSemantics extends BigStepModFSemantics {
       for {
         v <- eval(exp)
         res <- merge(
-          guard(lattice.isTrue(v)).map { _ =>
+          // We are conservative: we only consider an assertion verified if it is certainly only true. (Putting this tests here avoids a dependency on the order in which assertViolated and assertVerified are called.Ò
+          guard(lattice.isTrue(v) && !lattice.isFalse(v)).map { _ =>
             assertVerified(component, exp)
             lattice.void
           },

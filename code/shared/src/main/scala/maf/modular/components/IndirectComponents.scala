@@ -1,40 +1,32 @@
 package maf.modular.components
 
-import maf.modular.components.IndirectComponents.ComponentPointer
 import maf.core._
 import maf.modular.ModAnalysis
 
-object IndirectComponents {
-  // A component pointer just is an integer.
-  case class ComponentPointer(addr: Int) extends AnyVal {
-    override def toString: String = s"#$addr"
-  }
+// A component pointer just is an integer.
+case class ComponentPointer(addr: Int) { //TODO: extends AnyVal doesn't work anymore (Scala bug?)
+  override def toString: String = s"#$addr"
 }
 
 /** Provides the ability to reference components 'by pointer'. */
 trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 
-  /** Secretly, every component is a pointer to an 'actual component', but that information is not leaked to the outside. */
+  /** Every component is a pointer to an 'actual component'. */
   type Component = ComponentPointer
-  type Address = Int
+  def initialComponent = ref(initialComponentData)
 
-  /** The 'actual component (data)' can be anything that is considered useful. */
+  /** The 'actual component (data)' can be anything. */
   type ComponentData
+  def initialComponentData: ComponentData
 
   // Keep a mapping from component pointer addresses to actual component data.
+  type Address = Int
   private var count: Address = _ // Next free address.
   protected var cMap: Map[Address, ComponentData] = _
   protected var cMapR: Map[ComponentData, Address] = _
 
-  // Needed due to the initialisation order of Scala.
-  protected def init(): Unit = {
-    count = 0
-    cMap = Map()
-    cMapR = Map()
-  }
-
   /** Returns the next unused address. */
-  private def alloc(): Address = {
+  protected def alloc(): Address = {
     val addr = count
     count += 1
     addr
@@ -61,4 +53,11 @@ trait IndirectComponents[Expr <: Expression] extends ModAnalysis[Expr] {
 
   /** Allows to treat a component pointer as a component. */
   implicit def view(cmp: Component): ComponentData = deref(cmp)
+
+  override def init() = {
+    count = 0
+    cMap = Map()
+    cMapR = Map()
+    super.init()
+  }
 }

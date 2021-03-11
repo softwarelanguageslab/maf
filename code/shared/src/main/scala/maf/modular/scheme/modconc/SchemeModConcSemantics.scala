@@ -79,8 +79,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ReturnValue[Sch
   class SchemeModConcIntra(cmp: Component) extends IntraAnalysis(cmp) with GlobalStoreIntra with ReturnResultIntra {
     // create a ModF analysis to analyze the thread
     val modFAnalysis = inter.modFAnalysis(this)
-    def analyze(timeout: Timeout.T): Unit = {
-      modFAnalysis.analyze(timeout)
+    def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+      modFAnalysis.analyzeWithTimeout(timeout)
       writeResult(modFAnalysis.finalResult)
     }
   }
@@ -143,9 +143,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ReturnValue[Sch
         def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
         def callcc(
             clo: Closure,
-            nam: Option[String],
             pos: Position
-          ): Value = modf.callcc(clo, nam, pos)
+          ): Value = modf.callcc(clo, pos)
         def currentThread = intra.component
       }
       override def commit() = {

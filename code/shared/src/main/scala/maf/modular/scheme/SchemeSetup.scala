@@ -24,8 +24,8 @@ trait SchemeSetup extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] wit
     val preludedProgram = SchemePrelude.addPrelude(originalProgram)
     CSchemeUndefiner.undefine(List(preludedProgram))
   }
-  lazy val initialBds: Iterable[(String, Addr, Value)] = primitives.allPrimitives.map { p =>
-    (p.name, PrmAddr(p.name), lattice.primitive(p))
+  lazy val initialBds: Iterable[(String, Addr, Value)] = primitives.allPrimitives.map { case (name, p) =>
+    (name, PrmAddr(name), lattice.primitive(p.name))
   }
   lazy val initialEnv: Environment[Addr] = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
   // Set up initial environment and install the primitives in the global store.

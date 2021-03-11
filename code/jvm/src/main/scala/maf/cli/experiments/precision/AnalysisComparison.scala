@@ -6,7 +6,6 @@ import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util._
 import maf.util.benchmarks._
-import maf.bench.scheme.SchemeBenchmarkPrograms
 
 import scala.concurrent.duration._
 
@@ -20,7 +19,7 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
   def otherAnalyses(): List[(SchemeExp => Analysis, String)]
 
   // and can, optionally, be configured in its timeouts (default: 5min.)
-  def analysisTimeout(): Timeout.T = Timeout.start(Duration(5, MINUTES)) //timeout for (non-base) analyses
+  def analysisTimeout(): Timeout.T = Timeout.start(Duration(15, MINUTES)) //timeout for (non-base) analyses
   def concreteTimeout(): Timeout.T = Timeout.none //timeout for concrete interpreter
 
   def concreteRuns() = 5
@@ -59,7 +58,7 @@ object AnalysisComparison1
       ConstantPropagation.B,
       ConstantPropagation.C,
       ConstantPropagation.S,
-      Concrete.Sym
+      ConstantPropagation.Sym
     ] {
   def baseAnalysis(prg: SchemeExp): Analysis =
     SchemeAnalyses.contextInsensitiveAnalysis(prg)
@@ -68,12 +67,16 @@ object AnalysisComparison1
     List(0, 1, 2, 3).map { k =>
       (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
     } ++
-      // run the adaptive analyses
-      List(100, 500, 1000).map { b =>
+      // run some adaptive analyses
+      List(1000, 2000).map { b =>
         (SchemeAnalyses.adaptiveAnalysis(_, b), s"adaptive (b = $b)")
       }
 
-  def main(args: Array[String]) = runBenchmarks(SchemeBenchmarkPrograms.gabriel)
+  def main(args: Array[String]) = runBenchmarks(
+    Set(
+      "test/R5RS/various/mceval.scm"
+    )
+  )
 
   def check(path: Benchmark) = {
     val txt = Reader.loadFile(path)
@@ -94,7 +97,7 @@ object AnalysisComparison1
   def runBenchmarks(benchmarks: Set[Benchmark]) = {
     benchmarks.foreach(runBenchmark)
     println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
-    Writer.setDefaultWriter(Writer.open("benchOutput/precision/precision-benchmarks.csv"))
+    Writer.setDefaultWriter(Writer.open("benchOutput/precision/adaptive-precision-benchmarks.csv"))
     Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
     Writer.closeDefaultWriter()
   }

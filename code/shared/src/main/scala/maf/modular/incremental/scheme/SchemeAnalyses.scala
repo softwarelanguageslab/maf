@@ -38,7 +38,12 @@ object SchemeAnalyses {
    *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalModConcAnalysisTypeLattice(prg: SchemeExp, val k: Int = 1) extends BaseModConcAnalysis(prg) with SchemeTypeDomain {
+  class IncrementalModConcAnalysisTypeLattice(
+      prg: SchemeExp,
+      var configuration: IncrementalConfiguration,
+      val k: Int = 1)
+      extends BaseModConcAnalysis(prg)
+         with SchemeTypeDomain {
 
     override def intraAnalysis(
         cmp: Component
@@ -56,7 +61,12 @@ object SchemeAnalyses {
    *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalModConcAnalysisCPLattice(prg: SchemeExp, val k: Int = 1) extends BaseModConcAnalysis(prg) with SchemeConstantPropagationDomain {
+  class IncrementalModConcAnalysisCPLattice(
+      prg: SchemeExp,
+      var configuration: IncrementalConfiguration,
+      val k: Int = 1)
+      extends BaseModConcAnalysis(prg)
+         with SchemeConstantPropagationDomain {
 
     override def intraAnalysis(
         cmp: Component
@@ -87,10 +97,21 @@ object SchemeAnalyses {
    *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp) extends BaseModFAnalysis(prg) with SchemeTypeDomain {
+  class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
+      extends BaseModFAnalysis(prg)
+         with SchemeTypeDomain {
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+  }
+
+  // Same as the one above, but with assertions.
+  class IncrementalSchemeModFAssertionAnalysisTypeLattice(prg: SchemeExp, configuration: IncrementalConfiguration)
+      extends IncrementalSchemeModFAnalysisTypeLattice(prg, configuration)
+         with SchemeAssertSemantics {
+    override def intraAnalysis(
+        cmp: Component
+      ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra
   }
 
   /**
@@ -104,15 +125,17 @@ object SchemeAnalyses {
    *
    * @param prg The program to construct the analysis for.
    */
-  class IncrementalSchemeModFAnalysisCPLattice(prg: SchemeExp) extends BaseModFAnalysis(prg) with SchemeConstantPropagationDomain {
+  class IncrementalSchemeModFAnalysisCPLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
+      extends BaseModFAnalysis(prg)
+         with SchemeConstantPropagationDomain {
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
   // Same as the one above, but with assertions.
-  class IncrementalSchemeModFAssertionAnalysisCPLattice(prg: SchemeExp)
-      extends IncrementalSchemeModFAnalysisCPLattice(prg)
+  class IncrementalSchemeModFAssertionAnalysisCPLattice(prg: SchemeExp, configuration: IncrementalConfiguration)
+      extends IncrementalSchemeModFAnalysisCPLattice(prg, configuration)
          with SchemeAssertSemantics {
     override def intraAnalysis(
         cmp: Component

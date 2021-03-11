@@ -1,6 +1,7 @@
 package maf.modular
 
 import maf.core._
+import maf.util.StringUtil
 
 // Dependency that is triggered when an abstract value at address 'addr' is updated
 case class AddrDependency(addr: Address) extends Dependency {
@@ -18,6 +19,11 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
 
   // parameterized by some store that can be accessed and modified
   var store: Map[Addr, Value]
+
+  def writeAddr(addr: Addr, value: Value): Boolean =
+    updateAddr(inter.store, addr, value)
+      .map(updated => inter.store = updated)
+      .isDefined
 
   private def updateAddr(
       store: Map[Addr, Value],
@@ -53,17 +59,28 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
       }.isDefined
 
     override def doWrite(dep: Dependency): Boolean = dep match {
-      case AddrDependency(addr) =>
-        updateAddr(inter.store, addr, intra.store(addr))
-          .map(updated => inter.store = updated)
-          .isDefined
-      case _ => super.doWrite(dep)
+      case AddrDependency(addr) => inter.writeAddr(addr, intra.store(addr))
+      case _                    => super.doWrite(dep)
     }
+
     // An adapter for the "old" store interface
     // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
     case object StoreAdapter extends Store[Addr, Value] {
       def lookup(a: Addr): Option[Value] = Some(readAddr(a))
-      def extend(a: Addr, v: Value): Store[Addr, Value] = { writeAddr(a, v); this }
+
+      def extend(a: Addr, v: Value): Store[Addr, Value] = {
+        writeAddr(a, v); this
+      }
     }
+
+  }
+
+  /** Returns a string representation of the store. */
+  def storeString(primitives: Boolean = false): String = {
+    val strings = store.map({ case (a, v) => s"${StringUtil.toWidth(a.toString, 50)}: $v" })
+    val filtered = if (primitives) strings else strings.filterNot(_.startsWith("prm"))
+    val size = filtered.size
+    val infoString = "σ" * 150 + s"\nThe store contains $size addresses (primitive addresses ${if (primitives) "included" else "excluded"}).\n"
+    filtered.toList.sorted.mkString(infoString, "\n", "\n" + "σ" * 150)
   }
 }

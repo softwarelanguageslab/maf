@@ -24,7 +24,7 @@ object SchemeLoader {
       loaded: List[String]
     ): Either[SExp, List[SExp]] = exp match {
     case id @ SExpId(_) => Left(id)
-    case SExpPair(SExpId(Identifier("load", _)), SExpPair(SExpValue(ValueString(file), idn), SExpValue(ValueNil, _), _), _) =>
+    case SExpPair(SExpId(Identifier("load", _)), SExpPair(SExpValue(Value.String(file), idn), SExpValue(Value.Nil, _), _), _) =>
       if (loaded.contains(file)) throw new Exception(s"Circular references: ${loaded.mkString(" ")}")
       val parsed = SExpParser.parse(Reader.loadFile(prefix + file), Position.newTag(s"[${file} ${idn.pos}]"))
       val exps = parsed.foldRight(List[SExp]()) { case (exp, acc) =>
@@ -44,9 +44,9 @@ object SchemeLoader {
       val cdrl = load(cdr, prefix, loaded)
       (carl, cdrl) match {
         case (Left(car), Left(cdr))   => Left(SExpPair(car, cdr, idn))
-        case (Left(car), Right(cdr))  => Left(SExpPair(car, SExpList(cdr, SExpValue(ValueNil, Identity.none)), idn))
+        case (Left(car), Right(cdr))  => Left(SExpPair(car, SExpList(cdr, SExpValue(Value.Nil, Identity.none)), idn))
         case (Right(car), Left(cdr))  => Left(SExpList(car, cdr))
-        case (Right(car), Right(cdr)) => Left(SExpList(car, SExpList(cdr, SExpValue(ValueNil, Identity.none))))
+        case (Right(car), Right(cdr)) => Left(SExpList(car, SExpList(cdr, SExpValue(Value.Nil, Identity.none))))
       }
     case value @ SExpValue(_, _) => Left(value)
     case _                       => throw new Exception("Invalid s-expression.")

@@ -23,5 +23,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: Precision benchmarks results
-          path: benchOutput/daily-precision-benchmarks.csv
+          path: benchOutput/precision/daily-precision-benchmarks.csv
   # TODO: add performance benchmarks as a second job here

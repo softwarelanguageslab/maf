@@ -12,16 +12,16 @@ object CSchemeCompiler extends BaseSchemeCompiler {
   override def reserved: List[String] = List("fork", "join", "<change>") ::: super.reserved
 
   override def _compile(exp: SExp): TailCalls.TailRec[SchemeExp] = exp match {
-    case SExpPair(SExpId(Identifier("fork", _)), SExpPair(expr, SExpValue(ValueNil, _), _), _) =>
+    case SExpPair(SExpId(Identifier("fork", _)), SExpPair(expr, SExpValue(Value.Nil, _), _), _) =>
       tailcall(this._compile(expr)).map(CSchemeFork(_, exp.idn))
     case SExpPair(SExpId(Identifier("fork", _)), _, _) =>
       throw new Exception(s"Invalid CScheme fork: $exp (${exp.idn}).")
-    case SExpPair(SExpId(Identifier("join", _)), SExpPair(expr, SExpValue(ValueNil, _), _), _) =>
+    case SExpPair(SExpId(Identifier("join", _)), SExpPair(expr, SExpValue(Value.Nil, _), _), _) =>
       tailcall(this._compile(expr)).map(CSchemeJoin(_, exp.idn))
     case SExpPair(SExpId(Identifier("join", _)), _, _) =>
       throw new Exception(s"Invalid CScheme join: $exp (${exp.idn}).")
 
-    case SExpPair(SExpId(Identifier("<change>", _)), SExpPair(old, SExpPair(nw, SExpValue(ValueNil, _), _), _), _) =>
+    case SExpPair(SExpId(Identifier("<change>", _)), SExpPair(old, SExpPair(nw, SExpValue(Value.Nil, _), _), _), _) =>
       for {
         oldv <- tailcall(this._compile(old))
         newv <- tailcall(this._compile(nw))

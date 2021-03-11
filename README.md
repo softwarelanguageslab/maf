@@ -31,18 +31,21 @@ Additional preprocessing steps are performed by the modular analysis itself and 
 Now, the MODF instance can be created. For example, to analyze `prog` using a big-step MODF analysis
 with full argument sensitivity and a type domain:
 ```scala
-val machine = new ModAnalysis(prog) with BigStepSemantics
-                                    with StandardSchemeModFSemantics
-                                    with FullArgumentSensitivity
-                                    with TypePropagationDomain
-machine.analyze()
+val analysis = new ModAnalysis(prog) with BigStepSemantics
+                                     with StandardSchemeModFSemantics
+                                     with FullArgumentSensitivity
+                                     with TypePropagationDomain
+analysis.analyze()
 ```
-The `analyze` function can take an optional parameter to specify a timeout, which is obtained from a Java Duration
-like `Timeout.start(duration)`. The analysis will stop approximately when the timeout has been reached, that is,
-the analysis may be run a bit longer than is specified by the timeout, but never shorter unless it finishes.
+Method `analyze` computes the full (and sound) analysis result for the program that `ModAnalysis` is constructed with. 
+This method does not return the analysis results directly.
+Rather, after calling `analyze`, the computed analysis results (e.g., the final store and dependencies) can be accessed through the properties of the `analysis` object (e.g., through `analysis.store` and `analysis.deps`).
 
-Currently, no explicit result is returned by the analysis. Rather, information can be retrieved by fields of the machine,
-such as the final store and dependencies between components.
+Alternatively, one can use the `analyzeWithTimeout(<timeout>)` method to run the analysis with a given timeout. This timeout is obtained from a Java Duration
+(using `Timeout.start(<duration>)`). 
+The method returns when either the analysis has terminated or when the timeout has been reached (approximately, meaning in practice it may run a bit longer than the specified timeout). 
+Extra care should be taken when using this method, as the (partial) analysis results are not guaranteed to be sound when the timeout is triggered. 
+Therefore, when using this method, it is recommended to explicitly check afterwards if the analysis terminated using the `finished` method.
 
 # Running the test suite
 This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a specific subset of benchmark programs (MAF tests on action). 
@@ -61,6 +64,7 @@ maf/test
 To allow specific tests to be run, tags have been added to the test suite. 
  * Following tags can be used to select the component of the framework that should (not) be tested: `ParserTest`, `LatticeTest`, `PrimitiveTest` and `SoundnessTest`.
  * Following tags can be used to select which benchmark programs (not) to run: `SlowTest`.
+ * Following tags can be used to test utility components of the framework: `UtilTest`.
 
 The `SlowTest` tag currently is only used for some of the soundness tests. When these tests are disabled, only a part of the available benchmark programs
 will be used.
@@ -82,16 +86,27 @@ can be executed.
 # References and Relevant publications
 The original idea behind MAF comes from the following work on modular analysis: [Effect-Driven Flow Analysis](https://doi.org/10.1007/978-3-030-11245-5_12), and [A general method for rendering static analyses for diverse concurrency models modular](https://doi.org/10.1016/j.jss.2018.10.001).
 The MAF framework is presented in the following publication:
-  * _MAF: A Framework for Modular Static Analysis of Higher-Order Languages_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf).
+
+* _MAF: A Framework for Modular Static Analysis of Higher-Order Languages_. SCAM
+  2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf). _See release: `SCAM 2020`_
  
-MAF is a complete rework of the Scala-AM framework, which was not focused on modular static analysis but was primarily used to experiment with AAM-style analyses. 
-Scala-AM is described in the following publications:
-  * _Scala-AM: A Modular Static Analysis Framework_. SCAM 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf), [doi](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am).
-  * _Building a Modular Static Analysis Framework in Scala_. Scala@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf), [doi](http://doi.acm.org/10.1145/2998392.3001579).
+MAF is a complete rework of the [Scala-AM framework](https://github.com/acieroid/scala-am), which was not focused on
+modular static analysis but was primarily used to experiment with AAM-style analyses. Scala-AM is described in the
+following publications:
+
+* _Scala-AM: A Modular Static Analysis Framework_. SCAM
+  2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf)
+  , [doi](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am).
+* _Building a Modular Static Analysis Framework in Scala_. Scala@SPLASH
+  2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf)
+        , [doi](http://doi.acm.org/10.1145/2998392.3001579).
 
 **MAF has been used for evaluating modular static analysis approaches in the following publications:**
-  * _A Parallel Worklist Algorithm for Modular Analyses_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-10.pdf)
-  * _Incremental Flow Analysis through Computational Dependency Reification_. SCAM 2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-12.pdf)
+
+* _A Parallel Worklist Algorithm for Modular Analyses_. SCAM
+  2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-10.pdf). _See release: `SCAM 2020`_
+* _Incremental Flow Analysis through Computational Dependency Reification_. SCAM
+  2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-12.pdf). _See release: `SCAM 2020`_
 
 **Scala-AM has been used for evaluating static analysis approaches in the following publications:**
   * _Garbage-Free Abstract Interpretation through Abstract Reference Counting_. ECOOP 2019. [pdf](http://drops.dagstuhl.de/opus/volltexte/2019/10784/).

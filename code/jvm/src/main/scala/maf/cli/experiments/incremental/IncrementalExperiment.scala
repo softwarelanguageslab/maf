@@ -2,7 +2,7 @@ package maf.cli.experiments.incremental
 
 import maf.core.Expression
 import maf.modular.GlobalStore
-import maf.modular.incremental.IncrementalModAnalysis
+import maf.modular.incremental.{IncrementalConfiguration, IncrementalGlobalStore, IncrementalModAnalysis}
 import maf.util.Writer._
 import maf.util.benchmarks.Timeout
 
@@ -10,11 +10,11 @@ trait IncrementalExperiment[E <: Expression] {
   // A list of programs on which the benchmark should be executed.
   def benchmarks(): Set[String]
 
-  // Type of an analysis.
-  type Analysis = IncrementalModAnalysis[E] with GlobalStore[E]
+  // Type bound for an analysis.
+  type Analysis <: IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
   // Analysis construction.
-  def analysis(e: E): Analysis
+  def analysis(e: E, config: IncrementalConfiguration): Analysis
 
   // Parsing.
   def parse(string: String): E
@@ -35,13 +35,17 @@ trait IncrementalExperiment[E <: Expression] {
   // Creates a string representation of the final output.
   def createOutput(): String
 
+  // Can be used for debugging.
+  val catchErrors: Boolean = true
+
   // Runs measurements on the benchmarks in a given trait, or uses specific benchmarks if passed as an argument.
   def measure(bench: Option[Set[String]] = None): Unit =
     bench.getOrElse(benchmarks()).foreach { file =>
       try onBenchmark(file)
       catch {
-        case e: Exception =>
-          writeErrln(s"Running $file resulted in an exception: ${e.getMessage}\n")
+        case e: Exception if catchErrors =>
+          writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
+          e.getStackTrace.take(5).foreach(ste => writeErrln(ste.toString))
           reportError(file)
         case e: VirtualMachineError =>
           writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")

@@ -9,10 +9,6 @@
         stroke-width: 2;
         stroke: black;
       }
-      .nodes .node_main {
-        stroke: gold;
-        fill: gold;
-      }
       .nodes .in_worklist {
         fill: lightblue;
       }
@@ -20,16 +16,14 @@
         fill: darkblue;
       }
       .nodes .not_visited {
-        stroke: red;
-      }
-      .nodes .node_deleted {
-        stroke: darkgray;
+        stroke: none;
       }
       .nodes text {
         fill: black;
         stroke: none;
       }
-
+ 
+      /* SoftContract */
       .main {
         display: flex;
         flex-direction: column;
@@ -85,6 +79,7 @@
       body {
          font-family: sans-serif;
       }
+
       .unsafe {
          color: red;
          font-weight: bold;
@@ -93,23 +88,27 @@
       .safe {
          color: red;
          font-weight: bold;
-      
+      }
+      /* END SoftContract */
+
       .nodes .node_deleted text {
         fill: darkgray;
       }
-      .nodes .node_main text {
-        fill: gold
+
+      .module_bar_chart .bar rect {
+        fill: steelblue;
+      }
+      .component_bar_chart .bar rect {
+        fill: orange;
+      }
+      .dependency_bar_chart .bar rect {
+        fill: gray;
       }
       .links {
         stroke: black;
         stroke-width: 2;
         fill: none;
         marker-end: url(#endarrow);
-      }
-      .links .edge_deleted {
-        stroke: darkgray;
-        stroke-dasharray: 2;
-        marker-end: url(#endarrow_deleted);
       }
     </style>
   </head>
@@ -118,6 +117,9 @@
     <script src="https://d3js.org/d3.v5.min.js"></script>
     <script src="https://d3js.org/d3-selection-multi.v1.min.js"></script>
     <!-- Include Scala.js compiled code -->
-    <script type="text/javascript" src="./code/js/target/scala-2.13/modular-analysis-framework-maf--fastopt.js"></script>
+    <script type="text/javascript" src="../code/js/target/scala-2.13/modular-analysis-framework-maf--fastopt.js"></script>
+    <script type="text/javascript">
+      adaptiveVisualisationSetup.setup()
+    </script>
   </body>
 </html>
