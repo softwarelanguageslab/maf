@@ -64,7 +64,8 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemanticsScheme {
         contract: (Value, PC),
         expressionValue: (Value, PC),
         blamedIdentity: Identity,
-        blamingIdentity: Identity = Identity.none
+        blamingIdentity: Identity = Identity.none,
+        doBlame: Boolean = true
       ): ScEvalM.ScEvalM[(Value, PC)] = {
       import maf.util.MapUtil._
 

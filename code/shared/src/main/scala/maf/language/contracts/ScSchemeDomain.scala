@@ -210,6 +210,9 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
         .flatMap(_.clos)
         .toSet
 
+    def getSymbolic(value: V): Option[String] =
+      modularLattice.schemeLattice.getPrimitives(value.right).headOption.map(_.name)
+
     /*==================================================================================================================*/
 
     def isDefinitelyOpq(value: V): Boolean =

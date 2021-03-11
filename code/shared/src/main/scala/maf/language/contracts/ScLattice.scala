@@ -326,6 +326,9 @@ trait ScSchemeLattice[L, Addr <: Address, P <: Primitive] extends Lattice[L] {
   /** Extrracts a closure from the abstract domai n */
   def getClosure(value: L): Set[Clo[Addr]]
 
+  /** Returns the symbolic representation of the value if available */
+  def getSymbolic(value: L): Option[String]
+
   /*==================================================================================================================*/
 
   def isDefinitelyOpq(value: L): Boolean
