@@ -44,7 +44,7 @@ class AdaptiveSummaryVisualisation(
   //
 
   val node = document.createElement("div")
-  D3Helpers.d3.select(node).style("overflow", "scroll")
+  D3Helpers.d3.select(node).style("overflow-x", "scroll")
                            .style("width", s"${width}px")
                            .style("height", s"${height}px")
   private val widthPerView = width / 3

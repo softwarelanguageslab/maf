@@ -31,6 +31,7 @@ abstract class BarChart(
     .style("width", s"${width}px")
     .style("height", s"${height}px")
     .style("overflow-x", "scroll")
+    .style("overflow-y", "hidden")
 
   //
   // Setup the skeleton for the bar chart
