@@ -43,6 +43,22 @@ case class RegularCall[Context](
     context: Context)
     extends Call[Context]
 
+/**
+ * A call to a function that is guarded by a contract.
+ *
+ * This is used in the big step semantics to refine the path
+ * condition of the component and to check the result of the
+ * function for each final state
+ */
+case class GuardedFunctionCall[Context](
+    domainContracts: List[Address],
+    rangeContract: Address,
+    rangeIdentity: Identity,
+    env: Environment[Address],
+    lambda: ScLambda,
+    context: Context)
+    extends Call[Context]
+
 case class ContractCall[Context](
     monIdentity: Identity,
     blamedParty: Identity,

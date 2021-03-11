@@ -52,6 +52,45 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
       Context(env = fnEnv, cache = storeCache, pc = ScNil())
     }
 
+    /**
+     * Inject refinements in the store based on the contract of the function being
+     * called, this is only possible when the compoennt is a GuardedFunctionCall
+     */
+    def injectRefinements: ScEvalM[()] =
+      view(component) match {
+        case GuardedFunctionCall(domainContracts, _, _, _, _, _) =>
+          // retrieve the list of addresses for the parameters of this function
+          val variables = fnParams
+          // now we refine these variables, and make their symbolic representation
+          // equal to the application of its contract (if available)
+          val refinements = domainContracts.zip(variables).map { case (addr, variable) =>
+            for {
+              contract <- read(addr)
+              param <- read(variable)
+              // TODO: check whether other type of contracts can also be used for refinements
+              _ <- ifFeasible(primProc, contract) {
+                checkFlat(contract, param)
+              }
+            } yield ()
+          }
+
+          sequence(refinements) >> unit
+        case _ => unit
+      }
+
+    /**
+     * This function checks that the given value adheres to the range contract of the
+     * current function (if it is a guarded function call)
+     */
+    def checkRangeContract(v: PostValue): ScEvalM[PostValue] = view(component) match {
+      case gf: GuardedFunctionCall[_] =>
+        for {
+          contract <- read(gf.rangeContract)
+          _ <- applyMon(contract, v, gf.rangeIdentity, gf.lambda.idn)
+        } yield v
+      case _ => pure(v)
+    }
+
     def analyze(_ignored_timeout: Timeout.T): Unit = {
       totalRuns += 1
       if (totalRuns > 100) {
@@ -61,7 +100,8 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
       println("================================")
       println(s"Analyzing component $component")
 
-      val (value, sstore, symbolicReturnValues) = compute(eval(fnBody))(initialContext)
+      val computation = (injectRefinements >> eval(fnBody) >>= checkRangeContract)
+      val (value, sstore, _) = compute(computation)(initialContext)
       writeReturnStore(sstore)
       writeResult(value, component)
 
@@ -608,11 +648,21 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
       nondets(Set(flatContract, dependentContract))
     }
 
+    /** Same as monFlat but doesn't blame */
+    def checkFlat(contract: PostValue, expressionvalue: PostValue): ScEvalM[PostValue] =
+      monFlat(contract, expressionvalue, Identity.none, Identity.none, false)
+
+    /**
+     * Applies a flat contract to the given value, blames when the value violates
+     * the contract, except when doBlame is false, it that case it simply generates
+     * no successor states
+     */
     def monFlat(
         contract: PostValue,
         expressionValue: PostValue,
         blamedIdentity: Identity,
-        blamingIdentity: Identity = Identity.none
+        blamingIdentity: Identity = Identity.none,
+        doBlame: Boolean = true
       ): ScEvalM[PostValue] =
       applyFn(contract,
               List(expressionValue),
@@ -620,7 +670,7 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
               List(expressionValue._2)
       ) // TODO: operator is specified to be nil, that might give an issue with store changing flat contracts
         .flatMap { value =>
-          cond(value, pure(enrich(contract, expressionValue)), blame(blamedIdentity, blamingIdentity))
+          cond(value, pure(enrich(contract, expressionValue)), if (doBlame) blame(blamedIdentity, blamingIdentity) else void)
         }
 
     def cond[X](

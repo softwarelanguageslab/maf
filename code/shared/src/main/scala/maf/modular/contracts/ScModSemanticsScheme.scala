@@ -14,6 +14,7 @@ import maf.language.scheme.SchemeLambdaExp
 import maf.language.CScheme.TID
 import maf.language.scheme.primitives.SchemePrimitive
 import maf.language.contracts.ScNil
+import maf.core.Identifier
 
 object ScModSemanticsScheme {
   var r = 0
@@ -180,6 +181,24 @@ trait ScModSemanticsScheme
     def fnBody: ScExp = view(component) match {
       case ScMain             => program
       case Call(_, lambda, _) => lambda.body
+    }
+
+    /**
+     * Returns an address for the given parameter,
+     * this is always based on the allocator of the
+     * current component
+     */
+    def fnParam(v: ScParam): Addr =
+      allocVar(v, context(component))
+
+    /**
+     * Returns the list of all the addresses
+     * of the function under analysis
+     */
+    def fnParams: List[Addr] = view(component) match {
+      case ScMain => List()
+      case Call(_, lambda, _) =>
+        lambda.variables.map(fnParam)
     }
 
     /**
