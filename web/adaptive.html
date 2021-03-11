@@ -22,6 +22,30 @@
         fill: black;
         stroke: none;
       }
+
+      .bar rect {
+        opacity: 0.8;
+      }
+      .bar text {
+        visibility: hidden;
+      }
+      .bar.focused rect {
+        opacity: 1;
+      }
+      .bar.unfocused rect {
+        opacity: 0.1;
+      }
+      .bar.hovered rect {
+        stroke: black;
+        stroke-width: 3;
+        opacity: 1;
+      }
+      .bar.hovered text {
+        visibility: visible;
+      }
+
+
+
       .module_bar_chart .bar rect {
         fill: steelblue;
       }

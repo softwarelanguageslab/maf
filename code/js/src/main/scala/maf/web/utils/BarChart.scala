@@ -42,7 +42,7 @@ abstract class BarChart(
     .select(node)
     .append("svg")
     .style("height", s"${height}px")
-  private val innerNode = svgNode
+  protected val innerNode = svgNode
     .append("g")
     .attr("transform", s"translate($padding, $padding)")
 
@@ -71,31 +71,11 @@ abstract class BarChart(
   protected def onClick(d: Data): Unit = ()
 
   // handlers for mouse hovering
-  protected def onMouseOver(node: dom.Node, data: Data) = {
-    val bar = d3.select(node)
-    // show the value label
-    bar
-      .select("text")
-      .style("visibility", "visible")
-    // show the border around the selected bar
-    bar
-      .select("rect")
-      .style("stroke", "black")
-      .style("opacity", 1)
-  }
+  protected def onMouseOver(node: dom.Node, data: Data) =
+    d3.select(node).classed("hovered", true)
   protected def onMouseMove(node: dom.Node, data: Data) = ()
-  protected def onMouseLeave(node: dom.Node, data: Data) = {
-    val bar = d3.select(node)
-    // hide the value label
-    bar
-      .select("text")
-      .style("visibility", "hidden")
-    // hide the border around the selected bar
-    bar
-      .select("rect")
-      .style("stroke", "none")
-      .style("opacity", 0.8)
-  }
+  protected def onMouseLeave(node: dom.Node, data: Data) = 
+    d3.select(node).classed("hovered", false)
 
   def loadData(data: Iterable[Data]): Unit = {
 
@@ -113,7 +93,7 @@ abstract class BarChart(
       .call(xAxis)
       .selectAll("text") // select all text labels of the axis ...
       .attr("transform", "translate(-10,0)rotate(-45)")
-      .style("text-anchor", "end");
+      .style("text-anchor", "end")
 
     // setup the y-axis
     if (data.nonEmpty) { increaseMax(value(data.maxBy(value))) }
@@ -132,12 +112,10 @@ abstract class BarChart(
     // add a rectangle + value label for every new bar
     enter
       .append("text")
-      .style("visibility", "hidden")
       .style("text-anchor", "middle")
       .attr("dy", -8)
     enter
       .append("rect")
-      .style("opacity", 0.8)
     // update existing bars
     val all = enter.merge(selection.transition())
     all.attr("transform", (d: Data) => s"translate(${xScale(key(d))}, ${yScale(value(d))})")
@@ -174,9 +152,8 @@ trait BarChartTooltip extends BarChart {
 
   override protected def onMouseMove(node: dom.Node, data: Data) = {
     super.onMouseMove(node, data)
-    tooltip
-      .style("left", s"${d3.event.pageX + 20}px")
-      .style("top", s"${d3.event.pageY}px")
+    tooltip.style("left", s"${d3.event.pageX + 20}px")
+           .style("top",  s"${d3.event.pageY}px")
   }
 
   override protected def onMouseLeave(node: dom.Node, data: Data) = {
@@ -196,6 +173,21 @@ trait BarChartTooltip extends BarChart {
     .style("border-width", "2px")
     .style("border-radius", "5px")
     .style("padding", "5px")
+}
+
+//
+// trait for allowing focusing on bars in the barchart
+//
+
+trait BarChartFocus extends BarChart {
+  def focus(included: Data => Boolean) = 
+    innerNode.selectAll(".bar")
+             .classed("focused", (d: Data) => included(d))
+             .classed("unfocused", (d: Data) => !included(d))
+  def resetFocus() =
+    innerNode.selectAll(".bar")
+             .style("focused", false)
+             .style("unfocused", false)
 }
 
 //
