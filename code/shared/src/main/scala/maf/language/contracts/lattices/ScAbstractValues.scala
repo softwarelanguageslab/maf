@@ -91,16 +91,16 @@ trait ScAbstractValues[A <: Address] {
     def isOpqReal(value: ValueExt): Boolean =
       isRefinedOpq(value, Set("real?"))
 
-    def isPred[L, P <: Primitive](value: ValueExt, refinements: Set[String])(implicit lat: ScSchemeLattice[L, A, P]): L =
+    def isPred[L, P <: Primitive](value: ValueExt, refinements: Set[String])(implicit lat: ScSchemeLattice[L, A]): L =
       lat.schemeLattice.bool(isRefinedOpq(value, refinements))
 
-    def numOp[L, P <: Primitive](args: List[ValueExt])(implicit schemeLattice: ScSchemeLattice[L, A, P]): MayFail[L, maf.core.Error] =
+    def numOp[L, P <: Primitive](args: List[ValueExt])(implicit schemeLattice: ScSchemeLattice[L, A]): MayFail[L, maf.core.Error] =
       if (args.forall(isRefinedOpq(_, Set("integer?", "real?"))))
         MayFail.success(schemeLattice.opq(Opq(Set("integer?", "real?"))))
       else MayFail.failure(OperatorNotApplicable("+", args))
 
     /** Defines some operations between values of the Sc abstract domain */
-    def op[L, P <: Primitive](op: ScOp)(args: List[ValueExt])(implicit lat: ScSchemeLattice[L, A, P]): MayFail[L, maf.core.Error] = {
+    def op[L, P <: Primitive](op: ScOp)(args: List[ValueExt])(implicit lat: ScSchemeLattice[L, A]): MayFail[L, maf.core.Error] = {
       import maf.language.scheme.lattices.SchemeOp._
       op.checkArity(args)
       op match {

@@ -8,6 +8,7 @@ import maf.core.LatticeTopUndefined
 import javax.management.ValueExp
 import maf.language.contracts.lattices.ScOp
 import maf.core.MayFail
+import maf.language.scheme.primitives.SchemePrimitive
 
 object ScLattice {
 
@@ -274,11 +275,11 @@ trait ScLattice[L, Addr <: Address] extends Lattice[L] {
 }
 
 /** Operations that an abstract domain for soft contract should support */
-trait ScSchemeLattice[L, Addr <: Address, P <: Primitive] extends Lattice[L] {
+trait ScSchemeLattice[L, Addr <: Address] extends Lattice[L] {
   import ScLattice._
 
   /** An implementation of the Scheme lattice */
-  val schemeLattice: SchemeLattice[L, Addr, P]
+  val schemeLattice: SchemeLattice[L, Addr]
 
   /*==================================================================================================================*/
 
@@ -328,6 +329,9 @@ trait ScSchemeLattice[L, Addr <: Address, P <: Primitive] extends Lattice[L] {
 
   /** Returns the symbolic representation of the value if available */
   def getSymbolic(value: L): Option[String]
+
+  /** Returns the set of scheme primitives of the value */
+  def getPrimitives(value: L): Set[SchemePrimitive[L, Addr]]
 
   /*==================================================================================================================*/
 

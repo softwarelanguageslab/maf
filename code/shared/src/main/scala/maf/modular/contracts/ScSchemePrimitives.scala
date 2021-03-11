@@ -83,7 +83,7 @@ trait ScSchemePrimitives extends ScModSemanticsScheme with GlobalStore[ScExp] {
       val grd = implies.asGrd(name)
       store += contractAddr -> grd
       println(s"looking up ${name}")
-      store += primAddr -> lattice.schemeLattice.primitive(primMap(name))
+      store += primAddr -> lattice.schemeLattice.primitive(name)
       store += ScMonitoredPrimAddr(name) -> lattice.arr(
         Arr(Identity.none, Identity.none, contractAddr, primAddr)
       )
@@ -95,7 +95,7 @@ trait ScSchemePrimitives extends ScModSemanticsScheme with GlobalStore[ScExp] {
   /** Inject the other scheme primitives that do not have a contract (yet) */
   def setupOtherPrimitives(): Unit =
     otherPrimitives.foreach { name =>
-      store += ScPrimAddr(name) -> lattice.schemeLattice.primitive(primMap(name))
+      store += ScPrimAddr(name) -> lattice.schemeLattice.primitive(name)
     }
 
   def primBindings: Iterable[(String, Addr)] =

@@ -40,9 +40,9 @@ abstract class SimpleScSemantics(prg: ScExp)
     "null?" -> "null?/c"
   )
 
-  override def analyze(timeout: Timeout.T): Unit = {
+  override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
     setup()
-    super.analyze(timeout)
+    super.analyzeWithTimeout(timeout)
   }
 
   override def intraAnalysis(component: Component) =

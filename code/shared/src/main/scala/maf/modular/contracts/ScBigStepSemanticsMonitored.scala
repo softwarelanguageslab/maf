@@ -37,7 +37,7 @@ trait ScBigStepSemanticsMonitored extends ScBigStepSemanticsScheme {
 
   override def intraAnalysis(component: Component): IntraScBigStepSemanticsMonitored
   trait IntraScBigStepSemanticsMonitored extends IntraScBigStepSemantics {
-    override def analyze(_ignored_timeout: Timeout.T): Unit = {
+    override def analyzeWithTimeout(_ignored_timeout: Timeout.T): Unit = {
       analysedComponents += 1
       super.analyze(_ignored_timeout)
     }

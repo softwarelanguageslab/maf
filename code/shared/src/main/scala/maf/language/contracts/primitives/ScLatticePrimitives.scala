@@ -10,7 +10,7 @@ import maf.core.Store
 import maf.core.Address
 
 /** Implementation of the primitives particular to the contracts language */
-class ScLatticePrimitives[L, A <: Address]()(implicit val scLattice: ScSchemeLattice[L, A, SchemePrimitive[L, A]]) {
+class ScLatticePrimitives[L, A <: Address]()(implicit val scLattice: ScSchemeLattice[L, A]) {
   val allPrimitives: List[ScPrimitive[L, A]] = List(
     `dependent-contract?`,
     `nonzero?`,

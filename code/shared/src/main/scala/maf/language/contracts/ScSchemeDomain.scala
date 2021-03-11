@@ -47,14 +47,14 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
    * A map from names of primitives to the primitives themselves
    */
   val primMap: Map[String, SchemePrimitive[V, A]] =
-    (schemePrimitives.allPrimitives.map(p => (p.name, p)) ++ scPrimitives.allPrimitives.map(p => (p.name, p))).toMap
+    schemePrimitives.allPrimitives ++ scPrimitives.allPrimitives.map(p => (p.name, p))
 
   val modularLattice: ModularSchemeLattice[A, S, B, I, R, C, Sym]
 
   implicit lazy val valueExtProductLattice: Lattice[L] =
     productLattice(Values.partialLattice)
 
-  implicit lazy val leftLattice: SchemeLattice[L, A, P] = new EmptyDomainSchemeLattice[L, A, P] {
+  implicit lazy val leftLattice: SchemeLattice[L, A] = new EmptyDomainSchemeLattice[L, A] {
     val lattice = valueExtProductLattice
   }
 
@@ -66,7 +66,7 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
   private def mayFailJoin(xs: Seq[MayFail[V, maf.core.Error]]): MayFail[V, maf.core.Error] =
     xs.reduce((a, b) => mayFailJoin(a, b))
 
-  implicit lazy val schemeLattice: SchemeLattice[V, A, Q] =
+  implicit lazy val schemeLattice: SchemeLattice[V, A] =
     new SchemeProductLattice[L, modularLattice.Elements, A] {
       private val rightBottom = outer.rightLattice.bottom
 
@@ -83,10 +83,10 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
           super.op(operation)(List(left, right))
       }
 
-      implicit override val leftLattice: SchemeLattice[L, A, SchemePrimitive[L, A]] =
+      implicit override val leftLattice: SchemeLattice[L, A] =
         outer.leftLattice
 
-      implicit override val rightLattice: SchemeLattice[modularLattice.Elements, A, SchemePrimitive[modularLattice.Elements, A]] =
+      implicit override val rightLattice: SchemeLattice[modularLattice.Elements, A] =
         outer.rightLattice
 
       override def op(
@@ -114,8 +114,8 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
       }
     }
 
-  lazy val lattice: ScSchemeLattice[V, A, Q] = new ScSchemeLattice[V, A, Q] {
-    val schemeLattice: SchemeLattice[V, A, Q] = outer.schemeLattice
+  lazy val lattice: ScSchemeLattice[V, A] = new ScSchemeLattice[V, A] {
+    val schemeLattice: SchemeLattice[V, A] = outer.schemeLattice
 
     /*==================================================================================================================*/
 
@@ -211,7 +211,10 @@ trait ScSchemeDomain[A <: Address] extends ScAbstractValues[A] { outer =>
         .toSet
 
     def getSymbolic(value: V): Option[String] =
-      modularLattice.schemeLattice.getPrimitives(value.right).headOption.map(_.name)
+      modularLattice.schemeLattice.getPrimitives(value.right).headOption
+
+    def getPrimitives(value: V): Set[SchemePrimitive[V, A]] =
+      schemeLattice.getPrimitives(value).flatMap(primMap.get(_))
 
     /*==================================================================================================================*/
 

@@ -5,7 +5,7 @@ import maf.language.change.ChangeExp
 import maf.language.sexp._
 
 /** Abstract syntax of Scheme programs */
-sealed trait SchemeExp extends Expression
+trait SchemeExp extends Expression
 
 case object AND extends Label // And
 case object BEG extends Label // Begin

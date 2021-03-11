@@ -1,8 +1,8 @@
 package maf.language.contracts
 
 import maf.core.Identity
-import maf.language.sexp.{SExp, SExpId, SExpPair, SExpParser, SExpValue, ValueNil, ValueString}
-import maf.language.sexp.ValueSymbol
+import maf.language.sexp.{SExp, SExpId, SExpPair, SExpParser, SExpValue}
+import maf.language.sexp.Value
 
 /** Compiles a program of S-expressions into a program of ScExp */
 object SCExpCompiler {
@@ -25,8 +25,8 @@ object SCExpCompiler {
 
   object ListNil {
     def unapply(value: SExp): Option[(Identity)] = value match {
-      case SExpValue(ValueNil, idn) => Some((idn))
-      case _                        => None
+      case SExpValue(Value.Nil, idn) => Some((idn))
+      case _                         => None
     }
   }
 
@@ -35,7 +35,7 @@ object SCExpCompiler {
   /* Transforms a quoted expression to an expression involving cons */
   def compile_quoted(expr: SExp): ScExp = expr match {
     case IdentWithIdentity(sym, idn) =>
-      ScValue(ValueSymbol(sym), idn)
+      ScValue(Value.Symbol(sym), idn)
 
     case SExpValue(value, idn) =>
       ScValue(value, idn)
@@ -60,13 +60,13 @@ object SCExpCompiler {
 
     case SExpPair(IdentWithIdentity(name, idn), cdr, _) =>
       ScIdentifier(name, idn) :: compile_params(cdr)
-    case SExpValue(ValueNil, _) => List()
+    case SExpValue(Value.Nil, _) => List()
   }
 
   def compile_sequence(s: SExp): List[ScExp] = s match {
     case SExpPair(exp, cdr, _) =>
       compile(exp) :: compile_sequence(cdr)
-    case SExpValue(ValueNil, _) => List()
+    case SExpValue(Value.Nil, _) => List()
   }
 
   /** Transforms a conditional-expression to an equivalent if-expression */
@@ -133,7 +133,7 @@ object SCExpCompiler {
         ) =>
       ScOpaque(idn, Set(refinement))
 
-    case Ident("set!") :: IdentWithIdentity(name, idn) :: exp :: SExpValue(ValueNil, _) =>
+    case Ident("set!") :: IdentWithIdentity(name, idn) :: exp :: SExpValue(Value.Nil, _) =>
       ScSet(ScIdentifier(name, idn), compile(exp), prog.idn)
 
     case Ident("flat") :: expr :: ListNil(_) =>
@@ -203,7 +203,7 @@ object SCExpCompiler {
       val compiledAlternative = compile(alternative)
       ScIf(compiledCondition, compiledConsequent, compiledAlternative, prog.idn)
 
-    case Ident("raise") :: SExpValue(ValueString(str), _) =>
+    case Ident("raise") :: SExpValue(Value.String(str), _) =>
       ScRaise(str, prog.idn)
 
     case Ident("begin") :: expressions =>
@@ -267,7 +267,7 @@ object SCExpCompiler {
 
     // Symbols
     case Ident("quote") :: IdentWithIdentity(s, idn) :: ListNil(_) =>
-      ScValue(ValueSymbol(s), idn)
+      ScValue(Value.Symbol(s), idn)
 
     // Other quoted values
     case Ident("quote") :: expr :: ListNil(_) =>

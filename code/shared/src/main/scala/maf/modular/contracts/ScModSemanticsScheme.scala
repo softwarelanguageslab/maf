@@ -132,7 +132,6 @@ trait ScModSemanticsScheme
 
     def callcc(
         clo: (SchemeLambdaExp, Environment[Address]),
-        nam: Option[String],
         pos: Position
       ): Value =
       throw new Exception("call/cc is not supported by the contract language")

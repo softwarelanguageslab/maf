@@ -40,7 +40,7 @@ object Product2SchemeLattice {
     override def left(implicit leftLattice: Lattice[L]): L = l
     override def right(implicit rightLattice: Lattice[R]): R = r
   }
-  case class Product2Primitive[L, R, A <: Address](prim: Set[SchemePrimitive[Product2[L, R], A]]) extends Product2[L, R]
+  case class Product2Primitive[L, R](prim: Set[String]) extends Product2[L, R]
 
   object Product2 {
     def injectLeft[L, R](left: L)(implicit rightLattice: Lattice[R]): Product2[L, R] = Product2(left, rightLattice.bottom)
@@ -49,16 +49,16 @@ object Product2SchemeLattice {
   }
 
   implicit def product[L, R, A <: Address](
-      left: SchemeLattice[L, A, SchemePrimitive[L, A]],
-      right: SchemeLattice[R, A, SchemePrimitive[R, A]]
+      left: SchemeLattice[L, A],
+      right: SchemeLattice[R, A]
     ): SchemeProductLattice[L, R, A] = new SchemeProductLattice[L, R, A] {
-    implicit val leftLattice: SchemeLattice[L, A, SchemePrimitive[L, A]] = left
-    implicit val rightLattice: SchemeLattice[R, A, SchemePrimitive[R, A]] = right
+    implicit val leftLattice: SchemeLattice[L, A] = left
+    implicit val rightLattice: SchemeLattice[R, A] = right
   }
 
-  trait SchemeProductLattice[L, R, A <: Address] extends SchemeLattice[Product2[L, R], A, SchemePrimitive[Product2[L, R], A]] {
-    implicit val leftLattice: SchemeLattice[L, A, SchemePrimitive[L, A]]
-    implicit val rightLattice: SchemeLattice[R, A, SchemePrimitive[R, A]]
+  trait SchemeProductLattice[L, R, A <: Address] extends SchemeLattice[Product2[L, R], A] {
+    implicit val leftLattice: SchemeLattice[L, A]
+    implicit val rightLattice: SchemeLattice[R, A]
 
     private lazy val leftBottom: L = leftLattice.bottom
     private lazy val rightBottom: R = rightLattice.bottom
@@ -128,14 +128,14 @@ object Product2SchemeLattice {
       MayFailSuccess(join(isProcedure, Product2(left, right)))
     }
 
-    override def getClosures(x: Product2[L, R]): Set[((SchemeLambdaExp, Environment[A]), Option[String])] = x match {
+    override def getClosures(x: Product2[L, R]): Set[Closure] = x match {
       case Product2Elements(left, right) => leftLattice.getClosures(left) ++ rightLattice.getClosures(right)
       case _                             => Set()
     }
 
-    override def getPrimitives(x: Product2[L, R]): Set[SchemePrimitive[Product2[L, R], A]] = x match {
-      case p: Product2Primitive[L, R, A] => p.prim
-      case _                             => Set()
+    override def getPrimitives(x: Product2[L, R]): Set[String] = x match {
+      case p: Product2Primitive[L, R] => p.prim
+      case _                          => Set()
     }
 
     override def getContinuations(x: Product2[L, R]): Set[Any] = x match {
@@ -153,7 +153,7 @@ object Product2SchemeLattice {
       case _                             => Set()
     }
 
-    override def number(x: Int): Product2[L, R] =
+    override def number(x: BigInt): Product2[L, R] =
       Product2(leftLattice.number(x), rightLattice.number(x))
 
     override def numTop: Product2[L, R] =
@@ -174,11 +174,20 @@ object Product2SchemeLattice {
     override def charTop: Product2[L, R] =
       Product2(leftLattice.charTop, rightLattice.charTop)
 
-    override def primitive(x: SchemePrimitive[Product2[L, R], A]): Product2[L, R] =
-      Product2Primitive(Set((x)))
+    override def realTop: Product2[L, R] =
+      Product2(leftLattice.realTop, rightLattice.realTop)
 
-    override def closure(x: (SchemeLambdaExp, Environment[A]), name: Option[String]): Product2[L, R] =
-      Product2(leftLattice.closure(x, name), rightLattice.closure(x, name))
+    override def stringTop: Product2[L, R] =
+      Product2(leftLattice.stringTop, rightLattice.stringTop)
+
+    override def symbolTop: Product2[L, R] =
+      Product2(leftLattice.symbolTop, rightLattice.symbolTop)
+
+    override def primitive(x: String): Product2[L, R] =
+      Product2Primitive(Set(x))
+
+    override def closure(x: Closure): Product2[L, R] =
+      Product2(leftLattice.closure(x), rightLattice.closure(x))
 
     override def symbol(x: String): Product2[L, R] =
       Product2(leftLattice.symbol(x), rightLattice.symbol(x))
@@ -219,7 +228,7 @@ object Product2SchemeLattice {
  * abstract domain (with additional values or operations) by using for example the Product2
  * combiner.
  */
-trait EmptyDomainSchemeLattice[L, A <: Address, P <: Primitive] extends SchemeLattice[L, A, P] {
+trait EmptyDomainSchemeLattice[L, A <: Address] extends SchemeLattice[L, A] {
 
   /** A lattice that provides the basic lattice operations */
   val lattice: Lattice[L]
@@ -235,9 +244,9 @@ trait EmptyDomainSchemeLattice[L, A <: Address, P <: Primitive] extends SchemeLa
   def isFalse(x: L): Boolean = false
   def op(op: SchemeOp)(args: List[L]): MayFail[L, maf.core.Error] = MayFail.failure(OperatorNotApplicable(op.name, args))
 
-  def getClosures(x: L): Set[((SchemeLambdaExp, Environment[A]), Option[String])] = Set()
+  override def getClosures(x: L): Set[((SchemeLambdaExp, Environment[A]))] = Set()
 
-  def getPrimitives(x: L): Set[P] = Set()
+  def getPrimitives(x: L): Set[String] = Set()
 
   def getContinuations(x: L): Set[Any] = Set()
 
@@ -245,9 +254,15 @@ trait EmptyDomainSchemeLattice[L, A <: Address, P <: Primitive] extends SchemeLa
 
   def getThreads(x: L): Set[TID] = Set()
 
-  def number(x: Int): L = bottom
+  def number(x: BigInt): L = bottom
 
   def numTop: L = bottom
+
+  def realTop: L = bottom
+
+  def stringTop: L = bottom
+
+  def symbolTop: L = bottom
 
   def real(x: Double): L = bottom
 
@@ -259,9 +274,9 @@ trait EmptyDomainSchemeLattice[L, A <: Address, P <: Primitive] extends SchemeLa
 
   def charTop: L = bottom
 
-  def primitive(x: P): L = bottom
+  def primitive(x: String): L = bottom
 
-  def closure(x: (SchemeLambdaExp, Environment[A]), name: Option[String]): L = bottom
+  def closure(x: (SchemeLambdaExp, Environment[A])): L = bottom
 
   def symbol(x: String): L = bottom
 

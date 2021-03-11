@@ -1,7 +1,7 @@
 package maf.modular.contracts
 
 import maf.language.contracts.{ScExp, ScFunctionAp, ScIdentifier, ScNil, ScValue}
-import maf.language.sexp.{ValueBoolean, ValueInteger, ValueString}
+import maf.language.sexp.Value
 
 /**
  * Transforms a condition built using basic predicates from the soft contract language
@@ -133,9 +133,9 @@ class ScSMTSolverJVM(condition: ScExp, primitives: Map[String, String] = Map()) 
         }
       case ScValue(value, _) =>
         value match {
-          case ValueString(v)  => Some("(VString \"" + v + "\")")
-          case ValueInteger(v) => Some(s"(VInt $v)")
-          case ValueBoolean(v) => Some(s"(VBool $v)")
+          case Value.String(v)  => Some("(VString \"" + v + "\")")
+          case Value.Integer(v) => Some(s"(VInt $v)")
+          case Value.Boolean(v) => Some(s"(VBool $v)")
         }
       case ScFunctionAp(operator, operands, _, _) =>
         for {

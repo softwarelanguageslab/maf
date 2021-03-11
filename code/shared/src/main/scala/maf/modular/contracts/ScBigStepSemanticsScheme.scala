@@ -2,14 +2,9 @@ package maf.modular.contracts
 import maf.core.Identity
 import maf.language.contracts.ScLattice._
 import maf.language.contracts.{ScExp, _}
-import maf.language.sexp.{ValueBoolean, ValueInteger}
 import maf.util.benchmarks.Timeout
-import maf.language.sexp.ValueSymbol
-import maf.language.sexp.ValueNil
-import maf.language.sexp.ValueReal
-import maf.language.sexp.ValueCharacter
-import maf.language.sexp.ValueString
 import maf.language.scheme.lattices.Product2SchemeLattice.StoreWrapper
+import maf.language.sexp.Value
 
 trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimitives with ScSchemeSemanticsMonad {
 
@@ -38,7 +33,7 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
       primBindings.foreach { case (name, addr) =>
         val value = readPure(addr, storeCache)
         storeCache = storeCache + (addr -> ((value, ScIdentifier(name, Identity.none))))
-        storeCache += (ScPrimAddr(name) -> ((lattice.schemeLattice.primitive(primMap(name)), ScIdentifier(name, Identity.none))))
+        storeCache += (ScPrimAddr(name) -> ((lattice.schemeLattice.primitive(name), ScIdentifier(name, Identity.none))))
       }
 
       fnEnv.mapAddrs { (addr) =>
@@ -462,13 +457,13 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
       pure((lattice.opq(Opq(refinements)), ScIdentifier(ScModSemantics.genSym, Identity.none)))
 
     def evalValue(value: ScValue): ScEvalM[PostValue] = value.value match {
-      case ValueInteger(i)   => pure((lattice.schemeLattice.number(i), value))
-      case ValueBoolean(b)   => pure((lattice.schemeLattice.bool(b), value))
-      case ValueSymbol(s)    => pure((lattice.schemeLattice.symbol(s), ScNil()))
-      case ValueReal(r)      => pure((lattice.schemeLattice.real(r), value))
-      case ValueCharacter(c) => pure((lattice.schemeLattice.char(c), value))
-      case ValueNil          => result(lattice.schemeLattice.nil)
-      case ValueString(s)    => pure((lattice.schemeLattice.string(s), ScNil()))
+      case Value.Integer(i)   => pure((lattice.schemeLattice.number(i), value))
+      case Value.Boolean(b)   => pure((lattice.schemeLattice.bool(b), value))
+      case Value.Symbol(s)    => pure((lattice.schemeLattice.symbol(s), ScNil()))
+      case Value.Real(r)      => pure((lattice.schemeLattice.real(r), value))
+      case Value.Character(c) => pure((lattice.schemeLattice.char(c), value))
+      case Value.Nil          => result(lattice.schemeLattice.nil)
+      case Value.String(s)    => pure((lattice.schemeLattice.string(s), ScNil()))
     }
 
     def evalIdentifier(identifier: ScIdentifier): ScEvalM[PostValue] =
@@ -541,7 +536,7 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
       // 5. Application of an OPQ value
 
       // 1. Primitive application
-      val primitiveAp = lattice.schemeLattice.getPrimitives(operator._1).map { prim =>
+      val primitiveAp = lattice.getPrimitives(operator._1).map { prim =>
         withStoreCacheAdapter { adapter =>
           prim
             .call(syntacticOperator, syntacticOperands.zip(operands.map(_._1)), adapter, this)
@@ -763,7 +758,7 @@ trait ScBigStepSemanticsScheme extends ScModSemanticsScheme with ScSchemePrimiti
       refined(name, value)
 
     // if the operator is a primitive, then we can fetch its name from its value
-    case _ if lattice.isDefinitelyOpq(value._1) => ??? // TODO lattice.getSymbolic(operator._1).map(refined(_, value)).getOrElse(value)
+    case _ if lattice.isDefinitelyOpq(value._1) => lattice.getSymbolic(operator._1).map(refined(_, value)).getOrElse(value)
     case _                                      => value
   }
 
