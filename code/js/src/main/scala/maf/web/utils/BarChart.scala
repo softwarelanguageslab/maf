@@ -61,7 +61,7 @@ abstract class BarChart(
   private def increaseMax(max: Int) = {
     while (currentMax < max) { currentMax *= 2 }
     yScale.domain(Seq(0, currentMax))
-    yAxis.ticks(Math.min(10,currentMax))
+    yAxis.ticks(Math.min(10, currentMax))
   }
 
   // convience method to give the enclosing SVG a certain class
@@ -74,7 +74,7 @@ abstract class BarChart(
   protected def onMouseOver(node: dom.Node, data: Data) =
     d3.select(node).classed("hovered", true)
   protected def onMouseMove(node: dom.Node, data: Data) = ()
-  protected def onMouseLeave(node: dom.Node, data: Data) = 
+  protected def onMouseLeave(node: dom.Node, data: Data) =
     d3.select(node).classed("hovered", false)
 
   def loadData(data: Iterable[Data]): Unit = {
@@ -152,8 +152,9 @@ trait BarChartTooltip extends BarChart {
 
   override protected def onMouseMove(node: dom.Node, data: Data) = {
     super.onMouseMove(node, data)
-    tooltip.style("left", s"${d3.event.pageX + 20}px")
-           .style("top",  s"${d3.event.pageY}px")
+    tooltip
+      .style("left", s"${d3.event.pageX + 20}px")
+      .style("top", s"${d3.event.pageY}px")
   }
 
   override protected def onMouseLeave(node: dom.Node, data: Data) = {
@@ -180,19 +181,21 @@ trait BarChartTooltip extends BarChart {
 //
 
 trait BarChartFocus extends BarChart {
-  var focused: Boolean = false 
+  var focused: Boolean = false
   def focus(data: Data): Unit = focus(_ == data)
   def focus(included: Data => Boolean): Unit = {
-    innerNode.selectAll(".bar")
-             .classed("focused", (d: Data) => included(d))
-             .classed("unfocused", (d: Data) => !included(d))
+    innerNode
+      .selectAll(".bar")
+      .classed("focused", (d: Data) => included(d))
+      .classed("unfocused", (d: Data) => !included(d))
     focused = true
   }
   def resetFocus() =
-    if(focused) {
-      innerNode.selectAll(".bar")
-              .classed("focused", false)
-              .classed("unfocused", false)
+    if (focused) {
+      innerNode
+        .selectAll(".bar")
+        .classed("focused", false)
+        .classed("unfocused", false)
       focused = false
     }
 }

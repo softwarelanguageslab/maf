@@ -49,14 +49,14 @@ class AdaptiveSummaryVisualisation(
   // keep a stack of views currently shown
   private var viewStack: List[View] = List.empty
   private def unrollViewStackUntil(view: View) = {
-    while(viewStack.head != view) {
+    while (viewStack.head != view) {
       node.removeChild(viewStack.head.node)
       viewStack = viewStack.tail
     }
   }
   private def pushViewStack(view: View) = {
     // append the node
-    D3Helpers.d3.select(view.node).style("float","left")
+    D3Helpers.d3.select(view.node).style("float", "left")
     node.appendChild(view.node)
     // update the view stack
     viewStack = view :: viewStack
@@ -82,7 +82,7 @@ class AdaptiveSummaryVisualisation(
         // remove children views (if any)
         unrollViewStackUntil(view)
         // if clicking on the current selection, remove the selection and its children
-        if(selected.isDefined && d == selected.get) {
+        if (selected.isDefined && d == selected.get) {
           selected = None
           resetFocus()
         } else { // otherwise, just add the next view
@@ -122,9 +122,9 @@ class AdaptiveSummaryVisualisation(
       def value(d: Data): Int = d._2.cardinality
       protected def childView(d: Data): Option[View] = Some(new DependencyView(module, d._1))
       protected def tooltipText(d: Data) = analysis.view(d._1).toString
-    }   
+    }
     // give this bar chart a specific CSS class
-    BarChart.classed("component_bar_chart") 
+    BarChart.classed("component_bar_chart")
   }
 
   class DependencyView(module: analysis.SchemeModule, component: analysis.Component) extends BarChartView {
@@ -140,7 +140,7 @@ class AdaptiveSummaryVisualisation(
       }
     }
     // give this bar chart a specific CSS class
-    BarChart.classed("dependency_bar_chart")  
+    BarChart.classed("dependency_bar_chart")
   }
 
   // initialise by showing the module view
