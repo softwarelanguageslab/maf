@@ -22,6 +22,79 @@
         fill: black;
         stroke: none;
       }
+ 
+      /* SoftContract */
+      .main {
+        display: flex;
+        flex-direction: column;
+        margin: auto;
+        width: 100%;
+        max-width: 800px;
+      }
+
+      .main > * {
+         padding-left: 10px;
+      }
+      .main > div {
+         background-color: whitesmoke;
+         padding: 10px;
+         width: 100%;
+         margin: 10px;
+      }
+
+      .editor {
+         width: 100%;
+      }
+
+      .results {
+        width: 50vh;
+      }
+
+      .editor textarea {
+        width: 100%;
+        height: 100px;
+      }
+
+      .highlight.green {
+        color: green;
+      }
+
+      .highlight.red {
+        color: red;
+      }
+
+      .highlight.underline {
+        text-decoration: underline;
+      }
+
+      .highlight.bold {
+        font-weight: bold;
+      }
+
+      .highlight.blame {
+         font-weight: bold;
+         text-decoration: underline double red;
+      }
+
+      body {
+         font-family: sans-serif;
+      }
+
+      .unsafe {
+         color: red;
+         font-weight: bold;
+      }
+
+      .safe {
+         color: red;
+         font-weight: bold;
+      }
+      /* END SoftContract */
+
+      .nodes .node_deleted text {
+        fill: darkgray;
+      }
+
       .module_bar_chart .bar rect {
         fill: steelblue;
       }

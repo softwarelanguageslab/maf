@@ -20,7 +20,8 @@ object Timeout {
     }
   }
 
-  def start(timeout: Duration): T = T(System.nanoTime, if (timeout.isFinite) Some(timeout.toNanos) else None)
+  def start(timeout: Duration): T =
+    T(System.nanoTime, if (timeout.isFinite) Some(timeout.toNanos) else None)
   def none: T = T(System.nanoTime, None)
 }
 
@@ -35,6 +36,12 @@ object Timer {
     (time, ans)
   }
 
+  def logTime[A](block: => A): A = {
+    val (t, v) = time[A](block)
+    println(s"Finished in ${t / 1000000} ms")
+    v
+  }
+
   @inline
   def timeOnly[A](block: => A): Long = time(block)._1
 }
@@ -43,6 +50,6 @@ object Clock {
 
   val stdFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
 
-  def now(): Date = Calendar.getInstance().getTime
+  def now(): Date      = Calendar.getInstance().getTime
   def nowStr(): String = stdFormat.format(now())
 }

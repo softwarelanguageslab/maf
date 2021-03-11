@@ -183,7 +183,8 @@ class SExpLexer extends Lexical with SExpTokens {
   def dot: Parser[SExpToken] = chr('.') <~ guard(delimiter) ^^^ TDot()
   def real: Parser[SExpToken] =
     sign ~ rep(digit) ~ opt('.' ~ rep1(digit)) ~ opt('e' ~ integer) <~ guard(delimiter) ^? {
-      case s ~ pre ~ post ~ exp if (exp.isDefined || post.isDefined) && (pre.nonEmpty || post.isDefined) =>
+      case s ~ pre ~ post ~ exp
+          if (exp.isDefined || post.isDefined) && (pre.nonEmpty || post.isDefined) =>
         val signstr = s.map(_.toString).getOrElse("")
         val poststr = post.map({ case _ ~ digits => s".${digits.mkString}" }).getOrElse("")
         val expstr = exp
@@ -236,9 +237,10 @@ object SExpParser extends TokenParsers {
 
   def identifier(tag: PTag): Parser[SExp] = Parser { in =>
     elem("identifier", _.isInstanceOf[TIdentifier])(in) match {
-      case Success(TIdentifier(s), in1) => Success(SExpId(Identifier(s, Identity(in.pos, tag))), in1)
-      case Success(v, in1)              => Failure(s"Expected identifier, got $v", in1)
-      case ns: NoSuccess                => ns
+      case Success(TIdentifier(s), in1) =>
+        Success(SExpId(Identifier(s, Identity(in.pos, tag))), in1)
+      case Success(v, in1) => Failure(s"Expected identifier, got $v", in1)
+      case ns: NoSuccess   => ns
     }
   }
 
@@ -295,8 +297,10 @@ object SExpParser extends TokenParsers {
       throw new Exception(
         s"cannot fully parse expression, stopped at ${next.pos} after parsing $res"
       )
-    case Failure(msg, next) => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
-    case Error(msg, next)   => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
+    case Failure(msg, next) =>
+      throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
+    case Error(msg, next) =>
+      throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
   }
 
   /*

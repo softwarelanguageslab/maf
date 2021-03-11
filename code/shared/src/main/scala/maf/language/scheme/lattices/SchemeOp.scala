@@ -1,13 +1,10 @@
 package maf.language.scheme.lattices
 
-sealed trait SchemeOp {
-  val arity: Int
-  val name: String
-  def checkArity[L](args: List[L]): Unit =
-    if (args.size != arity) {
-      // This is a runtime error because a lattice operation is improperly called by the analysis developper
-      throw new Exception(s"SchemeOp ${name} expects ${arity} arguments but got ${args.size}")
-    }
+import maf.lattice.interfaces.Operation
+
+sealed trait SchemeOp extends Operation {
+  override def arityException[L](args: List[L]): String =
+    s"SchemeOp ${name} expects ${arity} arguments but got ${args.size}"
 }
 
 object SchemeOp {

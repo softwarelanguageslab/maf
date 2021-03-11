@@ -77,10 +77,15 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
                       )
                       .jvmSettings(
                         /** General */
-                        mainClass in Compile := Some("maf.cli.Main")
+                        mainClass in Compile := Some("maf.cli.Main"),
+
+                        Compile / unmanagedJars += {
+                           baseDirectory.value / "lib" / "com.microsoft.z3.jar"
+                        }
                       )
                       .jsSettings(
                         /** Dependencies */
+                        libraryDependencies += "com.lihaoyi" %%% "scalatags" % "0.9.2",
                         libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.1.0",
                       )
 
