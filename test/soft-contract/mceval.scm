@@ -13,7 +13,7 @@
   @sensitivity:FA
   (symbol? exp))
 (define/contract (tagged-list? exp tag)
-  (-> any? bool?)
+  (-> any? symbol? bool?)
   @sensitivity:FA
   (if (pair? exp)
       (eq? (car exp) tag)

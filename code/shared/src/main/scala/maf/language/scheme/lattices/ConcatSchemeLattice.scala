@@ -83,8 +83,8 @@ object Product2SchemeLattice {
         Product2Primitive(a ++ b)
 
       // anything else cannot be joined
-      case (_, _) =>
-        println("warning invalid join happening")
+      case (a, b) =>
+        println(s"warning invalid join happening between $a and $b")
         bottom
     }
 

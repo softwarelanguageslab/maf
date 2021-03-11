@@ -1,17 +1,9 @@
 package maf.web
 
 import maf.language.contracts._
-import maf.modular.contracts.{
-  ScCallInsensitivity,
-  ScConstantPropagationDomain,
-  ScSmtSolver,
-  SimpleScSemantics
-}
+import maf.modular.contracts.{ScCallInsensitivity, ScSchemeConstantPropagationDomain, ScSmtSolver, SimpleScSemantics}
 
-abstract class ScTestAnalysis(prg: ScExp)
-    extends SimpleScSemantics(prg)
-    with ScCallInsensitivity
-    with ScConstantPropagationDomain {}
+abstract class ScTestAnalysis(prg: ScExp) extends SimpleScSemantics(prg) with ScCallInsensitivity with ScSchemeConstantPropagationDomain {}
 
 class ScSMTSolverWeb extends ScSmtSolver {
   def isSat: Boolean = true
