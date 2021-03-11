@@ -44,7 +44,7 @@ class AdaptiveSummaryVisualisation(
   //
 
   val node = document.createElement("div")
-  private val widthPerView = width / 3
+  private val widthPerView = (width / 3) - 10
 
   // keep a stack of views currently shown
   private var viewStack: List[View] = List.empty

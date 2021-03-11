@@ -63,17 +63,10 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
       height: Int
     ): Node = {
     // create both a webvis and a summary vis
-    val webWidth = Math.round(width * 0.6)
-    val sumWidth = Math.round(width * 0.35)
-    val webvis = new WebVisualisationAdaptive(analysis, webWidth.toInt, height)
-    val sumvis = new AdaptiveSummaryVisualisation(analysis, sumWidth.toInt, height)
+    val webvis = new WebVisualisationAdaptive(analysis, width, height)
+    val sumvis = new AdaptiveSummaryVisualisation(analysis, width, height)
     // create the parent
-    val parent = document.createElement("div")
-    d3.select(webvis.node).style("float", "left")
-    d3.select(sumvis.node).style("float", "left")
-    parent.appendChild(webvis.node)
-    parent.appendChild(sumvis.node)
-    return parent
+    VStack(sumvis.node, webvis.node)
   }
 
   //
