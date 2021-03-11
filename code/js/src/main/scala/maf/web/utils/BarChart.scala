@@ -180,14 +180,21 @@ trait BarChartTooltip extends BarChart {
 //
 
 trait BarChartFocus extends BarChart {
-  def focus(included: Data => Boolean) = 
+  var focused: Boolean = false 
+  def focus(data: Data): Unit = focus(_ == data)
+  def focus(included: Data => Boolean): Unit = {
     innerNode.selectAll(".bar")
              .classed("focused", (d: Data) => included(d))
              .classed("unfocused", (d: Data) => !included(d))
+    focused = true
+  }
   def resetFocus() =
-    innerNode.selectAll(".bar")
-             .style("focused", false)
-             .style("unfocused", false)
+    if(focused) {
+      innerNode.selectAll(".bar")
+              .classed("focused", false)
+              .classed("unfocused", false)
+      focused = false
+    }
 }
 
 //
