@@ -49,7 +49,7 @@ class WebVisualisationAdaptive(
   // dirty flag set after visualisation needs to be refreshed due to adaptation
   var dirty = false
 
-  override def componentKey(cmp: analysis.Component) = analysis.moduleName(cmp)
+  override def componentKey(cmp: analysis.Component) = analysis.module(cmp)
   override def componentText(cmp: analysis.Component) =
     s"[$cmp] ${analysis.deref(cmp).toString()}"
 

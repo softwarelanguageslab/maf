@@ -38,10 +38,8 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
 
       override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFIntra(cmp) with DependencyTrackingIntra
 
-      def moduleName(cmp: Component) = view(cmp) match {
-        case Main => "main"
-        case Call(clo, _) => clo._1.lambdaName
-      }
+      type Module = SchemeModule
+      def moduleName(mdl: Module) = mdl.toString
 
       // setup the budget
       lazy val budget = 100

@@ -35,10 +35,13 @@ object StandardVisualisationSetup extends VisualisationSetup {
       with WebVisualisationAnalysis[SchemeExp] {
       override def intraAnalysis(cmp: SchemeModFComponent) =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-      def moduleName(cmp: Component) = cmp match {
-        case Main => "main"
-        case Call(clo, _) => clo._1.lambdaName
+      // TODO: move this to somewhere in `maf.modular` directly
+      type Module = Option[SchemeLambdaExp]
+      def module(cmp: Component) = cmp match {
+        case Main => None
+        case Call((lambda, _), _) => Some(lambda)
       }
+      def moduleName(mdl: Module) = mdl.map(_.lambdaName).getOrElse("main")
     }
   }
 }

@@ -18,7 +18,9 @@ trait WebVisualisationAnalysis[Expr <: Expression]
        with SequentialWorklistAlgorithm[Expr]
        with DependencyTracking[Expr] {
 
-  def moduleName(cmp: Component): String
+  type Module
+  def module(cmp: Component): Module
+  def moduleName(module: Module): String
 
   var webvis: WebVisualisation = _
 
