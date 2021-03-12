@@ -95,26 +95,28 @@ class AdaptiveSummaryVisualisation(
       private def setup(sel: Selection) = sel match {
         case None => ()
         case TotalSelected =>
+          domainView.foreach(pushViewStack)
           totalText.classed("selected", true)
           focus(_ => false) // hide all the bars
-        case AverageSelected => 
+        case AverageSelected =>
           averageText.classed("selected", true)
           focus(d => highlightedDataKeys.contains(key(d))) // highlight some of the bars
         case DataSelected(d) => 
-          focus(d)
           detailView(d).foreach(pushViewStack)
+          focus(d)
       }
       private def teardown() = currentSelection match {
         case None => ()
         case TotalSelected => 
+          unrollViewStackUntil(view)
           totalText.classed("selected", false)
           resetFocus()
         case AverageSelected =>
           averageText.classed("selected", false)
           resetFocus()
         case DataSelected(_) => 
-          resetFocus()
           unrollViewStackUntil(view)
+          resetFocus()
       }
       private def setSelection(sel: Selection) = {
         teardown() // teardown the current focus
@@ -137,7 +139,7 @@ class AdaptiveSummaryVisualisation(
       override protected def onAverageClick(node: dom.Node) = toggle(AverageSelected)
       // clicking on total -> open new view for domain
       // should be implemented to offer a detail view for the domain
-      protected def domainView: Option[View] = scala.None
+      protected def domainView: Option[View]
       override protected def onTotalClick(node: dom.Node) = toggle(TotalSelected)
       // set the correct CSS class for the barchart
       this.classed(className)
@@ -156,8 +158,9 @@ class AdaptiveSummaryVisualisation(
       type Data = (analysis.SchemeModule, analysis.ModuleSummary)
       def key(d: Data): String = d._1.toString
       def value(d: Data): Int = d._2.cost
-      protected def detailView(d: Data): Option[View] = Some(new ComponentView(d._1))
-      override protected def highlightedDataKeys = analysis.modulesToAdapt.map(_.toString).toSet
+      protected def detailView(d: Data) = Some(new ComponentView(d._1))
+      protected def highlightedDataKeys = analysis.modulesToAdapt.map(_.toString).toSet
+      protected def domainView = None
     }
   }
 
@@ -169,8 +172,9 @@ class AdaptiveSummaryVisualisation(
       def key(d: Data): String = d._1.toString
       def value(d: Data): Int = d._2.cardinality
       protected def tooltipText(d: Data) = analysis.view(d._1).toString
-      protected def detailView(d: Data): Option[View] = Some(new DependencyView(module, d._1))
-      override protected def highlightedDataKeys = analysis.pickComponents(ms).map(_._1.toString).toSet
+      protected def detailView(d: Data) = Some(new DependencyView(module, d._1))
+      protected def highlightedDataKeys = analysis.pickComponents(ms).map(_._1.toString).toSet
+      protected def domainView = None
     }
   }
 
@@ -192,7 +196,8 @@ class AdaptiveSummaryVisualisation(
       def value(d: Data): Int = d._2
       protected def tooltipText(d: Data) = analysis.store(toAddr(d._1)).toString
       protected def detailView(d: Data) = None
-      override protected def highlightedDataKeys = analysis.pickDependencies(ms).map(key).toSet
+      protected def highlightedDataKeys = analysis.pickDependencies(ms).map(key).toSet
+      protected def domainView = None
     }
   }
 
