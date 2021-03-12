@@ -230,7 +230,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   }
   private def getAddrModule(addr: Addr): SchemeModule =
     module(getAddrCmp(addr))
-  private def getParentModule(clo: lat.Closure): SchemeModule =
+  def getParentModule(clo: lat.Closure): SchemeModule =
     module(clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
   private def sizeOfValue(value: Value): Int =
     value.vs.map(sizeOfV).sum

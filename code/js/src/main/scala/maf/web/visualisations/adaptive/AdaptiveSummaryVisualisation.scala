@@ -16,6 +16,7 @@ import maf.web.utils.D3Helpers._
 import org.scalajs._
 import org.scalajs.dom._
 import maf.modular.AddrDependency
+import maf.modular.scheme.modf.SchemeModFComponent.Call
 
 //
 // REQUIRED ANALYSIS EXTENSION
@@ -85,13 +86,13 @@ class AdaptiveSummaryVisualisation(
     abstract class NavigationBarChart(className: String) extends BarChart(widthPerView, height, padding = 50) with BarChartFocus with BarChartStats {
       // TODO: factor our "selection logic" in separate trait
       // things that can be selected in the bar chart
-      private sealed trait Selection
+      sealed private trait Selection
       private case object None extends Selection
       private case object TotalSelected extends Selection
       private case object AverageSelected extends Selection
       private case class DataSelected(d: Data) extends Selection
       // keep track of the current selection
-      private var currentSelection: Selection = None 
+      private var currentSelection: Selection = None
       private def setup(sel: Selection) = sel match {
         case None => ()
         case TotalSelected =>
@@ -101,20 +102,20 @@ class AdaptiveSummaryVisualisation(
         case AverageSelected =>
           averageText.classed("selected", true)
           focus(d => highlightedDataKeys.contains(key(d))) // highlight some of the bars
-        case DataSelected(d) => 
+        case DataSelected(d) =>
           detailView(d).foreach(pushViewStack)
           focus(d)
       }
       private def teardown() = currentSelection match {
         case None => ()
-        case TotalSelected => 
+        case TotalSelected =>
           unrollViewStackUntil(view)
           totalText.classed("selected", false)
           resetFocus()
         case AverageSelected =>
           averageText.classed("selected", false)
           resetFocus()
-        case DataSelected(_) => 
+        case DataSelected(_) =>
           unrollViewStackUntil(view)
           resetFocus()
       }
@@ -124,7 +125,7 @@ class AdaptiveSummaryVisualisation(
         currentSelection = sel
       }
       private def toggle(sel: Selection) =
-        if(currentSelection == sel) {
+        if (currentSelection == sel) {
           setSelection(None)
         } else {
           setSelection(sel)
@@ -156,8 +157,8 @@ class AdaptiveSummaryVisualisation(
     def data = analysis.summary.content
     object BarChart extends NavigationBarChart("module_bar_chart") {
       type Data = (analysis.SchemeModule, analysis.ModuleSummary)
-      def key(d: Data): String = d._1.toString
-      def value(d: Data): Int = d._2.cost
+      def key(d: Data) = d._1.toString
+      def value(d: Data) = d._2.cost
       protected def detailView(d: Data) = Some(new ComponentView(d._1))
       protected def highlightedDataKeys = analysis.modulesToAdapt.map(_.toString).toSet
       protected def domainView = None
@@ -169,13 +170,34 @@ class AdaptiveSummaryVisualisation(
     def data = ms.content
     object BarChart extends NavigationBarChart("component_bar_chart") with BarChartTooltip {
       type Data = (analysis.Component, MultiSet[Dependency])
-      def key(d: Data): String = d._1.toString
-      def value(d: Data): Int = d._2.cardinality
+      def key(d: Data) = d._1.toString
+      def value(d: Data) = d._2.cardinality
       protected def tooltipText(d: Data) = analysis.view(d._1).toString
       protected def detailView(d: Data) = Some(new DependencyView(module, d._1))
-      protected def highlightedDataKeys = analysis.pickComponents(ms).map(_._1.toString).toSet
-      protected def domainView = None
+      protected def highlightedDataKeys = analysis.pickComponents(ms).map(key).toSet
+      protected def domainView = makeClosureView(module)
     }
+  }
+
+  class ClosureView(module: analysis.LambdaModule) extends BarChartView {
+    private def cmps = analysis.summary(module).components.toSet
+    def data = cmps.groupBy(cmp => analysis.view(cmp).asInstanceOf[Call[_]].clo)
+    object BarChart extends NavigationBarChart("closure_bar_chart") with BarChartTooltip {
+      type Data = (analysis.lattice.Closure, Set[analysis.Component])
+      def key(d: Data) = {
+        val (lambda, env) = d._1 
+        s"${lambda.lambdaName} [${env.asInstanceOf[WrappedEnv[_,_]].data}]"
+      }
+      def value(d: Data) = d._2.size
+      protected def tooltipText(d: Data) = d._2.map(analysis.view(_).toString).mkString("<br>")
+      protected def detailView(d: Data) = None
+      protected def highlightedDataKeys = data.map(key).toSet // adapt contexts for the entire module (=> all closures)
+      protected def domainView = makeClosureView(analysis.getParentModule(data.head._1))
+    }
+  }
+  private def makeClosureView(module: analysis.SchemeModule): Option[ClosureView] = module match {
+    case lam: analysis.LambdaModule => Some(new ClosureView(lam))
+    case _ => None 
   }
 
   class DependencyView(module: analysis.SchemeModule, component: analysis.Component) extends BarChartView {
@@ -187,13 +209,13 @@ class AdaptiveSummaryVisualisation(
         case AddrDependency(addr) => addr
         case _                    => throw new Exception(s"Unknown dependency $dep")
       }
-      def key(d: Data): String = toAddr(d._1) match {
-        case PrmAddr(name) => s"PrmAddr($name)"
-        case VarAddr(id, ctx) => s"VarAddr(${id.name}@${id.idn.pos}) [$ctx]"
-        case PtrAddr(exp, ctx) => s"PtrAddr($exp@${exp.idn.pos}) [$ctx]"
+      def key(d: Data) = toAddr(d._1) match {
+        case PrmAddr(name)      => s"PrmAddr($name)"
+        case VarAddr(id, ctx)   => s"VarAddr(${id.name}@${id.idn.pos}) [$ctx]"
+        case PtrAddr(exp, ctx)  => s"PtrAddr($exp@${exp.idn.pos}) [$ctx]"
         case ReturnAddr(cmp, _) => s"RetAddr($cmp)"
       }
-      def value(d: Data): Int = d._2
+      def value(d: Data) = d._2
       protected def tooltipText(d: Data) = analysis.store(toAddr(d._1)).toString
       protected def detailView(d: Data) = None
       protected def highlightedDataKeys = analysis.pickDependencies(ms).map(key).toSet
