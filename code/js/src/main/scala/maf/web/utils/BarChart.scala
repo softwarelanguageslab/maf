@@ -10,9 +10,9 @@ import maf.web.utils.D3Helpers._
 import maf.web.utils.JSHelpers._
 
 abstract class BarChart(
-    width: Int,
-    height: Int,
-    padding: Int = 100,
+    val width: Int,
+    val height: Int,
+    val padding: Int = 100,
     barWidth: Int = 50) {
 
   // visualises of a certain kind of data ...
@@ -84,7 +84,8 @@ abstract class BarChart(
     val realWidth = n * barWidth
 
     // rescale the svg
-    svgNode.style("width", s"${realWidth + 2 * padding}px")
+    val svgWidth = Math.max(realWidth + 2 * padding, width - 2 * padding)
+    svgNode.style("width", s"${svgWidth}px")
 
     // setup the x-axis
     xScale
@@ -199,6 +200,58 @@ trait BarChartFocus extends BarChart {
         .classed("unfocused", false)
       focused = false
     }
+}
+
+//
+// trait for adding simple stats (total, average) to the top of the bar chart
+//
+
+trait BarChartStats extends BarChart {
+  // can be overriden for custom behaviour when clicking on / hovering over the labels
+  protected def onTotalClick(node: dom.Node) = ()
+  protected def onTotalMouseOver(node: dom.Node) = d3.select(node).classed("hovered", true)
+  protected def onTotalMouseMove(node: dom.Node) = ()
+  protected def onTotalMouseLeave(node: dom.Node) = d3.select(node).classed("hovered", false)
+  protected def onAverageClick(node: dom.Node) = ()
+  protected def onAverageMouseOver(node: dom.Node) = d3.select(node).classed("hovered", true)
+  protected def onAverageMouseMove(node: dom.Node) = ()
+  protected def onAverageMouseLeave(node: dom.Node) = d3.select(node).classed("hovered", false)
+  // add some information on top
+  private val totalText =
+    innerNode
+      .append("text")
+      .attr("class", "info")
+      .attr("x", 20)
+      .attr("y", -20)
+      .on("click",     { (jsthis: dom.Node) => onTotalClick(jsthis) }: js.ThisFunction)
+      .on("mouseover", { (jsthis: dom.Node) => onTotalMouseOver(jsthis) }: js.ThisFunction)
+      .on("mousemove", { (jsthis: dom.Node) => onTotalMouseMove(jsthis) }: js.ThisFunction)
+      .on("mouseleave",{ (jsthis: dom.Node) => onTotalMouseLeave(jsthis) }: js.ThisFunction)
+  private val averageText =
+    innerNode
+      .append("text")
+      .attr("class", "info")
+      .attr("x", (width - 2 * padding) / 2)
+      .attr("y", -20)
+      .on("click", { (jsthis: dom.Node) => onAverageClick(jsthis) }: js.ThisFunction)
+      .on("mouseover", { (jsthis: dom.Node) => onAverageMouseOver(jsthis) }: js.ThisFunction)
+      .on("mousemove", { (jsthis: dom.Node) => onAverageMouseMove(jsthis) }: js.ThisFunction)
+      .on("mouseleave",{ (jsthis: dom.Node) => onAverageMouseLeave(jsthis) }: js.ThisFunction)  
+  // update the labels when loading in new data
+  override def loadData(data: Iterable[Data]) = {
+    // load the data as usual
+    super.loadData(data)
+    // set the length text
+    val length = data.size
+    totalText.text(s"total: $length")
+    // set the average text
+    if (length == 0) {
+      averageText.text("average: N/A")
+    } else {
+      val average = data.map(value).sum / length
+      averageText.text(s"average: $average")
+    }
+  }
 }
 
 //
