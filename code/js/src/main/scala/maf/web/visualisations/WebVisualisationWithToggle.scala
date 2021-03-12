@@ -9,12 +9,14 @@ trait WebVisualisationWithToggle extends WebVisualisation {
   // can be enabled and/or disabled ...
   private var enabled = true
   // ... using a button
-  private lazy val toggleButton = Button("Toggle visualisation") {
+  private lazy val toggleButton: dom.html.Button = Button("Hide graph visualisation") {
     if (enabled) {
       enabled = false
+      toggleButton.innerHTML = "Show graph visualisation"
       svgDiv.removeChild(svgNode)
     } else {
       enabled = true
+      toggleButton.innerHTML = "Hide graph visualisation"
       svgDiv.appendChild(svgNode)
       refresh() // do a full refresh
     }
