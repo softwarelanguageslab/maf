@@ -183,6 +183,7 @@ trait BarChartTooltip extends BarChart {
 //
 
 trait BarChartFocus extends BarChart {
+
   var focused: Boolean = false
   def focus(data: Data): Unit = focus(_ == data)
   def focus(included: Data => Boolean): Unit = {
@@ -217,7 +218,7 @@ trait BarChartStats extends BarChart {
   protected def onAverageMouseMove(node: dom.Node) = ()
   protected def onAverageMouseLeave(node: dom.Node) = d3.select(node).classed("hovered", false)
   // add some information on top
-  private val totalText =
+  protected val totalText =
     innerNode
       .append("text")
       .attr("class", "info")
@@ -227,7 +228,7 @@ trait BarChartStats extends BarChart {
       .on("mouseover", { (jsthis: dom.Node) => onTotalMouseOver(jsthis) }: js.ThisFunction)
       .on("mousemove", { (jsthis: dom.Node) => onTotalMouseMove(jsthis) }: js.ThisFunction)
       .on("mouseleave",{ (jsthis: dom.Node) => onTotalMouseLeave(jsthis) }: js.ThisFunction)
-  private val averageText =
+  protected val averageText =
     innerNode
       .append("text")
       .attr("class", "info")

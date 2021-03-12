@@ -13,7 +13,7 @@ object Div {
 
   def apply(arrangement: Arrangement)(children: dom.Node*): html.Div = {
     val div = document.createElement("div").asInstanceOf[html.Div]
-    d3.select(div).style("overflow", "auto")
+    d3.select(div).style("overflow", "hidden")
     children.foreach { child =>
       arrangement match {
         case Horizontal => d3.select(child).style("float", "left")

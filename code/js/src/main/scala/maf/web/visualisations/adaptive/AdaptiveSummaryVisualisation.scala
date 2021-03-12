@@ -7,6 +7,7 @@ import maf.util.datastructures.MultiSet
 import maf.util.benchmarks.Timeout
 
 import maf.web.utils._
+import maf.web.utils.D3Helpers._
 
 // Scala.js imports
 import org.scalajs._
@@ -44,9 +45,10 @@ class AdaptiveSummaryVisualisation(
   //
 
   val node = document.createElement("div")
-  D3Helpers.d3.select(node).style("overflow-x", "scroll")
-                           .style("width", s"${width}px")
-                           .style("height", s"${height}px")
+  d3.select(node)
+    .style("overflow-x", "scroll")
+    .style("width", s"${width}px")
+    .style("height", s"${height}px")
   private val widthPerView = width / 3
 
   // keep a stack of views currently shown
@@ -59,7 +61,7 @@ class AdaptiveSummaryVisualisation(
   }
   private def pushViewStack(view: View) = {
     // append the node
-    D3Helpers.d3.select(view.node).style("float", "left")
+    d3.select(view.node).style("float", "left")
     node.appendChild(view.node)
     // update the view stack
     viewStack = view :: viewStack
@@ -76,26 +78,63 @@ class AdaptiveSummaryVisualisation(
 
   sealed trait BarChartView extends View { view =>
     // a bar chart that can create a new view when a bar is clicked
-    abstract class NavigationBarChart extends BarChart(widthPerView, height) with BarChartFocus {
-      // should be implemented: what next view to produce for given data
-      protected def childView(d: Data): Option[View]
-      // automatically provide navigation logic when clicking on a bar
-      private var selected: Option[Data] = None
-      override protected def onClick(d: Data): Unit = {
-        // remove children views (if any)
-        unrollViewStackUntil(view)
-        // if clicking on the current selection, remove the selection and its children
-        if (selected.isDefined && d == selected.get) {
-          selected = None
-          resetFocus()
-        } else { // otherwise, just add the next view
-          selected = Some(d)
-          focus(_ == d)
-          childView(d).foreach { child =>
-            pushViewStack(child)
-          }
-        }
+    abstract class NavigationBarChart extends BarChart(widthPerView, height, padding = 50) with BarChartFocus with BarChartStats {
+      // TODO: factor our "selection logic" in separate trait
+      // things that can be selected in the bar chart
+      private sealed trait Selection
+      private case object None extends Selection
+      private case object TotalSelected extends Selection
+      private case object AverageSelected extends Selection
+      private case class DataSelected(d: Data) extends Selection
+      // keep track of the current selection
+      private var currentSelection: Selection = None 
+      private def setup(sel: Selection) = sel match {
+        case None => ()
+        case TotalSelected =>
+          totalText.classed("selected", true)
+          focus(_ => false) // hide all the bars
+        case AverageSelected => 
+          averageText.classed("selected", true)
+          focus(_ => false) // hide all the bars
+        case DataSelected(d) => 
+          focus(d)
+          detailView(d).foreach(pushViewStack)
       }
+      private def teardown() = currentSelection match {
+        case None => ()
+        case TotalSelected => 
+          totalText.classed("selected", false)
+          resetFocus()
+        case AverageSelected =>
+          averageText.classed("selected", false)
+          resetFocus()
+        case DataSelected(_) => 
+          resetFocus()
+          unrollViewStackUntil(view)
+      }
+      private def setSelection(sel: Selection) = {
+        teardown() // teardown the current focus
+        setup(sel) // setup the new focus
+        currentSelection = sel
+      }
+      private def toggle(sel: Selection) =
+        if(currentSelection == sel) {
+          setSelection(None)
+        } else {
+          setSelection(sel)
+        }
+      // automatically provide navigation logic when clicking on a bar
+      // should be implemented: what next view to produce for given data
+      protected def detailView(d: Data): Option[View]
+      override protected def onClick(d: Data): Unit = toggle(DataSelected(d))
+      // clicking on average -> highlight bars (usually those with high values)
+      // should be implemented to indicate which bars need to be highlighed
+      protected def highlightedDataKeys: Set[String] = Set.empty
+      override protected def onAverageClick(node: dom.Node) = toggle(AverageSelected)
+      // clicking on total -> open new view for domain
+      // should be implemented to offer a detail view for the domain
+      protected def domainView: Option[View] = scala.None
+      override protected def onTotalClick(node: dom.Node) = toggle(TotalSelected)
     }
     // expects a bar chart + method to fetch the latest data
     val BarChart: NavigationBarChart
@@ -111,7 +150,8 @@ class AdaptiveSummaryVisualisation(
       type Data = (analysis.SchemeModule, analysis.ModuleSummary)
       def key(d: Data): String = d._1.toString
       def value(d: Data): Int = d._2.cost
-      protected def childView(d: Data): Option[View] = Some(new ComponentView(d._1))
+      override protected def highlightedDataKeys = analysis.modulesToAdapt.map(_.toString).toSet
+      protected def detailView(d: Data): Option[View] = Some(new ComponentView(d._1))
     }
     // give this bar chart a specific CSS class
     BarChart.classed("module_bar_chart")
@@ -123,7 +163,7 @@ class AdaptiveSummaryVisualisation(
       type Data = (analysis.Component, MultiSet[Dependency])
       def key(d: Data): String = d._1.toString
       def value(d: Data): Int = d._2.cardinality
-      protected def childView(d: Data): Option[View] = Some(new DependencyView(module, d._1))
+      protected def detailView(d: Data): Option[View] = Some(new DependencyView(module, d._1))
       protected def tooltipText(d: Data) = analysis.view(d._1).toString
     }
     // give this bar chart a specific CSS class
@@ -134,9 +174,12 @@ class AdaptiveSummaryVisualisation(
     def data = analysis.summary(module)(component).content
     object BarChart extends NavigationBarChart with BarChartTooltip {
       type Data = (Dependency, Int)
-      def key(d: Data): String = d._1.toString
+      def key(d: Data): String = d._1 match {
+        case AddrDependency(addr) => s"$addr"
+        case _                    => throw new Exception(s"Unknown dependency $d")
+      }
       def value(d: Data): Int = d._2
-      protected def childView(d: Data) = None
+      protected def detailView(d: Data) = None
       protected def tooltipText(d: Data) = d._1 match {
         case AddrDependency(addr) => analysis.store(addr).toString
         case d                    => throw new Exception(s"Unknown dependency $d")
