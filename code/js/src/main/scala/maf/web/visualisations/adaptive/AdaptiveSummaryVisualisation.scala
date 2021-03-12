@@ -51,6 +51,7 @@ class AdaptiveSummaryVisualisation(
     .style("height", s"${height}px")
   private val widthPerView = width / 3
 
+  // TODO: this logic can be factored out in a trait for greater reuseability
   // keep a stack of views currently shown
   private var viewStack: List[View] = List.empty
   private def unrollViewStackUntil(view: View) = {
@@ -78,7 +79,7 @@ class AdaptiveSummaryVisualisation(
 
   sealed trait BarChartView extends View { view =>
     // a bar chart that can create a new view when a bar is clicked
-    abstract class NavigationBarChart extends BarChart(widthPerView, height, padding = 50) with BarChartFocus with BarChartStats {
+    abstract class NavigationBarChart(className: String) extends BarChart(widthPerView, height, padding = 50) with BarChartFocus with BarChartStats {
       // TODO: factor our "selection logic" in separate trait
       // things that can be selected in the bar chart
       private sealed trait Selection
@@ -95,7 +96,7 @@ class AdaptiveSummaryVisualisation(
           focus(_ => false) // hide all the bars
         case AverageSelected => 
           averageText.classed("selected", true)
-          focus(_ => false) // hide all the bars
+          focus(d => highlightedDataKeys.contains(key(d))) // highlight some of the bars
         case DataSelected(d) => 
           focus(d)
           detailView(d).foreach(pushViewStack)
@@ -129,12 +130,14 @@ class AdaptiveSummaryVisualisation(
       override protected def onClick(d: Data): Unit = toggle(DataSelected(d))
       // clicking on average -> highlight bars (usually those with high values)
       // should be implemented to indicate which bars need to be highlighed
-      protected def highlightedDataKeys: Set[String] = Set.empty
+      protected def highlightedDataKeys: Set[String]
       override protected def onAverageClick(node: dom.Node) = toggle(AverageSelected)
       // clicking on total -> open new view for domain
       // should be implemented to offer a detail view for the domain
       protected def domainView: Option[View] = scala.None
       override protected def onTotalClick(node: dom.Node) = toggle(TotalSelected)
+      // set the correct CSS class for the barchart
+      this.classed(className)
     }
     // expects a bar chart + method to fetch the latest data
     val BarChart: NavigationBarChart
@@ -146,47 +149,45 @@ class AdaptiveSummaryVisualisation(
 
   object ModuleView extends BarChartView {
     def data = analysis.summary.content
-    object BarChart extends NavigationBarChart {
+    object BarChart extends NavigationBarChart("module_bar_chart") {
       type Data = (analysis.SchemeModule, analysis.ModuleSummary)
       def key(d: Data): String = d._1.toString
       def value(d: Data): Int = d._2.cost
-      override protected def highlightedDataKeys = analysis.modulesToAdapt.map(_.toString).toSet
       protected def detailView(d: Data): Option[View] = Some(new ComponentView(d._1))
+      override protected def highlightedDataKeys = analysis.modulesToAdapt.map(_.toString).toSet
     }
-    // give this bar chart a specific CSS class
-    BarChart.classed("module_bar_chart")
   }
 
   class ComponentView(module: analysis.SchemeModule) extends BarChartView {
-    def data = analysis.summary(module).content
-    object BarChart extends NavigationBarChart with BarChartTooltip {
+    private def ms = analysis.summary(module)
+    def data = ms.content
+    object BarChart extends NavigationBarChart("component_bar_chart") with BarChartTooltip {
       type Data = (analysis.Component, MultiSet[Dependency])
       def key(d: Data): String = d._1.toString
       def value(d: Data): Int = d._2.cardinality
-      protected def detailView(d: Data): Option[View] = Some(new DependencyView(module, d._1))
       protected def tooltipText(d: Data) = analysis.view(d._1).toString
+      protected def detailView(d: Data): Option[View] = Some(new DependencyView(module, d._1))
+      override protected def highlightedDataKeys = analysis.pickComponents(ms).map(_._1.toString).toSet
     }
-    // give this bar chart a specific CSS class
-    BarChart.classed("component_bar_chart")
   }
 
   class DependencyView(module: analysis.SchemeModule, component: analysis.Component) extends BarChartView {
-    def data = analysis.summary(module)(component).content
-    object BarChart extends NavigationBarChart with BarChartTooltip {
+    private def ms = analysis.summary(module)(component)
+    def data = ms.content
+    object BarChart extends NavigationBarChart("dependency_bar_chart") with BarChartTooltip {
       type Data = (Dependency, Int)
       def key(d: Data): String = d._1 match {
         case AddrDependency(addr) => s"$addr"
         case _                    => throw new Exception(s"Unknown dependency $d")
       }
       def value(d: Data): Int = d._2
-      protected def detailView(d: Data) = None
       protected def tooltipText(d: Data) = d._1 match {
         case AddrDependency(addr) => analysis.store(addr).toString
         case d                    => throw new Exception(s"Unknown dependency $d")
       }
+      protected def detailView(d: Data) = None
+      override protected def highlightedDataKeys = analysis.pickDependencies(ms).map(_._1.toString).toSet
     }
-    // give this bar chart a specific CSS class
-    BarChart.classed("dependency_bar_chart")
   }
 
   // initialise by showing the module view

@@ -85,13 +85,13 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     } else {
       // (b) too many reanalyses => reduce number of dependencies triggered for the components
       // CURRENT: per component
-      val target = ms.totalDepCount / 2
-      val chosen = takeLargest(ms.content, (p: (Component, MultiSet[Dependency])) => p._2.cardinality, target)
-      chosen.foreach({ case (_, dps) => reduceReanalyses(dps) })
+      pickComponents(ms).foreach({ case (_, dps) => reduceReanalyses(dps) })
       // ALTERNATIVE CODE: aggregated for all components of that module
       //reduceReanalyses(ms.depCounts)
     }
   }
+  def pickComponents(ms: ModuleSummary): List[(Component, MultiSet[Dependency])] = 
+    takeLargest(ms.content, (p: (Component, MultiSet[Dependency])) => p._2.cardinality, ms.totalDepCount / 2)
 
   // look at all the components that were triggered too often
   private def reduceReanalyses(deps: MultiSet[Dependency]) = {
@@ -106,11 +106,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       reduceAddresses(addrs)
     } else {
       // (b) too many triggers => coarsen value abstraction to avoid triggering components
-      val target = deps.cardinality / 2
-      val chosen = takeLargest(deps.content, (p: (Dependency, Int)) => p._2, target)
-      chosen.foreach { case (dep, _) => reduceDep(dep) }
+      pickDependencies(deps).foreach { case (dep, _) => reduceDep(dep) }
     }
   }
+  def pickDependencies(deps: MultiSet[Dependency]) =
+    takeLargest(deps.content, (p: (Dependency, Int)) => p._2, deps.cardinality / 2)
 
   private def reduceDep(dep: Dependency) =
     if (!reducedDeps(dep)) {
@@ -196,21 +196,19 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
 
   /*
    * HELPERS
+   * (TODO: factor our some of these ...)
    */
   private def takeLargest[X](
       elms: Iterable[X],
       size: X => Int,
       target: Int
     ): List[X] = {
-    val pq = scala.collection.mutable.PriorityQueue.from(elms)(Ordering.by(size))
-    def rec(todo: Int): List[X] =
-      if (todo > 0 && pq.nonEmpty) {
-        val next = pq.dequeue()
-        next :: rec(todo - size(next))
-      } else {
-        Nil
-      }
-    rec(target)
+    def rec(current: List[X], todo: Int): List[X] = current match {
+      case head :: rest if todo > 0 => 
+        head :: rec(rest, todo - size(head))
+      case _ => Nil
+    }
+    rec(elms.toList.sortBy(size)(Ordering[Int].reverse), target)
   }
   private def getAddrCmp(addr: Addr): Component = addr match {
     case returnAddr: ReturnAddr[Component] @unchecked => returnAddr.cmp
