@@ -1,7 +1,10 @@
 package maf.web.visualisations.adaptive
 
 // MAF imports
-import maf.modular.Dependency
+
+import maf.core._
+import maf.modular._
+import maf.modular.scheme._
 import maf.modular.adaptive.scheme._
 import maf.util.datastructures.MultiSet
 import maf.util.benchmarks.Timeout
@@ -176,17 +179,20 @@ class AdaptiveSummaryVisualisation(
     def data = ms.content
     object BarChart extends NavigationBarChart("dependency_bar_chart") with BarChartTooltip {
       type Data = (Dependency, Int)
-      def key(d: Data): String = d._1 match {
-        case AddrDependency(addr) => s"$addr"
-        case _                    => throw new Exception(s"Unknown dependency $d")
+      private def toAddr(dep: Dependency): Address = dep match {
+        case AddrDependency(addr) => addr
+        case _                    => throw new Exception(s"Unknown dependency $dep")
+      }
+      def key(d: Data): String = toAddr(d._1) match {
+        case PrmAddr(name) => s"PrmAddr($name)"
+        case VarAddr(id, ctx) => s"VarAddr(${id.name}@${id.idn.pos}) [$ctx]"
+        case PtrAddr(exp, ctx) => s"PtrAddr($exp@${exp.idn.pos}) [$ctx]"
+        case ReturnAddr(cmp, _) => s"RetAddr($cmp)"
       }
       def value(d: Data): Int = d._2
-      protected def tooltipText(d: Data) = d._1 match {
-        case AddrDependency(addr) => analysis.store(addr).toString
-        case d                    => throw new Exception(s"Unknown dependency $d")
-      }
+      protected def tooltipText(d: Data) = analysis.store(toAddr(d._1)).toString
       protected def detailView(d: Data) = None
-      override protected def highlightedDataKeys = analysis.pickDependencies(ms).map(_._1.toString).toSet
+      override protected def highlightedDataKeys = analysis.pickDependencies(ms).map(key).toSet
     }
   }
 

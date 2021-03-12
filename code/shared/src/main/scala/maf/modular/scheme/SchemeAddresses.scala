@@ -11,15 +11,15 @@ trait SchemeAddr[+Context] extends Address
 case class VarAddr[Context](id: Identifier, ctx: Context) extends SchemeAddr[Context] {
   def printable = true
   def idn: Identity = id.idn
-  override def toString: String = s"var ($id [${id.idn.pos}])"
+  override def toString: String = s"VarAddr($id)"
 }
 case class PtrAddr[Context](exp: SchemeExp, ctx: Context) extends SchemeAddr[Context] {
   def printable = false
   def idn: Identity = exp.idn
-  override def toString: String = s"ptr (${exp.idn})"
+  override def toString: String = s"PtrAddr($exp)"
 }
 case class PrmAddr(nam: String) extends SchemeAddr[Nothing] {
   def printable = false
   def idn: Identity = Identity.none
-  override def toString: String = s"prm ($nam)"
+  override def toString: String = s"PrmAddr($nam)"
 }
