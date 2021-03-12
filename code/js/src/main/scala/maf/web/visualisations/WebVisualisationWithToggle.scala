@@ -24,15 +24,15 @@ trait WebVisualisationWithToggle extends WebVisualisation {
 
   // when disabled, updates do not happen before/after stepping
   override def beforeStep() = {
-    if(enabled) {
-        super.beforeStep()
+    if (enabled) {
+      super.beforeStep()
     }
   }
-  
+
   override def afterStep() = {
-      if(enabled) {
-          super.afterStep()
-      }
+    if (enabled) {
+      super.afterStep()
+    }
   }
 
   // add the toggle button before the webvisualisation

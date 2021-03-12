@@ -224,10 +224,10 @@ trait BarChartStats extends BarChart {
       .attr("class", "info")
       .attr("x", 20)
       .attr("y", -20)
-      .on("click",     { (jsthis: dom.Node) => onTotalClick(jsthis) }: js.ThisFunction)
+      .on("click", { (jsthis: dom.Node) => onTotalClick(jsthis) }: js.ThisFunction)
       .on("mouseover", { (jsthis: dom.Node) => onTotalMouseOver(jsthis) }: js.ThisFunction)
       .on("mousemove", { (jsthis: dom.Node) => onTotalMouseMove(jsthis) }: js.ThisFunction)
-      .on("mouseleave",{ (jsthis: dom.Node) => onTotalMouseLeave(jsthis) }: js.ThisFunction)
+      .on("mouseleave", { (jsthis: dom.Node) => onTotalMouseLeave(jsthis) }: js.ThisFunction)
   protected val averageText =
     innerNode
       .append("text")
@@ -237,7 +237,7 @@ trait BarChartStats extends BarChart {
       .on("click", { (jsthis: dom.Node) => onAverageClick(jsthis) }: js.ThisFunction)
       .on("mouseover", { (jsthis: dom.Node) => onAverageMouseOver(jsthis) }: js.ThisFunction)
       .on("mousemove", { (jsthis: dom.Node) => onAverageMouseMove(jsthis) }: js.ThisFunction)
-      .on("mouseleave",{ (jsthis: dom.Node) => onAverageMouseLeave(jsthis) }: js.ThisFunction)  
+      .on("mouseleave", { (jsthis: dom.Node) => onAverageMouseLeave(jsthis) }: js.ThisFunction)
   // update the labels when loading in new data
   override def loadData(data: Iterable[Data]) = {
     // load the data as usual

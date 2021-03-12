@@ -90,7 +90,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       //reduceReanalyses(ms.depCounts)
     }
   }
-  def pickComponents(ms: ModuleSummary): List[(Component, MultiSet[Dependency])] = 
+  def pickComponents(ms: ModuleSummary): List[(Component, MultiSet[Dependency])] =
     takeLargest(ms.content, (p: (Component, MultiSet[Dependency])) => p._2.cardinality, ms.totalDepCount / 2)
 
   // look at all the components that were triggered too often
@@ -204,7 +204,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       target: Int
     ): List[X] = {
     def rec(current: List[X], todo: Int): List[X] = current match {
-      case head :: rest if todo > 0 => 
+      case head :: rest if todo > 0 =>
         head :: rec(rest, todo - size(head))
       case _ => Nil
     }

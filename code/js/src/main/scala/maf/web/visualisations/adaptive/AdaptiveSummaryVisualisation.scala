@@ -36,7 +36,7 @@ trait WebSummaryAdaptiveAnalysis extends AdaptiveContextSensitivity {
     webSummary.refresh()
   }
 
-  override def updateAnalysisData(update: Map[Component,Component]): Unit = {
+  override def updateAnalysisData(update: Map[Component, Component]): Unit = {
     super.updateAnalysisData(update)
     webSummary.update(update)
   }
@@ -198,8 +198,8 @@ class AdaptiveSummaryVisualisation(
     object BarChart extends NavigationBarChart("closure_bar_chart") with BarChartTooltip {
       type Data = (analysis.lattice.Closure, Set[analysis.Component])
       def key(d: Data) = {
-        val (lambda, env) = d._1 
-        s"${lambda.lambdaName} [${env.asInstanceOf[WrappedEnv[_,_]].data}]"
+        val (lambda, env) = d._1
+        s"${lambda.lambdaName} [${env.asInstanceOf[WrappedEnv[_, _]].data}]"
       }
       def value(d: Data) = d._2.size
       protected def tooltipText(d: Data) = d._2.map(analysis.view(_).toString).mkString("<br>")
@@ -210,13 +210,13 @@ class AdaptiveSummaryVisualisation(
   }
   private def makeClosureView(module: analysis.SchemeModule): Option[ClosureView] = module match {
     case lam: analysis.LambdaModule => Some(new ClosureView(lam))
-    case _ => None 
+    case _                          => None
   }
 
   class DependencyView(module: analysis.SchemeModule, var component: analysis.Component) extends BarChartView {
     private def ms = analysis.summary(module)(component)
     def data = ms.content
-    override def onUpdate(mapping: Map[ComponentPointer,ComponentPointer]) = component = mapping(component)
+    override def onUpdate(mapping: Map[ComponentPointer, ComponentPointer]) = component = mapping(component)
     object BarChart extends NavigationBarChart("dependency_bar_chart") with BarChartTooltip {
       type Data = (Dependency, Int)
       private def toAddr(dep: Dependency): Address = dep match {
