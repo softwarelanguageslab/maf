@@ -5,6 +5,7 @@ import maf.language.scheme._
 import maf.modular._
 import maf.modular.incremental.scheme.SchemeAnalyses._
 import maf.modular.scheme.modf._
+import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.benchmarks.Timeout
 import maf.language.change.CodeVersion._
 import maf.modular.incremental._
@@ -33,6 +34,11 @@ object IncrementalVisualisationSetup extends VisualisationSetup {
 class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfiguration)
     extends IncrementalSchemeModFAssertionAnalysisCPLattice(program, configuration)
        with VisualisableIncrementalModAnalysis[SchemeExp] {
+
+  def moduleName(cmp: Component) = cmp match {
+    case Main => "main"
+    case Call(clo, _) => clo._1.lambdaName
+  }
 
   override def updateAddrInc(
       cmp: SchemeModFComponent,

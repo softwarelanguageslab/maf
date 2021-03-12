@@ -7,6 +7,7 @@ import maf.modular.adaptive._
 import maf.modular.adaptive.scheme._
 import maf.language.scheme._
 import maf.util.benchmarks.Timeout
+import maf.modular.scheme.modf.SchemeModFComponent._
 
 import maf.web.utils._
 
@@ -36,7 +37,11 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
       with WebSummaryAdaptiveAnalysis {
 
       override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFIntra(cmp) with DependencyTrackingIntra
-      def key(cmp: Component) = expr(cmp)
+
+      def moduleName(cmp: Component) = view(cmp) match {
+        case Main => "main"
+        case Call(clo, _) => clo._1.lambdaName
+      }
 
       // setup the budget
       lazy val budget = 100

@@ -11,6 +11,8 @@ import maf.language.scheme._
 import maf.util.benchmarks.Timeout
 
 import scala.scalajs.js.annotation._
+import maf.modular.scheme.modf.SchemeModFComponent.Main
+import maf.modular.scheme.modf.SchemeModFComponent.Call
 
 @JSExportTopLevel("standardVisualisationSetup")
 object StandardVisualisationSetup extends VisualisationSetup {
@@ -33,6 +35,10 @@ object StandardVisualisationSetup extends VisualisationSetup {
       with WebVisualisationAnalysis[SchemeExp] {
       override def intraAnalysis(cmp: SchemeModFComponent) =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+      def moduleName(cmp: Component) = cmp match {
+        case Main => "main"
+        case Call(clo, _) => clo._1.lambdaName
+      }
     }
   }
 }

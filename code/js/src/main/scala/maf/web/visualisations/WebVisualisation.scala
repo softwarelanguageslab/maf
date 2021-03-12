@@ -18,6 +18,8 @@ trait WebVisualisationAnalysis[Expr <: Expression]
        with SequentialWorklistAlgorithm[Expr]
        with DependencyTracking[Expr] {
 
+  def moduleName(cmp: Component): String
+
   var webvis: WebVisualisation = _
 
   override def intraAnalysis(component: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra

@@ -1,12 +1,10 @@
 package maf.web.visualisations.adaptive
 
 import maf.core._
-import maf.modular._
 import maf.modular.adaptive._
 import maf.util.MonoidImplicits._
 
 import maf.web.visualisations._
-import maf.web.utils._
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -28,8 +26,6 @@ object WebVisualisationAdaptive {
 trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with WebVisualisationAnalysis[Expr] {
 
   def adaptiveWebVis = webvis.asInstanceOf[WebVisualisationAdaptive]
-
-  def key(cmp: Component): Any
 
   override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
@@ -53,7 +49,7 @@ class WebVisualisationAdaptive(
   // dirty flag set after visualisation needs to be refreshed due to adaptation
   var dirty = false
 
-  override def componentKey(cmp: analysis.Component) = analysis.key(cmp)
+  override def componentKey(cmp: analysis.Component) = analysis.moduleName(cmp)
   override def componentText(cmp: analysis.Component) =
     s"[$cmp] ${analysis.deref(cmp).toString()}"
 
