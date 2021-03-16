@@ -21,12 +21,10 @@ trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
     super.updateAnalysisData(update)
     store = updateMap(updateAddr(update), updateValue(update))(store)
     oldDeps.collect { case (AddrDependency(oldAddr), oldCmps) =>
-      val oldValue = oldStore.getOrElse(oldAddr, lattice.bottom)
-      val addr = updateAddr(update)(oldAddr)
-      val value = store.getOrElse(addr, lattice.bottom)
-      if (oldValue != value) {
-        val cmps = oldCmps.map(update)
-        cmps.foreach(addToWorkList)
+      val oldValue = updateValue(update)(oldStore.getOrElse(oldAddr, lattice.bottom))
+      val newValue = store.getOrElse(updateAddr(update)(oldAddr), lattice.bottom)
+      if (oldValue != newValue) {
+        oldCmps.map(update).foreach(addToWorkList)
       }
     }
   }
