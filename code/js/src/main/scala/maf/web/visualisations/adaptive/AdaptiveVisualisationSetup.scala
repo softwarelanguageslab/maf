@@ -28,7 +28,7 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
 
   def createAnalysis(text: String) = {
     val prg = SchemeParser.parse(text)
-    new AdaptiveModAnalysis(prg)
+    new AdaptiveModAnalysis(prg, rate = 100)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
       with SchemeConstantPropagationDomain
