@@ -186,8 +186,8 @@ class AdaptiveSummaryVisualisation(
       def key(d: Data) = d._1.toString
       def value(d: Data) = d._2.cardinality
       protected def tooltipText(d: Data) = analysis.view(d._1).toString
+      protected def highlightedDataKeys = analysis.selectLargest(data, value, value(data.maxBy(value))).toSet.map(key)
       protected def detailView(d: Data) = Some(new DependencyView(module, d._1))
-      protected def highlightedDataKeys = analysis.pickComponents(ms).map(key).toSet
       protected def domainView = makeClosureView(module)
     }
   }
@@ -204,7 +204,7 @@ class AdaptiveSummaryVisualisation(
       def value(d: Data) = d._2.size
       protected def tooltipText(d: Data) = d._2.map(analysis.view(_).toString).mkString("<br>")
       protected def detailView(d: Data) = None
-      protected def highlightedDataKeys = data.map(key).toSet // adapt contexts for the entire module (=> all closures)
+      protected def highlightedDataKeys = analysis.selectLargest(data, value, value(data.maxBy(value))).toSet.map(key)
       protected def domainView = makeClosureView(analysis.getParentModule(data.head._1))
     }
   }
@@ -232,7 +232,7 @@ class AdaptiveSummaryVisualisation(
       def value(d: Data) = d._2
       protected def tooltipText(d: Data) = analysis.store(toAddr(d._1)).toString
       protected def detailView(d: Data) = None
-      protected def highlightedDataKeys = analysis.pickDependencies(ms).map(key).toSet
+      protected def highlightedDataKeys = analysis.selectLargest(data, value, value(data.maxBy(value))).toSet.map(key)
       protected def domainView = None
     }
   }
