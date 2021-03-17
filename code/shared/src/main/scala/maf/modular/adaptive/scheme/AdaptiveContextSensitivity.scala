@@ -8,6 +8,7 @@ import maf.util.datastructures._
 import maf.modular.scheme._
 import maf.modular._
 import maf.modular.scheme.modf.SchemeModFComponent._
+import maf.util.MonoidInstances._
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with AdaptiveAnalysisSummary {
 
@@ -29,26 +30,24 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
    * after adaptation, certain strings get trimmed
    */
   type ComponentContext = List[Position]
-  var kPerFn = Map[SchemeLambdaExp, Int]()
+  var kPerFn = Map[lat.Closure, Int]()
   def getContext(cmp: Component): ComponentContext = view(cmp) match {
     case Main                                   => List.empty
     case cll: Call[ComponentContext] @unchecked => cll.ctx
   }
   def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
-    adaptCall(cll, kPerFn.get(cll.clo._1))
-  def adaptCall(cll: Call[ComponentContext], kLimit: Option[Int]): Call[ComponentContext] =
-    cll.copy(ctx = adaptCtx(cll.ctx, kLimit))
+    cll.copy(ctx = adaptContext(cll.clo, cll.ctx))
   def allocCtx(
       clo: lattice.Closure,
       args: List[Value],
       call: Position,
       caller: Component
     ): ComponentContext =
-    adaptCtx(call :: getContext(caller), kPerFn.get(clo._1))
-  def adaptCtx(ctx: ComponentContext, kLimit: Option[Int]): ComponentContext =
-    kLimit match {
-      case None    => ctx
-      case Some(k) => ctx.take(k)
+    adaptContext(clo, call :: getContext(caller))
+  def adaptContext(clo: lat.Closure, ctx: ComponentContext): ComponentContext =
+    kPerFn.get(clo) match {
+      case None     => ctx
+      case Some(k)  => ctx.take(k)
     }
   def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext = ctx
 
@@ -70,47 +69,51 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     reducedDeps = Set.empty
   }
 
-  // look at a module to adapt
-  def reduceModule(module: SchemeModule) = {
-    // 2 possibilies:
-    // (a) too many components for the given module
-    // (b) too many reanalyses of components corresponding to that module
-    val ms = summary(module)
-    val hcount = ms.numberOfCmps
-    val vcount = ms.cost / hcount
-    if (hcount > vcount) {
-      // (a) too many components => reduce number of components for fn
-      // note: only a lambda (i.e., not the main component) can have multiple components
-      reduceComponents(module.asInstanceOf[LambdaModule])
+  private def adaptBy[D](
+      data: Iterable[D],
+      size: D => Int,
+      reduceH: => Unit,
+      reduceV: D => Unit
+    ): Unit = {
+    val hcount = data.size
+    val vcount = size(data.maxBy(size))
+    if (hcount >= vcount) {
+      reduceH
     } else {
-      // (b) too many reanalyses => reduce number of dependencies triggered for the components
-      // CURRENT: per component
-      pickComponents(ms).foreach({ case (_, dps) => reduceReanalyses(dps) })
-      // ALTERNATIVE CODE: aggregated for all components of that module
-      //reduceReanalyses(ms.depCounts)
+      val selected = selectLargest(data, size, vcount)
+      selected.foreach(reduceV)
     }
   }
-  def pickComponents(ms: ModuleSummary): List[(Component, MultiSet[Dependency])] =
-    takeLargest(ms.content, (p: (Component, MultiSet[Dependency])) => p._2.cardinality, ms.totalDepCount / 2)
+
+  def selectLargest[D](
+      data: Iterable[D],
+      size: D => Int,
+      max: Int
+    ): Iterable[D] = {
+    val target = max / 2
+    data.filter(size(_) > target)
+  }
+
+  private def reduceModule(module: SchemeModule) =
+    adaptBy[(Component, MultiSet[Dependency])](
+      summary(module).content,
+      _._2.cardinality,
+      // (a) too many components for the given module
+      reduceComponents(module.asInstanceOf[LambdaModule]),
+      // (b) too many reanalyses of components corresponding to that module
+      d => reduceReanalyses(d._2)
+    )
 
   // look at all the components that were triggered too often
-  private def reduceReanalyses(deps: MultiSet[Dependency]) = {
-    // 2 possibilities:
-    // (a) too many dependencies triggered for a given component
-    // (b) too many times triggering dependencies of that component
-    val hcount = deps.distinctCount
-    val vcount = deps.cardinality / hcount
-    if (hcount > vcount) { // TODO: is this branch ever taken?
-      // (a) too many dependencies => reduce the number of corresponding addresses
-      val addrs = deps.toSet.collect { case AddrDependency(addr) => addr }
-      reduceAddresses(addrs)
-    } else {
-      // (b) too many triggers => coarsen value abstraction to avoid triggering components
-      pickDependencies(deps).foreach { case (dep, _) => reduceDep(dep) }
-    }
-  }
-  def pickDependencies(deps: MultiSet[Dependency]) =
-    takeLargest(deps.content, (p: (Dependency, Int)) => p._2, deps.cardinality / 2)
+  private def reduceReanalyses(deps: MultiSet[Dependency]) =
+    adaptBy[(Dependency, Int)](
+      deps.content,
+      _._2,
+      // (a) too many dependencies triggered for a given component
+      reduceAddresses(deps.toSet.map(_.asInstanceOf[AddrDependency].addr)),
+      // (b) too many times triggering dependencies of that component
+      d => reduceDep(d._1)
+    )
 
   private def reduceDep(dep: Dependency) =
     if (!reducedDeps(dep)) {
@@ -136,80 +139,64 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     case v => throw new Exception(s"Unsupported value in reduceValueAbs: $v")
   }
 
-  private def reduceAddresses(addrs: Set[Addr]) = {
-    val target: Int = addrs.size / 2
-    val perLocation = addrs.groupBy(getAddrExp) // TODO: by expr instead of idn?
-    val chosenAddrs = takeLargest[(Expression, Set[Addr])](perLocation.toList, _._2.size, target)
-    val chosenFuncs =
-      chosenAddrs
-        .map(_._2)
-        .filter(_.size > 1)
-        .map(addrs => getAddrModule(addrs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
-    chosenFuncs.toSet.foreach(reduceComponents)
-  }
+  private def reduceAddresses(addrs: Set[Addr]) =
+    adaptBy[(Expression, Set[Addr])](
+      addrs.groupBy(getAddrExp),
+      _._2.size,
+      (), // too many address locations => can't do anything about that ...
+      d => reduceComponents(getAddrModule(d._2.head).asInstanceOf[LambdaModule])
+    )
 
-  private def reduceClosures(cls: Set[lat.Closure]) = {
-    val target: Int = cls.size / 2
-    val perFunction = cls.groupBy(_._1)
-    val chosenFuncs = takeLargest[(SchemeLambdaExp, Set[lat.Closure])](perFunction, _._2.size, target)
-    val chosenParents =
-      chosenFuncs
-        .map(_._2)
-        .filter(_.size > 1)
-        .map(funs => getParentModule(funs.head).asInstanceOf[LambdaModule]) // guaranteed to be a lambda module!
-    chosenParents.toSet.foreach(reduceComponents)
-  }
+  private def reduceClosures(cls: Set[lat.Closure]) =
+    adaptBy[(SchemeLambdaExp, Set[lat.Closure])](
+      cls.groupBy(_._1),
+      _._2.size,
+      (), // too many function locations => can't do anything about that ...
+      d => reduceComponents(getParentModule(d._2.head).asInstanceOf[LambdaModule])
+    )
 
   private def reduceComponents(module: LambdaModule): Unit =
     if (!reducedCmps(module)) {
       reducedCmps += module
-      // 2 possibilities:
-      // (a) too many closures
-      // (b) too many contexts per closure
-      val ms = summary(module)
-      val closures = ms.components.map(view).collect { case c: Call[_] => c.clo }
-      val hcount = closures.size
-      val vcount = ms.numberOfCmps / hcount
-      if (hcount > vcount) {
-        // (a) too many closures => reduce the number of components for the parent module
-        val parentModule = getParentModule(closures.head).asInstanceOf[LambdaModule] // guaranteed to be a lambda assuming that closures.size > 1
-        reduceComponents(parentModule)
-      } else {
-        // (b) too many contexts per closure => reduce context information
-        reduceContext(module, ms)
-      }
+      val cmps = summary(module).components
+      val calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]]).toSet
+      lazy val parentModule = getParentModule(calls.head.clo) 
+      adaptBy[(lat.Closure, Set[Call[ComponentContext]])](
+        calls.groupBy(_.clo),
+        _._2.size,
+        // (a) too many closures
+        reduceComponents(parentModule.asInstanceOf[LambdaModule]), // guaranteed to be a lambda assuming that calls.size > 1
+        // (b) too many contexts per closure
+        d => reduceContext(d._1, d._2)
+      )
     }
 
-  private def reduceContext(module: LambdaModule, ms: ModuleSummary) = {
-    val cmps = ms.components
-    val target = ms.numberOfCmps / 2
+  
+  private def reduceContext(closure: lat.Closure, calls: Set[Call[ComponentContext]]) = {
     // find a fitting k
-    var calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
-    var k = calls.maxBy(_.ctx.length).ctx.length
-    while (calls.size > target && k > 0) { // TODO: replace with binary search?
+    val target = calls.size / 2
+    var contexts = calls.map(_.ctx)
+    var k = contexts.maxBy(_.length).length
+    while (calls.size > target) { // TODO: replace with binary search?
       k = k - 1
-      calls = calls.map(adaptCall(_, Some(k)))
+      contexts = contexts.map(_.take(k))
     }
-    //println(s"${module.lambda} -> $k")
-    kPerFn += module.lambda -> k // register the new k
+    println(s"${closure._1.lambdaName} (${closure._2.asInstanceOf[WrappedEnv[_,_]].data}) -> $k")
+    kPerFn += closure -> k // register the new k
+  }
+
+  /*
+   * Updating the analysis data
+   */
+  override def updateAnalysisData(update: Map[Component,Component]): Unit = {
+    super.updateAnalysisData(update)
+    kPerFn = updateMap[lat.Closure, Int](clo => updateClosure(update)(clo), (x: Int) => x)(kPerFn)(intMaxMonoid)
   }
 
   /*
    * HELPERS
    * (TODO: factor our some of these ...)
    */
-  private def takeLargest[X](
-      elms: Iterable[X],
-      size: X => Int,
-      target: Int
-    ): List[X] = {
-    def rec(current: List[X], todo: Int): List[X] = current match {
-      case head :: rest if todo > 0 =>
-        head :: rec(rest, todo - size(head))
-      case _ => Nil
-    }
-    rec(elms.toList.sortBy(size)(Ordering[Int].reverse), target)
-  }
   private def getAddrCmp(addr: Addr): Component = addr match {
     case returnAddr: ReturnAddr[Component] @unchecked => returnAddr.cmp
     case schemeAddr: SchemeAddr[Component] @unchecked =>

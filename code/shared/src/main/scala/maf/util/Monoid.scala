@@ -79,4 +79,8 @@ object MonoidInstances {
     def append(x: Boolean, y: => Boolean): Boolean = x && y
     def zero: Boolean = true
   }
+  val intMaxMonoid: Monoid[Int] = new Monoid[Int] {
+    def append(x: Int, y: => Int): Int = Math.max(x,y)
+    def zero: Int = 0
+  }
 }

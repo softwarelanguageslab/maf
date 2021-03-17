@@ -87,6 +87,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics {
     def cost = numberOfCmps + totalDepCount // total cost = number of components + number of re-analyses
     def components = content.keys
     def numberOfCmps = content.size
+    def maxComponentCost = content.maxBy(_._2.cardinality)._2.cardinality
     def depCounts = content.values.reduce(_ ++ _) // only safe if cost > 0
     def apply(cmp: Component) = content(cmp)
     def addComponent(cmp: Component) =
