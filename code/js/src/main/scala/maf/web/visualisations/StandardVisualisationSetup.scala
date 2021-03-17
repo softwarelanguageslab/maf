@@ -38,7 +38,7 @@ object StandardVisualisationSetup extends VisualisationSetup {
       // TODO: move this to somewhere in `maf.modular` directly
       type Module = Option[SchemeLambdaExp]
       def module(cmp: Component) = cmp match {
-        case Main => None
+        case Main                 => None
         case Call((lambda, _), _) => Some(lambda)
       }
       def moduleName(mdl: Module) = mdl.map(_.lambdaName).getOrElse("main")

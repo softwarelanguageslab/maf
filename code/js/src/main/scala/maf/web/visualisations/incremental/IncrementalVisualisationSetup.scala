@@ -35,12 +35,12 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
     extends IncrementalSchemeModFAssertionAnalysisCPLattice(program, configuration)
        with VisualisableIncrementalModAnalysis[SchemeExp] {
 
-    type Module = Option[SchemeLambdaExp]
-    def module(cmp: Component) = cmp match {
-      case Main => None
-      case Call((lambda, _), _) => Some(lambda)
-    }
-    def moduleName(mdl: Module) = mdl.map(_.lambdaName).getOrElse("main")
+  type Module = Option[SchemeLambdaExp]
+  def module(cmp: Component) = cmp match {
+    case Main                 => None
+    case Call((lambda, _), _) => Some(lambda)
+  }
+  def moduleName(mdl: Module) = mdl.map(_.lambdaName).getOrElse("main")
 
   override def updateAddrInc(
       cmp: SchemeModFComponent,

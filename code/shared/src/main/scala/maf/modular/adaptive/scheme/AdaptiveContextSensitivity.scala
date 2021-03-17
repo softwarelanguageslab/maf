@@ -49,8 +49,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     adaptContext(clo, call :: getContext(caller))
   def adaptContext(clo: lat.Closure, ctx: ComponentContext): ComponentContext =
     kPerFn.get(clo) match {
-      case None     => ctx
-      case Some(k)  => ctx.take(k)
+      case None    => ctx
+      case Some(k) => ctx.take(k)
     }
   def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext = ctx
 
@@ -77,7 +77,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       size: D => Int,
       reduceH: => Unit,
       reduceV: D => Unit
-    ): Unit = 
+    ): Unit =
     if (data.nonEmpty) {
       println("adapting")
       val hcount = data.size
@@ -161,8 +161,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     )
 
   private def reduceComponentsForModule(module: SchemeModule) = module match {
-    case MainModule       => warn("Attempting to reduce components for the main module")
-    case l: LambdaModule  => reduceComponents(l)
+    case MainModule      => warn("Attempting to reduce components for the main module")
+    case l: LambdaModule => reduceComponents(l)
   }
 
   private def reduceComponents(module: LambdaModule): Unit =
@@ -170,7 +170,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       reducedCmps += module
       val cmps = summary(module).components
       val calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]]).toSet
-      lazy val parentModule = getParentModule(calls.head.clo) 
+      lazy val parentModule = getParentModule(calls.head.clo)
       adaptBy[(lat.Closure, Set[Call[ComponentContext]])](
         calls.groupBy(_.clo),
         _._2.size,
@@ -181,10 +181,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       )
     }
 
-  
   private def reduceContext(closure: lat.Closure, calls: Set[Call[ComponentContext]]): Unit = {
     // find a fitting k
-    if(calls.size == 1) {
+    if (calls.size == 1) {
       warn(s"Attempting to reduce contexts for a single call ${calls.head}")
       return
     }
@@ -195,14 +194,14 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       k = k - 1
       contexts = contexts.map(_.take(k))
     }
-    debug(s"${closure._1.lambdaName} (${closure._2.asInstanceOf[WrappedEnv[_,_]].data}) -> $k")
+    debug(s"${closure._1.lambdaName} (${closure._2.asInstanceOf[WrappedEnv[_, _]].data}) -> $k")
     kPerFn += closure -> k // register the new k
   }
 
   /*
    * Updating the analysis data
    */
-  override def updateAnalysisData(update: Map[Component,Component]): Unit = {
+  override def updateAnalysisData(update: Map[Component, Component]): Unit = {
     super.updateAnalysisData(update)
     kPerFn = updateMap[lat.Closure, Int](clo => updateClosure(update)(clo), (x: Int) => x)(kPerFn)(intMaxMonoid)
   }

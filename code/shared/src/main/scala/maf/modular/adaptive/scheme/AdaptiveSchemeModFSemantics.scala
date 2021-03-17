@@ -23,7 +23,7 @@ trait AdaptiveSchemeModFSemantics
   // Definition of update functions
   def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
     case (lambda, env: WrappedEnv[Addr, Component] @unchecked) => (lambda, env.copy(data = update(env.data)).mapAddrs(updateAddr(update)))
-    case _ => throw new Exception(s"Closure with invalid environment: ${clo._2}")
+    case _                                                     => throw new Exception(s"Closure with invalid environment: ${clo._2}")
   }
   def updateCmp(update: Component => Component)(cmp: ComponentData): ComponentData = cmp match {
     case Main                                        => Main
