@@ -14,6 +14,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
 
   import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
 
+  protected def warn(message: => String): Unit = println(message)
+  protected def debug(message: => String): Unit = println(message)
+
   /*
    * configured by:
    * - some "budget" (which, when exceeded by the "cost" of some function, triggers an adaptation)
@@ -74,16 +77,18 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       size: D => Int,
       reduceH: => Unit,
       reduceV: D => Unit
-    ): Unit = {
-    val hcount = data.size
-    val vcount = size(data.maxBy(size))
-    if (hcount >= vcount) {
-      reduceH
-    } else {
-      val selected = selectLargest(data, size, vcount)
-      selected.foreach(reduceV)
+    ): Unit = 
+    if (data.nonEmpty) {
+      println("adapting")
+      val hcount = data.size
+      val vcount = size(data.maxBy(size))
+      if (hcount > vcount) {
+        reduceH
+      } else {
+        val selected = selectLargest(data, size, vcount)
+        selected.foreach(reduceV)
+      }
     }
-  }
 
   def selectLargest[D](
       data: Iterable[D],
@@ -99,7 +104,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       summary(module).content,
       _._2.cardinality,
       // (a) too many components for the given module
-      reduceComponents(module.asInstanceOf[LambdaModule]),
+      reduceComponentsForModule(module),
       // (b) too many reanalyses of components corresponding to that module
       d => reduceReanalyses(d._2)
     )
@@ -136,7 +141,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     case modularLatticeWrapper.modularLattice.Vec(_, elms) =>
       val value = elms.map(_._2).maxBy(sizeOfValue) // assume elms is not empty!
       reduceValueAbs(value)
-    case v => throw new Exception(s"Unsupported value in reduceValueAbs: $v")
+    case v => warn(s"Attempting to adapt value a non-set-based value $v")
   }
 
   private def reduceAddresses(addrs: Set[Addr]) =
@@ -144,7 +149,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       addrs.groupBy(getAddrExp),
       _._2.size,
       (), // too many address locations => can't do anything about that ...
-      d => reduceComponents(getAddrModule(d._2.head).asInstanceOf[LambdaModule])
+      d => reduceComponentsForModule(getAddrModule(d._2.head))
     )
 
   private def reduceClosures(cls: Set[lat.Closure]) =
@@ -152,8 +157,13 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       cls.groupBy(_._1),
       _._2.size,
       (), // too many function locations => can't do anything about that ...
-      d => reduceComponents(getParentModule(d._2.head).asInstanceOf[LambdaModule])
+      d => reduceComponentsForModule(getParentModule(d._2.head))
     )
+
+  private def reduceComponentsForModule(module: SchemeModule) = module match {
+    case MainModule       => warn("Attempting to reduce components for the main module")
+    case l: LambdaModule  => reduceComponents(l)
+  }
 
   private def reduceComponents(module: LambdaModule): Unit =
     if (!reducedCmps(module)) {
@@ -165,23 +175,27 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
         calls.groupBy(_.clo),
         _._2.size,
         // (a) too many closures
-        reduceComponents(parentModule.asInstanceOf[LambdaModule]), // guaranteed to be a lambda assuming that calls.size > 1
+        reduceComponentsForModule(parentModule), // guaranteed to be a lambda assuming that calls.size > 1
         // (b) too many contexts per closure
         d => reduceContext(d._1, d._2)
       )
     }
 
   
-  private def reduceContext(closure: lat.Closure, calls: Set[Call[ComponentContext]]) = {
+  private def reduceContext(closure: lat.Closure, calls: Set[Call[ComponentContext]]): Unit = {
     // find a fitting k
-    val target = calls.size / 2
+    if(calls.size == 1) {
+      warn(s"Attempting to reduce contexts for a single call ${calls.head}")
+      return
+    }
+    val target = Math.max(1, calls.size / 2)
     var contexts = calls.map(_.ctx)
     var k = contexts.maxBy(_.length).length
     while (contexts.size > target) { // TODO: replace with binary search?
       k = k - 1
       contexts = contexts.map(_.take(k))
     }
-    println(s"${closure._1.lambdaName} (${closure._2.asInstanceOf[WrappedEnv[_,_]].data}) -> $k")
+    debug(s"${closure._1.lambdaName} (${closure._2.asInstanceOf[WrappedEnv[_,_]].data}) -> $k")
     kPerFn += closure -> k // register the new k
   }
 
