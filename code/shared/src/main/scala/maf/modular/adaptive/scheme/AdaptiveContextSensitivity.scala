@@ -177,7 +177,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     val target = calls.size / 2
     var contexts = calls.map(_.ctx)
     var k = contexts.maxBy(_.length).length
-    while (calls.size > target) { // TODO: replace with binary search?
+    while (contexts.size > target) { // TODO: replace with binary search?
       k = k - 1
       contexts = contexts.map(_.take(k))
     }
