@@ -8,7 +8,6 @@ import maf.util.datastructures._
 import maf.modular.scheme._
 import maf.modular._
 import maf.modular.scheme.modf.SchemeModFComponent._
-import maf.util.MonoidInstances._
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with AdaptiveAnalysisSummary {
 
@@ -79,7 +78,6 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       reduceV: D => Unit
     ): Unit =
     if (data.nonEmpty) {
-      println("adapting")
       val hcount = data.size
       val vcount = size(data.maxBy(size))
       if (hcount > vcount) {
@@ -187,7 +185,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       warn(s"Attempting to reduce contexts for a single call ${calls.head}")
       return
     }
-    val target = Math.max(1, calls.size / 2)
+    val target = calls.size / 2
     var contexts = calls.map(_.ctx)
     var k = contexts.maxBy(_.length).length
     while (contexts.size > target) { // TODO: replace with binary search?
@@ -203,7 +201,13 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
    */
   override def updateAnalysisData(update: Map[Component, Component]): Unit = {
     super.updateAnalysisData(update)
-    kPerFn = updateMap[lat.Closure, Int](clo => updateClosure(update)(clo), (x: Int) => x)(kPerFn)(intMaxMonoid)
+    kPerFn = kPerFn.foldLeft(Map.empty[lat.Closure,Int]) { case (acc,(clo,k)) =>
+      val updatedClo = updateClosure(update)(clo)
+      acc.get(updatedClo) match {
+        case None => acc + (updatedClo -> k)
+        case Some(k2) => acc + (updatedClo -> Math.min(k,k2))
+      }
+    }
   }
 
   /*
