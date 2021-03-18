@@ -104,7 +104,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @param cmp The component that is deleted.
    */
   override def deleteComponent(cmp: Component): Unit = {
-    if (configuration.writeInvalidation) {
+    if (configuration.writeInvalidation) { // TODO: Does this make sense? We can now have return addresses without having the components, or addresses that are not written by any component anymore.
       cachedWrites(cmp).foreach(deleteProvenance(cmp, _))
       cachedWrites = cachedWrites - cmp
     }

@@ -1,27 +1,39 @@
 Modular Analysis Framework (MAF): A Framework for Modular Analysis of Dynamic Languages
 
 # Goal
-The goal of this artefact is to experiment with abstract machines and language
-semantics. Currently, the artefact's implementation is focused towards experiments with modular analyses.
-Additionally, semantics for R5RS Scheme are present.
+
+The goal of this artefact is to experiment with abstract machines and language semantics. Currently, the artefact's
+implementation is focused towards experiments with modular analyses. Additionally, semantics for R5RS Scheme are
+present.
+
+For more information on the incremental analyses that are currently developed using MAF,
+see [here](code/shared/src/main/scala/maf/modular/incremental/README.md).
 
 # Usage
+
 The MAF framework can be used in several ways.
 
 ## Using the JavaScript visual front-end
-The framework includes a JavaScript front-end that can be used to visualise a MODF analysis in the browser.
-To run this visualisation, open the file `maf.html` with your browser. The visualisation provides information with
-regard to the work list (coloured in light blue) and currently analysed component (coloured in dark blue).
-Stepping through the visualisation can be done using the space bar.
 
-If you need to compile the code first, run the command `fastOptJS` within your sbt repl.
+The framework includes a JavaScript front-end that can be used to visualise a modular analysis in the browser. Before
+the visualisation can be run, you have to ensure the code is compiled, by executing the commans `fastOptJS` (
+or `fullOptJS`) in your sbt repl.
+
+The MAF framework currently provides a standard visualisation for modular analyses, as well as specific visualisations
+that correspond to several different flavours of the analysis (e.g., adaptive or incremental analyses.)
+
+To run the standard visualisation, open the file `standard.html` in the `web` folder with your browser. The
+visualisation provides information with regard to the work list (coloured in light blue) and currently analysed
+component (coloured in dark blue). Stepping through the visualisation can be done using the space bar. The other
+visualisations are also accessible via the `web` folder.
 
 ## Analysing a program using command line
-The MAF framework is built in a modular style. To run a modular analysis, you need to compose the
-implementation of a specific machine and an abstract domain.
 
-To analyze a specific program, an instance of the MODF analysis class must be created. The constructor of
-this class takes a parsed version of the program to be analysed, which can be obtained as follows:
+The MAF framework is built in a modular style. To run a modular analysis, you need to compose the implementation of a
+specific machine and an abstract domain.
+
+To analyze a specific program, an instance of the MODF analysis class must be created. The constructor of this class
+takes a parsed version of the program to be analysed, which can be obtained as follows:
 ```scala
 val text = io.Reader.loadFile(path-to-file)
 val prog = language.scheme.Schemeparser.parse(text)
