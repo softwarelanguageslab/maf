@@ -65,7 +65,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     // start the adaptation
     val modules = modulesToAdapt
     modules.foreach(reduceModule)
-    debug(s"=> ${adapted.map(printClosure)}")
+    debug(s"${modules.mkString("[",",","]")} => ${adapted.map(printClosure).mkString("[",",","]")}")
     // update the summary
     summary = summary.clearDependencies(reducedDeps)
     // update the analysis
@@ -76,23 +76,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     adapted = Set.empty
   }
 
-  private def adaptBy[D](
-      data: Iterable[D],
-      size: D => Int,
-      reduceH: => Unit,
-      reduceV: D => Unit
-    ): Unit =
-    if (data.nonEmpty) {
-      val hcount = data.size
-      val vcount = size(data.maxBy(size))
-      if (hcount > vcount) {
-        reduceH
-      } else {
-        val selected = selectLargest(data, size, vcount)
-        selected.foreach(reduceV)
-      }
-    }
-
+  def selectLargest[D](data: Iterable[D], size: D => Int): Iterable[D] = 
+    selectLargest(data, size, size(data.maxBy(size)))
   def selectLargest[D](
       data: Iterable[D],
       size: D => Int,
@@ -102,32 +87,49 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     data.filter(size(_) > target)
   }
 
-  private def reduceModule(module: SchemeModule) =
-    adaptBy[(Component, MultiSet[Dependency])](
-      summary(module).content,
-      _._2.cardinality,
-      // (a) too many components for the given module
-      reduceComponentsForModule(module),
-      // (b) too many reanalyses of components corresponding to that module
-      d => reduceReanalyses(d._2)
-    )
+  private def reduceModule(module: SchemeModule) = {
+    val moduleSummary = summary(module)
+    val numberOfComponents = moduleSummary.numberOfCmps
+    val maximumComponentCost = moduleSummary.maxComponentCost
+    if (numberOfComponents > maximumComponentCost) {
+      reduceComponentsForModule(module)
+    } else {
+      val selectedCmps = selectLargest[(Component,MultiSet[Dependency])](moduleSummary.content, 
+                                                                         _._2.cardinality, 
+                                                                         maximumComponentCost)
+      selectedCmps.foreach { case (_, deps) => reduceDependencies(deps) }
+    }
+  }
 
   // look at all the components that were triggered too often
-  private def reduceReanalyses(deps: MultiSet[Dependency]) =
-    adaptBy[(Dependency, Int)](
-      deps.content,
-      _._2,
-      // (a) too many dependencies triggered for a given component
-      reduceAddresses(deps.toSet.map(_.asInstanceOf[AddrDependency].addr)),
-      // (b) too many times triggering dependencies of that component
-      d => reduceDep(d._1)
-    )
-
+  private def reduceDependencies(deps: MultiSet[Dependency]) = {
+    val groupByLocation = deps.groupBy[Expression] {
+      case AddrDependency(addr) => getAddrExp(addr)
+    }
+    val selected = selectLargest[(Expression,MultiSet[Dependency])](groupByLocation,
+                                                                    _._2.cardinality)
+    selected.foreach { case (loc, deps) => reduceDependenciesForLocation(loc, deps) }
+  }
+    
+  // assumes all dependencies in `deps` correspond to a single program location!
+  private def reduceDependenciesForLocation(loc: Expression, deps: MultiSet[Dependency]): Unit = {
+    val numberOfDependencies = deps.distinctCount
+    val maximumDependencyCost = deps.content.maxBy(_._2)._2
+    if (numberOfDependencies > maximumDependencyCost) {
+      reduceAddressesForLocation(loc, deps.toSet.map(_.asInstanceOf[AddrDependency].addr))
+    } else {
+      val selected = selectLargest[(Dependency,Int)](deps.content,
+                                                     _._2,
+                                                     maximumDependencyCost)
+      selected.foreach { case (dep, _) => reduceDep(dep) }
+    }
+  }
+                                                              
   private def reduceDep(dep: Dependency) =
     if (!reducedDeps(dep)) {
       reducedDeps += dep
       dep match {
-        case AddrDependency(addr) => reduceValueAbs(store(addr))
+        case AddrDependency(addr) => println(store(addr)) ; reduceValueAbs(store(addr))
         case _                    => throw new Exception("Unknown dependency for adaptive analysis")
       }
     }
@@ -147,21 +149,25 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     case v => warn(s"Attempting to adapt value a non-set-based value $v")
   }
 
-  private def reduceAddresses(addrs: Set[Addr]) =
-    adaptBy[(Expression, Set[Addr])](
-      addrs.groupBy(getAddrExp),
-      _._2.size,
-      (), // too many address locations => can't do anything about that ...
-      d => reduceComponentsForModule(getAddrModule(d._2.head))
-    )
+  private def reduceAddresses(addrs: Set[Addr]) = {
+    val groupByLocation = addrs.groupBy[Expression](getAddrExp)
+    val selected = selectLargest[(Expression,Set[Addr])](groupByLocation,
+                                                         _._2.size)
+    selected.foreach { case (loc, addrs) => reduceAddressesForLocation(loc,addrs) }
+  }
 
-  private def reduceClosures(cls: Set[lat.Closure]) =
-    adaptBy[(SchemeLambdaExp, Set[lat.Closure])](
-      cls.groupBy(_._1),
-      _._2.size,
-      (), // too many function locations => can't do anything about that ...
-      d => reduceComponentsForModule(getParentModule(d._2.head))
-    )
+  private def reduceAddressesForLocation(loc: Expression, addrs: Set[Addr]) =
+    reduceComponentsForModule(getAddrModule(addrs.head))
+
+  private def reduceClosures(cls: Set[lat.Closure]) = {
+    val groupByFunction = cls.groupBy[SchemeLambdaExp](_._1)
+    val selected = selectLargest[(SchemeLambdaExp, Set[lat.Closure])](groupByFunction, 
+                                                                      _._2.size)
+    selected.foreach { case (fn, closures) => reduceClosuresForFunction(fn, closures) }
+  }
+
+  private def reduceClosuresForFunction(fn: SchemeLambdaExp, closures: Set[lat.Closure]) =
+    reduceComponentsForModule(getParentModule(closures.head))
 
   private def reduceComponentsForModule(module: SchemeModule) = module match {
     case MainModule      => warn("Attempting to reduce the number of components for the main module")
@@ -173,15 +179,19 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       reducedCmps += module
       val cmps = summary(module).components
       val calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]]).toSet
-      lazy val parentModule = getParentModule(calls.head.clo)
-      adaptBy[(lat.Closure, Set[Call[ComponentContext]])](
-        calls.groupBy(_.clo),
-        _._2.size,
-        // (a) too many closures
-        reduceComponentsForModule(parentModule), // guaranteed to be a lambda assuming that calls.size > 1
-        // (b) too many contexts per closure
-        d => reduceContext(d._1, d._2)
-      )
+      // look at the number of closures vs contexts
+      val groupedByClo = calls.groupBy[lat.Closure](_.clo)
+      val numberOfClosures = groupedByClo.size
+      val maxContextsPerClosure = groupedByClo.maxBy(_._2.size)._2.size
+      if (numberOfClosures > maxContextsPerClosure) {
+        val fn = calls.head.clo._1
+        reduceClosuresForFunction(fn, groupedByClo.keySet)
+      } else {
+        val selected = selectLargest[(lat.Closure, Set[Call[ComponentContext]])](groupedByClo,
+                                                                                  _._2.size,
+                                                                                  maxContextsPerClosure)
+        selected.foreach { case (clo, calls) => reduceContext(clo, calls) }                                  
+      }
     }
 
   private def reduceContext(closure: lat.Closure, calls: Set[Call[ComponentContext]]): Unit = {

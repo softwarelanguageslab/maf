@@ -27,6 +27,12 @@ case class MultiSet[X](content: Map[X, Int], cardinality: Int) {
   def toList = content.toList
   def toSet = content.keySet
   def toMap = content
+  def groupBy[K](key: X => K): Map[K, MultiSet[X]] =
+    this.content.foldLeft(Map.empty[K, MultiSet[X]]) { case (acc, (elm, cnt)) =>
+      val k = key(elm)
+      val m = acc.getOrElse(k, MultiSet.empty)
+      acc + (k -> MultiSet(m.content + (elm -> cnt), m.cardinality + cnt))
+    }
 }
 object MultiSet {
   def empty[X] = MultiSet[X](Map.empty, 0)
