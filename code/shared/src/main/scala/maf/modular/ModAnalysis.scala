@@ -105,12 +105,10 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
    */
   def analyzeWithTimeout(timeout: Timeout.T): Unit
 
-  /**
-   * Convenience method, akin to analyzeWithTimeout, but where the timeout is directly given in seconds
-   */
+  /** Convenience method, akin to analyzeWithTimeout, but where the timeout is directly given in seconds */
   def analyzeWithTimeoutInSeconds(seconds: Long): Unit =
     analyzeWithTimeout(Timeout.start(Duration(seconds, SECONDS)))
-    
+
   /**
    * Runs the analysis.
    * A timeout can not be configured (use `analyzeWithTimeout` instead if needed), meaning the method returns only when the analysis has actually terminated.

@@ -59,7 +59,7 @@ object AdaptiveRun {
     anl.analyze()
     //debugClosures(analysis)
     //println(anl.finished)
-    debugResults(anl, false)    
+    debugResults(anl, false)
   }
 
   def testAbstractAdaptive(): Unit = {

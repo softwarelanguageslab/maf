@@ -65,18 +65,18 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     // start the adaptation
     val modules = modulesToAdapt
     modules.foreach(reduceModule)
-    debug(s"${modules.mkString("[",",","]")} => ${adapted.map(printClosure).mkString("[",",","]")}")
+    debug(s"${modules.mkString("[", ",", "]")} => ${adapted.map(printClosure).mkString("[", ",", "]")}")
     // update the summary
     summary = summary.clearDependencies(reducedDeps)
     // update the analysis
-    if(adapted.nonEmpty) { updateAnalysis() }
+    if (adapted.nonEmpty) { updateAnalysis() }
     // clear the visited sets
     reducedCmps = Set.empty
     reducedDeps = Set.empty
     adapted = Set.empty
   }
 
-  def selectLargest[D](data: Iterable[D], size: D => Int): Iterable[D] = 
+  def selectLargest[D](data: Iterable[D], size: D => Int): Iterable[D] =
     selectLargest(data, size, size(data.maxBy(size)))
   def selectLargest[D](
       data: Iterable[D],
@@ -94,23 +94,20 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     if (numberOfComponents > maximumComponentCost) {
       reduceComponentsForModule(module)
     } else {
-      val selectedCmps = selectLargest[(Component,MultiSet[Dependency])](moduleSummary.content, 
-                                                                         _._2.cardinality, 
-                                                                         maximumComponentCost)
+      val selectedCmps = selectLargest[(Component, MultiSet[Dependency])](moduleSummary.content, _._2.cardinality, maximumComponentCost)
       selectedCmps.foreach { case (_, deps) => reduceDependencies(deps) }
     }
   }
 
   // look at all the components that were triggered too often
   private def reduceDependencies(deps: MultiSet[Dependency]) = {
-    val groupByLocation = deps.groupBy[Expression] {
-      case AddrDependency(addr) => getAddrExp(addr)
+    val groupByLocation = deps.groupBy[Expression] { case AddrDependency(addr) =>
+      getAddrExp(addr)
     }
-    val selected = selectLargest[(Expression,MultiSet[Dependency])](groupByLocation,
-                                                                    _._2.cardinality)
+    val selected = selectLargest[(Expression, MultiSet[Dependency])](groupByLocation, _._2.cardinality)
     selected.foreach { case (loc, deps) => reduceDependenciesForLocation(loc, deps) }
   }
-    
+
   // assumes all dependencies in `deps` correspond to a single program location!
   private def reduceDependenciesForLocation(loc: Expression, deps: MultiSet[Dependency]): Unit = {
     val numberOfDependencies = deps.distinctCount
@@ -118,18 +115,16 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     if (numberOfDependencies > maximumDependencyCost) {
       reduceAddressesForLocation(loc, deps.toSet.map(_.asInstanceOf[AddrDependency].addr))
     } else {
-      val selected = selectLargest[(Dependency,Int)](deps.content,
-                                                     _._2,
-                                                     maximumDependencyCost)
+      val selected = selectLargest[(Dependency, Int)](deps.content, _._2, maximumDependencyCost)
       selected.foreach { case (dep, _) => reduceDep(dep) }
     }
   }
-                                                              
+
   private def reduceDep(dep: Dependency) =
     if (!reducedDeps(dep)) {
       reducedDeps += dep
       dep match {
-        case AddrDependency(addr) => println(store(addr)) ; reduceValueAbs(store(addr))
+        case AddrDependency(addr) => println(store(addr)); reduceValueAbs(store(addr))
         case _                    => throw new Exception("Unknown dependency for adaptive analysis")
       }
     }
@@ -151,9 +146,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
 
   private def reduceAddresses(addrs: Set[Addr]) = {
     val groupByLocation = addrs.groupBy[Expression](getAddrExp)
-    val selected = selectLargest[(Expression,Set[Addr])](groupByLocation,
-                                                         _._2.size)
-    selected.foreach { case (loc, addrs) => reduceAddressesForLocation(loc,addrs) }
+    val selected = selectLargest[(Expression, Set[Addr])](groupByLocation, _._2.size)
+    selected.foreach { case (loc, addrs) => reduceAddressesForLocation(loc, addrs) }
   }
 
   private def reduceAddressesForLocation(loc: Expression, addrs: Set[Addr]) =
@@ -161,8 +155,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
 
   private def reduceClosures(cls: Set[lat.Closure]) = {
     val groupByFunction = cls.groupBy[SchemeLambdaExp](_._1)
-    val selected = selectLargest[(SchemeLambdaExp, Set[lat.Closure])](groupByFunction, 
-                                                                      _._2.size)
+    val selected = selectLargest[(SchemeLambdaExp, Set[lat.Closure])](groupByFunction, _._2.size)
     selected.foreach { case (fn, closures) => reduceClosuresForFunction(fn, closures) }
   }
 
@@ -187,10 +180,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
         val fn = calls.head.clo._1
         reduceClosuresForFunction(fn, groupedByClo.keySet)
       } else {
-        val selected = selectLargest[(lat.Closure, Set[Call[ComponentContext]])](groupedByClo,
-                                                                                  _._2.size,
-                                                                                  maxContextsPerClosure)
-        selected.foreach { case (clo, calls) => reduceContext(clo, calls) }                                  
+        val selected = selectLargest[(lat.Closure, Set[Call[ComponentContext]])](groupedByClo, _._2.size, maxContextsPerClosure)
+        selected.foreach { case (clo, calls) => reduceContext(clo, calls) }
       }
     }
 
@@ -220,11 +211,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
    */
   override def updateAnalysisData(update: Map[Component, Component]): Unit = {
     super.updateAnalysisData(update)
-    kPerFn = kPerFn.foldLeft(Map.empty[lat.Closure,Int]) { case (acc,(clo,k)) =>
+    kPerFn = kPerFn.foldLeft(Map.empty[lat.Closure, Int]) { case (acc, (clo, k)) =>
       val updatedClo = updateClosure(update)(clo)
       acc.get(updatedClo) match {
-        case None => acc + (updatedClo -> k)
-        case Some(k2) => acc + (updatedClo -> Math.min(k,k2))
+        case None     => acc + (updatedClo -> k)
+        case Some(k2) => acc + (updatedClo -> Math.min(k, k2))
       }
     }
   }
