@@ -47,8 +47,8 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
       var step = 0
       override def step(timeout: Timeout.T): Unit = {
         val cmp = workList.head
-        println(s"[$step] Analysing ${view(cmp)}")
         step += 1
+        println(s"[$step] Analysing ${view(cmp)}")
         super.step(timeout)
       }
     }

@@ -28,7 +28,7 @@ trait WebSummaryAdaptiveAnalysis extends AdaptiveContextSensitivity {
   var webSummary: AdaptiveSummaryVisualisation = _
 
   // checks if the adaptive analysis will adapt on its next step
-  def willAdapt: Boolean = stepCount == rate
+  def willAdapt: Boolean = stepCount == (rate - 1)
 
   // refresh the summary visualisation after stepping
   override def step(timeout: Timeout.T): Unit = {

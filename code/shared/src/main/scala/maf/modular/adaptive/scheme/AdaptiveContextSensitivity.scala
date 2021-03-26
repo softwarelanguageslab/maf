@@ -58,17 +58,22 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
   private var reducedCmps: Set[LambdaModule] = Set.empty
   private var reducedDeps: Set[Dependency] = Set.empty
 
+  // for debugging purposes only
+  private var adapted: Set[lat.Closure] = Set.empty
+
   def adaptAnalysis() = {
     // start the adaptation
     val modules = modulesToAdapt
     modules.foreach(reduceModule)
+    debug(s"=> ${adapted.map(printClosure)}")
     // update the summary
     summary = summary.clearDependencies(reducedDeps)
     // update the analysis
-    updateAnalysis()
+    if(adapted.nonEmpty) { updateAnalysis() }
     // clear the visited sets
     reducedCmps = Set.empty
     reducedDeps = Set.empty
+    adapted = Set.empty
   }
 
   private def adaptBy[D](
@@ -159,7 +164,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     )
 
   private def reduceComponentsForModule(module: SchemeModule) = module match {
-    case MainModule      => warn("Attempting to reduce components for the main module")
+    case MainModule      => warn("Attempting to reduce the number of components for the main module")
     case l: LambdaModule => reduceComponents(l)
   }
 
@@ -192,9 +197,13 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       k = k - 1
       contexts = contexts.map(_.take(k))
     }
-    debug(s"${closure._1.lambdaName} (${closure._2.asInstanceOf[WrappedEnv[_, _]].data}) -> $k")
+    adapted += closure
+    debug(s"${printClosure(closure)} -> $k")
     kPerFn += closure -> k // register the new k
   }
+
+  private def printClosure(clo: lat.Closure) =
+    s"${clo._1.lambdaName} (${clo._2.asInstanceOf[WrappedEnv[_, _]].data})"
 
   /*
    * Updating the analysis data
