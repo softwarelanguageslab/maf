@@ -38,11 +38,11 @@ object IncrementalRun extends App {
 
   def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
-      new IncrementalSchemeModFAssertionAnalysisCPLattice(text, configuration) with IncrementalLogging[SchemeExp] {
+      new IncrementalSchemeModFAnalysisCPLattice(text, configuration) with IncrementalLogging[SchemeExp] {
         override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
           with IncrementalSchemeModFBigStepIntra
           with IncrementalGlobalStoreIntraAnalysis
-          with AssertionModFIntra
+          //  with AssertionModFIntra
           with IncrementalLoggingIntra
       }
 
@@ -50,10 +50,10 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = newAnalysis(text, Config(cyclicValueInvalidation = false))
     a.analyzeWithTimeout(timeout())
-    a.printAssertions()
+    // a.printAssertions()
     //val aC = a.deepCopy()
     a.updateAnalysis(timeout())
-    a.provenance.foreach({ case (a, p) => println(s"----- $a -----\n${p.toList.map({ case (c, v) => s"$c => $v" }).mkString("  ", "\n  ", "")}") })
+    // a.provenance.foreach({ case (a, p) => println(s"----- $a -----\n${p.toList.map({ case (c, v) => s"$c => $v" }).mkString("  ", "\n  ", "")}") })
     //a.printAssertions()
     //aC.updateAnalysis(timeout(), true)
     //aC.printAssertions()

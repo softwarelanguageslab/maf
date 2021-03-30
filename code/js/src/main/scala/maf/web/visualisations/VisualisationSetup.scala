@@ -40,11 +40,13 @@ trait VisualisationSetup {
     body.on("click", () => onClick())
   }
 
-  private def loadFile(program: String): Unit = {
+  protected def loadFile(program: String): Unit = {
     // create an analysis
     val analysis = createAnalysis(program)
     // remove the old visualisation if present
-    this.webvis.foreach { document.body.removeChild(_) }
+    this.webvis.foreach {
+      document.body.removeChild(_)
+    }
     // create a new visualisation
     val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
     val height = js.Dynamic.global.document.documentElement.clientHeight.asInstanceOf[Int]
