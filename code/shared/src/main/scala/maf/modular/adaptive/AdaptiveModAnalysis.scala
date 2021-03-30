@@ -22,12 +22,11 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, val rate: 
 
   protected var stepCount = 0
   override def step(timeout: Timeout.T): Unit = {
+    stepCount += 1
     super.step(timeout)
     if (stepCount == rate) {
       stepCount = 0
       adaptAnalysis()
-    } else {
-      stepCount += 1
     }
   }
   // the core of the adaptive analysis: one needs to implement how components are to be "adapted"

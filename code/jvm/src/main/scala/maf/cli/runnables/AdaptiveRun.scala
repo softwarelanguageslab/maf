@@ -17,7 +17,7 @@ import maf.language.scheme.interpreter._
 
 object AdaptiveRun {
 
-  def main(args: Array[String]): Unit = testAbstract()
+  def main(args: Array[String]): Unit = testAbstractAdaptive()
 
   def testConcrete() = {
     val txt = """
@@ -44,21 +44,42 @@ object AdaptiveRun {
   def testAbstract(): Unit = {
     val txt = Reader.loadFile("test/R5RS/icp/icp_7_eceval.scm")
     val prg = CSchemeParser.parse(txt)
+    val anl = new SimpleSchemeModFAnalysis(prg)
+      with SchemeModFNoSensitivity
+      with SchemeConstantPropagationDomain
+      with FIFOWorklistAlgorithm[SchemeExp] {
+      var step = 0
+      override def step(timeout: Timeout.T): Unit = {
+        val cmp = workList.head
+        step += 1
+        println(s"[$step] Analysing ${view(cmp)}")
+        super.step(timeout)
+      }
+    }
+    anl.analyze()
+    //debugClosures(analysis)
+    //println(anl.finished)
+    debugResults(anl, false)
+  }
+
+  def testAbstractAdaptive(): Unit = {
+    val txt = Reader.loadFile("test/R5RS/icp/icp_7_eceval.scm")
+    val prg = CSchemeParser.parse(txt)
     val anl = new AdaptiveModAnalysis(prg, rate = 100)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
-      lazy val budget = 1
+      lazy val budget = 100
       var step = 0
       override def step(timeout: Timeout.T): Unit = {
         val cmp = workList.head
-        println(s"[$step] Analysing ${view(cmp)}")
         step += 1
+        println(s"[$step] Analysing ${view(cmp)}")
         super.step(timeout)
       }
     }
-    anl.analyze()
+    anl.analyzeWithTimeoutInSeconds(30)
     //debugClosures(analysis)
     //println(anl.finished)
     debugResults(anl, false)

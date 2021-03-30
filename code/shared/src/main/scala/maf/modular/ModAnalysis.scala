@@ -3,6 +3,7 @@ package maf.modular
 import maf.core._
 import maf.util.SmartHash
 import maf.util.benchmarks.Timeout
+import scala.concurrent.duration._
 
 import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 
@@ -103,6 +104,10 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
    * @param timeout allows this method to return before termination of the analysis if the given timeout is reached
    */
   def analyzeWithTimeout(timeout: Timeout.T): Unit
+
+  /** Convenience method, akin to analyzeWithTimeout, but where the timeout is directly given in seconds */
+  def analyzeWithTimeoutInSeconds(seconds: Long): Unit =
+    analyzeWithTimeout(Timeout.start(Duration(seconds, SECONDS)))
 
   /**
    * Runs the analysis.
