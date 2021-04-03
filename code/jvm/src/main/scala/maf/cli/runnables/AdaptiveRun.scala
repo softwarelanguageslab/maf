@@ -65,23 +65,29 @@ object AdaptiveRun {
   def testAbstractAdaptive(): Unit = {
     val txt = Reader.loadFile("test/R5RS/icp/icp_7_eceval.scm")
     val prg = CSchemeParser.parse(txt)
-    val anl = new AdaptiveModAnalysis(prg, rate = 100)
+    val anl = new AdaptiveModAnalysis(prg, rate = 1000)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
-      lazy val budget = 100
+      // parameters for the adaptive analysis
+      lazy val budget = 1000
+      override val cutoffFactor = 0.5
+      override val reduceFactor = 0.25
+      // logging the analysis
       var step = 0
       override def step(timeout: Timeout.T): Unit = {
-        val cmp = workList.head
+        // val cmp = workList.head
         step += 1
-        println(s"[$step] Analysing ${view(cmp)}")
+        // println(s"[$step] Analysing ${view(cmp)}")
         super.step(timeout)
       }
     }
-    anl.analyzeWithTimeoutInSeconds(30)
+    anl.analyze()
     //debugClosures(analysis)
-    //println(anl.finished)
+    println("===================")
+    println(s"Steps: ${anl.step}")
+    println(s"Finished: ${anl.finished}")
     debugResults(anl, false)
   }
 

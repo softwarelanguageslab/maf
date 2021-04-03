@@ -13,15 +13,20 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
 
   import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
 
-  protected def warn(message: => String): Unit = println(message)
-  protected def debug(message: => String): Unit = println(message)
+  // disable warning messages and debug logging by default
+  protected def warn(message: => String): Unit = ()
+  protected def debug(message: => String): Unit = ()
 
   /*
    * configured by:
    * - some "budget" (which, when exceeded by the "cost" of some function, triggers an adaptation)
    *  => this parameter determines how quickly we trigger an adaptation
+   * - a few "factors" that determine how much precision is thrown away when adaption (lower = more)
+   *  => this parameter determines how "aggressive" adaptations are performed
    */
   val budget: Int
+  val cutoffFactor = 0.5  // determines how many "culprits" (those above max * cutoffFactor) are selected 
+  val reduceFactor = 0.5  // determines the factor by which the number of components for a closure is reduced
 
   def modulesToAdapt = summary.content.collect {
     case (module, moduleSummary) if moduleSummary.cost > budget => module
@@ -83,7 +88,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       size: D => Int,
       max: Int
     ): Iterable[D] = {
-    val target = max / 2
+    val target = max * cutoffFactor
     data.filter(size(_) > target)
   }
 
@@ -124,7 +129,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
     if (!reducedDeps(dep)) {
       reducedDeps += dep
       dep match {
-        case AddrDependency(addr) => println(store(addr)); reduceValueAbs(store(addr))
+        case AddrDependency(addr) => reduceValueAbs(store(addr))
         case _                    => throw new Exception("Unknown dependency for adaptive analysis")
       }
     }
@@ -191,7 +196,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Adapti
       warn(s"Attempting to reduce contexts for a single call ${calls.head}")
       return
     }
-    val target = calls.size / 2
+    val target = Math.max(1, calls.size * reduceFactor) 
     var contexts = calls.map(_.ctx)
     var k = contexts.maxBy(_.length).length
     while (contexts.size > target) { // TODO: replace with binary search?

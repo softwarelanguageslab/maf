@@ -76,6 +76,8 @@ object SchemeAnalyses {
     with SchemeConstantPropagationDomain
     with FIFOWorklistAlgorithm[SchemeExp] {
     lazy val budget = b
+    override val cutoffFactor: Double = 0.25
+    override val reduceFactor: Double = 0.25
     override def toString() = s"adaptive-analysis (budget = $b)"
   }
   def parallelKCFAAnalysis(
