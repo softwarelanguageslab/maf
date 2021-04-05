@@ -43,7 +43,7 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
 
   /** Keeps track of the components depending on a given "effect" (~ read dependencies). */
   var deps: Map[Dependency, Set[Component]] = Map[Dependency, Set[Component]]().withDefaultValue(Set.empty)
-  def register(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) + target))
+  def register(target: Component, dep: Dependency): Unit = deps += dep -> (deps(dep) + target)
   def trigger(dep: Dependency): Unit = deps(dep).foreach(addToWorkList)
 
   /**

@@ -21,7 +21,7 @@ trait AdaptiveSchemeModFSemantics
   // Need init to initialize reference bookkeeping information.
   def newComponent(call: Call[ComponentContext]): Component = ref(call)
   // Definition of update functions
-  def updateClosure(update: Component => Component)(clo: lattice.Closure) = clo match {
+  def updateClosure(update: Component => Component)(clo: lattice.Closure): lattice.Closure = clo match {
     case (lambda, env: WrappedEnv[Addr, Component] @unchecked) => (lambda, env.copy(data = update(env.data)).mapAddrs(updateAddr(update)))
     case _                                                     => throw new Exception(s"Closure with invalid environment: ${clo._2}")
   }
