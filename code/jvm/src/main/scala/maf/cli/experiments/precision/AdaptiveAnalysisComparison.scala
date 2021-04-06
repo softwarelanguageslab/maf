@@ -71,12 +71,11 @@ object AdaptiveAnalysisComparison1
     ] {
     // some regular k-cfa analyses
     val baseAnalyses = (0 to 10).toList.map { k =>
-        (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
+      (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
     }
     // some adaptive analyses
-    val adaptiveAnalyses = List(1000, 2000, 3000, 4000, 5000, 
-                                6000, 7000, 8000, 9000, 10000).map { b =>
-        (SchemeAnalyses.adaptiveAnalysis(_, b), s"adaptive (b = $b)")
+    val adaptiveAnalyses = List(50, 100, 150, 200, 250, 300).map { nt =>
+      (SchemeAnalyses.adaptiveAnalysis(_, nt, nt), s"adaptive (nt = $nt)")
     }
 
   def main(args: Array[String]) = runBenchmarks(

@@ -59,9 +59,7 @@ object AnalysisComparisonAltAdaptive
       (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
     } ++
       // run some adaptive analyses
-      List(500, 1000, 2000, 4000).map { b =>
-        (SchemeAnalyses.adaptiveAnalysis(_, b), s"adaptive (b = $b)")
-      }
+      List.empty
   def main(args: Array[String]) = runBenchmarks(
     Set(
       "test/R5RS/icp/icp_1c_multiple-dwelling.scm"

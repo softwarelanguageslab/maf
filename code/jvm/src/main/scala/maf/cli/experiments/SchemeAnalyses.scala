@@ -70,15 +70,17 @@ object SchemeAnalyses {
     with FIFOWorklistAlgorithm[SchemeExp] {
     override def toString() = "full-argument-sensitivity"
   }
-  def adaptiveAnalysis(prg: SchemeExp, b: Int) = new AdaptiveModAnalysis(prg)
+  def adaptiveAnalysis(prg: SchemeExp, pn: Int, pt: Int) = new AdaptiveModAnalysis(prg)
     with AdaptiveSchemeModFSemantics
     with AdaptiveContextSensitivity
+    with AdaptiveKCFA
     with SchemeConstantPropagationDomain
     with FIFOWorklistAlgorithm[SchemeExp] {
-    lazy val budget = b
+    lazy val n = pn
+    lazy val t = pt
     override val cutoffFactor: Double = 0.25
     override val reduceFactor: Double = 0.25
-    override def toString() = s"adaptive-analysis (budget = $b)"
+    override def toString() = s"adaptive-analysis (n = $n; t = $t)"
   }
   def parallelKCFAAnalysis(
       prg: SchemeExp,

@@ -68,12 +68,12 @@ object AdaptiveRun {
     val anl = new AdaptiveModAnalysis(prg, rate = 1000)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
+      with AdaptiveKCFA
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
       // parameters for the adaptive analysis
-      lazy val budget = 1000
-      override val cutoffFactor = 0.5
-      override val reduceFactor = 0.25
+      lazy val n = 100
+      lazy val t = 100
       // logging the analysis
       var step = 0
       override def step(timeout: Timeout.T): Unit = {

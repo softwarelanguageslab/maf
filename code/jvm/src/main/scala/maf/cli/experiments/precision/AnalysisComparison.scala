@@ -68,9 +68,7 @@ object AnalysisComparison1
       (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
     } ++
       // run some adaptive analyses
-      List(1000, 2000).map { b =>
-        (SchemeAnalyses.adaptiveAnalysis(_, b), s"adaptive (b = $b)")
-      }
+      List.empty
 
   def main(args: Array[String]) = runBenchmarks(
     Set(
