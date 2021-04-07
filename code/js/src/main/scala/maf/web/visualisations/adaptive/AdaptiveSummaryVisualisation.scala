@@ -5,6 +5,7 @@ package maf.web.visualisations.adaptive
 import maf.core._
 import maf.modular._
 import maf.modular.scheme._
+import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.modular.adaptive.scheme._
 import maf.util.datastructures.MultiSet
 import maf.util.benchmarks.Timeout
@@ -16,14 +17,14 @@ import maf.web.utils.D3Helpers._
 import org.scalajs._
 import org.scalajs.dom._
 import maf.modular.AddrDependency
-import maf.modular.scheme.modf.SchemeModFComponent.Call
 import maf.modular.components.ComponentPointer
 
 //
 // REQUIRED ANALYSIS EXTENSION
 //
 
-trait WebSummaryAdaptiveAnalysis extends AdaptiveContextSensitivity {
+trait WebSummaryAdaptiveAnalysis extends AdaptiveContextSensitivity with AdaptiveAnalysisSummary {
+    this: AdaptiveContextSensitivityPolicy =>
 
   var webSummary: AdaptiveSummaryVisualisation = _
 
@@ -173,7 +174,7 @@ class AdaptiveSummaryVisualisation(
       def key(d: Data) = d._1.toString
       def value(d: Data) = d._2.cost
       protected def detailView(d: Data) = Some(new ComponentView(d._1))
-      protected def highlightedDataKeys = analysis.modulesToAdapt.map(_.toString).toSet
+      protected def highlightedDataKeys = ???
       protected def domainView = None
     }
   }

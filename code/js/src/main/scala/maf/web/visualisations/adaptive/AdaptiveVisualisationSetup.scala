@@ -34,7 +34,8 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp]
       with WebVisualisationAnalysisAdaptive[SchemeExp]
-      with WebSummaryAdaptiveAnalysis {
+      with WebSummaryAdaptiveAnalysis
+      with AdaptiveKCFA {
 
       override def intraAnalysis(cmp: Component) = new AdaptiveSchemeModFIntra(cmp) with DependencyTrackingIntra
 
@@ -42,7 +43,8 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
       def moduleName(mdl: Module) = mdl.toString
 
       // setup the budget
-      lazy val budget = 100
+      lazy val n = 100
+      lazy val t = 100
       // log every step in the console
       var step = 0
       override def step(timeout: Timeout.T): Unit = {
