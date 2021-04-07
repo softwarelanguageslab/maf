@@ -24,7 +24,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
 
   // disable warning messages and debug logging by default (can be override for custom logging)
   protected def warn(message: => String): Unit = ()
-  protected def debug(message: => String): Unit = ()
+  protected def debug(message: => String): Unit = println(message)
 
   // context-sensitivity policy can be configured per closure
   // choice of policies is left open as a parameter; the following needs to be provided:
@@ -137,6 +137,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     markedModules.foreach(reduceComponentsForModule)
     markedDependencies.foreach(reduceDep)
     // update the analysis
+    println(s"MARKED MODULES: $markedModules")
+    println(s"MARKED DEPENDENCIES: $markedDependencies")
+    println(s"=> REDUCED: $reducedModules")
     if(reducedModules.nonEmpty) { updateAnalysis() }
     // unmark all modules and dependencies
     markedModules = Set.empty
@@ -154,7 +157,6 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     case l: LambdaModule => reduceComponents(l)
   }
 
-  lazy val maxNumberOfClosures = Math.sqrt(n)
   private def reduceComponents(module: LambdaModule): Unit =
     if (!reducedModules(module)) { // ensure this is only done once per module per adaptation
       reducedModules += module
@@ -162,12 +164,14 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       val cmps = cmpsPerModule(module)
       val calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]]).toSet
       val callsPerClo = calls.groupBy[lat.Closure](_.clo)
+      val maxContextsPerClosure = callsPerClo.maxBy(_._2.size)._2.size
       // look at the number of closures vs contexts
       val numberOfClosures = callsPerClo.size
-      if (numberOfClosures > maxNumberOfClosures) {
+      if (numberOfClosures > maxContextsPerClosure) {
+        println("")
         reduceClosuresForFunction(module.lambda, callsPerClo.keySet)
       } else {
-        val selected = selectLargest[(lat.Closure, Set[Call[ComponentContext]])](callsPerClo, _._2.size)
+        val selected = selectLargest[(lat.Closure, Set[Call[ComponentContext]])](callsPerClo, _._2.size, maxContextsPerClosure)
         selected.foreach { case (clo, calls) => reduceContext(clo, calls) }
       }
     }
@@ -186,7 +190,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       contexts = contexts.map(policy.adaptCtx)
     }
     // register the new policy
-    debug(s"${printClosure(closure)} -> $policy")
+    println(s"${printClosure(closure)} -> $policy")
     policyPerClosure += closure -> policy 
   }
 
@@ -249,7 +253,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       size: D => Int,
       max: Int
     ): Iterable[D] = {
-    val target = max * cutoffFactor
+    val target = Math.max(max * cutoffFactor, 1)
     data.filter(size(_) > target)
   }
 
