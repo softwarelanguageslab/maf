@@ -67,7 +67,7 @@ trait BaseSchemeModFSemantics
     case Call((lam, _), _) =>
       val argAddrs = lam.args.map(id => (id.name, allocVar(id, cmp))).toMap
       val allArgAddrs = lam.varArgId match {
-        case None => argAddrs
+        case None         => argAddrs
         case Some(varArg) => argAddrs + (varArg.name -> allocVar(varArg, cmp))
       }
       allArgAddrs.map(bnd => (bnd._1, store.getOrElse(bnd._2, lattice.bottom)))

@@ -24,7 +24,7 @@ import maf.modular.components.ComponentPointer
 //
 
 trait WebSummaryAdaptiveAnalysis extends AdaptiveContextSensitivity with AdaptiveAnalysisSummary {
-    this: AdaptiveContextSensitivityPolicy =>
+  this: AdaptiveContextSensitivityPolicy =>
 
   var webSummary: AdaptiveSummaryVisualisation = _
 

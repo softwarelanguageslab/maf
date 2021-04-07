@@ -70,7 +70,11 @@ object SchemeAnalyses {
     with FIFOWorklistAlgorithm[SchemeExp] {
     override def toString() = "full-argument-sensitivity"
   }
-  def adaptiveAnalysis(prg: SchemeExp, pn: Int, pt: Int) = new AdaptiveModAnalysis(prg)
+  def adaptiveAnalysis(
+      prg: SchemeExp,
+      pn: Int,
+      pt: Int
+    ) = new AdaptiveModAnalysis(prg)
     with AdaptiveSchemeModFSemantics
     with AdaptiveContextSensitivity
     with AdaptiveKCFA

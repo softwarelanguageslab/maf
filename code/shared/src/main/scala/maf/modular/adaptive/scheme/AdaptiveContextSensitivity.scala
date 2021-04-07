@@ -10,7 +10,7 @@ import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.MonoidInstances
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with SchemeModFModules {
-    this: AdaptiveContextSensitivityPolicy =>
+  this: AdaptiveContextSensitivityPolicy =>
 
   import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
 
@@ -27,7 +27,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
   // use a different context-sensitivity policy per closure
 
   private var policyPerClosure: Map[lat.Closure, ContextSensitivityPolicy] = Map.empty
-  def getCurrentPolicy(clo: lat.Closure): ContextSensitivityPolicy = 
+  def getCurrentPolicy(clo: lat.Closure): ContextSensitivityPolicy =
     policyPerClosure.getOrElse(clo, defaultPolicy)
 
   def allocCtx(
@@ -69,12 +69,12 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     super.trigger(dep)
   }
 
-  // before adaptation, keep track of ... 
+  // before adaptation, keep track of ...
   // - which modules have too many components
   // - which dependencies are triggered too often
 
   private var markedModules: Set[SchemeModule] = Set.empty
-  private var markedDependencies: Set[Dependency] = Set.empty 
+  private var markedDependencies: Set[Dependency] = Set.empty
 
   // ... during adaptation (to avoid duplicating work) ...
   // ... keep track of the modules for which the number of closures has been reduced
@@ -95,14 +95,14 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     debug(s"MARKED MODULES: $markedModules")
     debug(s"MARKED DEPENDENCIES: $markedDependencies")
     debug(s"=> REDUCED: $reducedModules")
-    if(reducedModules.nonEmpty) { updateAnalysis() }
+    if (reducedModules.nonEmpty) { updateAnalysis() }
     // unmark all modules and dependencies
     markedModules = Set.empty
     markedDependencies = Set.empty
   }
 
   // extra parameters to control the "aggressiveness" of the adaptation (TODO: in Scala 3, make these (default?) trait parameters):
-  // - `reduceFactor`: determines by what factor the number of components needs to be reduced 
+  // - `reduceFactor`: determines by what factor the number of components needs to be reduced
   // - `cutoffFactor`: determines the cutoff for selecting "culprits" to be reduced in the adaptation
   val reduceFactor = 0.25
   val cutoffFactor = 0.25
@@ -145,7 +145,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     }
     // register the new policy
     debug(s"${printClosure(closure)} -> $policy")
-    policyPerClosure += closure -> policy 
+    policyPerClosure += closure -> policy
   }
 
   private def reduceDep(dep: Dependency) = dep match {
@@ -188,7 +188,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
 
   // updating the analysis
 
-  override def updateAnalysisData(update: Map[Component,Component]) = {
+  override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     this.cmpsPerModule = updateMap(updateSet(update))(cmpsPerModule)
     this.depTriggerCounts = updateMap(updateDep(update), (c: Int) => c)(depTriggerCounts)(MonoidInstances.intMaxMonoid)
