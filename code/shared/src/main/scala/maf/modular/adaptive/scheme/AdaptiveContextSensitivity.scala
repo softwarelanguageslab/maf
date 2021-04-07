@@ -4,15 +4,13 @@ import maf.core._
 import maf.language.scheme._
 import maf.modular.adaptive.scheme._
 import maf.core.Position._
-import maf.util.datastructures._
 import maf.modular.scheme._
 import maf.modular._
 import maf.modular.scheme.modf.SchemeModFComponent._
-import maf.util.Monoid
-import maf.util.MonoidImplicits._
 import maf.util.MonoidInstances
 
-trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
+trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with SchemeModFModules {
+    this: AdaptiveContextSensitivityPolicy =>
 
   import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
 
@@ -26,32 +24,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   protected def warn(message: => String): Unit = ()
   protected def debug(message: => String): Unit = ()
 
-  // context-sensitivity policy can be configured per closure
-  // choice of policies is left open as a parameter; the following needs to be provided:
-  // - a starting policy `defaultPolicy` (with high precision) 
-  // - a `nextPolicy` method, which computes for a given closure the next policy (with lower precision)
-  // - a `glbPolicy` method that computes the most precise policy that is less precise than both given policies
-
-  trait ContextSensitivityPolicy {
-    def allocCtx(
-      clo: lat.Closure,
-      args: List[Value],
-      call: Position,
-      caller: Component
-    ): ComponentContext
-    def adaptCtx(ctx: ComponentContext): ComponentContext
-  }
-
-  val defaultPolicy: ContextSensitivityPolicy
-  def nextPolicy(clo: lat.Closure, 
-                 cur: ContextSensitivityPolicy,
-                 cts: Set[ComponentContext]): ContextSensitivityPolicy
-  def glbPolicy(pl1: ContextSensitivityPolicy, pl2: ContextSensitivityPolicy): ContextSensitivityPolicy
-
-  private implicit val policyMonoid = new Monoid[ContextSensitivityPolicy] {
-    def zero = defaultPolicy
-    def append(pl1: ContextSensitivityPolicy, pl2: => ContextSensitivityPolicy) = glbPolicy(pl1,pl2)
-  }
+  // use a different context-sensitivity policy per closure
 
   private var policyPerClosure: Map[lat.Closure, ContextSensitivityPolicy] = Map.empty
   def getCurrentPolicy(clo: lat.Closure): ContextSensitivityPolicy = 
@@ -66,24 +39,6 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     getCurrentPolicy(clo).allocCtx(clo, args, call, caller)
   def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
     cll.copy(ctx = getCurrentPolicy(cll.clo).adaptCtx(cll.ctx))
-
-  // modules (in Scheme), which are either:
-  // - the main module (~ top-level code)
-  // - a lambda module (~ function definition)
-
-  trait SchemeModule
-  case object MainModule extends SchemeModule {
-    override def toString = "main"
-  }
-  case class LambdaModule(lambda: SchemeLambdaExp) extends SchemeModule {
-    override def toString = lambda.lambdaName
-  }
-
-  def module(cmp: Component): SchemeModule = view(cmp) match {
-    case Main         => MainModule
-    case Call(clo, _) => module(clo)
-  }
-  def module(clo: lat.Closure): LambdaModule = LambdaModule(clo._1)
 
   // data kept by the analysis, includes:
   // - the components per module
@@ -289,50 +244,4 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   }
   private def printClosure(clo: lat.Closure) =
     s"${clo._1.lambdaName} (${clo._2.asInstanceOf[WrappedEnv[_, _]].data})"
-}
-
-trait AdaptiveKCFA extends AdaptiveContextSensitivity {
-
-  type ComponentContext = List[Position]
-  
-  case object KUnlimited extends ContextSensitivityPolicy {
-    override def toString = "k = ∞"
-    def adaptCtx(ctx: ComponentContext): ComponentContext = ctx
-    def allocCtx(clo: lattice.Closure, 
-                 args: List[Value], 
-                 call: Position, 
-                 caller: Component): ComponentContext = call :: getContext(caller)
-  }
-
-  case class KCallSites(k: Int) extends ContextSensitivityPolicy {
-    override def toString = s"k = $k"
-    def adaptCtx(ctx: ComponentContext): ComponentContext = ctx.take(k)
-    def allocCtx(clo: lattice.Closure, 
-                 args: List[Value], 
-                 call: Position, 
-                 caller: Component): ComponentContext = (call :: getContext(caller)).take(k)
-  }
-
-  val defaultPolicy = KUnlimited
-  def nextPolicy(clo: lattice.Closure, 
-                 cur: ContextSensitivityPolicy, 
-                 cts: Set[ComponentContext]): ContextSensitivityPolicy = cur match {
-    case KUnlimited => 
-      val highestK = cts.maxBy(_.length).length
-      KCallSites(highestK - 1)
-    case KCallSites(k) if k > 0 => KCallSites(k - 1)
-    case _ => throw new Exception("Can not lower precision any further!")
-  }
-  def glbPolicy(pl1: ContextSensitivityPolicy, pl2: ContextSensitivityPolicy) = (pl1, pl2) match {
-    case (KUnlimited, _) => pl2
-    case (_, KUnlimited) => pl1
-    case (KCallSites(k1), KCallSites(k2)) => KCallSites(Math.min(k1,k2)) 
-  }
-
-  def updateCtx(update: Component => Component)(ctx: ComponentContext) = ctx
-
-  private def getContext(cmp: Component): ComponentContext = view(cmp) match {
-    case Main                                   => List.empty
-    case cll: Call[ComponentContext] @unchecked => cll.ctx
-  }
 }
