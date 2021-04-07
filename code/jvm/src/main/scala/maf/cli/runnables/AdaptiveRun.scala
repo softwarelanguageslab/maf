@@ -82,8 +82,10 @@ object AdaptiveRun {
         //println(s"[$step] Analysing ${view(cmp)}")
         super.step(timeout)
       }
+      override protected def debug(message: => String) = println(s"DEBUG: [$step] $message")
+      override protected def warn(message: => String) = println(s"WARN: [$step] $message")
     }
-    anl.analyzeWithTimeoutInSeconds(20)
+    anl.analyzeWithTimeoutInSeconds(300)
     //debugClosures(analysis)
     println("===================")
     println(s"Steps: ${anl.step}")
