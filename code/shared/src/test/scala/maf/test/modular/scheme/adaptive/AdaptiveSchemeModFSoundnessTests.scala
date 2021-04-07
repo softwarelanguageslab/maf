@@ -16,13 +16,15 @@ trait AdaptiveSchemeModF extends SchemeModFSoundnessTests { outer =>
     new AdaptiveModAnalysis(program)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
+      with AdaptiveKCFA
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
-      lazy val budget = outer.budget
+      lazy val n = outer.budget
+      lazy val t = outer.budget
     }
 }
 
 class AdaptiveSchemeModFSoundnessTests extends AdaptiveSchemeModF with AllSequentialBenchmarks {
-  def budget = 100
+  def budget = 10
   override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
 }
