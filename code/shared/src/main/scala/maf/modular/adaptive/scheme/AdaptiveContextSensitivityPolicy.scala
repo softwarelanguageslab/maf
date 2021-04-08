@@ -35,7 +35,6 @@ trait AdaptiveContextSensitivityPolicy extends AdaptiveContextSensitivity {
     def zero = defaultPolicy
     def append(pl1: ContextSensitivityPolicy, pl2: => ContextSensitivityPolicy) = glbPolicy(pl1, pl2)
   }
-
 }
 
 //
@@ -84,6 +83,7 @@ trait AdaptiveKCFA extends AdaptiveContextSensitivityPolicy {
     case (KUnlimited, _)                  => pl2
     case (_, KUnlimited)                  => pl1
     case (KCallSites(k1), KCallSites(k2)) => KCallSites(Math.min(k1, k2))
+    case _ => throw new Exception("Unsupported policy")
   }
 
   def updateCtx(update: Component => Component)(ctx: ComponentContext) = ctx

@@ -8,6 +8,7 @@ import maf.modular.scheme._
 import maf.modular._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.MonoidInstances
+import maf.util.datastructures.MultiSet
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with SchemeModFModules {
   this: AdaptiveContextSensitivityPolicy =>
@@ -16,7 +17,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
 
   // configured by (TODO: in Scala 3, turn these into trait parameters):
   // - a threshold `n` for the number of components per module
-  // - a threshold `t` for how many times a component is triggered before adaptation
+  // - a threshold `t` for how many components are re-analysed due to triggering dependencies at a single location
   val n: Int
   val t: Int
 
@@ -42,14 +43,15 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
 
   // data kept by the analysis, includes:
   // - the components per module
-  // - the number of times a dependency is triggered
-  var cmpsPerModule: Map[SchemeModule, Set[Component]] = Map.empty
-  var depTriggerCounts: Map[Dependency, Int] = Map.empty
+  // - the number of times dependencies are triggered
+  private var cmpsPerModule: Map[SchemeModule, Set[Component]] = Map.empty
+  private var triggerCounts: Map[Expression, MultiSet[Dependency]] = Map.empty
 
   override def spawn(cmp: Component) = {
     if (!visited(cmp)) {
       val mod = module(cmp)
-      val updatedCmps = cmpsPerModule.getOrElse(mod, Set.empty) + cmp
+      val previousCmps = cmpsPerModule.getOrElse(mod, Set.empty)
+      val updatedCmps = previousCmps + cmp
       cmpsPerModule += mod -> updatedCmps
       if (updatedCmps.size > n) {
         markedModules += mod
@@ -59,22 +61,23 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
   }
 
   override def trigger(dep: Dependency) = {
-    val triggered = deps.getOrElse(dep, Set.empty)
-    val previousCount = depTriggerCounts.getOrElse(dep, 0)
-    val updatedCount = previousCount + triggered.size
-    depTriggerCounts += dep -> updatedCount
-    if (previousCount <= t && updatedCount > t) {
-      markedDependencies += dep
+    val location = getDepExp(dep)
+    val triggered = deps.getOrElse(dep, Set.empty).size
+    val previousCounts = triggerCounts.getOrElse(location, MultiSet.empty)
+    val updatedCounts = previousCounts.updateMult(dep)(_ + triggered)
+    triggerCounts += location -> updatedCounts
+    if (updatedCounts.cardinality > t) {
+      markedLocations += location
     }
     super.trigger(dep)
   }
 
   // before adaptation, keep track of ...
   // - which modules have too many components
-  // - which dependencies are triggered too often
+  // - which locations are triggered too often
 
   private var markedModules: Set[SchemeModule] = Set.empty
-  private var markedDependencies: Set[Dependency] = Set.empty
+  private var markedLocations: Set[Expression] = Set.empty
 
   // ... during adaptation (to avoid duplicating work) ...
   // ... keep track of the modules for which the number of closures has been reduced
@@ -90,15 +93,15 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     reducedModules = Set.empty
     // start the adaptation
     markedModules.foreach(reduceComponentsForModule)
-    markedDependencies.foreach(reduceDep)
+    markedLocations.foreach(reduceTriggersForLocation)
     // update the analysis
     debug(s"MARKED MODULES: $markedModules")
-    debug(s"MARKED DEPENDENCIES: $markedDependencies")
+    debug(s"MARKED LOCATIONS: ${markedLocations.map(_.idn)}")
     debug(s"=> REDUCED: $reducedModules")
     if (reducedModules.nonEmpty) { updateAnalysis() }
     // unmark all modules and dependencies
     markedModules = Set.empty
-    markedDependencies = Set.empty
+    markedLocations = Set.empty
   }
 
   // extra parameters to control the "aggressiveness" of the adaptation (TODO: in Scala 3, make these (default?) trait parameters):
@@ -116,18 +119,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     if (!reducedModules(module)) { // ensure this is only done once per module per adaptation
       reducedModules += module
       // get all components, calls and closures for this module
-      val cmps = cmpsPerModule(module)
-      val calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]]).toSet
+      val calls = cmpsPerModule(module).map(view(_).asInstanceOf[Call[ComponentContext]])
       val callsPerClo = calls.groupBy[lat.Closure](_.clo)
-      val maxContextsPerClosure = callsPerClo.maxBy(_._2.size)._2.size
-      // look at the number of closures vs contexts
-      val numberOfClosures = callsPerClo.size
-      if (numberOfClosures > maxContextsPerClosure) {
-        reduceClosuresForFunction(module.lambda, callsPerClo.keySet)
-      } else {
-        val selected = selectLargest[(lat.Closure, Set[Call[ComponentContext]])](callsPerClo, _._2.size, maxContextsPerClosure)
-        selected.foreach { case (clo, calls) => reduceContext(clo, calls) }
-      }
+      val selected = selectLargest[(lat.Closure, Set[Call[ComponentContext]])](callsPerClo, _._2.size)
+      selected.foreach { case (clo, calls) => reduceContext(clo, calls) }
     }
 
   private def reduceContext(closure: lat.Closure, calls: Set[Call[ComponentContext]]): Unit = {
@@ -140,12 +135,29 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     var policy = getCurrentPolicy(closure)
     val target = Math.max(1, calls.size * reduceFactor)
     while (contexts.size > target) { // TODO: replace with binary search?
-      policy = nextPolicy(closure, policy, contexts)
+      try {
+        policy = nextPolicy(closure, policy, contexts)
+      } catch {
+        case _: Exception =>
+        println(policy)
+        contexts.foreach(println)
+        throw new Exception("STOP!")
+      }
       contexts = contexts.map(policy.adaptCtx)
     }
     // register the new policy
     debug(s"${printClosure(closure)} -> $policy")
     policyPerClosure += closure -> policy
+  }
+
+  private def reduceTriggersForLocation(loc: Expression) = {
+    val depCounts = triggerCounts.getOrElse(loc, MultiSet.empty)
+    val selected = selectLargest[(Dependency,Int)](depCounts.content, _._2)
+    val updated = selected.foldLeft(depCounts) { case (acc, (dep, _)) => 
+      reduceDep(dep) 
+      acc - dep
+    }
+    triggerCounts += loc -> updated
   }
 
   private def reduceDep(dep: Dependency) = dep match {
@@ -165,7 +177,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     case modularLatticeWrapper.modularLattice.Vec(_, elms) =>
       val value = elms.map(_._2).maxBy(sizeOfValue) // assume elms is not empty!
       reduceValueAbs(value)
-    case v => warn(s"Attempting to adapt value a non-set-based value $v")
+    case v => warn(s"Attempting to adapt a non-set-based value $v")
   }
 
   private def reduceAddresses(addrs: Set[Addr]) = {
@@ -191,7 +203,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
   override def updateAnalysisData(update: Map[Component, Component]) = {
     super.updateAnalysisData(update)
     this.cmpsPerModule = updateMap(updateSet(update))(cmpsPerModule)
-    this.depTriggerCounts = updateMap(updateDep(update), (c: Int) => c)(depTriggerCounts)(MonoidInstances.intMaxMonoid)
+    this.triggerCounts = updateMap(updateMultiSet(updateDep(update), Math.max))(triggerCounts)
     this.policyPerClosure = updateMap(updateClosure(update), (p: ContextSensitivityPolicy) => p)(policyPerClosure)
   }
 
@@ -219,6 +231,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
         case PtrAddr(_, cmp) => cmp
         case PrmAddr(_)      => mainComponent
       }
+  }
+  private def getDepExp(dep: Dependency): Expression = dep match {
+    case AddrDependency(addr) => getAddrExp(addr)
+    case _ => throw new Exception(s"Unknown dependency: $dep")
   }
   private def getAddrExp(addr: Addr): Expression = addr match {
     case returnAddr: ReturnAddr[Component] @unchecked => expr(returnAddr.cmp)

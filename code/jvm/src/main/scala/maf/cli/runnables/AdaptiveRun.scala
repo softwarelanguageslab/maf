@@ -72,8 +72,8 @@ object AdaptiveRun {
       with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
       // parameters for the adaptive analysis
-      lazy val n = 30
-      lazy val t = 10
+      lazy val n = 100
+      lazy val t = 100
       // logging the analysis
       var step = 0
       override def step(timeout: Timeout.T): Unit = {
