@@ -9,6 +9,7 @@ import maf.modular._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.MonoidInstances
 import maf.util.datastructures.MultiSet
+import scala.annotation.tailrec
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with SchemeModFModules {
   this: AdaptiveContextSensitivityPolicy =>
@@ -27,9 +28,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
 
   // use a different context-sensitivity policy per closure
 
-  private var policyPerClosure: Map[lat.Closure, ContextSensitivityPolicy] = Map.empty
-  def getCurrentPolicy(clo: lat.Closure): ContextSensitivityPolicy =
-    policyPerClosure.getOrElse(clo, defaultPolicy)
+  private var policyPerFn: Map[SchemeLambdaExp, ContextSensitivityPolicy] = Map.empty
+  def getCurrentPolicy(fn: SchemeLambdaExp): ContextSensitivityPolicy =
+    policyPerFn.getOrElse(fn, defaultPolicy)
 
   def allocCtx(
       clo: lattice.Closure,
@@ -37,9 +38,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
       call: Position,
       caller: Component
     ): ComponentContext =
-    getCurrentPolicy(clo).allocCtx(clo, args, call, caller)
+    getCurrentPolicy(clo._1).allocCtx(clo, args, call, caller)
   def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
-    cll.copy(ctx = getCurrentPolicy(cll.clo).adaptCtx(cll.ctx))
+    cll.copy(ctx = getCurrentPolicy(cll.clo._1).adaptCtx(cll.ctx))
 
   // data kept by the analysis, includes:
   // - the components per module
@@ -119,35 +120,34 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     if (!reducedModules(module)) { // ensure this is only done once per module per adaptation
       reducedModules += module
       // get all components, calls and closures for this module
-      val calls = cmpsPerModule(module).map(view(_).asInstanceOf[Call[ComponentContext]])
-      val callsPerClo = calls.groupBy[lat.Closure](_.clo)
-      val selected = selectLargest[(lat.Closure, Set[Call[ComponentContext]])](callsPerClo, _._2.size)
-      selected.foreach { case (clo, calls) => reduceContext(clo, calls) }
+      val cmps = cmpsPerModule(module)
+      val calls = cmps.map(view(_).asInstanceOf[Call[ComponentContext]])
+      val contexts = calls.map(_.ctx)
+      if (contexts.size > 1) {
+        val target = Math.max(1, reduceFactor * contexts.size).toInt
+        val policy = getCurrentPolicy(module.lambda)
+        reduceContext(module, policy, contexts, target)
+      } else {
+        reduceComponentsForModule(getParentModule(calls.head.clo))
+      }
     }
 
-  private def reduceContext(closure: lat.Closure, calls: Set[Call[ComponentContext]]): Unit = {
-    if (calls.size == 1) { // can't do anything if there is only one component
-      warn(s"Attempting to reduce contexts for a single call ${calls.head}")
-      return
+  // find a fitting policy
+  @tailrec
+  private def reduceContext(module: LambdaModule, 
+                            policy: ContextSensitivityPolicy, 
+                            ctxs: Set[ComponentContext], 
+                            target: Int): Unit = {
+    if (ctxs.size > target) {
+      // need to decrease precision further
+      val next = nextPolicy(module.lambda, policy, ctxs)
+      val adapted = ctxs.map(next.adaptCtx)
+      reduceContext(module, next, adapted, target)
+    } else {
+      // register the new policy
+      debug(s"$module -> $policy")
+      policyPerFn += module.lambda -> policy
     }
-    // find a fitting policy
-    var contexts = calls.map(_.ctx)
-    var policy = getCurrentPolicy(closure)
-    val target = Math.max(1, calls.size * reduceFactor)
-    while (contexts.size > target) { // TODO: replace with binary search?
-      try {
-        policy = nextPolicy(closure, policy, contexts)
-      } catch {
-        case _: Exception =>
-        println(policy)
-        contexts.foreach(println)
-        throw new Exception("STOP!")
-      }
-      contexts = contexts.map(policy.adaptCtx)
-    }
-    // register the new policy
-    debug(s"${printClosure(closure)} -> $policy")
-    policyPerClosure += closure -> policy
   }
 
   private def reduceTriggersForLocation(loc: Expression) = {
@@ -204,7 +204,6 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     super.updateAnalysisData(update)
     this.cmpsPerModule = updateMap(updateSet(update))(cmpsPerModule)
     this.triggerCounts = updateMap(updateMultiSet(updateDep(update), Math.max))(triggerCounts)
-    this.policyPerClosure = updateMap(updateClosure(update), (p: ContextSensitivityPolicy) => p)(policyPerClosure)
   }
 
   /*
