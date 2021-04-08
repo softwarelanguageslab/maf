@@ -39,6 +39,8 @@ trait AdaptiveKCFA extends AdaptiveContextSensitivityPolicy {
 
   type ComponentContext = List[Position]
 
+  //  _
+  // /!\ currently not in use (too precise to start with)
   case object KUnlimited extends ContextSensitivityPolicy {
     override def toString = "k = ∞"
     def adaptCtx(ctx: ComponentContext): ComponentContext = ctx
@@ -61,7 +63,7 @@ trait AdaptiveKCFA extends AdaptiveContextSensitivityPolicy {
       ): ComponentContext = (call :: getContext(caller)).take(k)
   }
 
-  val defaultPolicy = KUnlimited
+  val defaultPolicy = KCallSites(10) // start with 10-cfa
   def nextPolicy(
       fun: SchemeLambdaExp,
       cur: ContextSensitivityPolicy,
