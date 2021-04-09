@@ -162,7 +162,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
 
   private def reduceDep(dep: Dependency) = dep match {
     case AddrDependency(addr) => reduceValueAbs(store(addr))
-    case _                    => throw new Exception("Unknown dependency for adaptive analysis")
+    case _ => throw new Exception("Unknown dependency for adaptive analysis")
   }
 
   private def reduceValueAbs(value: Value): Unit = value.vs.maxBy(sizeOfV) match {
@@ -186,8 +186,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     selected.foreach { case (loc, addrs) => reduceAddressesForLocation(loc, addrs) }
   }
 
-  private def reduceAddressesForLocation(loc: Expression, addrs: Set[Addr]) =
+  private def reduceAddressesForLocation(loc: Expression, addrs: Set[Addr]) = {
+    debug(s"Reducing ${addrs.size} addrs")
     reduceComponentsForModule(getAddrModule(addrs.head))
+  }
 
   private def reduceClosures(cls: Set[lat.Closure]) = {
     val groupByFunction = cls.groupBy[SchemeLambdaExp](_._1)
@@ -195,8 +197,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     selected.foreach { case (fn, closures) => reduceClosuresForFunction(fn, closures) }
   }
 
-  private def reduceClosuresForFunction(fn: SchemeLambdaExp, closures: Set[lat.Closure]) =
+  private def reduceClosuresForFunction(fn: SchemeLambdaExp, closures: Set[lat.Closure]) = {
+    debug(s"Reducing ${closures.size} closures")
     reduceComponentsForModule(getParentModule(closures.head))
+  }
 
   // updating the analysis
 

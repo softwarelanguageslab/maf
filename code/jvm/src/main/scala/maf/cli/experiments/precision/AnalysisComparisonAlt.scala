@@ -53,16 +53,22 @@ object AnalysisComparisonAltAdaptive
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ] {
-  def analyses =
-    // run some regular k-cfa analyses
-    List(0, 1, 2, 3).map { k =>
-      (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
-    } ++
-      // run some adaptive analyses
-      List.empty
+  def analyses = {
+    val n = 3000
+    val t = 3000
+    // run some adaptive analyses
+    List((SchemeAnalyses.adaptiveAnalysis(_, n, t), s"adaptive (n = $n; t = $t)"))
+  }
   def main(args: Array[String]) = runBenchmarks(
     Set(
-      "test/R5RS/icp/icp_1c_multiple-dwelling.scm"
+      "test/R5RS/various/mceval.scm",
+      "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+      "test/R5RS/icp/icp_2_aeval.scm",
+      //"test/R5RS/icp/icp_7_eceval.scm",
+      "test/R5RS/icp/icp_8_compiler.scm",
+      "test/R5RS/gabriel/browse.scm",
+      "test/R5RS/gabriel/boyer.scm",
+      "test/R5RS/scp1-compressed/all.scm"
     )
   )
 

@@ -77,7 +77,7 @@ object SchemeAnalyses {
     ) = new AdaptiveModAnalysis(prg)
     with AdaptiveSchemeModFSemantics
     with AdaptiveContextSensitivity
-    with AdaptiveKCFA
+    with AdaptiveArgSensitivity
     with SchemeConstantPropagationDomain
     with FIFOWorklistAlgorithm[SchemeExp] {
     lazy val n = pn
