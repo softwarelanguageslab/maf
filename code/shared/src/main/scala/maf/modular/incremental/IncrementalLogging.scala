@@ -20,21 +20,24 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
   def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
 
-  def insertTable(messageOrComponent: Either[String, Component]): Unit = messageOrComponent match {
-    case Left(msg) =>
-      table = table.add(step.toString, "Phase", msg)
-      step = step + 1
-    case Right(cmp) =>
-      val addrs = store.keySet
-      table = table.add(step.toString, "Phase", cmp.toString)
-      addrs.foreach(addr =>
-        if (focus(addr)) {
-          val v = store.getOrElse(addr, lattice.bottom)
-          val p = provenance(addr).map({ case (c, v) => s"$v ($c)" }).mkString("; ")
-          table = table.add(step.toString, s"σ($addr)", v.toString).add(step.toString, s"P($addr)", p)
-        }
-      )
-      step = step + 1
+  def insertTable(messageOrComponent: Either[String, Component]): Unit = {
+    logger.log("TABULATING")
+    val stepString = step.toString
+    step = step + 1
+    messageOrComponent match {
+      case Left(msg) =>
+        table = table.add(stepString, "Phase", msg)
+      case Right(cmp) =>
+        val addrs = store.keySet
+        table = table.add(stepString, "Phase", cmp.toString)
+        addrs.foreach(addr =>
+          if (focus(addr)) {
+            val v = store.getOrElse(addr, lattice.bottom)
+            val p = provenance(addr).map({ case (c, v) => s"$v ($c)" }).mkString("; ")
+            table = table.add(stepString, s"σ($addr)", v.toString).add(stepString, s"P($addr)", p)
+          }
+        )
+    }
   }
 
   def tableToString(): String = {
@@ -125,7 +128,6 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       logger.log(s"Analysing $component")
       if (configuration.cyclicValueInvalidation) logger.log(s"* S Resetting addressDependencies for $component.")
       super.analyzeWithTimeout(timeout)
-      insertTable(Right(component))
     }
 
     // Reading an address.
@@ -147,6 +149,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     override def registerProvenances(): Unit = {
       intraProvenance.foreach({ case (addr, value) => logger.log(s"P $addr: $value") })
       super.registerProvenances()
+    }
+
+    override def commit(): Unit = {
+      super.commit()
+      insertTable(Right(component))
     }
 
   }
