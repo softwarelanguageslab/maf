@@ -39,6 +39,8 @@ object IncrementalRun extends App {
   def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
       new IncrementalSchemeModFAnalysisCPLattice(text, configuration) with IncrementalLogging[SchemeExp] {
+        override def focus(a: Addr): Boolean = a.toString == "VarAddr(m)" || a.toString == "VarAddr(n)"
+
         override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
           with IncrementalSchemeModFBigStepIntra
           with IncrementalGlobalStoreIntraAnalysis
@@ -50,17 +52,7 @@ object IncrementalRun extends App {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = newAnalysis(text, Config(cyclicValueInvalidation = false))
     a.analyzeWithTimeout(timeout())
-    // a.printAssertions()
-    //val aC = a.deepCopy()
     a.updateAnalysis(timeout())
-    // a.provenance.foreach({ case (a, p) => println(s"----- $a -----\n${p.toList.map({ case (c, v) => s"$c => $v" }).mkString("  ", "\n  ", "")}") })
-    //a.printAssertions()
-    //aC.updateAnalysis(timeout(), true)
-    //aC.printAssertions()
-    //val b = newAnalysis(text)
-    //b.version = New
-    //b.analyzeWithTimeout(timeout())
-    //b.printAssertions()
   }
 
   val modConcbenchmarks: List[String] = List()

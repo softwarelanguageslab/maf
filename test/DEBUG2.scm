@@ -1,5 +1,11 @@
-(define (fun n)
-  (assert (integer? n))
-  (set! n (- n 1)))
+(define (odd? m)
+  (if (<= m 0)
+      #f
+      (even? (- m 1))))
 
-(fun (<change> 10.5 10))
+(define (even? n)
+  (if (<= n 0)
+      #t
+      (odd? (- n 1))))
+
+(odd? (<change> 10 10.5))

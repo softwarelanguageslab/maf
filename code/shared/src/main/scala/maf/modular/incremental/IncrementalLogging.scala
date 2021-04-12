@@ -4,7 +4,7 @@ import maf.core.Expression
 import maf.language.change.CodeVersion._
 import maf.util.Logger
 import maf.util.Logger._
-import maf.util.benchmarks.Timeout
+import maf.util.benchmarks.{Table, Timeout}
 
 /**
  * Provides facilities for logging an incremental analysis that uses the incremental global store.
@@ -15,6 +15,33 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   inter =>
 
   val logger: NumberedLog = Logger.numbered()
+  var table: Table[String] = Table.empty.withDefaultValue("")
+  var step: Int = 0 // The current intra-component analysis.
+
+  def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
+
+  def insertTable(messageOrComponent: Either[String, Component]): Unit = messageOrComponent match {
+    case Left(msg) =>
+      table = table.add(step.toString, "Phase", msg)
+      step = step + 1
+    case Right(cmp) =>
+      val addrs = store.keySet
+      table = table.add(step.toString, "Phase", cmp.toString)
+      addrs.foreach(addr =>
+        if (focus(addr)) {
+          val v = store.getOrElse(addr, lattice.bottom)
+          val p = provenance(addr).map({ case (c, v) => s"$v ($c)" }).mkString("; ")
+          table = table.add(step.toString, s"σ($addr)", v.toString).add(step.toString, s"P($addr)", p)
+        }
+      )
+      step = step + 1
+  }
+
+  def tableToString(): String = {
+    val storeCols = table.allColumns.filter(_.startsWith("σ")).toList.sorted
+    val provcols = table.allColumns.filter(_.startsWith("P(")).toList.sorted
+    table.prettyString(rowName = "Step", rows = (0 until step).toList.map(_.toString), columns = "Phase" :: storeCols ::: provcols)
+  }
 
   // Collect some numbers
   var intraC: Long = 0
@@ -43,9 +70,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
   // Starting the incremental analysis.
   override def updateAnalysis(timeout: Timeout.T): Unit = {
+    logger.logU("\n\n" + tableToString())
     logger.logU("\n" + storeString())
     logger.resetNumbering()
     logger.logU("\nUpdating analysis\n")
+    insertTable(Left("Updating analysis"))
     try {
       super.updateAnalysis(timeout)
       if (configuration.cyclicValueInvalidation) {
@@ -54,11 +83,13 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         })
       }
       logger.logU("\n\n" + getSummary())
+      logger.logU("\n\n" + tableToString())
       logger.logU("\n" + storeString())
     } catch {
       case t: Throwable =>
         logger.logException(t)
         logger.logU("\n\n" + getSummary())
+        logger.logU("\n\n" + tableToString())
         logger.logU("\n" + storeString())
         throw t
     }
@@ -94,6 +125,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       logger.log(s"Analysing $component")
       if (configuration.cyclicValueInvalidation) logger.log(s"* S Resetting addressDependencies for $component.")
       super.analyzeWithTimeout(timeout)
+      insertTable(Right(component))
     }
 
     // Reading an address.

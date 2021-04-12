@@ -1,7 +1,7 @@
-(define (a x) x)
+(define x 1)
+(define y 2)
+(define (write) (<change> (set! x 7) (set! y 7)))
+(define (read) (<change> x y))
 
-(define (f) (a 1))
-(define (g) (a (<change> #t 'ok)))
-
-(f)
-(g)
+(read)
+(write)
