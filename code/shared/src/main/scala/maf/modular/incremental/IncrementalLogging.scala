@@ -17,11 +17,12 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   val logger: NumberedLog = Logger.numbered()
   var table: Table[String] = Table.empty.withDefaultValue("")
   var step: Int = 0 // The current intra-component analysis.
+  var botRead: Option[Addr] =
+    None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
 
   def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
 
   def insertTable(messageOrComponent: Either[String, Component]): Unit = {
-    logger.log("TABULATING")
     val stepString = step.toString
     step = step + 1
     messageOrComponent match {
@@ -37,13 +38,15 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             table = table.add(stepString, s"σ($addr)", v.toString).add(stepString, s"P($addr)", p)
           }
         )
+        botRead.foreach(addr => table = table.add(stepString, "Bot", addr.toString))
+        botRead = None
     }
   }
 
   def tableToString(): String = {
     val storeCols = table.allColumns.filter(_.startsWith("σ")).toList.sorted
     val provcols = table.allColumns.filter(_.startsWith("P(")).toList.sorted
-    table.prettyString(rowName = "Step", rows = (0 until step).toList.map(_.toString), columns = "Phase" :: storeCols ::: provcols)
+    table.prettyString(rowName = "Step", rows = (0 until step).toList.map(_.toString), columns = "Phase" :: storeCols ::: provcols ::: List("Bot"))
   }
 
   // Collect some numbers
@@ -133,6 +136,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     // Reading an address.
     override def readAddr(addr: Addr): Value = {
       val v = super.readAddr(addr)
+      if (v == lattice.bottom) botRead = Some(addr) else botRead = None
       logger.log(s"R $addr => $v")
       v
     }
@@ -152,6 +156,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     }
 
     override def commit(): Unit = {
+      logger.log("Committing.")
       super.commit()
       insertTable(Right(component))
     }
