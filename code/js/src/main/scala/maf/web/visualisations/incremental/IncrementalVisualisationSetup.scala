@@ -34,7 +34,7 @@ object IncrementalVisualisationSetup extends VisualisationSetup {
       width: Int,
       height: Int
     ): Element =
-    (new WebVisualisationIncremental(analysis, width: Int, height: Int)).node
+    (new WebVisualisationIncremental(analysis, width: Int, height: Int) with RetainAllIncremental with AddressVisualisationIncremental).node
 
   override def loadFile(program: String): Unit = {
     initialised = false
