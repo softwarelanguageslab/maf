@@ -12,6 +12,7 @@ import maf.modular.incremental._
 
 import scala.concurrent.duration._
 import maf.web.visualisations._
+import org.scalajs.dom.Element
 
 import scala.concurrent.TimeoutException
 import scala.scalajs.js.annotation.JSExportTopLevel
@@ -21,7 +22,9 @@ object IncrementalVisualisationSetup extends VisualisationSetup {
 
   type Analysis = IncrementalAnalysis
 
-  def createAnalysis(text: String) = {
+  var initialised: Boolean = false
+
+  def createAnalysis(text: String): IncrementalAnalysis = {
     val program: SchemeExp = CSchemeParser.parse(text)
     new IncrementalAnalysis(program, IncrementalConfiguration.allOptimisations)
   }
@@ -30,17 +33,29 @@ object IncrementalVisualisationSetup extends VisualisationSetup {
       analysis: Analysis,
       width: Int,
       height: Int
-    ) =
-    (new WebVisualisationIncremental(analysis, width: Int, height: Int) with RetainAllIncremental with AddressVisualisationIncremental).node
+    ): Element =
+    (new WebVisualisationIncremental(analysis, width: Int, height: Int)).node
 
   override def loadFile(program: String): Unit = {
+    initialised = false
     super.loadFile(program)
-    //initAnalysis()
+    initAnalysis()
   }
 
   // Is called upon loading a file to perform extra steps.
   def initAnalysis(): Unit = {
     analysis.get.initAnalysis()
+    analysis.get.webvis.refresh()
+    initialised = true
+  }
+
+  // Avoid handling keys while initialisation is in progress.
+  override def analysisCommandHandler(anl: Analysis): PartialFunction[String, Unit] = {
+    if (initialised)
+      super.analysisCommandHandler(anl)
+    else { (_: String) =>
+      println("Setup in progress, cannot step analysis.")
+    }
   }
 }
 
@@ -48,22 +63,14 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
     extends IncrementalSchemeModFAssertionAnalysisCPLattice(program, configuration)
        with VisualisableIncrementalModAnalysis[SchemeExp] {
 
-  var initialised: Boolean = false
-
-  override def step(timeout: Timeout.T): Unit = {
-    if (initialised)
-      super.step(timeout)
-    else println("Setup in progress, cannot step analysis.")
-  }
-
   type Module = Option[SchemeLambdaExp]
 
-  def module(cmp: Component) = cmp match {
+  def module(cmp: Component): Option[SchemeLambdaExp] = cmp match {
     case Main                 => None
     case Call((lambda, _), _) => Some(lambda)
   }
 
-  def moduleName(mdl: Module) = mdl.map(_.lambdaName).getOrElse("main")
+  def moduleName(mdl: Module): String = mdl.map(_.lambdaName).getOrElse("main")
 
   override def updateAddrInc(
       cmp: SchemeModFComponent,
@@ -114,7 +121,6 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
       affected.foreach(addToWorkList)
       println(s"Directly affected components: ${affected.toList.mkString(", ")}")
       println("Preparation finished. Starting reanalysis.")
-      initialised = true
     } catch {
       case t: Throwable =>
         System.err.println(t.getMessage) // Will display an error in the console.
