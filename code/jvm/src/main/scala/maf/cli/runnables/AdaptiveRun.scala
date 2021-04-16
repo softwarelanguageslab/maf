@@ -12,6 +12,8 @@ import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
+import scala.language.reflectiveCalls
+
 import maf.cli.experiments.SchemeAnalyses
 import maf.language.scheme.interpreter._
 
@@ -63,7 +65,7 @@ object AdaptiveRun {
   }
 
   def testAbstractAdaptive(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/icp/icp_7_eceval.scm")
+    val txt = Reader.loadFile("test/R5RS/various/mceval.scm")
     val prg = CSchemeParser.parse(txt)
     val anl = new AdaptiveModAnalysis(prg, rate = 1000)
       with AdaptiveSchemeModFSemantics
@@ -93,10 +95,10 @@ object AdaptiveRun {
     debugResults(anl, false)
   }
 
-  def debugResults(machine: SchemeModFSemantics, printMore: Boolean = false): Unit =
+  def debugResults(machine: BaseSchemeModFSemantics, printMore: Boolean = false): Unit =
     machine.store.foreach {
-      case (ReturnAddr(cmp: machine.Component, _), result) if cmp == machine.initialComponent || printMore =>
-        println(s"${machine.view(cmp)} => $result")
+      case (ReturnAddr(cmp: machine.Component @unchecked, _), result) if cmp == machine.initialComponent || printMore =>
+        println(s"$cmp => $result")
       case _ => ()
     }
 }

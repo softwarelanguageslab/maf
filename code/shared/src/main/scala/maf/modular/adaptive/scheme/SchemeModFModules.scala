@@ -5,7 +5,7 @@ import maf.language.scheme._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.modular.scheme.ModularSchemeDomain
 
-trait SchemeModFModules extends SchemeModFSemantics with ModularSchemeDomain {
+trait SchemeModFModules extends BaseSchemeModFSemantics with ModularSchemeDomain {
 
   import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
 

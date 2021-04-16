@@ -12,54 +12,47 @@ import maf.modular.adaptive._
 trait AdaptiveSchemeModFSemantics
     extends AdaptiveModAnalysis[SchemeExp]
        with AdaptiveGlobalStore[SchemeExp]
-       with SchemeModFSemantics
+       with BaseSchemeModFSemantics
+       with SchemeSetup
        with BigStepModFSemantics
+       with StandardSchemeModFComponents
        with ModularSchemeDomain {
-  // Definition of components
-  type ComponentData = SchemeModFComponent
-  lazy val initialComponentData = Main
-  // Need init to initialize reference bookkeeping information.
-  def newComponent(call: Call[ComponentContext]): Component = ref(call)
   // Definition of update functions
-  def updateClosure(update: Component => Component)(clo: lattice.Closure): lattice.Closure = clo match {
-    case (lambda, env: WrappedEnv[Addr, Component] @unchecked) => (lambda, env.copy(data = update(env.data)).mapAddrs(updateAddr(update)))
+  def adaptClosure(clo: lattice.Closure): lattice.Closure = clo match {
+    case (lambda, env: WrappedEnv[Addr, Component] @unchecked) => (lambda, env.copy(data = adaptComponent(env.data)).mapAddrs(adaptAddr))
     case _                                                     => throw new Exception(s"Closure with invalid environment: ${clo._2}")
   }
-  def updateCmp(update: Component => Component)(cmp: ComponentData): ComponentData = cmp match {
-    case Main                                        => Main
-    case Call(clo, ctx: ComponentContext @unchecked) => Call(updateClosure(update)(clo), updateCtx(update)(ctx))
+  def adaptAllocCtx(ctx: AllocationContext): AllocationContext
+  def adaptAddr(addr: Addr): Addr = addr match {
+    case ptr: PtrAddr[AllocationContext] @unchecked   => PtrAddr(ptr.exp, adaptAllocCtx(ptr.ctx))
+    case vad: VarAddr[AllocationContext] @unchecked   => VarAddr(vad.id, adaptAllocCtx(vad.ctx))
+    case ret: ReturnAddr[Component] @unchecked  => ReturnAddr(adaptComponent(ret.cmp), ret.idn)
+    case pad: PrmAddr                           => pad
+    case _                                      => throw new Exception(s"Unhandled addr: $addr")
   }
-  def updateCtx(update: Component => Component)(ctx: ComponentContext): ComponentContext
-  def updateAddr(update: Component => Component)(addr: Addr): Addr = addr match {
-    case ptr: PtrAddr[Component] @unchecked    => PtrAddr(ptr.exp, update(ptr.ctx))
-    case vad: VarAddr[Component] @unchecked    => VarAddr(vad.id, update(vad.ctx))
-    case ret: ReturnAddr[Component] @unchecked => ReturnAddr(update(ret.cmp), ret.idn)
-    case pad: PrmAddr                          => pad
-    case _                                     => throw new Exception(s"Unhandled addr: $addr")
+  def adaptValue(value: Value): Value = value match {
+    case modularLatticeWrapper.modularLattice.Elements(vs) => modularLatticeWrapper.modularLattice.Elements(vs.map(adaptV))
   }
-  def updateValue(update: Component => Component)(value: Value): Value = value match {
-    case modularLatticeWrapper.modularLattice.Elements(vs) => modularLatticeWrapper.modularLattice.Elements(vs.map(updateV(update)))
+  def adaptV(value: modularLatticeWrapper.modularLattice.Value): modularLatticeWrapper.modularLattice.Value = value match {
+    case modularLatticeWrapper.modularLattice.Pointer(ps) => 
+      modularLatticeWrapper.modularLattice.Pointer(ps.map(adaptAddr))
+    case modularLatticeWrapper.modularLattice.Clo(cs) =>
+      modularLatticeWrapper.modularLattice.Clo(cs.map(adaptClosure))
+    case modularLatticeWrapper.modularLattice.Cons(car, cdr) =>
+      modularLatticeWrapper.modularLattice.Cons(adaptValue(car), adaptValue(cdr))
+    case modularLatticeWrapper.modularLattice.Vec(siz, els) =>
+      modularLatticeWrapper.modularLattice.Vec(siz, els.view.mapValues(adaptValue).toMap)
+    case _ => value
   }
-  def updateV(update: Component => Component)(value: modularLatticeWrapper.modularLattice.Value): modularLatticeWrapper.modularLattice.Value =
-    value match {
-      case modularLatticeWrapper.modularLattice.Pointer(ps) => modularLatticeWrapper.modularLattice.Pointer(ps.map(updateAddr(update)))
-      case modularLatticeWrapper.modularLattice.Clo(cs) =>
-        modularLatticeWrapper.modularLattice.Clo(cs.map(updateClosure(update)))
-      case modularLatticeWrapper.modularLattice.Cons(car, cdr) =>
-        modularLatticeWrapper.modularLattice.Cons(updateValue(update)(car), updateValue(update)(cdr))
-      case modularLatticeWrapper.modularLattice.Vec(siz, els) =>
-        modularLatticeWrapper.modularLattice.Vec(siz, els.view.mapValues(updateValue(update)).toMap)
-      case _ => value
-    }
   // adapting a component
-  def adaptComponent(cmp: ComponentData): ComponentData = cmp match {
+  def adaptComponent(cmp: Component): Component = cmp match {
     case Main                                 => Main
     case c: Call[ComponentContext] @unchecked => adaptCall(c)
   }
   protected def adaptCall(c: Call[ComponentContext]): Call[ComponentContext]
   // go over all new components after each step of the analysis, passing them to `onNewComponent`
   // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
-  override def baseEnv = WrappedEnv(super.baseEnv, 0, mainComponent)
+  override def baseEnv = WrappedEnv(initialEnv, 0, Main)
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFIntra = new AdaptiveSchemeModFIntra(cmp)
   class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra {
     override protected def newClosure(lambda: SchemeLambdaExp, env: Env): Value = {

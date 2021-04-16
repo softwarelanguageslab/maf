@@ -76,8 +76,6 @@ trait AdaptiveKCFA extends AdaptiveContextSensitivityPolicy {
     case _                      => throw new Exception("Can not lower precision any further!")
   }
 
-  def updateCtx(update: Component => Component)(ctx: ComponentContext) = ctx
-
   private def getContext(cmp: Component): ComponentContext = view(cmp) match {
     case Main                                   => List.empty
     case cll: Call[ComponentContext] @unchecked => cll.ctx
@@ -91,8 +89,6 @@ trait AdaptiveKCFA extends AdaptiveContextSensitivityPolicy {
 trait AdaptiveArgSensitivity extends AdaptiveContextSensitivityPolicy {
 
   type ComponentContext = Map[Identifier, Value]
-  def updateCtx(update: Component => Component)(ctx: ComponentContext) =
-    ctx.map { case (id, value) => (id, updateValue(update)(value) )}
 
   case class ArgValues(excluded: Set[Identifier]) extends ContextSensitivityPolicy {
     def allocCtx(clo: lattice.Closure, args: List[Value], call: Position, caller: Component) =
