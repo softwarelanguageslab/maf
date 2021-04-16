@@ -1,14 +1,9 @@
 package maf.web.visualisations
 
-import maf.web._
-
-import maf.core._
-import maf.modular._
 import maf.modular.worklist._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.language.scheme._
-import maf.util.benchmarks.Timeout
 
 import scala.scalajs.js.annotation._
 import maf.modular.scheme.modf.SchemeModFComponent.Main

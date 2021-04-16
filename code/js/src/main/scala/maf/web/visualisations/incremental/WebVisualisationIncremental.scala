@@ -1,7 +1,6 @@
 package maf.web.visualisations.incremental
 
 import maf.core.Expression
-import maf.modular.DependencyTracking
 import maf.modular.incremental.{IncrementalGlobalStore, IncrementalModAnalysis}
 import maf.web.visualisations._
 import maf.web.visualisations.incremental.WebVisualisationIncremental._

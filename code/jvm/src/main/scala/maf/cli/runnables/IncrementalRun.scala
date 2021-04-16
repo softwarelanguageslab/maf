@@ -1,7 +1,6 @@
 package maf.cli.runnables
 
 import maf.language.CScheme.CSchemeParser
-import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
 import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.scheme.modf._
