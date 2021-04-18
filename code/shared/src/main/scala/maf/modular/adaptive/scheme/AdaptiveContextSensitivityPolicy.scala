@@ -91,10 +91,15 @@ trait AdaptiveArgSensitivity extends AdaptiveContextSensitivityPolicy {
   type ComponentContext = Map[Identifier, Value]
 
   case class ArgValues(excluded: Set[Identifier]) extends ContextSensitivityPolicy {
-    def allocCtx(clo: lattice.Closure, args: List[Value], call: Position, caller: Component) =
+    def allocCtx(
+        clo: lattice.Closure,
+        args: List[Value],
+        call: Position,
+        caller: Component
+      ) =
       filterArgs(clo._1.args.zip(args).toMap)
     def adaptCtx(ctx: ComponentContext): ComponentContext = filterArgs(ctx)
-    private def filterArgs(argValues: Map[Identifier, Value]): Map[Identifier,Value] =
+    private def filterArgs(argValues: Map[Identifier, Value]): Map[Identifier, Value] =
       argValues.filter { case (id, _) => !excluded(id) }
   }
 
@@ -104,11 +109,11 @@ trait AdaptiveArgSensitivity extends AdaptiveContextSensitivityPolicy {
       cur: ContextSensitivityPolicy,
       cts: Set[ComponentContext]
     ): ContextSensitivityPolicy = cur match {
-      case ArgValues(excluded) => 
-        val parWithMostValues = fun.args.maxBy { par =>
-          cts.map(ctx => ctx.getOrElse(par, lattice.bottom)).size
-        }
-        ArgValues(excluded + parWithMostValues)
-      case _ => throw new Exception(s"Unsupported policy $cur")
-    }
+    case ArgValues(excluded) =>
+      val parWithMostValues = fun.args.maxBy { par =>
+        cts.map(ctx => ctx.getOrElse(par, lattice.bottom)).size
+      }
+      ArgValues(excluded + parWithMostValues)
+    case _ => throw new Exception(s"Unsupported policy $cur")
+  }
 }

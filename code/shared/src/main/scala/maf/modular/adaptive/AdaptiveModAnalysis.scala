@@ -9,7 +9,8 @@ import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, val rate: Int = 1000)
-    extends ModAnalysis(program) with SequentialWorklistAlgorithm[Expr] {
+    extends ModAnalysis(program)
+       with SequentialWorklistAlgorithm[Expr] {
 
   // after every `rate` steps, the adaptive analysis gets an opportunity to reflect on (introspection) and possible change (intercession) the analysis behaviour
   // the method `inspect` needs to be implemented to decide when and how this is carried out
@@ -24,7 +25,7 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, val rate: 
       inspect()
     }
   }
-  
+
   // the core of the adaptive analysis: one needs to implement how components are to be "adapted"
   // the idea is that the definition/results of `adaptComponent` can change during the analysis itself ...
   def adaptComponent(cmp: Component): Component

@@ -19,7 +19,7 @@ trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
     val oldStore = store
     val oldDeps = deps
     super.adaptAnalysis()
-    // TODO: can this be done in one go? 
+    // TODO: can this be done in one go?
     store = adaptMap(adaptAddr, adaptValue)(store)
     oldDeps.collect { case (AddrDependency(oldAddr), oldCmps) =>
       val oldValue = adaptValue(oldStore.getOrElse(oldAddr, lattice.bottom))

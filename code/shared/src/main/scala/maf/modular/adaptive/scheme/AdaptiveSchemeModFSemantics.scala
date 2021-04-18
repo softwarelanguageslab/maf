@@ -20,21 +20,21 @@ trait AdaptiveSchemeModFSemantics
   // Definition of update functions
   def adaptClosure(clo: lattice.Closure): lattice.Closure = clo match {
     case (lambda, env: WrappedEnv[Addr, Identity] @unchecked) => (lambda, env.mapAddrs(adaptAddr))
-    case _                                                     => throw new Exception(s"Closure with invalid environment: ${clo._2}")
+    case _                                                    => throw new Exception(s"Closure with invalid environment: ${clo._2}")
   }
   def adaptAllocCtx(ctx: AllocationContext): AllocationContext
   def adaptAddr(addr: Addr): Addr = addr match {
-    case ptr: PtrAddr[AllocationContext] @unchecked   => PtrAddr(ptr.exp, adaptAllocCtx(ptr.ctx))
-    case vad: VarAddr[AllocationContext] @unchecked   => VarAddr(vad.id, adaptAllocCtx(vad.ctx))
-    case ret: ReturnAddr[Component] @unchecked  => ReturnAddr(adaptComponent(ret.cmp), ret.idn)
-    case pad: PrmAddr                           => pad
-    case _                                      => throw new Exception(s"Unhandled addr: $addr")
+    case ptr: PtrAddr[AllocationContext] @unchecked => PtrAddr(ptr.exp, adaptAllocCtx(ptr.ctx))
+    case vad: VarAddr[AllocationContext] @unchecked => VarAddr(vad.id, adaptAllocCtx(vad.ctx))
+    case ret: ReturnAddr[Component] @unchecked      => ReturnAddr(adaptComponent(ret.cmp), ret.idn)
+    case pad: PrmAddr                               => pad
+    case _                                          => throw new Exception(s"Unhandled addr: $addr")
   }
   def adaptValue(value: Value): Value = value match {
     case modularLatticeWrapper.modularLattice.Elements(vs) => modularLatticeWrapper.modularLattice.Elements(vs.map(adaptV))
   }
   def adaptV(value: modularLatticeWrapper.modularLattice.Value): modularLatticeWrapper.modularLattice.Value = value match {
-    case modularLatticeWrapper.modularLattice.Pointer(ps) => 
+    case modularLatticeWrapper.modularLattice.Pointer(ps) =>
       modularLatticeWrapper.modularLattice.Pointer(ps.map(adaptAddr))
     case modularLatticeWrapper.modularLattice.Clo(cs) =>
       modularLatticeWrapper.modularLattice.Clo(cs.map(adaptClosure))

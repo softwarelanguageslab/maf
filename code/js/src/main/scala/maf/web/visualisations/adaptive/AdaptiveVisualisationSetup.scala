@@ -36,7 +36,7 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
       with WebSummaryAdaptiveAnalysis
       with AdaptiveKCFA {
 
-      override def intraAnalysis(cmp: Component) = 
+      override def intraAnalysis(cmp: Component) =
         new AdaptiveSchemeModFIntra(cmp) with DependencyTrackingIntra
 
       type Module = SchemeModule

@@ -40,7 +40,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     case lam: SchemeLambdaExp =>
       fnIdentities += lam.idn -> lam
       lam.subexpressions.foreach(collectFnIdentities)
-    case _ => 
+    case _ =>
       exp.subexpressions.foreach(collectFnIdentities)
   }
 
@@ -70,11 +70,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
   // (also store the function that the context came from)
 
   type AllocationContext = Option[(ComponentContext, Identity)]
-  def adaptAllocCtx(ctx: AllocationContext): AllocationContext = ctx.map {
-    case (ctx, idn) => (getCurrentPolicy(idn).adaptCtx(ctx), idn)
+  def adaptAllocCtx(ctx: AllocationContext): AllocationContext = ctx.map { case (ctx, idn) =>
+    (getCurrentPolicy(idn).adaptCtx(ctx), idn)
   }
   private def addrContext(cmp: SchemeModFComponent) = cmp match {
-    case Main => None
+    case Main                                             => None
     case Call((lam, _), ctx: ComponentContext @unchecked) => Some((ctx, lam.idn))
   }
   def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = PtrAddr(exp, addrContext(cmp))
@@ -171,10 +171,12 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
 
   // find a fitting policy
   @tailrec
-  private def reduceContext(module: LambdaModule, 
-                            policy: ContextSensitivityPolicy, 
-                            ctxs: Set[ComponentContext], 
-                            target: Int): Unit = {
+  private def reduceContext(
+      module: LambdaModule,
+      policy: ContextSensitivityPolicy,
+      ctxs: Set[ComponentContext],
+      target: Int
+    ): Unit = {
     if (ctxs.size > target) {
       // need to decrease precision further
       val next = nextPolicy(module.lambda, policy, ctxs)
@@ -189,9 +191,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
 
   private def reduceTriggersForLocation(loc: Expression) = {
     val depCounts = triggerCounts.getOrElse(loc, MultiSet.empty)
-    val selected = selectLargest[(Dependency,Int)](depCounts.content, _._2)
-    val updated = selected.foldLeft(depCounts) { case (acc, (dep, _)) => 
-      reduceDep(dep) 
+    val selected = selectLargest[(Dependency, Int)](depCounts.content, _._2)
+    val updated = selected.foldLeft(depCounts) { case (acc, (dep, _)) =>
+      reduceDep(dep)
       acc - dep
     }
     triggerCounts += loc -> updated
@@ -199,7 +201,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
 
   private def reduceDep(dep: Dependency) = dep match {
     case AddrDependency(addr) => reduceValueAbs(store(addr))
-    case _ => throw new Exception("Unknown dependency for adaptive analysis")
+    case _                    => throw new Exception("Unknown dependency for adaptive analysis")
   }
 
   private def reduceValueAbs(value: Value): Unit = value.vs.maxBy(sizeOfV) match {
@@ -262,10 +264,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     val target = Math.max(max * cutoffFactor, 1)
     data.filter(size(_) > target)
   }
- 
+
   private def getDepExp(dep: Dependency): Expression = dep match {
     case AddrDependency(addr) => getAddrExp(addr)
-    case _ => throw new Exception(s"Unknown dependency: $dep")
+    case _                    => throw new Exception(s"Unknown dependency: $dep")
   }
   private def getAddrExp(addr: Addr): Expression = addr match {
     case returnAddr: ReturnAddr[Component] @unchecked => expr(returnAddr.cmp)
@@ -286,14 +288,14 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
       }
   }
   private def getAllocCtxModule(ctx: AllocationContext): SchemeModule = ctx match {
-    case None => MainModule
+    case None             => MainModule
     case Some((_, fnIdn)) => LambdaModule(fnIdentities(fnIdn))
   }
   lazy val mainIdn = mainBody.idn
   def getParentModule(clo: lat.Closure): SchemeModule = {
     val parentIdn = clo._2.asInstanceOf[WrappedEnv[Addr, Identity]].data
     if (parentIdn == mainIdn) {
-      MainModule 
+      MainModule
     } else {
       LambdaModule(fnIdentities(parentIdn))
     }
