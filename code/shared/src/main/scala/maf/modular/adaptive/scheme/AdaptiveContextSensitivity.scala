@@ -289,8 +289,15 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     case None => MainModule
     case Some((_, fnIdn)) => LambdaModule(fnIdentities(fnIdn))
   }
-  def getParentModule(clo: lat.Closure): SchemeModule =
-    module(clo._2.asInstanceOf[WrappedEnv[Addr, Component]].data)
+  lazy val mainIdn = mainBody.idn
+  def getParentModule(clo: lat.Closure): SchemeModule = {
+    val parentIdn = clo._2.asInstanceOf[WrappedEnv[Addr, Identity]].data
+    if (parentIdn == mainIdn) {
+      MainModule 
+    } else {
+      LambdaModule(fnIdentities(parentIdn))
+    }
+  }
   private def sizeOfValue(value: Value): Int =
     value.vs.map(sizeOfV).sum
   private def sizeOfV(v: modularLatticeWrapper.modularLattice.Value): Int = v match {
@@ -300,6 +307,4 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     case modularLatticeWrapper.modularLattice.Vec(_, elements) => elements.map(_._2).map(sizeOfValue).sum
     case _                                                     => 0
   }
-  def printClosure(clo: lat.Closure) =
-    s"${clo._1.lambdaName} (${clo._2.asInstanceOf[WrappedEnv[_, _]].data})"
 }

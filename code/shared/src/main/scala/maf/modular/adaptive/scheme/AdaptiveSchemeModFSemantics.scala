@@ -19,7 +19,7 @@ trait AdaptiveSchemeModFSemantics
        with ModularSchemeDomain {
   // Definition of update functions
   def adaptClosure(clo: lattice.Closure): lattice.Closure = clo match {
-    case (lambda, env: WrappedEnv[Addr, Component] @unchecked) => (lambda, env.copy(data = adaptComponent(env.data)).mapAddrs(adaptAddr))
+    case (lambda, env: WrappedEnv[Addr, Identity] @unchecked) => (lambda, env.mapAddrs(adaptAddr))
     case _                                                     => throw new Exception(s"Closure with invalid environment: ${clo._2}")
   }
   def adaptAllocCtx(ctx: AllocationContext): AllocationContext
@@ -52,12 +52,12 @@ trait AdaptiveSchemeModFSemantics
   protected def adaptCall(c: Call[ComponentContext]): Call[ComponentContext]
   // go over all new components after each step of the analysis, passing them to `onNewComponent`
   // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
-  override def baseEnv = WrappedEnv(initialEnv, 0, Main)
+  override def baseEnv = WrappedEnv(initialEnv, 0, mainBody.idn)
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFIntra = new AdaptiveSchemeModFIntra(cmp)
   class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra {
     override protected def newClosure(lambda: SchemeLambdaExp, env: Env): Value = {
-      val trimmedEnv = env.restrictTo(lambda.fv).asInstanceOf[WrappedEnv[Addr, Component]]
-      val updatedEnv = trimmedEnv.copy(depth = trimmedEnv.depth + 1, data = component)
+      val trimmedEnv = env.restrictTo(lambda.fv).asInstanceOf[WrappedEnv[Addr, Identity]]
+      val updatedEnv = trimmedEnv.copy(depth = trimmedEnv.depth + 1, data = fnBody.idn)
       lattice.closure((lambda, updatedEnv))
     }
   }

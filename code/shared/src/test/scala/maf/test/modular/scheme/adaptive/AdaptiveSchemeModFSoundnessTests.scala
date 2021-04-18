@@ -28,3 +28,4 @@ class AdaptiveSchemeModFSoundnessTests extends AdaptiveSchemeModF with AllSequen
   def budget = 10
   override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
 }
+
