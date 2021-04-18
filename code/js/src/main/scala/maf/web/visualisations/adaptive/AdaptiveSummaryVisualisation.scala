@@ -17,7 +17,6 @@ import maf.web.utils.D3Helpers._
 import org.scalajs._
 import org.scalajs.dom._
 import maf.modular.AddrDependency
-import maf.modular.components.ComponentPointer
 
 //
 // REQUIRED ANALYSIS EXTENSION
@@ -37,9 +36,9 @@ trait WebSummaryAdaptiveAnalysis extends AdaptiveContextSensitivity with Adaptiv
     webSummary.refresh()
   }
 
-  override def updateAnalysisData(update: Map[Component, Component]): Unit = {
-    super.updateAnalysisData(update)
-    webSummary.update(update)
+  override def adaptAnalysis(): Unit = {
+    super.adaptAnalysis()
+    webSummary.adapt()
   }
 }
 
@@ -82,9 +81,9 @@ class AdaptiveSummaryVisualisation(
   }
 
   def refresh() = viewStack.foreach(_.refresh())
-  def update(mapping: Map[analysis.Component, analysis.Component]) = {
+  def adapt() = {
     viewStack.foreach { view =>
-      view.onUpdate(mapping)
+      view.adapt()
       view.refresh()
     }
   }
@@ -92,7 +91,7 @@ class AdaptiveSummaryVisualisation(
   sealed trait View {
     val node: dom.Node
     def refresh(): Unit
-    def onUpdate(mapping: Map[analysis.Component, analysis.Component]): Unit = ()
+    def adapt(): Unit = ()
   }
 
   sealed trait BarChartView extends View { view =>
@@ -217,7 +216,7 @@ class AdaptiveSummaryVisualisation(
   class DependencyView(module: analysis.SchemeModule, var component: analysis.Component) extends BarChartView {
     private def ms = analysis.summary(module)(component)
     def data = ms.content
-    override def onUpdate(mapping: Map[ComponentPointer, ComponentPointer]) = component = mapping(component)
+    override def adapt() = component = analysis.adaptComponent(component)
     object BarChart extends NavigationBarChart("dependency_bar_chart") with BarChartTooltip {
       type Data = (Dependency, Int)
       private def toAddr(dep: Dependency): Address = dep match {

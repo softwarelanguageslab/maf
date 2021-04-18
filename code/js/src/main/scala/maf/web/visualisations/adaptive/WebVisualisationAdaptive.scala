@@ -27,9 +27,9 @@ trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAn
 
   def adaptiveWebVis = webvis.asInstanceOf[WebVisualisationAdaptive]
 
-  override def updateAnalysisData(update: Map[Component, Component]) = {
-    super.updateAnalysisData(update)
-    this.dependencies = updateMap(update, updateSet(update))(this.dependencies)
+  override def adaptAnalysis() = {
+    super.adaptAnalysis()
+    this.dependencies = adaptMap(adaptComponent, adaptSet(adaptComponent))(this.dependencies)
     adaptiveWebVis.dirty = true // ensure the webvis will refresh its data
   }
 
@@ -50,8 +50,7 @@ class WebVisualisationAdaptive(
   var dirty = false
 
   override def componentKey(cmp: analysis.Component) = analysis.module(cmp)
-  override def componentText(cmp: analysis.Component) =
-    s"[$cmp] ${analysis.deref(cmp).toString()}"
+  override def componentText(cmp: analysis.Component) = s"$cmp"
 
   override def refreshDataAfterStep() =
     if (this.dirty) {
