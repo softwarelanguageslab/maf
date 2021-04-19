@@ -3,7 +3,6 @@ package maf.modular.adaptive
 import maf.core._
 import maf.modular._
 import maf.modular.worklist._
-import maf.modular.components._
 import maf.util._
 import maf.util.datastructures._
 import maf.util.MonoidImplicits._
@@ -11,14 +10,11 @@ import maf.util.benchmarks.Timeout
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, val rate: Int = 1000)
     extends ModAnalysis(program)
-       with IndirectComponents[Expr]
        with SequentialWorklistAlgorithm[Expr] {
 
-  var mainComponent: Component = _
-
   // after every `rate` steps, the adaptive analysis gets an opportunity to reflect on (introspection) and possible change (intercession) the analysis behaviour
-  // the method `adaptAnalysis` needs to be implemented to decide when and how this is carried out
-  protected def adaptAnalysis(): Unit
+  // the method `inspect` needs to be implemented to decide when and how this is carried out
+  protected def inspect(): Unit
 
   protected var stepCount = 0
   override def step(timeout: Timeout.T): Unit = {
@@ -26,106 +22,39 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, val rate: 
     super.step(timeout)
     if (stepCount == rate) {
       stepCount = 0
-      adaptAnalysis()
+      inspect()
     }
   }
+
   // the core of the adaptive analysis: one needs to implement how components are to be "adapted"
   // the idea is that the definition/results of `adaptComponent` can change during the analysis itself ...
-  def adaptComponent(cmp: ComponentData): ComponentData
-  // .. and that when this happens, one needs to call `updateAnalysis`
-  def updateAnalysis() = {
-    // update the indirection maps and calculate the "new component pointer" for every "old component pointer"
-    val moved = updateComponentMapping()
-    // update all components pointers in the analysis
-    // println(moved)
-    moved.keys.foreach(dealloc)
-    val lifted = moved.map(p => (ComponentPointer(p._1), ComponentPointer(p._2)))
-    updateAnalysisData(lifted.withDefault(ptr => ptr))
-  }
+  def adaptComponent(cmp: Component): Component
 
-  private def updateComponentMapping() = {
-    // bookkeeping to keep track of "joined"/moved component pointers
-    val ds = new DisjointSet[Address]()
-    var destinations = Map.empty[Address, Address]
-    var moved = Set.empty[Address]
-    def updateAddr(addr: Address): Address =
-      if (moved.contains(addr)) {
-        destinations(ds.find(addr))
-      } else {
-        addr
-      }
-    // the actual fixed-point computation
-    var update: ComponentData => ComponentData = adaptComponent
-    var dirty = true
-    while (dirty) {
-      dirty = false
-      val previous = this.cMapR
-      this.cMapR = Map.empty[ComponentData, Address]
-      // compute updated components
-      previous.foreach { case (oldCmp, oldAddr) =>
-        val newCmp = update(oldCmp)
-        this.cMapR.get(newCmp) match {
-          case None => this.cMapR += newCmp -> oldAddr
-          case Some(newAddr) =>
-            val parent = ds.merge(newAddr, oldAddr)
-            destinations += parent -> newAddr
-            moved += oldAddr
-            dirty = true
-        }
-      }
-      update = updateCmp(ptr => ComponentPointer(updateAddr(ptr.addr)))
-    }
-    // compute cMap
-    this.cMap = this.cMapR.map(_.swap)
-    // return a map representing all moved addresses
-    moved.map(addr => (addr, updateAddr(addr))).toMap
+  // .. and that when this happens, one needs to call `updateAnalysis` to update all analysis data
+  def adaptAnalysis() = {
+    workList = workList.map(adaptComponent)
+    visited = adaptSet(adaptComponent)(visited)
+    deps = adaptMap(adaptDep, adaptSet(adaptComponent))(deps)
   }
-
-  // ... which in turn calls `updateAnalysisData` to update the component pointers
-  def updateAnalysisData(update: Map[Component, Component]) = {
-    workList = workList.map(update)
-    visited = updateSet(update)(visited)
-    deps = updateMap(updateDep(update), updateSet(update))(deps)
-    mainComponent = update(mainComponent)
-  }
-  // the analysis' data structures need to be updated after adaptation, as some components may now be equal
-  // the following methods need to be implemented by a subclass, since they depend on the representation of 'ComponentData' and 'Dependency'
-  def updateCmp(update: Component => Component)(cmp: ComponentData): ComponentData
-  def updateDep(update: Component => Component)(dep: Dependency): Dependency = dep
+  // the analysis' data structures need to be updated after adaptation
+  // the following method needs to be implemented by a subclass, since it depends on the representation of 'Dependency'
+  def adaptDep(dep: Dependency): Dependency = dep
   // the following methods are convenience methods to update standard compound data structures
-  def updateSet[V](update: V => V)(set: Set[V]): Set[V] = set.map(update)
-  def updateMap[K, V](update: V => V)(map: Map[K, V]): Map[K, V] = map.view.mapValues(update).toMap
-  def updateMap[K, V: Monoid](updateK: K => K, updateV: V => V)(map: Map[K, V]): Map[K, V] =
+  def adaptSet[V](adapt: V => V)(set: Set[V]): Set[V] = set.map(adapt)
+  def adaptMap[K, V](adapt: V => V)(map: Map[K, V]): Map[K, V] = map.view.mapValues(adapt).toMap
+  def adaptMap[K, V: Monoid](adaptK: K => K, adaptV: V => V)(map: Map[K, V]): Map[K, V] =
     map.foldLeft(Map[K, V]().withDefaultValue(Monoid[V].zero)) { case (acc, (key, vlu)) =>
-      val keyAbs = updateK(key)
-      acc + (keyAbs -> Monoid[V].append(acc(keyAbs), updateV(vlu)))
+      val keyAbs = adaptK(key)
+      acc + (keyAbs -> Monoid[V].append(acc(keyAbs), adaptV(vlu)))
     }
-  def updatePair[P, Q](updateA: P => P, updateB: Q => Q)(p: (P, Q)): (P, Q) = (updateA(p._1), updateB(p._2))
-  def updateMultiSet[X](update: X => X, intOp: (Int, Int) => Int)(ms: MultiSet[X]): MultiSet[X] =
+  def adaptPair[P, Q](adaptA: P => P, adaptB: Q => Q)(p: (P, Q)): (P, Q) = (adaptA(p._1), adaptB(p._2))
+  def adaptMultiSet[X](adaptX: X => X, intOp: (Int, Int) => Int)(ms: MultiSet[X]): MultiSet[X] =
     ms.toMap.foldLeft(MultiSet.empty[X]) { case (acc, (elm, count)) =>
-      val elmAbs = update(elm)
+      val elmAbs = adaptX(elm)
       acc.updateMult(elmAbs) {
         case 0 => count
         case n => intOp(n, count)
       }
     }
 
-  private var free: List[Address] = _
-  override protected def alloc() =
-    if (free.isEmpty) {
-      super.alloc()
-    } else {
-      val first = free.head
-      free = free.tail
-      first
-    }
-
-  private def dealloc(addr: Address) =
-    free = addr :: free
-
-  override def init() = {
-    free = Nil
-    super.init()
-    mainComponent = initialComponent
-  }
 }

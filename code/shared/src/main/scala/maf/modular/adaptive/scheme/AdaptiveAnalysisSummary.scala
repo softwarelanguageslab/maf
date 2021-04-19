@@ -90,11 +90,11 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics with SchemeMod
     def empty = ModuleSummary(Map.empty, Map.empty, 0)
   }
 
-  private def updateAnalysisSummary(update: Component => Component)(as: AnalysisSummary): AnalysisSummary =
-    AnalysisSummary(updateMap(updateModuleSummary(update))(as.content), updateMap(updateDep(update), (s: Set[SchemeModule]) => s)(as.depFns))
-  private def updateModuleSummary(update: Component => Component)(ms: ModuleSummary): ModuleSummary = {
-    val updated = updateMap(update, updateMultiSet(updateDep(update), Math.max))(ms.content)(MonoidInstances.multiSetMaxMonoid)
-    ModuleSummary(updated, updateMap(updateDep(update), updateSet(update))(ms.depCmps), updated.values.map(_.cardinality).sum)
+  private def adaptAnalysisSummary(as: AnalysisSummary): AnalysisSummary =
+    AnalysisSummary(adaptMap(adaptModuleSummary)(as.content), adaptMap(adaptDep, (s: Set[SchemeModule]) => s)(as.depFns))
+  private def adaptModuleSummary(ms: ModuleSummary): ModuleSummary = {
+    val updated = adaptMap(adaptComponent, adaptMultiSet(adaptDep, Math.max))(ms.content)(MonoidInstances.multiSetMaxMonoid)
+    ModuleSummary(updated, adaptMap(adaptDep, adaptSet(adaptComponent))(ms.depCmps), updated.values.map(_.cardinality).sum)
   }
 
   // keep track of a summary for the current analysis
@@ -114,8 +114,8 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics with SchemeMod
     super.trigger(dep)
   }
   // correctly update the summary after adaptation
-  override def updateAnalysisData(update: Map[Component, Component]) = {
-    super.updateAnalysisData(update)
-    this.summary = updateAnalysisSummary(update)(summary)
+  override def adaptAnalysis() = {
+    super.adaptAnalysis()
+    this.summary = adaptAnalysisSummary(summary)
   }
 }

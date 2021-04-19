@@ -28,10 +28,11 @@ trait BaseSchemeModFSemantics
   // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
   def view(cmp: Component): SchemeModFComponent
 
+  lazy val mainBody = program
   def expr(cmp: Component): SchemeExp = body(cmp)
   def body(cmp: Component): SchemeExp = body(view(cmp))
   def body(cmp: SchemeModFComponent): SchemeExp = cmp match {
-    case Main       => program
+    case Main       => mainBody
     case c: Call[_] => SchemeBody(c.lambda.body)
   }
 

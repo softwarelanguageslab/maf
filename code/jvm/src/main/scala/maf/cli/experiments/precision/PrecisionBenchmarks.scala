@@ -15,7 +15,7 @@ import maf.util.benchmarks.Timeout
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice] {
 
   type Benchmark = String
-  type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics with ModularSchemeDomain {
+  type Analysis = ModAnalysis[SchemeExp] with BaseSchemeModFSemantics with ModularSchemeDomain {
     val modularLatticeWrapper: ModularSchemeLatticeWrapper {
       val modularLattice: ModularSchemeLattice[Addr, Str, Bln, Num, Rea, Chr, Smb]
     }

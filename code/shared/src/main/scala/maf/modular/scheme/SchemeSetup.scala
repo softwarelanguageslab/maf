@@ -19,7 +19,7 @@ trait SchemeSetup extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] wit
   // Provide a global store
   override var store: Map[Addr, Value] = Map.empty
   // Ensure that the program is translated to use lexical addresses first!
-  override lazy val program: SchemeExp = {
+  override def program: SchemeExp = {
     val originalProgram = super.program
     val preludedProgram = SchemePrelude.addPrelude(originalProgram)
     CSchemeUndefiner.undefine(List(preludedProgram))
