@@ -19,8 +19,8 @@ trait AdaptiveSchemeModFSemantics
        with ModularSchemeDomain {
   // Definition of update functions
   def adaptClosure(clo: lattice.Closure): lattice.Closure = clo match {
-    case (lambda, env: WrappedEnv[Addr, Identity] @unchecked) => (lambda, env.mapAddrs(adaptAddr))
-    case _                                                    => throw new Exception(s"Closure with invalid environment: ${clo._2}")
+    case (lambda, env: WrappedEnv[Addr, Option[Identity]] @unchecked) => (lambda, env.mapAddrs(adaptAddr))
+    case _                                                            => throw new Exception(s"Closure with invalid environment: ${clo._2}")
   }
   def adaptAllocCtx(ctx: AllocationContext): AllocationContext
   def adaptAddr(addr: Addr): Addr = addr match {
@@ -52,12 +52,16 @@ trait AdaptiveSchemeModFSemantics
   protected def adaptCall(c: Call[ComponentContext]): Call[ComponentContext]
   // go over all new components after each step of the analysis, passing them to `onNewComponent`
   // ensure that these new components are properly updated when an adaptation occurs using a field `toProcess` which is kept up-to-date!
-  override def baseEnv = WrappedEnv(initialEnv, 0, mainBody.idn)
+  override def baseEnv = WrappedEnv(initialEnv, 0, None)
   override def intraAnalysis(cmp: Component): AdaptiveSchemeModFIntra = new AdaptiveSchemeModFIntra(cmp)
   class AdaptiveSchemeModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra {
+    private def cmpFnIdn = cmp match {
+      case Main         => None
+      case cll: Call[_] => Some(cll.clo._1.idn)
+    }
     override protected def newClosure(lambda: SchemeLambdaExp, env: Env): Value = {
-      val trimmedEnv = env.restrictTo(lambda.fv).asInstanceOf[WrappedEnv[Addr, Identity]]
-      val updatedEnv = trimmedEnv.copy(depth = trimmedEnv.depth + 1, data = fnBody.idn)
+      val trimmedEnv = env.restrictTo(lambda.fv).asInstanceOf[WrappedEnv[Addr, Option[Identity]]]
+      val updatedEnv = trimmedEnv.copy(depth = trimmedEnv.depth + 1, data = cmpFnIdn)
       lattice.closure((lambda, updatedEnv))
     }
   }

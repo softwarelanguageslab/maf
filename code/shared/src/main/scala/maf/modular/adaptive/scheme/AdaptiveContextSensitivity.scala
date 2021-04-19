@@ -291,15 +291,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     case None             => MainModule
     case Some((_, fnIdn)) => LambdaModule(fnIdentities(fnIdn))
   }
-  lazy val mainIdn = mainBody.idn
-  def getParentModule(clo: lat.Closure): SchemeModule = {
-    val parentIdn = clo._2.asInstanceOf[WrappedEnv[Addr, Identity]].data
-    if (parentIdn == mainIdn) {
-      MainModule
-    } else {
-      LambdaModule(fnIdentities(parentIdn))
+  def getParentModule(clo: lat.Closure): SchemeModule =
+    clo._2.asInstanceOf[WrappedEnv[Addr, Option[Identity]]].data match {
+      case None      => MainModule
+      case Some(idn) => LambdaModule(fnIdentities(idn))
     }
-  }
   private def sizeOfValue(value: Value): Int =
     value.vs.map(sizeOfV).sum
   private def sizeOfV(v: modularLatticeWrapper.modularLattice.Value): Int = v match {
