@@ -40,6 +40,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     case lam: SchemeLambdaExp =>
       fnIdentities += lam.idn -> lam
       lam.subexpressions.foreach(collectFnIdentities)
+    case SchemeNamedLet(id, bds, body, idn) => 
+      fnIdentities += idn -> SchemeLambda(Some(id.name), bds.map(_._1), body, idn)
+      exp.subexpressions.foreach(collectFnIdentities)
     case _ =>
       exp.subexpressions.foreach(collectFnIdentities)
   }
@@ -289,7 +292,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
   }
   private def getAllocCtxModule(ctx: AllocationContext): SchemeModule = ctx match {
     case None             => MainModule
-    case Some((_, fnIdn)) => LambdaModule(fnIdentities(fnIdn))
+    case Some((_, fnIdn)) => LambdaModule(fnIdentities.getOrElse(fnIdn, throw new Exception(s"$fnIdn")))
   }
   def getParentModule(clo: lat.Closure): SchemeModule =
     clo._2.asInstanceOf[WrappedEnv[Addr, Option[Identity]]].data match {
