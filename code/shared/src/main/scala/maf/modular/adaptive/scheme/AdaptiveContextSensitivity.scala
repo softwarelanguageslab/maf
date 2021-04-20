@@ -11,7 +11,7 @@ import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.datastructures.MultiSet
 import scala.annotation.tailrec
 
-trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with SchemeModFModules {
+trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   this: AdaptiveContextSensitivityPolicy =>
 
   import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
@@ -25,36 +25,14 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
   // disable warning messages and debug logging by default (can be override for custom logging)
   protected def warn(message: => String): Unit = ()
   protected def debug(message: => String): Unit = ()
-
-  // map all lambdas to identities
-
-  override def program = {
-    val prg = super.program
-    collectFnIdentities(prg)
-    prg
-  }
-
-  private var fnIdentities: Map[Identity, SchemeLambdaExp] = Map.empty
-
-  private def collectFnIdentities(exp: Expression): Unit = exp match {
-    case lam: SchemeLambdaExp =>
-      fnIdentities += lam.idn -> lam
-      lam.subexpressions.foreach(collectFnIdentities)
-    case _ =>
-      exp.subexpressions.foreach(collectFnIdentities)
-  }
-
+  
   // use a different context-sensitivity policy per closure
 
-  private var policyPerFn: Map[Identity, ContextSensitivityPolicy] = Map.empty
-  private def getCurrentPolicy(fnIdn: Identity): ContextSensitivityPolicy =
-    policyPerFn.getOrElse(fnIdn, defaultPolicy)
-  private def getCurrentPolicy(fn: SchemeLambdaExp): ContextSensitivityPolicy =
-    getCurrentPolicy(fn.idn)
-  private def setCurrentPolicy(fnIdn: Identity, ply: ContextSensitivityPolicy): Unit =
-    policyPerFn += fnIdn -> ply
-  private def setCurrentPolicy(fn: SchemeLambdaExp, ply: ContextSensitivityPolicy): Unit =
-    setCurrentPolicy(fn.idn, ply)
+  private var policyPerFn: Map[LambdaModule, ContextSensitivityPolicy] = Map.empty
+  private def getCurrentPolicy(fn: LambdaModule): ContextSensitivityPolicy =
+    policyPerFn.getOrElse(fn, defaultPolicy)
+  private def setCurrentPolicy(fn: LambdaModule, ply: ContextSensitivityPolicy): Unit =
+    policyPerFn += fn -> ply
 
   def allocCtx(
       clo: lattice.Closure,
@@ -62,20 +40,20 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
       call: Position,
       caller: Component
     ): ComponentContext =
-    getCurrentPolicy(clo._1).allocCtx(clo, args, call, caller)
+    getCurrentPolicy(LambdaModule(clo._1)).allocCtx(clo, args, call, caller)
   def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
-    cll.copy(ctx = getCurrentPolicy(cll.clo._1).adaptCtx(cll.ctx))
+    cll.copy(ctx = getCurrentPolicy(LambdaModule(cll.clo._1)).adaptCtx(cll.ctx))
 
   // allocation context = component context
   // (also store the function that the context came from)
 
-  type AllocationContext = Option[(ComponentContext, Identity)]
+  type AllocationContext = Option[(ComponentContext, LambdaModule)]
   def adaptAllocCtx(ctx: AllocationContext): AllocationContext = ctx.map { case (ctx, idn) =>
     (getCurrentPolicy(idn).adaptCtx(ctx), idn)
   }
   private def addrContext(cmp: SchemeModFComponent) = cmp match {
     case Main                                             => None
-    case Call((lam, _), ctx: ComponentContext @unchecked) => Some((ctx, lam.idn))
+    case Call((lam, _), ctx: ComponentContext @unchecked) => Some((ctx, LambdaModule(lam)))
   }
   def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = PtrAddr(exp, addrContext(cmp))
   def allocVar(idf: Identifier, cmp: SchemeModFComponent) = VarAddr(idf, addrContext(cmp))
@@ -162,7 +140,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
       val contexts = calls.map(_.ctx)
       if (contexts.size > 1) {
         val target = Math.max(1, reduceFactor * contexts.size).toInt
-        val policy = getCurrentPolicy(module.lambda)
+        val policy = getCurrentPolicy(module)
         reduceContext(module, policy, contexts, target)
       } else {
         reduceComponentsForModule(getParentModule(calls.head.clo))
@@ -185,7 +163,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
     } else {
       // register the new policy
       debug(s"$module -> $policy")
-      setCurrentPolicy(module.lambda, policy)
+      setCurrentPolicy(module, policy)
     }
   }
 
@@ -288,14 +266,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics with Scheme
       }
   }
   private def getAllocCtxModule(ctx: AllocationContext): SchemeModule = ctx match {
-    case None             => MainModule
-    case Some((_, fnIdn)) => LambdaModule(fnIdentities(fnIdn))
+    case None          => MainModule
+    case Some((_, lm)) => lm
   }
   def getParentModule(clo: lat.Closure): SchemeModule =
-    clo._2.asInstanceOf[WrappedEnv[Addr, Option[Identity]]].data match {
-      case None      => MainModule
-      case Some(idn) => LambdaModule(fnIdentities(idn))
-    }
+    clo._2.asInstanceOf[WrappedEnv[Addr, SchemeModule]].data
   private def sizeOfValue(value: Value): Int =
     value.vs.map(sizeOfV).sum
   private def sizeOfV(v: modularLatticeWrapper.modularLattice.Value): Int = v match {
