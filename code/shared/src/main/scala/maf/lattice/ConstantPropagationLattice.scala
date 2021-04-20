@@ -22,7 +22,7 @@ object ConstantPropagation {
       case Bottom      => s"$typeName.⊥"
     }
     val bottom: L[A] = Bottom
-    val top: L[A] = Top
+    override val top: L[A] = Top
     def join(x: L[A], y: => L[A]): L[A] = x match {
       case Top => Top
       case Constant(_) =>

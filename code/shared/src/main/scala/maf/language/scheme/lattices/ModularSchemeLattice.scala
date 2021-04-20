@@ -804,7 +804,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         /* For every element in y, there exists an element of x that subsumes it */
         x.foldMapL(x => Value.subsumes(x, y))(boolOrMonoid)
       )(boolAndMonoid)
-    def top: L = throw LatticeTopUndefined
 
     def getClosures(x: L): Set[Closure] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
     def getContinuations(x: L): Set[K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)

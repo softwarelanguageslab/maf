@@ -165,7 +165,9 @@ class TypeSchemeLattice[A <: Address, K] {
         y.clos.subsetOf(y.clos) &&
         subsumes(x.consCells._1, y.consCells._1) &&
         subsumes(x.consCells._1, y.consCells._2)
-    def top: L = ???
+
+    override def top: L = ???
+
     def getClosures(x: L): Set[Closure] = x.clos
     def getPrimitives(x: L): Set[String] = x.prims
     def getPointerAddresses(x: L): Set[A] = Set()

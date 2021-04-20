@@ -7,7 +7,7 @@ import maf.util.Show
 object LatticeTopUndefined extends MAFException
 
 /**
- * A lattice typeclass.
+ * A lattice type class.
  * It is actually a join-semi lattice as it only need a join operation and a bottom element
  */
 trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable {
@@ -15,8 +15,8 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable {
   /** A lattice has a bottom element */
   def bottom: L
 
-  /** A lattice has a top element (might be undefined) */
-  def top: L
+  /** A lattice has a top element (might be undefined, default behaviour: throw a LatticeTopUndefined exception) */
+  def top: L = throw LatticeTopUndefined
 
   /** Elements of the lattice can be joined together */
   def join(x: L, y: => L): L
@@ -24,7 +24,7 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable {
   /** Joining multiple elements */
   def join(seq: Iterable[L]): L = seq.foldLeft(bottom)((acc, elm) => join(acc, elm))
 
-  /** Subsumption between two elements can be checked */
+  /** Subsumption between two elements can be checked. Returns true iff x ⊒ y. */
   def subsumes(x: L, y: => L): Boolean
 
   /** Equality check, returning an abstract result */
@@ -45,13 +45,17 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable {
 object Lattice {
   def apply[L: Lattice]: Lattice[L] = implicitly
 
-  implicit def SetLattice[A: Show] = new Lattice[Set[A]] {
+  implicit def SetLattice[A: Show]: Lattice[Set[A]] = new Lattice[Set[A]] {
     def show(x: Set[A]): String = "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
-    def top = throw LatticeTopUndefined
+
     def bottom: Set[A] = Set.empty
+
     def join(x: Set[A], y: => Set[A]): Set[A] = x.union(y)
+
     def subsumes(x: Set[A], y: => Set[A]): Boolean = y.subsetOf(x)
-    def eql[B: BoolLattice](x: Set[A], y: Set[A]) = ???
+
+    def eql[B: BoolLattice](x: Set[A], y: Set[A]): B = ???
+
     def ceq(x: Set[A], y: => Set[A]): Boolean = x == y
   }
 }

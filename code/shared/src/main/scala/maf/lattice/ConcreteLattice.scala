@@ -33,7 +33,7 @@ class ConcreteLattice {
       case Values(content) if content.size == 1 => Show[A].show(content.head)
       case Values(content)                      => "{" + content.map(Show[A].show).mkString(",") + "}"
     }
-    val top: L[A] = Top
+    override val top: L[A] = Top
     val bottom: L[A] = Values[A](Set.empty)
     def join(x: L[A], y: => L[A]): L[A] = x match {
       case Top => Top

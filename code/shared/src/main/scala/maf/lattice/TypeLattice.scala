@@ -19,7 +19,7 @@ object Type {
       case Bottom => s"$typeName.⊥"
     }
     val bottom: T = Bottom
-    val top: T = Top
+    override val top: T = Top
     def join(x: T, y: => T): T = x match {
       case Top    => Top
       case Bottom => y
