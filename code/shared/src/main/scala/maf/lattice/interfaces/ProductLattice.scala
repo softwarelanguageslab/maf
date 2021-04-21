@@ -2,17 +2,15 @@ package maf.lattice.interfaces
 
 import maf.core.Lattice
 
-trait ProductLattice[LE, L <: Lattice[LE], RE, R <: Lattice[RE]] extends Lattice[(LE, RE)] {
-  val left: L
-  val right: R
+class ProductLattice[L: Lattice, R: Lattice] extends Lattice[(L, R)] {
 
-  def bottom: (LE, RE) = (left.bottom, right.bottom)
+  def bottom: (L, R) = (Lattice[L].bottom, Lattice[R].bottom)
 
-  def join(x: (LE, RE), y: => (LE, RE)): (LE, RE) = (left.join(x._1, y._1), right.join(x._2, y._2))
+  def join(x: (L, R), y: => (L, R)): (L, R) = (Lattice[L].join(x._1, y._1), Lattice[R].join(x._2, y._2))
 
-  def subsumes(x: (LE, RE), y: => (LE, RE)): Boolean = left.subsumes(x._1, y._1) && right.subsumes(x._2, y._2)
+  def subsumes(x: (L, R), y: => (L, R)): Boolean = Lattice[L].subsumes(x._1, y._1) && Lattice[R].subsumes(x._2, y._2)
 
-  def eql[B: BoolLattice](x: (LE, RE), y: (LE, RE)): B = BoolLattice[B].join(left.eql(x._1, y._1), right.eql(x._2, y._2))
+  def eql[B: BoolLattice](x: (L, R), y: (L, R)): B = BoolLattice[B].join(Lattice[L].eql(x._1, y._1), Lattice[R].eql(x._2, y._2))
 
-  def show(v: (LE, RE)): String = s"(${left.show(v._1)} × ${right.show(v._2)})"
+  def show(v: (L, R)): String = s"(${Lattice[L].show(v._1)} × ${Lattice[R].show(v._2)})"
 }
