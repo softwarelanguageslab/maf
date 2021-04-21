@@ -3,26 +3,24 @@ package maf.lattice.instances.taint
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.taint.TaintLattice
 
+// format: off
 /**
  * Implements a simple taint lattice.
  *
- * Tainted
- * |
- * Untainted
+ *          Tainted
+ *             |
+ *         Untainted
  */
+// format: on
 object SimpleTaintLattice {
 
   sealed trait T[Taint]
-
   case object Tainted extends T[Unit]
-
   case object Untainted extends T[Unit]
 
   class SimpleTaintLattice extends TaintLattice[Unit, T] {
     def show(v: T[Unit]): String = v.toString
-
     def bottom: T[Unit] = Untainted
-
     override def top: T[Unit] = Tainted
 
     def join(x: T[Unit], y: => T[Unit]): T[Unit] = (x, y) match {
