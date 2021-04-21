@@ -1,9 +1,10 @@
-package maf.lattice
+package maf.lattice.instances
 
-import maf.util._
 import maf.core._
+import maf.lattice.NumOps.bigIntToDouble
 import maf.lattice.interfaces._
-import NumOps._
+import maf.lattice.{MathOps, NumOps}
+import maf.util._
 
 object ConstantPropagation {
 

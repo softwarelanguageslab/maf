@@ -1,6 +1,4 @@
-package maf.lattice
-
-import maf.lattice.ConcreteLattice
+package maf.lattice.instances
 
 class BoundedLattice(val k: Int) extends ConcreteLattice {
   override def makeValues[X](contents: Set[X]): L[X] =

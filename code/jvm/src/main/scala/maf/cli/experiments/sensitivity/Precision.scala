@@ -8,6 +8,7 @@ import maf.modular.scheme.modf._
 import maf.util._
 import maf.util.benchmarks.Timeout
 import maf.cli.experiments.precision._
+import maf.lattice.instances.ConstantPropagation
 import maf.modular.worklist.LIFOWorklistAlgorithm
 
 import scala.concurrent.duration._

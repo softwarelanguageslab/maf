@@ -6,6 +6,7 @@ import maf.lattice._
 import maf.language.scheme._
 import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
 import maf.language.scheme.primitives._
+import maf.lattice.instances.{BoundedLattice, Concrete, ConstantPropagation, Type}
 
 /** The abstract domain used for Scheme analyses. */
 trait SchemeDomain extends AbstractDomain[SchemeExp] {

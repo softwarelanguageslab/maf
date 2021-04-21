@@ -1,10 +1,10 @@
-package maf.lattice
+package maf.lattice.instances
 
 import maf.core._
+import maf.lattice.NumOps.bigIntToDouble
 import maf.lattice.interfaces._
 import maf.util.Show
 import maf.util.datastructures.SmartUnion._
-import NumOps._
 
 class ConcreteLattice {
   sealed trait L[+X] {

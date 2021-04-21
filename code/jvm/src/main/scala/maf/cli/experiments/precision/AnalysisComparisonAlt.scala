@@ -3,6 +3,7 @@ package maf.cli.experiments.precision
 import maf.cli.experiments._
 import maf.language.scheme._
 import maf.lattice._
+import maf.lattice.instances.ConstantPropagation
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util.benchmarks._
 import maf.util.Writer

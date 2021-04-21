@@ -1,7 +1,7 @@
-package maf.lattice
+package maf.lattice.instances
 
 import maf.core._
-import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, NotANumberString, RealLattice, StringLattice, SymbolLattice}
+import maf.lattice.interfaces._
 
 object Type {
   sealed trait T {

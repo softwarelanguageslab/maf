@@ -6,6 +6,7 @@ import maf.lattice._
 import maf.util._
 import maf.util.benchmarks.Timeout
 import maf.bench.scheme.SchemeBenchmarkPrograms
+import maf.lattice.instances.ConstantPropagation
 
 import scala.concurrent.duration._
 
