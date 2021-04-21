@@ -16,6 +16,7 @@ object ConstantPropagation {
 
   case object Bottom extends L[Nothing]
 
+  /** This class is intentionally made abstract as it is supposed to be subclassed (used as a building block) rather than being instantiated. */
   abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]] {
     def show(x: L[A]): String = x match {
       case Top         => typeName

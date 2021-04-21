@@ -27,6 +27,7 @@ class ConcreteLattice {
 
   def makeValues[X](contents: Set[X]): L[X] = Values(contents)
 
+  /** This class is intentionally made abstract as it is supposed to be subclassed (used as a building block) rather than being instantiated. */
   abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]] with Serializable {
     def show(x: L[A]): String = x match {
       case Top                                  => typeName

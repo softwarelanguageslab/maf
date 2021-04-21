@@ -13,6 +13,7 @@ object Type {
   case object Top extends T
   case object Bottom extends T
 
+  /** This class is intentionally made abstract as it is supposed to be subclassed (used as a building block) rather than being instantiated. */
   abstract class BaseInstance(typeName: String) extends Lattice[T] {
     def show(x: T): String = x match {
       case Top    => typeName
