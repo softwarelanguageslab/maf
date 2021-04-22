@@ -1,5 +1,6 @@
 package maf.lattice.instances.taint
 
+import maf.core.Address
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.taint.TaintLattice
 
@@ -14,28 +15,31 @@ import maf.lattice.interfaces.taint.TaintLattice
 // format: on
 object SimpleTaintLattice {
 
+  type Taint = Unit
   sealed trait T[Taint]
-  case object Tainted extends T[Unit]
-  case object Untainted extends T[Unit]
+  case object Tainted extends T[Taint]
+  case object Untainted extends T[Taint]
 
-  class SimpleTaintLattice extends TaintLattice[Unit, T] {
-    def show(v: T[Unit]): String = v.toString
-    def bottom: T[Unit] = Untainted
-    override def top: T[Unit] = Tainted
+  class SimpleTaintLattice extends TaintLattice[Taint, T] {
+    def show(v: T[Taint]): String = v.toString
+    def bottom: T[Taint] = Untainted
+    override def top: T[Taint] = Tainted
 
-    def join(x: T[Unit], y: => T[Unit]): T[Unit] = (x, y) match {
+    def join(x: T[Taint], y: => T[Taint]): T[Taint] = (x, y) match {
       case (Untainted, Untainted) => Untainted
       case _                      => Tainted
     }
 
-    def subsumes(x: T[Unit], y: => T[Unit]): Boolean = (x, y) match {
+    def subsumes(x: T[Taint], y: => T[Taint]): Boolean = (x, y) match {
       case (_, Untainted)     => true
       case (Tainted, Tainted) => true
       case _                  => false
     }
 
-    def eql[B: BoolLattice](x: T[Unit], y: T[Unit]): B = BoolLattice[B].inject(x == y)
+    def eql[B: BoolLattice](x: T[Taint], y: T[Taint]): B = BoolLattice[B].inject(x == y)
 
-    override def inject(t: Unit): T[Unit] = Tainted
+    override def inject(t: Unit): T[Taint] = Tainted
   }
+
+  implicit val simpleTaintLattice: SimpleTaintLattice = new SimpleTaintLattice
 }

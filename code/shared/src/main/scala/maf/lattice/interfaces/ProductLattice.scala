@@ -13,4 +13,9 @@ class ProductLattice[L: Lattice, R: Lattice] extends Lattice[(L, R)] {
   def eql[B: BoolLattice](x: (L, R), y: (L, R)): B = BoolLattice[B].join(Lattice[L].eql(x._1, y._1), Lattice[R].eql(x._2, y._2))
 
   def show(v: (L, R)): String = s"(${Lattice[L].show(v._1)} × ${Lattice[R].show(v._2)})"
+
+  def left(x: (L, R)): L = x._1
+  def right(x: (L, R)): R = x._2
+  def joinLeft(x: (L, R), y: => (L, R)): L = Lattice[L].join(x._1, y._1)
+  def joinRight(x: (L, R), y: => (L, R)): R = Lattice[R].join(x._2, y._2)
 }
