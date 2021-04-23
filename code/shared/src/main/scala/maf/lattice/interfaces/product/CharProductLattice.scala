@@ -4,7 +4,7 @@ import maf.core.Lattice
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, StringLattice}
 
 class CharProductLattice[C: CharLattice, L: Lattice] extends ProductLattice[C, L] with CharLattice[(C, L)] {
-  def inject(c: Char): (C, L) = (CharLattice[C].inject(c), Lattice[L].bottom)
+  def inject(c: Char): (C, L) = ProductLattice[C, L].injectLeft(CharLattice[C].inject(c))
   def downCase(c: (C, L)): (C, L) = opLeft1(CharLattice[C].downCase, c)
   def upCase(c: (C, L)): (C, L) = opLeft1(CharLattice[C].upCase, c)
   def toInt[I: IntLattice](c: (C, L)): I = ???

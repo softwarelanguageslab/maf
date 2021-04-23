@@ -12,6 +12,15 @@ class ProductLattice[L: Lattice, R: Lattice] extends Lattice[(L, R)] {
   def eql[B: BoolLattice](x: (L, R), y: (L, R)): B = BoolLattice[B].join(Lattice[L].eql(x._1, y._1), Lattice[R].eql(x._2, y._2))
   def show(v: (L, R)): String = s"(${Lattice[L].show(v._1)} × ${Lattice[R].show(v._2)})"
 
+  /** Injects values into this product lattice. */
+  def inject(l: L, r: R): (L, R) = (l, r)
+
+  /** Injects a value into the left of the product, leaving the right bottom. */
+  def injectLeft(l: L): (L, R) = (l, Lattice[R].bottom)
+
+  /** Injects va value into the right of the product, leaving the left bottom */
+  def injectRight(r: R): (L, R) = (Lattice[L].bottom, r)
+
   /** Creates a new value of a product lattice by binding two separate lattice values. */
   def compose(l: L, r: R): (L, R) = (l, r)
 
