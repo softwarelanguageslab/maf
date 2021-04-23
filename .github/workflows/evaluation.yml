@@ -34,8 +34,8 @@ jobs:
       - uses: actions/checkout@v2
       - uses: lokkju/github-action-sbt@v0.2.2
         with:
-          commands: maf/jmh:run -rf json -rff jmh-result-${GITHUB_SHA}.json
-      - name Upload the benchmark results
+          commands: "maf/jmh:run -rf json -rff jmh-result-${GITHUB_SHA}.json"
+      - name: Upload the benchmark results
         uses: actions/upload-artifact@v2
         with:
           name: Performance evaluation results
