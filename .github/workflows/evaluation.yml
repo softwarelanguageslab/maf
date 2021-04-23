@@ -24,4 +24,19 @@ jobs:
         with:
           name: Precision benchmarks results
           path: benchOutput/precision/daily-precision-benchmarks.csv
-  # TODO: add performance benchmarks as a second job here
+  performance-evaluation:
+    name: Execute performance evaluation with JMH
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+      - uses: lokkju/github-action-sbt@v0.2.2
+        with:
+          commands: maf/jmh:run -- -rf json -rff benchOutput/jmh-result-${GITHUB_SHA}.json
+      - name Upload the benchmark results
+        uses: actions/upload-artifact@v2
+        with:
+          name: Performance evaluation results
+          path: benchOutput/jmh-result-${GITHUB_SHA}.json

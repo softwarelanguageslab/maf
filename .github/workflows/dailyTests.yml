@@ -207,18 +207,6 @@ jobs:
           channel: maf
           status: FAILED
           color: danger
-  performance-evaluation:
-    name: Execute performance evaluation with JMH
-    runs-on: ubuntu-latest
-    needs: compile
-    timeout-minutes: 60 # 1 hour
-    strategy:
-      fail-fast: false
-    steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: maf/jmh:run
   notify-success:
     name: Notify success
     runs-on: ubuntu-latest

@@ -18,7 +18,7 @@ trait PerformanceEvaluationJMH {
 
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @BenchmarkMode(Array(Mode.SingleShotTime))
-class PerformanceEvaluationJMH0CFA extends PerformanceEvaluationJMH {
+class PerformanceEvaluationJMHZeroCFA extends PerformanceEvaluationJMH {
   def analysis = SchemeAnalyses.kCFAAnalysis(_, 0)
 
   @Benchmark
@@ -33,7 +33,7 @@ class PerformanceEvaluationJMH0CFA extends PerformanceEvaluationJMH {
 
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @BenchmarkMode(Array(Mode.SingleShotTime))
-class PerformanceEvaluationJMH1CFA extends PerformanceEvaluationJMH {
+class PerformanceEvaluationJMHOneCFA extends PerformanceEvaluationJMH {
   def analysis = SchemeAnalyses.kCFAAnalysis(_, 1)
 
   @Benchmark
