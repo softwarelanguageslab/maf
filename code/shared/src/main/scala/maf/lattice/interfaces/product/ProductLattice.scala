@@ -49,5 +49,6 @@ class ProductLattice[L: Lattice, R: Lattice] extends Lattice[(L, R)] {
 }
 
 object ProductLattice {
-  def apply[L, R](implicit p: ProductLattice[L, R]): ProductLattice[L, R] = p
+  //def apply[L, R](implicit p: ProductLattice[L, R]): ProductLattice[L, R] = p
+  def apply[L: Lattice, R: Lattice]: ProductLattice[L, R] = new ProductLattice[L, R] // TODO Is this the behaviour we want?
 }
