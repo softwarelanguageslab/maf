@@ -3,7 +3,8 @@ package maf.lattice.interfaces.product
 import maf.core.Lattice
 import maf.lattice.interfaces.BoolLattice
 
-// TODO maybe: make the product type opaque?
+// TODO maybe: make the product type opaque instead of just using a tuple?
+/** Defines lattice properties for a product (tuple) of lattice values. */
 class ProductLattice[L: Lattice, R: Lattice] extends Lattice[(L, R)] {
 
   def bottom: (L, R) = (Lattice[L].bottom, Lattice[R].bottom)
