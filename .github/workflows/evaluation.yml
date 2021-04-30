@@ -5,6 +5,8 @@ name: Daily MAF evaluation
 on:
   schedule:
     - cron: '00 23 * * *' # Executes every night at 23:00.
+  push:
+    branches: [ master ]
 
 jobs:
   # The compile job fetches the code and attempts to compile it.
@@ -15,13 +17,32 @@ jobs:
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
-      - name: Run precision benchmarks
-        uses: lokkju/github-action-sbt@v0.2.2
+      - uses: olafurpg/setup-scala@v10
         with:
-          commands: maf/runMain maf.cli.experiments.precision.DailyPrecisionBenchmarks
+          java-version: openjdk@1.15
+      - name: Run precision benchmarks
+        run: sbt "maf/runMain maf.cli.experiments.precision.DailyPrecisionBenchmarks"
       - name: Upload the benchmark results
         uses: actions/upload-artifact@v2
         with:
           name: Precision benchmarks results
           path: benchOutput/precision/daily-precision-benchmarks.csv
-  # TODO: add performance benchmarks as a second job here
+  performance-evaluation:
+    name: Execute performance evaluation with JMH
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - uses: olafurpg/setup-scala@v10
+        with:
+          java-version: openjdk@1.15
+      - name: Run performance benchmarks
+        run: sbt "maf/jmh:run -rf json -rff jmh-results-${GITHUB_SHA}.json"
+      - name: Upload the benchmark results
+        uses: actions/upload-artifact@v2
+        with:
+          name: Performance evaluation results
+          path: code/jvm/jmh-result-${GITHUB_SHA}.json

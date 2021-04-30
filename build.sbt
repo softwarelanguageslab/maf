@@ -77,8 +77,9 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
                       )
                       .jvmSettings(
                         /** General */
-                        mainClass in Compile := Some("maf.cli.Main")
+                        mainClass in Compile := Some("maf.cli.Main"),
                       )
+                      .jvmConfigure(_.enablePlugins(JmhPlugin))
                       .jsSettings(
                         /** Dependencies */
                         libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.1.0",
