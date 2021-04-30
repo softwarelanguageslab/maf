@@ -45,4 +45,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: Performance evaluation results
-          path: code/jvm/jmh-result-${GITHUB_SHA}.json
+          path: code/jvm/jmh-result-${{ github.sha }}.json
