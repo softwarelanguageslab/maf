@@ -9,7 +9,6 @@ import maf.modular._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.worklist._
-import maf.language.CScheme.CSchemeParser
 
 object SeqAnalysis {
   def kCFAAnalysis(prg: SchemeExp, kcfa: Int) = new ModAnalysis(prg)
@@ -458,23 +457,3 @@ object ParallelPerformanceModConc extends PerformanceEvaluation {
     exportCSV("data/modconc.csv", format _, timestamped = false)
   }
 }
-
-object AnalyzeProgramSeq extends App {
-  val text = CSchemeParser.parse(maf.util.Reader.loadFile("test/R5RS/gambit/sboyer.scm"))
-  val analysis = SeqAnalysis.kCFAAnalysis(text, 0)
-  val t0 = System.currentTimeMillis()
-  analysis.analyzeWithTimeout(Timeout.start(Duration(10, MINUTES)))
-  val t1 = System.currentTimeMillis()
-  println(s"Intra count: ${analysis.intraCount} in ${(t1 - t0)}ms: ${(t1-t0)/analysis.intraCount} ms/intra")
-}
-
-
-object AnalyzeProgramPar extends App {
-  val text = CSchemeParser.parse(maf.util.Reader.loadFile("test/R5RS/gambit/sboyer.scm"))
-  val analysis = ParallelModFAnalyses.random(text, 1, 0)
-  val t0 = System.currentTimeMillis()
-  analysis.analyzeWithTimeout(Timeout.start(Duration(10, MINUTES)))
-  val t1 = System.currentTimeMillis()
-  println(s"Intra count: ${analysis.intraCount} in ${(t1 - t0)}ms: ${(t1-t0)/analysis.intraCount} ms/intra")
-}
-
