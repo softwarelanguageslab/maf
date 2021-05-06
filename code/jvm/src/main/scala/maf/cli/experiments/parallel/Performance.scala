@@ -9,6 +9,23 @@ import maf.modular._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.worklist._
+import maf.language.CScheme.CSchemeParser
+
+object SeqAnalysis {
+  def kCFAAnalysis(prg: SchemeExp, kcfa: Int) = new ModAnalysis(prg)
+      with SchemeModFSemantics
+      with StandardSchemeModFComponents
+      with BigStepModFSemantics
+      with RandomPriorityWorklistAlgorithm[SchemeExp]
+      with SchemeModFKCallSiteSensitivity
+      with SchemeConstantPropagationDomain {
+    override def addToWorkList(cmp: Component): Unit = push(cmp)
+    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
+    override def toString() = s"kCFA (k = $kcfa)"
+    val k = kcfa
+  }
+}
+
 
 object ParallelModFAnalyses {
   def random(
@@ -295,7 +312,7 @@ trait BaseResultsModFSetup extends PerformanceEvaluation {
   override def analysisTime = Timeout.start(Duration(30, MINUTES))
   def k: Int
   def analyses: List[(SchemeExp => Analysis, String)] = List(
-    (SchemeAnalyses.kCFAAnalysis(_, k), s"base ModF ($k-CFA)")
+    (SeqAnalysis.kCFAAnalysis(_, k), s"base ModF ($k-CFA)")
   )
 }
 
@@ -441,3 +458,23 @@ object ParallelPerformanceModConc extends PerformanceEvaluation {
     exportCSV("data/modconc.csv", format _, timestamped = false)
   }
 }
+
+object AnalyzeProgramSeq extends App {
+  val text = CSchemeParser.parse(maf.util.Reader.loadFile("test/R5RS/gambit/sboyer.scm"))
+  val analysis = SeqAnalysis.kCFAAnalysis(text, 0)
+  val t0 = System.currentTimeMillis()
+  analysis.analyzeWithTimeout(Timeout.start(Duration(10, MINUTES)))
+  val t1 = System.currentTimeMillis()
+  println(s"Intra count: ${analysis.intraCount} in ${(t1 - t0)}ms: ${(t1-t0)/analysis.intraCount} ms/intra")
+}
+
+
+object AnalyzeProgramPar extends App {
+  val text = CSchemeParser.parse(maf.util.Reader.loadFile("test/R5RS/gambit/sboyer.scm"))
+  val analysis = ParallelModFAnalyses.random(text, 1, 0)
+  val t0 = System.currentTimeMillis()
+  analysis.analyzeWithTimeout(Timeout.start(Duration(10, MINUTES)))
+  val t1 = System.currentTimeMillis()
+  println(s"Intra count: ${analysis.intraCount} in ${(t1 - t0)}ms: ${(t1-t0)/analysis.intraCount} ms/intra")
+}
+
