@@ -9,23 +9,22 @@ import maf.modular._
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.datastructures.MultiSet
-import scala.annotation.tailrec
 
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   this: AdaptiveContextSensitivityPolicy =>
 
   import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
 
-  // configured by (TODO: in Scala 3, turn these into trait parameters):
-  // - a threshold `n` for the number of components per module
-  // - a threshold `t` for how many components are re-analysed due to triggering dependencies at a single location
-  val n: Int
-  val t: Int
-
   // disable warning messages and debug logging by default (can be override for custom logging)
   protected def warn(message: => String): Unit = ()
   protected def debug(message: => String): Unit = ()
-  
+
+  // extra parameters to control the "aggressiveness" of the adaptation (TODO: in Scala 3, make these (default?) trait parameters):
+  // - `reduceFactor`: determines by what factor the number of components needs to be reduced
+  // - `cutoffFactor`: determines the cutoff for selecting "culprits" to be reduced in the adaptation
+  val reduceFactor = 0.5
+  val cutoffFactor = 0.5
+
   // use a different context-sensitivity policy per closure
 
   private var policyPerFn: Map[LambdaModule, ContextSensitivityPolicy] = Map.empty
@@ -41,8 +40,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       caller: Component
     ): ComponentContext =
     getCurrentPolicy(LambdaModule(clo._1)).allocCtx(clo, args, call, caller)
-  def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] =
-    cll.copy(ctx = getCurrentPolicy(LambdaModule(cll.clo._1)).adaptCtx(cll.ctx))
+  def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] = cll match {
+    case Call(clo, ctx) => Call(adaptClosure(clo), adaptCtx(LambdaModule(clo._1) ,ctx))
+  }
+  def adaptCtx(fn: LambdaModule, ctx: ComponentContext): ComponentContext = 
+    getCurrentPolicy(fn).adaptCtx(ctx)
 
   // allocation context = component context
   // (also store the function that the context came from)
@@ -58,129 +60,133 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = PtrAddr(exp, addrContext(cmp))
   def allocVar(idf: Identifier, cmp: SchemeModFComponent) = VarAddr(idf, addrContext(cmp))
 
-  // data kept by the analysis, includes:
-  // - the components per module
-  // - the number of times dependencies are triggered
-  private var cmpsPerModule: Map[SchemeModule, Set[Component]] = Map.empty
-  private var triggerCounts: Map[Expression, MultiSet[Dependency]] = Map.empty
+
+  // during the analysis, keep track of
+  // - per module: all components
+  // - per module: how many times each component has been triggered
+  // - dependencies (per component) that triggered a component
+  // - the number of times a dependency has been triggered
+  
+  private var allCmpsPerFn: Map[LambdaModule, Set[Call[ComponentContext]]] = Map.empty
+  private var cmpsPerFn: Map[SchemeModule, MultiSet[Component]] = Map.empty
+  private var depsPerCmp: Map[Component, Set[Dependency]] = Map.empty
+  private var depCounts: Map[Dependency, Int] = Map.empty 
 
   override def spawn(cmp: Component) = {
     if (!visited(cmp)) {
-      val mod = module(cmp)
-      val previousCmps = cmpsPerModule.getOrElse(mod, Set.empty)
-      val updatedCmps = previousCmps + cmp
-      cmpsPerModule += mod -> updatedCmps
-      if (updatedCmps.size > n) {
-        markedModules += mod
-      }
+      val mod = module(cmp).asInstanceOf[LambdaModule]
+      val call = cmp.asInstanceOf[Call[ComponentContext]]
+      cmpsPerFn += mod -> (cmpsPerFn.getOrElse(mod, MultiSet.empty) + cmp)
+      allCmpsPerFn += mod -> (allCmpsPerFn.getOrElse(mod, Set.empty) + call)
     }
     super.spawn(cmp)
   }
 
   override def trigger(dep: Dependency) = {
-    val location = getDepExp(dep)
-    val triggered = deps.getOrElse(dep, Set.empty).size
-    val previousCounts = triggerCounts.getOrElse(location, MultiSet.empty)
-    val updatedCounts = previousCounts.updateMult(dep)(_ + triggered)
-    triggerCounts += location -> updatedCounts
-    if (updatedCounts.cardinality > t) {
-      markedLocations += location
+    deps.getOrElse(dep, Set.empty).foreach { cmp =>
+      val mod = module(cmp)
+      cmpsPerFn += mod -> (cmpsPerFn.getOrElse(mod, MultiSet.empty) + cmp)
+      depsPerCmp += cmp -> (depsPerCmp.getOrElse(cmp, Set.empty) + dep)
     }
+    depCounts += dep -> (depCounts.getOrElse(dep, 0) + 1)
     super.trigger(dep)
   }
 
-  // before adaptation, keep track of ...
-  // - which modules have too many components
-  // - which locations are triggered too often
-
-  private var markedModules: Set[SchemeModule] = Set.empty
-  private var markedLocations: Set[Expression] = Set.empty
-
-  // ... during adaptation (to avoid duplicating work) ...
-  // ... keep track of the modules for which the number of closures has been reduced
+  // ... during adaptation (to avoid duplicating work), keep track of:
+  // - modules that have been reduced
+  // - dependencies that have been reduced
 
   private var reducedModules: Set[SchemeModule] = Set.empty
+  private var reducedDeps: Set[Dependency] = Set.empty
 
   // adapting the analysis
-  // - for marked modules => reduce the number of components
-  // - for marked components => reduce how many times the component is triggered
+  
+  def modulesToAdapt = 
+    selectLargest[(SchemeModule,MultiSet[Component])](cmpsPerFn, _._2.cardinality)
 
   def inspect() = {
+    // start the adaptation
+    modulesToAdapt.foreach { case (module, _) =>
+      reduceModule(module)
+    }
+    // update the analysis
+    if (reducedModules.nonEmpty) { adaptAnalysis() }
     // clear the set of reduced modules
     reducedModules = Set.empty
-    // start the adaptation
-    markedModules.foreach(reduceComponentsForModule)
-    markedLocations.foreach(reduceTriggersForLocation)
-    // update the analysis
-    debug(s"MARKED MODULES: $markedModules")
-    debug(s"MARKED LOCATIONS: ${markedLocations.map(_.idn)}")
-    debug(s"=> REDUCED: $reducedModules")
-    if (reducedModules.nonEmpty) { adaptAnalysis() }
-    // unmark all modules and dependencies
-    markedModules = Set.empty
-    markedLocations = Set.empty
+    reducedDeps = Set.empty
   }
 
-  // extra parameters to control the "aggressiveness" of the adaptation (TODO: in Scala 3, make these (default?) trait parameters):
-  // - `reduceFactor`: determines by what factor the number of components needs to be reduced
-  // - `cutoffFactor`: determines the cutoff for selecting "culprits" to be reduced in the adaptation
-  val reduceFactor = 0.25
-  val cutoffFactor = 0.25
-
-  private def reduceComponentsForModule(module: SchemeModule) = module match {
-    case MainModule      => warn("Attempting to reduce the number of components for the main module")
-    case l: LambdaModule => reduceComponents(l)
-  }
-
-  private def reduceComponents(module: LambdaModule): Unit =
-    if (!reducedModules(module)) { // ensure this is only done once per module per adaptation
-      reducedModules += module
-      // get all components, calls and closures for this module
-      val calls = cmpsPerModule(module).map(_.asInstanceOf[Call[ComponentContext]])
-      val contexts = calls.map(_.ctx)
-      if (contexts.size > 1) {
-        val target = Math.max(1, reduceFactor * contexts.size).toInt
-        val policy = getCurrentPolicy(module)
-        reduceContext(module, policy, contexts, target)
-      } else {
-        reduceComponentsForModule(getParentModule(calls.head.clo))
-      }
+  private def reduceModule(module: SchemeModule) = {
+    val moduleCmps = cmpsPerFn(module)
+    val numberOfComponents = moduleCmps.distinctCount
+    val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
+    if (numberOfComponents > maximumComponentCost) {
+      reduceComponentsForModule(module.asInstanceOf[LambdaModule])
+    } else {
+      val selectedCmps = selectLargest[(Component, Int)](
+        moduleCmps.content, 
+        _._2, 
+        maximumComponentCost
+      )
+      selectedCmps.foreach { case (cmp, _) => reduceReanalysesForComponent(cmp) }
     }
+  }
+
+  private def reduceReanalysesForComponent(cmp: Component) = {
+    val deps = depsPerCmp(cmp)
+    val groupedByLoc = deps.groupBy(getDepExp)
+    val selected = selectLargest[(Expression,Set[Dependency])](groupedByLoc, _._2.size)
+    selected.foreach { case (loc, deps) => reduceTriggersForLocation(loc, deps) }
+  }
+
+  private def reduceTriggersForLocation(loc: Expression, deps: Set[Dependency]) = {
+    val numberOfDependencies = deps.size
+    val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
+    if (numberOfDependencies > maximumDependencyCost) {
+      reduceAddressesForLocation(loc, deps.map(_.asInstanceOf[AddrDependency].addr))
+    } else {
+      val selected = selectLargest[Dependency](deps, depCounts, maximumDependencyCost)
+      selected.foreach { dep => reduceDep(dep) }
+    }
+  }
+
+  private def reduceComponentsForModule(module: LambdaModule): Unit = {
+    val calls = allCmpsPerFn(module)
+    val groupedByClo = calls.groupBy(_.clo)
+    val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size  
+    if (cloMaxContexts > groupedByClo.size) {
+      reduceContextsForModule(module)
+    } else {
+      reduceComponentsForModule(getParentModule(calls.head.clo).asInstanceOf[LambdaModule])
+    }
+  }
 
   // find a fitting policy
-  @tailrec
-  private def reduceContext(
-      module: LambdaModule,
-      policy: ContextSensitivityPolicy,
-      ctxs: Set[ComponentContext],
-      target: Int
-    ): Unit = {
-    if (ctxs.size > target) {
-      // need to decrease precision further
-      val next = nextPolicy(module.lambda, policy, ctxs)
-      val adapted = ctxs.map(next.adaptCtx)
-      reduceContext(module, next, adapted, target)
-    } else {
+  private def reduceContextsForModule(module: LambdaModule): Unit = 
+    if (!reducedModules(module)) { // ensure this is only done once per module per adaptation
+      reducedModules += module
+      // find a fitting CS policy
+      var ctxs = allCmpsPerFn(module).map(_.ctx)
+      var plcy = getCurrentPolicy(module)
+      val target = Math.max(1, ctxs.size * reduceFactor)
+      while (ctxs.size > target) {
+        // need to decrease precision further
+        plcy = nextPolicy(module.lambda, plcy, ctxs)
+        ctxs = ctxs.map(plcy.adaptCtx)
+      }
       // register the new policy
-      debug(s"$module -> $policy")
-      setCurrentPolicy(module, policy)
+      debug(s"$module -> $plcy")
+      setCurrentPolicy(module, plcy)
     }
-  }
 
-  private def reduceTriggersForLocation(loc: Expression) = {
-    val depCounts = triggerCounts.getOrElse(loc, MultiSet.empty)
-    val selected = selectLargest[(Dependency, Int)](depCounts.content, _._2)
-    val updated = selected.foldLeft(depCounts) { case (acc, (dep, _)) =>
-      reduceDep(dep)
-      acc - dep
+  private def reduceDep(dep: Dependency) = 
+    if (!reducedDeps(dep)) {
+      reducedDeps += dep
+      dep match {
+        case AddrDependency(addr) => reduceValueAbs(store(addr))
+        case _                    => throw new Exception("Unknown dependency for adaptive analysis")
+      }
     }
-    triggerCounts += loc -> updated
-  }
-
-  private def reduceDep(dep: Dependency) = dep match {
-    case AddrDependency(addr) => reduceValueAbs(store(addr))
-    case _                    => throw new Exception("Unknown dependency for adaptive analysis")
-  }
 
   private def reduceValueAbs(value: Value): Unit = value.vs.maxBy(sizeOfV) match {
     case modularLatticeWrapper.modularLattice.Pointer(pts) => reduceAddresses(pts)
@@ -204,8 +210,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   }
 
   private def reduceAddressesForLocation(loc: Expression, addrs: Set[Addr]) = {
-    debug(s"Reducing ${addrs.size} addrs")
-    reduceComponentsForModule(getAddrModule(addrs.head))
+    //debug(s"Reducing ${addrs.size} addrs")
+    reduceContextsForModule(getAddrModule(addrs.head).asInstanceOf[LambdaModule])
   }
 
   private def reduceClosures(cls: Set[lat.Closure]) = {
@@ -215,16 +221,16 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   }
 
   private def reduceClosuresForFunction(fn: SchemeLambdaExp, closures: Set[lat.Closure]) = {
-    debug(s"Reducing ${closures.size} closures")
-    reduceComponentsForModule(getParentModule(closures.head))
+    //debug(s"Reducing ${closures.size} closures")
+    reduceContextsForModule(getParentModule(closures.head).asInstanceOf[LambdaModule])
   }
-
-  // adapting the analysis
 
   override def adaptAnalysis() = {
     super.adaptAnalysis()
-    this.cmpsPerModule = adaptMap(adaptSet(adaptComponent))(cmpsPerModule)
-    this.triggerCounts = adaptMap(adaptMultiSet(adaptDep, Math.max))(triggerCounts)
+    this.allCmpsPerFn = adaptMap(adaptSet(adaptCall))(allCmpsPerFn)
+    this.cmpsPerFn = Map.empty
+    this.depsPerCmp = Map.empty
+    this.depCounts = Map.empty
   }
 
   /*
