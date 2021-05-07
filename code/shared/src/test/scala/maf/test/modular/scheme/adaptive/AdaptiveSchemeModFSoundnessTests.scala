@@ -18,10 +18,7 @@ trait AdaptiveSchemeModF extends SchemeModFSoundnessTests { outer =>
       with AdaptiveContextSensitivity
       with AdaptiveKCFA
       with SchemeConstantPropagationDomain
-      with FIFOWorklistAlgorithm[SchemeExp] {
-      lazy val n = outer.budget
-      lazy val t = outer.budget
-    }
+      with FIFOWorklistAlgorithm[SchemeExp]
 }
 
 class AdaptiveSchemeModFSoundnessTests extends AdaptiveSchemeModF with AllSequentialBenchmarks {
