@@ -293,7 +293,7 @@ object ParallelModFBenchmarks {
   val excludedFor2CFA: Set[String] = Set(
     "test/R5RS/WeiChenRompf2019/earley.sch", // Times out with n = 1, 60min timeout
     "test/R5RS/WeiChenRompf2019/meta-circ.scm", // Times out with n = 1, 60min timeout
-//    "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", // Takes 23min with n = 1
+    "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", // Takes 23min with n = 1
     "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm", // Times out with n = 1, 60min timeout
     "test/R5RS/gambit/peval.scm", // Times out with n = 1, 60min timeout
     "test/R5RS/gambit/scheme.scm", // Times out with n = 1, 60min timeout
@@ -317,6 +317,11 @@ trait BaseResultsModFSetup extends PerformanceEvaluation {
 
 object BaseResultsModF0CFA extends BaseResultsModFSetup {
   def k = 0
+  def benchmarks = ParallelModFBenchmarks.all
+}
+
+object BaseResultsModF1CFA extends BaseResultsModFSetup {
+  def k = 1
   def benchmarks = ParallelModFBenchmarks.all
 }
 
@@ -349,15 +354,19 @@ object BaseResultsModF {
     BaseResultsModF0CFA.run()
     BaseResultsModF0CFA.exportCSV("data/modf-base-context-insensitive.csv", BaseResultsModF0CFA.format _, timestamped = false)
     BaseResultsModF0CFA.exportCSV("data/modf-base-context-insensitive.csv-stddev", BaseResultsModF0CFA.formatStddev _, timestamped = false)
+    BaseResultsModF1CFA.run()
+    BaseResultsModF1CFA.exportCSV("data/modf-base-context-sensitive-1CFA.csv", BaseResultsModF2CFA.format _, timestamped = false)
+    BaseResultsModF1CFA.exportCSV("data/modf-base-context-sensitive-1CFA.csv-stddev", BaseResultsModF2CFA.formatStddev _, timestamped = false)
     BaseResultsModF2CFA.run()
-    BaseResultsModF2CFA.exportCSV("data/modf-base-context-sensitive.csv", BaseResultsModF2CFA.format _, timestamped = false)
-    BaseResultsModF2CFA.exportCSV("data/modf-base-context-sensitive.csv-stddev", BaseResultsModF2CFA.formatStddev _, timestamped = false)
+    BaseResultsModF2CFA.exportCSV("data/modf-base-context-sensitive-2CFA.csv", BaseResultsModF2CFA.format _, timestamped = false)
+    BaseResultsModF2CFA.exportCSV("data/modf-base-context-sensitive-2CFA.csv-stddev", BaseResultsModF2CFA.formatStddev _, timestamped = false)
     ParallelModFBenchmarks.all.foreach { (benchmark: String) =>
       val shortName = ParallelModFBenchmarks.paperName(benchmark)
       val loc = loccount(benchmark)
       val zeroCFA = BaseResultsModF0CFA.results.get(benchmark, "base ModF (0-CFA)").get
+      val oneCFA =  BaseResultsModF0CFA.results.get(benchmark, "base ModF (1-CFA)").get
       val twoCFA = BaseResultsModF2CFA.results.get(benchmark, "base ModF (2-CFA)").get
-      println(s"\\prog{$shortName} & $loc & ${formatResult(zeroCFA)} & ${formatResult(twoCFA)} \\\\ \\hline")
+      println(s"\\prog{$shortName} & $loc & ${formatResult(zeroCFA)} & ${formatResult(oneCFA)} & ${formatResult(twoCFA)} \\\\ \\hline")
     }
   }
 }
@@ -384,9 +393,15 @@ object ParallelModFPerformance0CFA extends ParallelModFPerformance {
   def benchmarks = ParallelModFBenchmarks.all
 }
 
+object ParallelModFPerformance1CFA extends ParallelModFPerformance {
+  def k = 1
+  def outputFile = "data/modf-context-sensitive-1CFA.csv"
+  def benchmarks = ParallelModFBenchmarks.all
+}
+
 object ParallelModFPerformance2CFA extends ParallelModFPerformance {
   def k = 2
-  def outputFile = "data/modf-context-sensitive.csv"
+  def outputFile = "data/modf-context-sensitive-2CFA.csv"
   def benchmarks = ParallelModFBenchmarks.for2CFA
 }
 
@@ -414,9 +429,15 @@ object ParallelPerformanceMetrics0CFA extends ParallelModFPerformanceMetrics {
   def benchmarks = ParallelModFBenchmarks.all
 }
 
+object ParallelPerformanceMetrics1CFA extends ParallelModFPerformanceMetrics {
+  def k = 1
+  def outputFile = "data/modf-context-sensitive-metrics-1CFA.csv"
+  def benchmarks = ParallelModFBenchmarks.all
+}
+
 object ParallelPerformanceMetrics2CFA extends ParallelModFPerformanceMetrics {
   def k = 2
-  def outputFile = "data/modf-context-sensitive-metrics.csv"
+  def outputFile = "data/modf-context-sensitive-metrics-2CFA.csv"
   def benchmarks = ParallelModFBenchmarks.for2CFA
 }
 
