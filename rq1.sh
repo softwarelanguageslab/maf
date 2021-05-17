@@ -9,6 +9,9 @@ sbt 'maf/runMain maf.cli.experiments.parallel.BaseResultsModF' > out.log
 echo "Producing speedup data for 0CFA (expected time: 3h30, started on $(date))"
 sbt 'maf/runMain maf.cli.experiments.parallel.ParallelModFPerformance0CFA' >> out.log
 
+echo "Producing speedup data for 1CFA (expected time: 3h30, started on $(date))"
+sbt 'maf/runMain maf.cli.experiments.parallel.ParallelModFPerformance0CFA' >> out.log
+
 echo "Producing speedup data for 2CFA (expected time: 12h30, started on $(date))"
 sbt 'maf/runMain maf.cli.experiments.parallel.ParallelModFPerformance2CFA' >> out.log
 

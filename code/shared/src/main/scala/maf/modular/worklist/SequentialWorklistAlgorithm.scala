@@ -93,7 +93,6 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
   // step until worklist is empty or timeout is reached
   def analyzeWithTimeout(timeout: Timeout.T): Unit = {
     while (!finished() && !timeout.reached) {
-      count += 1
       step(timeout)
     }
   }
@@ -111,10 +110,6 @@ trait RandomPriorityWorklistAlgorithm[Expr <: Expression] extends PriorityQueueW
     super.spawn(cmp)
     if (!random.contains(cmp)) {
       val next = scala.util.Random.nextInt()
-      if (count > 100 && count < 120) {
-        println(s"Assigning $next to $cmp")
-        count += 1
-      }
       random = random + ((cmp -> next))
     }
   }

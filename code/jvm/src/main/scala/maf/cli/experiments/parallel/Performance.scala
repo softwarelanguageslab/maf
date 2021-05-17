@@ -307,7 +307,7 @@ object ParallelModFBenchmarks {
 }
 
 trait BaseResultsModFSetup extends PerformanceEvaluation {
-  override def analysisRuns = 10 // reduced for getting results faster
+  override def analysisRuns = 20 // reduced for getting results faster
   override def analysisTime = Timeout.start(Duration(30, MINUTES))
   def k: Int
   def analyses: List[(SchemeExp => Analysis, String)] = List(
@@ -442,7 +442,7 @@ object ParallelPerformanceMetrics2CFA extends ParallelModFPerformanceMetrics {
 }
 
 object ParallelPerformanceModConc extends PerformanceEvaluation {
-  override def analysisRuns = 10 // reduced for getting results faster
+  override def analysisRuns = 20 // reduced for getting results faster
   override def analysisTime = Timeout.start(Duration(30, MINUTES))
   def benchmarks: Iterable[String] = List(
     "test/concurrentScheme/threads/crypt.scm",
