@@ -58,17 +58,18 @@ trait RandomWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgo
 // TODO: use an immutable priority queue, or reuse SequentialWorklistAlgorithm differently here
 trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {
   // choose the priority ordering of components
-  implicit def ordering: Ordering[Component]
+  implicit def ordering: Ordering[(Component, Int)] = Ordering.by(_._2)
   // worklist is a priority queue
   var worklistSet: Set[Component] = Set(initialComponent)
-  lazy val worklist: PriorityQueue[Component] = PriorityQueue(initialComponent)
+  lazy val worklist: PriorityQueue[(Component, Int)] = PriorityQueue((initialComponent, priorityOf(initialComponent)))
+  def priorityOf(cmp: Component): Int
   def push(cmp: Component) =
     if (!worklistSet.contains(cmp)) {
       worklistSet += cmp
-      worklist += cmp
+      worklist += ((cmp, priorityOf(cmp)))
     }
   def pop(): Component = {
-    val cmp = worklist.dequeue()
+    val (cmp, _) = worklist.dequeue()
     worklistSet -= cmp
     cmp
   }
@@ -100,29 +101,20 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
 
 trait RandomPriorityWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var random: Map[Component, Int] = Map.empty.withDefaultValue(0)
-  def ordering: Ordering[Component] = new Ordering[Component] {
-    def compare(cmp1: Component, cmp2: Component): Int = {
-      Ordering[Int].compare(random(cmp1), random(cmp2))
-    }
-  }
-  var count = 0
+  def priorityOf(cmp: Component) = random(cmp)
+
   override def spawn(cmp: Component, from: Component): Unit = {
-    super.spawn(cmp)
     if (!random.contains(cmp)) {
-      val next = scala.util.Random.nextInt()
-      random = random + ((cmp -> next))
+      random = random + ((cmp -> scala.util.Random.nextInt()))
     }
+    super.spawn(cmp)
   }
 }
 
 /** Provides a work list that prioritises nested calls by call depth to a modular analysis. */
 trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)
-  def ordering: Ordering[Component] = new Ordering[Component] {
-    def compare(cmp1: Component, cmp2: Component): Int = {
-      Ordering[Int].compare(depth(cmp1), depth(cmp2))
-    }
-  }
+  def priorityOf(cmp: Component) = depth(cmp)
   override def spawn(cmp: Component, from: Component): Unit =
     if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
       visited += cmp
@@ -133,11 +125,8 @@ trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueW
 
 trait LeastVisitedFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var count: Map[Component, Int] = Map.empty.withDefaultValue(0)
-  def ordering: Ordering[Component] = new Ordering[Component] {
-    def compare(cmp1: Component, cmp2: Component): Int = {
-      Ordering[Int].compare(count(cmp2), count(cmp1))
-    }
-  }
+  def priorityOf(cmp: Component) = -count(cmp)
+
   override def pop(): Component = {
     val cmp = super.pop()
     count += cmp -> (count(cmp) + 1)
@@ -146,11 +135,7 @@ trait LeastVisitedFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQue
 }
 
 trait MostVisitedFirstWorklistAlgorithm[Expr <: Expression] extends LeastVisitedFirstWorklistAlgorithm[Expr] {
-  override def ordering: Ordering[Component] = new Ordering[Component] {
-    def compare(cmp1: Component, cmp2: Component): Int = {
-      Ordering[Int].compare(count(cmp1), count(cmp2))
-    }
-  }
+  override def priorityOf(cmp: Component) = count(cmp)
 }
 
 trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
@@ -160,11 +145,8 @@ trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends Priority
       .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
   val depths: Map[Identity, Int] = computeDepths(program)
   var cmps: Map[Component, Int] = Map.empty.withDefaultValue(0)
-  def ordering: Ordering[Component] = new Ordering[Component] {
-    def compare(cmp1: Component, cmp2: Component): Int = {
-      Ordering[Int].compare(cmps(cmp1), cmps(cmp2))
-    }
-  }
+  def priorityOf(cmp: Component) = cmps(cmp)
+
   override def pop(): Component = {
     val cmp = super.pop()
     cmps += cmp -> depths(expr(cmp).idn)
@@ -173,65 +155,49 @@ trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends Priority
 }
 
 trait ShallowExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends DeepExpressionsFirstWorklistAlgorithm[Expr] {
-  override def ordering: Ordering[Component] = new Ordering[Component] {
-    def compare(cmp1: Component, cmp2: Component): Int = {
-      Ordering[Int].compare(cmps(cmp2), cmps(cmp1))
-    }
-  }
+  override def priorityOf(cmp: Component) = -cmps(cmp)
 }
 
 trait MostDependenciesFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var cmpDeps: Map[Component, Set[Dependency]] = Map.empty.withDefaultValue(Set.empty)
   var depCount: Map[Component, Int] = Map.empty.withDefaultValue(0)
-  def ordering: Ordering[Component] = new Ordering[Component] {
-    def compare(cmp1: Component, cmp2: Component): Int = {
-      Ordering[Int].compare(depCount(cmp1), depCount(cmp2))
-    }
-  }
+  def priorityOf(cmp: Component) = depCount(cmp)
   override def register(cmp: Component, dep: Dependency): Unit = {
-    super.register(cmp, dep)
     cmpDeps += (cmp -> (cmpDeps(cmp) + dep))
     depCount += (cmp -> (cmpDeps(cmp).size))
+    super.register(cmp, dep)
   }
 }
 
 trait LeastDependenciesFirstWorklistAlgorithm[Expr <: Expression] extends MostDependenciesFirstWorklistAlgorithm[Expr] {
-  override def ordering: Ordering[Component] = new Ordering[Component] {
-    def compare(cmp1: Component, cmp2: Component): Int = {
-      Ordering[Int].compare(depCount(cmp2), depCount(cmp1))
-    }
-  }
+  override def priorityOf(cmp: Component) = -depCount(cmp)
 }
 
 trait TriggerRegisterRatioWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   var cmpDepsTrigger: Map[Component, Set[Dependency]] = Map.empty.withDefaultValue(Set.empty)
   var cmpDepsRegister: Map[Component, Set[Dependency]] = Map.empty.withDefaultValue(Set.empty)
   var ratios: Map[Component, Double] = Map.empty.withDefaultValue(0)
-  def ordering: Ordering[Component] = new Ordering[Component] {
-    def compare(cmp1: Component, cmp2: Component): Int = {
-      Ordering[Double].compare((ratios(cmp1)*100).toInt, (ratios(cmp2)*100).toInt)
-    }
-  }
+  def priorityOf(cmp: Component) = (ratios(cmp)*100).toInt
   def updateRatios(cmp: Component): Unit = {
     val triggers = cmpDepsTrigger(cmp).size.toDouble
     val registers = cmpDepsRegister(cmp).size.toDouble
     ratios = ratios + (cmp -> (triggers / (triggers + registers)))
   }
   override def register(cmp: Component, dep: Dependency): Unit = {
-    super.register(cmp, dep)
     cmpDepsRegister += (cmp -> (cmpDepsRegister(cmp) + dep))
     updateRatios(cmp)
+    super.register(cmp, dep)
   }
   override def trigger(cmp: Component, dep: Dependency): Unit = {
-    super.trigger(cmp, dep)
     cmpDepsTrigger += (cmp -> (cmpDepsTrigger(cmp) + dep))
     updateRatios(cmp)
+    super.trigger(cmp, dep)
   }
 }
 
 trait BiggerEnvironmentFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr] {
   def environmentSize(cmp: Component): Int
-  def ordering: Ordering[Component] = Ordering.by(environmentSize)
+  def priorityOf(cmp: Component) = environmentSize(cmp)
 }
 
 object BiggerEnvironmentFirstWorklistAlgorithm {
@@ -255,7 +221,7 @@ object BiggerEnvironmentFirstWorklistAlgorithm {
 }
 
 trait SmallerEnvironmentFirstWorklistAlgorithm[Expr <: Expression] extends BiggerEnvironmentFirstWorklistAlgorithm[Expr] {
-  override def ordering: Ordering[Component] = Ordering.by(environmentSize).reverse
+  override def priorityOf(cmp: Component) = -environmentSize(cmp)
 }
 
 object SmallerEnvironmentFirstWorklistAlgorithm {

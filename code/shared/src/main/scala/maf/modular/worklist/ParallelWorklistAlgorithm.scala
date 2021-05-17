@@ -22,10 +22,10 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
   def popWorklist(): Component = WorkListMonitor.synchronized {
     while (worklist.isEmpty)
       WorkListMonitor.wait()
-    worklist.dequeue()
+    worklist.dequeue()._1
   }
   def pushWorklist(cmp: Component) = WorkListMonitor.synchronized {
-    worklist += cmp
+    worklist += ((cmp, priorityOf(cmp)))
     WorkListMonitor.notify()
   }
   class Worker(i: Int) extends Thread(s"worker-thread-$i") {
@@ -52,22 +52,21 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
   //
   // RESULTS
   //
-
-  implicit val ordResult: Ordering[Result] = Ordering.by(_.cmp)
+  implicit val ordResult: Ordering[(Result, Int)] = Ordering.by(_._2)
 
   sealed trait Result { def cmp: Component }
   case class Completed(intra: ParallelIntra) extends Result { def cmp = intra.component }
   case class TimedOut(cmp: Component) extends Result
 
   object ResultsMonitor
-  val results: PriorityQueue[Result] = PriorityQueue.empty
+  val results: PriorityQueue[(Result, Int)] = PriorityQueue.empty
 
   def popResult(): Result = ResultsMonitor.synchronized {
     while (results.isEmpty) ResultsMonitor.wait()
-    results.dequeue()
+    results.dequeue()._1
   }
   def pushResult(res: Result) = ResultsMonitor.synchronized {
-    results += res
+    results += ((res, priorityOf(res.cmp)))
     ResultsMonitor.notify()
   }
 
