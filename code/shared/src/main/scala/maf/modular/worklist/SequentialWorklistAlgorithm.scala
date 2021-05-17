@@ -92,12 +92,10 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
 
   // step until worklist is empty or timeout is reached
   def analyzeWithTimeout(timeout: Timeout.T): Unit = {
-    var count = 0
     while (!finished() && !timeout.reached) {
       count += 1
       step(timeout)
     }
-    println(s"Count: $count")
   }
 }
 
