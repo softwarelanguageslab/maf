@@ -229,7 +229,17 @@ object ParallelMetrics0CFA extends ParallelMetrics {
     exportCSV("data/modf-context-insensitive-metrics-stddev.csv", formatStddev _, timestamped = false)
     exportCSV("data/modf-context-insensitive-metrics-max.csv", formatMax _, timestamped = false)
   }
+}
 
+object ParallelMetrics1CFA extends ParallelMetrics {
+  def k = 1
+  def benchmarks = ParallelModFBenchmarks.all
+  def main(args: Array[String]): Unit = {
+    run()
+    exportCSV("data/modf-context-insensitive-metrics-1CFA-mean.csv", formatMean _, timestamped = false)
+    exportCSV("data/modf-context-insensitive-metrics-1CFA-stddev.csv", formatStddev _, timestamped = false)
+    exportCSV("data/modf-context-insensitive-metrics-1CFA-max.csv", formatMax _, timestamped = false)
+  }
 }
 
 object ParallelMetrics2CFA extends ParallelMetrics {
@@ -237,9 +247,9 @@ object ParallelMetrics2CFA extends ParallelMetrics {
   def benchmarks = ParallelModFBenchmarks.for2CFA
   def main(args: Array[String]): Unit = {
     run()
-    exportCSV("data/modf-context-sensitive-metrics-mean.csv", formatMean _, timestamped = false)
-    exportCSV("data/modf-context-sensitive-metrics-stddev.csv", formatStddev _, timestamped = false)
-    exportCSV("data/modf-context-sensitive-metrics-max.csv", formatMax _, timestamped = false)
+    exportCSV("data/modf-context-sensitive-metrics-2CFA-mean.csv", formatMean _, timestamped = false)
+    exportCSV("data/modf-context-sensitive-metrics-2CFA-stddev.csv", formatStddev _, timestamped = false)
+    exportCSV("data/modf-context-sensitive-metrics-2CFA-max.csv", formatMax _, timestamped = false)
   }
 
 }
