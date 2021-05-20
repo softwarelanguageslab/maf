@@ -364,7 +364,7 @@ object BaseResultsModF {
       val shortName = ParallelModFBenchmarks.paperName(benchmark)
       val loc = loccount(benchmark)
       val zeroCFA = BaseResultsModF0CFA.results.get(benchmark, "base ModF (0-CFA)").get
-      val oneCFA =  BaseResultsModF0CFA.results.get(benchmark, "base ModF (1-CFA)").get
+      val oneCFA =  BaseResultsModF1CFA.results.get(benchmark, "base ModF (1-CFA)").get
       val twoCFA = BaseResultsModF2CFA.results.get(benchmark, "base ModF (2-CFA)").get
       println(s"\\prog{$shortName} & $loc & ${formatResult(zeroCFA)} & ${formatResult(oneCFA)} & ${formatResult(twoCFA)} \\\\ \\hline")
     }
@@ -476,5 +476,6 @@ object ParallelPerformanceModConc extends PerformanceEvaluation {
   def main(args: Array[String]) = {
     run()
     exportCSV("data/modconc.csv", format _, timestamped = false)
+    exportCSV("data/modconc.csv-stddev", formatStddev _, timestamped = false)
   }
 }

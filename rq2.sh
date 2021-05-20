@@ -4,5 +4,5 @@ sed -i 's/-Xmx4096M/-Xmx65536M/' .jvmopts
 
 echo "=== RQ2 ==="
 echo "Producing ModConc base results and speedup data (expected time: TODO, started on $(date))"
-sbt 'maf/runMain maf.cli.experiments.parallel.ParallelPerformanceModConc'
+sbt 'maf/runMain maf.cli.experiments.parallel.ParallelPerformanceModConc' > out-modconc.txt
 echo "Finished, to get the graphs, run: python modconc_plot.py"

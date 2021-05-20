@@ -2,13 +2,13 @@
 echo "=== RQ3 ==="
 echo "Producing ModF metrics for 0CFA (expected time: 45min)"
 START_METRICS_0CFA=$(date +"%T")
-sbt 'maf/runMain maf.cli.experiments.parallel.ParallelMetrics0CFA'
+sbt 'maf/runMain maf.cli.experiments.parallel.ParallelMetrics0CFA' > out-metrics.txt
 END_METRICS_0CFA=$(date +"%T")
 echo "Started at $START_METRICS_0CFA, ended at $END_METRICS_0CFA"
 
 echo "Producing data for 0CFA (expected time: 2h)"
 START_DATA_0CFA=$(date +"%T")
-sbt 'maf/runMain maf.cli.experiments.parallel.ParallelPerformanceMetrics0CFA'
+sbt 'maf/runMain maf.cli.experiments.parallel.ParallelPerformanceMetrics0CFA' > out-metrics-perf.txt
 END_DATA_0CFA=$(date +"%T")
 echo "Started at $START_DATA_0CFA, ended at $END_DATA_0CFA"
 

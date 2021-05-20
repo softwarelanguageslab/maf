@@ -30,7 +30,8 @@ def calculcate_speedups_and_error(benchmark, error_data, base_data):
 
 colors = ['#000000','#004949','#009292','#ff6db6','#ffb6db',
  '#490092','#006ddb','#b66dff','#6db6ff','#b6dbff',
- '#920000','#924900','#db6d00','#24ff24','#ffff6d']
+ '#920000','#924900','#db6d00','#24ff24','#ffff6d',
+ '#490092','#006ddb','#b66dff','#6db6ff','#b6dbff']
 
 markers = ['o', 'v', '^', '<', '>', '1', '2', '3', '4', 's', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd']
 
@@ -49,7 +50,7 @@ def plot_from_csv(base_csv_file, data_csv_file, error_csv_file, pdf_out_file, yt
         if float(benchmark[1]) < MIN_TIME:
             continue
         speedups, yerr = calculcate_speedups_and_error(benchmark, error_data, base_data)
-        (_, caps, _) = plt.errorbar(xticks,speedups, yerr=yerr, color=colors[plot_number], fmt=line_style[plot_number] + 'o',label=benchmark[0], markersize=4, capsize=6) # , base=2
+        (_, caps, _) = plt.errorbar(xticks,speedups, yerr=yerr, color=colors[plot_number], fmt='--o',label=benchmark[0], markersize=4, capsize=6) # , base=2
         for cap in caps:
             cap.set_markeredgewidth(1)
         plot_number = plot_number + 1
