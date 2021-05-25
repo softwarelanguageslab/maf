@@ -4,6 +4,7 @@ import maf.core.{Address, Error, LatticeTopUndefined, MayFail}
 import maf.language.CScheme.TID
 import maf.language.scheme.lattices._
 import maf.lattice.interfaces._
+import maf.modular.incremental.scheme.modconc.IncrementalSchemeLattice
 import maf.util.{Monoid, MonoidInstances, SmartHash}
 
 class IncrementalModularSchemeLattice[
@@ -16,13 +17,15 @@ class IncrementalModularSchemeLattice[
     Sym: SymbolLattice]
     extends ModularSchemeLattice[A, S, B, I, R, C, Sym] {
 
+  type Sources = Set[Address]
+
   /**
    * *
    * A value that keeps track of the store addresses it depends upon.
    * @param vs      The list of abstract values.
    * @param sources The addresses in the store where the value originated.
    */
-  case class AnnotatedElements(vs: List[Value], sources: Set[Address]) extends SmartHash {
+  case class AnnotatedElements(vs: List[Value], sources: Sources) extends SmartHash {
     override def toString: String =
       if (vs.isEmpty) {
         "⊥"
@@ -35,12 +38,12 @@ class IncrementalModularSchemeLattice[
       vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
     }
     def toL(): L = Elements(vs)
-    def joinSourcesAndGet(other: AnnotatedElements): Set[Address] = sources.union(other.sources)
+    def joinSourcesAndGet(other: AnnotatedElements): Sources = sources.union(other.sources)
   }
   type AL = AnnotatedElements
   object AnnotatedElement extends Serializable {
     def apply(v: Value): AL = AnnotatedElements(List(v), Set())
-    def apply(v: Value, sources: Set[Address]): AL = AnnotatedElements(List(v), sources)
+    def apply(v: Value, sources: Sources): AL = AnnotatedElements(List(v), sources)
   }
 
   import maf.util.MonoidInstances._
@@ -62,8 +65,9 @@ class IncrementalModularSchemeLattice[
   }
   implicit val alMFMonoid: Monoid[MayFail[AL, Error]] = MonoidInstances.mayFail[AL]
 
-  private def annotate(als: Elements, sources: Set[Address]): AL = AnnotatedElements(als.vs, sources)
-  val annotatedSchemeLattice: SchemeLattice[AL, A] = new SchemeLattice[AL, A] {
+  val incrementalSchemeLattice: IncrementalSchemeLattice[AL, A] = new IncrementalSchemeLattice[AL, A] {
+    private def annotate(als: Elements, sources: Sources): AL = AnnotatedElements(als.vs, sources)
+
     def show(x: AL): String = x.toString /* TODO[easy]: implement better */
     def isTrue(x: AL): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: AL): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
@@ -135,9 +139,12 @@ class IncrementalModularSchemeLattice[
     def nil: AL = AnnotatedElement(Value.nil)
     def void: AL = AnnotatedElement(Value.void)
     def eql[B2: BoolLattice](x: AL, y: AL): B2 = ??? // TODO[medium] implement
+
+    override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.vs, v.sources.union(addresses))
+    override def clean(v: AL): AL = v.copy(sources = Set())
   }
 
   object AL {
-    implicit val lattice: SchemeLattice[AL, A] = annotatedSchemeLattice
+    implicit val lattice: IncrementalSchemeLattice[AL, A] = incrementalSchemeLattice
   }
 }
