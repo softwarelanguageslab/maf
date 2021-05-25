@@ -22,22 +22,22 @@ class IncrementalModularSchemeLattice[
   /**
    * *
    * A value that keeps track of the store addresses it depends upon.
-   * @param vs      The list of abstract values.
+   * @param values      The list of abstract values.
    * @param sources The addresses in the store where the value originated.
    */
-  case class AnnotatedElements(vs: List[Value], sources: Sources) extends SmartHash {
+  case class AnnotatedElements(values: List[Value], sources: Sources) extends SmartHash {
     override def toString: String =
-      if (vs.isEmpty) {
+      if (values.isEmpty) {
         "⊥"
-      } else if (vs.tail.isEmpty) {
-        vs.head.toString
+      } else if (values.tail.isEmpty) {
+        values.head.toString
       } else {
-        vs.map(_.toString).sorted.mkString("{", ",", "}")
+        values.map(_.toString).sorted.mkString("{", ",", "}")
       }
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X = {
-      vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
+      values.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
     }
-    def toL(): L = Elements(vs)
+    def toL(): L = Elements(values)
     def joinSourcesAndGet(other: AnnotatedElements): Sources = sources.union(other.sources)
   }
   type AL = AnnotatedElements
@@ -140,7 +140,7 @@ class IncrementalModularSchemeLattice[
     def void: AL = AnnotatedElement(Value.void)
     def eql[B2: BoolLattice](x: AL, y: AL): B2 = ??? // TODO[medium] implement
 
-    override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.vs, v.sources.union(addresses))
+    override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.values, v.sources.union(addresses))
     override def clean(v: AL): AL = v.copy(sources = Set())
   }
 
