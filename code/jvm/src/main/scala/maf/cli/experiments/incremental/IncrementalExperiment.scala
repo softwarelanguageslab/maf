@@ -1,8 +1,7 @@
 package maf.cli.experiments.incremental
 
 import maf.core.Expression
-import maf.modular.GlobalStore
-import maf.modular.incremental.{IncrementalConfiguration, IncrementalGlobalStore, IncrementalModAnalysis}
+import maf.modular.incremental._
 import maf.util.Writer._
 import maf.util.benchmarks.Timeout
 

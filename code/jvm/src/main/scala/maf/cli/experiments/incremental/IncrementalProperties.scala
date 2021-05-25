@@ -70,7 +70,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
 
     a1.resetIntraAnalysisCount()
     val a1Copy = a1.deepCopy()
-    a1Copy.configuration = allOptimisations
+    a1Copy.configuration = Config(true, false, false, false)
 
     // Update the initial analysis.
     runAnalysis("inc1 ", file, a1, timeOut => a1.updateAnalysis(timeOut), inc1S)
