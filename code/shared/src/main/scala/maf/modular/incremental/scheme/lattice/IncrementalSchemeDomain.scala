@@ -1,12 +1,21 @@
 package maf.modular.incremental.scheme.lattice
 
 import maf.core._
+import maf.language.scheme.SchemeExp
 import maf.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrimitives}
 import maf.lattice.{ConstantPropagation, Type}
+import maf.modular.AbstractDomain
 import maf.modular.incremental.scheme.modconc.IncrementalSchemeLattice
 import maf.modular.scheme._
 
-trait IncrementalSchemeDomain extends SchemeDomain {
+// TODO: put declarations in correct place (wrapper).
+trait IncrementalAbstractDomain[Expr <: Expression] extends AbstractDomain[Expr] {
+  def clean(v: Value): Value
+  def addAddress(v: Value, source: Address): Value = addAddresses(v, Set(source))
+  def addAddresses(v: Value, sources: Set[Address]): Value
+}
+
+trait IncrementalSchemeDomain extends IncrementalAbstractDomain[SchemeExp] with SchemeDomain {
   implicit override val lattice: IncrementalSchemeLattice[Value, Address]
 }
 
@@ -39,8 +48,8 @@ object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrappe
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
 }
 
-trait IncrementalSchemeTypeDomain extends IncrementalSchemeDomain {
-  lazy val modularLatticeWrapper = SchemeTypeDomain
+trait IncrementalSchemeTypeDomain extends IncrementalModularSchemeDomain {
+  lazy val modularLatticeWrapper = IncrementalSchemeTypeDomain
 }
 
 object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeLatticeWrapper {
@@ -54,6 +63,6 @@ object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSche
   lazy val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
 }
 
-trait IncrementalSchemeConstantPropagationDomain extends IncrementalSchemeDomain {
+trait IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeDomain {
   lazy val modularLatticeWrapper = IncrementalSchemeConstantPropagationDomain
 }
