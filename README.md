@@ -1,125 +1,103 @@
-Modular Analysis Framework (MAF): A Framework for Modular Analysis of Dynamic Languages
+A Parallel Worklist Algorithm and Its Exploration Heuristics for Static Modular Analyses (Replication Package)
 
-# Goal
-The goal of this artefact is to experiment with abstract machines and language
-semantics. Currently, the artefact's implementation is focused towards experiments with modular analyses.
-Additionally, semantics for R5RS Scheme are present.
+# Summary
+This replication package enables reproducing the evaluation of the following paper:
+> A Parallel Worklist Algorithm and Its Exploration Heuristics for Static Modular Analyses
 
-# Usage
-The MAF framework can be used in several ways.
+# Setup
+This replication package is self-contained and only requires a local installation of =sbt= to run.
+All dependencies will be downloaded upon the first use of the artifact.
 
-## Using the JavaScript visual front-end
-The framework includes a JavaScript front-end that can be used to visualise a MODF analysis in the browser.
-To run this visualisation, open the file `maf.html` with your browser. The visualisation provides information with
-regard to the work list (coloured in light blue) and currently analysed component (coloured in dark blue).
-Stepping through the visualisation can be done using the space bar.
+For reference, we have performed our evaluation on a server using an AMD Ryzen Threadripper 3990X processor with 64 cores at 2.9GHz, enabling running 128 threads simultaneously in total, with Java 14.0.2 (OpenJDK) and Scala 2.13.3. The JVM is configured with a fixed heap size of 64GB.
+In the likely case you are running this on a less powerful machines, the results with higher levels of parallelism may not hold.
 
-If you need to compile the code first, run the command `fastOptJS` within your sbt repl.
+# Benchmark names
+In the paper, the benchmarks names have been slightly changed compared to the file names used in this reproduction package.
+Here is the mapping used:
 
-## Analysing a program using command line
-The MAF framework is built in a modular style. To run a modular analysis, you need to compose the
-implementation of a specific machine and an abstract domain.
+| File name                                                  | Benchmark name    |
+| ---------------------------------------------------------- | ----------------- |
+| test/R5RS/WeiChenRompf2019/meta-circ.scm                   | meta-circ         |
+| test/R5RS/WeiChenRompf2019/earley.sch                      | earley            |
+| test/R5RS/WeiChenRompf2019/toplas98/graphs.scm             | graphs            |
+| test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm            | dynamic           |
+| test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm    | nbody             |
+| test/R5RS/WeiChenRompf2019/toplas98/boyer.scm              | boyer             |
+| test/R5RS/gambit/peval.scm                                 | peval             |
+| test/R5RS/gambit/scheme.scm                                | scheme            |
+| test/R5RS/gambit/sboyer.scm                                | sboyer            |
+| test/R5RS/gambit/nboyer.scm                                | nboyer            |
+| test/R5RS/gambit/matrix.scm                                | matrix            |
+| test/R5RS/gambit/browse.scm                                | browse            |
+| test/R5RS/scp1-compressed/all.scm                          | scp               |
+| test/R5RS/ad/all.scm                                       | ad                |
+| test/R5RS/various/SICP-compiler.scm                        | SICP-compiler     |
+| test/R5RS/icp/icp_1c_ambeval.scm                           | ambeval           |
+| test/R5RS/icp/icp_1c_multiple-dwelling.scm                 | multiple-dwelling |
+| test/R5RS/icp/icp_1c_ontleed.scm                           | decompose         |
+| test/R5RS/icp/icp_1c_prime-sum-pair.scm                    | prime-sum-pair    |
+| test/R5RS/icp/icp_7_eceval.scm                             | eceval            |
+| test/R5RS/icp/icp_8_compiler.scm                           | compiler          |
+| test/R5RS/icp/icp_5_regsim.scm                             | regsim            |
+| test/R5RS/icp/icp_3_leval.scm                              | leval             |
+| test/R5RS/icp/icp_2_aeval.scm                              | aeval             |
 
-To analyze a specific program, an instance of the MODF analysis class must be created. The constructor of
-this class takes a parsed version of the program to be analysed, which can be obtained as follows:
-```scala
-val text = io.Reader.loadFile(path-to-file)
-val prog = language.scheme.Schemeparser.parse(text)
+# Generating Tables 1 and 2
+The experiments to produce Tables 1 and 2 are generated when running the script for RQ1 (see below).
+If you want simply to reproduce these tables without running the full script, the following command can be used:
+
 ```
-Additional preprocessing steps are performed by the modular analysis itself and hence must not be performed manually.
-
-Now, the MODF instance can be created. For example, to analyze `prog` using a big-step MODF analysis
-with full argument sensitivity and a type domain:
-```scala
-val analysis = new ModAnalysis(prog) with BigStepSemantics
-                                     with StandardSchemeModFSemantics
-                                     with FullArgumentSensitivity
-                                     with TypePropagationDomain
-analysis.analyze()
-```
-Method `analyze` computes the full (and sound) analysis result for the program that `ModAnalysis` is constructed with. 
-This method does not return the analysis results directly.
-Rather, after calling `analyze`, the computed analysis results (e.g., the final store and dependencies) can be accessed through the properties of the `analysis` object (e.g., through `analysis.store` and `analysis.deps`).
-
-Alternatively, one can use the `analyzeWithTimeout(<timeout>)` method to run the analysis with a given timeout. This timeout is obtained from a Java Duration
-(using `Timeout.start(<duration>)`). 
-The method returns when either the analysis has terminated or when the timeout has been reached (approximately, meaning in practice it may run a bit longer than the specified timeout). 
-Extra care should be taken when using this method, as the (partial) analysis results are not guaranteed to be sound when the timeout is triggered. 
-Therefore, when using this method, it is recommended to explicitly check afterwards if the analysis terminated using the `finished` method.
-
-# Running the test suite
-This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a specific subset of benchmark programs (MAF tests on action). 
-In addition, the full test suite is run over night (Daily MAF tests).
-
-Current status:
-<!-- https://github.com/badges/shields -->
-![Latest build](https://github.com/softwarelanguageslab/maf/workflows/MAF%20tests%20on%20action/badge.svg) 
-![Nightly tests](https://github.com/softwarelanguageslab/maf/workflows/Daily%20MAF%20tests/badge.svg)
-
-The full test suite of MAF can easily be run manually using sbt:
-```sbtshell
-maf/test
+sbt 'maf/runMain maf.cli.experiments.parallel.BaseResultsModF'
 ```
 
-To allow specific tests to be run, tags have been added to the test suite. 
- * Following tags can be used to select the component of the framework that should (not) be tested: `ParserTest`, `LatticeTest`, `PrimitiveTest` and `SoundnessTest`.
- * Following tags can be used to select which benchmark programs (not) to run: `SlowTest`.
- * Following tags can be used to test utility components of the framework: `UtilTest`.
+A LaTex table is produced as the final output in the console.
+Moreover, the resulting analysis times are produced in:
+  - `data/modf-base-context-insensitive.csv` for the 0-CFA analysis
+  - `data/modf-base-context-sensitive-1CFA.csv` for the 1-CFA analysis
+  - `data/modf-base-context-sensitive-2CFA.csv` for the 2-CFA analysis
+Each of these file is accompanied by a `....csv-stddev` file, also in CSV format, that lists the standard deviation measured across all execution of the benchmarks.
 
-The `SlowTest` tag currently is only used for some of the soundness tests. When these tests are disabled, only a part of the available benchmark programs
-will be used.
+*Expected running time*: around 16 hours.
+This time can be reduced by decreasing the number of runs used to perform the evaluation, by changing variable `analysisRuns` in `code/jvm/src/main/scala/maf/cli/experiments/parallel/Performance.scala` (in trait `BaseResultsModFSetup`)
 
-To run tests with a specific tag, the sbt command `maf/testOnly` should be used. The `-n` flag indicates test tags that should be
-included from testing, whereas the `-l` flag indicates tags that should be excluded from testing.
+# Generating Figures 3, 4, and 5 (RQ1)
+The results for RQ1 can be produced by running the shell script `rq1.sh`.
+This script outputs multiple `.csv` files in the `data/` directory:
+  - `data/modf-context-insensitive.csv` for the 0-CFA analysis
+  - `data/modf-context-sensitive-1CFA.csv` for the 1-CFA analysis
+  - `data/modf-context-sensitive-2CFA.csv` for the 2-CFA analysis
 
-For example, to run the parser tests, the following command can be used:
-```sbt
-maf/testOnly -- -n ParserTest
-```
-(Note the double -- before any possible flags.)<br>
-To run all soundness tests, but only on a fast subset of benchmark programs, the command
-```sbt
-maf/testOnly -- -n SoundnessTest -l SlowTest
-```
-can be executed.
+Each of these `.csv` files need to be adapted before being able to generate the figures, by running the following commands:
+  - `./reorder.sh data/modf-context-insensitive.csv` and `./reorder.sh data/modf-context-insensitive.csv-stddev` for Fig. 3
+  - `./reorder.sh data/modf-context-sensitive-1CFA.csv` and `./reorder.sh data/modf-context-sensitive-1CFA.csv-stddev` for Fig. 3
+  - `./reorder.sh data/modf-context-sensitive-2CFA.csv` and `./reorder.sh data/modf-context-sensitive-2CFA.csv-stddev` for Fig. 3
 
-# References and Relevant publications
-The original idea behind MAF comes from the following work on modular analysis: [Effect-Driven Flow Analysis](https://doi.org/10.1007/978-3-030-11245-5_12), and [A general method for rendering static analyses for diverse concurrency models modular](https://doi.org/10.1016/j.jss.2018.10.001).
-The MAF framework is presented in the following publication:
+Each figure can then be produced by running:
+  - `python modf-context-insensitive-plots.py` for Fig. 3
+  - `python modf-context-sensitive-1CFA-plots.py` for Fig. 4
+  - `python modf-context-sensitive-2CFA-plots.py` for Fig. 5
 
-* _MAF: A Framework for Modular Static Analysis of Higher-Order Languages_. SCAM
-  2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf). _See release: `SCAM 2020`_
- 
-MAF is a complete rework of the [Scala-AM framework](https://github.com/acieroid/scala-am), which was not focused on
-modular static analysis but was primarily used to experiment with AAM-style analyses. Scala-AM is described in the
-following publications:
+*Expected running time* around 40 hours.
 
-* _Scala-AM: A Modular Static Analysis Framework_. SCAM
-  2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-07.pdf)
-  , [doi](https://zenodo.org/badge/latestdoi/23603/acieroid/scala-am).
-* _Building a Modular Static Analysis Framework in Scala_. Scala@SPLASH
-  2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf)
-        , [doi](http://doi.acm.org/10.1145/2998392.3001579).
+# Generating Figure 6 (RQ2)
+To reproduce Figure 6, first run the script `rq2.sh`.
+Once the script has produced a table output, you can kill it (^C), as it can sometimes keep running even though all experiments are finished.
+It outputs its results in `data/modconc.csv` file.
+Remove any line containing timeouts (`TIMEOUT`) in this file, and then Figure 6 can be produced by running `python modconc_plot.py`
 
-**MAF has been used for evaluating modular static analysis approaches in the following publications:**
+*Expected running time*: around 24 hours.
 
-* _A Parallel Worklist Algorithm for Modular Analyses_. SCAM
-  2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-10.pdf). _See release: `SCAM 2020`_
-* _Incremental Flow Analysis through Computational Dependency Reification_. SCAM
-  2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-12.pdf). _See release: `SCAM 2020`_
+# Generating Tables 3, 4, and 5 (RQ3)
+To reproduce these tables, first run the script `rq3.sh`.
 
-**Scala-AM has been used for evaluating static analysis approaches in the following publications:**
-  * _Garbage-Free Abstract Interpretation through Abstract Reference Counting_. ECOOP 2019. [pdf](http://drops.dagstuhl.de/opus/volltexte/2019/10784/).
-  * _A general method for rendering static analyses for diverse concurrency models modular_. Journal of Systems and Software, Volume 149. 2019. [pdf](https://www.sciencedirect.com/science/article/pii/S0164121218302206), [doi](https://doi.org/10.1016/j.jss.2018.10.001). <!-- [pdf](https://soft.vub.ac.be/~qstieven/fwo-proposal-jss.pdf) -->
-  * _Mailbox Abstractions for Static Analysis of Actor Programs_. ECOOP 2017. [pdf](http://soft.vub.ac.be/~qstieven/ecoop2017/ecoop2017actors-final.pdf), [doi](https://doi.org/10.4230/LIPIcs.ECOOP.2017.25).
-  * _Employing Run-time Static Analysis to Improve Concolic Execution_. BENEVOL 2017. [pdf](http://ceur-ws.org/Vol-2047/BENEVOL_2017_paper_7.pdf).
-  * _Incrementalizing Abstract Interpretation_. BENEVOL 2017. [pdf](http://ceur-ws.org/Vol-2047/BENEVOL_2017_paper_9.pdf).
-  * _Static taint analysis of event-driven scheme programs_. ELS 2017. [pdf](http://soft.vub.ac.be/Publications/2017/vub-soft-tr-17-02.pdf).
-  * _Improving trace-based JIT optimisation using whole-program information_. VMIL@SPLASH 2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-09.pdf), [doi](http://doi.acm.org/10.1145/2998415.2998418).
-  * _STRAF: A Scala Framework for Experiments in Trace-Based JIT Compilation_. GTTSE 2015. [pdf](http://soft.vub.ac.be/Publications/2017/vub-soft-tr-17-09.pdf), [doi](https://doi.org/10.1007/978-3-319-60074-1\_10).
+The output `.csv` are:
+  - `data/modf-context-insensitive-metrics.csv` for 0-CFA
+  - `data/modf-context-sensitive-metrics-1CFA.csv` for 0-CFA
+  - `data/modf-context-sensitive-metrics-2CFA.csv` for 0-CFA
 
-# Acknowledgements
+In order to produce the tables, we have included the file `metrics-computation.xls`.
+The "Raw results" tab can be filled with the data from one of these `.csv` files.
+Then, the "Formatted results" tab will contain a Table with the same layout as Tables 3, 4, and 5 in the paper.
 
-![](https://www.ej-technologies.com/images/product_banners/jprofiler_medium.png)
 
-Many thanks to [JProfiler](https://www.ej-technologies.com/products/jprofiler/overview.html) for supporting this open-source project, allowing us to easily identify and resolve performance bottlenecks in our analyses.
+*Expected running time*: around 29 hours.

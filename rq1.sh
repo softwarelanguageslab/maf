@@ -15,4 +15,4 @@ sbt 'maf/runMain maf.cli.experiments.parallel.ParallelModFPerformance1CFA' >> ou
 echo "Producing speedup data for 2CFA (expected time: 12h30, started on $(date))"
 sbt 'maf/runMain maf.cli.experiments.parallel.ParallelModFPerformance2CFA' >> out.log
 
-echo "Finished, to get the graphs, run: python modf-context-insensitive-plots.py and python modf-context-sensitive-plots.py"
+echo "Finished!"

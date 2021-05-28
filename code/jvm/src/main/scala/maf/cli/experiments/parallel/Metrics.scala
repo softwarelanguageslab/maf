@@ -168,13 +168,40 @@ trait Metrics {
     metric.forProgram(program)
   }
 
+  def paperName: Map[String, String] = List(
+    ("test/R5RS/WeiChenRompf2019/meta-circ.scm", "meta-circ"),
+    ("test/R5RS/WeiChenRompf2019/earley.sch", "earley"),
+    ("test/R5RS/WeiChenRompf2019/toplas98/graphs.scm", "graphs"),
+    ("test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm", "dynamic"),
+    ("test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm", "nbody"),
+    ("test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", "boyer"),
+    ("test/R5RS/gambit/peval.scm", "peval"),
+    ("test/R5RS/gambit/scheme.scm", "scheme"),
+    ("test/R5RS/gambit/sboyer.scm", "sboyer"),
+    ("test/R5RS/gambit/nboyer.scm", "nboyer"),
+    ("test/R5RS/gambit/matrix.scm", "matrix"),
+    ("test/R5RS/gambit/browse.scm", "browse"),
+    ("test/R5RS/scp1-compressed/all.scm", "scp"),
+    ("test/R5RS/ad/all.scm", "ad"),
+    ("test/R5RS/various/SICP-compiler.scm", "SICP"),
+    ("test/R5RS/icp/icp_1c_ambeval.scm", "ambeval"),
+    ("test/R5RS/icp/icp_1c_multiple-dwelling.scm", "multiple-dwelling"),
+    ("test/R5RS/icp/icp_1c_ontleed.scm", "decompose"),
+    ("test/R5RS/icp/icp_1c_prime-sum-pair.scm", "prime-sum-pair"),
+    ("test/R5RS/icp/icp_7_eceval.scm", "eceval"),
+    ("test/R5RS/icp/icp_8_compiler.scm", "compiler"),
+    ("test/R5RS/icp/icp_5_regsim.scm", "regsim"),
+    ("test/R5RS/icp/icp_3_leval.scm", "leval"),
+    ("test/R5RS/icp/icp_2_aeval.scm", "aeval")
+  ).toMap
+
   def metricsForFile(file: String): Unit =
     metrics.foreach { metric =>
       try {
         println(s"***** Computing metric ${metric.name} on $file *****")
         val result = metricForFile(file, metric)
         println(result)
-        results = results.add(file, metric.name, result)
+        results = results.add(paperName(file), metric.name, result)
       } catch {
         case e: Exception =>
           println(s"Encountered an exception: ${e.getMessage}")

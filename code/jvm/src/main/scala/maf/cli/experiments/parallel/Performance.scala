@@ -290,6 +290,13 @@ object ParallelModFBenchmarks {
     "test/R5RS/icp/icp_3_leval.scm",
     "test/R5RS/icp/icp_2_aeval.scm",
   )
+  val excludedFor1CFA: Set[String] = Set(
+    "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
+    "test/R5RS/gambit/scheme.scm",
+    "test/R5RS/icp/icp_1c_ambeval.scm",
+    "test/R5RS/icp/icp_1c_ontleed.scm",
+    "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+  )
   val excludedFor2CFA: Set[String] = Set(
     "test/R5RS/WeiChenRompf2019/earley.sch", // Times out with n = 1, 60min timeout
     "test/R5RS/WeiChenRompf2019/meta-circ.scm", // Times out with n = 1, 60min timeout
@@ -302,7 +309,7 @@ object ParallelModFBenchmarks {
     "test/R5RS/icp/icp_1c_ontleed.scm", // Times out with n = 1, 60min timeout
     "test/R5RS/icp/icp_1c_prime-sum-pair.scm" // Times out with n = 1, 60min timeout
   )
-
+  def for1CFA = all.filter(b => !(excludedFor1CFA.contains(b)))
   def for2CFA = all.filter(b => !(excludedFor2CFA.contains(b)))
 }
 
@@ -432,7 +439,7 @@ object ParallelPerformanceMetrics0CFA extends ParallelModFPerformanceMetrics {
 object ParallelPerformanceMetrics1CFA extends ParallelModFPerformanceMetrics {
   def k = 1
   def outputFile = "data/modf-context-sensitive-metrics-1CFA.csv"
-  def benchmarks = ParallelModFBenchmarks.all
+  def benchmarks = ParallelModFBenchmarks.for1CFA
 }
 
 object ParallelPerformanceMetrics2CFA extends ParallelModFPerformanceMetrics {

@@ -73,7 +73,7 @@ def find_correlation(variant, heuristic, metric):
 
 if __name__ == '__main__':
     for metric_variant in ['mean', 'max', 'stddev']:
-        load_data('data/modf-base-context-sensitive.csv', 'data/modf-context-sensitive-metrics.csv', 'data/modf-context-sensitive-metrics-' + metric_variant + '.csv')
+        load_data('data/modf-base-context-insensitive.csv', 'data/modf-context-insensitive-metrics.csv', 'data/modf-context-insensitive-metrics-' + metric_variant + '.csv')
         for metric in metrics_columns.keys():
             for heuristic in heuristics_columns.keys():
                 find_correlation(metric_variant, heuristic, metric)
