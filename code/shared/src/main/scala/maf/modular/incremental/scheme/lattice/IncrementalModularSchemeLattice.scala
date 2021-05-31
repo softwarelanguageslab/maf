@@ -4,7 +4,6 @@ import maf.core.{Address, Error, LatticeTopUndefined, MayFail}
 import maf.language.CScheme.TID
 import maf.language.scheme.lattices._
 import maf.lattice.interfaces._
-import maf.modular.incremental.IncrementalLattice
 import maf.util.{Monoid, MonoidInstances, SmartHash}
 
 class IncrementalModularSchemeLattice[
@@ -142,7 +141,7 @@ class IncrementalModularSchemeLattice[
 
     override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.values, v.sources.union(addresses))
     override def getAddresses(v: AL): Set[A] = v.sources
-    override def clean(v: AL): AL = v.copy(sources = Set())
+    override def removeAddresses(v: AL): AL = v.copy(sources = Set())
   }
 
   object AL {

@@ -143,7 +143,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
     // Writing an address.
     override def writeAddr(addr: Addr, value: Value): Boolean = {
-      if (configuration.cyclicValueInvalidation) reads.foreach(r => logger.log(s"* D $addr -> $r ($component)"))
+      if (configuration.cyclicValueInvalidation) lattice.getAddresses(value).foreach(r => logger.log(s"* D $addr -> $r ($component)"))
       val b = super.writeAddr(addr, value)
       if (b) logger.log(s"W $addr <= $value (becomes ${intra.store.getOrElse(addr, lattice.bottom)})")
       b

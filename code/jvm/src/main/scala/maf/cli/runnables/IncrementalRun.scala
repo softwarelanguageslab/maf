@@ -5,7 +5,7 @@ import maf.language.scheme.SchemeExp
 import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.scheme.modf._
 import maf.modular.incremental._
-import maf.modular.incremental.scheme.SchemeAnalyses._
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 

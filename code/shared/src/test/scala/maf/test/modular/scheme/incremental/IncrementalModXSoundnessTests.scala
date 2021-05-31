@@ -8,7 +8,7 @@ import maf.language.scheme.interpreter._
 import maf.modular._
 import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.incremental._
-import maf.modular.incremental.scheme.SchemeAnalyses._
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
 import maf.modular.scheme._
 import maf.test._
 import maf.test.modular.scheme.SchemeSoundnessTests

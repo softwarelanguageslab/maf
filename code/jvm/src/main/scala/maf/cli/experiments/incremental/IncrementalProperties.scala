@@ -7,7 +7,7 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme._
 import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.incremental._
-import maf.modular.incremental.scheme.SchemeAnalyses._
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
 import maf.modular.scheme._
 import maf.util.datastructures.ListOps.Crossable
 import maf.util._

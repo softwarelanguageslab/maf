@@ -3,7 +3,7 @@ package maf.web.visualisations.incremental
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme._
 import maf.modular._
-import maf.modular.incremental.scheme.SchemeAnalyses._
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
 import maf.modular.scheme.modf._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.benchmarks.Timeout

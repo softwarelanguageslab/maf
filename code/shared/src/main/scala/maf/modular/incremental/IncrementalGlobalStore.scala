@@ -3,6 +3,7 @@ package maf.modular.incremental
 import maf.core.Expression
 import maf.language.change.CodeVersion._
 import maf.modular._
+import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
 import maf.util.Annotations._
 import maf.util.benchmarks.Timeout
 import maf.util.graph.Tarjan
@@ -13,7 +14,7 @@ import maf.util.graph.Tarjan
  *
  * @tparam Expr The type of the expressions under analysis.
  */
-trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with GlobalStore[Expr] {
+trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with GlobalStore[Expr] with IncrementalAbstractDomain[Expr] {
   inter =>
 
   /* ****************************************** */
@@ -168,11 +169,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       super.analyzeWithTimeout(timeout)
     }
 
-    var reads: Set[Addr] = Set()
-
     override def readAddr(addr: Addr): Value = {
       if (configuration.cyclicValueInvalidation) {
-        reads += addr
         if (version == New) {
           // Zero or one SCCs will be found.
           SCAs.find(_.contains(addr)).foreach { sca =>
@@ -193,7 +191,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         }
       }
       // TODO: if bottom is read, will the analysis continue appropriately?
-      super.readAddr(addr)
+      val value = super.readAddr(addr)
+      if (configuration.cyclicValueInvalidation) lattice.addAddress(value, addr)
+      else value
     }
 
     /**
@@ -208,9 +208,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
       // Update the value flow information and reset the reads information.
       if (configuration.cyclicValueInvalidation) {
-        addressDependencies =
-          addressDependencies + (component -> (addressDependencies(component) + (addr -> (addressDependencies(component)(addr) ++ reads))))
-        reads = Set()
+        val dependentAddresses = lattice.getAddresses(value)
+        addressDependencies = addressDependencies + (component -> (addressDependencies(component) + (addr -> (addressDependencies(component)(
+          addr
+        ) ++ dependentAddresses))))
+        super.writeAddr(addr, lattice.removeAddresses(value))
       }
       // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
       super.writeAddr(addr, value)

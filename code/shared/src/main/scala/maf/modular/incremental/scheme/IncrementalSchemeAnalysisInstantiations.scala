@@ -3,9 +3,9 @@ package maf.modular.incremental.scheme
 import maf.language.scheme._
 import maf.modular._
 import maf.modular.incremental._
+import maf.modular.incremental.scheme.lattice._
 import maf.modular.incremental.scheme.modconc._
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
-import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.scheme.ssmodconc._
 import maf.modular.worklist.LIFOWorklistAlgorithm
@@ -14,7 +14,7 @@ import maf.modular.worklist.LIFOWorklistAlgorithm
  * Provides instantiations of incremental analyses.
  * @note By having instantiations listed here, it is ensured that no changes break the instantiation of incremental analyses.
  */
-object SchemeAnalyses {
+object IncrementalSchemeAnalysisInstantiations {
 
   /* ******************* */
   /* ***** ModConc ***** */
@@ -43,7 +43,7 @@ object SchemeAnalyses {
       var configuration: IncrementalConfiguration,
       val k: Int = 1)
       extends BaseModConcAnalysis(prg)
-         with SchemeTypeDomain {
+         with IncrementalSchemeTypeDomain {
 
     override def intraAnalysis(
         cmp: Component
@@ -66,7 +66,7 @@ object SchemeAnalyses {
       var configuration: IncrementalConfiguration,
       val k: Int = 1)
       extends BaseModConcAnalysis(prg)
-         with SchemeConstantPropagationDomain {
+         with IncrementalSchemeConstantPropagationDomain {
 
     override def intraAnalysis(
         cmp: Component
@@ -99,7 +99,7 @@ object SchemeAnalyses {
    */
   class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
       extends BaseModFAnalysis(prg)
-         with SchemeTypeDomain {
+         with IncrementalSchemeTypeDomain {
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
@@ -127,7 +127,7 @@ object SchemeAnalyses {
    */
   class IncrementalSchemeModFAnalysisCPLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
       extends BaseModFAnalysis(prg)
-         with SchemeConstantPropagationDomain {
+         with IncrementalSchemeConstantPropagationDomain {
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
