@@ -2,21 +2,23 @@ package maf.modular.incremental.scheme.lattice
 
 import maf.core._
 import maf.language.scheme.SchemeExp
+import maf.language.scheme.lattices.SchemeLattice
 import maf.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrimitives}
 import maf.lattice.{ConstantPropagation, Type}
 import maf.modular.AbstractDomain
-import maf.modular.incremental.scheme.modconc.IncrementalSchemeLattice
+import maf.modular.incremental.IncrementalLattice
 import maf.modular.scheme._
 
 // TODO: put declarations in correct place (wrapper).
 trait IncrementalAbstractDomain[Expr <: Expression] extends AbstractDomain[Expr] {
+  implicit override val lattice: IncrementalLattice[Value, Address]
   def clean(v: Value): Value
   def addAddress(v: Value, source: Address): Value = addAddresses(v, Set(source))
   def addAddresses(v: Value, sources: Set[Address]): Value
 }
 
 trait IncrementalSchemeDomain extends IncrementalAbstractDomain[SchemeExp] with SchemeDomain {
-  implicit override val lattice: IncrementalSchemeLattice[Value, Address]
+  implicit override val lattice: SchemeLattice[Value, Address] with IncrementalLattice[Value, Address]
 }
 
 trait IncrementalModularSchemeDomain extends IncrementalSchemeDomain {
@@ -35,6 +37,9 @@ trait IncrementalModularSchemeLatticeWrapper {
   type Sym
   val modularLattice: IncrementalModularSchemeLattice[Address, S, B, I, R, C, Sym]
   val primitives: SchemePrimitives[modularLattice.AL, Address]
+  def clean(v: modularLattice.AL): modularLattice.AL = modularLattice.incrementalSchemeLattice.clean(v)
+  def addAddresses(v: modularLattice.AL, sources: Set[Address]): modularLattice.AL = modularLattice.incrementalSchemeLattice.addAddresses(v, sources)
+  def getAddresses(v: modularLattice.AL): Set[Address] = modularLattice.incrementalSchemeLattice.getAddresses(v)
 }
 
 object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrapper {

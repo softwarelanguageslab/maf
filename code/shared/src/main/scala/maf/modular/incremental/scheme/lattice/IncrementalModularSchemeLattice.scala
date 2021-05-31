@@ -4,7 +4,7 @@ import maf.core.{Address, Error, LatticeTopUndefined, MayFail}
 import maf.language.CScheme.TID
 import maf.language.scheme.lattices._
 import maf.lattice.interfaces._
-import maf.modular.incremental.scheme.modconc.IncrementalSchemeLattice
+import maf.modular.incremental.IncrementalLattice
 import maf.util.{Monoid, MonoidInstances, SmartHash}
 
 class IncrementalModularSchemeLattice[
@@ -17,7 +17,7 @@ class IncrementalModularSchemeLattice[
     Sym: SymbolLattice]
     extends ModularSchemeLattice[A, S, B, I, R, C, Sym] {
 
-  type Sources = Set[Address]
+  type Sources = Set[A]
 
   /**
    * *
@@ -65,7 +65,7 @@ class IncrementalModularSchemeLattice[
   }
   implicit val alMFMonoid: Monoid[MayFail[AL, Error]] = MonoidInstances.mayFail[AL]
 
-  val incrementalSchemeLattice: IncrementalSchemeLattice[AL, A] = new IncrementalSchemeLattice[AL, A] {
+  val incrementalSchemeLattice: SchemeLattice[AL, A] with IncrementalLattice[AL, A] = new SchemeLattice[AL, A] with IncrementalLattice[AL, A] {
     private def annotate(als: Elements, sources: Sources): AL = AnnotatedElements(als.vs, sources)
 
     def show(x: AL): String = x.toString /* TODO[easy]: implement better */
@@ -141,10 +141,11 @@ class IncrementalModularSchemeLattice[
     def eql[B2: BoolLattice](x: AL, y: AL): B2 = ??? // TODO[medium] implement
 
     override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.values, v.sources.union(addresses))
+    override def getAddresses(v: AL): Set[A] = v.sources
     override def clean(v: AL): AL = v.copy(sources = Set())
   }
 
   object AL {
-    implicit val lattice: IncrementalSchemeLattice[AL, A] = incrementalSchemeLattice
+    implicit val lattice: IncrementalLattice[AL, A] = incrementalSchemeLattice
   }
 }
