@@ -2,22 +2,12 @@ package maf.modular.incremental.scheme.lattice
 
 import maf.core._
 import maf.language.scheme.SchemeExp
-import maf.language.scheme.lattices.SchemeLattice
-import maf.language.scheme.primitives.{SchemeLatticePrimitives, SchemePrimitives}
-import maf.lattice.{ConstantPropagation, Type}
-import maf.modular.AbstractDomain
+import maf.language.scheme.primitives._
+import maf.lattice._
 import maf.modular.scheme._
 
-// TODO: put declarations in correct place (wrapper).
-trait IncrementalAbstractDomain[Expr <: Expression] extends AbstractDomain[Expr] {
-  implicit override val lattice: IncrementalLattice[Value, Address]
-  def addAddress(v: Value, source: Address): Value = addAddresses(v, Set(source))
-  def addAddresses(v: Value, sources: Set[Address]): Value
-  def removeAddresses(v: Value): Value
-}
-
 trait IncrementalSchemeDomain extends IncrementalAbstractDomain[SchemeExp] with SchemeDomain {
-  implicit override val lattice: SchemeLattice[Value, Address] with IncrementalLattice[Value, Address]
+  implicit override val lattice: IncrementalSchemeLattice[Value, Address]
 }
 
 trait IncrementalModularSchemeDomain extends IncrementalSchemeDomain {

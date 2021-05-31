@@ -64,7 +64,7 @@ class IncrementalModularSchemeLattice[
   }
   implicit val alMFMonoid: Monoid[MayFail[AL, Error]] = MonoidInstances.mayFail[AL]
 
-  val incrementalSchemeLattice: SchemeLattice[AL, A] with IncrementalLattice[AL, A] = new SchemeLattice[AL, A] with IncrementalLattice[AL, A] {
+  val incrementalSchemeLattice: IncrementalSchemeLattice[AL, A] = new IncrementalSchemeLattice[AL, A] {
     private def annotate(als: Elements, sources: Sources): AL = AnnotatedElements(als.vs, sources)
 
     def show(x: AL): String = x.toString /* TODO[easy]: implement better */
@@ -145,6 +145,6 @@ class IncrementalModularSchemeLattice[
   }
 
   object AL {
-    implicit val lattice: IncrementalLattice[AL, A] = incrementalSchemeLattice
+    implicit val lattice: IncrementalSchemeLattice[AL, A] = incrementalSchemeLattice
   }
 }
