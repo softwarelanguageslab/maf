@@ -12,11 +12,12 @@ trait IncrementalSchemeDomain extends IncrementalAbstractDomain[SchemeExp] with 
 
 trait IncrementalModularSchemeDomain extends IncrementalSchemeDomain {
   val modularLatticeWrapper: IncrementalModularSchemeLatticeWrapper
-  type Value = modularLatticeWrapper.modularLattice.AL
-  lazy val lattice = modularLatticeWrapper.modularLattice.incrementalSchemeLattice
-  lazy val primitives = modularLatticeWrapper.primitives
+  type Value = modularLatticeWrapper.modularLattice.AL // Use the annotated lattice.
+  override lazy val lattice = modularLatticeWrapper.modularLattice.incrementalSchemeLattice
+  override lazy val primitives = modularLatticeWrapper.primitives
   def addAddresses(v: modularLatticeWrapper.modularLattice.AL, sources: Set[Address]): modularLatticeWrapper.modularLattice.AL =
     lattice.addAddresses(v, sources)
+  def getAddresses(v: modularLatticeWrapper.modularLattice.AL): Set[Address] = lattice.getAddresses(v)
   def removeAddresses(v: modularLatticeWrapper.modularLattice.AL): modularLatticeWrapper.modularLattice.AL = lattice.removeAddresses(v)
 }
 
@@ -27,8 +28,11 @@ trait IncrementalModularSchemeLatticeWrapper {
   type R
   type C
   type Sym
+  // Contains the incremental modular Scheme lattice.
   val modularLattice: IncrementalModularSchemeLattice[Address, S, B, I, R, C, Sym]
+  // Primitive functions of Scheme.
   val primitives: SchemePrimitives[modularLattice.AL, Address]
+  // Operations on address annotations.
   def addAddresses(v: modularLattice.AL, sources: Set[Address]): modularLattice.AL = modularLattice.incrementalSchemeLattice.addAddresses(v, sources)
   def getAddresses(v: modularLattice.AL): Set[Address] = modularLattice.incrementalSchemeLattice.getAddresses(v)
   def removeAddresses(v: modularLattice.AL): modularLattice.AL = modularLattice.incrementalSchemeLattice.removeAddresses(v)

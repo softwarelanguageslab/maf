@@ -3,4 +3,5 @@ package maf.modular.incremental.scheme.lattice
 import maf.core.Address
 import maf.language.scheme.lattices.SchemeLattice
 
-trait IncrementalSchemeLattice[V, A <: Address] extends IncrementalLattice[V, A] with SchemeLattice[V, A]
+/** An annotated lattice for Scheme. */
+trait IncrementalSchemeLattice[AL, A <: Address] extends IncrementalLattice[AL, A] with SchemeLattice[AL, A]

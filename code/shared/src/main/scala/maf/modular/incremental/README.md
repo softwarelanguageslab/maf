@@ -11,6 +11,12 @@ The implementation of the incremental modular analyses follows the structure of 
 analyses provided by MAF. Hence, their implementation is modular and an analysis can be obtained by mixing in a number
 of traits into the base class `IncrementalModAnalysis`.
 
+## Configurations
+
+An incremental analysis can be run with or without several precision-improving techniques that can be enabled or disabled
+using a config parameter. The techniques can be enabled and disabled independely of one another. When all techniques are
+disabled, changes to the program results upon an incremental update are fully monotonous.
+
 ## Provided instances
 
 We already provide a number of instances of incremental modular analyses for Scheme. These instances can be found

@@ -6,6 +6,7 @@ import maf.language.scheme.lattices._
 import maf.lattice.interfaces._
 import maf.util.{Monoid, MonoidInstances, SmartHash}
 
+/** A modular Scheme lattice that also provides operations on address-annotated values. */
 class IncrementalModularSchemeLattice[
     A <: Address,
     S: StringLattice,
@@ -25,14 +26,7 @@ class IncrementalModularSchemeLattice[
    * @param sources The addresses in the store where the value originated.
    */
   case class AnnotatedElements(values: List[Value], sources: Sources) extends SmartHash {
-    override def toString: String =
-      if (values.isEmpty) {
-        "⊥"
-      } else if (values.tail.isEmpty) {
-        values.head.toString
-      } else {
-        values.map(_.toString).sorted.mkString("{", ",", "}")
-      }
+    override def toString: String = toL().toString
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X = {
       values.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
     }
