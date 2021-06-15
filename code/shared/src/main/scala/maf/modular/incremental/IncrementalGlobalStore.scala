@@ -17,6 +17,8 @@ import maf.util.graph.Tarjan
 trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with GlobalStore[Expr] with IncrementalAbstractDomain[Expr] {
   inter =>
 
+  type SCA = Set[Addr]
+
   /* ****************************************** */
   /* ***** Provenance tracking for values ***** */
   /* ****************************************** */
@@ -43,11 +45,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ******************************************** */
 
   /**
-   * Approximates the value flow of the analysis. For every component, stores a map of W ~> Set[R], if W was the most recent write after reading R.
+   * For every component, stores a map of W ~> Set[R], where the values R are the "constituents" of W.
    *
    * @note The data is separated by components, so it can be reset upon the reanalysis of a component.
    * @note We could also store it as R ~> Set[W], but this seems slightly easier (doesn't require a foreach over the set `reads`).
-   *       Also, there might be multiple R per W, but having multipel W per R seems more rare (though it can happen when there are branches in the code of course)
    */
   var addressDependencies: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
@@ -55,7 +56,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * Keeps track of all inferred SCCs during an incremental update.
    * To avoid confusion with analysis components, we call these Strongly Connected Addresses (SCC containing addresses).
    */
-  var SCAs: Set[Set[Addr]] = Set()
+  var SCAs: Set[SCA] = Set()
 
   /* ****************************** */
   /* ***** Write invalidation ***** */
@@ -163,10 +164,44 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra {
     intra =>
 
+    /** Called upon the (re-)analysis of a component. Here, used to clear out data structures of the incremental global store. */
     abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       if (configuration.cyclicValueInvalidation)
         addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
       super.analyzeWithTimeout(timeout)
+    }
+
+    /**
+     * Computes the join of all values "incoming" in this SCA.
+     * The join suffices, as the addresses in the SCA are inter-dependent (i.e., the analysis will join everything together anyway).
+     * @return The join of all values "incoming" in this SCA.
+     */
+    def incomingSCAValue(sca: SCA): Value = {
+      var value = lattice.bottom
+      // All components that read an address of this SCA and also write one.
+      val rwComponents = ???
+      sca.foreach { addr => // TODO
+      }
+      value
+    }
+
+    /**
+     * Refines all values in this SCA to the value "incoming".
+     * @param sca
+     */
+    def refineSCA(sca: SCA): Unit = {
+      val incoming = incomingSCAValue(sca)
+      // Should be done for every address in the SCA because an SCC/SCA may contain "inner cycles".
+      sca.foreach { addr =>
+        inter.store += addr -> incoming
+        intra.store += addr -> incoming
+        provenance -= addr
+        updateProvenance(component,
+                         addr,
+                         incoming
+        ) // Avoid spurious deletions?! TODO investigate: leads to double the no of assertions in some situations...
+      }
+      SCAs -= sca
     }
 
     override def readAddr(addr: Addr): Value = {
@@ -176,17 +211,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
           SCAs.find(_.contains(addr)).foreach { sca =>
             // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
             trigger(AddrDependency(addr))
-            // Should be done for every address in the SCA because an SCC/SCA may contain "inner cycles".
-            sca.foreach { addr =>
-              inter.store += addr -> lattice.bottom // Todo, but value of the entrance of the cycle??????
-              intra.store += addr -> lattice.bottom
-              provenance -= addr
-              updateProvenance(component,
-                               addr,
-                               lattice.bottom
-              ) // Avoid spurious deletions?! TODO investigate: leads to double the no of assertions in some situations...
-            }
-            SCAs -= sca
+            refineSCA(sca)
           }
         }
       }
@@ -203,17 +228,19 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     // TODO: Perhaps collapse this data structure in the global provenance information (requires updating the information without triggers etc, but with joining).
     var intraProvenance: Map[Addr, Value] = Map().withDefaultValue(lattice.bottom)
 
-    override def writeAddr(addr: Addr, value: Value): Boolean = {
-      // Update the intra-provenance: for every address, keep the join of the values written to the address.
-      intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
+    override def writeAddr(addr: Addr, v: Value): Boolean = {
+      var value = v
       // Update the value flow information and reset the reads information.
       if (configuration.cyclicValueInvalidation) {
-        val dependentAddresses = lattice.getAddresses(value)
-        addressDependencies = addressDependencies + (component -> (addressDependencies(component) + (addr -> (addressDependencies(component)(
-          addr
-        ) ++ dependentAddresses))))
-        super.writeAddr(addr, lattice.removeAddresses(value))
+        // Get the annotations and remove them so they are not written to the store.
+        val dependentAddresses = getAddresses(value)
+        value = removeAddresses(value)
+        // Store the dependencies.
+        val newDependencies = addressDependencies(component)(addr) ++ dependentAddresses
+        addressDependencies = addressDependencies + (component -> (addressDependencies(component) + (addr -> newDependencies)))
       }
+      // Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
+      intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
       // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
       super.writeAddr(addr, value)
     }

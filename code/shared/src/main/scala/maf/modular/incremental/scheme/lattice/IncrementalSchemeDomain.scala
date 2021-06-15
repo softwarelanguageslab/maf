@@ -32,10 +32,6 @@ trait IncrementalModularSchemeLatticeWrapper {
   val modularLattice: IncrementalModularSchemeLattice[Address, S, B, I, R, C, Sym]
   // Primitive functions of Scheme.
   val primitives: SchemePrimitives[modularLattice.AL, Address]
-  // Operations on address annotations.
-  def addAddresses(v: modularLattice.AL, sources: Set[Address]): modularLattice.AL = modularLattice.incrementalSchemeLattice.addAddresses(v, sources)
-  def getAddresses(v: modularLattice.AL): Set[Address] = modularLattice.incrementalSchemeLattice.getAddresses(v)
-  def removeAddresses(v: modularLattice.AL): modularLattice.AL = modularLattice.incrementalSchemeLattice.removeAddresses(v)
 }
 
 object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrapper {
