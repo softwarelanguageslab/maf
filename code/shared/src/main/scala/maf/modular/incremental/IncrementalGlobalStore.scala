@@ -178,9 +178,15 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
      */
     def incomingSCAValue(sca: SCA): Value = {
       var value = lattice.bottom
-      // All components that read an address of this SCA and also write one.
-      val rwComponents = ???
-      sca.foreach { addr => // TODO
+      cachedWrites.foreach { case (component, addresses) =>
+        // All addresses of the sca written by `component`...
+        addresses.intersect(sca).foreach { addr =>
+          // ...that were not influenced by an address in the SCA...
+          if (addressDependencies(component)(addr).union(sca).isEmpty) {
+            // ...contribute to the incoming value.
+            value = lattice.join(value, provenance(addr)(component))
+          }
+        }
       }
       value
     }
