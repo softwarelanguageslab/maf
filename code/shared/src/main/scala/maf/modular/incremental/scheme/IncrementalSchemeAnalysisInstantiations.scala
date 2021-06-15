@@ -13,7 +13,9 @@ import maf.modular.worklist.LIFOWorklistAlgorithm
 /**
  * Provides instantiations of incremental analyses.
  * @note By having instantiations listed here, it is ensured that no changes break the instantiation of incremental analyses.
+ * @note Due to linearisation reasons, IncrementalGlobalStore must be mixed-in last.
  */
+// TODO Fix linearisation "issue - IGS last" if possible?
 object IncrementalSchemeAnalysisInstantiations {
 
   /* ******************* */
@@ -25,7 +27,6 @@ object IncrementalSchemeAnalysisInstantiations {
          with KKallocModConc
          with IncrementalSchemeModConcSmallStepSemantics
          with LIFOWorklistAlgorithm[SchemeExp]
-         with IncrementalGlobalStore[SchemeExp]
 
   /**
    * Builds an incremental ModConc Analysis for the given Scheme program with the following properties:
@@ -43,7 +44,8 @@ object IncrementalSchemeAnalysisInstantiations {
       var configuration: IncrementalConfiguration,
       val k: Int = 1)
       extends BaseModConcAnalysisIncremental(prg)
-         with IncrementalSchemeTypeDomain {
+         with IncrementalSchemeTypeDomain
+         with IncrementalGlobalStore[SchemeExp] {
 
     override def intraAnalysis(
         cmp: Component
@@ -66,7 +68,8 @@ object IncrementalSchemeAnalysisInstantiations {
       var configuration: IncrementalConfiguration,
       val k: Int = 1)
       extends BaseModConcAnalysisIncremental(prg)
-         with IncrementalSchemeConstantPropagationDomain {
+         with IncrementalSchemeConstantPropagationDomain
+         with IncrementalGlobalStore[SchemeExp] {
 
     override def intraAnalysis(
         cmp: Component
@@ -84,7 +87,6 @@ object IncrementalSchemeAnalysisInstantiations {
          with SchemeModFSemantics
          with LIFOWorklistAlgorithm[SchemeExp]
          with IncrementalSchemeModFBigStepSemantics
-         with IncrementalGlobalStore[SchemeExp]
 
   /**
    * Builds an incremental ModF Analysis for the given Scheme program with the following properties:
@@ -99,7 +101,8 @@ object IncrementalSchemeAnalysisInstantiations {
    */
   class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
       extends BaseModFAnalysisIncremental(prg)
-         with IncrementalSchemeTypeDomain {
+         with IncrementalSchemeTypeDomain
+         with IncrementalGlobalStore[SchemeExp] {
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
@@ -127,7 +130,8 @@ object IncrementalSchemeAnalysisInstantiations {
    */
   class IncrementalSchemeModFAnalysisCPLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
       extends BaseModFAnalysisIncremental(prg)
-         with IncrementalSchemeConstantPropagationDomain {
+         with IncrementalSchemeConstantPropagationDomain
+         with IncrementalGlobalStore[SchemeExp] {
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
