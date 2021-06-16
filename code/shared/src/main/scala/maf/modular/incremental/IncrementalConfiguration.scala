@@ -37,8 +37,18 @@ trait IncrementalConfiguration {
        | + Write invalidation: ${booleanToString(writeInvalidation)}
        |    - Cycle detection: ${booleanToString(cyclicValueInvalidation)}
        |***************************************""".stripMargin
+
+  def shortName(): String = {
+    val ci = if (componentInvalidation) "CI" else "xx"
+    val di = if (dependencyInvalidation) "DI" else "xx"
+    val wi = if (writeInvalidation) {
+      if (cyclicValueInvalidation) "WI+CY" else "WI"
+    } else "xx"
+    s"$ci-$di-$wi"
+  }
 }
 
+/** Provides configurations for the incremental analysis. */
 object IncrementalConfiguration {
 
   case class Config(
@@ -48,6 +58,22 @@ object IncrementalConfiguration {
       cyclicValueInvalidation: Boolean = true)
       extends IncrementalConfiguration
 
-  val noOptimisations: Config = Config(false, false, false, false)
-  val allOptimisations: Config = Config(true, true, true, true)
+  // For simplicity, already instantiate all possible configurations here so they can be referred by name.
+
+  lazy val noOptimisations: Config = Config(false, false, false, false)
+
+  lazy val ci: Config = Config(true, false, false, false)
+  lazy val di: Config = Config(false, true, false, false)
+  lazy val wi: Config = Config(false, false, true, false)
+  lazy val wi_cy: Config = Config(false, false)
+
+  lazy val ci_di: Config = Config(true, true, false, false)
+  lazy val ci_wi: Config = Config(true, false, true, false)
+  lazy val di_wi: Config = Config(false, true, true, false)
+
+  lazy val ci_di_wi: Config = Config(true, true, true, false)
+
+  lazy val allOptimisations: Config = Config() // ci_di_wi_cy
+
+  lazy val allConfigurations: List[Config] = List(noOptimisations, ci, di, wi, wi_cy, ci_di, ci_wi, di_wi, ci_di_wi, allOptimisations)
 }

@@ -191,10 +191,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       value
     }
 
-    /**
-     * Refines all values in this SCA to the value "incoming".
-     * @param sca
-     */
+    /** Refines all values in this SCA to the value "incoming". */
     def refineSCA(sca: SCA): Unit = {
       val incoming = incomingSCAValue(sca)
       // Should be done for every address in the SCA because an SCC/SCA may contain "inner cycles".
@@ -207,18 +204,17 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                          incoming
         ) // Avoid spurious deletions?! TODO investigate: leads to double the no of assertions in some situations...
       }
+      // TODO: can this SCA be removed or should this be refined perpetually? In this case, me might need to do this on a commit only.
       SCAs -= sca
     }
 
     override def readAddr(addr: Addr): Value = {
-      if (configuration.cyclicValueInvalidation) {
-        if (version == New) {
-          // Zero or one SCCs will be found.
-          SCAs.find(_.contains(addr)).foreach { sca =>
-            // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
-            trigger(AddrDependency(addr))
-            refineSCA(sca)
-          }
+      if (configuration.cyclicValueInvalidation && version == New) {
+        // Zero or one SCCs will be found.
+        SCAs.find(_.contains(addr)).foreach { sca =>
+          // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
+          trigger(AddrDependency(addr))
+          refineSCA(sca)
         }
       }
       // TODO: if bottom is read, will the analysis continue appropriately?
