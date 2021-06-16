@@ -23,7 +23,6 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
   final val lpS: String = "Less precise" // Precision of incremental update is lower than the one of a full reanalysis.
 
   final val propertiesS: List[String] = List(eqS, lpS, mpS)
-  override val analysesS: List[String] = List(inc1S, inc2S)
 
   var results: Table[String] = Table.empty.withDefaultValue(" ")
   val error: String = errS
@@ -36,11 +35,11 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
   }
 
   def compareAnalyses(
-      name: String,
       file: String,
       inc: Analysis,
       rean: Analysis
     ): Unit = {
+    val cName = inc.configuration.shortName()
     // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
     val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
     val rStore = rean.store.withDefaultValue(rean.lattice.bottom)
@@ -64,9 +63,9 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
       }
     })
     results = results
-      .add(file, columnName(eqS, name), Formatter.withPercent(e, t))
-      .add(file, columnName(lpS, name), Formatter.withPercent(l, t))
-      .add(file, columnName(mpS, name), Formatter.withPercent(m, t))
+      .add(file, columnName(eqS, cName), Formatter.withPercent(e, t))
+      .add(file, columnName(lpS, cName), Formatter.withPercent(l, t))
+      .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
   }
 
   def onBenchmark(file: String): Unit = {
@@ -86,21 +85,15 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
       return
     }
 
-    val a1Copy = a1.deepCopy()
-    a1Copy.configuration = allOptimisations
+    configurations.foreach { config =>
+      val copy = a1.deepCopy()
+      copy.configuration = config
 
-    // First incremental update.
-    if (!runAnalysis("inc1 ", timeOut => a1.updateAnalysis(timeOut))) compareAnalyses(inc1S, file, a1, a2)
-    else {
-      propertiesS.foreach(o => results = results.add(file, columnName(o, inc1S), infS))
-      print("timed out - ")
-    }
-
-    // Second incremental update.
-    if (!runAnalysis("inc2 ", timeOut => a1Copy.updateAnalysis(timeOut))) compareAnalyses(inc2S, file, a1Copy, a2)
-    else {
-      propertiesS.foreach(o => results = results.add(file, columnName(o, inc2S), infS))
-      print("timed out - ")
+      if (!runAnalysis(config.shortName(), timeOut => a1.updateAnalysis(timeOut))) compareAnalyses(file, a1, a2)
+      else {
+        propertiesS.foreach(o => results = results.add(file, columnName(o, config.shortName()), infS))
+        print("timed out - ")
+      }
     }
   }
 
@@ -123,6 +116,8 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+
+  val configurations: List[IncrementalConfiguration] = List()
 }
 
 object IncrementalSchemeModFPrecision extends IncrementalSchemePrecision {

@@ -1,5 +1,6 @@
 package maf.cli.experiments.incremental
 
+import maf.modular.incremental.IncrementalConfiguration
 import maf.util.benchmarks.Table
 
 trait TableOutput[R] {
@@ -7,12 +8,12 @@ trait TableOutput[R] {
   var results: Table[R]
   val error: R
 
+  val configurations: List[IncrementalConfiguration]
+
   final val initS: String = "init" // Initial run.
-  final val inc1S: String = "inc1" // Incremental update.
-  final val inc2S: String = "inc2" // Another incremental update (same changes, different analysis).
   final val reanS: String = "rean" // Full reanalysis.
 
-  val analysesS: List[String] = List(initS, inc1S, inc2S, reanS)
+  val analysesS: List[String] = List(initS, reanS) ++ configurations.map(_.shortName())
   val propertiesS: List[String]
 
   final val infS: String = "∞"

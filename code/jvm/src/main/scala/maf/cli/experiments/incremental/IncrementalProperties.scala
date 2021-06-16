@@ -32,25 +32,25 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
   val error: String = errS
 
   def runAnalysis(
-      name: String,
       file: String,
       analysis: Analysis,
       block: Timeout.T => Unit,
-      marker: String
+      name: String = ""
     ): Boolean = {
-    print(name)
+    val cName = if (name == "") analysis.configuration.shortName() else name
+    print(cName)
     val timeOut = timeout()
     block(timeOut)
     if (timeOut.reached) { // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
       print("timed out.")
-      propertiesS.foreach(p => results = results.add(file, columnName(p, marker), infS))
+      propertiesS.foreach(p => results = results.add(file, columnName(p, cName), infS))
       return false
     }
     results = results
-      .add(file, columnName(co, marker), s"${analysis.visited.size}")
-      .add(file, columnName(an, marker), s"${analysis.intraAnalysisCount}")
-      .add(file, columnName(ad, marker), s"${analysis.store.size}")
-      .add(file, columnName(dp, marker), s"${analysis.deps.values.map(_.size).sum}")
+      .add(file, columnName(co, cName), s"${analysis.visited.size}")
+      .add(file, columnName(an, cName), s"${analysis.intraAnalysisCount}")
+      .add(file, columnName(ad, cName), s"${analysis.store.size}")
+      .add(file, columnName(dp, cName), s"${analysis.deps.values.map(_.size).sum}")
     true
   }
 
@@ -66,20 +66,19 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     a2.version = New
 
     // Run the initial analysis.
-    if (!runAnalysis("init ", file, a1, timeOut => a1.analyzeWithTimeout(timeOut), initS)) return
+    if (!runAnalysis(file, a1, timeOut => a1.analyzeWithTimeout(timeOut), initS)) return
 
     a1.resetIntraAnalysisCount()
-    val a1Copy = a1.deepCopy()
-    a1Copy.configuration = Config(true, false, false, false)
 
-    // Update the initial analysis.
-    runAnalysis("inc1 ", file, a1, timeOut => a1.updateAnalysis(timeOut), inc1S)
-
-    // Run the second incremental update.
-    runAnalysis("inc2 ", file, a1Copy, timeOut => a1Copy.updateAnalysis(timeOut), inc2S)
+    // Run the incremental updates for the different configurations.
+    configurations.foreach { config =>
+      val copy = a1.deepCopy() // a1 contains the analysis state after the initial analysis.
+      copy.configuration = config // Set the right configuration for the incremental update.
+      runAnalysis(file, copy, timeout => copy.updateAnalysis(timeout))
+    }
 
     // Run a full reanalysis
-    runAnalysis("rean ", file, a2, timeOut => a2.analyzeWithTimeout(timeOut), reanS)
+    runAnalysis(file, a2, timeOut => a2.analyzeWithTimeout(timeOut), reanS)
   }
 
   def interestingAddress[A <: Address](a: A): Boolean
@@ -113,6 +112,8 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+
+  val configurations: List[IncrementalConfiguration] = List()
 }
 
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {

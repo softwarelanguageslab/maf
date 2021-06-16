@@ -72,23 +72,18 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
       return
     }
 
-    val a1Copy = a1.deepCopy()
-    a1Copy.configuration = allOptimisations
+    configurations.foreach { config =>
+      val copy = a1.deepCopy()
+      copy.configuration = config
+      runAnalysis(file,
+                  config.shortName(),
+                  timeOut => {
+                    copy.updateAnalysis(timeOut);
+                    copy
+                  }
+      )
+    }
 
-    runAnalysis(file,
-                "inc1",
-                timeOut => {
-                  a1.updateAnalysis(timeOut);
-                  a1
-                }
-    )
-    runAnalysis(file,
-                "inc2",
-                timeOut => {
-                  a1Copy.updateAnalysis(timeOut);
-                  a1Copy
-                }
-    )
     runAnalysis(file,
                 "rean",
                 timeOut => {
@@ -98,31 +93,29 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     )
   }
 
-  def createOutput(): String = {
-    // Mark rows that are different between the two incremental versions.
+  def createOutput(): String = results.prettyString() /*{
+    // Mark rows that are different between the incremental versions or that differ from the reanalysis.
     results.allRows.foreach { row =>
-      if (
-        results.get(row, columnName(veriS, inc1S)) != results.get(row, columnName(veriS, inc2S))
-        || results.get(row, columnName(failS, inc1S)) != results.get(row, columnName(failS, inc2S))
-      ) {
+      val veriL = configurations.map(c => results.get(row, columnName(veriS, c.shortName())))
+      val failL = configurations.map(c => results.get(row, columnName(failS, c.shortName())))
+      val reanV = results.get(row, columnName(veriS, reanS))
+      val reanF = results.get(row, columnName(failS, reanS))
+      if (veriL.exists(_ != veriL.head) || failL.exists(_ != failL.head)) {
         results = results.add(row, "diff inc", "x")
       }
-      if (
-        results.get(row, columnName(veriS, reanS)) != results.get(row, columnName(veriS, inc2S))
-        || results.get(row, columnName(failS, reanS)) != results.get(row, columnName(failS, inc2S))
-      ) {
+      if (veriL.exists(_ != reanV) || failL.exists(_ != reanF)) {
         results = results.add(row, "diff rean", "x")
       }
     }
     results.prettyString(columns = columns ++ Set("diff inc", "diff rean"))
-  }
+  }*/
 }
 
 trait IncrementalSchemeModFAssertionEvaluation extends IncrementalSchemeAssertionEvaluation {
   def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-
+  val configurations: List[IncrementalConfiguration] = List()
 }
 
 object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation {

@@ -15,6 +15,9 @@ trait IncrementalExperiment[E <: Expression] {
   // Analysis construction.
   def analysis(e: E, config: IncrementalConfiguration): Analysis
 
+  // The analysis configurations to use.
+  val configurations: List[IncrementalConfiguration]
+
   // Parsing.
   def parse(string: String): E
 
