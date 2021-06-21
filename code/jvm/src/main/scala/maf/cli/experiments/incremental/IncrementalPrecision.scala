@@ -72,7 +72,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     print(s"Testing $file ")
     val program = parse(file)
     // Initial analysis: analyse + update.
-    val a1 = analysis(program, noOptimisations)
+    val a1 = analysis(program, allOptimisations) // Allow tracking for all optimisations.
 
     // Base case: analysis of new program version.
     val a2 = analysis(program, noOptimisations) // The configuration does not matter here.

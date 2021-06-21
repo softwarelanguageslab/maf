@@ -147,7 +147,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     // Incremental measurements.
 
     // Run the initial analysis.
-    val initAnalysis = analysis(program, noOptimisations)
+    val initAnalysis = analysis(program, allOptimisations) // Allow tracking.
     initAnalysis.analyzeWithTimeout(timeout())
     if (!initAnalysis.finished) {
       configurations.map(_.shortName()).foreach(name => results = results.add(file, columnName(timeS, name), NotRun))

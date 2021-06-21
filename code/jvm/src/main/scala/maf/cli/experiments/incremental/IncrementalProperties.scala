@@ -38,7 +38,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
       name: String = ""
     ): Boolean = {
     val cName = if (name == "") analysis.configuration.shortName() else name
-    print(cName)
+    print(s"$cName ")
     val timeOut = timeout()
     block(timeOut)
     if (timeOut.reached) { // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
@@ -59,7 +59,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     val program = parse(file)
 
     // Initial analysis: analyse + update.
-    val a1 = analysis(program, noOptimisations)
+    val a1 = analysis(program, allOptimisations) // Allow tracking for all configurations!
 
     // Base case: analysis of new program version.
     val a2 = analysis(program, noOptimisations) // The configuration does not matter here.
@@ -113,7 +113,7 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 
-  val configurations: List[IncrementalConfiguration] = List()
+  val configurations: List[IncrementalConfiguration] = List(allOptimisations)
 }
 
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
@@ -154,9 +154,9 @@ object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties 
 
 object IncrementalSchemeModXProperties {
   def main(args: Array[String]): Unit = {
-    //IncrementalSchemeModFProperties.main(args)
-    IncrementalSchemeModFCPProperties.main(args)
+    IncrementalSchemeModFProperties.main(args)
+    //IncrementalSchemeModFCPProperties.main(args)
     //IncrementalSchemeModConcProperties.main(args)
-    IncrementalSchemeModConcCPProperties.main(args)
+    //IncrementalSchemeModConcCPProperties.main(args)
   }
 }
