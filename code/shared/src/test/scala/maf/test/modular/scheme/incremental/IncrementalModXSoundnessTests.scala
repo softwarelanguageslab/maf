@@ -147,6 +147,11 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ IncrementalTest
 }
 
+trait RemainingConfigurations extends IncrementalModXSoundnessTests {
+  override val configurations = (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
+  override def isSlow(b: Benchmark) = true
+}
+
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks {
   def name = "Incremental ModConc Type"
@@ -170,15 +175,9 @@ class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType {
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, allOptimisations)
 }
 
-class IncrementalSmallStepModConcTypeRemainingConfigs extends IncrementalSmallStepModConcType {
-  override val configurations = (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
-  override def isSlow(b: Benchmark) = true
-}
+class IncrementalSmallStepModConcTypeRemainingConfigs extends IncrementalSmallStepModConcType with RemainingConfigurations
 
-class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStepModConcCP {
-  override val configurations = (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
-  override def isSlow(b: Benchmark) = true
-}
+class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStepModConcCP with RemainingConfigurations
 
 /** Implements soundness tests for an incremental ModF type analysis. */
 class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks {
@@ -206,12 +205,6 @@ class IncrementalModFCP extends IncrementalModFType {
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, allOptimisations)
 }
 
-class IncrementalModFTypeRemainingConfigs extends IncrementalModFType {
-  override val configurations = (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
-  override def isSlow(b: Benchmark) = true
-}
+class IncrementalModFTypeRemainingConfigs extends IncrementalModFType with RemainingConfigurations
 
-class IncrementalModFCPRemainingConfigs extends IncrementalModFCP {
-  override val configurations = (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
-  override def isSlow(b: Benchmark) = true
-}
+class IncrementalModFCPRemainingConfigs extends IncrementalModFCP with RemainingConfigurations
