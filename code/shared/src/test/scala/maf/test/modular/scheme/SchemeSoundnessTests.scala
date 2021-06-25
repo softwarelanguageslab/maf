@@ -94,7 +94,11 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     }
   }
 
-  protected def compareResult(a: Analysis, values: Set[Value]): Unit = {
+  protected def compareResult(
+      a: Analysis,
+      values: Set[Value],
+      msg: String = ""
+    ): Unit = {
     val aRes = a.finalResult
     values.foreach { value =>
       if (!checkSubsumption(a)(value, aRes)) {
@@ -103,12 +107,18 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   - concrete value: $value
   - abstract value: $aRes
 """
-        fail(failureMsg)
+        if (msg.isEmpty)
+          fail(failureMsg)
+        else fail(s"$msg > $failureMsg")
       }
     }
   }
 
-  protected def compareIdentities(a: Analysis, concIdn: Map[Identity, Set[Value]]): Unit = {
+  protected def compareIdentities(
+      a: Analysis,
+      concIdn: Map[Identity, Set[Value]],
+      msg: String = ""
+    ): Unit = {
     val absID: Map[Identity, a.Value] = a.store
       .groupBy(_._1.idn)
       .view
@@ -123,7 +133,9 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   - concrete value: $value
   - abstract value: ${absID(idn)}
 """
-          fail(failureMsg)
+          if (msg.isEmpty)
+            fail(failureMsg)
+          else fail(s"$msg > $failureMsg")
         }
       }
     }
