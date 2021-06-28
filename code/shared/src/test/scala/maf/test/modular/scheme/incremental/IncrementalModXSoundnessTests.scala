@@ -35,6 +35,8 @@ import scala.concurrent.duration.{Duration, MINUTES}
  */
 trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
+  class AnalysisFailedException() extends Exception
+
   type IncrementalAnalysis = ModAnalysis[SchemeExp]
     with GlobalStore[SchemeExp]
     with ReturnValue[SchemeExp]
@@ -122,13 +124,17 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       val (cResultNew, cPosResultsNew) = evalConcreteWithVersion(program, benchmark, New)
 
       for (c <- configurations) {
-        // Check soundness on the updated version of the program.
-        val anlCopy = anlOld.deepCopy()
-        anlCopy.configuration = c
-        updateAnalysis(anlCopy, benchmark)
-        info(s"Checking results of ${c.shortName()}")
-        compareResult(anlCopy, cResultNew, c.shortName())
-        compareIdentities(anlCopy, cPosResultsNew, c.shortName())
+        try {
+          // Check soundness on the updated version of the program.
+          val anlCopy = anlOld.deepCopy()
+          anlCopy.configuration = c
+          updateAnalysis(anlCopy, benchmark)
+          info(s"Checking results of ${c.shortName()}")
+          compareResult(anlCopy, cResultNew, c.shortName())
+          compareIdentities(anlCopy, cPosResultsNew, c.shortName())
+        } catch {
+          case t: Throwable => throw new Exception(s"Analysis error using ${c.shortName()}.", t)
+        }
       }
     }
   }
@@ -185,6 +191,7 @@ class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialI
 
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, allOptimisations)
 
+  override def benchmarks(): Set[Benchmark] = Set("test/changes/scheme/nboyer.scm")
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
     Set(
