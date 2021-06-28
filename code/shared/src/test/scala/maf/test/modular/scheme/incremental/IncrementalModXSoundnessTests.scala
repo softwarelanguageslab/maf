@@ -35,8 +35,6 @@ import scala.concurrent.duration.{Duration, MINUTES}
  */
 trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
-  class AnalysisFailedException() extends Exception
-
   type IncrementalAnalysis = ModAnalysis[SchemeExp]
     with GlobalStore[SchemeExp]
     with ReturnValue[SchemeExp]
@@ -191,7 +189,6 @@ class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialI
 
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, allOptimisations)
 
-  override def benchmarks(): Set[Benchmark] = Set("test/changes/scheme/nboyer.scm")
   override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
   override def isSlow(b: Benchmark): Boolean =
     Set(
