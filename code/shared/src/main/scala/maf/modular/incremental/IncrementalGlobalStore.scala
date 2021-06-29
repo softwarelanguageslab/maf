@@ -138,10 +138,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
     updateProvenance(cmp, addr, nw)
     val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
-    // If `old ⊏ nw` we can just use join, which is probably more efficient.
+    // If `old ⊑ nw` we can just use join, which is probably more efficient.
     val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr)
     assert(newJoin == provenanceValue(addr),
-           s"Newly computed value $newJoin does not equal provenance value ${provenanceValue(addr)}."
+           s"$addr: newly computed value $newJoin does not equal provenance value ${provenanceValue(addr)}."
     ) // Assert for Coen TODO remove again later.
     if (oldJoin == newJoin) return false // Even with this component writing a different value to addr, the store does not change.
     inter.store = inter.store + (addr -> newJoin)

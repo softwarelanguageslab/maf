@@ -39,12 +39,12 @@ trait IncrementalConfiguration {
        |***************************************""".stripMargin
 
   def shortName(): String = {
-    val ci = if (componentInvalidation) "CI" else "xx"
-    val di = if (dependencyInvalidation) "DI" else "xx"
+    val ci = if (componentInvalidation) "CI" else ""
+    val di = if (dependencyInvalidation) "DI" else ""
     val wi = if (writeInvalidation) {
       if (cyclicValueInvalidation) "WI+CY" else "WI"
-    } else "xx"
-    s"$ci-$di-$wi"
+    } else ""
+    List(ci, di, wi).filterNot(_.isEmpty).mkString("-")
   }
 }
 
@@ -85,7 +85,7 @@ object IncrementalConfiguration {
       // One optimisation
       ci,
       di,
-      //wi,
+      wi,
       // Two optimisations
       ci_di
       //ci_wi,
