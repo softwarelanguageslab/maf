@@ -165,7 +165,7 @@ case class SchemeIf(
 }
 
 /** A let-like expression. */
-trait SchemeLettishExp extends SchemeExp {
+sealed trait SchemeLettishExp extends SchemeExp {
   val bindings: List[(Identifier, SchemeExp)]
   val body: List[SchemeExp]
   val idn: Identity
@@ -257,7 +257,7 @@ case class SchemeNamedLet(
 }
 
 /** A set! expression: (set! variable value) */
-trait SchemeSetExp extends SchemeExp {
+sealed trait SchemeSetExp extends SchemeExp {
   val variable: Identifier
   val value: SchemeExp
   def fv: Set[String] = value.fv + variable.name
@@ -434,7 +434,7 @@ case class SchemeDefineVariable(
 }
 
 /** A function definition: (define (name args...) body...) */
-trait SchemeDefineFunctionExp extends SchemeExp {
+sealed trait SchemeDefineFunctionExp extends SchemeExp {
   val name: Identifier
   val args: List[Identifier]
   val body: List[SchemeExp]
@@ -553,7 +553,7 @@ object SchemeDo {
 }
 
 /** An identifier: name */
-trait SchemeVarExp extends SchemeExp {
+sealed trait SchemeVarExp extends SchemeExp {
   val id: Identifier
   override val height: Int = 1
   val idn: Identity = id.idn

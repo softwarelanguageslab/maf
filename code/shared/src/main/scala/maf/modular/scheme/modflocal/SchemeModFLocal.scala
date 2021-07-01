@@ -19,7 +19,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     type Adr = Address
     type Exp = SchemeExp
     type Lam = SchemeLambdaExp
-    type Sto = Store[Adr, Storable]
+    type Sto = BasicStore[Adr, Storable]
     type Kon = List[Frame]
     type Clo = (Lam, Env)
     type Env = NestedEnv[Address, EnvAddr] // TODO: NestedEnv[VarAddr[Ctx], EnvAddr]
@@ -159,6 +159,8 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
                 eval(pai.car, env, sto, PcaFrame(pai, env) :: kon)
             case spi: SchemeSplicedPair =>
                 eval(spi.splice, env, sto, ScaFrame(spi, env) :: kon)
+            case _ =>   
+                throw new Exception(s"Unsupported expression: $exp")
         }
 
         private def evalLiteralValue(
@@ -460,7 +462,8 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
  
     // BRIDGING FUNCTIONALITY FOR PRIMITIVES (TODO: CLEANUP)
  
-    case class StoreAdapter(sto: Store[Adr, Storable]) extends Store[Adr, Val] {
+    case class StoreAdapter(sto: Sto) extends Store[Adr, Val] {
+        type This = StoreAdapter
         def lookup(adr: Adr) = sto.lookup(adr) match {
             case Some(V(vlu)) => Some(vlu) 
             case _ => None
