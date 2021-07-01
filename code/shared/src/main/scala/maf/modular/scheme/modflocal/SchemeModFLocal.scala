@@ -9,7 +9,8 @@ import maf.language.scheme._
 import maf.language.scheme.primitives._
 import maf.util.benchmarks.Timeout
 import maf.language.sexp
-import maf.language.CScheme.TID
+import maf.language.CScheme._
+import maf.lattice.interfaces.BoolLattice
 
 abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](prog)
                                                    with SchemeDomain {
@@ -33,8 +34,19 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     def allocCtx(lam: Lam, lex: Env, args: List[(Exp,Val)], pos: Pos, cmp: Cmp): Ctx
 
     lazy val initialExp: Exp = program
-    lazy val initialEnv: Env = ???
-    lazy val initialSto: Sto = ???             
+    lazy val initialEnv: Env = NestedEnv(initialBds.map(p => (p._1, p._2)).toMap, None)
+    lazy val initialSto: Sto = BasicStore(initialBds.map(p => (p._2, p._3)).toMap)    
+    
+    override lazy val program: SchemeExp = {
+        val originalProgram = super.program
+        val preludedProgram = SchemePrelude.addPrelude(originalProgram)
+        CSchemeUndefiner.undefine(List(preludedProgram))
+    }
+
+    lazy val initialBds: Iterable[(String, Adr, Storable)] = 
+        primitives.allPrimitives.map { case (name, p) =>
+            (name, PrmAddr(name), V(lattice.primitive(p.name)))
+        }
     
     // the store is used for several purposes:
     // - mapping variable/pointer addresses to values
@@ -45,6 +57,20 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     case class V(vlu: Value) extends Storable 
     case class E(ctx: Set[Env]) extends Storable
     case class K(knt: Set[(Kon,Ctx)]) extends Storable
+
+    implicit def storableLattice: Lattice[Storable] = new Lattice[Storable] {
+        def bottom: Storable = throw new Exception("No single bottom element in Storable lattice")
+        def join(x: Storable, y: => Storable): Storable = (x,y) match {
+            case (V(v1), V(v2)) => V(lattice.join(v1, v2))
+            case (E(e1), E(e2)) => E(e1 ++ e2)
+            case (K(k1), K(k2)) => K(k1 ++ k2)
+            case _ => throw new Exception(s"Attempting to join incompatible elements $x and $y")
+        }
+        def subsumes(x: Storable, y: => Storable): Boolean = throw new Exception("NYI")
+        def eql[B: BoolLattice](x: Storable, y: Storable): B = throw new Exception("NYI")
+        def top: Storable = throw new Exception("No top element in Storable lattice")
+        def show(v: Storable): String = v.toString
+    }
 
     case class EnvAddr(lam: Lam, ctx: Ctx) extends Address {
         def idn = lam.idn

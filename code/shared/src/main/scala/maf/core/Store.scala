@@ -38,7 +38,7 @@ case class BasicStore[A <: Address, V: Lattice](content: Map[A,V]) extends Store
   type This = BasicStore[A,V]
   def lookup(a: A): Option[V] = content.get(a)
   def extend(a: A, v: V): This = content.get(a) match {
-    case None if v == Lattice[V].bottom => this 
+    // case None if v == Lattice[V].bottom => this  <- not necessary
     case None => BasicStore(content + (a -> v))
     case Some(oldValue) => 
       val newValue = Lattice[V].join(oldValue, v)
