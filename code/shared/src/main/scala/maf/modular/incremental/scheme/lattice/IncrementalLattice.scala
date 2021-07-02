@@ -12,4 +12,12 @@ trait IncrementalLattice[AL, A <: Address] extends Lattice[AL] {
   def addAddresses(v: AL, addresses: Set[A]): AL
   def getAddresses(v: AL): Set[A]
   def removeAddresses(v: AL): AL
+
+  /** Shows the differences between x and y (from the perspective of a modular lattice). */
+  def compare(
+      x: AL,
+      y: AL,
+      xname: String = "x",
+      yname: String = "y"
+    ): String
 }

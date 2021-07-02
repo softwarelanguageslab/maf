@@ -84,10 +84,10 @@ object IncrementalConfiguration {
       noOptimisations,
       // One optimisation
       ci,
-      di,
-      wi,
+      di
+      //wi,
       // Two optimisations
-      ci_di
+      //ci_di
       //ci_wi,
       //di_wi,
       //wi_cy,

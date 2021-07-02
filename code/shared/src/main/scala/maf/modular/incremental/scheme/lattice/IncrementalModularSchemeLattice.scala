@@ -1,10 +1,12 @@
 package maf.modular.incremental.scheme.lattice
 
-import maf.core.{Address, Error, LatticeTopUndefined, MayFail}
+import maf.core._
 import maf.language.CScheme.TID
 import maf.language.scheme.lattices._
 import maf.lattice.interfaces._
-import maf.util.{Monoid, MonoidInstances, SmartHash}
+import maf.modular.scheme.PtrAddr
+import maf.util.benchmarks.Table
+import maf.util._
 
 /** A modular Scheme lattice that also provides operations on address-annotated values. */
 class IncrementalModularSchemeLattice[
@@ -136,6 +138,40 @@ class IncrementalModularSchemeLattice[
     override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.values, v.sources.union(addresses))
     override def getAddresses(v: AL): Set[A] = v.sources
     override def removeAddresses(v: AL): AL = v.copy(sources = Set())
+
+    /** Shows the differences between x and y (from the perspective of a modular lattice). */
+    def compare(
+        x: AL,
+        y: AL,
+        xname: String = "x",
+        yname: String = "y"
+      ): String = {
+      var table = Table.empty.withDefaultValue("")
+      def insertList(name: String, values: List[Value]): Unit = {
+        values.foreach { v =>
+          if (v.ord == 9) { // Pointers.
+            val ptrs = v
+              .asInstanceOf[Pointer]
+              .ptrs
+              .map(addr => {
+                val poi = addr.asInstanceOf[PtrAddr[_]]
+                s"${poi.exp.idn.pos.toString} [${poi.ctx}]"
+              })
+              .toList
+              .sorted
+              .mkString("Pointer(", ", ", ")")
+            table = table.add(v.ord.toString, name, ptrs)
+          } else
+            table = table.add(v.ord.toString, name, v.toString)
+        }
+      }
+      insertList(xname, x.values)
+      insertList(yname, y.values)
+      (x.values.diff(y.values) ++ y.values.diff(x.values)).map(_.ord).foreach { ord =>
+        table = table.add(ord.toString, "diff", "!")
+      }
+      table.prettyString(columns = List("diff", xname, yname))
+    }
   }
 
   object AL {

@@ -22,7 +22,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
   def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
 
-  def insertTable(messageOrComponent: Either[String, Component]): Unit = {
+  private def insertTable(messageOrComponent: Either[String, Component]): Unit = {
     val stepString = step.toString
     step = step + 1
     messageOrComponent match {
@@ -43,17 +43,17 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     }
   }
 
-  def tableToString(): String = {
+  private def tableToString(): String = {
     val storeCols = table.allColumns.filter(_.startsWith("σ")).toList.sorted
     val provcols = table.allColumns.filter(_.startsWith("P(")).toList.sorted
     table.prettyString(rowName = "Step", rows = (0 until step).toList.map(_.toString), columns = "Phase" :: storeCols ::: provcols ::: List("Bot"))
   }
 
   // Collect some numbers
-  var intraC: Long = 0
-  var intraCU: Long = 0
-  var deletedA: List[Addr] = Nil
-  var deletedC: List[Component] = Nil
+  private var intraC: Long = 0
+  private var intraCU: Long = 0
+  private var deletedA: List[Addr] = Nil
+  private var deletedC: List[Component] = Nil
 
   def getSummary(): String =
     configuration.toString + "\n" +
@@ -127,6 +127,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
     // Analysis of a component.
     abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+      logger.logU("") // Adds a newline to the log.
       if (version == Old) intraC += 1 else intraCU += 1
       logger.log(s"Analysing $component")
       if (configuration.cyclicValueInvalidation) logger.log(s"* S Resetting addressDependencies for $component.")
