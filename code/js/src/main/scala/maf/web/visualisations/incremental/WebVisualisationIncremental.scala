@@ -12,7 +12,8 @@ import scala.scalajs.js
 trait VisualisableIncrementalModAnalysis[Expr <: Expression]
     extends IncrementalModAnalysis[Expr]
        with IncrementalGlobalStore[Expr]
-       with WebVisualisationAnalysis[Expr] {
+       with WebVisualisationAnalysis[Expr] 
+       with AddressVisualisationAnalysis[Expr] {
   var recursive: Set[Component] = Set() // Collects the set of recursive components, since self-edges are omitted in the set `cachedSpawns`.
 
   override def intraAnalysis(cmp: Component): VisualisableIntraAnalysis
@@ -40,7 +41,7 @@ class WebVisualisationIncremental(
     override val analysis: VisualisableIncrementalModAnalysis[_],
     width: Int,
     height: Int)
-    extends WebVisualisation(analysis, width, height) {
+    extends WebVisualisation(width, height) {
 
   def deletedComponent(cmp: analysis.Component): Boolean = !analysis.visited.contains(cmp) && !analysis.workList.contains(cmp)
 

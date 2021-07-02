@@ -14,7 +14,6 @@ import org.scalajs.dom.document
 
 trait WebVisualisationAnalysis[Expr <: Expression]
     extends ModAnalysis[Expr]
-       with GlobalStore[Expr]
        with SequentialWorklistAlgorithm[Expr]
        with DependencyTracking[Expr] {
 
@@ -24,7 +23,7 @@ trait WebVisualisationAnalysis[Expr <: Expression]
 
   var webvis: WebVisualisation = _
 
-  override def intraAnalysis(component: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
+  override def intraAnalysis(component: Component): IntraAnalysis with DependencyTrackingIntra
 
   override def step(timeout: Timeout.T): Unit = {
     webvis.beforeStep()
@@ -46,12 +45,11 @@ object WebVisualisation {
   val __FORCE_CENTER__ = "center"
 }
 
-class WebVisualisation(
-    val analysis: WebVisualisationAnalysis[_],
-    width: Int,
-    height: Int) {
+abstract class WebVisualisation(width: Int, height: Int) {
 
   import WebVisualisation._
+
+  val analysis: WebVisualisationAnalysis[_]
 
   // give the analysis a pointer to this webvis
   analysis.webvis = this

@@ -1,5 +1,6 @@
 package maf.web.visualisations
 
+import maf.core._
 import maf.modular._
 import maf.modular.scheme.PrmAddr
 import maf.web.visualisations.AddressVisualisation._
@@ -13,8 +14,14 @@ object AddressVisualisation {
   val __SVG_READ_ARROW__ = "readarrow"
 }
 
+trait AddressVisualisationAnalysis[Expr <: Expression] extends WebVisualisationAnalysis[Expr] with GlobalStore[Expr] {
+  override def intraAnalysis(cmp: Component): IntraAnalysis with DependencyTrackingIntra with GlobalStoreIntra
+}
+
 /** Adds the visualisation of addresses to the web visualisation: visualises the addresses read by a component. */
 trait AddressVisualisation extends WebVisualisation {
+
+  override val analysis: AddressVisualisationAnalysis[_]
 
   var adrNodesColl: Map[analysis.Addr, AddrNode] = Map()
   var oldReadDeps: Map[Dependency, Set[analysis.Component]] = Map()

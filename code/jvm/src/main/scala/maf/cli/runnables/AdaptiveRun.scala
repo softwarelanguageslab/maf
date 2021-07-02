@@ -10,6 +10,7 @@ import maf.modular.scheme.modf._
 import maf.modular.worklist._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
+import maf.modular.scheme.modflocal._
 
 import scala.concurrent.duration._
 import scala.language.reflectiveCalls
@@ -19,7 +20,7 @@ import maf.language.scheme.interpreter._
 
 object AdaptiveRun {
 
-  def main(args: Array[String]): Unit = testAbstract()
+  def main(args: Array[String]): Unit = testModFLocal()
 
   def testConcrete() = {
     val txt = """
@@ -33,6 +34,19 @@ object AdaptiveRun {
         println(s"${addr} -> ${value}")
       case _ => ()
     }
+  }
+
+  def testModFLocal(): Unit = {
+    val txt = Reader.loadFile("test/R5RS/various/fact.scm")
+    val prg = CSchemeParser.parse(txt)
+    val anl = new SchemeModFLocal(prg)
+                with SchemeConstantPropagationDomain
+                with SchemeModFLocalNoSensitivity
+                with FIFOWorklistAlgorithm[SchemeExp]
+    anl.analyzeWithTimeoutInSeconds(30)
+    print(anl.visited.collect {
+      case anl.HaltComponent(vlu, _) => vlu
+    })
   }
 
   def testModConc(): Unit = {

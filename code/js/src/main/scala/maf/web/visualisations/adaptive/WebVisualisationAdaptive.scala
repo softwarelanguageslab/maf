@@ -1,6 +1,7 @@
 package maf.web.visualisations.adaptive
 
 import maf.core._
+import maf.modular._
 import maf.modular.adaptive._
 import maf.util.MonoidImplicits._
 
@@ -23,7 +24,7 @@ object WebVisualisationAdaptive {
 // REQUIRED ANALYSIS EXTENSION
 //
 
-trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with WebVisualisationAnalysis[Expr] {
+trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] with WebVisualisationAnalysis[Expr] {
 
   def adaptiveWebVis = webvis.asInstanceOf[WebVisualisationAdaptive]
 
@@ -44,7 +45,7 @@ class WebVisualisationAdaptive(
     override val analysis: WebVisualisationAnalysisAdaptive[_],
     width: Int,
     height: Int)
-    extends WebVisualisation(analysis, width, height) {
+    extends WebVisualisation(width, height) {
 
   // dirty flag set after visualisation needs to be refreshed due to adaptation
   var dirty = false

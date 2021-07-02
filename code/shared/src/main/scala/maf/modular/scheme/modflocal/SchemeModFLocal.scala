@@ -115,10 +115,28 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
 
     // components: either a main/call component, or a continuation call
     sealed trait Component extends Serializable { def ctx: Ctx }
-    case object MainComponent extends Component { def ctx = initialCtx }
-    case class CallComponent(lam: Lam, ctx: Ctx, sto: Sto) extends Component 
-    case class KontComponent(kon: Kon, ctx: Ctx, sto: Sto) extends Component
-    case class HaltComponent(vlu: Val, sto: Sto) extends Component { def ctx = initialCtx }
+    case object MainComponent extends Component { 
+        def ctx = initialCtx 
+        override def toString = "main"
+    }
+    case class CallComponent(lam: Lam, ctx: Ctx, sto: Sto) extends Component {
+        override def toString = s"${lam.lambdaName} [$ctx]"
+    }
+    case class KontComponent(kon: Kon, ctx: Ctx, sto: Sto) extends Component {
+        override def toString = s"<continuation> [$ctx]" //TODO
+    }
+    case class HaltComponent(vlu: Val, sto: Sto) extends Component { 
+        def ctx = initialCtx 
+        override def toString = s"HALT($vlu)"
+    }
+
+    def initialComponent: Component = MainComponent
+    def expr(cmp: Component): Exp = cmp match {
+        case MainComponent => program
+        case CallComponent(lam, _, _) => lam
+        case KontComponent(_, _, _) => SchemeVar(Identifier("kont", Identity.none)) // TODO
+        case HaltComponent(_, _) => SchemeVar(Identifier("done", Identity.none))
+    }
 
     override def intraAnalysis(cmp: Component) = new SchemeIntraAnalysis(cmp)
     class SchemeIntraAnalysis(cmp: Component) extends IntraAnalysis(cmp) {
@@ -503,6 +521,10 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         def callcc(clo: lattice.Closure, pos: Position): Value = throw new Exception("NYI")
         def currentThread: TID = throw new Exception("NYI")
     }
+}
 
-
+trait SchemeModFLocalNoSensitivity extends SchemeModFLocal {
+    type Ctx = Unit
+    def initialCtx: Unit = ()
+    def allocCtx(lam: Lam, lex: Env, args: List[(Exp,Val)], pos: Pos, cmp: Cmp): Ctx = ()
 }
