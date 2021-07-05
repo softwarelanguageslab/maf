@@ -105,7 +105,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     case class ArgFrame(fun: SchemeFuncall, fad: Adr, aad: List[(Exp, Adr)], ags: List[Exp], env: Env) extends Frame
     case class LetFrame(bdy: List[Exp], bad: List[(Identifier, Adr)], bds: List[(Identifier, Exp)], env: Env) extends Frame
     case class LttFrame(bdy: List[Exp], bds: List[(Identifier, Exp)], env: Env) extends Frame
-    case class LtrFrame(bdy: List[Exp], bad: List[(Identifier, Adr)], bds: List[(Identifier, Exp)], env: Env) extends Frame
+    case class LtrFrame(bdy: List[Exp], bds: List[(Identifier, Exp)], env: Env) extends Frame
     case class AndFrame(rst: List[Exp], env: Env) extends Frame 
     case class OrrFrame(rst: List[Exp], env: Env) extends Frame
     case class PcaFrame(pai: SchemePair, env: Env) extends Frame
@@ -183,7 +183,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
             case SchemeLetrec(bds, bdy, _) => 
                 val adrs = bds.map { case (idf, _) => (idf.name, VarAddr(idf, cmp.ctx)) }
                 val env1 = env.extend(adrs)
-                evalLetrec(Nil, bds, bdy, env1, sto, kon)
+                evalLetrec(bds, bdy, env1, sto, kon)
             case SchemeNamedLet(id, bds, bdy, idn) => 
                 val (prs, ags) = bds.unzip
                 val lam = SchemeLambda(Some(id.name), prs, bdy, idn)
@@ -274,7 +274,6 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         }
 
         private def evalLetrec(
-            bad: List[(Identifier, Adr)],
             bds: List[(Identifier, Exp)],
             bdy: List[Exp],
             env: Env,
@@ -282,14 +281,9 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
             kon: Kon
         ): Unit = bds match {
             case Nil => 
-                val sto1 = bad.reverse.foldLeft(sto) { case (acc, (idf, frm)) =>
-                    val vlu = lookupV(sto, frm)
-                    val adr = VarAddr(idf, cmp.ctx)
-                    acc.extend(adr, V(vlu))
-                }
-                evalSequence(bdy, env, sto1, kon)
+                evalSequence(bdy, env, sto, kon)
             case (_, rhs) :: _ => 
-                eval(rhs, env, sto, LtrFrame(bdy, bad, bds, env) :: kon)
+                eval(rhs, env, sto, LtrFrame(bdy, bds, env) :: kon)
         }
 
         private def evalSequence(
@@ -455,10 +449,10 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
                 val env1 = env.extend(idf.name, addr)
                 val sto1 = sto.extend(addr, V(vlu))
                 evalLetStar(bds, bdy, env1, sto1, rst)
-            case LtrFrame(bdy, bad, (idf, rhs) :: bds, env) :: rst =>
-                val addr = FrmAddr(rhs, cmp.ctx)
+            case LtrFrame(bdy, (idf, _) :: bds, env) :: rst =>
+                val addr = VarAddr(idf, cmp.ctx)
                 val sto1 = sto.extend(addr, V(vlu))
-                evalLetrec((idf, addr) :: bad, bds, bdy, env, sto1, rst)
+                evalLetrec(bds, bdy, env, sto1, rst)
             case AndFrame(nxt :: oth, env) :: rst =>
                 if (lattice.isTrue(vlu)) { evalAnd(nxt, oth, env, sto, rst) }
                 if (lattice.isFalse(vlu)) { continue(rst, lattice.bool(false), sto) }
