@@ -182,17 +182,18 @@ trait SchemeModFLocalSoundnessTests extends SchemeBenchmarkTests {
     }
 }
 
-class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessTests {
+class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessTests
+                                                  with VariousSequentialBenchmarks {
   def name = "MODF LOCAL (context-insensitive)"
   def analysis(prg: SchemeExp): SchemeModFLocal = 
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
-  override def benchmarks = Set("test/R5RS/various/work.scm")
 }
 
-class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests {
+class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests 
+                                                        with VariousSequentialBenchmarks {
   def name = "MODF LOCAL (call-site sensitive)"
   def analysis(prg: SchemeExp): SchemeModFLocal = 
     new SchemeModFLocal(prg)
@@ -201,6 +202,5 @@ class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoun
       with FIFOWorklistAlgorithm[SchemeExp] {
         val k = 1
     }
-  override def benchmarks = Set("test/R5RS/various/work.scm")
 }
 
