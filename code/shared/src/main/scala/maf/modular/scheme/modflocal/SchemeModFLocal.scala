@@ -203,6 +203,8 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
                 eval(pai.car, env, sto, PcaFrame(pai, env) :: kon)
             case spi: SchemeSplicedPair =>
                 eval(spi.splice, env, sto, ScaFrame(spi, env) :: kon)
+            case _: SchemeAssert => 
+                continue(kon, lattice.void, sto)
             case _ =>   
                 throw new Exception(s"Unsupported expression: $exp")
         }
@@ -374,6 +376,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
                         case _ => Set((kon, cmp.ctx))
                     }))
                     spawn(CallComponent(lam, cctx, sto4))
+                case _ => ()
             }
         }
 
@@ -497,7 +500,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         private def lookupV(sto: Sto, adr: Address): Value = 
             sto.lookup(adr) match {
                 case Some(V(vlu)) => vlu
-                case _ => throw new Exception("This should not happen")
+                case _ => throw new Exception(s"This should not happen ($adr)")
             }
 
     } 
