@@ -67,9 +67,9 @@ sealed trait SchemeLambdaExp extends SchemeExp {
   // can this lambda be called with a given number of arguments
   def check(argc: Int): Boolean =
     if (varArgId.isDefined) {
-      argc == args.length
-    } else {
       argc >= args.length
+    } else {
+      argc == args.length
     }
   // a short name for this function
   def lambdaName: String = name.getOrElse(s"λ@${idn.pos}")

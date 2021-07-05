@@ -475,6 +475,8 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
                 //val spl = lookupV(sto, frm)
                 val (res, sto1): (Val, Sto) = ??? // NYI -- append
                 continue(rst, res, sto1)
+            case _ => 
+                throw new Exception(s"Unsupported continuation $kon")
         }
 
         // HELPERS
