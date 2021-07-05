@@ -12,7 +12,7 @@ import scala.scalajs.js
 trait VisualisableIncrementalModAnalysis[Expr <: Expression]
     extends IncrementalModAnalysis[Expr]
        with IncrementalGlobalStore[Expr]
-       with WebVisualisationAnalysis[Expr] 
+       with WebVisualisationAnalysis[Expr]
        with AddressVisualisationAnalysis[Expr] {
   var recursive: Set[Component] = Set() // Collects the set of recursive components, since self-edges are omitted in the set `cachedSpawns`.
 

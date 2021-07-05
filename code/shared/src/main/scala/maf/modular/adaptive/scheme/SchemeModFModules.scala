@@ -18,7 +18,7 @@ trait SchemeModFModules extends BaseSchemeModFSemantics with ModularSchemeDomain
     override def hashCode = lambda.idn.hashCode
     override def equals(other: Any) = other match {
       case lm: LambdaModule if lm.lambda.idn == this.lambda.idn => true
-      case _ => false  
+      case _                                                    => false
     }
   }
 

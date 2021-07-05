@@ -38,7 +38,8 @@ trait SchemeModFLocalSoundnessTests extends SchemeBenchmarkTests {
     val times = concreteRuns(benchmark)
     try for (_ <- 1 to times) {
       val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
-                                              io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+                                              io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
+      )
       endResults += interpreter.run(program, timeout)
     } catch {
       case _: TimeoutException =>
@@ -93,8 +94,8 @@ trait SchemeModFLocalSoundnessTests extends SchemeBenchmarkTests {
       vls: Set[Value],
       msg: String = ""
     ): Unit = {
-    val results = anl.visited.collect {
-      case anl.HaltComponent(vlu, _) => vlu 
+    val results = anl.visited.collect { case anl.HaltComponent(vlu, _) =>
+      vlu
     }
     vls.foreach { cRes =>
       if (!results.exists(aRes => checkSubsumption(anl)(cRes, aRes))) {
@@ -112,7 +113,7 @@ trait SchemeModFLocalSoundnessTests extends SchemeBenchmarkTests {
     }
   }
 
-  private def addBindings[K,V](to: Map[K,Set[V]], from: Map[K,V]): Map[K,Set[V]] =
+  private def addBindings[K, V](to: Map[K, Set[V]], from: Map[K, V]): Map[K, Set[V]] =
     from.foldLeft(to) { case (acc, (key, vlu)) =>
       acc + (key -> (acc.getOrElse(key, Set.empty) + vlu))
     }
@@ -122,21 +123,26 @@ trait SchemeModFLocalSoundnessTests extends SchemeBenchmarkTests {
       conIdn: Map[Identity, Set[Value]],
       msg: String = ""
     ): Unit = {
-    val stores = anl.visited.collect {
-      case anl.HaltComponent(_, sto) => sto
-      case anl.CallComponent(_, _, sto) => sto
-      case anl.KontComponent(_, _, sto) => sto
-    }.map { _.content
-             .groupBy(_._1.idn)
-             .view
-             .mapValues(m => m.values.collect { case anl.V(vlu) => vlu })
-             .mapValues(v => anl.lattice.join(v))
-             .toMap
-    }
+    val stores = anl.visited
+      .collect {
+        case anl.HaltComponent(_, sto)    => sto
+        case anl.CallComponent(_, _, sto) => sto
+        case anl.KontComponent(_, _, sto) => sto
+      }
+      .map {
+        _.content
+          .groupBy(_._1.idn)
+          .view
+          .mapValues(m => m.values.collect { case anl.V(vlu) => vlu })
+          .mapValues(v => anl.lattice.join(v))
+          .toMap
+      }
     val absIdn =
-      stores.foldLeft(Map.empty[Identity,Set[anl.Value]]) {
-        (acc, sto) => addBindings(acc, sto)
-      }.withDefaultValue(Set.empty)
+      stores
+        .foldLeft(Map.empty[Identity, Set[anl.Value]]) { (acc, sto) =>
+          addBindings(acc, sto)
+        }
+        .withDefaultValue(Set.empty)
     conIdn.foreach { case (idn, values) =>
       values.foreach { cRes =>
         val results = absIdn(idn)
@@ -182,25 +188,16 @@ trait SchemeModFLocalSoundnessTests extends SchemeBenchmarkTests {
     }
 }
 
-class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessTests
-                                                  with VariousSequentialBenchmarks {
+class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
   def name = "MODF LOCAL (context-insensitive)"
-  def analysis(prg: SchemeExp): SchemeModFLocal = 
-    new SchemeModFLocal(prg)
-      with SchemeConstantPropagationDomain
-      with SchemeModFLocalNoSensitivity
-      with FIFOWorklistAlgorithm[SchemeExp]
+  def analysis(prg: SchemeExp): SchemeModFLocal =
+    new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
 }
 
-class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests 
-                                                        with VariousSequentialBenchmarks {
+class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
   def name = "MODF LOCAL (call-site sensitive)"
-  def analysis(prg: SchemeExp): SchemeModFLocal = 
-    new SchemeModFLocal(prg)
-      with SchemeConstantPropagationDomain
-      with SchemeModFLocalCallSiteSensitivity
-      with FIFOWorklistAlgorithm[SchemeExp] {
-        val k = 1
+  def analysis(prg: SchemeExp): SchemeModFLocal =
+    new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalCallSiteSensitivity with FIFOWorklistAlgorithm[SchemeExp] {
+      val k = 1
     }
 }
-

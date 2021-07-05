@@ -11,7 +11,7 @@ trait StandardSchemeModFAllocator extends BaseSchemeModFSemantics {
   def allocPtr(exp: SchemeExp, cmp: Component) = PtrAddr(exp, context(cmp))
 }
 
-// the "old", more precise allocator, where allocation context = the entire component 
+// the "old", more precise allocator, where allocation context = the entire component
 trait ComponentSchemeModFAllocator extends BaseSchemeModFSemantics {
   type AllocationContext = Component
   def allocVar(id: Identifier, cmp: Component) = VarAddr(id, cmp)

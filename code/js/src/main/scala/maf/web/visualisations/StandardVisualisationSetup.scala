@@ -11,10 +11,10 @@ import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.modular.scheme.modf.SchemeModFComponent.Call
 
 class SimpleWebVisualisation(
-  override val analysis: WebVisualisationAnalysis[_],
-  width: Int, 
-  height: Int
-) extends WebVisualisation(width, height)
+    override val analysis: WebVisualisationAnalysis[_],
+    width: Int,
+    height: Int)
+    extends WebVisualisation(width, height)
 
 trait StandardVisualisationSetup extends VisualisationSetup {
 
@@ -25,7 +25,7 @@ trait StandardVisualisationSetup extends VisualisationSetup {
       width: Int,
       height: Int
     ) =
-    new SimpleWebVisualisation(analysis, width, height).node 
+    new SimpleWebVisualisation(analysis, width, height).node
 }
 
 @JSExportTopLevel("standardModFVisualisationSetup")
@@ -54,15 +54,16 @@ object StandardModFVisualisationSetup extends StandardVisualisationSetup {
 @JSExportTopLevel("standardModFLocalVisualisationSetup")
 object StandardModFLocalVisualisationSetup extends StandardVisualisationSetup {
   def createAnalysis(txt: String): Analysis = {
-      val prg = SchemeParser.parse(txt)
-      new SchemeModFLocal(prg) with SchemeConstantPropagationDomain
-                               with SchemeModFLocalNoSensitivity
-                               with FIFOWorklistAlgorithm[SchemeExp]
-                               with WebVisualisationAnalysis[SchemeExp] {
-        override def intraAnalysis(cmp: Component): SchemeIntraAnalysis with DependencyTrackingIntra
-                                = new SchemeIntraAnalysis(cmp) with DependencyTrackingIntra
-        def module(cmp: Component) = ??? // not revelant here
-        def moduleName(mdl: Module) = ??? // not relevant here
-      }
+    val prg = SchemeParser.parse(txt)
+    new SchemeModFLocal(prg)
+      with SchemeConstantPropagationDomain
+      with SchemeModFLocalNoSensitivity
+      with FIFOWorklistAlgorithm[SchemeExp]
+      with WebVisualisationAnalysis[SchemeExp] {
+      override def intraAnalysis(cmp: Component): SchemeIntraAnalysis with DependencyTrackingIntra = new SchemeIntraAnalysis(cmp)
+        with DependencyTrackingIntra
+      def module(cmp: Component) = ??? // not revelant here
+      def moduleName(mdl: Module) = ??? // not relevant here
+    }
   }
 }

@@ -41,9 +41,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     ): ComponentContext =
     getCurrentPolicy(LambdaModule(clo._1)).allocCtx(clo, args, call, caller)
   def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] = cll match {
-    case Call(clo, ctx) => Call(adaptClosure(clo), adaptCtx(LambdaModule(clo._1) ,ctx))
+    case Call(clo, ctx) => Call(adaptClosure(clo), adaptCtx(LambdaModule(clo._1), ctx))
   }
-  def adaptCtx(fn: LambdaModule, ctx: ComponentContext): ComponentContext = 
+  def adaptCtx(fn: LambdaModule, ctx: ComponentContext): ComponentContext =
     getCurrentPolicy(fn).adaptCtx(ctx)
 
   // allocation context = component context
@@ -60,17 +60,16 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = PtrAddr(exp, addrContext(cmp))
   def allocVar(idf: Identifier, cmp: SchemeModFComponent) = VarAddr(idf, addrContext(cmp))
 
-
   // during the analysis, keep track of
   // - per module: all components
   // - per module: how many times each component has been triggered
   // - dependencies (per component) that triggered a component
   // - the number of times a dependency has been triggered
-  
+
   private var allCmpsPerFn: Map[LambdaModule, Set[Call[ComponentContext]]] = Map.empty
   private var cmpsPerFn: Map[SchemeModule, MultiSet[Component]] = Map.empty
   private var depsPerCmp: Map[Component, Set[Dependency]] = Map.empty
-  private var depCounts: Map[Dependency, Int] = Map.empty 
+  private var depCounts: Map[Dependency, Int] = Map.empty
 
   override def spawn(cmp: Component) = {
     if (!visited(cmp)) {
@@ -100,9 +99,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   private var reducedDeps: Set[Dependency] = Set.empty
 
   // adapting the analysis
-  
-  def modulesToAdapt = 
-    selectLargest[(SchemeModule,MultiSet[Component])](cmpsPerFn, _._2.cardinality)
+
+  def modulesToAdapt =
+    selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, _._2.cardinality)
 
   def inspect() = {
     // start the adaptation
@@ -124,8 +123,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       reduceComponentsForModule(module.asInstanceOf[LambdaModule])
     } else {
       val selectedCmps = selectLargest[(Component, Int)](
-        moduleCmps.content, 
-        _._2, 
+        moduleCmps.content,
+        _._2,
         maximumComponentCost
       )
       selectedCmps.foreach { case (cmp, _) => reduceReanalysesForComponent(cmp) }
@@ -135,7 +134,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   private def reduceReanalysesForComponent(cmp: Component) = {
     val deps = depsPerCmp(cmp)
     val groupedByLoc = deps.groupBy(getDepExp)
-    val selected = selectLargest[(Expression,Set[Dependency])](groupedByLoc, _._2.size)
+    val selected = selectLargest[(Expression, Set[Dependency])](groupedByLoc, _._2.size)
     selected.foreach { case (loc, deps) => reduceTriggersForLocation(loc, deps) }
   }
 
@@ -153,7 +152,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   private def reduceComponentsForModule(module: LambdaModule): Unit = {
     val calls = allCmpsPerFn(module)
     val groupedByClo = calls.groupBy(_.clo)
-    val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size  
+    val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size
     if (cloMaxContexts > groupedByClo.size) {
       reduceContextsForModule(module)
     } else {
@@ -162,7 +161,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   }
 
   // find a fitting policy
-  private def reduceContextsForModule(module: LambdaModule): Unit = 
+  private def reduceContextsForModule(module: LambdaModule): Unit =
     if (!reducedModules(module)) { // ensure this is only done once per module per adaptation
       reducedModules += module
       // find a fitting CS policy
@@ -179,7 +178,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
       setCurrentPolicy(module, plcy)
     }
 
-  private def reduceDep(dep: Dependency) = 
+  private def reduceDep(dep: Dependency) =
     if (!reducedDeps(dep)) {
       reducedDeps += dep
       dep match {

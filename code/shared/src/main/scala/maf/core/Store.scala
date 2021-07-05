@@ -6,8 +6,8 @@ case class UnboundAddress[A <: Address](a: A) extends Error
 
 trait Store[A <: Address, V] extends SmartHash {
 
-  type This >: this.type <: Store[A,V]
- 
+  type This >: this.type <: Store[A, V]
+
   /** Looks up a value in the store */
   def lookup(a: A): Option[V]
 
@@ -31,16 +31,16 @@ trait Store[A <: Address, V] extends SmartHash {
   def update(a: A, v: V): This = extend(a, v)
 
   /** Tries to update an address if it's already mapped into the store. Otherwise, extend the store */
-  def updateOrExtend(a: A, v: V): This= extend(a, v)
+  def updateOrExtend(a: A, v: V): This = extend(a, v)
 }
 
-case class BasicStore[A <: Address, V: Lattice](content: Map[A,V]) extends Store[A,V] {
-  type This = BasicStore[A,V]
+case class BasicStore[A <: Address, V: Lattice](content: Map[A, V]) extends Store[A, V] {
+  type This = BasicStore[A, V]
   def lookup(a: A): Option[V] = content.get(a)
   def extend(a: A, v: V): This = content.get(a) match {
     // case None if v == Lattice[V].bottom => this  <- not necessary
     case None => BasicStore(content + (a -> v))
-    case Some(oldValue) => 
+    case Some(oldValue) =>
       val newValue = Lattice[V].join(oldValue, v)
       if (oldValue == newValue) {
         this

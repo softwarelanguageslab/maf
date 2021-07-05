@@ -24,7 +24,10 @@ object WebVisualisationAdaptive {
 // REQUIRED ANALYSIS EXTENSION
 //
 
-trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] with WebVisualisationAnalysis[Expr] {
+trait WebVisualisationAnalysisAdaptive[Expr <: Expression]
+    extends AdaptiveModAnalysis[Expr]
+       with GlobalStore[Expr]
+       with WebVisualisationAnalysis[Expr] {
 
   def adaptiveWebVis = webvis.asInstanceOf[WebVisualisationAdaptive]
 

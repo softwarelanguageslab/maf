@@ -12,10 +12,7 @@ import maf.web.utils.D3Helpers._
 import scala.scalajs.js
 import org.scalajs.dom.document
 
-trait WebVisualisationAnalysis[Expr <: Expression]
-    extends ModAnalysis[Expr]
-       with SequentialWorklistAlgorithm[Expr]
-       with DependencyTracking[Expr] {
+trait WebVisualisationAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] with DependencyTracking[Expr] {
 
   type Module
   def module(cmp: Component): Module

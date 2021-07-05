@@ -39,13 +39,10 @@ object AdaptiveRun {
   def testModFLocal(): Unit = {
     val txt = Reader.loadFile("test/R5RS/various/fact.scm")
     val prg = CSchemeParser.parse(txt)
-    val anl = new SchemeModFLocal(prg)
-                with SchemeConstantPropagationDomain
-                with SchemeModFLocalNoSensitivity
-                with FIFOWorklistAlgorithm[SchemeExp]
+    val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
     anl.analyzeWithTimeoutInSeconds(30)
-    print(anl.visited.collect {
-      case anl.HaltComponent(vlu, _) => vlu
+    print(anl.visited.collect { case anl.HaltComponent(vlu, _) =>
+      vlu
     })
   }
 
