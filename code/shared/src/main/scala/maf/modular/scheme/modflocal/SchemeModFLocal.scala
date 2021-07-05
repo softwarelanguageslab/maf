@@ -527,3 +527,13 @@ trait SchemeModFLocalNoSensitivity extends SchemeModFLocal {
     def initialCtx: Unit = ()
     def allocCtx(lam: Lam, lex: Env, args: List[(Exp,Val)], pos: Pos, cmp: Cmp): Ctx = ()
 }
+
+trait SchemeModFLocalCallSiteSensitivity extends SchemeModFLocal {
+    // parameterized by some k
+    def k: Int
+    // context = list of call sites
+    type Ctx = List[Position]
+    def initialCtx = List.empty
+    def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp) =
+        (pos :: cmp.ctx).take(k)
+}

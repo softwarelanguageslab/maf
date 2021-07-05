@@ -189,5 +189,18 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
       with SchemeConstantPropagationDomain
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
-  override def benchmarks = Set("test/R5RS/various/infinite-1.scm")
+  override def benchmarks = Set("test/R5RS/various/work.scm")
 }
+
+class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests {
+  def name = "MODF LOCAL (call-site sensitive)"
+  def analysis(prg: SchemeExp): SchemeModFLocal = 
+    new SchemeModFLocal(prg)
+      with SchemeConstantPropagationDomain
+      with SchemeModFLocalCallSiteSensitivity
+      with FIFOWorklistAlgorithm[SchemeExp] {
+        val k = 1
+    }
+  override def benchmarks = Set("test/R5RS/various/work.scm")
+}
+
