@@ -123,13 +123,15 @@ trait SchemeModFLocalSoundnessTests extends SchemeBenchmarkTests {
       msg: String = ""
     ): Unit = {
     val stores = anl.visited.collect {
-      case anl.HaltComponent(_, sto) =>
-        sto.content
-           .groupBy(_._1.idn)
-           .view
-           .mapValues(m => m.values.collect { case anl.V(vlu) => vlu })
-           .mapValues(v => anl.lattice.join(v))
-           .toMap
+      case anl.HaltComponent(_, sto) => sto
+      case anl.CallComponent(_, _, sto) => sto
+      case anl.KontComponent(_, _, sto) => sto
+    }.map { _.content
+             .groupBy(_._1.idn)
+             .view
+             .mapValues(m => m.values.collect { case anl.V(vlu) => vlu })
+             .mapValues(v => anl.lattice.join(v))
+             .toMap
     }
     val absIdn =
       stores.foldLeft(Map.empty[Identity,Set[anl.Value]]) {
@@ -187,5 +189,5 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
       with SchemeConstantPropagationDomain
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
-  override def benchmarks = Set("test/R5RS/various/fact.scm")
+  override def benchmarks = Set("test/R5RS/various/infinite-1.scm")
 }
