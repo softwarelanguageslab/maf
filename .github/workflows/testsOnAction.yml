@@ -26,16 +26,16 @@ jobs:
       # Check out the GitHub repository.
       - name: Checkout the repository
         uses: actions/checkout@v2
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: openjdk@1.15
       # Compile the code.
       - name: Compile MAF
-        uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: compile
+        run: sbt compile
       # Perform the actual tests.
       - name: Run the tests
-        uses: lokkju/github-action-sbt@v0.2.2
-        with:
-          commands: maf/testOnly -- -l SlowTest
+        run: sbt "maf/testOnly -- -l SlowTest"
       # If successful, update the Slack notification.
       - name: Notify slack success
         if: success()
