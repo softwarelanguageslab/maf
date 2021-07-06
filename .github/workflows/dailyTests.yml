@@ -46,20 +46,28 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v2
       # Compile the code.
-      - name: Compile MAF
-        uses: lokkju/github-action-sbt@v0.2.2
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
         with:
-          commands: compile
+          java-version: openjdk@1.15
+      - name: Compile MAF
+        run: sbt compile
   # The test-util job executes the tests for utilities of the framework, on which the analyses rely.
   test-util:
     name: Execute utility tests
     runs-on: ubuntu-latest
     needs: compile
     steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
+      # Check out the GitHub repository.
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
         with:
-          commands: maf/testOnly -- -n UtilityTest
+          java-version: openjdk@1.15
+      - name: Run utility tests
+        run: sbt "maf/testOnly -- -n UtilityTest"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -77,10 +85,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: compile
     steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
+      # Check out the GitHub repository.
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
         with:
-          commands: maf/testOnly maf.test.language.scheme.SchemeLatticeTests
+          java-version: openjdk@1.15
+      - name: Run lattice tests
+        run: sbt "maf/testOnly maf.test.language.scheme.SchemeLatticeTests"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -98,10 +112,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: compile
     steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
+      # Check out the GitHub repository.
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
         with:
-          commands: maf/testOnly maf.test.language.scheme.SchemeR5RSTests
+          java-version: openjdk@1.15
+      - name: Run R5RS tests
+        run: sbt "maf/testOnly maf.test.language.scheme.SchemeR5RSTests"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -119,10 +139,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: compile
     steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
         with:
-          commands: maf/testOnly maf.test.language.scheme.ParserTests
+          java-version: openjdk@1.15
+      - name: Run parser tests
+        run: sbt "maf/testOnly maf.test.language.scheme.ParserTests"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -140,10 +165,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: compile
     steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
         with:
-          commands: maf/testOnly maf.test.language.scheme.InterpreterTests
+          java-version: openjdk@1.15
+      - name: Run interpreter tests
+        run: sbt "maf/testOnly maf.test.language.scheme.InterpreterTests"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -166,10 +196,15 @@ jobs:
       matrix:
         test_class: [ BigStepSchemeModFSoundnessTests, SmallStepSchemeModFSoundnessTests, SmallStepSchemeModConcSoundnessTests ]
     steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
         with:
-          commands: maf/testOnly maf.test.modular.scheme.${{ matrix.test_class }}
+          java-version: openjdk@1.15
+      - name: Run soundness tests
+        run: sbt "maf/testOnly maf.test.modular.scheme.${{ matrix.test_class }}"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -199,10 +234,15 @@ jobs:
                       IncrementalModFTypeRemainingConfigs,
                       IncrementalModFCPRemainingConfigs ]
     steps:
-      - uses: actions/checkout@v2
-      - uses: lokkju/github-action-sbt@v0.2.2
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
         with:
-          commands: maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}
+          java-version: openjdk@1.15
+      - name: Run incremental tests
+        run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
