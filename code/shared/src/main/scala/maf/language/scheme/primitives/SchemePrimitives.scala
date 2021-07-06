@@ -25,7 +25,7 @@ trait SchemePrimitive[V, A <: Address] extends Primitive {
       args: List[(SchemeExp, V)],
       store: Store[A, V],
       scheme: SchemeInterpreterBridge[V, A]
-    ): MayFail[(V, Store[A, V]), Error]
+    ): MayFail[(V, store.This), Error]
 }
 
 case class PrimitiveArityError(

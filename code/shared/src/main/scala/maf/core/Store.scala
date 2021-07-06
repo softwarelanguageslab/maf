@@ -4,9 +4,9 @@ import maf.util.SmartHash
 
 case class UnboundAddress[A <: Address](a: A) extends Error
 
-trait Store[A <: Address, V] extends SmartHash {
+trait Store[A <: Address, V] extends SmartHash { store =>
 
-  type This >: this.type <: Store[A, V]
+  type This >: this.type <: Store[A, V] { type This = store.This }
 
   /** Looks up a value in the store */
   def lookup(a: A): Option[V]

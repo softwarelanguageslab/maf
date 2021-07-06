@@ -393,9 +393,9 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
       lattice.getPrimitives(fvl).foreach { prm =>
         // TODO: non-deterministic control-flow from primitives
         primitives(prm).call(fun, ags, StoreAdapter(sto), InterpreterBridge(cmp.ctx)) match {
-          case MayFailSuccess((vlu, sto1)) => continue(kon, vlu, sto1.asInstanceOf[StoreAdapter].sto)
+          case MayFailSuccess((vlu, adp)) => continue(kon, vlu, adp.sto)
           case MayFailError(_)             => ()
-          case MayFailBoth((vlu, sto1), _) => continue(kon, vlu, sto1.asInstanceOf[StoreAdapter].sto)
+          case MayFailBoth((vlu, adp), _) => continue(kon, vlu, adp.sto)
         }
       }
 

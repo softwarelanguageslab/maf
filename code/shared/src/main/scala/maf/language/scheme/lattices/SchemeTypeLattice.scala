@@ -253,8 +253,8 @@ class TypeSchemeLattice[A <: Address, K] {
           args: List[(SchemeExp, L)],
           store: Store[A, L],
           alloc: SchemeInterpreterBridge[L, A]
-        ): MayFail[(L, Store[A, L]), Error] =
-        MayFail.success((ret, store))
+        ): MayFail[(L, store.This), Error] =
+        MayFail.success((ret, store: store.This))
     }
     object `abs` extends SimplePrim("abs", Inject.num)
     object `display` extends SimplePrim("display", Inject.str) // undefined behavior in R5RS
@@ -274,128 +274,126 @@ class TypeSchemeLattice[A <: Address, K] {
     object `<=` extends SimplePrim("<=", Inject.bool)
     object `>` extends SimplePrim(">", Inject.bool)
     object `>=` extends SimplePrim(">=", Inject.bool)
-    object `caar`
-        extends Store1Operation("caar",
-                                (x, store) =>
-                                  dereferencePointer(x, store) { c1 =>
-                                    L.lattice.car(c1) >>= { car =>
-                                      dereferencePointer(car, store) { c2 =>
-                                        L.lattice.car(c2)
-                                      }
-                                    }
-                                  }.map((_, store))
-        )
-    object `cadr`
-        extends Store1Operation("cadr",
-                                (x, store) =>
-                                  dereferencePointer(x, store) { c1 =>
-                                    L.lattice.cdr(c1) >>= { cdr =>
-                                      dereferencePointer(cdr, store) { c2 =>
-                                        L.lattice.car(c2)
-                                      }
-                                    }
-                                  }.map((_, store))
-        )
-    object `cdar`
-        extends Store1Operation("cdar",
-                                (x, store) =>
-                                  dereferencePointer(x, store) { c1 =>
-                                    L.lattice.car(c1) >>= { car =>
-                                      dereferencePointer(car, store) { c2 =>
-                                        L.lattice.cdr(c2)
-                                      }
-                                    }
-                                  }.map((_, store))
-        )
-    object `cddr`
-        extends Store1Operation("cddr",
-                                (x, store) =>
-                                  dereferencePointer(x, store) { c1 =>
-                                    L.lattice.cdr(c1) >>= { cdr =>
-                                      dereferencePointer(cdr, store) { c2 =>
-                                        L.lattice.cdr(c2)
-                                      }
-                                    }
-                                  }.map((_, store))
-        )
-    object `caddr`
-        extends Store1Operation("caddr",
-                                (x, store) =>
-                                  dereferencePointer(x, store) { c1 =>
-                                    L.lattice.cdr(c1) >>= { cdr =>
-                                      dereferencePointer(cdr, store) { c2 =>
-                                        L.lattice.cdr(c2) >>= { cddr =>
-                                          dereferencePointer(cddr, store) { c3 =>
-                                            L.lattice.car(c3)
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }.map((_, store))
-        )
-    object `caadr`
-        extends Store1Operation("caadr",
-                                (x, store) =>
-                                  dereferencePointer(x, store) { c1 =>
-                                    L.lattice.cdr(c1) >>= { cdr =>
-                                      dereferencePointer(cdr, store) { c2 =>
-                                        L.lattice.car(c2) >>= { cadr =>
-                                          dereferencePointer(cadr, store) { c3 =>
-                                            L.lattice.car(c3)
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }.map((_, store))
-        )
-    object `cdadr`
-        extends Store1Operation("cdadr",
-                                (x, store) =>
-                                  dereferencePointer(x, store) { c1 =>
-                                    L.lattice.cdr(c1) >>= { cdr =>
-                                      dereferencePointer(cdr, store) { c2 =>
-                                        L.lattice.car(c2) >>= { cadr =>
-                                          dereferencePointer(cadr, store) { c3 =>
-                                            L.lattice.cdr(c3)
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }.map((_, store))
-        )
-    object `cdddr`
-        extends Store1Operation("cdddr",
-                                (x, store) =>
-                                  dereferencePointer(x, store) { c1 =>
-                                    L.lattice.cdr(c1) >>= { cdr =>
-                                      dereferencePointer(cdr, store) { c2 =>
-                                        L.lattice.cdr(c2) >>= { cddr =>
-                                          dereferencePointer(cddr, store) { c3 =>
-                                            L.lattice.cdr(c3)
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }.map((_, store))
-        )
-    object `cadddr`
-        extends Store1Operation("cadddr",
-                                (x, store) =>
-                                  dereferencePointer(x, store) { c1 =>
-                                    L.lattice.cdr(c1) >>= { cdr =>
-                                      dereferencePointer(cdr, store) { c2 =>
-                                        L.lattice.cdr(c2) >>= { cddr =>
-                                          dereferencePointer(cddr, store) { c3 =>
-                                            L.lattice.cdr(c3) >>= { cdddr =>
-                                              dereferencePointer(cdddr, store) { c4 =>
-                                                L.lattice.cdr(c4)
-                                              }
-                                            }
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }.map((_, store))
-        )
+    object `caar` extends Store1Operation("caar") {
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] = 
+        dereferencePointer(x, store) { c1 =>
+          L.lattice.car(c1) >>= { car =>
+            dereferencePointer(car, store) { c2 =>
+              L.lattice.car(c2)
+            }
+          }
+        }.map((_, store: store.This))
+    }
+
+    object `cadr` extends Store1Operation("cadr") {
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
+        dereferencePointer(x, store) { c1 =>
+          L.lattice.cdr(c1) >>= { cdr =>
+            dereferencePointer(cdr, store) { c2 =>
+              L.lattice.car(c2)
+            }
+          }
+        }.map((_, store: store.This))
+    }
+
+    object `cdar` extends Store1Operation("cdar") {
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
+        dereferencePointer(x, store) { c1 =>
+          L.lattice.cdr(c1) >>= { cdr =>
+            dereferencePointer(cdr, store) { c2 =>
+              L.lattice.car(c2)
+            }
+          }
+        }.map((_, store: store.This))
+    }
+        
+    object `cddr` extends Store1Operation("cddr") {
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
+        dereferencePointer(x, store) { c1 =>
+          L.lattice.cdr(c1) >>= { cdr =>
+            dereferencePointer(cdr, store) { c2 =>
+              L.lattice.cdr(c2)
+            }
+          }
+        }.map((_, store: store.This))
+    }
+        
+    object `caddr` extends Store1Operation("caddr") {
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
+        dereferencePointer(x, store) { c1 =>
+          L.lattice.cdr(c1) >>= { cdr =>
+            dereferencePointer(cdr, store) { c2 =>
+              L.lattice.cdr(c2) >>= { cddr =>
+                dereferencePointer(cddr, store) { c3 =>
+                  L.lattice.car(c3)
+                }
+              }
+            }
+          }
+        }.map((_, store: store.This))
+    }
+      
+    object `caadr` extends Store1Operation("caadr") {
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
+        dereferencePointer(x, store) { c1 =>
+          L.lattice.cdr(c1) >>= { cdr =>
+            dereferencePointer(cdr, store) { c2 =>
+              L.lattice.car(c2) >>= { cadr =>
+                dereferencePointer(cadr, store) { c3 =>
+                  L.lattice.car(c3)
+                }
+              }
+            }
+          }
+        }.map((_, store: store.This))
+    }
+        
+    object `cdadr` extends Store1Operation("cdadr") {
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
+        dereferencePointer(x, store) { c1 =>
+          L.lattice.cdr(c1) >>= { cdr =>
+            dereferencePointer(cdr, store) { c2 =>
+              L.lattice.car(c2) >>= { cadr =>
+                dereferencePointer(cadr, store) { c3 =>
+                  L.lattice.cdr(c3)
+                }
+              }
+            }
+          }
+        }.map((_, store: store.This))
+    }
+    object `cdddr` extends Store1Operation("cdddr") {
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
+        dereferencePointer(x, store) { c1 =>
+          L.lattice.cdr(c1) >>= { cdr =>
+            dereferencePointer(cdr, store) { c2 =>
+              L.lattice.cdr(c2) >>= { cddr =>
+                dereferencePointer(cddr, store) { c3 =>
+                  L.lattice.cdr(c3)
+                }
+              }
+            }
+          }
+        }.map((_, store: store.This))
+    }
+        
+    object `cadddr` extends Store1Operation("cadddr") {
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
+        dereferencePointer(x, store) { c1 =>
+          L.lattice.cdr(c1) >>= { cdr =>
+            dereferencePointer(cdr, store) { c2 =>
+              L.lattice.cdr(c2) >>= { cddr =>
+                dereferencePointer(cddr, store) { c3 =>
+                  L.lattice.cdr(c3) >>= { cdddr =>
+                    dereferencePointer(cdddr, store) { c4 =>
+                      L.lattice.cdr(c4)
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }.map((_, store: store.This))
+    }
   }
 }
