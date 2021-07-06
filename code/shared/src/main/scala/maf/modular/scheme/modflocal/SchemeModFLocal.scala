@@ -394,7 +394,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         // TODO: non-deterministic control-flow from primitives
         primitives(prm).call(fun, ags, StoreAdapter(sto), InterpreterBridge(cmp.ctx)) match {
           case MayFailSuccess((vlu, adp)) => continue(kon, vlu, adp.sto)
-          case MayFailError(_)             => ()
+          case MayFailError(_)            => ()
           case MayFailBoth((vlu, adp), _) => continue(kon, vlu, adp.sto)
         }
       }

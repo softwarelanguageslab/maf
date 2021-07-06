@@ -275,7 +275,7 @@ class TypeSchemeLattice[A <: Address, K] {
     object `>` extends SimplePrim(">", Inject.bool)
     object `>=` extends SimplePrim(">=", Inject.bool)
     object `caar` extends Store1Operation("caar") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] = 
+      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
         dereferencePointer(x, store) { c1 =>
           L.lattice.car(c1) >>= { car =>
             dereferencePointer(car, store) { c2 =>
@@ -306,7 +306,7 @@ class TypeSchemeLattice[A <: Address, K] {
           }
         }.map((_, store: store.This))
     }
-        
+
     object `cddr` extends Store1Operation("cddr") {
       def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
         dereferencePointer(x, store) { c1 =>
@@ -317,7 +317,7 @@ class TypeSchemeLattice[A <: Address, K] {
           }
         }.map((_, store: store.This))
     }
-        
+
     object `caddr` extends Store1Operation("caddr") {
       def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
         dereferencePointer(x, store) { c1 =>
@@ -332,7 +332,7 @@ class TypeSchemeLattice[A <: Address, K] {
           }
         }.map((_, store: store.This))
     }
-      
+
     object `caadr` extends Store1Operation("caadr") {
       def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
         dereferencePointer(x, store) { c1 =>
@@ -347,7 +347,7 @@ class TypeSchemeLattice[A <: Address, K] {
           }
         }.map((_, store: store.This))
     }
-        
+
     object `cdadr` extends Store1Operation("cdadr") {
       def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
         dereferencePointer(x, store) { c1 =>
@@ -376,7 +376,7 @@ class TypeSchemeLattice[A <: Address, K] {
           }
         }.map((_, store: store.This))
     }
-        
+
     object `cadddr` extends Store1Operation("cadddr") {
       def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
         dereferencePointer(x, store) { c1 =>
