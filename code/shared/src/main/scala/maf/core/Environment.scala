@@ -18,6 +18,8 @@ sealed trait Environment[A <: Address] extends SmartHash {
   /** Mapping over the environment */
   def mapAddrs(f: A => A): This
 
+  def addrs: Set[Address]
+
   def size: Int
 }
 
@@ -30,7 +32,7 @@ case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Envir
   def extend(values: Iterable[(String, A)]): BasicEnvironment[A] = this.copy(content = content ++ values)
   def mapAddrs(f: A => A): BasicEnvironment[A] = this.copy(content.view.mapValues(f).toMap)
   def size: Int = content.size
-
+  def addrs = content.values.toSet
   /** Better printing. */
   override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
 }
@@ -46,6 +48,7 @@ case class WrappedEnv[A <: Address, D](
   def extend(name: String, a: A): WrappedEnv[A, D] = this.copy(env = env.extend(name, a))
   def extend(values: Iterable[(String, A)]): WrappedEnv[A, D] = this.copy(env = env.extend(values))
   def mapAddrs(f: A => A): WrappedEnv[A, D] = this.copy(env = env.mapAddrs(f))
+  def addrs = env.addrs
   def size: Int = env.size
 }
 
@@ -68,5 +71,10 @@ case class NestedEnv[A <: Address, E <: Address](content: Map[String, A], rst: O
 
   /** Mapping over the environment */
   def mapAddrs(f: A => A): This = this.copy(content = content.view.mapValues(f).toMap)
+
+  def addrs = rst match {
+    case Some(addr) => content.values.toSet + addr 
+    case None => content.values.toSet 
+  }
   def size: Int = content.size
 }

@@ -1,11 +1,12 @@
 package maf.language.scheme.lattices
 
 import maf.core._
+import maf.lattice.interfaces._
 import maf.language.CScheme.TID
 import maf.language.scheme._
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L, A <: Address] extends Lattice[L] {
+trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L, Address] {
 
   // TODO: make this a type parameter for type safety!
   type K = Any
