@@ -14,6 +14,7 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable {
 
   /** A lattice has a bottom element */
   def bottom: L
+  def isBottom(x: L) = x == bottom 
 
   /** A lattice has a top element (might be undefined) */
   def top: L

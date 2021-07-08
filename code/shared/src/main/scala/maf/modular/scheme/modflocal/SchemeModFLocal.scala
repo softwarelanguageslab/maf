@@ -65,6 +65,11 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
 
   implicit def storableLattice: Lattice[Storable] = new Lattice[Storable] {
     def bottom: Storable = throw new Exception("No single bottom element in Storable lattice")
+    override def isBottom(x: Storable) = x match {
+      case V(vlu) => vlu == lattice.bottom
+      case E(evs) => evs.isEmpty
+      case K(kts) => kts.isEmpty
+    }
     def join(x: Storable, y: => Storable): Storable = (x, y) match {
       case (V(v1), V(v2)) => V(lattice.join(v1, v2))
       case (E(e1), E(e2)) => E(e1 ++ e2)
