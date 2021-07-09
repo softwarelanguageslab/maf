@@ -11,6 +11,8 @@ import maf.util.benchmarks.Timeout
 import maf.language.sexp
 import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
+import scala.collection.immutable
+import maf.lattice.interfaces.LatticeWithAddrs
 
 abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](prog) with SchemeDomain {
 
@@ -60,10 +62,10 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
 
   sealed trait Storable
   case class V(vlu: Value) extends Storable
-  case class E(ctx: Set[Env]) extends Storable
-  case class K(knt: Set[(Kon, Ctx)]) extends Storable
+  case class E(evs: Set[Env]) extends Storable
+  case class K(kts: Set[(Kon, Ctx)]) extends Storable
 
-  implicit def storableLattice: Lattice[Storable] = new Lattice[Storable] {
+  implicit def storableLattice: LatticeWithAddrs[Storable, Adr] = new LatticeWithAddrs[Storable, Adr] {
     def bottom: Storable = throw new Exception("No single bottom element in Storable lattice")
     override def isBottom(x: Storable) = x match {
       case V(vlu) => vlu == lattice.bottom
@@ -76,10 +78,34 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
       case (K(k1), K(k2)) => K(k1 ++ k2)
       case _              => throw new Exception(s"Attempting to join incompatible elements $x and $y")
     }
+    def refs(x: Storable): Set[Adr] = x match {
+      case V(vlu) => lattice.refs(vlu)
+      case E(evs) => evs.flatMap(refsEnv)
+      case K(kts) => kts.flatMap { case (kon, _) => kon.flatMap(refsFrm) }
+    }
+    def top: Storable = throw new Exception("No top element in Storable lattice")
     def subsumes(x: Storable, y: => Storable): Boolean = throw new Exception("NYI")
     def eql[B: BoolLattice](x: Storable, y: Storable): B = throw new Exception("NYI")
-    def top: Storable = throw new Exception("No top element in Storable lattice")
     def show(v: Storable): String = v.toString
+    private def refsEnv(e: Env): Set[Adr] = e.addrs
+    private def refsFrm(frm: Frame): Set[Adr] = frm match {
+      case HltFrame => Set.empty
+      case RetFrame(adr) => Set(adr)
+      case AndFrame(_, env) => refsEnv(env)
+      case ArgFrame(_, fad, aad, _, env) => refsEnv(env) ++ aad.map(_._2) + fad
+      case AssFrame(_, env) => refsEnv(env)
+      case FunFrame(_, _, env) => refsEnv(env)
+      case IteFrame(_, _, env) => refsEnv(env)
+      case LetFrame(_, bad, _, env) => refsEnv(env) ++ bad.map(_._2)
+      case LtrFrame(_, _, env) => refsEnv(env)
+      case LttFrame(_, _, env) => refsEnv(env)
+      case OrrFrame(_, env) => refsEnv(env)
+      case PcaFrame(_, env) => refsEnv(env)
+      case PcdFrame(_, _) => Set.empty
+      case ScaFrame(_, env) => refsEnv(env)
+      case ScdFrame(_, _) => Set.empty
+      case SeqFrame(_, env) => refsEnv(env)
+    }
   }
 
   case class EnvAddr(lam: Lam, ctx: Ctx) extends Address {
