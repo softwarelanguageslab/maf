@@ -64,6 +64,7 @@ class IncrementalModularSchemeLattice[
     private def annotate(als: Elements, sources: Sources): AL = AnnotatedElements(als.vs, sources)
 
     def show(x: AL): String = x.toString /* TODO[easy]: implement better */
+    def refs(x: AL): Set[Address] = x.foldMapL(Value.refs(_))(setMonoid)
     def isTrue(x: AL): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: AL): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
     def op(op: SchemeOp)(args: List[AL]): MayFail[AL, Error] = {
