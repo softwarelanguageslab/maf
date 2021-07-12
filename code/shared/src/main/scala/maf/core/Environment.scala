@@ -2,8 +2,8 @@ package maf.core
 
 import maf.util.SmartHash
 
-sealed trait Environment[A <: Address] extends SmartHash {
-  type This <: Environment[A]
+sealed trait Environment[A <: Address] extends SmartHash { outer =>
+  type This >: this.type <: Environment[A] { type This = outer.This }
 
   /** Restrict the environment to only certain keys */
   def restrictTo(keys: Set[String]): This
