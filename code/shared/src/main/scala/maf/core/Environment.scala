@@ -33,6 +33,7 @@ case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Envir
   def mapAddrs(f: A => A): BasicEnvironment[A] = this.copy(content.view.mapValues(f).toMap)
   def size: Int = content.size
   def addrs = content.values.toSet
+
   /** Better printing. */
   override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
 }
@@ -73,8 +74,8 @@ case class NestedEnv[A <: Address, E <: Address](content: Map[String, A], rst: O
   def mapAddrs(f: A => A): This = this.copy(content = content.view.mapValues(f).toMap)
 
   def addrs = rst match {
-    case Some(addr) => content.values.toSet + addr 
-    case None => content.values.toSet 
+    case Some(addr) => content.values.toSet + addr
+    case None       => content.values.toSet
   }
   def size: Int = content.size
 }

@@ -13,8 +13,8 @@ import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutp
 trait Dependency extends SmartHash
 
 /**
- * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and
- * provides some utility functionality.
+ * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and provides some
+ * utility functionality.
  */
 abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable with Serializable { inter =>
 
@@ -48,7 +48,9 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
 
   /**
    * Performs a deep copy of this analysis.
-   * @note If subclasses introduce mutable state, the subclasses are responsible for correctly copying that state. Also note that 'vars' are copied correctly if the corresponding data structures are immutable.
+   * @note
+   *   If subclasses introduce mutable state, the subclasses are responsible for correctly copying that state. Also note that 'vars' are copied
+   *   correctly if the corresponding data structures are immutable.
    */
   def deepCopy(): this.type = this.clone().asInstanceOf[this.type]
 
@@ -75,8 +77,8 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
     def spawn(cmp: Component): Unit = C += cmp
 
     /**
-     * Performs the intra-component analysis of the given component.<br>
-     * <b>Important:</b> should only update the *local* analysis state, and must not modify the global analysis state directly.
+     * Performs the intra-component analysis of the given component.<br> <b>Important:</b> should only update the *local* analysis state, and must not
+     * modify the global analysis state directly.
      */
     def analyzeWithTimeout(timeout: Timeout.T): Unit
 
@@ -97,11 +99,12 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
   def finished: Boolean
 
   /**
-   * Runs the analysis with a timeout. Implementation should be provided by the worklist algorithm.
-   * Extra care should be taken when using this method, as the analysis results are not guaranteed to be sound if the timeout is triggered.
-   * Therefore, it is recommended to explicitly check afterwards if the analysis terminated using the `finished` method.
-   * Alternatively, one can use the `analyze` method to ensure the full (and sound) analysis result is computed.
-   * @param timeout allows this method to return before termination of the analysis if the given timeout is reached
+   * Runs the analysis with a timeout. Implementation should be provided by the worklist algorithm. Extra care should be taken when using this method,
+   * as the analysis results are not guaranteed to be sound if the timeout is triggered. Therefore, it is recommended to explicitly check afterwards
+   * if the analysis terminated using the `finished` method. Alternatively, one can use the `analyze` method to ensure the full (and sound) analysis
+   * result is computed.
+   * @param timeout
+   *   allows this method to return before termination of the analysis if the given timeout is reached
    */
   def analyzeWithTimeout(timeout: Timeout.T): Unit
 
@@ -110,9 +113,8 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
     analyzeWithTimeout(Timeout.start(Duration(seconds, SECONDS)))
 
   /**
-   * Runs the analysis.
-   * A timeout can not be configured (use `analyzeWithTimeout` instead if needed), meaning the method returns only when the analysis has actually terminated.
-   * Therefore, this method ensures that the the full (and sound) analysis result is computed.
+   * Runs the analysis. A timeout can not be configured (use `analyzeWithTimeout` instead if needed), meaning the method returns only when the
+   * analysis has actually terminated. Therefore, this method ensures that the the full (and sound) analysis result is computed.
    */
   def analyze(): Unit = analyzeWithTimeout(Timeout.none)
 

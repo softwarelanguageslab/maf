@@ -28,8 +28,7 @@ class NoTransition extends GraphElement {
 object EmptyGraphElement
 
 /**
- * A graph with nodes of type N and edges of type E.
- * Edges have a specific type because they may contain information (i.e., they can be annotated).
+ * A graph with nodes of type N and edges of type E. Edges have a specific type because they may contain information (i.e., they can be annotated).
  */
 trait Graph[G, N <: GraphElement, E <: GraphElement] {
 
@@ -54,10 +53,7 @@ trait Graph[G, N <: GraphElement, E <: GraphElement] {
   /** Remove a node from the graph */
   def removeNode(g: G, node: N): G
 
-  /**
-   * Remove an edge between two nodes from the graph.
-   *      Does not remove any node.
-   */
+  /** Remove an edge between two nodes from the graph. Does not remove any node. */
   def removeEdge(
       g: G,
       node1: N,

@@ -28,12 +28,13 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
   var results: Table[Option[Int]] = Table.empty[Option[Int]]
 
   /**
-   * For a given benchmark, compare each analysis with the base analysis
-   * That is, count for each analysis how many values were refined w.r.t. the base analysis
-   * All results are saved in the `result` table of this object
+   * For a given benchmark, compare each analysis with the base analysis That is, count for each analysis how many values were refined w.r.t. the base
+   * analysis All results are saved in the `result` table of this object
    *
-   * @param path the name of / path to the benchmark program
-   * @param program the Scheme expression of the benchmark program
+   * @param path
+   *   the name of / path to the benchmark program
+   * @param program
+   *   the Scheme expression of the benchmark program
    */
   protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit = {
     // run the base analysis first

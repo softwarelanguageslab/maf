@@ -113,9 +113,12 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
 
   /**
    * Joins two stores
-   * @param b1 a base store
-   * @param b2 a base store
-   * @return the joined base store
+   * @param b1
+   *   a base store
+   * @param b2
+   *   a base store
+   * @return
+   *   the joined base store
    */
   protected def join(b1: BaseStore, b2: BaseStore): BaseStore =
     b2.foldLeft(b1) { case (acc, (addr2, value2)) =>
@@ -125,10 +128,13 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     }
 
   /**
-   *  Compare two stores, assuming one is more precise than the other
-   *  @param b1 the less precise store
-   *  @param b2 the more precise store
-   *  @return the set of addresses that have been refined in b2 w.r.t. b1
+   * Compare two stores, assuming one is more precise than the other
+   * @param b1
+   *   the less precise store
+   * @param b2
+   *   the more precise store
+   * @return
+   *   the set of addresses that have been refined in b2 w.r.t. b1
    */
   protected def compareOrdered(b1: BaseStore, b2: BaseStore): Set[BaseAddr] = {
     def errorMessage(addr: BaseAddr): String = {
@@ -148,13 +154,16 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
 
   /**
    * Compare the precision of any two stores b1 and b2
-   *  @param b1 a base store
-   *  @param b2 a base store
-   *  @return a quadruple of:
-   *  - the set of addresses whose abstract values have remained unchanged
-   *  - the set of addresses whose abstract values are more precise in b2
-   *  - the set of addresses whose abstract values are less precise in b2
-   *  - the set of addresses whose abstract values are not comparable between b1 and b2
+   * @param b1
+   *   a base store
+   * @param b2
+   *   a base store
+   * @return
+   *   a quadruple of:
+   *   - the set of addresses whose abstract values have remained unchanged
+   *   - the set of addresses whose abstract values are more precise in b2
+   *   - the set of addresses whose abstract values are less precise in b2
+   *   - the set of addresses whose abstract values are not comparable between b1 and b2
    */
   protected def compare(b1: BaseStore, b2: BaseStore): (Set[BaseAddr], Set[BaseAddr], Set[BaseAddr], Set[BaseAddr]) = {
     val allKeys = b1.keySet ++ b2.keySet
@@ -174,10 +183,12 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
   }
 
   /**
-   *  Given an analysis (that terminated), extract its "base store": a mapping from base addresses to base values
-   *  That is, convert the resulting store into one within the (context-insensitive) base domain
-   *  @param analysis the analysis from which the results need to be extracted
-   *  @return a store in the base domain
+   * Given an analysis (that terminated), extract its "base store": a mapping from base addresses to base values That is, convert the resulting store
+   * into one within the (context-insensitive) base domain
+   * @param analysis
+   *   the analysis from which the results need to be extracted
+   * @return
+   *   a store in the base domain
    */
   protected def extract(analysis: Analysis): BaseStore =
     analysis.store
@@ -189,10 +200,12 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       .toMap
 
   /**
-   *  Given a concrete interpreter (that terminated), extract its "base store": a mapping from base addresses to base values
-   *  That is, convert the resulting store into one within the (context-insensitive) base domain
-   *  @param interpreter the concrete interpreter from which the results need to be extracted
-   *  @return a store in the base domain
+   * Given a concrete interpreter (that terminated), extract its "base store": a mapping from base addresses to base values That is, convert the
+   * resulting store into one within the (context-insensitive) base domain
+   * @param interpreter
+   *   the concrete interpreter from which the results need to be extracted
+   * @return
+   *   a store in the base domain
    */
   protected def extract(interpreter: SchemeInterpreter): BaseStore =
     interpreter.store.view
@@ -206,14 +219,20 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
   /**
    * Run the analysis on a given program
    *
-   * @param analysis a function that creates an analysis for a given program
-   * @param program the program to analyze
-   * @param name the name for the analysis (used for reporting to the console)
-   * @param path the name of / path to the benchmark program to run
-   * @param timeout (optional) the timeout
-   * @return an option value, being:
-   *     - the base store if the analysis terminated
-   *     - `None` otherwise
+   * @param analysis
+   *   a function that creates an analysis for a given program
+   * @param program
+   *   the program to analyze
+   * @param name
+   *   the name for the analysis (used for reporting to the console)
+   * @param path
+   *   the name of / path to the benchmark program to run
+   * @param timeout
+   *   (optional) the timeout
+   * @return
+   *   an option value, being:
+   *   - the base store if the analysis terminated
+   *   - `None` otherwise
    */
   protected def runAnalysis(
       analysis: SchemeExp => Analysis,
@@ -244,13 +263,18 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
   /**
    * Run the concrete interpreter on a given program
    *
-   * @param program the Scheme program to run the interpreter on
-   * @param path the name of / path to the benchmark program to run
-   * @param timeout (optional) the timeout
-   * @param times how many times the interpreter needs to run, results are joined together
-   * @return an option value, being:
-   *     - the base (joined) store if the interpreter (always) terminated
-   *     - `None` otherwise
+   * @param program
+   *   the Scheme program to run the interpreter on
+   * @param path
+   *   the name of / path to the benchmark program to run
+   * @param timeout
+   *   (optional) the timeout
+   * @param times
+   *   how many times the interpreter needs to run, results are joined together
+   * @return
+   *   an option value, being:
+   *   - the base (joined) store if the interpreter (always) terminated
+   *   - `None` otherwise
    */
   protected def runInterpreter(
       program: SchemeExp,
@@ -284,14 +308,17 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
 
   /**
    * Specify what needs to be done for a given benchmark program
-   * @param path the path to the benchmark program
-   * @param program the Scheme expression of the entire program
+   * @param path
+   *   the path to the benchmark program
+   * @param program
+   *   the Scheme expression of the entire program
    */
   protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit
 
   /**
    * Run a benchmark
-   *  @param benchmark the benchmark program to run
+   * @param benchmark
+   *   the benchmark program to run
    */
   def runBenchmark(benchmark: Benchmark) = {
     val txt = Reader.loadFile(benchmark)

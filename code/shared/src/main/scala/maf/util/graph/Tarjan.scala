@@ -5,14 +5,17 @@ import scala.annotation.tailrec
 object Tarjan {
 
   /**
-   * Implementation of Tarjan's algorithm for finding SCCs in a graph.
-   * Implementation loosely based on https://youtu.be/TyWtx7q2D7Y.<br>
-   * Example use: scc(Set(1, 2, 3, 4), Map((2, Set(3)), (3, Set(2, 4)))) returns Set(Set(2, 3)).
+   * Implementation of Tarjan's algorithm for finding SCCs in a graph. Implementation loosely based on https://youtu.be/TyWtx7q2D7Y.<br> Example use:
+   * scc(Set(1, 2, 3, 4), Map((2, Set(3)), (3, Set(2, 4)))) returns Set(Set(2, 3)).
    *
-   * @param nodes The set of edges in the graph.
-   * @param edges A map, mapping each node `from` to a set of nodes `to` for which the graph contains an edge `from -> to`.
-   * @tparam Node The type of a node.
-   * @return A set of SCCs, where each SCC is a set of the nodes that form the SCC.
+   * @param nodes
+   *   The set of edges in the graph.
+   * @param edges
+   *   A map, mapping each node `from` to a set of nodes `to` for which the graph contains an edge `from -> to`.
+   * @tparam Node
+   *   The type of a node.
+   * @return
+   *   A set of SCCs, where each SCC is a set of the nodes that form the SCC.
    */
   def scc[Node](nodes: Set[Node], edges: Map[Node, Set[Node]]): Set[Set[Node]] = {
     var unvisited: Set[Node] = nodes

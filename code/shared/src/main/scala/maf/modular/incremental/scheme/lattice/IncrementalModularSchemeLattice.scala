@@ -22,10 +22,11 @@ class IncrementalModularSchemeLattice[
   type Sources = Set[A]
 
   /**
-   * *
-   * A value that keeps track of the store addresses it depends upon.
-   * @param values      The list of abstract values.
-   * @param sources The addresses in the store where the value originated.
+   * * A value that keeps track of the store addresses it depends upon.
+   * @param values
+   *   The list of abstract values.
+   * @param sources
+   *   The addresses in the store where the value originated.
    */
   case class AnnotatedElements(values: List[Value], sources: Sources) extends SmartHash {
     override def toString: String = toL().toString

@@ -10,7 +10,8 @@ case class AddrDependency(addr: Address) extends Dependency {
 
 /**
  * Provides a global store to a modular analysis.
- * @tparam Expr The type of the expressions under analysis.
+ * @tparam Expr
+ *   The type of the expressions under analysis.
  */
 trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDomain[Expr] { inter =>
 

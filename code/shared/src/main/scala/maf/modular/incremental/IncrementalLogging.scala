@@ -9,7 +9,8 @@ import maf.util.benchmarks.{Table, Timeout}
 /**
  * Provides facilities for logging an incremental analysis that uses the incremental global store.
  *
- * @tparam Expr The type of the expressions under analysis.
+ * @tparam Expr
+ *   The type of the expressions under analysis.
  */
 trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr] {
   inter =>

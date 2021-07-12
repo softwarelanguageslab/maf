@@ -6,11 +6,16 @@ object Statistics {
   /**
    * Bundles multiple statitistical measures in one object.
    *
-   * @param min     The minimum value measured.
-   * @param max     The maximum value measured.
-   * @param mean    The mean value of measurements.
-   * @param median  The median value of measurements.
-   * @param stddev  The standard deviation of measurements.
+   * @param min
+   *   The minimum value measured.
+   * @param max
+   *   The maximum value measured.
+   * @param mean
+   *   The mean value of measurements.
+   * @param median
+   *   The median value of measurements.
+   * @param stddev
+   *   The standard deviation of measurements.
    */
   case class Stats(
       min: Double,
@@ -48,8 +53,10 @@ object Statistics {
 
   /**
    * Computes the weighted average of a list of tuples (weight, value).
-   * @param l A list of tuples (weight, value).
-   * @return The weighted average of the input list.
+   * @param l
+   *   A list of tuples (weight, value).
+   * @return
+   *   The weighted average of the input list.
    */
   def weightedAverage(l: List[(Double, Double)]): Double = {
     val num = weightedSum(l)
@@ -59,8 +66,10 @@ object Statistics {
 
   /**
    * Computes the weighted sum of a list of tuples (weight, value).
-   * @param l A list of tuples (weight, value).
-   * @return The weighted sum of the input list.
+   * @param l
+   *   A list of tuples (weight, value).
+   * @return
+   *   The weighted sum of the input list.
    */
   def weightedSum(l: List[(Double, Double)]): Double =
     l.foldLeft(0.0)((acc, t) => acc + t._1 * t._2)

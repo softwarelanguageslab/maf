@@ -89,22 +89,22 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     def show(v: Storable): String = v.toString
     private def refsEnv(e: Env): Set[Adr] = e.addrs
     private def refsFrm(frm: Frame): Set[Adr] = frm match {
-      case HltFrame => Set.empty
-      case RetFrame(adr) => Set(adr)
-      case AndFrame(_, env) => refsEnv(env)
+      case HltFrame                      => Set.empty
+      case RetFrame(adr)                 => Set(adr)
+      case AndFrame(_, env)              => refsEnv(env)
       case ArgFrame(_, fad, aad, _, env) => refsEnv(env) ++ aad.map(_._2) + fad
-      case AssFrame(_, env) => refsEnv(env)
-      case FunFrame(_, _, env) => refsEnv(env)
-      case IteFrame(_, _, env) => refsEnv(env)
-      case LetFrame(_, bad, _, env) => refsEnv(env) ++ bad.map(_._2)
-      case LtrFrame(_, _, env) => refsEnv(env)
-      case LttFrame(_, _, env) => refsEnv(env)
-      case OrrFrame(_, env) => refsEnv(env)
-      case PcaFrame(_, env) => refsEnv(env)
-      case PcdFrame(_, _) => Set.empty
-      case ScaFrame(_, env) => refsEnv(env)
-      case ScdFrame(_, _) => Set.empty
-      case SeqFrame(_, env) => refsEnv(env)
+      case AssFrame(_, env)              => refsEnv(env)
+      case FunFrame(_, _, env)           => refsEnv(env)
+      case IteFrame(_, _, env)           => refsEnv(env)
+      case LetFrame(_, bad, _, env)      => refsEnv(env) ++ bad.map(_._2)
+      case LtrFrame(_, _, env)           => refsEnv(env)
+      case LttFrame(_, _, env)           => refsEnv(env)
+      case OrrFrame(_, env)              => refsEnv(env)
+      case PcaFrame(_, env)              => refsEnv(env)
+      case PcdFrame(_, _)                => Set.empty
+      case ScaFrame(_, env)              => refsEnv(env)
+      case ScdFrame(_, _)                => Set.empty
+      case SeqFrame(_, env)              => refsEnv(env)
     }
   }
 

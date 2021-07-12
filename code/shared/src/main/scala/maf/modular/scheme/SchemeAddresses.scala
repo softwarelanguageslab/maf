@@ -5,7 +5,8 @@ import maf.language.scheme._
 
 /**
  * Addresses to be used with a Scheme analysis.
- * @tparam Context A type of Contexts that can be used to distinguish more addresses. The type context is covariant.
+ * @tparam Context
+ *   A type of Contexts that can be used to distinguish more addresses. The type context is covariant.
  */
 trait SchemeAddr[+Context] extends Address
 case class VarAddr[Context](id: Identifier, ctx: Context) extends SchemeAddr[Context] {

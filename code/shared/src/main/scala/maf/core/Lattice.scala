@@ -6,15 +6,12 @@ import maf.util.Show
 /** Error raised when trying to construct the top element of a lattice which doesn't have one */
 object LatticeTopUndefined extends MAFException
 
-/**
- * A lattice typeclass.
- * It is actually a join-semi lattice as it only need a join operation and a bottom element
- */
+/** A lattice typeclass. It is actually a join-semi lattice as it only need a join operation and a bottom element */
 trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable {
 
   /** A lattice has a bottom element */
   def bottom: L
-  def isBottom(x: L) = x == bottom 
+  def isBottom(x: L) = x == bottom
 
   /** A lattice has a top element (might be undefined) */
   def top: L

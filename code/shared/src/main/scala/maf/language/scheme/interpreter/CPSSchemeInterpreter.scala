@@ -239,7 +239,7 @@ class CPSSchemeInterpreter(
           }
         case v => stackedException(s"Cannot join non-thread value: $v.")
       }
-    case LetC(Nil, env, bvals, let, cc)            => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
+    case LetC(Nil, env, bvals, let, cc) => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
     case LetC((_, e) :: rest, env, bvals, let, cc) => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
     case LtrC(i1, bnd, env, let, cc) =>
       extendStore(env(i1.name), v) // Overwrite the previous binding.

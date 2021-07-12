@@ -87,8 +87,11 @@ class WebVisualisationIncremental(
   /**
    * Ensures all new nodes and edges in the analysis are drawn. May not shown nodes that have ceased to exist.
    *
-   * @note No nodes and edges are deleted. Those that are deleted by the analysis will still be drawn, but will be visualised differently.
-   * @note Nodes and edges that were created and deleted by the analysis since the last update of the visualisation data will not be shown using this method.
+   * @note
+   *   No nodes and edges are deleted. Those that are deleted by the analysis will still be drawn, but will be visualised differently.
+   * @note
+   *   Nodes and edges that were created and deleted by the analysis since the last update of the visualisation data will not be shown using this
+   *   method.
    */
   override def refreshData(): Unit = {
     // Add all components currently in the analysis.

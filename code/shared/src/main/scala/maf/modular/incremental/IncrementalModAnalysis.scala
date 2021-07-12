@@ -10,11 +10,11 @@ import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion.sunion
 
 /**
- * This trait provides the implementation of an incremental modular analysis.
- * Upon a change, schedules the directly affected components for analysis and initiates the reanalysis.
- * Apart from that, two optimisations are implemented: component and dependency invalidation.
- * @note The incremental analysis is not thread-safe and does not always use the local stores of the intra-component analyses!
- *       Therefore, a sequential work-list algorithm is required.
+ * This trait provides the implementation of an incremental modular analysis. Upon a change, schedules the directly affected components for analysis
+ * and initiates the reanalysis. Apart from that, two optimisations are implemented: component and dependency invalidation.
+ * @note
+ *   The incremental analysis is not thread-safe and does not always use the local stores of the intra-component analyses! Therefore, a sequential
+ *   work-list algorithm is required.
  */
 trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
 
@@ -32,10 +32,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     Map().withDefaultValue(Set()) // TODO: when a new program version causes changes, the sets may need to shrink again (~ cached dependencies etc).
 
   /**
-   * Register that a component is depending on a given expression in the program.
-   * This is needed e.g. for ModConc, where affected components cannot be determined lexically/statically.
-   * This method should be called for any expression that is analysed.
-   * Synchronisation should be applied when the analysis is run concurrently!
+   * Register that a component is depending on a given expression in the program. This is needed e.g. for ModConc, where affected components cannot be
+   * determined lexically/statically. This method should be called for any expression that is analysed. Synchronisation should be applied when the
+   * analysis is run concurrently!
    */
   def registerComponent(expr: Expr, component: Component): Unit = mapping = mapping + (expr -> (mapping(expr) + component))
 
@@ -51,7 +50,8 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   /**
    * Caches the read dependencies of every component. Used to find dependencies that are no longer inferred (and hence can be removed).
-   * @note Another strategy would be not to cache, but to walk through the data structures.
+   * @note
+   *   Another strategy would be not to cache, but to walk through the data structures.
    */
   var cachedReadDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)
 
@@ -66,14 +66,17 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /** Keep track of the number of distinct components that have spawned a given component (excluding possibly the component itself). */
   var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
 
-  /** Keeps track of the components spawned by a component (spawner -> spawnees). Used to determine whether a component spawns less other components. */
+  /**
+   * Keeps track of the components spawned by a component (spawner -> spawnees). Used to determine whether a component spawns less other components.
+   */
   var cachedSpawns: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
 
   /**
    * Deletes information related to a component. May cause other components to be deleted as well if they are no longer spawned.
    *
-   * @note If subclasses add extra analysis state (e.g., a global store with return values),
-   *       then it is up to those subclasses to override this method and extend its functionality (e.g., to remove the return value from the store).
+   * @note
+   *   If subclasses add extra analysis state (e.g., a global store with return values), then it is up to those subclasses to override this method and
+   *   extend its functionality (e.g., to remove the return value from the store).
    */
   @nonMonotonicUpdate
   def deleteComponent(cmp: Component): Unit =
@@ -106,7 +109,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   /* ***** Find and delete unreachable cycles ***** */
   /* ********************************************** */
 
-  /** Keeps track of whether a component was unspawned but not deleted. If no such component exists, then there is no chance of having unreachable components left (all are deleted). */
+  /**
+   * Keeps track of whether a component was unspawned but not deleted. If no such component exists, then there is no chance of having unreachable
+   * components left (all are deleted).
+   */
   var deletionFlag: Boolean = false
 
   /** Computes the set of reachable components. */

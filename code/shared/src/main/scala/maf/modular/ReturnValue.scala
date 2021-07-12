@@ -9,7 +9,8 @@ case class ReturnAddr[Component](cmp: Component, idn: Identity) extends Address 
 
 /**
  * Provides facilities for storing and retrieving return values of components (component analyses).
- * @tparam Expr The type of the expressions under analysis.
+ * @tparam Expr
+ *   The type of the expressions under analysis.
  */
 trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
 

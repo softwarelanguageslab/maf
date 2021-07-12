@@ -12,8 +12,10 @@ import maf.modular.worklist.LIFOWorklistAlgorithm
 
 /**
  * Provides instantiations of incremental analyses.
- * @note By having instantiations listed here, it is ensured that no changes break the instantiation of incremental analyses.
- * @note Due to linearisation reasons, IncrementalGlobalStore must be mixed-in last.
+ * @note
+ *   By having instantiations listed here, it is ensured that no changes break the instantiation of incremental analyses.
+ * @note
+ *   Due to linearisation reasons, IncrementalGlobalStore must be mixed-in last.
  */
 // TODO Fix linearisation "issue - IGS last" if possible?
 object IncrementalSchemeAnalysisInstantiations {
@@ -29,15 +31,13 @@ object IncrementalSchemeAnalysisInstantiations {
          with LIFOWorklistAlgorithm[SchemeExp]
 
   /**
-   * Builds an incremental ModConc Analysis for the given Scheme program with the following properties:
-   * <ul>
-   * <li>Allocated continuation addresses contain a single expression, and the previous continuation address. ({@link KKallocModConc}, k = 1).</li>
-   * <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
-   * <li>Uses an abstract type domain ({@link IncrementalSchemeTypeDomain}).</li>
-   * <li>Uses small-step semantics ({@link IncrementalSchemeModConcSmallStepSemantics}).</li>
-   * </ul>
+   * Builds an incremental ModConc Analysis for the given Scheme program with the following properties: <ul> <li>Allocated continuation addresses
+   * contain a single expression, and the previous continuation address. ({@link KKallocModConc}, k = 1).</li> <li>Uses a dept-first (LIFO)
+   * exploration order ({@link LIFOWorklistAlgorithm}).</li> <li>Uses an abstract type domain ({@link IncrementalSchemeTypeDomain}).</li> <li>Uses
+   * small-step semantics ({@link IncrementalSchemeModConcSmallStepSemantics}).</li> </ul>
    *
-   * @param prg The program to construct the analysis for.
+   * @param prg
+   *   The program to construct the analysis for.
    */
   class IncrementalModConcAnalysisTypeLattice(
       prg: SchemeExp,
@@ -53,15 +53,13 @@ object IncrementalSchemeAnalysisInstantiations {
   }
 
   /**
-   * Builds an incremental ModConc Analysis for the given Scheme program with the following properties:
-   * <ul>
-   * <li>Allocated continuation addresses contain a single expression, and the previous continuation address. ({@link KKallocModConc}, k = 1).</li>
-   * <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
-   * <li>Uses an abstract type domain ({@link IncrementalSchemeConstantPropagationDomain}).</li>
-   * <li>Uses small-step semantics ({@link IncrementalSchemeModConcSmallStepSemantics}).</li>
-   * </ul>
+   * Builds an incremental ModConc Analysis for the given Scheme program with the following properties: <ul> <li>Allocated continuation addresses
+   * contain a single expression, and the previous continuation address. ({@link KKallocModConc}, k = 1).</li> <li>Uses a dept-first (LIFO)
+   * exploration order ({@link LIFOWorklistAlgorithm}).</li> <li>Uses an abstract type domain ({@link
+   * IncrementalSchemeConstantPropagationDomain}).</li> <li>Uses small-step semantics ({@link IncrementalSchemeModConcSmallStepSemantics}).</li> </ul>
    *
-   * @param prg The program to construct the analysis for.
+   * @param prg
+   *   The program to construct the analysis for.
    */
   class IncrementalModConcAnalysisCPLattice(
       prg: SchemeExp,
@@ -89,15 +87,13 @@ object IncrementalSchemeAnalysisInstantiations {
          with IncrementalSchemeModFBigStepSemantics
 
   /**
-   * Builds an incremental ModF Analysis for the given Scheme program with the following properties:
-   * <ul>
-   * <li>Uses standard scheme ModF components ({@link StandardSchemeModFComponents}).</li>
-   * <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
-   * <li>Uses an abstract type domain ({@link IncrementalSchemeTypeDomain}).</li>
-   * <li>Uses big-step semantics ({@link IncrementalSchemeModFBigStepSemantics}).</li>
-   * </ul>
+   * Builds an incremental ModF Analysis for the given Scheme program with the following properties: <ul> <li>Uses standard scheme ModF components
+   * ({@link StandardSchemeModFComponents}).</li> <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li> <li>Uses an
+   * abstract type domain ({@link IncrementalSchemeTypeDomain}).</li> <li>Uses big-step semantics ({@link
+   * IncrementalSchemeModFBigStepSemantics}).</li> </ul>
    *
-   * @param prg The program to construct the analysis for.
+   * @param prg
+   *   The program to construct the analysis for.
    */
   class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
       extends BaseModFAnalysisIncremental(prg)
@@ -118,15 +114,13 @@ object IncrementalSchemeAnalysisInstantiations {
   }
 
   /**
-   * Builds an incremental ModF Analysis for the given Scheme program with the following properties:
-   * <ul>
-   * <li>Uses standard scheme ModF components ({@link StandardSchemeModFComponents}).</li>
-   * <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li>
-   * <li>Uses an abstract type domain ({@link IncrementalSchemeConstantPropagationDomain}).</li>
-   * <li>Uses big-step semantics ({@link IncrementalSchemeModFBigStepSemantics}).</li>
-   * </ul>
+   * Builds an incremental ModF Analysis for the given Scheme program with the following properties: <ul> <li>Uses standard scheme ModF components
+   * ({@link StandardSchemeModFComponents}).</li> <li>Uses a dept-first (LIFO) exploration order ({@link LIFOWorklistAlgorithm}).</li> <li>Uses an
+   * abstract type domain ({@link IncrementalSchemeConstantPropagationDomain}).</li> <li>Uses big-step semantics ({@link
+   * IncrementalSchemeModFBigStepSemantics}).</li> </ul>
    *
-   * @param prg The program to construct the analysis for.
+   * @param prg
+   *   The program to construct the analysis for.
    */
   class IncrementalSchemeModFAnalysisCPLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
       extends BaseModFAnalysisIncremental(prg)
