@@ -48,10 +48,10 @@ trait MapStore[A <: Address, V] extends Store[A, V] { outer =>
   def lookup(a: A): Option[V] = content.get(a)
   def extend(a: A, v: V): This = extendOption(a, v).getOrElse(this)
   def extendOption(a: A, v: V): Option[This] = content.get(a) match {
-    case None if Lattice[V].isBottom(v) => None
-    case None                           => Some(updateContent(content + (a -> v)))
+    case None if lattice.isBottom(v) => None
+    case None                        => Some(updateContent(content + (a -> v)))
     case Some(oldValue) =>
-      val newValue = Lattice[V].join(oldValue, v)
+      val newValue = lattice.join(oldValue, v)
       if (oldValue == newValue) {
         None
       } else {
@@ -72,7 +72,8 @@ trait AbstractGC[A <: Address, V] extends MapStore[A, V] { outer =>
   override def extendOption(a: A, v: V): Option[This] =
     super.extendOption(a, v).map { newStore =>
       // we assume that refs(x U y) = refs(x) U refs(y)
-      newStore.updateRefs(cachedRefs + (a -> (refs(a) ++ lattice.refs(v))))
+      val newRefs = refs(a) ++ lattice.refs(v)
+      newStore.updateRefs(cachedRefs + (a -> newRefs))
     }
   // stop-and-copy style GC
   def collect(roots: Set[A]): This =
@@ -105,11 +106,10 @@ object AbstractGC {
 }
 
 case class BasicStore[A <: Address, V](content: Map[A, V], cachedRefs: Map[A, Set[A]])(implicit val lattice: LatticeWithAddrs[V, A])
-    extends MapStore[A, V]
-       with AbstractGC[A, V] {
+    extends MapStore[A, V] {
   type This = BasicStore[A, V]
-  def updateContent(other: Map[A, V]): BasicStore[A, V] = this.copy(content = other)
-  def updateRefs(newRefs: Map[A, Set[A]]): BasicStore[A, V] = this.copy(cachedRefs = newRefs)
+  def updateContent(other: Map[A, V]): This = this.copy(content = other)
+  //def updateRefs(newRefs: Map[A, Set[A]]): BasicStore[A, V] = this.copy(cachedRefs = newRefs)
 }
 
 object BasicStore {

@@ -516,70 +516,73 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         kon: Kon,
         vlu: Val,
         sto: Sto
-      ): Unit = kon match {
-      // inter-procedural continuations
-      case HltFrame :: Nil =>
-        spawn(HaltComponent(vlu, sto))
-      case RetFrame(adr) :: Nil =>
-        lookupK(sto, adr).foreach { case (kon, ctx) =>
-          val addr = ResAddr(kon, ctx)
-          val sto1 = sto.extend(addr, V(vlu)) //TODO: extend AND join???
-          spawn(KontComponent(kon, ctx, sto1))
+      ): Unit =
+      if (!lattice.isBottom(vlu)) {
+        kon match {
+          // inter-procedural continuations
+          case HltFrame :: Nil =>
+            spawn(HaltComponent(vlu, sto))
+          case RetFrame(adr) :: Nil =>
+            lookupK(sto, adr).foreach { case (kon, ctx) =>
+              val addr = ResAddr(kon, ctx)
+              val sto1 = sto.extend(addr, V(vlu)) //TODO: extend AND join???
+              spawn(KontComponent(kon, ctx, sto1))
+            }
+          // local continuations
+          case SeqFrame(eps, env) :: rst =>
+            evalSequence(eps, env, sto, rst)
+          case IteFrame(csq, alt, env) :: rst =>
+            if (lattice.isTrue(vlu)) { eval(csq, env, sto, rst) }
+            if (lattice.isFalse(vlu)) { eval(alt, env, sto, rst) }
+          case AssFrame(id, env) :: rst =>
+            assignVariable(id, env, sto, vlu, rst)
+          case FunFrame(fun, args, env) :: rst =>
+            val addr = FrmAddr(fun.f, cmp.ctx)
+            val sto1 = sto.extend(addr, V(vlu))
+            evalArgs(fun, addr, Nil, args, env, sto1, rst)
+          case ArgFrame(fun, fad, aad, ag0 :: agr, env) :: rst =>
+            val addr = FrmAddr(ag0, cmp.ctx)
+            val sto1 = sto.extend(addr, V(vlu))
+            evalArgs(fun, fad, (ag0, addr) :: aad, agr, env, sto1, rst)
+          case LetFrame(bdy, bad, (idf, rhs) :: bds, env) :: rst =>
+            val addr = FrmAddr(rhs, cmp.ctx)
+            val sto1 = sto.extend(addr, V(vlu))
+            evalLet((idf, addr) :: bad, bds, bdy, env, sto1, rst)
+          case LttFrame(bdy, (idf, _) :: bds, env) :: rst =>
+            val addr = VarAddr(idf, cmp.ctx)
+            val env1 = env.extend(idf.name, addr)
+            val sto1 = sto.extend(addr, V(vlu))
+            evalLetStar(bds, bdy, env1, sto1, rst)
+          case LtrFrame(bdy, (idf, _) :: bds, env) :: rst =>
+            val addr = VarAddr(idf, cmp.ctx)
+            val sto1 = sto.extend(addr, V(vlu))
+            evalLetrec(bds, bdy, env, sto1, rst)
+          case AndFrame(nxt :: oth, env) :: rst =>
+            if (lattice.isTrue(vlu)) { evalAnd(nxt, oth, env, sto, rst) }
+            if (lattice.isFalse(vlu)) { continue(rst, lattice.bool(false), sto) }
+          case OrrFrame(oth, env) :: rst =>
+            if (lattice.isTrue(vlu)) { continue(rst, vlu, sto) }
+            if (lattice.isFalse(vlu)) { evalOr(oth, env, sto, rst) }
+          case PcaFrame(pai, env) :: rst =>
+            val addr = FrmAddr(pai.car, cmp.ctx)
+            val sto1 = sto.extend(addr, V(vlu))
+            eval(pai.cdr, env, sto1, PcdFrame(pai, addr) :: rst)
+          case PcdFrame(pai, frm) :: rst =>
+            val car = lookupV(sto, frm)
+            val (res, sto1) = allocCons(pai, sto, car, vlu)
+            continue(rst, res, sto1)
+          case ScaFrame(spi, env) :: rst =>
+            val addr = FrmAddr(spi.splice, cmp.ctx)
+            val sto1 = sto.extend(addr, V(vlu))
+            eval(spi.cdr, env, sto1, ScdFrame(spi, addr) :: rst)
+          case ScdFrame(_, _) :: rst =>
+            //val spl = lookupV(sto, frm)
+            val (res, sto1): (Val, Sto) = ??? // NYI -- append
+            continue(rst, res, sto1)
+          case _ =>
+            throw new Exception(s"Unsupported continuation $kon")
         }
-      // local continuations
-      case SeqFrame(eps, env) :: rst =>
-        evalSequence(eps, env, sto, rst)
-      case IteFrame(csq, alt, env) :: rst =>
-        if (lattice.isTrue(vlu)) { eval(csq, env, sto, rst) }
-        if (lattice.isFalse(vlu)) { eval(alt, env, sto, rst) }
-      case AssFrame(id, env) :: rst =>
-        assignVariable(id, env, sto, vlu, rst)
-      case FunFrame(fun, args, env) :: rst =>
-        val addr = FrmAddr(fun.f, cmp.ctx)
-        val sto1 = sto.extend(addr, V(vlu))
-        evalArgs(fun, addr, Nil, args, env, sto1, rst)
-      case ArgFrame(fun, fad, aad, ag0 :: agr, env) :: rst =>
-        val addr = FrmAddr(ag0, cmp.ctx)
-        val sto1 = sto.extend(addr, V(vlu))
-        evalArgs(fun, fad, (ag0, addr) :: aad, agr, env, sto1, rst)
-      case LetFrame(bdy, bad, (idf, rhs) :: bds, env) :: rst =>
-        val addr = FrmAddr(rhs, cmp.ctx)
-        val sto1 = sto.extend(addr, V(vlu))
-        evalLet((idf, addr) :: bad, bds, bdy, env, sto1, rst)
-      case LttFrame(bdy, (idf, _) :: bds, env) :: rst =>
-        val addr = VarAddr(idf, cmp.ctx)
-        val env1 = env.extend(idf.name, addr)
-        val sto1 = sto.extend(addr, V(vlu))
-        evalLetStar(bds, bdy, env1, sto1, rst)
-      case LtrFrame(bdy, (idf, _) :: bds, env) :: rst =>
-        val addr = VarAddr(idf, cmp.ctx)
-        val sto1 = sto.extend(addr, V(vlu))
-        evalLetrec(bds, bdy, env, sto1, rst)
-      case AndFrame(nxt :: oth, env) :: rst =>
-        if (lattice.isTrue(vlu)) { evalAnd(nxt, oth, env, sto, rst) }
-        if (lattice.isFalse(vlu)) { continue(rst, lattice.bool(false), sto) }
-      case OrrFrame(oth, env) :: rst =>
-        if (lattice.isTrue(vlu)) { continue(rst, vlu, sto) }
-        if (lattice.isFalse(vlu)) { evalOr(oth, env, sto, rst) }
-      case PcaFrame(pai, env) :: rst =>
-        val addr = FrmAddr(pai.car, cmp.ctx)
-        val sto1 = sto.extend(addr, V(vlu))
-        eval(pai.cdr, env, sto1, PcdFrame(pai, addr) :: rst)
-      case PcdFrame(pai, frm) :: rst =>
-        val car = lookupV(sto, frm)
-        val (res, sto1) = allocCons(pai, sto, car, vlu)
-        continue(rst, res, sto1)
-      case ScaFrame(spi, env) :: rst =>
-        val addr = FrmAddr(spi.splice, cmp.ctx)
-        val sto1 = sto.extend(addr, V(vlu))
-        eval(spi.cdr, env, sto1, ScdFrame(spi, addr) :: rst)
-      case ScdFrame(_, _) :: rst =>
-        //val spl = lookupV(sto, frm)
-        val (res, sto1): (Val, Sto) = ??? // NYI -- append
-        continue(rst, res, sto1)
-      case _ =>
-        throw new Exception(s"Unsupported continuation $kon")
-    }
+      }
 
     // HELPERS
 
@@ -598,7 +601,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     private def lookupV(sto: Sto, adr: Address): Value =
       sto.lookup(adr) match {
         case Some(V(vlu)) => vlu
-        case _            => throw new Exception(s"This should not happen ($adr)")
+        case x            => throw new Exception(s"This should not happen ($adr -> $x)")
       }
 
   }
