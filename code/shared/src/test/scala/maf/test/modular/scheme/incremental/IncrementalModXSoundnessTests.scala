@@ -57,10 +57,9 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       originalProgram: SchemeExp,
       benchmark: Benchmark,
       version: Version
-    ): (Set[Value], Map[Identity, Set[Value]]) = {
+    ): Map[Identity, Set[Value]] = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
     val program = CSchemeUndefiner.undefine(List(preluded))
-    var endResults = Set[Value]()
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
@@ -68,7 +67,8 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
                                               io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
       )
-      endResults += runInterpreterWithVersion(interpreter, program, timeout, version)
+      val finalResult = runInterpreterWithVersion(interpreter, program, timeout, version)
+      idnResults += program.idn -> (idnResults(program.idn) + finalResult)
     } catch {
       case _: TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
@@ -78,7 +78,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
         System.gc()
         alert(s"Concrete evaluation of $benchmark failed with $e")
     }
-    (endResults, idnResults)
+    idnResults
   }
 
   protected def runAnalysisWithConfiguration(
@@ -108,17 +108,16 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       val content = Reader.loadFile(benchmark)
       val program = CSchemeParser.parse(content)
 
-      val (cResultOld, cPosResultsOld) = evalConcreteWithVersion(program, benchmark, Old)
+      val cResults = evalConcreteWithVersion(program, benchmark, Old)
 
       val anlOld = runAnalysisWithConfiguration(program, benchmark, allOptimisations)
       assume(anlOld.finished, "Initial analysis timed out.")
 
       // Check soundness on the original version of the program.
       info("Checking initial analysis results.")
-      compareResult(anlOld, cResultOld, "initial analysis")
-      compareIdentities(anlOld, cPosResultsOld, "initial analysis")
+      compareResults(anlOld, cResults, "initial analysis")
 
-      val (cResultNew, cPosResultsNew) = evalConcreteWithVersion(program, benchmark, New)
+      val cResultsNew = evalConcreteWithVersion(program, benchmark, New)
 
       for (c <- configurations) {
         try {
@@ -127,8 +126,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
           anlCopy.configuration = c
           updateAnalysis(anlCopy, benchmark)
           info(s"Checking results of ${c.shortName()}")
-          compareResult(anlCopy, cResultNew, c.shortName())
-          compareIdentities(anlCopy, cPosResultsNew, c.shortName())
+          compareResults(anlCopy, cResultsNew, c.shortName())
         } catch {
           case a: AssertionError      => throw new Exception(s"Assertion violation using ${c.shortName()}.", a)
           case t: java.lang.Throwable => throw new Exception(s"Analysis error using ${c.shortName()}.", t)

@@ -19,7 +19,7 @@ import scala.concurrent.duration._
 
 trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   // analysis must support basic Scheme semantics
-  type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain
+  type Analysis = ModAnalysis[SchemeExp] with AnalysisResults[SchemeExp] with SchemeDomain
   // the analysis that is used to analyse the programs
   def name: String
   def analysis(b: SchemeExp): Analysis
@@ -34,18 +34,17 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       t: Timeout.T
     ): Value =
     i.run(p, t) // If there are code changes in the file, runs the "new" version by default (ensures compatibility with files containing changes).
-  protected def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): (Set[Value], Map[Identity, Set[Value]]) = {
+  protected def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): Map[Identity, Set[Value]] = {
     val preluded = SchemePrelude.addPrelude(originalProgram)
     val program = CSchemeUndefiner.undefine(List(preluded))
-    var endResults = Set[Value]()
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     try for (_ <- 1 to times) {
       val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
-                                              io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
-      )
-      endResults += runInterpreter(interpreter, program, timeout)
+                                              io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+      val finalResult = runInterpreter(interpreter, program, timeout)
+      idnResults += program.idn -> (idnResults(program.idn) + finalResult)
     } catch {
       case _: TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
@@ -55,7 +54,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
         System.gc()
         alert(s"Concrete evaluation of $benchmark failed with $e")
     }
-    (endResults, idnResults)
+    idnResults
   }
   protected def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
     try {
@@ -94,48 +93,27 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     }
   }
 
-  protected def compareResult(
-      a: Analysis,
-      values: Set[Value],
-      msg: String = ""
+  protected def compareResults(
+      analysis: Analysis,
+      concreteResults: Map[Identity, Set[Value]],
+      message: String = ""
     ): Unit = {
-    val aRes = a.finalResult
-    values.foreach { value =>
-      if (!checkSubsumption(a)(value, aRes)) {
-        val failureMsg =
-          s"""Program result is unsound:
-  - concrete value: $value
-  - abstract value: $aRes
-"""
-        if (msg.isEmpty)
-          fail(failureMsg)
-        else fail(s"$msg > $failureMsg")
-      }
-    }
-  }
-
-  protected def compareIdentities(
-      a: Analysis,
-      concIdn: Map[Identity, Set[Value]],
-      msg: String = ""
-    ): Unit = {
-    val absID: Map[Identity, a.Value] = a.store
-      .groupBy(_._1.idn)
-      .view
-      .mapValues(m => a.lattice.join(m.values))
-      .toMap
-      .withDefaultValue(a.lattice.bottom)
-    concIdn.foreach { case (idn, values) =>
-      values.foreach { value =>
-        if (!checkSubsumption(a)(value, absID(idn))) {
+    val analysisResults = analysis.resultsPerIdn
+    concreteResults.foreach { case (idn, concreteValues) =>
+      val abstractValues = analysisResults.getOrElse(idn, Set.empty)
+      concreteValues.foreach { concreteValue =>
+        if (!abstractValues.exists(checkSubsumption(analysis)(concreteValue, _))) {
           val failureMsg =
-            s"""Intermediate result at $idn is unsound:
-  - concrete value: $value
-  - abstract value: ${absID(idn)}
-"""
-          if (msg.isEmpty)
+            s"""
+            | Intermediate result at $idn is unsound:
+            | - concrete value: $concreteValue
+            | - abstract values: $abstractValues
+            """.stripMargin
+          if (message.isEmpty) {
             fail(failureMsg)
-          else fail(s"$msg > $failureMsg")
+          } else {
+            fail(s"$message > $failureMsg")
+          }
         }
       }
     }
@@ -157,12 +135,10 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       val content = Reader.loadFile(benchmark)
       val program = CSchemeParser.parse(content)
       // run the program using a concrete interpreter
-      val (cResult, cPosResults) = evalConcrete(program, benchmark)
+      val concreteResults = evalConcrete(program, benchmark)
       // analyze the program using a ModF analysis
       val anl = runAnalysis(program, benchmark)
-      // check if the final result of the analysis soundly approximates the final result of concrete evaluation
-      compareResult(anl, cResult)
-      // check if the intermediate results at various program points are soundly approximated by the analysis
-      compareIdentities(anl, cPosResults)
+      // check if the analysis results soundly (over-)approximate the concrete results
+      compareResults(anl, concreteResults)
     }
 }
