@@ -42,7 +42,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     val times = concreteRuns(benchmark)
     try for (_ <- 1 to times) {
       val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
-                                              io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+                                              io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
+      )
       val finalResult = runInterpreter(interpreter, program, timeout)
       idnResults += program.idn -> (idnResults(program.idn) + finalResult)
     } catch {

@@ -76,7 +76,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
 
   }
 
-  def resultsPerIdn: Map[Identity, Set[Value]] = 
+  def resultsPerIdn: Map[Identity, Set[Value]] =
     store.groupBy(_._1.idn).view.mapValues(_.values.toSet).toMap
 
   /** Returns a string representation of the store. */

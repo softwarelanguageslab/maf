@@ -67,9 +67,9 @@ trait AbstractGC[A <: Address, V] extends MapStore[A, V] { outer =>
   // - move an address from one store to another
   def empty: This
   def move(addr: A, to: This): This
-  protected def moveMap[X](addr: A, from: Map[A,X], to: Map[A,X]): Map[A,X] =
+  protected def moveMap[X](addr: A, from: Map[A, X], to: Map[A, X]): Map[A, X] =
     from.get(addr) match {
-      case None => to
+      case None    => to
       case Some(x) => to + (addr -> x)
     }
   // keep track of refs per address
@@ -106,12 +106,13 @@ object AbstractGC {
 }
 
 case class BasicStore[A <: Address, V](content: Map[A, V], cachedRefs: Map[A, Set[A]])(implicit val lattice: LatticeWithAddrs[V, A])
-    extends MapStore[A, V] with AbstractGC[A,V] {
+    extends MapStore[A, V]
+       with AbstractGC[A, V] {
   type This = BasicStore[A, V]
   def updateContent(other: Map[A, V]) = this.copy(content = other)
   def updateRefs(newRefs: Map[A, Set[A]]) = this.copy(cachedRefs = newRefs)
   def empty = BasicStore(Map.empty, Map.empty)
-  def move(addr: A, to: This) = 
+  def move(addr: A, to: This) =
     BasicStore(moveMap(addr, content, to.content), moveMap(addr, cachedRefs, to.cachedRefs))
 }
 

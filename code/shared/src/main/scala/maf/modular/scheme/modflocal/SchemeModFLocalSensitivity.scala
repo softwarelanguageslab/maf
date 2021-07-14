@@ -7,10 +7,10 @@ import maf.core.Position._
 //
 
 trait SchemeModFLocalSensitivity extends SchemeModFLocal {
-    // parameterised by context-sensitivity policy
-    type Ctx
-    def initialCtx: Ctx
-    def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp): Ctx
+  // parameterised by context-sensitivity policy
+  type Ctx
+  def initialCtx: Ctx
+  def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp): Ctx
 }
 
 //
@@ -33,5 +33,5 @@ trait SchemeModFLocalCallSiteSensitivity extends SchemeModFLocalSensitivity {
   // context = list of call sites
   type Ctx = List[Position]
   def initialCtx = Nil
-  def allocCtx( lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp) = (pos :: cmp.ctx).take(k)
+  def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp) = (pos :: cmp.ctx).take(k)
 }

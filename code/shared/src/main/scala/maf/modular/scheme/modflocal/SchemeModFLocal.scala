@@ -13,9 +13,8 @@ import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 
-abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](prog) 
-                                                  with SchemeDomain {
-                                                    this: SchemeModFLocalSensitivity =>
+abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](prog) with SchemeDomain {
+  this: SchemeModFLocalSensitivity =>
 
   // shorthands
   type Val = Value
@@ -175,15 +174,15 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
   private def gc(cmp: Component): Component = cmp match {
     case MainComponent => cmp
     case CallComponent(lam, ctx, sto) =>
-      val rs =  lam.args.map(VarAddr(_, ctx)).toSet[Adr] ++ 
-                lam.varArgId.map(VarAddr(_, ctx)).toSet[Adr] + 
-                EnvAddr(lam, ctx) + 
-                KonAddr(lam, ctx)
+      val rs = lam.args.map(VarAddr(_, ctx)).toSet[Adr] ++
+        lam.varArgId.map(VarAddr(_, ctx)).toSet[Adr] +
+        EnvAddr(lam, ctx) +
+        KonAddr(lam, ctx)
       CallComponent(lam, ctx, sto.collect(rs))
-    case KontComponent(kon, ctx, sto) => 
+    case KontComponent(kon, ctx, sto) =>
       val rs = kon.flatMap(refsFrm).toSet + ResAddr(kon, ctx)
       KontComponent(kon, ctx, sto.collect(rs))
-    case HaltComponent(vlu, sto) => 
+    case HaltComponent(vlu, sto) =>
       val rs = lattice.refs(vlu)
       HaltComponent(vlu, sto.collect(rs))
   }
@@ -463,10 +462,13 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
             sto1
           }
           val sto3 = extendE(sto2, EnvAddr(lam, cctx), Set(lex))
-          val sto4 = extendK(sto3, KonAddr(lam, cctx), kon match {
-                                                        case RetFrame(kad) :: Nil => lookupK(sto, kad)
-                                                        case _                    => Set((kon, cmp.ctx))
-                                                      })
+          val sto4 = extendK(sto3,
+                             KonAddr(lam, cctx),
+                             kon match {
+                               case RetFrame(kad) :: Nil => lookupK(sto, kad)
+                               case _                    => Set((kon, cmp.ctx))
+                             }
+          )
           spawn(CallComponent(lam, cctx, sto4))
         case _ => ()
       }
