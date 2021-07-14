@@ -1,7 +1,10 @@
 package maf.cli.runnables
 
-import maf.language.CScheme.CSchemeParser
+import maf.language.CScheme._
+import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
+import maf.language.scheme.interpreter.SchemeInterpreter
+import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.scheme.modf._
 import maf.modular.incremental._
@@ -12,6 +15,18 @@ import maf.util.benchmarks.Timeout
 import scala.concurrent.duration._
 
 object IncrementalRun extends App {
+
+  // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
+  // Useful when reducing a program when debugging the analysis.
+  def interpretProgram(file: String): Unit = {
+    val prog = CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(Reader.loadFile(file)), Set("newline", "display"))))
+    val i = new SchemeInterpreter((_, _) => (), stack = true)
+    print("*")
+    i.run(prog, Timeout.start(Duration(3, MINUTES)), Old)
+    print("*")
+    i.run(prog, Timeout.start(Duration(3, MINUTES)), New)
+    println("*")
+  }
 
   def modconcAnalysis(
       bench: String,
@@ -37,8 +52,8 @@ object IncrementalRun extends App {
 
   def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
-      new IncrementalSchemeModFAnalysisCPLattice(text, configuration) with IncrementalLogging[SchemeExp] {
-        override def focus(a: Addr): Boolean = a.toString == "VarAddr(m)" || a.toString == "VarAddr(n)"
+      new IncrementalSchemeModFAnalysisTypeLattice(text, configuration) with IncrementalLogging[SchemeExp] {
+        // override def focus(a: Addr): Boolean = a.toString == "VarAddr(m)" || a.toString == "VarAddr(n)"
 
         override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
           with IncrementalSchemeModFBigStepIntra
@@ -48,14 +63,15 @@ object IncrementalRun extends App {
       }
 
     println(s"***** $bench *****")
+    interpretProgram(bench)
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a = newAnalysis(text, Config(cyclicValueInvalidation = false))
+    val a = newAnalysis(text, IncrementalConfiguration.ci_di_wi)
     a.analyzeWithTimeout(timeout())
     a.updateAnalysis(timeout())
   }
 
   val modConcbenchmarks: List[String] = List()
-  val modFbenchmarks: List[String] = List("test/DEBUG2.scm")
+  val modFbenchmarks: List[String] = List("test/DEBUG3.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
   modConcbenchmarks.foreach(modconcAnalysis(_, allOptimisations, standardTimeout))

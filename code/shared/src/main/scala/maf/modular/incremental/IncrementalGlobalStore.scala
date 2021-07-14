@@ -11,7 +11,6 @@ import maf.util.graph.Tarjan
 /**
  * This trait improves upon a basic incremental analysis (with dependency and component invalidation) by introducing
  * store "provenance" tracking and store lowering.
- *
  * @tparam Expr The type of the expressions under analysis.
  */
 trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with GlobalStore[Expr] with IncrementalAbstractDomain[Expr] {
@@ -33,11 +32,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
 
   /** Updates the provenance information for a specific component and address. */
-  def updateProvenance(
-      cmp: Component,
-      addr: Addr,
-      value: Value
-    ): Unit =
+  def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit =
     provenance = provenance + (addr -> (provenance(addr) + (cmp -> value)))
 
   /* ******************************************** */
@@ -46,14 +41,13 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
   /**
    * For every component, stores a map of W ~> Set[R], where the values R are the "constituents" of W.
-   *
    * @note The data is separated by components, so it can be reset upon the reanalysis of a component.
-   * @note We could also store it as R ~> Set[W], but this seems slightly easier (doesn't require a foreach over the set `reads`).
+   * @note We could also store it as R ~> Set[W], but the current approach seems slightly easier (doesn't require a foreach over the set `reads`).
    */
   var addressDependencies: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
   /**
-   * Keeps track of all inferred SCCs during an incremental update.
+   * Keeps track of all inferred SCCs of addresses during an incremental update.
    * To avoid confusion with analysis components, we call these Strongly Connected Addresses (SCC containing addresses).
    */
   var SCAs: Set[SCA] = Set()
@@ -64,8 +58,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
   /**
    * To be called when a write dependency is deleted. Possibly updates the store with a new value for the given address.
-   * An address that is no longer written will be set to bottom.
-   *
+   * An address that is no longer written will be deleted.
    * @param cmp  The component from which the write dependency is deleted.
    * @param addr The address corresponding to the deleted write dependency.
    */
@@ -87,8 +80,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
   /**
    * Deletes an address from the store. To be used when they are no longer written by any component.
-   *
-   * @note Also removes possible dependencies on this address!
+   * @note Also removes possible dependencies on this address, as well as the address's provenance!
    */
   def deleteAddress(addr: Addr): Unit = {
     store -= addr // Delete the address in the actual store.
@@ -101,16 +93,17 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ********************************** */
 
   /**
-   * Called when a component is deleted. Removes the provenance information corresponding to the addresses written by the
-   * given component, thereby possibly refining the analysis store.
-   *
+   * Called when a component is deleted. Removes the provenance information corresponding to the addresses written by the given component, thereby possibly refining the analysis store.
+   * @note As a small memory optimisation, also clears `addressDependencies`. This set would be cleared anyway upon recreation and reanalysis of the deleted component `cmp`.
    * @param cmp The component that is deleted.
    */
   override def deleteComponent(cmp: Component): Unit = {
-    if (configuration.writeInvalidation) { // TODO: Does this make sense? We can now have return addresses without having the components, or addresses that are not written by any component anymore.
+    if (configuration.writeInvalidation) {
       cachedWrites(cmp).foreach(deleteProvenance(cmp, _))
       cachedWrites = cachedWrites - cmp
     }
+    if (configuration.cyclicValueInvalidation)
+      addressDependencies = addressDependencies - cmp
     super.deleteComponent(cmp)
   }
 
@@ -121,19 +114,13 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /**
    * To be called upon a commit, with the join of the values written by the component to the given address.
    * Possibly updates the store and provenance information, and triggers dependencies if the store is updated.
-   *
    * @param cmp  The component that is committed.
    * @param addr The address in the store of value nw.
    * @param nw   The join of all values written by cmp to the store at addr.
-   * @return Returns a boolean indicating whether the address was updated,
-   *         and hence whether the corresponding dependency should be triggered.
+   * @return Returns a boolean indicating whether the address was updated, indicating whether the corresponding dependency should be triggered.
    */
   @nonMonotonicUpdate
-  def updateAddrInc(
-      cmp: Component,
-      addr: Addr,
-      nw: Value
-    ): Boolean = {
+  def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
     val old = provenance(addr)(cmp)
     if (old == nw) return false // Nothing changed.
     // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
@@ -141,9 +128,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
     // If `old ⊑ nw` we can just use join, which is probably more efficient.
     val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr)
-    assert(newJoin == provenanceValue(addr),
-           s"$addr\n${lattice.compare(newJoin, provenanceValue(addr), "New join", "Provenance value")}"
-    ) // Assert for Coen TODO remove again later.
+    assert(newJoin == provenanceValue(addr), s"$addr\n${lattice.compare(newJoin, provenanceValue(addr), "New join", "Provenance value")}")
     if (oldJoin == newJoin) return false // Even with this component writing a different value to addr, the store does not change.
     inter.store = inter.store + (addr -> newJoin)
     true
@@ -154,15 +139,21 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ************************************************************************* */
 
   override def updateAnalysis(timeout: Timeout.T): Unit = {
+    // If cycle invalidation is enabled, compute which addresses are interdependent.
     if (configuration.cyclicValueInvalidation)
       SCAs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
     super.updateAnalysis(timeout)
+    // Clear the data as it is no longer needed. (This is not really required but reduces the memory footprint of the result.)
     if (configuration.cyclicValueInvalidation) SCAs = Set()
   }
 
-  /* ************************************ */
-  /* ***** Intra-component analysis ***** */
-  /* ************************************ */
+  /* ************************************************************************************************************ */
+  /* ************************************************************************************************************ */
+  /* ***************************************                              *************************************** */
+  /* ***************************************   Intra-component analysis   *************************************** */
+  /* ***************************************                              *************************************** */
+  /* ************************************************************************************************************ */
+  /* ************************************************************************************************************ */
 
   trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra {
     intra =>

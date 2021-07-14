@@ -9,7 +9,8 @@ import maf.util.benchmarks.{Table, Timeout}
 /**
  * Provides facilities for logging an incremental analysis that uses the incremental global store.
  *
- * @tparam Expr The type of the expressions under analysis.
+ * @tparam Expr
+ *   The type of the expressions under analysis.
  */
 trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr] {
   inter =>
@@ -117,7 +118,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       nw: Value
     ): Boolean = {
     val b = super.updateAddrInc(cmp, addr, nw)
-    logger.log(s"I $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)")
+    logger.log(s"IUPD $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)")
     //    logger.log(provenance(addr).toList.map({case (c, p) => s"          * $c :: $p"}).mkString("\n"))
     b
   }
@@ -129,8 +130,8 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       logger.logU("") // Adds a newline to the log.
       if (version == Old) intraC += 1 else intraCU += 1
-      logger.log(s"Analysing $component")
-      if (configuration.cyclicValueInvalidation) logger.log(s"* S Resetting addressDependencies for $component.")
+      logger.log(s"ANLY $component")
+      if (configuration.cyclicValueInvalidation) logger.log(s"RSAD Resetting addressDependencies for $component.")
       super.analyzeWithTimeout(timeout)
     }
 
@@ -138,26 +139,26 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     override def readAddr(addr: Addr): Value = {
       val v = super.readAddr(addr)
       if (v == lattice.bottom) botRead = Some(addr) else botRead = None
-      logger.log(s"R $addr => $v")
+      logger.log(s"READ $addr => $v")
       v
     }
 
     // Writing an address.
     override def writeAddr(addr: Addr, value: Value): Boolean = {
-      if (configuration.cyclicValueInvalidation) lattice.getAddresses(value).foreach(r => logger.log(s"* D $addr -> $r ($component)"))
+      if (configuration.cyclicValueInvalidation) lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $addr -> $r ($component)"))
       val b = super.writeAddr(addr, value)
-      if (b) logger.log(s"W $addr <= $value (becomes ${intra.store.getOrElse(addr, lattice.bottom)})")
+      if (b) logger.log(s"WRIT $addr <= $value (becomes ${intra.store.getOrElse(addr, lattice.bottom)})")
       b
     }
 
     // Registering of provenances.
     override def registerProvenances(): Unit = {
-      intraProvenance.foreach({ case (addr, value) => logger.log(s"P $addr: $value") })
+      intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV $addr: $value") })
       super.registerProvenances()
     }
 
     override def commit(): Unit = {
-      logger.log("Committing.")
+      logger.log("COMI")
       super.commit()
       insertTable(Right(component))
     }

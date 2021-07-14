@@ -22,16 +22,13 @@ import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 /**
- * Trait implementing soundness tests for incremental analyses.<br>
- * Following properties are checked:
- * <ul>
- *   <li>The soundness of the initial analysis of the original program.</li>
- *   <li>The soundness of the incremental update of the program.</li>
- * </ul>
- * The properties are checked by comparing the analysis results against the results of a concrete interpreter (run on both program versions).
- * The comparisons are implemented in {@link SchemeSoundnessTests}.
+ * Trait implementing soundness tests for incremental analyses.<br> Following properties are checked: <ul> <li>The soundness of the initial analysis
+ * of the original program.</li> <li>The soundness of the incremental update of the program.</li> </ul> The properties are checked by comparing the
+ * analysis results against the results of a concrete interpreter (run on both program versions). The comparisons are implemented in {@link
+ * SchemeSoundnessTests}.
  *
- * @see SchemeSoundnessTests
+ * @see
+ *   SchemeSoundnessTests
  */
 trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
@@ -133,7 +130,8 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
           compareResult(anlCopy, cResultNew, c.shortName())
           compareIdentities(anlCopy, cPosResultsNew, c.shortName())
         } catch {
-          case t: Throwable => throw new Exception(s"Analysis error using ${c.shortName()}.", t)
+          case a: AssertionError      => throw new Exception(s"Assertion violation using ${c.shortName()}.", a)
+          case t: java.lang.Throwable => throw new Exception(s"Analysis error using ${c.shortName()}.", t)
         }
       }
     }

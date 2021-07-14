@@ -4,24 +4,20 @@ package maf.modular.incremental
 trait IncrementalConfiguration {
 
   /**
-   * Indicates whether components should be invalidated when they are no longer spawned.
-   * This involves a possibly recursive traversal of spawn and cycle detection.
-   * This includes the deletion of the corresponding return addresses.
+   * Indicates whether components should be invalidated when they are no longer spawned. This involves a possibly recursive traversal of spawn and
+   * cycle detection. This includes the deletion of the corresponding return addresses.
    */
   val componentInvalidation: Boolean
 
   /** Indicates whether (read) dependencies should be removed when they are no longer inferred. */
   val dependencyInvalidation: Boolean
 
-  /**
-   * Indicates whether writes should be refined using provenance tracking.
-   * This includes the removal of addresses that are no longer written.
-   */
+  /** Indicates whether writes should be refined using provenance tracking. This includes the removal of addresses that are no longer written. */
   val writeInvalidation: Boolean
 
   /**
-   * Indicates whether writeInvalidation should be improved upon by tracking which values depend on each other,
-   * and by invalidating (lowering) values at addresses in a SCA.
+   * Indicates whether writeInvalidation should be improved upon by tracking which values depend on each other, and by invalidating (lowering) values
+   * at addresses in a SCA.
    */
   val cyclicValueInvalidation: Boolean
 
@@ -85,9 +81,9 @@ object IncrementalConfiguration {
       // One optimisation
       ci,
       di
-      //wi,
+      //wi
       // Two optimisations
-      //ci_di
+      //ci_di,
       //ci_wi,
       //di_wi,
       //wi_cy,
