@@ -13,7 +13,9 @@ import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 
-abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](prog) with SchemeDomain {
+abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](prog) 
+                                                  with SchemeDomain {
+                                                    this: SchemeModFLocalSensitivity =>
 
   // shorthands
   type Val = Value
@@ -27,17 +29,6 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
   type Idn = Identity
   type Pos = Position
   type Cmp = Component
-
-  // parameterised by context-sensitivity policy
-  type Ctx
-  def initialCtx: Ctx
-  def allocCtx(
-      lam: Lam,
-      lex: Env,
-      args: List[(Exp, Val)],
-      pos: Pos,
-      cmp: Cmp
-    ): Ctx
 
   lazy val initialExp: Exp = program
   lazy val initialEnv: Env = NestedEnv(initialBds.map(p => (p._1, p._2)).toMap, None)
@@ -641,19 +632,4 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     def callcc(clo: lattice.Closure, pos: Position): Value = throw new Exception("NYI")
     def currentThread: TID = throw new Exception("NYI")
   }
-}
-
-trait SchemeModFLocalNoSensitivity extends SchemeModFLocal {
-  type Ctx = Unit
-  def initialCtx: Unit = ()
-  def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp): Ctx = ()
-}
-
-trait SchemeModFLocalCallSiteSensitivity extends SchemeModFLocal {
-  // parameterized by some k
-  def k: Int
-  // context = list of call sites
-  type Ctx = List[Position]
-  def initialCtx = Nil
-  def allocCtx( lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp) = (pos :: cmp.ctx).take(k)
 }
