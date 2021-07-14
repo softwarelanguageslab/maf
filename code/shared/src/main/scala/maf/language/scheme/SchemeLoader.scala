@@ -14,10 +14,7 @@ object SchemeLoader {
     }
   }
 
-  /**
-   * Loads the definitions as the given place in the AST.
-   * This does not create additional environments (such as begin etc.).
-   */
+  /** Loads the definitions as the given place in the AST. This does not create additional environments (such as begin etc.). */
   def load(
       exp: SExp,
       prefix: String,

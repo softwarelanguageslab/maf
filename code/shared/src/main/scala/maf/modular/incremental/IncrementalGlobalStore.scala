@@ -9,9 +9,10 @@ import maf.util.benchmarks.Timeout
 import maf.util.graph.Tarjan
 
 /**
- * This trait improves upon a basic incremental analysis (with dependency and component invalidation) by introducing
- * store "provenance" tracking and store lowering.
- * @tparam Expr The type of the expressions under analysis.
+ * This trait improves upon a basic incremental analysis (with dependency and component invalidation) by introducing store "provenance" tracking and
+ * store lowering.
+ * @tparam Expr
+ *   The type of the expressions under analysis.
  */
 trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with GlobalStore[Expr] with IncrementalAbstractDomain[Expr] {
   inter =>
@@ -41,14 +42,16 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
   /**
    * For every component, stores a map of W ~> Set[R], where the values R are the "constituents" of W.
-   * @note The data is separated by components, so it can be reset upon the reanalysis of a component.
-   * @note We could also store it as R ~> Set[W], but the current approach seems slightly easier (doesn't require a foreach over the set `reads`).
+   * @note
+   *   The data is separated by components, so it can be reset upon the reanalysis of a component.
+   * @note
+   *   We could also store it as R ~> Set[W], but the current approach seems slightly easier (doesn't require a foreach over the set `reads`).
    */
   var addressDependencies: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
   /**
-   * Keeps track of all inferred SCCs of addresses during an incremental update.
-   * To avoid confusion with analysis components, we call these Strongly Connected Addresses (SCC containing addresses).
+   * Keeps track of all inferred SCCs of addresses during an incremental update. To avoid confusion with analysis components, we call these Strongly
+   * Connected Addresses (SCC containing addresses).
    */
   var SCAs: Set[SCA] = Set()
 
@@ -57,10 +60,12 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ****************************** */
 
   /**
-   * To be called when a write dependency is deleted. Possibly updates the store with a new value for the given address.
-   * An address that is no longer written will be deleted.
-   * @param cmp  The component from which the write dependency is deleted.
-   * @param addr The address corresponding to the deleted write dependency.
+   * To be called when a write dependency is deleted. Possibly updates the store with a new value for the given address. An address that is no longer
+   * written will be deleted.
+   * @param cmp
+   *   The component from which the write dependency is deleted.
+   * @param addr
+   *   The address corresponding to the deleted write dependency.
    */
   @nonMonotonicUpdate
   def deleteProvenance(cmp: Component, addr: Addr): Unit = {
@@ -80,7 +85,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
   /**
    * Deletes an address from the store. To be used when they are no longer written by any component.
-   * @note Also removes possible dependencies on this address, as well as the address's provenance!
+   * @note
+   *   Also removes possible dependencies on this address, as well as the address's provenance!
    */
   def deleteAddress(addr: Addr): Unit = {
     store -= addr // Delete the address in the actual store.
@@ -93,9 +99,13 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* ********************************** */
 
   /**
-   * Called when a component is deleted. Removes the provenance information corresponding to the addresses written by the given component, thereby possibly refining the analysis store.
-   * @note As a small memory optimisation, also clears `addressDependencies`. This set would be cleared anyway upon recreation and reanalysis of the deleted component `cmp`.
-   * @param cmp The component that is deleted.
+   * Called when a component is deleted. Removes the provenance information corresponding to the addresses written by the given component, thereby
+   * possibly refining the analysis store.
+   * @note
+   *   As a small memory optimisation, also clears `addressDependencies`. This set would be cleared anyway upon recreation and reanalysis of the
+   *   deleted component `cmp`.
+   * @param cmp
+   *   The component that is deleted.
    */
   override def deleteComponent(cmp: Component): Unit = {
     if (configuration.writeInvalidation) {
@@ -112,12 +122,16 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   /* *************************************************** */
 
   /**
-   * To be called upon a commit, with the join of the values written by the component to the given address.
-   * Possibly updates the store and provenance information, and triggers dependencies if the store is updated.
-   * @param cmp  The component that is committed.
-   * @param addr The address in the store of value nw.
-   * @param nw   The join of all values written by cmp to the store at addr.
-   * @return Returns a boolean indicating whether the address was updated, indicating whether the corresponding dependency should be triggered.
+   * To be called upon a commit, with the join of the values written by the component to the given address. Possibly updates the store and provenance
+   * information, and triggers dependencies if the store is updated.
+   * @param cmp
+   *   The component that is committed.
+   * @param addr
+   *   The address in the store of value nw.
+   * @param nw
+   *   The join of all values written by cmp to the store at addr.
+   * @return
+   *   Returns a boolean indicating whether the address was updated, indicating whether the corresponding dependency should be triggered.
    */
   @nonMonotonicUpdate
   def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
@@ -166,9 +180,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     }
 
     /**
-     * Computes the join of all values "incoming" in this SCA.
-     * The join suffices, as the addresses in the SCA are inter-dependent (i.e., the analysis will join everything together anyway).
-     * @return The join of all values "incoming" in this SCA.
+     * Computes the join of all values "incoming" in this SCA. The join suffices, as the addresses in the SCA are inter-dependent (i.e., the analysis
+     * will join everything together anyway).
+     * @return
+     *   The join of all values "incoming" in this SCA.
      */
     def incomingSCAValue(sca: SCA): Value = {
       var value = lattice.bottom
@@ -218,8 +233,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     }
 
     /**
-     * Keep track of the values written by a component to an address.
-     * For every address, stores the join of all values written during this intra-component address.
+     * Keep track of the values written by a component to an address. For every address, stores the join of all values written during this
+     * intra-component address.
      */
     // TODO: Perhaps collapse this data structure in the global provenance information (requires updating the information without triggers etc, but with joining).
     var intraProvenance: Map[Addr, Value] = Map().withDefaultValue(lattice.bottom)
@@ -244,8 +259,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     /**
      * Called for every written address. Returns true if the dependency needs to be triggered.
      *
-     * @note This function should be overridden to avoid the functionality of GlobalStore to be used.
-     *       Otherwise this function could be merged into refineWrites.
+     * @note
+     *   This function should be overridden to avoid the functionality of GlobalStore to be used. Otherwise this function could be merged into
+     *   refineWrites.
      */
     override def doWrite(dep: Dependency): Boolean = dep match {
       case AddrDependency(addr) if (configuration.writeInvalidation) =>
@@ -258,7 +274,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     /**
      * Registers the provenance information to the global provenance registry.
      *
-     * @note Will also update the provenances that were already updated by updateAddrInc (but this is ok as the same value is used).
+     * @note
+     *   Will also update the provenances that were already updated by updateAddrInc (but this is ok as the same value is used).
      */
     def registerProvenances(): Unit = intraProvenance.foreach({ case (addr, value) => updateProvenance(component, addr, value) })
 

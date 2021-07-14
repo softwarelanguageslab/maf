@@ -17,8 +17,8 @@ case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"
 case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpreter encountered an unexpected value during its execution: $v.")
 
 /**
- * This is an interpreter that runs a program and calls a callback at every evaluated value.
- * This interpreter dictates the concrete semantics of the Scheme language analyzed by MAF.
+ * This is an interpreter that runs a program and calls a callback at every evaluated value. This interpreter dictates the concrete semantics of the
+ * Scheme language analyzed by MAF.
  */
 class SchemeInterpreter(
     cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
@@ -31,10 +31,7 @@ class SchemeInterpreter(
 
   import scala.util.control.TailCalls._
 
-  /**
-   * Evaluates `program`.
-   * Will check the analysis result by calling `compare` on all encountered values.
-   */
+  /** Evaluates `program`. Will check the analysis result by calling `compare` on all encountered values. */
   def run(
       program: SchemeExp,
       timeout: Timeout.T,

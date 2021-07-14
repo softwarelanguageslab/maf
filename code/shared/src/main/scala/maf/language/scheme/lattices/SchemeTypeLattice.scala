@@ -50,6 +50,8 @@ class TypeSchemeLattice[A <: Address, K] {
     def show(x: L): String = s"$x"
     def isTrue(x: L): Boolean = true // only "false" is not true, but we only have Bool represented
     def isFalse(x: L): Boolean = x.bool
+    def refs(x: L): Set[Address] =
+      x.ptrs ++ refs(x.consCells._1) ++ refs(x.consCells._2) ++ x.clos.flatMap(_._2.addrs)
     def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] = {
       import SchemeOp._
       op.checkArity(args)

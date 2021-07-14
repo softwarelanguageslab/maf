@@ -32,10 +32,8 @@ object Value {
 }
 
 /**
- * Abstract grammar elements for S-expressions include some positional
- * information. This serves two purposes: identify where the s-expression
- * resides in the input file, and as tagging information for the abstract
- * machine.
+ * Abstract grammar elements for S-expressions include some positional information. This serves two purposes: identify where the s-expression resides
+ * in the input file, and as tagging information for the abstract machine.
  */
 sealed trait SExp extends Expression {
   val idn: Identity
@@ -43,11 +41,9 @@ sealed trait SExp extends Expression {
 }
 
 /**
- * An s-expression is made of pairs, e.g., (foo bar) is represented as the pair
- * with identifier foo as car and another pair -- with identifier bar as car and
- * value nil as cdr -- as cdr. Pairs are pretty-printed when converted to
- * string. i.e., (foo bar) is stringified as (foo bar) and not (foo . (bar
- * . ()))
+ * An s-expression is made of pairs, e.g., (foo bar) is represented as the pair with identifier foo as car and another pair -- with identifier bar as
+ * car and value nil as cdr -- as cdr. Pairs are pretty-printed when converted to string. i.e., (foo bar) is stringified as (foo bar) and not (foo .
+ * (bar . ()))
  */
 case class SExpPair(
     car: SExp,
@@ -72,10 +68,7 @@ case class SExpPair(
 
 object SExpList {
 
-  /**
-   * Alternative constructor to automatically construct a bunch of pair from a
-   * list of expressions
-   */
+  /** Alternative constructor to automatically construct a bunch of pair from a list of expressions */
   def apply(content: List[SExp], end: SExp): SExp = fromList(content, end)
   def apply(content: List[SExp], idn: Identity): SExp =
     fromList(content, SExpValue(Value.Nil, idn))

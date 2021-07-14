@@ -42,9 +42,15 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
 
   // useful helpers (TODO: some of these probably already exist somewhere in ScalaCheck)
   def genTuple[X, Y](genX: Gen[X], genY: Gen[Y]): Gen[(X, Y)] =
-    for { x <- genX; y <- genY } yield (x, y)
+    for {
+      x <- genX
+      y <- genY
+    } yield (x, y)
   def pickAtMost[X](max: Int, gen: Gen[X]): Gen[List[X]] =
-    for { n <- Gen.choose(0, max); lst <- Gen.listOfN(n, gen) } yield lst
+    for {
+      n <- Gen.choose(0, max)
+      lst <- Gen.listOfN(n, gen)
+    } yield lst
 
   // for the purposes of generating arbitrary Scheme values, we can just represent addresses with integers
   case class SimpleAddr(addr: Int) extends Address {

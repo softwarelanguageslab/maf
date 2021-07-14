@@ -32,8 +32,7 @@ case class ThreadComponent[Ctx](
 }
 
 /**
- * Provides a small-step ModConc semantics for a concurrent Scheme with threads.
- * Additionally supported primitives (upon R5RS): fork, join.
+ * Provides a small-step ModConc semantics for a concurrent Scheme with threads. Additionally supported primitives (upon R5RS): fork, join.
  */
 trait SmallStepModConcSemantics
     extends ModAnalysis[SchemeExp]
@@ -453,14 +452,14 @@ trait SmallStepModConcSemantics
         frame: Frame,
         stack: Stack
       ): Set[State] = frame match {
-      case SequenceFrame(exps, env)                => evalSequence(exps, env, stack)
-      case IfFrame(cons, alt, env)                 => conditional(vl, Eval(cons, env, stack), Eval(alt, env, stack))
-      case AndFrame(exps, env)                     => conditional(vl, evalAnd(exps.head, exps.tail, env, stack), Set[State](Kont(lattice.bool(false), stack)))
-      case OrFrame(exps, env)                      => conditional(vl, Set[State](Kont(vl, stack)), evalOr(exps, env, stack))
-      case PairCarFrame(cdr, env, pair)            => Set(Eval(cdr, env, extendKStore(cdr, PairCdrFrame(vl, pair), stack)))
-      case PairCdrFrame(carv, pair)                => Set(Kont(allocateCons(pair)(carv, vl), stack))
-      case SetFrame(variable, env)                 => Set(Kont(assign(variable, vl, env), stack)) // Returns bottom.
-      case OperatorFrame(args, env, fexp)          => evalArgs(args, fexp, vl, List(), env, stack)
+      case SequenceFrame(exps, env)       => evalSequence(exps, env, stack)
+      case IfFrame(cons, alt, env)        => conditional(vl, Eval(cons, env, stack), Eval(alt, env, stack))
+      case AndFrame(exps, env)            => conditional(vl, evalAnd(exps.head, exps.tail, env, stack), Set[State](Kont(lattice.bool(false), stack)))
+      case OrFrame(exps, env)             => conditional(vl, Set[State](Kont(vl, stack)), evalOr(exps, env, stack))
+      case PairCarFrame(cdr, env, pair)   => Set(Eval(cdr, env, extendKStore(cdr, PairCdrFrame(vl, pair), stack)))
+      case PairCdrFrame(carv, pair)       => Set(Kont(allocateCons(pair)(carv, vl), stack))
+      case SetFrame(variable, env)        => Set(Kont(assign(variable, vl, env), stack)) // Returns bottom.
+      case OperatorFrame(args, env, fexp) => evalArgs(args, fexp, vl, List(), env, stack)
       case OperandsFrame(todo, done, env, f, fexp) => evalArgs(todo.tail, fexp, f, (todo.head, vl) :: done, env, stack)
       case LetFrame(id, todo, done, body, env)     => evalLet(todo, (id, vl) :: done, body, env, stack)
       case LetStarFrame(id, todo, body, env)       => evalLetStar(todo, body, define(id, vl, env), stack)

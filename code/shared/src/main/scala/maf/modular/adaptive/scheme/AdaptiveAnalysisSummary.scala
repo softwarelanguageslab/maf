@@ -10,8 +10,8 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics with SchemeMod
 
   /**
    * Summarizes analysis information by:
-   * - keeping track of a `ModuleSummary` for each module
-   * - keeping track, for each dependency, which modules have components (at least one) that have been triggered (at least once) by that dependency
+   *   - keeping track of a `ModuleSummary` for each module
+   *   - keeping track, for each dependency, which modules have components (at least one) that have been triggered (at least once) by that dependency
    */
   case class AnalysisSummary(content: Map[SchemeModule, ModuleSummary], depFns: Map[Dependency, Set[SchemeModule]]) {
     def apply(fn: SchemeModule) = content(fn)
@@ -55,10 +55,10 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics with SchemeMod
 
   /**
    * Summarizes module information by:
-   * - keeping track of all components of that module
-   * - keeping track, for each component of that module, how many times a dependency triggered a re-analysis of that component
-   * - keeping track, for each dependency, which components were triggered (at least once) by that dependency
-   * - keeping track the total number of times a component of this module was triggered by some dependency
+   *   - keeping track of all components of that module
+   *   - keeping track, for each component of that module, how many times a dependency triggered a re-analysis of that component
+   *   - keeping track, for each dependency, which components were triggered (at least once) by that dependency
+   *   - keeping track the total number of times a component of this module was triggered by some dependency
    */
   case class ModuleSummary(
       content: Map[Component, MultiSet[Dependency]],

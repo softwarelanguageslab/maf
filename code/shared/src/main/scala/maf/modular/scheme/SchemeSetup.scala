@@ -8,12 +8,9 @@ import maf.modular._
 import maf.modular.scheme._
 
 /**
- * Prepares a modular analysis to analyse Scheme programs:
- * <ul>
- *   <li> Ensures the program is undefined and lexically addressed.
- *   <li> Provides an initial lexical environment for the analysis.
- *   <li> Sets up a global store, containing bindings for the language primitives in the provided environment.
- * </ul>
+ * Prepares a modular analysis to analyse Scheme programs: <ul> <li> Ensures the program is undefined and lexically addressed. <li> Provides an
+ * initial lexical environment for the analysis. <li> Sets up a global store, containing bindings for the language primitives in the provided
+ * environment. </ul>
  */
 trait SchemeSetup extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with SchemeDomain {
   // Provide a global store

@@ -358,12 +358,8 @@ abstract class RealLatticeTest[R: RealLattice, B: BoolLattice, I: IntLattice, S:
 
       /** Log is monotone */
       /**
-       * TODO[easy] failing test
-       *       p.property("∀ a, b: a ⊑ b ⇒ log(a) ⊑ log(b)") = forAll { (b: R) =>
-       *          forAll(gen.le(b)) { (a: R) =>
-       *            conditional(subsumes(b, a), subsumes(log(b), log(a)))
-       *          }
-       *        }
+       * TODO[easy] failing test p.property("∀ a, b: a ⊑ b ⇒ log(a) ⊑ log(b)") = forAll { (b: R) => forAll(gen.le(b)) { (a: R) =>
+       * conditional(subsumes(b, a), subsumes(log(b), log(a))) } }
        */
       /** Log is sound */
       p.property("∀ a: inject(a.log) ⊑ log(inject(a))") =

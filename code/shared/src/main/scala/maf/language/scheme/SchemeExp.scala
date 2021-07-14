@@ -52,8 +52,7 @@ case object ASS extends Label // Assertion
  */
 
 /**
- * A lambda expression: (lambda (args...) body...)
- * Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
+ * A lambda expression: (lambda (args...) body...) Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
  */
 sealed trait SchemeLambdaExp extends SchemeExp {
   // optionally, a lambda has a name
@@ -147,10 +146,7 @@ case class SchemeFuncall(
   def subexpressions: List[Expression] = f :: args
 }
 
-/**
- * An if statement: (if cond cons alt)
- * If without alt clauses need to be encoded with an empty begin as alt clause
- */
+/** An if statement: (if cond cons alt) If without alt clauses need to be encoded with an empty begin as alt clause */
 case class SchemeIf(
     cond: SchemeExp,
     cons: SchemeExp,
@@ -233,10 +229,7 @@ case class SchemeLetrec(
   val label: Label = LTR
 }
 
-/**
- * Named-let: (let name ((v1 e1) ...) body...)
- * TODO: desugar to letrec according to R5RS
- */
+/** Named-let: (let name ((v1 e1) ...) body...) TODO: desugar to letrec according to R5RS */
 case class SchemeNamedLet(
     name: Identifier,
     bindings: List[(Identifier, SchemeExp)],
@@ -304,10 +297,7 @@ object SchemeBody {
   }
 }
 
-/**
- * A cond expression: (cond (test1 body1...) ...).
- * Desugared according to R5RS.
- */
+/** A cond expression: (cond (test1 body1...) ...). Desugared according to R5RS. */
 object SchemeCond {
   def apply(clauses: List[(SchemeExp, List[SchemeExp])], idn: Identity): SchemeExp =
     if (clauses.isEmpty) {
@@ -332,10 +322,7 @@ object SchemeCond {
     }
 }
 
-/**
- * A when expression: (when pred body ...)
- * Desugared into an if-expression.
- */
+/** A when expression: (when pred body ...) Desugared into an if-expression. */
 object SchemeWhen {
   def apply(
       pred: SchemeExp,
@@ -345,10 +332,7 @@ object SchemeWhen {
     SchemeIf(pred, SchemeBody(body), SchemeValue(Value.Boolean(false), idn), idn)
 }
 
-/**
- * An unless expression: (unless pred body ...)
- * Desugared into an if-expression.
- */
+/** An unless expression: (unless pred body ...) Desugared into an if-expression. */
 object SchemeUnless {
   def apply(
       pred: SchemeExp,
@@ -358,10 +342,7 @@ object SchemeUnless {
     SchemeIf(pred, SchemeValue(Value.Boolean(false), idn), SchemeBody(body), idn)
 }
 
-/**
- * A case expression: (case key ((vals1...) body1...) ... (else default...)).
- * Desugared according to R5RS.
- */
+/** A case expression: (case key ((vals1...) body1...) ... (else default...)). Desugared according to R5RS. */
 object SchemeCase {
   def apply(
       key: SchemeExp,
@@ -374,10 +355,8 @@ object SchemeCase {
       val eqv = SchemeVar(Identifier("eq?", NoCodeIdentity)) /* TODO: should be eqv? instead of eq? */
       clauses.foldRight[SchemeExp](SchemeBody(default))((clause, acc) =>
         /**
-         * In R5RS, the condition is desugared into a (memv key '(atoms ...)) call. This
-         * would mean we would have to construct a list and go through it,
-         * which would badly impact precision. Hence, we instead explicitly do
-         * a big-or with eq?
+         * In R5RS, the condition is desugared into a (memv key '(atoms ...)) call. This would mean we would have to construct a list and go through
+         * it, which would badly impact precision. Hence, we instead explicitly do a big-or with eq?
          */
         SchemeIf(
           SchemeOr(
@@ -492,9 +471,8 @@ case class SchemeDefineVarArgFunction(
 }
 
 /**
- * Do notation: (do ((<variable1> <init1> <step1>) ...) (<test> <expression> ...) <command> ...).
- * Desugared according to R5RS, i.e., a do becomes:
- *   (letrec ((loop (lambda (variable1 variable2 ...) (if <test> <finals> (begin <body> (loop <step1> ...)))))))
+ * Do notation: (do ((<variable1> <init1> <step1>) ...) (<test> <expression> ...) <command> ...). Desugared according to R5RS, i.e., a do becomes:
+ * (letrec ((loop (lambda (variable1 variable2 ...) (if <test> <finals> (begin <body> (loop <step1> ...)))))))
  */
 object SchemeDo {
   def apply(

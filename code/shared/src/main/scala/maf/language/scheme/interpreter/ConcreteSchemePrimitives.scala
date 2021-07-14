@@ -1140,7 +1140,7 @@ trait ConcreteSchemePrimitives {
         case Value.Pointer(a) :: Value.Integer(idx) :: Nil =>
           lookupStore(a) match {
             case Value.Vector(siz, els, ini) if idx >= 0 && idx < siz => els.getOrElse(idx, ini)
-            case Value.Vector(siz, _, _)                              => stackedException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
+            case Value.Vector(siz, _, _) => stackedException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
           }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }

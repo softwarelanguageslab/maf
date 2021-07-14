@@ -8,11 +8,9 @@ import maf.util.datastructures.SmartUnion._
 import maf.util._
 
 /**
- * Defines a Scheme lattice based on other lattices.
- * Example usage:
- *    val address = NameAddress
- *    val lattice = new ModularSchemeLattice[SchemeExp, address.A, Type.S, Type.B, Type.I, Type.R, Type.C, Type.Sym]
- * Now `lattice.L` is a SchemeLattice, of which the implicit for the typeclass is available in the current scope.
+ * Defines a Scheme lattice based on other lattices. Example usage: val address = NameAddress val lattice = new ModularSchemeLattice[SchemeExp,
+ * address.A, Type.S, Type.B, Type.I, Type.R, Type.C, Type.Sym] Now `lattice.L` is a SchemeLattice, of which the implicit for the typeclass is
+ * available in the current scope.
  */
 /** TODO[medium]: use Show and ShowStore here */
 class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: IntLattice, R: RealLattice, C: CharLattice, Sym: SymbolLattice]
@@ -26,8 +24,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
   implicit def mfAddrMonoid[X]: Monoid[MayFail[Set[X], Error]] = MonoidImplicits.mayFail[Set[X]](MonoidImplicits.setMonoid[X])
 
   /**
-   * We first implement all possible operations on single values, that can be
-   * only joined when compatible. This therefore is not a lattice but will be
+   * We first implement all possible operations on single values, that can be only joined when compatible. This therefore is not a lattice but will be
    * used to build the set lattice
    */
   sealed trait Value extends SmartHash {
@@ -61,7 +58,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def ord = 6
     override def toString: String = prims.mkString("Primitive{", ", ", "}")
   }
-  // TODO: define `type Closure = (SchemeLambdaExp, Env, Option[String])` (maybe using a case class)
+  // TODO: define `type Closure = (SchemeLambdaExp, Env)` (maybe using a case class)
   case class Clo(closures: Set[schemeLattice.Closure]) extends Value {
     def ord = 7
     override def toString: String =
@@ -733,8 +730,19 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
     def release(lock: Value, tid: TID): MayFail[L, Error] = lock match {
       case Lock(tids) if tids.contains(tid) => MayFail.success(Element(Lock(tids - tid)))
-      case Lock(_)                          => MayFail.failure(InvalidRelease("Cannot release lock since it is not held by the requesting thread.", lock))
-      case _                                => MayFail.failure(TypeError("release: expected a lock", lock))
+      case Lock(_) => MayFail.failure(InvalidRelease("Cannot release lock since it is not held by the requesting thread.", lock))
+      case _       => MayFail.failure(TypeError("release: expected a lock", lock))
+    }
+
+    def refs(x: Value): Set[Address] = x match {
+      case Bool(_) | Char(_) | Int(_) | Real(_) | Str(_) | Symbol(_) | Prim(_) | Void | Nil => Set.empty
+      case InputPort(id)                                                                    => refs(id)
+      case OutputPort(id)                                                                   => refs(id)
+      case Thread(_) | Lock(_) | Kont(_) => ??? // TODO: don't know enough about these types to compute refs
+      case Pointer(ptrs)                 => ptrs.toSet[Address]
+      case Cons(car, cdr)                => schemeLattice.refs(car) ++ schemeLattice.refs(cdr)
+      case Vec(_, els)                   => els.flatMap(elm => schemeLattice.refs(elm._2)).toSet
+      case Clo(cls)                      => cls.flatMap(clo => clo._2.addrs)
     }
   }
 
@@ -840,6 +848,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def nil: L = Element(Value.nil)
     def void: L = Element(Value.void)
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
+    def refs(x: L): Set[Address] = x.foldMapL(x => Value.refs(x))(setMonoid)
   }
 
   object L {

@@ -3,16 +3,8 @@ package maf.language.scheme
 import maf.core._
 
 /**
- * Remove defines from a Scheme expression, replacing them by let bindings.
- * For example:
- *   (define foo 1)
- *   (define (f x) x)
- *   (f foo)
- * Will be converted to:
- *   (letrec ((foo 1)
- *            (f (lambda (x) x)))
- *     (f foo))
- * Which is semantically equivalent with respect to the end result
+ * Remove defines from a Scheme expression, replacing them by let bindings. For example: (define foo 1) (define (f x) x) (f foo) Will be converted to:
+ * (letrec ((foo 1) (f (lambda (x) x))) (f foo)) Which is semantically equivalent with respect to the end result
  */
 trait BaseSchemeUndefiner {
   import scala.util.control.TailCalls._
@@ -140,7 +132,7 @@ trait BaseSchemeUndefiner {
     case SchemeDefineFunction(_, _, _, _) :: _          => tailcall(undefine(exps, List(), None)).map(v => List(v))
     case SchemeDefineVarArgFunction(_, _, _, _, _) :: _ => tailcall(undefine(exps, List(), None)).map(v => List(v))
     case SchemeDefineVariable(_, _, _) :: _             => tailcall(undefine(exps, List(), None)).map(v => List(v))
-    case exp :: rest                                    => this.undefineExp(exp).flatMap(e1 => tailcall(undefineBody(rest)).flatMap(e2 => done(e1 :: e2)))
+    case exp :: rest => this.undefineExp(exp).flatMap(e1 => tailcall(undefineBody(rest)).flatMap(e2 => done(e1 :: e2)))
   }
 }
 

@@ -5,7 +5,8 @@ import maf.modular.AbstractDomain
 
 /**
  * An abstract domain that can be annotated with addresses.
- * @tparam Expr The type of expressions of the language under analysis.
+ * @tparam Expr
+ *   The type of expressions of the language under analysis.
  */
 trait IncrementalAbstractDomain[Expr <: Expression] extends AbstractDomain[Expr] {
   implicit override val lattice: IncrementalLattice[Value, Address]

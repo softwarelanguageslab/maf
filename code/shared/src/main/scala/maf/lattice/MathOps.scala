@@ -6,10 +6,7 @@ import scala.util.Random
 object MathOps {
   def ceil(a: Double): Double = scala.math.ceil(a)
 
-  /**
-   * Modulo in Scheme and Scala are different.
-   * This implements the same behavior as Scheme's modulo
-   */
+  /** Modulo in Scheme and Scala are different. This implements the same behavior as Scheme's modulo */
   def modulo(n1: BigInt, n2: BigInt): BigInt =
     if (n1.signum * n2.signum < 0) {
       /* different sign, behaviour not the same between Scheme and Scala, adjust it */
@@ -26,10 +23,7 @@ object MathOps {
 
   def random(n: Double): Double = scala.math.abs(scala.util.Random.nextDouble() % n)
 
-  /**
-   * Round in Scheme and Scala are different.
-   * This implements the same behaviour as Scheme's round.
-   */
+  /** Round in Scheme and Scala are different. This implements the same behaviour as Scheme's round. */
   def round(n: Double): Double = {
     val frac = n % 1 /* Fractional part of n */
     /* In the case of a fraction part equaling 0.5, rounding is done towards the even number. */

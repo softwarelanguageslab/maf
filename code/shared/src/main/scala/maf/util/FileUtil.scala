@@ -18,8 +18,8 @@ object Reader {
 }
 
 /**
- * Utility to write to plain text files. Can also be modifief to write to csv files using
- * a CSVWriter, CSVWriter.NO_QUOTE_CHARACTER and the writeNext method.
+ * Utility to write to plain text files. Can also be modifief to write to csv files using a CSVWriter, CSVWriter.NO_QUOTE_CHARACTER and the writeNext
+ * method.
  */
 object Writer {
 

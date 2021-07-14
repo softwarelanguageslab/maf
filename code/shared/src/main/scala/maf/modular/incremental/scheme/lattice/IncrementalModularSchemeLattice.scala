@@ -22,10 +22,11 @@ class IncrementalModularSchemeLattice[
   type Sources = Set[A]
 
   /**
-   * *
-   * A value that keeps track of the store addresses it depends upon.
-   * @param values      The list of abstract values.
-   * @param sources The addresses in the store where the value originated.
+   * * A value that keeps track of the store addresses it depends upon.
+   * @param values
+   *   The list of abstract values.
+   * @param sources
+   *   The addresses in the store where the value originated.
    */
   case class AnnotatedElements(values: List[Value], sources: Sources) extends SmartHash {
     override def toString: String = toL().toString
@@ -64,6 +65,7 @@ class IncrementalModularSchemeLattice[
     private def annotate(als: Elements, sources: Sources): AL = AnnotatedElements(als.vs, sources)
 
     def show(x: AL): String = x.toString /* TODO[easy]: implement better */
+    def refs(x: AL): Set[Address] = x.foldMapL(Value.refs(_))(setMonoid)
     def isTrue(x: AL): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: AL): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
     def op(op: SchemeOp)(args: List[AL]): MayFail[AL, Error] = {

@@ -45,14 +45,14 @@ abstract class AdaptiveAnalysisComparison[
     }
 
   /**
-   * For a given benchmark, compare non-adaptive analyses with adaptive ones
-   * To do so, two results are included per benchmark
-   *    - the most precise non-adaptive analysis that terminated within
-   *    - the most precise adaptive analysis that terminated
-   * All results are saved in the `result` table of this object
+   * For a given benchmark, compare non-adaptive analyses with adaptive ones To do so, two results are included per benchmark
+   *   - the most precise non-adaptive analysis that terminated within
+   *   - the most precise adaptive analysis that terminated All results are saved in the `result` table of this object
    *
-   * @param path the name of / path to the benchmark program
-   * @param program the Scheme expression of the benchmark program
+   * @param path
+   *   the name of / path to the benchmark program
+   * @param program
+   *   the Scheme expression of the benchmark program
    */
   protected def forBenchmark(path: Benchmark, program: SchemeExp) = {
     // run the concrete interpreter analysis first
