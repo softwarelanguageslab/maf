@@ -11,7 +11,6 @@ import maf.util.benchmarks.Timeout
 import maf.language.sexp
 import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
-import scala.collection.immutable
 import maf.lattice.interfaces.LatticeWithAddrs
 
 abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](prog) with SchemeDomain {
@@ -87,25 +86,6 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     def subsumes(x: Storable, y: => Storable): Boolean = throw new Exception("NYI")
     def eql[B: BoolLattice](x: Storable, y: Storable): B = throw new Exception("NYI")
     def show(v: Storable): String = v.toString
-    private def refsEnv(e: Env): Set[Adr] = e.addrs
-    private def refsFrm(frm: Frame): Set[Adr] = frm match {
-      case HltFrame                      => Set.empty
-      case RetFrame(adr)                 => Set(adr)
-      case AndFrame(_, env)              => refsEnv(env)
-      case ArgFrame(_, fad, aad, _, env) => refsEnv(env) ++ aad.map(_._2) + fad
-      case AssFrame(_, env)              => refsEnv(env)
-      case FunFrame(_, _, env)           => refsEnv(env)
-      case IteFrame(_, _, env)           => refsEnv(env)
-      case LetFrame(_, bad, _, env)      => refsEnv(env) ++ bad.map(_._2)
-      case LtrFrame(_, _, env)           => refsEnv(env)
-      case LttFrame(_, _, env)           => refsEnv(env)
-      case OrrFrame(_, env)              => refsEnv(env)
-      case PcaFrame(_, env)              => refsEnv(env)
-      case PcdFrame(_, _)                => Set.empty
-      case ScaFrame(_, env)              => refsEnv(env)
-      case ScdFrame(_, _)                => Set.empty
-      case SeqFrame(_, env)              => refsEnv(env)
-    }
   }
 
   case class EnvAddr(lam: Lam, ctx: Ctx) extends Address {
@@ -201,6 +181,48 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     override def toString = s"HALT($vlu)"
   }
 
+  private def gc(cmp: Component): Component = cmp match {
+    case MainComponent => cmp
+    case CallComponent(lam, ctx, sto) =>
+      val rs =  lam.args.map(VarAddr(_, ctx)).toSet[Adr] ++ 
+                lam.varArgId.map(VarAddr(_, ctx)).toSet[Adr] + 
+                EnvAddr(lam, ctx) + 
+                KonAddr(lam, ctx)
+      CallComponent(lam, ctx, sto.collect(rs))
+    case KontComponent(kon, ctx, sto) => 
+      val rs = kon.flatMap(refsFrm).toSet + ResAddr(kon, ctx)
+      KontComponent(kon, ctx, sto.collect(rs))
+    case HaltComponent(vlu, sto) => 
+      val rs = lattice.refs(vlu)
+      HaltComponent(vlu, sto.collect(rs))
+  }
+
+  // GC every component that is spawned
+  override def spawn(cmp: Component) = {
+    println(s"$cmp")
+    super.spawn(gc(cmp))
+  }
+
+  private def refsEnv(e: Env): Set[Adr] = e.addrs
+  private def refsFrm(frm: Frame): Set[Adr] = frm match {
+    case HltFrame                      => Set.empty
+    case RetFrame(adr)                 => Set(adr)
+    case AndFrame(_, env)              => refsEnv(env)
+    case ArgFrame(_, fad, aad, _, env) => refsEnv(env) ++ aad.map(_._2) + fad
+    case AssFrame(_, env)              => refsEnv(env)
+    case FunFrame(_, _, env)           => refsEnv(env)
+    case IteFrame(_, _, env)           => refsEnv(env)
+    case LetFrame(_, bad, _, env)      => refsEnv(env) ++ bad.map(_._2)
+    case LtrFrame(_, _, env)           => refsEnv(env)
+    case LttFrame(_, _, env)           => refsEnv(env)
+    case OrrFrame(_, env)              => refsEnv(env)
+    case PcaFrame(_, env)              => refsEnv(env)
+    case PcdFrame(_, _)                => Set.empty
+    case ScaFrame(_, env)              => refsEnv(env)
+    case ScdFrame(_, _)                => Set.empty
+    case SeqFrame(_, env)              => refsEnv(env)
+  }
+
   def initialComponent: Component = MainComponent
   def expr(cmp: Component): Exp = cmp match {
     case MainComponent            => program
@@ -236,7 +258,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
       case lit: SchemeValue =>
         evalLiteralValue(lit, sto, kon)
       case lam: SchemeLambdaExp =>
-        continue(kon, lattice.closure((lam, env)), sto)
+        continue(kon, lattice.closure((lam, env.restrictTo(lam.fv))), sto)
       case SchemeVar(id) =>
         evalVariable(id, env, sto, kon)
       case SchemeSet(id, ep0, _) =>
@@ -260,7 +282,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         val lam = SchemeLambda(Some(id.name), prs, bdy, idn)
         val adr = VarAddr(id, cmp.ctx)
         val lex = env.extend(id.name, adr)
-        val clo = lattice.closure((lam, lex))
+        val clo = lattice.closure((lam, lex.restrictTo(lam.fv)))
         val sto1 = sto.extend(adr, V(clo))
         val call = SchemeFuncall(lam, ags, idn)
         evalArgs(call, adr, Nil, ags, env, sto1, kon)
