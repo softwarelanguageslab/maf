@@ -11,10 +11,10 @@ import maf.util.benchmarks.Timeout
 import maf.language.sexp
 import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
-import scala.collection.immutable
 import maf.lattice.interfaces.LatticeWithAddrs
 
 abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](prog) with SchemeDomain {
+  this: SchemeModFLocalSensitivity =>
 
   // shorthands
   type Val = Value
@@ -28,17 +28,6 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
   type Idn = Identity
   type Pos = Position
   type Cmp = Component
-
-  // parameterised by context-sensitivity policy
-  type Ctx
-  def initialCtx: Ctx
-  def allocCtx(
-      lam: Lam,
-      lex: Env,
-      args: List[(Exp, Val)],
-      pos: Pos,
-      cmp: Cmp
-    ): Ctx
 
   lazy val initialExp: Exp = program
   lazy val initialEnv: Env = NestedEnv(initialBds.map(p => (p._1, p._2)).toMap, None)
@@ -87,25 +76,6 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     def subsumes(x: Storable, y: => Storable): Boolean = throw new Exception("NYI")
     def eql[B: BoolLattice](x: Storable, y: Storable): B = throw new Exception("NYI")
     def show(v: Storable): String = v.toString
-    private def refsEnv(e: Env): Set[Adr] = e.addrs
-    private def refsFrm(frm: Frame): Set[Adr] = frm match {
-      case HltFrame                      => Set.empty
-      case RetFrame(adr)                 => Set(adr)
-      case AndFrame(_, env)              => refsEnv(env)
-      case ArgFrame(_, fad, aad, _, env) => refsEnv(env) ++ aad.map(_._2) + fad
-      case AssFrame(_, env)              => refsEnv(env)
-      case FunFrame(_, _, env)           => refsEnv(env)
-      case IteFrame(_, _, env)           => refsEnv(env)
-      case LetFrame(_, bad, _, env)      => refsEnv(env) ++ bad.map(_._2)
-      case LtrFrame(_, _, env)           => refsEnv(env)
-      case LttFrame(_, _, env)           => refsEnv(env)
-      case OrrFrame(_, env)              => refsEnv(env)
-      case PcaFrame(_, env)              => refsEnv(env)
-      case PcdFrame(_, _)                => Set.empty
-      case ScaFrame(_, env)              => refsEnv(env)
-      case ScdFrame(_, _)                => Set.empty
-      case SeqFrame(_, env)              => refsEnv(env)
-    }
   }
 
   case class EnvAddr(lam: Lam, ctx: Ctx) extends Address {
@@ -201,6 +171,45 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     override def toString = s"HALT($vlu)"
   }
 
+  private def gc(cmp: Component): Component = cmp match {
+    case MainComponent => cmp
+    case CallComponent(lam, ctx, sto) =>
+      val rs = lam.args.map(VarAddr(_, ctx)).toSet[Adr] ++
+        lam.varArgId.map(VarAddr(_, ctx)).toSet[Adr] +
+        EnvAddr(lam, ctx) +
+        KonAddr(lam, ctx)
+      CallComponent(lam, ctx, sto.collect(rs))
+    case KontComponent(kon, ctx, sto) =>
+      val rs = kon.flatMap(refsFrm).toSet + ResAddr(kon, ctx)
+      KontComponent(kon, ctx, sto.collect(rs))
+    case HaltComponent(vlu, sto) =>
+      val rs = lattice.refs(vlu)
+      HaltComponent(vlu, sto.collect(rs))
+  }
+
+  // GC every component that is spawned
+  override def spawn(cmp: Component) = super.spawn(gc(cmp))
+
+  private def refsEnv(e: Env): Set[Adr] = e.addrs
+  private def refsFrm(frm: Frame): Set[Adr] = frm match {
+    case HltFrame                      => Set.empty
+    case RetFrame(adr)                 => Set(adr)
+    case AndFrame(_, env)              => refsEnv(env)
+    case ArgFrame(_, fad, aad, _, env) => refsEnv(env) ++ aad.map(_._2) + fad
+    case AssFrame(_, env)              => refsEnv(env)
+    case FunFrame(_, _, env)           => refsEnv(env)
+    case IteFrame(_, _, env)           => refsEnv(env)
+    case LetFrame(_, bad, _, env)      => refsEnv(env) ++ bad.map(_._2)
+    case LtrFrame(_, _, env)           => refsEnv(env)
+    case LttFrame(_, _, env)           => refsEnv(env)
+    case OrrFrame(_, env)              => refsEnv(env)
+    case PcaFrame(_, env)              => refsEnv(env)
+    case PcdFrame(_, _)                => Set.empty
+    case ScaFrame(_, env)              => refsEnv(env)
+    case ScdFrame(_, _)                => Set.empty
+    case SeqFrame(_, env)              => refsEnv(env)
+  }
+
   def initialComponent: Component = MainComponent
   def expr(cmp: Component): Exp = cmp match {
     case MainComponent            => program
@@ -236,7 +245,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
       case lit: SchemeValue =>
         evalLiteralValue(lit, sto, kon)
       case lam: SchemeLambdaExp =>
-        continue(kon, lattice.closure((lam, env)), sto)
+        continue(kon, lattice.closure((lam, env.restrictTo(lam.fv))), sto)
       case SchemeVar(id) =>
         evalVariable(id, env, sto, kon)
       case SchemeSet(id, ep0, _) =>
@@ -260,8 +269,8 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         val lam = SchemeLambda(Some(id.name), prs, bdy, idn)
         val adr = VarAddr(id, cmp.ctx)
         val lex = env.extend(id.name, adr)
-        val clo = lattice.closure((lam, lex))
-        val sto1 = sto.extend(adr, V(clo))
+        val clo = lattice.closure((lam, lex.restrictTo(lam.fv)))
+        val sto1 = extendV(sto, adr, clo)
         val call = SchemeFuncall(lam, ags, idn)
         evalArgs(call, adr, Nil, ags, env, sto1, kon)
       case SchemeAnd(Nil, _) =>
@@ -343,7 +352,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         val (env1, sto1) = bad.reverse.foldLeft((env, sto)) { case (acc, (idf, frm)) =>
           val vlu = lookupV(sto, frm)
           val adr = VarAddr(idf, cmp.ctx)
-          (acc._1.extend(idf.name, adr), acc._2.extend(adr, V(vlu)))
+          (acc._1.extend(idf.name, adr), extendV(acc._2, adr, vlu))
         }
         evalSequence(bdy, env1, sto1, kon)
       case (_, rhs) :: _ =>
@@ -444,20 +453,21 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
           val (fxa, vra) = ags.splitAt(lam.args.length)
           val cctx = allocCtx(lam, lex, ags, pos, cmp)
           val sto1 = lam.args.zip(fxa).foldLeft(sto) { case (acc, (par, (_, arg))) =>
-            acc.extend(VarAddr(par, cctx), V(arg))
+            extendV(acc, VarAddr(par, cctx), arg)
           }
           val sto2 = if (lam.varArgId.isDefined) {
             val (lst, sto2a) = allocList(vra, sto1)
-            sto2a.extend(VarAddr(lam.varArgId.get, cctx), V(lst))
+            extendV(sto2a, VarAddr(lam.varArgId.get, cctx), lst)
           } else {
             sto1
           }
-          val sto3 = sto2.extend(EnvAddr(lam, cctx), E(Set(lex)))
-          val sto4 = sto3.extend(KonAddr(lam, cctx),
-                                 K(kon match {
-                                   case RetFrame(kad) :: Nil => lookupK(sto, kad)
-                                   case _                    => Set((kon, cmp.ctx))
-                                 })
+          val sto3 = extendE(sto2, EnvAddr(lam, cctx), Set(lex))
+          val sto4 = extendK(sto3,
+                             KonAddr(lam, cctx),
+                             kon match {
+                               case RetFrame(kad) :: Nil => lookupK(sto, kad)
+                               case _                    => Set((kon, cmp.ctx))
+                             }
           )
           spawn(CallComponent(lam, cctx, sto4))
         case _ => ()
@@ -506,7 +516,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         vlu: Val
       ): (Val, Sto) = {
       val addr = PtrAddr(exp, cmp.ctx)
-      val sto1 = sto.extend(addr, V(vlu))
+      val sto1 = extendV(sto, addr, vlu)
       (lattice.pointer(addr), sto1)
     }
 
@@ -525,7 +535,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
           case RetFrame(adr) :: Nil =>
             lookupK(sto, adr).foreach { case (kon, ctx) =>
               val addr = ResAddr(kon, ctx)
-              val sto1 = sto.extend(addr, V(vlu)) //TODO: extend AND join???
+              val sto1 = extendV(sto, addr, vlu)
               spawn(KontComponent(kon, ctx, sto1))
             }
           // local continuations
@@ -538,24 +548,24 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
             assignVariable(id, env, sto, vlu, rst)
           case FunFrame(fun, args, env) :: rst =>
             val addr = FrmAddr(fun.f, cmp.ctx)
-            val sto1 = sto.extend(addr, V(vlu))
+            val sto1 = extendV(sto, addr, vlu)
             evalArgs(fun, addr, Nil, args, env, sto1, rst)
           case ArgFrame(fun, fad, aad, ag0 :: agr, env) :: rst =>
             val addr = FrmAddr(ag0, cmp.ctx)
-            val sto1 = sto.extend(addr, V(vlu))
+            val sto1 = extendV(sto, addr, vlu)
             evalArgs(fun, fad, (ag0, addr) :: aad, agr, env, sto1, rst)
           case LetFrame(bdy, bad, (idf, rhs) :: bds, env) :: rst =>
             val addr = FrmAddr(rhs, cmp.ctx)
-            val sto1 = sto.extend(addr, V(vlu))
+            val sto1 = extendV(sto, addr, vlu)
             evalLet((idf, addr) :: bad, bds, bdy, env, sto1, rst)
           case LttFrame(bdy, (idf, _) :: bds, env) :: rst =>
             val addr = VarAddr(idf, cmp.ctx)
             val env1 = env.extend(idf.name, addr)
-            val sto1 = sto.extend(addr, V(vlu))
+            val sto1 = extendV(sto, addr, vlu)
             evalLetStar(bds, bdy, env1, sto1, rst)
           case LtrFrame(bdy, (idf, _) :: bds, env) :: rst =>
             val addr = VarAddr(idf, cmp.ctx)
-            val sto1 = sto.extend(addr, V(vlu))
+            val sto1 = extendV(sto, addr, vlu)
             evalLetrec(bds, bdy, env, sto1, rst)
           case AndFrame(nxt :: oth, env) :: rst =>
             if (lattice.isTrue(vlu)) { evalAnd(nxt, oth, env, sto, rst) }
@@ -565,7 +575,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
             if (lattice.isFalse(vlu)) { evalOr(oth, env, sto, rst) }
           case PcaFrame(pai, env) :: rst =>
             val addr = FrmAddr(pai.car, cmp.ctx)
-            val sto1 = sto.extend(addr, V(vlu))
+            val sto1 = extendV(sto, addr, vlu)
             eval(pai.cdr, env, sto1, PcdFrame(pai, addr) :: rst)
           case PcdFrame(pai, frm) :: rst =>
             val car = lookupV(sto, frm)
@@ -573,7 +583,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
             continue(rst, res, sto1)
           case ScaFrame(spi, env) :: rst =>
             val addr = FrmAddr(spi.splice, cmp.ctx)
-            val sto1 = sto.extend(addr, V(vlu))
+            val sto1 = extendV(sto, addr, vlu)
             eval(spi.cdr, env, sto1, ScdFrame(spi, addr) :: rst)
           case ScdFrame(_, _) :: rst =>
             //val spl = lookupV(sto, frm)
@@ -583,30 +593,31 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
             throw new Exception(s"Unsupported continuation $kon")
         }
       }
-
-    // HELPERS
-
-    private def lookupK(sto: Sto, adr: KonAddr): Set[(Kon, Ctx)] =
-      sto.lookup(adr) match {
-        case Some(K(kns)) => kns
-        case _            => throw new Exception("This should not happen")
-      }
-
-    private def lookupE(sto: Sto, adr: EnvAddr): Set[Env] =
-      sto.lookup(adr) match {
-        case Some(E(env)) => env
-        case _            => throw new Exception("This should not happen")
-      }
-
-    private def lookupV(sto: Sto, adr: Address): Value =
-      sto.lookup(adr) match {
-        case Some(V(vlu)) => vlu
-        case x            => throw new Exception(s"This should not happen ($adr -> $x)")
-      }
-
   }
 
-  // BRIDGING FUNCTIONALITY FOR PRIMITIVES (TODO: CLEANUP)
+  // STORE HELPERS
+
+  private def lookupK(sto: Sto, adr: KonAddr): Set[(Kon, Ctx)] =
+    sto.lookup(adr) match {
+      case Some(K(kns)) => kns
+      case _            => throw new Exception("This should not happen")
+    }
+
+  private def lookupE(sto: Sto, adr: EnvAddr): Set[Env] =
+    sto.lookup(adr) match {
+      case Some(E(env)) => env
+      case _            => throw new Exception("This should not happen")
+    }
+
+  private def lookupV(sto: Sto, adr: Adr): Value =
+    sto.lookup(adr) match {
+      case Some(V(vlu)) => vlu
+      case x            => throw new Exception(s"This should not happen ($adr -> $x)")
+    }
+
+  protected def extendV(sto: Sto, adr: Adr, vlu: Val): Sto = sto.extend(adr, V(vlu))
+  protected def extendE(sto: Sto, adr: Adr, evs: Set[Env]): Sto = sto.extend(adr, E(evs))
+  protected def extendK(sto: Sto, adr: Adr, kts: Set[(Kon, Ctx)]): Sto = sto.extend(adr, K(kts))
 
   case class StoreAdapter(sto: Sto) extends Store[Adr, Val] {
     type This = StoreAdapter
@@ -614,7 +625,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
       case Some(V(vlu)) => Some(vlu)
       case _            => None
     }
-    def extend(adr: Adr, vlu: Val) = this.copy(sto = sto.extend(adr, V(vlu)))
+    def extend(adr: Adr, vlu: Val) = this.copy(sto = extendV(sto, adr, vlu))
     override def update(adr: Adr, vlu: Val) = this.copy(sto = sto.update(adr, V(vlu)))
   }
 
@@ -623,32 +634,4 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     def callcc(clo: lattice.Closure, pos: Position): Value = throw new Exception("NYI")
     def currentThread: TID = throw new Exception("NYI")
   }
-}
-
-trait SchemeModFLocalNoSensitivity extends SchemeModFLocal {
-  type Ctx = Unit
-  def initialCtx: Unit = ()
-  def allocCtx(
-      lam: Lam,
-      lex: Env,
-      args: List[(Exp, Val)],
-      pos: Pos,
-      cmp: Cmp
-    ): Ctx = ()
-}
-
-trait SchemeModFLocalCallSiteSensitivity extends SchemeModFLocal {
-  // parameterized by some k
-  def k: Int
-  // context = list of call sites
-  type Ctx = List[Position]
-  def initialCtx = List.empty
-  def allocCtx(
-      lam: Lam,
-      lex: Env,
-      args: List[(Exp, Val)],
-      pos: Pos,
-      cmp: Cmp
-    ) =
-    (pos :: cmp.ctx).take(k)
 }

@@ -5,7 +5,7 @@ import maf.util.StringUtil
 
 // Dependency that is triggered when an abstract value at address 'addr' is updated
 case class AddrDependency(addr: Address) extends Dependency {
-  override def toString(): String = s"AddrDep($addr)"
+  override def toString: String = s"AddrDep($addr)"
 }
 
 /**
@@ -13,7 +13,7 @@ case class AddrDependency(addr: Address) extends Dependency {
  * @tparam Expr
  *   The type of the expressions under analysis.
  */
-trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDomain[Expr] { inter =>
+trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDomain[Expr] with AnalysisResults[Expr] { inter =>
 
   // TODO: should we parameterize this for more type-safety, or do we not care about that for addresses?
   type Addr = Address
@@ -75,6 +75,9 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
     }
 
   }
+
+  def resultsPerIdn: Map[Identity, Set[Value]] =
+    store.groupBy(_._1.idn).view.mapValues(_.values.toSet).toMap
 
   /** Returns a string representation of the store. */
   def storeString(primitives: Boolean = false): String = {

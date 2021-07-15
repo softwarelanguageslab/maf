@@ -41,9 +41,6 @@ trait MapStore[A <: Address, V] extends Store[A, V] { outer =>
   // models the store using a Map
   val content: Map[A, V]
   def updateContent(other: Map[A, V]): This
-  // create an empty version of this store
-  def empty: This = updateContent(Map.empty)
-  def move(addr: A, to: This): This = to.updateContent(to.content + (addr -> content(addr)))
   // core operations
   def lookup(a: A): Option[V] = content.get(a)
   def extend(a: A, v: V): This = extendOption(a, v).getOrElse(this)
@@ -65,6 +62,16 @@ trait AbstractGC[A <: Address, V] extends MapStore[A, V] { outer =>
   type This >: this.type <: AbstractGC[A, V] { type This = outer.This }
   // get all references of a value
   override val lattice: LatticeWithAddrs[V, A]
+  // requires the following operations to
+  // - construct an empty store
+  // - move an address from one store to another
+  def empty: This
+  def move(addr: A, to: This): This
+  protected def moveMap[X](addr: A, from: Map[A, X], to: Map[A, X]): Map[A, X] =
+    from.get(addr) match {
+      case None    => to
+      case Some(x) => to + (addr -> x)
+    }
   // keep track of refs per address
   val cachedRefs: Map[A, Set[A]]
   def refs(addr: A): Set[A] = cachedRefs.getOrElse(addr, Set.empty)
@@ -77,7 +84,7 @@ trait AbstractGC[A <: Address, V] extends MapStore[A, V] { outer =>
     }
   // stop-and-copy style GC
   def collect(roots: Set[A]): This =
-    scan(roots, roots, empty)
+    scan(roots, Set.empty, empty)
   @tailrec
   private def scan(toMove: Set[A], moved: Set[A], current: This): This =
     if (toMove.isEmpty) {
@@ -91,13 +98,6 @@ trait AbstractGC[A <: Address, V] extends MapStore[A, V] { outer =>
         scan(rest ++ refs(addr), moved + addr, move(addr, current))
       }
     }
-  override def empty: This =
-    super.empty
-      .updateRefs(Map.empty)
-  override def move(addr: A, to: This): This =
-    super
-      .move(addr, to)
-      .updateRefs(to.cachedRefs + (addr -> refs(addr)))
 }
 
 object AbstractGC {
@@ -106,10 +106,14 @@ object AbstractGC {
 }
 
 case class BasicStore[A <: Address, V](content: Map[A, V], cachedRefs: Map[A, Set[A]])(implicit val lattice: LatticeWithAddrs[V, A])
-    extends MapStore[A, V] {
+    extends MapStore[A, V]
+       with AbstractGC[A, V] {
   type This = BasicStore[A, V]
-  def updateContent(other: Map[A, V]): This = this.copy(content = other)
-  //def updateRefs(newRefs: Map[A, Set[A]]): BasicStore[A, V] = this.copy(cachedRefs = newRefs)
+  def updateContent(other: Map[A, V]) = this.copy(content = other)
+  def updateRefs(newRefs: Map[A, Set[A]]) = this.copy(cachedRefs = newRefs)
+  def empty = BasicStore(Map.empty, Map.empty)
+  def move(addr: A, to: This) =
+    BasicStore(moveMap(addr, content, to.content), moveMap(addr, cachedRefs, to.cachedRefs))
 }
 
 object BasicStore {
