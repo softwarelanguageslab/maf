@@ -21,7 +21,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   var botRead: Option[Addr] =
     None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
 
-  def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
+  def focus(a: Addr): Boolean = a.toString == "PtrAddr((cons vars vals) [Some(ε)])" // Whether to "watch"" an address and insert it into the table.
 
   private def insertTable(messageOrComponent: Either[String, Component]): Unit = {
     val stepString = step.toString

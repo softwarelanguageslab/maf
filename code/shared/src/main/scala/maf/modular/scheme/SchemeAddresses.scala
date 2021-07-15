@@ -12,7 +12,7 @@ trait SchemeAddr[+Context] extends Address
 case class VarAddr[Context](id: Identifier, ctx: Context) extends SchemeAddr[Context] {
   def printable = true
   def idn: Identity = id.idn
-  override def toString: String = s"VarAddr($id [$ctx])"
+  override def toString: String = s"VarAddr(${id.fullString} [$ctx])"
 }
 case class PtrAddr[Context](exp: SchemeExp, ctx: Context) extends SchemeAddr[Context] {
   def printable = false
