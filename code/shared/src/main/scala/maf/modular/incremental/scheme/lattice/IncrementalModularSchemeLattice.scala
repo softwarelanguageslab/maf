@@ -162,15 +162,15 @@ class IncrementalModularSchemeLattice[
               .toList
               .sorted
               .mkString("Pointer(", ", ", ")")
-            table = table.add(v.ord.toString, name, ptrs)
+            table = table.add(v.typeName, name, ptrs)
           } else
-            table = table.add(v.ord.toString, name, v.toString)
+            table = table.add(v.typeName, name, v.toString)
         }
       }
       insertList(xname, x.values)
       insertList(yname, y.values)
-      (x.values.diff(y.values) ++ y.values.diff(x.values)).map(_.ord).foreach { ord =>
-        table = table.add(ord.toString, "diff", "!")
+      (x.values.diff(y.values) ++ y.values.diff(x.values)).map(_.typeName).foreach { typeName =>
+        table = table.add(typeName, "diff", "!")
       }
       table.prettyString(columns = List("diff", xname, yname))
     }

@@ -108,14 +108,14 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       val content = Reader.loadFile(benchmark)
       val program = CSchemeParser.parse(content)
 
-      val cResults = evalConcreteWithVersion(program, benchmark, Old)
+      val cResultsOld = evalConcreteWithVersion(program, benchmark, Old)
 
       val anlOld = runAnalysisWithConfiguration(program, benchmark, allOptimisations)
       assume(anlOld.finished, "Initial analysis timed out.")
 
       // Check soundness on the original version of the program.
       info("Checking initial analysis results.")
-      compareResults(anlOld, cResults, "initial analysis")
+      compareResults(anlOld, cResultsOld, "initial analysis")
 
       val cResultsNew = evalConcreteWithVersion(program, benchmark, New)
 
