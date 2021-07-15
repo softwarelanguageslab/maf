@@ -29,47 +29,47 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
    */
   sealed trait Value extends SmartHash {
     def ord: scala.Int
-    val typeName: String // Can be used to print information on values.
+    def typeName: String // Can be used to print information on values.
   }
   case class Str(s: S) extends Value {
     def ord = 0
-    val typeName = "STRG"
+    def typeName = "STRG"
     override def toString: String = StringLattice[S].show(s)
   }
   case class Bool(b: B) extends Value {
     def ord = 1
-    val typeName = "BOOL"
+    def typeName = "BOOL"
     override def toString: String = BoolLattice[B].show(b)
   }
   case class Int(i: I) extends Value {
     def ord = 2
-    val typeName = "INTE"
+    def typeName = "INTE"
     override def toString: String = IntLattice[I].show(i)
   }
   case class Real(r: R) extends Value {
     def ord = 3
-    val typeName = "REAL"
+    def typeName = "REAL"
     override def toString: String = RealLattice[R].show(r)
   }
   case class Char(c: C) extends Value {
     def ord = 4
-    val typeName = "CHAR"
+    def typeName = "CHAR"
     override def toString: String = CharLattice[C].show(c)
   }
   case class Symbol(s: Sym) extends Value {
     def ord = 5
-    val typeName = "SYMB"
+    def typeName = "SYMB"
     override def toString: String = SymbolLattice[Sym].show(s)
   }
   case class Prim(prims: Set[String]) extends Value {
     def ord = 6
-    val typeName = "PRIM"
+    def typeName = "PRIM"
     override def toString: String = prims.mkString("Primitive{", ", ", "}")
   }
   // TODO: define `type Closure = (SchemeLambdaExp, Env)` (maybe using a case class)
   case class Clo(closures: Set[schemeLattice.Closure]) extends Value {
     def ord = 7
-    val typeName = "CLOS"
+    def typeName = "CLOS"
     override def toString: String =
       closures
         .map(_._1.lambdaName)
@@ -77,22 +77,22 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
   }
   case object Nil extends Value {
     def ord = 8
-    val typeName = "NULL"
+    def typeName = "NULL"
     override def toString: String = "()"
   }
   case class Pointer(ptrs: Set[A]) extends Value {
     def ord = 9
-    val typeName = "PNTR"
+    def typeName = "PNTR"
     override def toString: String = ptrs.mkString("Pointers{", ", ", "}")
   }
   case class Cons(car: L, cdr: L) extends Value {
     def ord = 10
-    val typeName = "CONS"
+    def typeName = "CONS"
     override def toString: String = s"($car . $cdr)"
   }
   case class Vec(size: I, elements: Map[I, L]) extends Value {
     def ord = 11
-    val typeName = "VECT"
+    def typeName = "VECT"
     override def toString: String = {
       val els = elements.toList
         .map({ case (k, v) =>
@@ -104,12 +104,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
   }
   case class Kont(k: Set[K]) extends Value {
     def ord = 12
-    val typeName = "KONT"
+    def typeName = "KONT"
     override def toString: String = "<continuation>"
   }
   case class Thread(threads: Set[TID]) extends Value {
     def ord = 13
-    val typeName = "THRD"
+    def typeName = "THRD"
     override def toString: String = threads.mkString("Thread{", ", ", "}")
   }
   // Could also store (a) Thread(s) here, but this seems to be simpler.
@@ -117,22 +117,22 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
   // This should correspond to the formalisation of ModConc and \lambda_\tau.
   case class Lock(threads: Set[TID]) extends Value {
     def ord = 14
-    val typeName = "LOCK"
+    def typeName = "LOCK"
     override def toString: String = threads.mkString("Lock{", ", ", "}")
   }
   case object Void extends Value {
     def ord = 15
-    val typeName = "VOID"
+    def typeName = "VOID"
     override def toString: String = "<void>"
   }
   case class InputPort(id: Value) extends Value {
     def ord = 16
-    val typeName = "IPRT"
+    def typeName = "IPRT"
     override def toString: String = s"InputPort{$id}"
   }
   case class OutputPort(id: Value) extends Value {
     def ord = 17
-    val typeName = "OPRT"
+    def typeName = "OPRT"
     override def toString: String = s"OutputPort{$id}"
   }
 
