@@ -627,6 +627,9 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     }
     def extend(adr: Adr, vlu: Val) = this.copy(sto = extendV(sto, adr, vlu))
     override def update(adr: Adr, vlu: Val) = this.copy(sto = sto.update(adr, V(vlu)))
+    // join operations -- these are currently not actually used
+    def empty = StoreAdapter(sto.empty)
+    def join(other: StoreAdapter) = StoreAdapter(sto.join(other.sto))
   }
 
   case class InterpreterBridge(ctx: Ctx) extends SchemeInterpreterBridge[Val, Adr] {

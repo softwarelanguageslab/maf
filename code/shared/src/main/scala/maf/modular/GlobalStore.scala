@@ -72,6 +72,8 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
       def extend(a: Addr, v: Value): This = {
         writeAddr(a, v); this
       }
+      def empty = this // can't empty a shared global store
+      def join(self: This) = this
     }
 
   }
