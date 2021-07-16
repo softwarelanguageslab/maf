@@ -21,7 +21,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
   type Adr = Address
   type Exp = SchemeExp
   type Lam = SchemeLambdaExp
-  type Sto = BasicStore[Adr, Storable]
+  type Sto = LocalStore[Adr, Storable]
   type Kon = List[Frame]
   type Clo = (Lam, Env)
   type Env = NestedEnv[Address, EnvAddr] // TODO: NestedEnv[VarAddr[Ctx], EnvAddr]
@@ -31,7 +31,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
 
   lazy val initialExp: Exp = program
   lazy val initialEnv: Env = NestedEnv(initialBds.map(p => (p._1, p._2)).toMap, None)
-  lazy val initialSto: Sto = BasicStore(initialBds.map(p => (p._2, p._3)).toMap)
+  lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))
 
   override lazy val program: SchemeExp = {
     val originalProgram = super.program

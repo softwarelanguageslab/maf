@@ -59,20 +59,15 @@ object Environment {
 
 case class NestedEnv[A <: Address, E <: Address](content: Map[String, A], rst: Option[E]) extends Environment[A] {
   type This = NestedEnv[A, E]
-
   /** Restrict the environment to only certain keys */
   def restrictTo(keys: Set[String]): This = this.copy(content = content.view.filterKeys(keys).toMap)
-
   /** Looks up a value in the environment */
   def lookup(name: String): Option[A] = content.get(name)
-
   /** Extend the environment */
   def extend(name: String, a: A): This = this.copy(content = content + (name -> a))
   def extend(values: Iterable[(String, A)]): This = this.copy(content = content ++ values)
-
   /** Mapping over the environment */
   def mapAddrs(f: A => A): This = this.copy(content = content.view.mapValues(f).toMap)
-
   def addrs = rst match {
     case Some(addr) => content.values.toSet + addr
     case None       => content.values.toSet
