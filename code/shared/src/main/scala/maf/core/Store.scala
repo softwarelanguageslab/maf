@@ -75,16 +75,9 @@ sealed trait AbstractCount {
   def inc: AbstractCount
   def join(other: AbstractCount): AbstractCount
 }
-case object CountZero extends AbstractCount { 
-  def inc = CountOne
-  def join(other: AbstractCount) = other
-}
 case object CountOne extends AbstractCount { 
   def inc = CountInf
-  def join(other: AbstractCount) = other match {
-    case CountZero => this
-    case _ => other
-  }
+  def join(other: AbstractCount) = other
 }
 case object CountInf extends AbstractCount { 
   def inc = CountInf
