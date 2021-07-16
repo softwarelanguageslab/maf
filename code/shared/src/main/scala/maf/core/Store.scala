@@ -3,6 +3,8 @@ package maf.core
 import maf.util.SmartHash
 import scala.annotation.tailrec
 import maf.lattice.interfaces.LatticeWithAddrs
+import maf.modular.scheme.VarAddr
+import maf.modular.scheme.PtrAddr
 
 case class UnboundAddress[A <: Address](a: A) extends Error
 
@@ -95,11 +97,16 @@ case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A], AbstractCount
   type This = LocalStore[A, V]
   // lookup
   def lookup(a: A): Option[V] = content.get(a).map(_._1)
-  // extend
+  // allow to disable abstract counting for certain addresses
+  def freshCountFor(adr: Address): AbstractCount = adr match {  //TODO: parameterise this instead of hacking it in...
+    case _: VarAddr[_] | _: PtrAddr[_] => CountOne
+    case _ => CountInf
+  }
+    // extend
   def extend(a: A, v: V): This = extendOption(a, v).getOrElse(this)
   def extendOption(a: A, v: V): Option[This] = content.get(a) match {
     case None if lattice.isBottom(v) => None
-    case None => Some(LocalStore(content + (a -> ((v, lattice.refs(v), CountOne)))))
+    case None => Some(LocalStore(content + (a -> ((v, lattice.refs(v), freshCountFor(a))))))
     case Some((oldValue, oldRefs, oldCount)) =>
       val newValue = lattice.join(oldValue, v)
       val newCount = oldCount.inc

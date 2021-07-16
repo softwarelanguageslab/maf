@@ -336,7 +336,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         kon: Kon
       ): Unit =
       lookupVariable(id, env, sto) { addr =>
-        val sto1 = sto.update(addr, V(vlu))
+        val sto1 = updateV(sto, addr, vlu)
         continue(kon, lattice.void, sto1)
       }
 
@@ -616,6 +616,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
     }
 
   protected def extendV(sto: Sto, adr: Adr, vlu: Val): Sto = sto.extend(adr, V(vlu))
+  protected def updateV(sto: Sto, adr: Adr, vlu: Val): Sto = sto.update(adr, V(vlu))
   protected def extendE(sto: Sto, adr: Adr, evs: Set[Env]): Sto = sto.extend(adr, E(evs))
   protected def extendK(sto: Sto, adr: Adr, kts: Set[(Kon, Ctx)]): Sto = sto.extend(adr, K(kts))
 
