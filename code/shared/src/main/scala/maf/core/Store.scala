@@ -58,10 +58,15 @@ case class BasicStore[A <: Address, V: Lattice](content: Map[A,V]) extends Store
 }
 
 //
-// LOCAL STORE, WHICH SUPPORTS ABSTRACT GC (AND -- COMING SOON -- ABSTRACT COUNTING)
+// LOCAL STORE, WHICH SUPPORTS ABSTRACT GC AND ABSTRACT COUNTING
 //
 
-case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A])])(implicit val lattice: LatticeWithAddrs[V, A]) 
+trait AbstractCount { def inc: AbstractCount }
+case object CountZero extends AbstractCount { def inc = CountOne }
+case object CountOne extends AbstractCount { def inc = CountInf }
+case object CountInf extends AbstractCount { def inc = CountInf }
+
+case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A], AbstractCount)])(implicit val lattice: LatticeWithAddrs[V, A]) 
   extends Store[A, V] { outer =>
   // refine the This type
   type This = LocalStore[A, V]
@@ -71,21 +76,32 @@ case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A])])(implicit va
   def extend(a: A, v: V): This = extendOption(a, v).getOrElse(this)
   def extendOption(a: A, v: V): Option[This] = content.get(a) match {
     case None if lattice.isBottom(v) => None
-    case None => Some(LocalStore(content + (a -> ((v, lattice.refs(v))))))
-    case Some((oldValue, oldRefs)) =>
+    case None => Some(LocalStore(content + (a -> ((v, lattice.refs(v), CountOne)))))
+    case Some((oldValue, oldRefs, oldCount)) =>
       val newValue = lattice.join(oldValue, v)
-      if (oldValue == newValue) {
+      val newCount = oldCount.inc
+      val subsumed = newValue == oldValue
+      if (subsumed && newCount == oldCount) {
         None
+      } else if (subsumed) {
+        Some(LocalStore(content + (a -> ((oldValue, oldRefs, newCount)))))
       } else {
         // we assume that refs(X U Y) = refs(X) U refs(Y)
-        Some(LocalStore(content + (a -> ((newValue, oldRefs ++ lattice.refs(v))))))
+        val newRefs = oldRefs ++ lattice.refs(v)
+        Some(LocalStore(content + (a -> ((newValue, newRefs, newCount)))))
       }
-    }
+  }
+  // update
+  override def update(a: A, v: V): LocalStore[A,V] = content.get(a) match {
+    case None => throw new Exception("Should not update unused address")
+    case Some((_, _, CountOne)) => LocalStore(content + (a -> ((v, lattice.refs(v), CountOne))))
+    case _ => extend(a, v)
+  }
   // stop-and-copy style GC
   def collect(roots: Set[A]): This =
     scan(roots, Set.empty, Map.empty)
   @tailrec
-  private def scan(toMove: Set[A], moved: Set[A], current: Map[A, (V, Set[A])]): This =
+  private def scan(toMove: Set[A], moved: Set[A], current: Map[A, (V, Set[A], AbstractCount)]): This =
     if (toMove.isEmpty) {
       LocalStore(current)
     } else {
@@ -98,9 +114,9 @@ case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A])])(implicit va
         scan(rest ++ newRefs, moved + addr, updated)
       }
     }
-  private def move(addr: A, to: Map[A, (V, Set[A])]): (Map[A, (V, Set[A])], Set[A]) = content.get(addr) match {
+  private def move(addr: A, to: Map[A, (V, Set[A], AbstractCount)]): (Map[A, (V, Set[A], AbstractCount)], Set[A]) = content.get(addr) match {
     case None => (to, Set.empty) 
-    case Some(s@(_, refs)) => (to + (addr -> s), refs)
+    case Some(s@(_, refs, _)) => (to + (addr -> s), refs)
   }
 }
 
