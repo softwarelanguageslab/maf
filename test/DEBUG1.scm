@@ -1,17 +1,8 @@
-(define (fib n) ;; Simple Fibonacci
-  (if (= n 0)
-      n
-      (let ((fib-n-1 (fib (- n 1)))
-            (fib-n-2 (fib (- n 2))))
-        (+ fib-n-1 fib-n-2))))
-
-(define (fib-loop n)
-  (define (loop i)
-    (if (< i n)
-        (begin
-          (display (fib i))
-          (display " ")
-          (loop (+ i 1)))))
-  (loop 0))
-
-(fib-loop 10) 
+(define x "a")
+(define (a)
+  (set! x 'symbol))
+(define (b)
+  (set! x 0))
+(a)
+(b)
+(display x)

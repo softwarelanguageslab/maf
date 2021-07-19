@@ -1,40 +1,17 @@
-(define (eval exp env)
-  (cond ((number? exp) exp)
-        ((symbol? exp) (list 'primitive +))
-        ((pair? exp)
-         (leval-apply (eval (car exp) env)
-                      (cdr exp)
-                      env))
-        (else
-         (error "Unknown expression type -- EVAL"))))
+(define (eval exp)
+  (if (pair? exp)
+         (leval-apply (eval (car exp)))
+         '(primitive)))
 
-(define (leval-apply procedure arguments env)
-  (cond ((eq? (car procedure) 'primitive)
-         (list-of-arg-values arguments env))
-        ((eq? (car procedure) 'procedure)
-         (eval-sequence
-          '()
+(define (leval-apply procedure)
+  (if (eq? (car procedure) 'primitive)
+         '()
           (<change> ; <=================================================================================================
+           #t
            (extend-environment
-            (cadr procedure)
-            '())
-           (extend-environment
-            (map cadddr procedure)
-            '()))))))
+            (map cdr procedure)))))
 
-(define (list-of-arg-values exps env)
-  (if (null? exps)
-      '()
-      (cons (car exps)
-            (list-of-arg-values (cdr exps)
-                                env))))
+(define (extend-environment vars)
+  (list vars))
 
-(define (eval-sequence exps env)
-  (cond ((null? (cdr exps)) (eval (car exps) env))
-        (else (eval (car exps) env)
-              (eval-sequence (cdr exps) env))))
-
-(define (extend-environment vars vals)
-  (list (cons vars vals)))
-
-(eval '(cons 1 2) (extend-environment (list 'cons) (list (list 'primitive cons))))
+(eval '(cons))

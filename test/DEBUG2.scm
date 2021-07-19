@@ -1,11 +1,8 @@
-(define (odd? m)
-  (if (<= m 0)
-      #f
-      (even? (- m 1))))
-
-(define (even? n)
-  (if (<= n 0)
-      #t
-      (odd? (- n 1))))
-
-(odd? (<change> 10 10.5))
+(define x "a")
+(define (a)
+  (<change> (set! x 0) (set! x 'symbol)))
+(define (b)
+  (set! x 0))
+(a)
+(b)
+(display x)
