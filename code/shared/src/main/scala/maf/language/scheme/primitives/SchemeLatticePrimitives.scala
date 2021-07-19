@@ -46,7 +46,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
       store: Store[A, V]
     )(
       f: (A, V, store.DeltaStore) => MayFail[(V, store.DeltaStore), Error]
-    ): MayFail[(V, store.DeltaStore), Error] = 
+    ): MayFail[(V, store.DeltaStore), Error] =
     getPointerAddresses(x).foldLeft(MayFail.success[(V, store.DeltaStore), Error]((bottom, store.deltaStore)))(
       (acc: MayFail[(V, store.DeltaStore), Error], a: A) =>
         acc >>= { case (accVal, accSto) =>
@@ -59,14 +59,13 @@ trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
     )
 
   def dereferencePointerGetAddressReturnStore(
-    x: V,
-    store: Store[A,V]
-  )(
-    f: (A, V, store.DeltaStore) => MayFail[(V, store.DeltaStore), Error]
-  ): MayFail[(V, store.This), Error] = 
-    dereferencePointerGetAddressReturnStoreDelta(x, store)(f) >>= {
-      case (value, delta) =>
-        MayFail.success((value, store.integrate(delta)))
+      x: V,
+      store: Store[A, V]
+    )(
+      f: (A, V, store.DeltaStore) => MayFail[(V, store.DeltaStore), Error]
+    ): MayFail[(V, store.This), Error] =
+    dereferencePointerGetAddressReturnStoreDelta(x, store)(f) >>= { case (value, delta) =>
+      MayFail.success((value, store.integrate(delta)))
     }
 }
 

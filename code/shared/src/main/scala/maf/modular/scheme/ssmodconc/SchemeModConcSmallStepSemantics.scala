@@ -31,9 +31,7 @@ case class ThreadComponent[Ctx](
   override def toString: String = s"ThreadComponent($exp, $env, $ctx)"
 }
 
-/**
- * Provides a small-step ModConc semantics for a concurrent Scheme with threads. Additionally supported primitives (upon R5RS): fork, join.
- */
+/** Provides a small-step ModConc semantics for a concurrent Scheme with threads. Additionally supported primitives (upon R5RS): fork, join. */
 trait SmallStepModConcSemantics
     extends ModAnalysis[SchemeExp]
        with GlobalStore[SchemeExp]
