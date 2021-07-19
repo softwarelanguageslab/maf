@@ -41,22 +41,33 @@ trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
         accv <- acc
       } yield join(accv, res)
     )
-  def dereferencePointerGetAddressReturnStore(
+  def dereferencePointerGetAddressReturnStoreDelta(
       x: V,
       store: Store[A, V]
     )(
-      f: (A, V, store.This) => MayFail[(V, store.This), Error]
-    ): MayFail[(V, store.This), Error] =
-    getPointerAddresses(x).foldLeft(MayFail.success[(V, store.This), Error]((bottom, store.empty)))(
-      (acc: MayFail[(V, store.This), Error], a: A) =>
+      f: (A, V, store.DeltaStore) => MayFail[(V, store.DeltaStore), Error]
+    ): MayFail[(V, store.DeltaStore), Error] = 
+    getPointerAddresses(x).foldLeft(MayFail.success[(V, store.DeltaStore), Error]((bottom, store.deltaStore)))(
+      (acc: MayFail[(V, store.DeltaStore), Error], a: A) =>
         acc >>= { case (accVal, accSto) =>
           store.lookupMF(a) >>= (v =>
-            f(a, v, store) >>= { case (res, newStore) =>
+            f(a, v, store.deltaStore) >>= { case (res, newStore) =>
               MayFail.success((join(accVal, res), accSto.join(newStore)))
             }
           )
         }
     )
+
+  def dereferencePointerGetAddressReturnStore(
+    x: V,
+    store: Store[A,V]
+  )(
+    f: (A, V, store.DeltaStore) => MayFail[(V, store.DeltaStore), Error]
+  ): MayFail[(V, store.This), Error] = 
+    dereferencePointerGetAddressReturnStoreDelta(x, store)(f) >>= {
+      case (value, delta) =>
+        MayFail.success((value, store.integrate(delta)))
+    }
 }
 
 class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A])
