@@ -2,13 +2,14 @@ package maf.modular.scheme.modflocal
 
 import maf.modular._
 import maf.language.scheme._
+import maf.core._
 
 trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResults[SchemeExp] {
   this: SchemeModFLocalSensitivity =>
 
   var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
 
-  override protected def extendV(sto: Sto, adr: Adr, vlu: Val): Sto = {
+  override protected def extendV(sto: Store[Adr, Storable], adr: Adr, vlu: Val): sto.This = {
     resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
     super.extendV(sto, adr, vlu)
   }

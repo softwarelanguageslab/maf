@@ -74,6 +74,10 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
       }
       def empty = this // can't empty a shared global store
       def join(self: This) = this
+      // doesn't really support delta stores
+      type DeltaStore = StoreAdapter.type
+      def deltaStore = this
+      def integrate(delta: DeltaStore) = this
     }
 
   }

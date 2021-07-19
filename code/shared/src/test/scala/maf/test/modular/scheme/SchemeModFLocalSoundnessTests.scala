@@ -16,6 +16,7 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
+  //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/my-test.scm")
 }
 
 class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
