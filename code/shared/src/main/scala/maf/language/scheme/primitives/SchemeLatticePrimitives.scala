@@ -47,14 +47,12 @@ trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
     )(
       f: (A, V, store.This) => MayFail[(V, store.This), Error]
     ): MayFail[(V, store.This), Error] =
-    getPointerAddresses(x).foldLeft(MayFail.success[(V, store.This), Error]((bottom, store: store.This)))(
+    getPointerAddresses(x).foldLeft(MayFail.success[(V, store.This), Error]((bottom, store.empty)))(
       (acc: MayFail[(V, store.This), Error], a: A) =>
-        acc >>= { case (accv, updatedStore) =>
-          /* We use the old store because the new added information can only negatively influence precision (as it didn't hold at the point of the function call). */
+        acc >>= { case (accVal, accSto) =>
           store.lookupMF(a) >>= (v =>
-            /* But we pass the updated store around as it should reflect all updates. */
-            f(a, v, updatedStore) >>= { case (res, newStore) =>
-              MayFail.success((join(accv, res), newStore))
+            f(a, v, store) >>= { case (res, newStore) =>
+              MayFail.success((join(accVal, res), accSto.join(newStore)))
             }
           )
         }
