@@ -72,7 +72,6 @@ case class NestedEnv[A <: Address, E <: Address](content: Map[String, A], rst: O
 
   /** Mapping over the environment */
   def mapAddrs(f: A => A): This = this.copy(content = content.view.mapValues(f).toMap)
-
   def addrs = rst match {
     case Some(addr) => content.values.toSet + addr
     case None       => content.values.toSet

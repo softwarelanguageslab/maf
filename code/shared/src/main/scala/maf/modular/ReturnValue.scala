@@ -20,8 +20,11 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr] {
   def returnValue(cmp: Component): Value = store.getOrElse(returnAddr(cmp), lattice.bottom)
   def finalResult: Value = returnValue(initialComponent)
 
-  override def resultsPerIdn: Map[Identity, Set[Value]] =
-    super.resultsPerIdn + (program.idn -> Set(finalResult))
+  override def resultsPerIdn: Map[Identity, Set[Value]] = {
+    val results = super.resultsPerIdn
+    val progIdn = program.idn
+    results + (progIdn -> (results.getOrElse(progIdn, Set.empty) + finalResult))
+  }
 
   // intra-analysis can now also update and read the result of a component
   override def intraAnalysis(cmp: Component): ReturnResultIntra

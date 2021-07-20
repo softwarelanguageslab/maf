@@ -21,7 +21,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
   type Adr = Address
   type Exp = SchemeExp
   type Lam = SchemeLambdaExp
-  type Sto = BasicStore[Adr, Storable]
+  type Sto = LocalStore[Adr, Storable]
   type Kon = List[Frame]
   type Clo = (Lam, Env)
   type Env = NestedEnv[Address, EnvAddr] // TODO: NestedEnv[VarAddr[Ctx], EnvAddr]
@@ -31,7 +31,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
 
   lazy val initialExp: Exp = program
   lazy val initialEnv: Env = NestedEnv(initialBds.map(p => (p._1, p._2)).toMap, None)
-  lazy val initialSto: Sto = BasicStore(initialBds.map(p => (p._2, p._3)).toMap)
+  lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))
 
   override lazy val program: SchemeExp = {
     val originalProgram = super.program
@@ -336,7 +336,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         kon: Kon
       ): Unit =
       lookupVariable(id, env, sto) { addr =>
-        val sto1 = sto.update(addr, V(vlu))
+        val sto1 = updateV(sto, addr, vlu)
         continue(kon, lattice.void, sto1)
       }
 
@@ -615,18 +615,28 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
       case x            => throw new Exception(s"This should not happen ($adr -> $x)")
     }
 
-  protected def extendV(sto: Sto, adr: Adr, vlu: Val): Sto = sto.extend(adr, V(vlu))
-  protected def extendE(sto: Sto, adr: Adr, evs: Set[Env]): Sto = sto.extend(adr, E(evs))
-  protected def extendK(sto: Sto, adr: Adr, kts: Set[(Kon, Ctx)]): Sto = sto.extend(adr, K(kts))
+  protected def extendV(sto: Store[Adr, Storable], adr: Adr, vlu: Val): sto.This = sto.extend(adr, V(vlu))
+  protected def updateV(sto: Store[Adr, Storable], adr: Adr, vlu: Val): sto.This = sto.update(adr, V(vlu))
+  protected def extendE(sto: Store[Adr, Storable], adr: Adr, evs: Set[Env]): sto.This = sto.extend(adr, E(evs))
+  protected def extendK(sto: Store[Adr, Storable], adr: Adr, kts: Set[(Kon, Ctx)]): sto.This = sto.extend(adr, K(kts))
 
-  case class StoreAdapter(sto: Sto) extends Store[Adr, Val] {
-    type This = StoreAdapter
+  case class StoreAdapter[St <: Store[Adr, Storable] { type This = St }](sto: St) extends Store[Adr, Val] { outer =>
+    // refine the This type
+    type This = StoreAdapter[St]
+    // lookup: only expect values
     def lookup(adr: Adr) = sto.lookup(adr) match {
       case Some(V(vlu)) => Some(vlu)
       case _            => None
     }
-    def extend(adr: Adr, vlu: Val) = this.copy(sto = extendV(sto, adr, vlu))
-    override def update(adr: Adr, vlu: Val) = this.copy(sto = sto.update(adr, V(vlu)))
+    def extend(adr: Adr, vlu: Val) = StoreAdapter(extendV(sto, adr, vlu): St)
+    override def update(adr: Adr, vlu: Val) = StoreAdapter(updateV(sto, adr, vlu))
+    // join operations
+    def empty = StoreAdapter(sto.empty)
+    def join(other: This) = StoreAdapter(sto.join(other.sto))
+    // delta store
+    type DeltaStore = StoreAdapter[sto.DeltaStore]
+    def deltaStore = StoreAdapter(sto.deltaStore)
+    def integrate(delta: DeltaStore) = StoreAdapter(sto.integrate(delta.sto))
   }
 
   case class InterpreterBridge(ctx: Ctx) extends SchemeInterpreterBridge[Val, Adr] {

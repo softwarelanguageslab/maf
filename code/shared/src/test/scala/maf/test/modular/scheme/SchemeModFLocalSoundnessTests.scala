@@ -8,7 +8,7 @@ import maf.modular.worklist._
 
 trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests
 
-class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
+abstract class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
   def name = "MODF LOCAL (context-insensitive)"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
@@ -16,9 +16,10 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
+  //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/my-test.scm")
 }
 
-class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
+abstract class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
   def name = "MODF LOCAL (call-site sensitive)"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
