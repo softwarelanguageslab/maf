@@ -35,10 +35,14 @@ object IncrementalRun extends App {
     ): Unit = {
     println(s"***** $bench *****")
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a = new IncrementalModConcAnalysisCPLattice(text, config) {
+    val a = new IncrementalModConcAnalysisCPLattice(text, config) with IncrementalLogging[SchemeExp] {
       override def intraAnalysis(
           cmp: Component
-        ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis {
+        ) = new IntraAnalysis(cmp)
+        with IncrementalSmallStepIntra
+        with KCFAIntra
+        with IncrementalGlobalStoreIntraAnalysis
+        with IncrementalLoggingIntra {
         override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
           println(s"Analyzing $cmp")
           super.analyzeWithTimeout(timeout)
@@ -52,7 +56,7 @@ object IncrementalRun extends App {
 
   def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
-      new IncrementalSchemeModFAnalysisCPLattice(text, configuration) with IncrementalLogging[SchemeExp] {
+      new IncrementalSchemeModFAnalysisTypeLattice(text, configuration) with IncrementalLogging[SchemeExp] {
         override def focus(a: Addr): Boolean = a.toString.toLowerCase().contains("ret")
 
         override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
@@ -63,15 +67,16 @@ object IncrementalRun extends App {
       }
 
     println(s"***** $bench *****")
-    interpretProgram(bench)
+    //  interpretProgram(bench)
     val text = CSchemeParser.parse(Reader.loadFile(bench))
     val a = newAnalysis(text, IncrementalConfiguration.ci_di_wi)
     a.analyzeWithTimeout(timeout())
+    println(a.visited.size)
     a.updateAnalysis(timeout())
   }
 
   val modConcbenchmarks: List[String] = List()
-  val modFbenchmarks: List[String] = List("test/changes/scheme/ring-rotate.scm")
+  val modFbenchmarks: List[String] = List("test/DEBUG1.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
   modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))

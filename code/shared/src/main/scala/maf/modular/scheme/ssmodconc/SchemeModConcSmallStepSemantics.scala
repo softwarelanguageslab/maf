@@ -28,7 +28,7 @@ case class ThreadComponent[Ctx](
     ctx: Ctx)
     extends SmallStepModConcComponent
        with Serializable {
-  override def toString: String = s"ThreadComponent($exp, $env, $ctx)"
+  override def toString: String = s"ThreadComponent($exp, $ctx)"
 }
 
 /** Provides a small-step ModConc semantics for a concurrent Scheme with threads. Additionally supported primitives (upon R5RS): fork, join. */
