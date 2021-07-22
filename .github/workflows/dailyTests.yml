@@ -232,7 +232,8 @@ jobs:
                       IncrementalModFType,
                       IncrementalModFCP,
                       IncrementalModFTypeRemainingConfigs,
-                      IncrementalModFCPRemainingConfigs ]
+                      IncrementalModFCPRemainingConfigs,
+                      IncrementalModXMachineryTests ]
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
