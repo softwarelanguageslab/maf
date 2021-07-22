@@ -53,7 +53,7 @@ object IncrementalRun extends App {
   def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
       new IncrementalSchemeModFAnalysisCPLattice(text, configuration) with IncrementalLogging[SchemeExp] {
-        // override def focus(a: Addr): Boolean = a.toString == "VarAddr(m)" || a.toString == "VarAddr(n)"
+        override def focus(a: Addr): Boolean = a.toString.toLowerCase().contains("ret")
 
         override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
           with IncrementalSchemeModFBigStepIntra
@@ -71,7 +71,7 @@ object IncrementalRun extends App {
   }
 
   val modConcbenchmarks: List[String] = List()
-  val modFbenchmarks: List[String] = List("test/DEBUG2.scm")
+  val modFbenchmarks: List[String] = List("test/changes/scheme/ring-rotate.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
   modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
