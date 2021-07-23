@@ -124,11 +124,11 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
           val anlCopy = anlOld.deepCopy()
           anlCopy.configuration = c
           updateAnalysis(anlCopy, benchmark)
-          info(s"Checking results of ${c.shortName()}")
-          compareResults(anlCopy, cResultsNew, c.shortName())
+          info(s"Checking results of ${c}")
+          compareResults(anlCopy, cResultsNew, c.toString)
         } catch {
-          case a: AssertionError      => throw new Exception(s"Assertion violation using ${c.shortName()}.", a)
-          case t: java.lang.Throwable => throw new Exception(s"Analysis error using ${c.shortName()}.", t)
+          case a: AssertionError      => throw new Exception(s"Assertion violation using ${c}.", a)
+          case t: java.lang.Throwable => throw new Exception(s"Analysis error using ${c}.", t)
         }
       }
     }

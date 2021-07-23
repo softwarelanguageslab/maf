@@ -37,7 +37,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
       block: Timeout.T => Unit,
       name: String = ""
     ): Boolean = {
-    val cName = if (name == "") analysis.configuration.shortName() else name
+    val cName = if (name == "") analysis.configuration.toString else name
     print(s"$cName ")
     val timeOut = timeout()
     block(timeOut)

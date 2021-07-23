@@ -13,7 +13,7 @@ trait TableOutput[R] {
   final val initS: String = "init" // Initial run.
   final val reanS: String = "rean" // Full reanalysis.
 
-  lazy val analysesS: List[String] = List(initS, reanS) ++ configurations.map(_.shortName())
+  lazy val analysesS: List[String] = List(initS, reanS) ++ configurations.map(_.toString)
   val propertiesS: List[String]
 
   final val infS: String = "∞"

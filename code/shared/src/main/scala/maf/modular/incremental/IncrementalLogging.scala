@@ -73,7 +73,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   private var deletedC: List[Component] = Nil
 
   def getSummary(): String =
-    configuration.toString + "\n" +
+    configuration.infoString() + "\n" +
       s"""##########################################
          |Analysis Summary:
          |  - components: ${visited.size}

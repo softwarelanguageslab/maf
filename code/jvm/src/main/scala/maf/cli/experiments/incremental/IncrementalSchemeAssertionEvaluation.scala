@@ -55,7 +55,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     print(s"Analysing $file: ")
     val program = parse(file)
 
-    val a1 = analysis(program, Config(cyclicValueInvalidation = false))
+    val a1 = analysis(program, IncrementalConfiguration(cyclicValueInvalidation = false))
     val a2 = analysis(program, noOptimisations) // This configuration does not matter.
     a2.version = New
 
@@ -76,7 +76,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
       val copy = a1.deepCopy()
       copy.configuration = config
       runAnalysis(file,
-                  config.shortName(),
+                  config.toString,
                   timeOut => {
                     copy.updateAnalysis(timeOut);
                     copy

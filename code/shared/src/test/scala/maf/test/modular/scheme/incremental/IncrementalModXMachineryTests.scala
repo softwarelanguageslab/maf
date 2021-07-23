@@ -98,11 +98,11 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
     }
   }
 
-  /** Tests whether the deletion of components works correctly using an artificial example. */
+  /** Tests whether the deletion of components works correctly using an artificial code example. */
   def testComponentDeletion(): Unit = {
-    property("Component deletion works on an artificial example", IncrementalTest) {
-      val program: String =
-        """(define (a)
+    // Artificial program.
+    val program: String =
+      """(define (a)
           |  (<change> (b) #t)
           |  (d))
           |(define (b)
@@ -119,32 +119,45 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
           |  (<change> #t (d))
           |  (b))
           |(a)""".stripMargin
-      val a = new ModAnalysis[SchemeExp](CSchemeParser.parse(program))
-        with StandardSchemeModFComponents
-        with SchemeModFNoSensitivity // Different
-        with SchemeModFSemantics
-        with LIFOWorklistAlgorithm[SchemeExp]
-        with IncrementalSchemeModFBigStepSemantics
-        with IncrementalSchemeConstantPropagationDomain // Different
-        with IncrementalGlobalStore[SchemeExp] {
-        var configuration: IncrementalConfiguration = ci_di_wi
-        override def intraAnalysis(
-            cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
-      }
-      try {
-        a.analyzeWithTimeout(timeout())
-        assume(a.finished)
-        assert(a.visited.size == 4) // main, a, b, c. Not d, e because the analysis should stop at bottom.
-        assert(a.visited.map(_.toString).diff(Set("main", "a [ε]", "b [ε]", "c [ε]")).isEmpty)
-        a.updateAnalysis(timeout())
-        a.deleteDisconnectedComponents()
-        assert(a.visited.size == 3) // main, a, d.
-        assert(a.visited.map(_.toString).diff(Set("main", "a [ε]", "d [ε]")).isEmpty)
-      } catch {
-        case e: VirtualMachineError =>
-          System.gc()
-          cancel(s"Analysis of program encountered an error: $e.")
+
+    // Base analysis.
+    val base: Analysis = new ModAnalysis[SchemeExp](CSchemeParser.parse(program))
+      with StandardSchemeModFComponents
+      with SchemeModFNoSensitivity // Different
+      with SchemeModFSemantics
+      with LIFOWorklistAlgorithm[SchemeExp]
+      with IncrementalSchemeModFBigStepSemantics
+      with IncrementalSchemeConstantPropagationDomain // Different
+      with IncrementalGlobalStore[SchemeExp] {
+      var configuration: IncrementalConfiguration = allOptimisations
+      override def intraAnalysis(
+          cmp: Component
+        ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+    }
+
+    // Expected results.
+    val exp1 = Set("main", "a [ε]", "b [ε]", "c [ε]") // main, a, b, c. Not d, e because the analysis should stop at bottom.
+    val exp2 = Set("main", "a [ε]", "d [ε]") // main, a, d.
+
+    // Actual test.
+    for (c <- allConfigurations.filter(_.componentInvalidation)) {
+      property(s"Component deletion works on an artificial example using ${c}.", IncrementalTest) {
+        try {
+          val a = base.deepCopy()
+          a.configuration = c
+          a.analyzeWithTimeout(timeout())
+          assume(a.finished)
+          assert(a.visited.size == exp1.size)
+          assert(a.visited.map(_.toString).diff(exp1).isEmpty)
+          a.updateAnalysis(timeout())
+          a.deleteDisconnectedComponents()
+          assert(a.visited.size == exp2.size)
+          assert(a.visited.map(_.toString).diff(exp2).isEmpty)
+        } catch {
+          case e: VirtualMachineError =>
+            System.gc()
+            cancel(s"Analysis of program encountered an error: $e.")
+        }
       }
     }
   }

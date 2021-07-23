@@ -5,10 +5,14 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.SchemeInterpreter
 import maf.language.scheme.primitives.SchemePrelude
+import maf.modular.ModAnalysis
 import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.scheme.modf._
 import maf.modular.incremental._
 import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
+import maf.modular.incremental.scheme.lattice.IncrementalSchemeConstantPropagationDomain
+import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
+import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
@@ -66,13 +70,31 @@ object IncrementalRun extends App {
           with IncrementalLoggingIntra
       }
 
+    // Analysis from CI tests.
+    def base(program: SchemeExp) = new ModAnalysis[SchemeExp](program)
+      with StandardSchemeModFComponents
+      with SchemeModFNoSensitivity // Different
+      with SchemeModFSemantics
+      with LIFOWorklistAlgorithm[SchemeExp]
+      with IncrementalSchemeModFBigStepSemantics
+      with IncrementalSchemeConstantPropagationDomain // Different
+      with IncrementalGlobalStore[SchemeExp]
+      with IncrementalLogging[SchemeExp] {
+      override def focus(a: Addr): Boolean = !a.toString.toLowerCase().contains("prm")
+      var configuration: IncrementalConfiguration = ci_di_wi
+      override def intraAnalysis(
+          cmp: Component
+        ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
+    }
+
     println(s"***** $bench *****")
     //  interpretProgram(bench)
     val text = CSchemeParser.parse(Reader.loadFile(bench))
-    val a = newAnalysis(text, IncrementalConfiguration.ci_di_wi)
+    val a = base(text)
     a.analyzeWithTimeout(timeout())
-    println(a.visited.size)
+    println(a.visited)
     a.updateAnalysis(timeout())
+    println(a.visited)
   }
 
   val modConcbenchmarks: List[String] = List()

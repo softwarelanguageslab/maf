@@ -115,7 +115,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
         results = results
           .add(file, columnName(timeS, initS), Timedout)
           .add(file, columnName(timeS, reanS), NotRun)
-        configurations.map(_.shortName()).foreach(name => results = results.add(file, columnName(timeS, name), NotRun))
+        configurations.map(_.toString).foreach(name => results = results.add(file, columnName(timeS, name), NotRun))
         return
       case Some(ts) => times = times + (initS -> ts)
     }
@@ -150,12 +150,12 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     val initAnalysis = analysis(program, allOptimisations) // Allow tracking.
     initAnalysis.analyzeWithTimeout(timeout())
     if (!initAnalysis.finished) {
-      configurations.map(_.shortName()).foreach(name => results = results.add(file, columnName(timeS, name), NotRun))
+      configurations.map(_.toString).foreach(name => results = results.add(file, columnName(timeS, name), NotRun))
       return
     }
 
     configurations.foreach { config =>
-      warmUp(config.shortName(),
+      warmUp(config.toString,
              maxWarmupRuns,
              timeout(),
              timeout => {
@@ -165,7 +165,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
              }
       )
       runNTimes(
-        config.shortName(),
+        config.toString,
         measuredRuns,
         () => {
           val a = initAnalysis.deepCopy()
@@ -174,8 +174,8 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
         },
         (timeout, analysis) => analysis.updateAnalysis(timeout)
       ) match {
-        case None     => timeOuts = timeOuts + (config.shortName() -> true)
-        case Some(ts) => times = times + (config.shortName() -> ts)
+        case None     => timeOuts = timeOuts + (config.toString -> true)
+        case Some(ts) => times = times + (config.toString -> ts)
       }
     }
 
@@ -189,7 +189,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
         if (timeOuts(reanS)) Timedout else Finished(scala.math.round(statistics(reanS).mean), scala.math.round(statistics(reanS).stddev))
       )
     configurations.foreach { config =>
-      val name = config.shortName()
+      val name = config.toString
       results =
         results.add(file,
                     columnName(timeS, name),
@@ -199,7 +199,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     }
   }
 
-  def createOutput(): String = results.prettyString(columns = (List(initS, reanS) ++ configurations.map(_.shortName())).map(columnName(timeS, _)))
+  def createOutput(): String = results.prettyString(columns = (List(initS, reanS) ++ configurations.map(_.toString)).map(columnName(timeS, _)))
 }
 
 /* ************************** */
