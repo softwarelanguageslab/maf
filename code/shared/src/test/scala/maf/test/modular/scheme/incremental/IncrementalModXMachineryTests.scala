@@ -162,6 +162,6 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
     }
   }
 
-  testComponentDeletion()
+  // testComponentDeletion()
   testUpdatedComponents()
 }
