@@ -4,7 +4,6 @@ import maf.core.Expression
 import maf.language.change.CodeVersion._
 import maf.modular._
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
-import maf.util.Annotations._
 import maf.util.benchmarks.Timeout
 import maf.util.graph.Tarjan
 
@@ -67,7 +66,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @param addr
    *   The address corresponding to the deleted write dependency.
    */
-  @nonMonotonicUpdate
   def deleteProvenance(cmp: Component, addr: Addr): Unit = {
     // Delete the provenance information corresponding to this component.
     provenance = provenance + (addr -> (provenance(addr) - cmp))
@@ -133,7 +131,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @return
    *   Returns a boolean indicating whether the address was updated, indicating whether the corresponding dependency should be triggered.
    */
-  @nonMonotonicUpdate
   def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
     val old = provenance(addr)(cmp)
     if (old == nw) return false // Nothing changed.
@@ -280,7 +277,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     def registerProvenances(): Unit = intraProvenance.foreach({ case (addr, value) => updateProvenance(component, addr, value) })
 
     /** Refines values in the store that are no longer written to by a component. */
-    @nonMonotonicUpdate
     def refineWrites(): Unit = {
       // Writes performed during this intra-component analysis. Important: this only works when the entire component is reanalysed!
       val recentWrites = intraProvenance.keySet

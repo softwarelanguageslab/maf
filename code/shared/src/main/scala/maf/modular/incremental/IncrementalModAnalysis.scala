@@ -4,8 +4,7 @@ import maf.core._
 import maf.language.change.CodeVersion._
 import maf.language.change._
 import maf.modular._
-import maf.modular.worklist.SequentialWorklistAlgorithm
-import maf.util.Annotations._
+import maf.modular.worklist._
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion.sunion
 
@@ -55,7 +54,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
    */
   var cachedReadDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set.empty)
 
-  @nonMonotonicUpdate
   /** Deregisters a components for a given dependency, indicating the component no longer depends on it. */
   def deregister(target: Component, dep: Dependency): Unit = deps += (dep -> (deps(dep) - target))
 
@@ -78,7 +76,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
    *   If subclasses add extra analysis state (e.g., a global store with return values), then it is up to those subclasses to override this method and
    *   extend its functionality (e.g., to remove the return value from the store).
    */
-  @nonMonotonicUpdate
   def deleteComponent(cmp: Component): Unit =
     if (visited(cmp)) { // Only do this if we have not yet encountered the component. Note that this is not needed to prevent looping.
       for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
@@ -95,7 +92,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     }
 
   /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
-  @nonMonotonicUpdate
   def unspawn(cmp: Component): Unit =
     if (visited(cmp)) { // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
       // (Counts can go below zero if an already reclaimed component is encountered here, which is possible due to the foreach in deleteDisconnectedComponents.)
@@ -134,7 +130,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   def unreachableComponents(): Set[Component] = visited -- reachableComponents()
 
   /** Deletes components that are no longer 'reachable' from the Main component given a spawning relation. */
-  @nonMonotonicUpdate
   def deleteDisconnectedComponents(): Unit =
     if (deletionFlag) { // Only perform the next steps if there was a component that was unspawned but not collected.
       //                   In the other case, there can be no unreachable components left.
@@ -161,7 +156,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   trait IncrementalIntraAnalysis extends IntraAnalysis {
 
     /** Removes outdated dependencies of a component, by only keeping the dependencies that were used during the latest analysis of the component. */
-    @nonMonotonicUpdate
     def refineDependencies(): Unit = {
       if (version == New) { // Check for efficiency.
         // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
@@ -172,7 +166,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     }
 
     /** Removes outdated components, and components that become transitively outdated, by keeping track of spawning dependencies. */
-    @nonMonotonicUpdate
     def refineComponents(): Unit = {
       // Subtract component to avoid circular circularities due to self-recursion (this is a circularity that can easily be spotted and hence immediately omitted).
       val Cdiff = C - component
@@ -190,7 +183,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     }
 
     /** First removes outdated read dependencies and components before performing the actual commit. */
-    @nonMonotonicUpdate
     override def commit(): Unit = {
       if (configuration.dependencyInvalidation) refineDependencies() // First, remove excess dependencies if this is a reanalysis.
       if (configuration.componentInvalidation) refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
