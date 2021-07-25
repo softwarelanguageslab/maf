@@ -161,20 +161,20 @@ class SchemeInterpreter(
 
   //determines whether a given value should be checked or not
   private def checkValue(v: Value): Boolean = v match {
-    case Value.Undefined(_) => 
+    case Value.Undefined(_) =>
       //println(s"Undefined behavior arising from identity $idn seen at ${e.idn.pos}")
       false
-    case Value.Unbound(_)       => 
+    case Value.Unbound(_) =>
       //println(s"Seen unbound identifier $idn")
       false
-    case _                        => 
+    case _ =>
       true
   }
 
   private def checkAddr(a: Addr): Boolean = a._2 match {
     case _: AddrInfo.VarAddr | _: AddrInfo.PtrAddr | _: AddrInfo.RetAddr => true
-    case _ => false
-  } 
+    case _                                                               => false
+  }
 
   override def extendStore(a: Addr, v: Value): Unit = {
     if (checkAddr(a) && checkValue(v)) {

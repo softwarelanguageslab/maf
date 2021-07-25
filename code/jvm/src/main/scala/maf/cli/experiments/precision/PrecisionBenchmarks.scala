@@ -168,8 +168,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
    *   a ResultMap containing the context-insensitive results for that analysis
    */
   protected def extract(analysis: Analysis): ResultMap =
-    analysis.resultsPerIdn
-      .view
+    analysis.resultsPerIdn.view
       .mapValues(vs => analysis.lattice.join(vs))
       .mapValues(convertValue(analysis))
       .toMap

@@ -83,11 +83,12 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
   }
 
   def resultsPerIdn: Map[Identity, Set[Value]] =
-    store.groupBy(_._1.idn)
-        .view
-        .filterKeys(_ != Identity.none)
-        .mapValues(_.values.toSet)
-        .toMap
+    store
+      .groupBy(_._1.idn)
+      .view
+      .filterKeys(_ != Identity.none)
+      .mapValues(_.values.toSet)
+      .toMap
 
   /** Returns a string representation of the store. */
   def storeString(primitives: Boolean = false): String = {
