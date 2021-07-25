@@ -14,6 +14,7 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
     adr match {
       case _: VarAddr[_] | _: PtrAddr[_] => 
         resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+      case _ => ()
     }
     super.extendV(sto, adr, vlu)
   }
@@ -22,6 +23,7 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
     adr match {
       case _: VarAddr[_] | _: PtrAddr[_] =>
         resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+      case _ => ()
     }
     super.updateV(sto, adr, vlu)
   }
