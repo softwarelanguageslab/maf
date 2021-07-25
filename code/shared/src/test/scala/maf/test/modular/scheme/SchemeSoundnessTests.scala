@@ -87,6 +87,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       case Value.Nil           => lat.subsumes(abs, lat.nil)
       case Value.Pointer(a)    => lat.getPointerAddresses(abs).exists(_.idn == a._2.idn)
       case Value.Thread(_)     => lat.getThreads(abs).nonEmpty
+      case Value.Lock(l)       => lat.isTrue(lat.op(SchemeOp.IsLock)(List(abs)).getOrElse(lat.bottom)) 
       case Value.InputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
       case Value.OutputPort(h) => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
       case Value.EOF           => lat.subsumes(abs, lat.charTop)
