@@ -522,7 +522,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
 
     // CONTINUE
 
-    private def continue(
+      def continue(
         kon: Kon,
         vlu: Val,
         sto: Sto
@@ -533,11 +533,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
           case HltFrame :: Nil =>
             spawn(HaltComponent(vlu, sto))
           case RetFrame(adr) :: Nil =>
-            lookupK(sto, adr).foreach { case (kon, ctx) =>
-              val addr = ResAddr(kon, ctx)
-              val sto1 = extendV(sto, addr, vlu)
-              spawn(KontComponent(kon, ctx, sto1))
-            }
+            returnV(adr, vlu, sto)
           // local continuations
           case SeqFrame(eps, env) :: rst =>
             evalSequence(eps, env, sto, rst)
@@ -615,6 +611,13 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
       case x            => throw new Exception(s"This should not happen ($adr -> $x)")
     }
 
+  protected def returnV(adr: KonAddr, vlu: Val, sto: Sto): Unit =
+    lookupK(sto, adr).foreach { case (kon, ctx) =>
+      val addr = ResAddr(kon, ctx)
+      val sto1 = extendV(sto, addr, vlu)
+      spawn(KontComponent(kon, ctx, sto1))
+    }
+
   protected def extendV(sto: Store[Adr, Storable], adr: Adr, vlu: Val): sto.This = sto.extend(adr, V(vlu))
   protected def updateV(sto: Store[Adr, Storable], adr: Adr, vlu: Val): sto.This = sto.update(adr, V(vlu))
   protected def extendE(sto: Store[Adr, Storable], adr: Adr, evs: Set[Env]): sto.This = sto.extend(adr, E(evs))
@@ -628,7 +631,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
       case Some(V(vlu)) => Some(vlu)
       case _            => None
     }
-    def extend(adr: Adr, vlu: Val) = StoreAdapter(extendV(sto, adr, vlu): St)
+    def extend(adr: Adr, vlu: Val) = StoreAdapter(extendV(sto, adr, vlu))
     override def update(adr: Adr, vlu: Val) = StoreAdapter(updateV(sto, adr, vlu))
     // join operations
     def empty = StoreAdapter(sto.empty)

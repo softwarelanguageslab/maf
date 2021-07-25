@@ -26,6 +26,12 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
     super.updateV(sto, adr, vlu)
   }
 
+  override protected def returnV(adr: KonAddr, vlu: Val, sto: Sto) = {
+    val idn = SchemeBody(adr.lam.body).idn
+    resultsPerIdn += idn -> (resultsPerIdn(idn) + vlu)
+    super.returnV(adr, vlu, sto)
+  }
+
   override def spawn(cmp: Component) = {
     cmp match {
       case HaltComponent(vlu, _) =>
