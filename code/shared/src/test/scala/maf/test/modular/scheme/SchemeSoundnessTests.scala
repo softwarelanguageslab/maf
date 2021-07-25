@@ -115,7 +115,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
         if (!abstractValues.exists(checkSubsumption(analysis)(concreteValue, _))) {
           val failureMsg =
             s"""
-            | Intermediate result at $idn is unsound:
+            | Result at $idn is unsound:
             | - concrete value: $concreteValue
             | - abstract values: $abstractValues
             """.stripMargin
