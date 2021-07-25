@@ -522,7 +522,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
 
     // CONTINUE
 
-      def continue(
+    def continue(
         kon: Kon,
         vlu: Val,
         sto: Sto

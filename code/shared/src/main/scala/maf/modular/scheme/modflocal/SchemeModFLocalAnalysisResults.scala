@@ -12,7 +12,7 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
 
   override protected def extendV(sto: Store[Adr, Storable], adr: Adr, vlu: Val): sto.This = {
     adr match {
-      case _: VarAddr[_] | _: PtrAddr[_] => 
+      case _: VarAddr[_] | _: PtrAddr[_] =>
         resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
       case _ => ()
     }
