@@ -83,8 +83,7 @@ object AnalysisComparison1
     val con = runInterpreter(prg, path).get
     val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_), "analysis", prg, path).get
     val allKeys = con.keys ++ abs.keys
-    val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
-    interestingKeys.foreach { k =>
+    allKeys.foreach { k =>
       val absVal = abs.getOrElse(k, "⊥")
       val concVal = con.getOrElse(k, "⊥")
       if (absVal != concVal) {

@@ -8,45 +8,33 @@ import maf.language.scheme.primitives._
 import maf.lattice.interfaces._
 import maf.modular._
 import maf.modular.scheme._
-import maf.modular.scheme.modf._
 import maf.util._
 import maf.util.benchmarks.Timeout
 
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice] {
 
   type Benchmark = String
-  type Analysis = ModAnalysis[SchemeExp] with BaseSchemeModFSemantics with ModularSchemeDomain {
+  type Analysis = ModAnalysis[SchemeExp] with AnalysisResults[SchemeExp] with ModularSchemeDomain {
     val modularLatticeWrapper: ModularSchemeLatticeWrapper {
-      val modularLattice: ModularSchemeLattice[Addr, Str, Bln, Num, Rea, Chr, Smb]
+      val modularLattice: ModularSchemeLattice[Address, Str, Bln, Num, Rea, Chr, Smb]
     }
   }
 
-  sealed trait BaseAddr extends Address { def printable = true }
+  sealed trait BaseAddr extends Address { def printable = true; def idn: Identity }
   case class VarAddr(vrb: Identifier) extends BaseAddr { def idn: Identity = vrb.idn; override def toString = s"<variable $vrb>" }
+  case class PtrAddr(exp: Expression) extends BaseAddr { def idn = exp.idn; override def toString = s"<pointer $exp>" }
   case class PrmAddr(nam: String) extends BaseAddr { def idn: Identity = Identity.none; override def toString = s"<primitive $nam>" }
-  case class RetAddr(idn: Identity) extends BaseAddr { override def toString = s"<return $idn>" }
-  case class PtrAddr(idn: Identity) extends BaseAddr { override def toString = s"<pointer $idn>" }
 
-  private def convertAddr(analysis: Analysis)(addr: analysis.Addr): BaseAddr = addr match {
+  private def convertAddr(addr: Address): BaseAddr = addr match {
     case maf.modular.scheme.VarAddr(vrb, _) => VarAddr(vrb)
-    case maf.modular.scheme.PtrAddr(exp, _) => PtrAddr(exp.idn)
-    case maf.modular.ReturnAddr(_, idn)     => RetAddr(idn)
+    case maf.modular.scheme.PtrAddr(exp, _) => PtrAddr(exp)
     case maf.modular.scheme.PrmAddr(nam)    => PrmAddr(nam)
-    case a                                  => throw new Exception(s"Cannot convert address: $a")
   }
 
-  type BaseValue = baseDomain.L
   val baseDomain = new ModularSchemeLattice[BaseAddr, Str, Bln, Num, Rea, Chr, Smb]
   val baseLattice = baseDomain.schemeLattice
-  case class StubPrimitive(name: String) extends SchemePrimitive[BaseValue, BaseAddr] {
-    def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, BaseValue)],
-        store: Store[BaseAddr, BaseValue],
-        scheme: SchemeInterpreterBridge[BaseValue, BaseAddr]
-      ) =
-      throw new Exception("Stub primitive: call not supported")
-  }
+  type BaseValue = baseDomain.L
+
   val emptyEnv = Environment[BaseAddr](Iterable.empty)
   private def convertV(analysis: Analysis)(value: analysis.modularLatticeWrapper.modularLattice.Value): baseDomain.Value = value match {
     case analysis.modularLatticeWrapper.modularLattice.Nil          => baseDomain.Nil
@@ -59,7 +47,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case analysis.modularLatticeWrapper.modularLattice.Prim(ps)     => baseDomain.Prim(ps)
     case analysis.modularLatticeWrapper.modularLattice.Clo(cs)      => baseDomain.Clo(cs.map(c => (c._1, emptyEnv)))
     case analysis.modularLatticeWrapper.modularLattice.Cons(a, d)   => baseDomain.Cons(convertValue(analysis)(a), convertValue(analysis)(d))
-    case analysis.modularLatticeWrapper.modularLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr(analysis)(_)))
+    case analysis.modularLatticeWrapper.modularLattice.Pointer(ps)  => baseDomain.Pointer(ps.map(convertAddr))
     case analysis.modularLatticeWrapper.modularLattice.Vec(s, e)    => baseDomain.Vec(s, e.view.mapValues(convertValue(analysis)).toMap)
     case analysis.modularLatticeWrapper.modularLattice.Void         => baseDomain.Void
     case analysis.modularLatticeWrapper.modularLattice.Lock(tids)   => baseDomain.Lock(tids)
@@ -73,9 +61,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
 
   private def convertConcreteAddr(addr: ConcreteValues.Addr): BaseAddr = addr._2 match {
     case ConcreteValues.AddrInfo.VarAddr(v) => VarAddr(v)
+    case ConcreteValues.AddrInfo.PtrAddr(p) => PtrAddr(p)
     case ConcreteValues.AddrInfo.PrmAddr(p) => PrmAddr(p)
-    case ConcreteValues.AddrInfo.PtrAddr(p) => PtrAddr(p.idn)
-    case ConcreteValues.AddrInfo.RetAddr(r) => RetAddr(r.idn)
   }
 
   private def convertConcreteValue(value: ConcreteValues.Value): BaseValue = value match {
@@ -109,111 +96,82 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case v => throw new Exception(s"Unsupported value for concrete conversion: $v")
   }
 
-  type BaseStore = Map[BaseAddr, BaseValue]
+  // compares the results of concrete and/or abstract interpreters using a `ResultMap`
+  // a ResultMap which is a mapping from identities to a (context-insensitve) value
+  type ResultMap = Map[Identity, BaseValue]
 
   /**
-   * Joins two stores
-   * @param b1
-   *   a base store
-   * @param b2
-   *   a base store
-   * @return
-   *   the joined base store
-   */
-  protected def join(b1: BaseStore, b2: BaseStore): BaseStore =
-    b2.foldLeft(b1) { case (acc, (addr2, value2)) =>
-      val value1 = acc.getOrElse(addr2, baseLattice.bottom)
-      val joined = baseLattice.join(value1, value2)
-      acc + (addr2 -> joined)
-    }
-
-  /**
-   * Compare two stores, assuming one is more precise than the other
-   * @param b1
-   *   the less precise store
-   * @param b2
-   *   the more precise store
-   * @return
-   *   the set of addresses that have been refined in b2 w.r.t. b1
-   */
-  protected def compareOrdered(b1: BaseStore, b2: BaseStore): Set[BaseAddr] = {
-    def errorMessage(addr: BaseAddr): String = {
-      val value1 = b1.getOrElse(addr, baseLattice.bottom)
-      val value2 = b2.getOrElse(addr, baseLattice.bottom)
-      s"""
-        | At addr $addr: value v2 of b2 is not subsumed by value v1 of b1.
-        | where v1 = $value1
-        |       v2 = $value2 
-      """.stripMargin
-    }
-    val (_, morePrecise, lessPrecise, unrelated) = compare(b1, b2)
-    assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
-    assert(unrelated.isEmpty, errorMessage(unrelated.head))
-    morePrecise
-  }
-
-  /**
-   * Compare the precision of any two stores b1 and b2
-   * @param b1
-   *   a base store
-   * @param b2
-   *   a base store
+   * Compare the precision of any two ResultMaps r1 and r2
+   * @param r1
+   *   a ResultMap
+   * @param r2
+   *   a ResultMap
    * @return
    *   a quadruple of:
-   *   - the set of addresses whose abstract values have remained unchanged
-   *   - the set of addresses whose abstract values are more precise in b2
-   *   - the set of addresses whose abstract values are less precise in b2
-   *   - the set of addresses whose abstract values are not comparable between b1 and b2
+   *   - the set of program locations where abstract values have remained unchanged
+   *   - the set of program locations where abstract values are more precise in r2
+   *   - the set of program locations where abstract values are less precise in r2
+   *   - the set of program locations where abstract values are not comparable between r1 and r2
    */
-  protected def compare(b1: BaseStore, b2: BaseStore): (Set[BaseAddr], Set[BaseAddr], Set[BaseAddr], Set[BaseAddr]) = {
+  protected def compare(b1: ResultMap, b2: ResultMap): (Set[Identity], Set[Identity], Set[Identity], Set[Identity]) = {
     val allKeys = b1.keySet ++ b2.keySet
-    allKeys.foldLeft((Set.empty[BaseAddr], Set.empty[BaseAddr], Set.empty[BaseAddr], Set.empty[BaseAddr])) { (acc, addr) =>
-      val value1 = b1.getOrElse(addr, baseLattice.bottom)
-      val value2 = b2.getOrElse(addr, baseLattice.bottom)
+    allKeys.foldLeft((Set.empty[Identity], Set.empty[Identity], Set.empty[Identity], Set.empty[Identity])) { (acc, pos) =>
+      val value1 = b1.getOrElse(pos, baseLattice.bottom)
+      val value2 = b2.getOrElse(pos, baseLattice.bottom)
       if (value1 == value2) {
-        (acc._1 + addr, acc._2, acc._3, acc._4)
+        (acc._1 + pos, acc._2, acc._3, acc._4)
       } else if (baseLattice.subsumes(value1, value2)) {
-        (acc._1, acc._2 + addr, acc._3, acc._4)
+        (acc._1, acc._2 + pos, acc._3, acc._4)
       } else if (baseLattice.subsumes(value2, value1)) {
-        (acc._1, acc._2, acc._3 + addr, acc._4)
+        (acc._1, acc._2, acc._3 + pos, acc._4)
       } else { // neither value is more precise than the other
-        (acc._1, acc._2, acc._3, acc._4 + addr)
+        (acc._1, acc._2, acc._3, acc._4 + pos)
       }
     }
   }
 
   /**
-   * Given an analysis (that terminated), extract its "base store": a mapping from base addresses to base values That is, convert the resulting store
-   * into one within the (context-insensitive) base domain
+   * Compare two ResultMaps, assuming one is more precise than the other
+   * @param b1
+   *   the less precise resultMap
+   * @param b2
+   *   the more precise resultMap
+   * @return
+   *   the set of addresses that have been refined in b2 w.r.t. b1
+   */
+  protected def compareOrdered(r1: ResultMap, r2: ResultMap): Set[Identity] = {
+    def errorMessage(pos: Identity): String = {
+      val value1 = r1.getOrElse(pos, baseLattice.bottom)
+      val value2 = r2.getOrElse(pos, baseLattice.bottom)
+      s"""
+        | At addr $pos: value v2 of r2 is not subsumed by value v1 of r1.
+        | where v1 = $value1
+        |       v2 = $value2 
+      """.stripMargin
+    }
+    val (_, morePrecise, lessPrecise, unrelated) = compare(r1, r2)
+    assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
+    assert(unrelated.isEmpty, errorMessage(unrelated.head))
+    morePrecise.foreach { pos =>
+      val v1 = r1.getOrElse(pos, baseLattice.bottom)
+      val v2 = r2.getOrElse(pos, baseLattice.bottom)
+      println(s"$pos -> $v1 > $v2")
+    }
+    morePrecise
+  }
+
+  /**
+   * Given an analysis (that terminated), extract its ResultMap
    * @param analysis
    *   the analysis from which the results need to be extracted
    * @return
-   *   a store in the base domain
+   *   a ResultMap containing the context-insensitive results for that analysis
    */
-  protected def extract(analysis: Analysis): BaseStore =
-    analysis.store
-      .groupBy(p => convertAddr(analysis)(p._1))
+  protected def extract(analysis: Analysis): ResultMap =
+    analysis.resultsPerIdn
       .view
-      .filterKeys(!_.isInstanceOf[PrmAddr])
-      .mapValues(m => analysis.lattice.join(m.values))
+      .mapValues(vs => analysis.lattice.join(vs))
       .mapValues(convertValue(analysis))
-      .toMap
-
-  /**
-   * Given a concrete interpreter (that terminated), extract its "base store": a mapping from base addresses to base values That is, convert the
-   * resulting store into one within the (context-insensitive) base domain
-   * @param interpreter
-   *   the concrete interpreter from which the results need to be extracted
-   * @return
-   *   a store in the base domain
-   */
-  protected def extract(interpreter: SchemeInterpreter): BaseStore =
-    interpreter.store.view
-      .mapValues(convertConcreteValue)
-      .groupBy(p => convertConcreteAddr(p._1))
-      .view
-      .filterKeys(!_.isInstanceOf[PrmAddr])
-      .mapValues(m => baseLattice.join(m.map(_._2)))
       .toMap
 
   /**
@@ -240,7 +198,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       program: SchemeExp,
       path: Benchmark,
       timeout: Timeout.T = Timeout.none
-    ): Option[BaseStore] =
+    ): Option[ResultMap] =
     try {
       val anl = analysis(program)
       println(s"... analysing $path using $name ...")
@@ -281,20 +239,21 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       path: Benchmark,
       timeout: Timeout.T = Timeout.none,
       times: Int = 1
-    ): Option[BaseStore] = {
+    ): Option[ResultMap] = {
     print(s"Running concrete interpreter on $path ($times times)")
     val preluded = SchemePrelude.addPrelude(program)
     val undefined = SchemeParser.undefine(List(preluded))
-    var baseStore: BaseStore = Map.empty
+    var idnResults: ResultMap = Map.empty.withDefaultValue(baseLattice.bottom)
+    def addResult(idn: Identity, vlu: ConcreteValues.Value) =
+      idnResults += idn -> (baseLattice.join(idnResults(idn), convertConcreteValue(vlu)))
     try {
       for (_ <- 1 to times) {
         print(".")
-        val interpreter = new SchemeInterpreter((i, v) => (), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+        val interpreter = new SchemeInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
         interpreter.run(undefined, timeout)
-        baseStore = join(baseStore, extract(interpreter))
       }
       println()
-      Some(baseStore)
+      Some(idnResults)
     } catch {
       case e: Exception =>
         println(s"Concrete interpreter failed with $e")
