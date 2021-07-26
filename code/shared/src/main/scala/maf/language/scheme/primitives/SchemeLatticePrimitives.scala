@@ -930,7 +930,11 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
         dereferencePointer(x, store) { str =>
           ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
-            unaryOp(SchemeOp.MakeOutputPort)(str)
+            for {
+              // TODO: this could be cleaner by having a difference between a file input port and string input port, but this would be a bit overkill
+              portstring <- binaryOp(SchemeOp.StringAppend)(string("__file__"), str)
+              outputPort <- unaryOp(SchemeOp.MakeOutputPort)(portstring)
+            } yield outputPort
           } {
             MayFail.failure(PrimitiveNotApplicable("open-output-file", List(x)))
           }
