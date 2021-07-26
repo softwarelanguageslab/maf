@@ -38,10 +38,7 @@ class SchemeInterpreter(
       version: Version = New
     ): Value = {
     setStore(initialSto)
-    val res = eval(program, initialEnv, timeout, version).result
-    val resAddr = newAddr(AddrInfo.RetAddr(program))
-    extendStore(resAddr, res)
-    res
+    eval(program, initialEnv, timeout, version).result
   }
 
   def safeFuture(bdy: => Value): Future[Value] = Future {
@@ -225,8 +222,6 @@ class SchemeInterpreter(
                   (env3 + (arg._1.name -> addr))
                 }
                 res <- stackedCall(name, pos2, tailcall(eval(SchemeBody(body), envExt, timeout, version)))
-                resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
-                _ = extendStore(resAddr, res)
               } yield res
             case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, pos2), env2) =>
               val arity = argsNames.length
@@ -246,8 +241,6 @@ class SchemeInterpreter(
                 _ = extendStore(varArgAddr, makeList(args.drop(arity).zip(argsv.drop(arity))))
                 envExt2 = envExt + (vararg.name -> varArgAddr)
                 res <- stackedCall(name, pos2, eval(SchemeBody(body), envExt2, timeout, version))
-                resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
-                _ = extendStore(resAddr, res)
               } yield res
             case Value.Primitive(p) =>
               tailcall(
