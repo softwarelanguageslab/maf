@@ -30,7 +30,7 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
 
   /*
     if we ever want to include the final program result ...
-    
+
   override def spawn(cmp: Component) = {
     cmp match {
       case HaltComponent(vlu, _) =>
@@ -40,5 +40,5 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
     }
     super.spawn(cmp)
   }
-  */
+   */
 }

@@ -12,15 +12,20 @@ import maf.modular.scheme._
  * initial lexical environment for the analysis. <li> Sets up a global store, containing bindings for the language primitives in the provided
  * environment. </ul>
  */
-trait SchemeSetup extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain with AnalysisResults[SchemeExp] {
+trait SchemeSetup
+    extends ModAnalysis[SchemeExp]
+       with GlobalStore[SchemeExp]
+       with ReturnValue[SchemeExp]
+       with SchemeDomain
+       with AnalysisResults[SchemeExp] {
   // Provide a global store
   override var store: Map[Addr, Value] = Map.empty
   // collect result from variable and pointer addresses
-  def resultsPerIdn: Map[Identity, Set[Value]] = 
+  def resultsPerIdn: Map[Identity, Set[Value]] =
     store
       .filter(_._1 match {
         case _: VarAddr[_] | _: PtrAddr[_] => true
-        case _ => false 
+        case _                             => false
       })
       .groupBy(_._1.idn)
       .view
