@@ -37,6 +37,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     with ReturnValue[SchemeExp]
     with SchemeDomain
     with IncrementalModAnalysis[SchemeExp]
+    with AnalysisResults[SchemeExp]
 
   def analysis(b: SchemeExp): IncrementalAnalysis
 

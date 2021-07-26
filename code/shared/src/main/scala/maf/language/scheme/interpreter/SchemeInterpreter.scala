@@ -172,7 +172,7 @@ class SchemeInterpreter(
   }
 
   private def checkAddr(a: Addr): Boolean = a._2 match {
-    case _: AddrInfo.VarAddr | _: AddrInfo.PtrAddr => true // TODO: enable this again: | _: AddrInfo.RetAddr => true
+    case _: AddrInfo.VarAddr | _: AddrInfo.PtrAddr => true
     case _                                         => false
   }
 
