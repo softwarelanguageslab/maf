@@ -81,7 +81,7 @@ object IncrementalRun extends App {
       with IncrementalGlobalStore[SchemeExp]
       with IncrementalLogging[SchemeExp] {
       override def focus(a: Addr): Boolean = !a.toString.toLowerCase().contains("prm")
-      var configuration: IncrementalConfiguration = ci_di_wi
+      var configuration: IncrementalConfiguration = ci
       override def intraAnalysis(
           cmp: Component
         ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra

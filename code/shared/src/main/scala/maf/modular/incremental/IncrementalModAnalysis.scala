@@ -162,7 +162,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
         val deltaR = cachedReadDeps(component) -- R
         deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
       }
-      cachedReadDeps += (component -> R) // Update the cache. The cache also needs to be updated when the program is initially analysed.
     }
 
     /** Removes outdated components, and components that become transitively outdated, by keeping track of spawning dependencies. */
@@ -186,6 +185,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     override def commit(): Unit = {
       if (configuration.dependencyInvalidation) refineDependencies() // First, remove excess dependencies if this is a reanalysis.
       if (configuration.componentInvalidation) refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
+      if (configuration.componentInvalidation || configuration.dependencyInvalidation)
+        // Update the cache. The cache also needs to be updated when the program is initially analysed. This is also needed for CI, as otherwise components can come "back to life".
+        cachedReadDeps += (component -> R)
       super.commit() // Then commit and trigger dependencies.
     }
   }

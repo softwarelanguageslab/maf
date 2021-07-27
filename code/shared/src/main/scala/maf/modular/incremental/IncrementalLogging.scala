@@ -2,6 +2,7 @@ package maf.modular.incremental
 
 import maf.core.Expression
 import maf.language.change.CodeVersion._
+import maf.modular.Dependency
 import maf.util.Logger
 import maf.util.Logger._
 import maf.util.benchmarks.{Table, Timeout}
@@ -27,11 +28,14 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   private def legend(): String =
     """***** LEGEND OF ABBREVIATIONS *****
       |ANLY  Analysis of a component, indicating the step of the analysis and the number of times the current component is now analysed.
+      |CI    Component invalidation: the given component is deleted.
       |COMI  Indicates the component's analysis is committed.
+      |DI    Dependency invalidation: the component is no longer dependent on the dependency.
       |IUPD  Incremental update of the given address, indicating the value now residing in the store and the value actually written.
       |PROV  Registration of provenance, including the address and new provenance value.
       |READ  Address read, includes the address and value retrieved from the store.
       |RSAD  Indicates the address dependencies for a given component are reset.
+      |TRIG  Indicates the given dependency has been triggered.
       |WRIT  Address write, including the address, value written and value now residing in the store.
       |
       |***** ANALYSIS SUMMARY TABLE *****
@@ -118,7 +122,13 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     }
   }
 
+  override def deregister(target: Component, dep: Dependency): Unit = {
+    logger.log(s"DI   $target <-\\- $dep")
+    super.deregister(target, dep)
+  }
+
   override def deleteComponent(cmp: Component): Unit = {
+    logger.log(s"CI   $cmp")
     deletedC = cmp :: deletedC
     super.deleteComponent(cmp)
   }
@@ -126,6 +136,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   override def deleteAddress(addr: Addr): Unit = {
     deletedA = addr :: deletedA
     super.deleteAddress(addr)
+  }
+
+  override def trigger(dep: Dependency): Unit = {
+    logger.log(s"TRIG $dep [adding: ${deps(dep)}]")
+    super.trigger(dep)
   }
 
   override def updateAddrInc(
