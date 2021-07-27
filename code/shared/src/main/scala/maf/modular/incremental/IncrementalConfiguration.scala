@@ -2,6 +2,7 @@ package maf.modular.incremental
 
 /**
  * Utility class to select the optimisations of the incremental analysis that should be enabled.
+ *
  * @param componentInvalidation
  *   Indicates whether components should be invalidated when they are no longer spawned. This involves a possibly recursive traversal of spawn and
  *   cycle detection. This includes the deletion of the corresponding return addresses.
@@ -38,7 +39,8 @@ case class IncrementalConfiguration(
     val wi = if (writeInvalidation) {
       if (cyclicValueInvalidation) "WI+CY" else "WI"
     } else ""
-    List(ci, di, wi).filterNot(_.isEmpty).mkString("-")
+    val string = List(ci, di, wi).filterNot(_.isEmpty).mkString("-")
+    if (string.isEmpty) "NoOpt" else string
   }
 }
 
@@ -71,18 +73,18 @@ object IncrementalConfiguration {
       noOptimisations,
       // One optimisation
       ci,
-      di
-      //wi
+      di,
+      //wi,
       // Two optimisations
       //ci_di,
       //ci_wi,
       //di_wi,
       //wi_cy,
       // Three optimisations
-      //ci_di_wi
+      ci_di_wi
       //ci_wi_cy,
       //di_wi_cy,
       // Four optimisations
-      //allOptimisations
+      //allOptimisations,
     )
 }

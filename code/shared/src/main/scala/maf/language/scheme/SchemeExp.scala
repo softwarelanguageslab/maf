@@ -28,8 +28,8 @@ case object VAR extends Label // Variable
 case object ASS extends Label // Assertion
 
 /*
-    case SchemeLambda(args, body, idn) =>
-    case SchemeVarArgLambda(args, vararg, body, idn) =>
+    case SchemeLambda(name, args, body, idn) =>
+    case SchemeVarArgLambda(name, args, vararg, body, idn) =>
     case SchemeFuncall(f, args, idn) =>
     case SchemeIf(cond, cons, alt, idn) =>
     case SchemeLet(bindings, body, idn) =>

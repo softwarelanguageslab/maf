@@ -5,7 +5,7 @@ import maf.language.scheme._
 import maf.modular._
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modf._
-import maf.modular.worklist.{FIFOWorklistAlgorithm, LIFOWorklistAlgorithm}
+import maf.modular.worklist._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
@@ -22,6 +22,7 @@ object AnalyzeProgram extends App {
         new IntraAnalysis(component) with KCFAIntra
     }*/
 
+    /*
     val analysis = new SimpleSchemeModFAnalysis(text)
       with SchemeConstantPropagationDomain
       with SchemeModFCallSiteSensitivity
@@ -31,10 +32,13 @@ object AnalyzeProgram extends App {
     analysis.visited.foreach(println)
     analysis.deps.foreach(println)
     println(r)
+     */
+    val a = nonIncAnalysis(text)
+    a.analyzeWithTimeout(timeout())
   }
 
   val bench: List[String] = List(
-    "test/R5RS/gambit/compiler.scm"
+    "test/DEBUG3.scm"
   )
 
   // Used by webviz.
@@ -47,6 +51,24 @@ object AnalyzeProgram extends App {
       with FIFOWorklistAlgorithm[SchemeExp] {
       override def intraAnalysis(cmp: SchemeModFComponent) =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+    }
+  }
+
+  // Non-inc counterpart to IncrementalRun
+  def nonIncAnalysis(program: SchemeExp) = {
+    new ModAnalysis[SchemeExp](program)
+      with StandardSchemeModFComponents
+      with SchemeModFNoSensitivity // Different
+      with SchemeModFSemantics
+      with LIFOWorklistAlgorithm[SchemeExp]
+      with BigStepModFSemantics
+      with SchemeConstantPropagationDomain // Different
+      with GlobalStore[SchemeExp]
+      with AnalysisLogging[SchemeExp] {
+      override def focus(a: Addr): Boolean = !a.toString.toLowerCase().contains("prm")
+      override def intraAnalysis(
+          cmp: Component
+        ) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra with AnalysisLoggingIntra
     }
   }
 
