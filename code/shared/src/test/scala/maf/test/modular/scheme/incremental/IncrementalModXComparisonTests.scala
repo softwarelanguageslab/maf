@@ -1,5 +1,6 @@
 package maf.test.modular.scheme.incremental
 
+import maf.core.Expression
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.SchemeExp
 import maf.modular._
@@ -25,6 +26,51 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
   lazy val configurations: List[IncrementalConfiguration] = allConfigurations
   def timeout(): Timeout.T = Timeout.start(Duration(5, MINUTES))
 
+  def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag]
+
+  type Analysis <: ModAnalysis[SchemeExp]
+  type IncrementalAnalysis <: IncrementalModAnalysis[SchemeExp]
+
+  def analysis(e: SchemeExp): Analysis
+  def incAnalysis(e: SchemeExp): IncrementalAnalysis
+
+  def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit
+  def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit
+
+  def onBenchmark(benchmark: Benchmark): Unit = {
+    val text = Reader.loadFile(benchmark)
+    val program = CSchemeParser.parse(text)
+    for (c <- configurations) {
+      property(s"Analysis results for $benchmark using $c are equal (initial analysis) or subsuming (incremental update).",
+               testTags(benchmark, c): _*
+      ) {
+        try {
+          val a = analysis(getInitial(program))
+          a.analyzeWithTimeout(timeout())
+          assume(a.finished)
+          val i = incAnalysis(program)
+          i.configuration = c
+          i.analyzeWithTimeout(timeout())
+          assume(i.finished)
+          checkEqual(a, i)
+
+          ////
+
+          val b = analysis(getUpdated(program))
+          b.analyzeWithTimeout(timeout())
+          assume(b.finished)
+          i.updateAnalysis(timeout())
+          assume(i.finished)
+          checkSubsumption(a, i)
+
+        } catch {
+          case e: VirtualMachineError =>
+            System.gc()
+            cancel(s"Analysis of $benchmark encountered an error: $e.")
+        }
+      }
+    }
+  }
 }
 
 class ModFComparisonTests extends IncrementalModXComparisonTests with SequentialIncrementalBenchmarks {
@@ -53,6 +99,9 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
       ) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra
   }
 
+  def analysis(e: SchemeExp) = new Analysis(e)
+  def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
+
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] =
     if (c == allOptimisations || c == noOptimisations) Seq(IncrementalTest) else Seq(IncrementalTest, SlowTest)
 
@@ -74,40 +123,6 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
     assert(a.store.forall { case (ad, v) => a.lattice.subsumes(i.store.getOrElse(ad, a.lattice.bottom), v) })
   }
 
-  def onBenchmark(benchmark: Benchmark): Unit = {
-    val text = Reader.loadFile(benchmark)
-    val program = CSchemeParser.parse(text)
-    for (c <- configurations) {
-      property(s"Analysis results for $benchmark using $c are equal (initial analysis) or subsuming (incremental update).",
-               testTags(benchmark, c): _*
-      ) {
-        try {
-          val a = new Analysis(getInitial(program))
-          a.analyzeWithTimeout(timeout())
-          assume(a.finished)
-          val i = new IncrementalAnalysis(program)
-          i.configuration = c
-          i.analyzeWithTimeout(timeout())
-          assume(i.finished)
-          checkEqual(a, i)
-
-          ////
-
-          val b = new Analysis(getUpdated(program))
-          b.analyzeWithTimeout(timeout())
-          assume(b.finished)
-          i.updateAnalysis(timeout())
-          assume(i.finished)
-          checkSubsumption(a, i)
-
-        } catch {
-          case e: VirtualMachineError =>
-            System.gc()
-            cancel(s"Analysis of $benchmark encountered an error: $e.")
-        }
-      }
-    }
-  }
 }
 
 class ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks {
@@ -136,7 +151,10 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
       ): KCFAIntra = new IntraAnalysis(cmp) with SmallStepIntra with KCFAIntra with GlobalStoreIntra
   }
 
-  def testTags(b: Benchmark): Seq[Tag] = Seq(IncrementalTest, SlowTest)
+  def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] = Seq(IncrementalTest, SlowTest)
+
+  def analysis(e: SchemeExp) = new Analysis(e)
+  def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
 
   // TODO: Better comparisons, remove typecasts.
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
@@ -156,36 +174,4 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
     assert(a.store.forall { case (ad, v) => a.lattice.subsumes(i.store.getOrElse(ad, a.lattice.bottom), v) })
   }
 
-  override def onBenchmark(benchmark: Benchmark): Unit = {
-    val text = Reader.loadFile(benchmark)
-    val program = CSchemeParser.parse(text)
-    for (c <- configurations) {
-      property(s"Analysis results for $benchmark using $c are equal (initial analysis) or subsuming (incremental update).", testTags(benchmark): _*) {
-        try {
-          val a = new Analysis(getInitial(program))
-          a.analyzeWithTimeout(timeout())
-          assume(a.finished)
-          val i = new IncrementalAnalysis(program)
-          i.configuration = c
-          i.analyzeWithTimeout(timeout())
-          assume(i.finished)
-          checkEqual(a, i)
-
-          ////
-
-          val b = new Analysis(getUpdated(program))
-          b.analyzeWithTimeout(timeout())
-          assume(b.finished)
-          i.updateAnalysis(timeout())
-          assume(i.finished)
-          checkSubsumption(a, i)
-
-        } catch {
-          case e: VirtualMachineError =>
-            System.gc()
-            cancel(s"Analysis of $benchmark encountered an error: $e.")
-        }
-      }
-    }
-  }
 }
