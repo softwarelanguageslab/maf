@@ -73,7 +73,7 @@ object IncrementalConfiguration {
       noOptimisations,
       // One optimisation
       ci,
-      di,
+      di
       //wi,
       // Two optimisations
       //ci_di,
@@ -81,7 +81,7 @@ object IncrementalConfiguration {
       //di_wi,
       //wi_cy,
       // Three optimisations
-      ci_di_wi
+      //ci_di_wi
       //ci_wi_cy,
       //di_wi_cy,
       // Four optimisations
