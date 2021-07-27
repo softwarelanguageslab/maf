@@ -32,7 +32,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
       value: Value
     ): Option[Map[Addr, Value]] =
     store.get(addr) match {
-      case None if value == lattice.bottom => None
+      case None if lattice.isBottom(value) => None
       case None                            => Some(store + (addr -> value))
       case Some(oldValue) =>
         val newValue = lattice.join(oldValue, value)
