@@ -100,7 +100,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
     private def step(state: State): Set[State] = state match {
       case EvalState(exp, env, cnt) =>
         eval(exp, env, cnt)
-      case KontState(vlu, _) if vlu == lattice.bottom =>
+      case KontState(vlu, _) if lattice.isBottom(vlu) =>
         Set.empty
       case KontState(vlu, cnt) =>
         val frm = cnt.head

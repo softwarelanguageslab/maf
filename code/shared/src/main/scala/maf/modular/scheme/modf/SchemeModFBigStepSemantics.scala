@@ -36,7 +36,7 @@ object EvalM {
   // TODO: withExtendedEnv would make more sense
   def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
     EvalM(env => ev.run(f(env)))
-  def inject[X: Lattice](x: X): EvalM[X] = if (x == Lattice[X].bottom) mzero else unit(x)
+  def inject[X: Lattice](x: X): EvalM[X] = if (Lattice[X].isBottom(x)) mzero else unit(x)
   def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] = EvalM { env =>
     (x.run(env), y.run(env)) match {
       case (None, yres)             => yres

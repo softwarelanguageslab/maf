@@ -114,6 +114,8 @@ class IncrementalModularSchemeLattice[
 
     def bottom: AL = AnnotatedElements(List.empty, Set())
 
+    override def isBottom(x: AL): Boolean = removeAddresses(x) == bottom // Just check the value.
+
     def number(x: BigInt): AL = AnnotatedElement(Value.number(x))
 
     def numTop: AL = AnnotatedElement(Int(IntLattice[I].top))
