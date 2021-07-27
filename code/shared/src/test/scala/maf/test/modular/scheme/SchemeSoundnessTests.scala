@@ -44,8 +44,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
                                               io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
       )
-      val finalResult = runInterpreter(interpreter, program, timeout)
-      idnResults += program.idn -> (idnResults(program.idn) + finalResult)
+      runInterpreter(interpreter, program, timeout)
     } catch {
       case _: TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
@@ -70,6 +69,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
         System.gc()
         cancel(s"Analysis of $benchmark encountered an error: $e")
     }
+
   protected def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value): Boolean = {
     val lat = analysis.lattice
     v match {
@@ -85,12 +85,22 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       case Value.Bool(b)       => lat.subsumes(abs, lat.bool(b))
       case Value.Character(c)  => lat.subsumes(abs, lat.char(c))
       case Value.Nil           => lat.subsumes(abs, lat.nil)
-      case Value.Pointer(_)    => lat.getPointerAddresses(abs).nonEmpty
+      case Value.Pointer(a)    => lat.getPointerAddresses(abs).exists(_.idn == a._2.idn)
       case Value.Thread(_)     => lat.getThreads(abs).nonEmpty
+      case Value.Lock(l)       => lat.isTrue(lat.op(SchemeOp.IsLock)(List(abs)).getOrElse(lat.bottom))
       case Value.InputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
       case Value.OutputPort(h) => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
       case Value.EOF           => lat.subsumes(abs, lat.charTop)
-      case v                   => throw new Exception(s"Unknown concrete value type: $v.")
+      case Value.Cons(a, d) =>
+        checkSubsumption(analysis)(a, lat.op(SchemeOp.Car)(List(abs)).getOrElse(lat.bottom)) &&
+          checkSubsumption(analysis)(d, lat.op(SchemeOp.Cdr)(List(abs)).getOrElse(lat.bottom))
+      case Value.Vector(siz, els, ini) =>
+        lat.subsumes(lat.op(SchemeOp.VectorLength)(List(abs)).getOrElse(lat.bottom), lat.number(siz)) &&
+          els.forall { case (idx, vlu) =>
+            checkSubsumption(analysis)(vlu, lat.op(SchemeOp.VectorRef)(List(abs, lat.number(idx))).getOrElse(lat.bottom))
+          } &&
+          (els.size == siz || checkSubsumption(analysis)(ini, lat.op(SchemeOp.VectorRef)(List(abs, lat.numTop)).getOrElse(lat.bottom)))
+      case v => throw new Exception(s"Unknown concrete value type: $v.")
     }
   }
 
@@ -106,7 +116,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
         if (!abstractValues.exists(checkSubsumption(analysis)(concreteValue, _))) {
           val failureMsg =
             s"""
-            | Intermediate result at $idn is unsound:
+            | Result at $idn is unsound:
             | - concrete value: $concreteValue
             | - abstract values: $abstractValues
             """.stripMargin

@@ -33,7 +33,7 @@ abstract class AdaptiveAnalysisComparison[
       analyses: List[(SchemeExp => Analysis, String)],
       path: String,
       program: SchemeExp,
-      concreteResult: BaseStore
+      concreteResult: ResultMap
     ): Unit =
     analyses.foreach { case (analysis, name) =>
       runAnalysis(analysis, name, program, path, Timeout.start(timeout)) match {

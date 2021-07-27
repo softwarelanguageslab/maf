@@ -10,7 +10,9 @@ object ConcreteValues {
 
   sealed trait Value
 
-  sealed trait AddrInfo
+  sealed trait AddrInfo {
+    def idn: Identity
+  }
 
   trait Prim {
     val name: String
@@ -29,33 +31,33 @@ object ConcreteValues {
   type Store = Map[Addr, Value]
 
   object AddrInfo {
-
-    case class VarAddr(vrb: Identifier) extends AddrInfo
-
-    case class PrmAddr(nam: String) extends AddrInfo
-
-    case class PtrAddr(exp: SchemeExp) extends AddrInfo
-
-    case class RetAddr(exp: SchemeExp) extends AddrInfo
-
+    case class VarAddr(vrb: Identifier) extends AddrInfo {
+      def idn = vrb.idn
+    }
+    case class PrmAddr(nam: String) extends AddrInfo {
+      def idn = Identity.none
+    }
+    case class PtrAddr(exp: SchemeExp) extends AddrInfo {
+      def idn = exp.idn
+    }
+    case class RetAddr(exp: SchemeExp) extends AddrInfo {
+      def idn = exp.idn
+    }
   }
 
   object Value {
 
+    /* arises from undefined behavior */
     case class Undefined(idn: Identity) extends Value {
       override def toString: String = "#<undef>"
     }
 
-    /* arises from undefined behavior */
+    /* only used for letrec */
     case class Unbound(id: Identifier) extends Value {
       override def toString: String = "#<unbound>"
     }
 
-    /* only used for letrec */
-    case class Clo(
-        lambda: SchemeLambdaExp,
-        env: Env)
-        extends Value {
+    case class Clo(lambda: SchemeLambdaExp, env: Env) extends Value {
       override def toString: String = s"#<procedure:${lambda.lambdaName}>"
     }
 

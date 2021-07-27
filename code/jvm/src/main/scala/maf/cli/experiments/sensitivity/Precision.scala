@@ -57,8 +57,7 @@ object PrecisionComparison
     val con = runInterpreter(prg, path).get
     val abs = runAnalysis(baseAnalysis, "base analysis", prg, path).get
     val allKeys = con.keys ++ abs.keys
-    val interestingKeys = allKeys.filter(_.isInstanceOf[RetAddr])
-    interestingKeys.foreach { k =>
+    allKeys.foreach { k =>
       println(s"$k -> ${abs.getOrElse(k, "⊥")} ; ${con.getOrElse(k, "⊥")} ")
     }
   }

@@ -47,7 +47,7 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests {
 // concrete test suites to run ...
 
 class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with AllSequentialBenchmarks {
-  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
+  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b) || b.contains("infinite")
 }
 
 class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllSequentialBenchmarks {

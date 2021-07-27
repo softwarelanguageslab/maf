@@ -39,13 +39,13 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     // run the other analyses on the benchmark
     analyses.foreach { case (analysis, name) =>
       val otherResult = runAnalysis(analysis, name, program, path, timeout())
-      val lessPrecise = otherResult.map(store => compareOrdered(store, concreteResult).size)
+      val lessPrecise = otherResult.map(analysisResult => compareOrdered(analysisResult, concreteResult).size)
       results = results.add(path, name, lessPrecise)
     }
   }
 }
 
-object AnalysisComparisonAltAdaptive
+object AnalysisComparisonAlt1
     extends AnalysisComparisonAlt[
       ConstantPropagation.I,
       ConstantPropagation.R,
@@ -55,21 +55,16 @@ object AnalysisComparisonAltAdaptive
       ConstantPropagation.Sym
     ] {
   def analyses = {
-    val n = 3000
-    val t = 3000
     // run some adaptive analyses
-    List((SchemeAnalyses.adaptiveAnalysis(_, n, t), s"adaptive (n = $n; t = $t)"))
+    List(
+      (SchemeAnalyses.contextInsensitiveAnalysis(_), s"0-CFA"),
+      (SchemeAnalyses.kCFAAnalysis(_, 1), "1-CFA"),
+      (SchemeAnalyses.kCFAAnalysis(_, 2), "2-CFA")
+    )
   }
   def main(args: Array[String]) = runBenchmarks(
     Set(
-      "test/R5RS/various/mceval.scm",
-      "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
-      "test/R5RS/icp/icp_2_aeval.scm",
-      //"test/R5RS/icp/icp_7_eceval.scm",
-      "test/R5RS/icp/icp_8_compiler.scm",
-      "test/R5RS/gabriel/browse.scm",
-      "test/R5RS/gabriel/boyer.scm",
-      "test/R5RS/scp1-compressed/all.scm"
+      "test/R5RS/various/fact.scm"
     )
   )
 

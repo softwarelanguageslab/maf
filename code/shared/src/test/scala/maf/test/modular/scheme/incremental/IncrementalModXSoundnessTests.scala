@@ -37,6 +37,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     with ReturnValue[SchemeExp]
     with SchemeDomain
     with IncrementalModAnalysis[SchemeExp]
+    with AnalysisResults[SchemeExp]
 
   def analysis(b: SchemeExp): IncrementalAnalysis
 
@@ -67,8 +68,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
                                               io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
       )
-      val finalResult = runInterpreterWithVersion(interpreter, program, timeout, version)
-      idnResults += program.idn -> (idnResults(program.idn) + finalResult)
+      runInterpreterWithVersion(interpreter, program, timeout, version)
     } catch {
       case _: TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")

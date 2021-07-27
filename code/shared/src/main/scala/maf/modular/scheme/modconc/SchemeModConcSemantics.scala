@@ -13,7 +13,7 @@ import maf.util.benchmarks.Timeout
 import maf.modular.scheme.modf.EvalM._
 import maf.modular.worklist.{LIFOWorklistAlgorithm, RandomWorklistAlgorithm}
 
-trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ReturnValue[SchemeExp] with ContextSensitiveComponents[SchemeExp] with SchemeSetup {
+trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiveComponents[SchemeExp] with SchemeSetup {
   inter =>
 
   type Env = Environment[Addr]

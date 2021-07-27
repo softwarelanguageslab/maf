@@ -297,20 +297,20 @@ trait SmallStepModConcSemantics
       case SchemeVar(id)                         => Set(Kont(lookup(id, env), stack))
 
       // Multi-step evaluation.
-      case c @ SchemeFuncall(f, args, _)           => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
-      case e @ SchemePair(car, cdr, _)             => Set(Eval(car, env, extendKStore(car, PairCarFrame(cdr, env, e), stack)))
-      case SchemeSet(variable, value, _)           => Set(Eval(value, env, extendKStore(value, SetFrame(variable, env), stack)))
-      case SchemeAnd(Nil, _)                       => Set(Kont(lattice.bool(true), stack))
-      case SchemeAnd(e :: es, _)                   => evalAnd(e, es, env, stack)
-      case SchemeBegin(exps, _)                    => evalSequence(exps, env, stack)
-      case SchemeIf(cond, cons, alt, _)            => evalIf(cond, cons, alt, env, stack)
-      case SchemeLet(bindings, body, _)            => evalLet(bindings, List(), body, env, stack)
-      case SchemeLetrec(bindings, body, _)         => evalLetRec(bindings, body, env, stack)
-      case SchemeLetStar(bindings, body, _)        => evalLetStar(bindings, body, env, stack)
-      case SchemeNamedLet(name, bindings, body, _) => evalNamedLet(name, bindings, body, env, stack)
-      case SchemeOr(exps, _)                       => evalOr(exps, env, stack)
-      case SchemeAssert(exp, _)                    => evalAssert(exp, env, stack)
-      case SchemeSplicedPair(_, _, _)              => throw new Exception("Splicing not supported.")
+      case c @ SchemeFuncall(f, args, _)             => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
+      case e @ SchemePair(car, cdr, _)               => Set(Eval(car, env, extendKStore(car, PairCarFrame(cdr, env, e), stack)))
+      case SchemeSet(variable, value, _)             => Set(Eval(value, env, extendKStore(value, SetFrame(variable, env), stack)))
+      case SchemeAnd(Nil, _)                         => Set(Kont(lattice.bool(true), stack))
+      case SchemeAnd(e :: es, _)                     => evalAnd(e, es, env, stack)
+      case SchemeBegin(exps, _)                      => evalSequence(exps, env, stack)
+      case SchemeIf(cond, cons, alt, _)              => evalIf(cond, cons, alt, env, stack)
+      case SchemeLet(bindings, body, _)              => evalLet(bindings, List(), body, env, stack)
+      case SchemeLetrec(bindings, body, _)           => evalLetRec(bindings, body, env, stack)
+      case SchemeLetStar(bindings, body, _)          => evalLetStar(bindings, body, env, stack)
+      case SchemeNamedLet(name, bindings, body, idn) => evalNamedLet(name, bindings, body, env, stack, idn)
+      case SchemeOr(exps, _)                         => evalOr(exps, env, stack)
+      case SchemeAssert(exp, _)                      => evalAssert(exp, env, stack)
+      case SchemeSplicedPair(_, _, _)                => throw new Exception("Splicing not supported.")
 
       // Multithreading.
       case CSchemeFork(body, _) => evalFork(body, env, stack)
@@ -423,10 +423,11 @@ trait SmallStepModConcSemantics
         bindings: List[(Identifier, Exp)],
         body: Exps,
         env: Env,
-        stack: Stack
+        stack: Stack,
+        idn: Identity
       ): Set[State] = {
       val (form, actu) = bindings.unzip
-      val lambda = SchemeLambda(Some(name.name), form, body, name.idn)
+      val lambda = SchemeLambda(Some(name.name), form, body, idn)
       val env2 = define(name, lattice.bottom, env)
       val clo = lattice.closure((lambda, env2))
       assign(name, clo, env2)

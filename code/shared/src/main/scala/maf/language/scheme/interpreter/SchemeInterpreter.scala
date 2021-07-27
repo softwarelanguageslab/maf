@@ -38,10 +38,7 @@ class SchemeInterpreter(
       version: Version = New
     ): Value = {
     setStore(initialSto)
-    val res = eval(program, initialEnv, timeout, version).result
-    val resAddr = newAddr(AddrInfo.RetAddr(program))
-    extendStore(resAddr, res)
-    res
+    eval(program, initialEnv, timeout, version).result
   }
 
   def safeFuture(bdy: => Value): Future[Value] = Future {
@@ -57,19 +54,6 @@ class SchemeInterpreter(
     def call(i: Identity, v: Value): Unit = synchronized {
       cb(i, v)
     }
-  }
-
-  var compared = 0
-
-  def check(i: Identity, v: Value): Value = {
-    compared += 1
-    v match {
-      case Value.Undefined(idn @ _) => () // println(s"Undefined behavior arising from identity $idn seen at ${e.idn.pos}")
-      case Value.Unbound(idn)       => println(s"Seen unbound identifier $idn at ${i}")
-      case _                        => ()
-    }
-    Callback.call(i, v)
-    v
   }
 
   // Keep an artificial call stack to ease debugging.
@@ -128,7 +112,7 @@ class SchemeInterpreter(
         val addr = newAddr(AddrInfo.VarAddr(binding._1))
         for {
           bindingv <- tailcall(eval(binding._2, env, timeout, version))
-          _ = extendStore(addr, check(binding._1.idn, bindingv))
+          _ = extendStore(addr, bindingv)
           res <- tailcall(evalLet(bindings, body, pos, envExt + (binding._1.name -> addr), env, timeout, version))
         } yield res
     }
@@ -148,7 +132,7 @@ class SchemeInterpreter(
         val addr = newAddr(AddrInfo.VarAddr(binding._1))
         for {
           bindingv <- tailcall(eval(binding._2, envExt, timeout, version))
-          _ = extendStore(addr, check(binding._1.idn, bindingv))
+          _ = extendStore(addr, bindingv)
           res <- tailcall(evalLetStar(bindings, body, pos, envExt + (binding._1.name -> addr), env, timeout, version))
         } yield res
     }
@@ -167,10 +151,34 @@ class SchemeInterpreter(
       case binding :: bindings =>
         for {
           bindingv <- tailcall(eval(binding._2, envExt, timeout, version))
-          _ = extendStore(envExt(binding._1.name), check(binding._1.idn, bindingv))
+          _ = extendStore(envExt(binding._1.name), bindingv)
           res <- tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout, version))
         } yield res
     }
+
+  //determines whether a given value should be checked or not
+  private def checkValue(v: Value): Boolean = v match {
+    case Value.Undefined(_) =>
+      //println(s"Undefined behavior arising from identity $idn seen at ${e.idn.pos}")
+      false
+    case Value.Unbound(_) =>
+      //println(s"Seen unbound identifier $idn")
+      false
+    case _ =>
+      true
+  }
+
+  private def checkAddr(a: Addr): Boolean = a._2 match {
+    case _: AddrInfo.VarAddr | _: AddrInfo.PtrAddr => true
+    case _                                         => false
+  }
+
+  override def extendStore(a: Addr, v: Value): Unit = {
+    if (checkAddr(a) && checkValue(v)) {
+      Callback.call(a._2.idn, v)
+    }
+    super.extendStore(a, v)
+  }
 
   def evalArgs(
       args: List[SchemeExp],
@@ -210,12 +218,10 @@ class SchemeInterpreter(
                 argsv <- evalArgs(args, env, timeout, version)
                 envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
                   val addr = newAddr(AddrInfo.VarAddr(arg._1))
-                  extendStore(addr, check(arg._1.idn, arg._2))
+                  extendStore(addr, arg._2)
                   (env3 + (arg._1.name -> addr))
                 }
                 res <- stackedCall(name, pos2, tailcall(eval(SchemeBody(body), envExt, timeout, version)))
-                resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
-                _ = extendStore(resAddr, res)
               } yield res
             case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, pos2), env2) =>
               val arity = argsNames.length
@@ -228,15 +234,13 @@ class SchemeInterpreter(
                 argsv <- evalArgs(args, env, timeout, version)
                 envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
                   val addr = newAddr(AddrInfo.VarAddr(arg._1))
-                  extendStore(addr, check(arg._1.idn, arg._2))
+                  extendStore(addr, arg._2)
                   (env3 + (arg._1.name -> addr))
                 }
                 varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
                 _ = extendStore(varArgAddr, makeList(args.drop(arity).zip(argsv.drop(arity))))
                 envExt2 = envExt + (vararg.name -> varArgAddr)
                 res <- stackedCall(name, pos2, eval(SchemeBody(body), envExt2, timeout, version))
-                resAddr = newAddr(AddrInfo.RetAddr(SchemeBody(lambda.body)))
-                _ = extendStore(resAddr, res)
               } yield res
             case Value.Primitive(p) =>
               tailcall(
