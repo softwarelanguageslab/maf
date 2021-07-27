@@ -1,6 +1,5 @@
 package maf.test.modular.scheme.incremental
 
-import maf.core.Expression
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.SchemeExp
 import maf.modular._
@@ -105,21 +104,20 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] =
     if (c == allOptimisations || c == noOptimisations) Seq(IncrementalTest) else Seq(IncrementalTest, SlowTest)
 
-  // TODO: Better comparisons, remove typecasts.
+  // Components are checked textually as the programs they contain differ.
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
     assert(i.visited.size == a.visited.size)
     assert(i.store.size == a.store.size)
-    assert(i.visited.diff(a.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
+    assert(i.visited.map(_.toString).diff(a.visited.map(_.toString)).isEmpty) // If the size is equal, this checks also the converse assertion.
     assert(a.store.forall { case (ad, v) =>
       v == i.store.getOrElse(ad, i.lattice.bottom)
     }) // No need to remove annotations (should not be in the store).
   }
 
-  // TODO: Better comparisons, remove typecasts.
   def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit = {
     assert(i.visited.size >= a.visited.size)
     assert(i.store.size >= a.store.size)
-    assert(a.visited.diff(i.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
+    assert(a.visited.map(_.toString).diff(i.visited.map(_.toString)).isEmpty) // If the size is equal, this checks also the converse assertion.
     assert(a.store.forall { case (ad, v) => a.lattice.subsumes(i.store.getOrElse(ad, a.lattice.bottom), v) })
   }
 
@@ -156,21 +154,20 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
   def analysis(e: SchemeExp) = new Analysis(e)
   def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
 
-  // TODO: Better comparisons, remove typecasts.
+  // Components are checked textually as the programs they contain differ.
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
     assert(i.visited.size == a.visited.size)
     assert(i.store.size == a.store.size)
-    assert(i.visited.diff(a.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
+    assert(i.visited.map(_.toString).diff(a.visited.map(_.toString)).isEmpty) // If the size is equal, this checks also the converse assertion.
     assert(a.store.forall { case (ad, v) =>
       v == i.store.getOrElse(ad, i.lattice.bottom)
     }) // No need to remove annotations (should not be in the store).
   }
 
-  // TODO: Better comparisons, remove typecasts.
   def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit = {
     assert(i.visited.size >= a.visited.size)
     assert(i.store.size >= a.store.size)
-    assert(a.visited.diff(i.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
+    assert(a.visited.map(_.toString).diff(i.visited.map(_.toString)).isEmpty) // If the size is equal, this checks also the converse assertion.
     assert(a.store.forall { case (ad, v) => a.lattice.subsumes(i.store.getOrElse(ad, a.lattice.bottom), v) })
   }
 

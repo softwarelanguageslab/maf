@@ -3,6 +3,7 @@ package maf.cli.runnables
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme._
 import maf.modular._
+import maf.modular.incremental.ProgramVersionExtracter.getInitial
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modf._
 import maf.modular.worklist._
@@ -38,7 +39,7 @@ object AnalyzeProgram extends App {
   }
 
   val bench: List[String] = List(
-    "test/DEBUG3.scm"
+    "test/changes/scheme/satRem.scm"
   )
 
   // Used by webviz.
@@ -56,7 +57,7 @@ object AnalyzeProgram extends App {
 
   // Non-inc counterpart to IncrementalRun
   def nonIncAnalysis(program: SchemeExp) = {
-    new ModAnalysis[SchemeExp](program)
+    new ModAnalysis[SchemeExp](getInitial(program))
       with StandardSchemeModFComponents
       with SchemeModFNoSensitivity // Different
       with SchemeModFSemantics
