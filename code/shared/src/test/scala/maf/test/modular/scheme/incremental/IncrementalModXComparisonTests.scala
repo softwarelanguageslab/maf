@@ -110,7 +110,7 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
   def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
 
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] =
-    if (c == allOptimisations || c == noOptimisations) Seq(IncrementalTest) else Seq(IncrementalTest, SlowTest)
+    if (c.rank <= 1 || c == allOptimisations) Seq(IncrementalTest) else Seq(IncrementalTest, SlowTest)
 
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
     assert(i.visited.size == a.visited.size, "The visited sets of both analyses are not equally big.")

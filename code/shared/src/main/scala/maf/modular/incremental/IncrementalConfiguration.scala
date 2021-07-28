@@ -42,6 +42,15 @@ case class IncrementalConfiguration(
     val string = List(ci, di, wi).filterNot(_.isEmpty).mkString("-")
     if (string.isEmpty) "NoOpt" else string
   }
+
+  // Utility to determine between fast/slow tests based on the number of active optimisations.
+  def rank(): Int = {
+    val ci = if (componentInvalidation) 1 else 0
+    val di = if (dependencyInvalidation) 1 else 0
+    val wi = if (writeInvalidation) 1 else 0
+    val cy = if (cyclicValueInvalidation) 1 else 0
+    ci + di + wi + cy
+  }
 }
 
 /** Provides instantiations of all configurations for the incremental analysis. */
