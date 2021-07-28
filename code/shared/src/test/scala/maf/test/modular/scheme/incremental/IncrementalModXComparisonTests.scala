@@ -116,7 +116,9 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
     assert(i.visited.size == a.visited.size, "The visited sets of both analyses are not equally big.")
     assert(i.store.size == a.store.size, "Both analyses contain a different number of elements in their store.")
-    assert(i.visited.diff(a.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
+    assert(i.visited.diff(a.visited).isEmpty,
+           "The visited sets of both analyses differ after the initial run."
+    ) // If the size is equal, this checks also the converse assertion.
     a.store.foreach { case (addr, av) =>
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
       assert(av == iv, s"Store mismatch at $addr: $av <=> $iv.")
@@ -126,7 +128,9 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
   def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit = {
     assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit the same components than the full reanalysis.")
     assert(i.store.size >= a.store.size, "The incrementally updated store is smaller than the store after a full reanalysis.")
-    assert(a.visited.diff(i.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
+    assert(a.visited.diff(i.visited).isEmpty,
+           "The visited sets of both analyses differ (incremental update)."
+    ) // If the size is equal, this checks also the converse assertion.
     a.store.foreach { case (addr, av) =>
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
       assert(a.lattice.subsumes(iv, av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
@@ -181,7 +185,9 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
     assert(i.visited.size == a.visited.size, "The visited sets of both analyses are not equally big.")
     assert(i.store.size == a.store.size, "Both analyses contain a different number of elements in their store.")
-    assert(i.visited.diff(a.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
+    assert(i.visited.diff(a.visited).isEmpty,
+           "The visited sets of both analyses differ after the initial run."
+    ) // If the size is equal, this checks also the converse assertion.
     a.store.foreach { case (addr, av) =>
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
       assert(av == iv, s"Store mismatch at $addr: $av <=> $iv.")
@@ -191,7 +197,9 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
   def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit = {
     assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit the same components than the full reanalysis.")
     assert(i.store.size >= a.store.size, "The incrementally updated store is smaller than the store after a full reanalysis.")
-    assert(a.visited.diff(i.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
+    assert(a.visited.diff(i.visited).isEmpty,
+           "The visited sets of both analyses differ (incremental update)."
+    ) // If the size is equal, this checks also the converse assertion.
     a.store.foreach { case (addr, av) =>
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
       assert(a.lattice.subsumes(iv, av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
