@@ -32,7 +32,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       |COMI  Indicates the component's analysis is committed.
       |DI    Dependency invalidation: the component is no longer dependent on the dependency.
       |IUPD  Incremental update of the given address, indicating the value now residing in the store and the value actually written.
-      |PROV  Registration of provenance, including the address and new provenance value.
+      |PROV  Registration of provenance, including the address and new provenance value, for values that did not cause store changes.
       |READ  Address read, includes the address and value retrieved from the store.
       |RSAD  Indicates the address dependencies for a given component are reset.
       |TRIG  Indicates the given dependency has been triggered.
@@ -143,6 +143,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     super.trigger(dep)
   }
 
+  //override def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit = {
+  //  logger.log(s"PROV $addr: $value")
+  //  super.updateProvenance(cmp, addr, value)
+  //}
+
   override def updateAddrInc(
       cmp: Component,
       addr: Addr,
@@ -178,7 +183,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     override def writeAddr(addr: Addr, value: Value): Boolean = {
       if (configuration.cyclicValueInvalidation) lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $addr -> $r ($component)"))
       val b = super.writeAddr(addr, value)
-      if (b) logger.log(s"WRIT $addr <= $value (becomes ${intra.store.getOrElse(addr, lattice.bottom)})")
+      logger.log(s"WRIT $value => $addr (${if (b) "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
       b
     }
 

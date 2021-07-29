@@ -3,7 +3,7 @@ package maf.cli.runnables
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme._
 import maf.modular._
-import maf.modular.incremental.ProgramVersionExtracter.getInitial
+import maf.modular.incremental.ProgramVersionExtracter.{getInitial, getUpdated}
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modf._
 import maf.modular.worklist._
@@ -36,10 +36,11 @@ object AnalyzeProgram extends App {
      */
     val a = nonIncAnalysis(text)
     a.analyzeWithTimeout(timeout())
+    a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) }).foreach(println)
   }
 
   val bench: List[String] = List(
-    "test/changes/scheme/satRem.scm"
+    "test/DEBUG3.scm"
   )
 
   // Used by webviz.
@@ -57,15 +58,9 @@ object AnalyzeProgram extends App {
 
   // Non-inc counterpart to IncrementalRun
   def nonIncAnalysis(program: SchemeExp) = {
-    new ModAnalysis[SchemeExp](getInitial(program))
-      with StandardSchemeModFComponents
-      with SchemeModFNoSensitivity // Different
-      with SchemeModFSemantics
-      with LIFOWorklistAlgorithm[SchemeExp]
-      with BigStepModFSemantics
-      with SchemeConstantPropagationDomain // Different
-      with GlobalStore[SchemeExp]
-      with AnalysisLogging[SchemeExp] {
+    new ModAnalysis[SchemeExp](getUpdated(program)) // Select the program version here.
+    with StandardSchemeModFComponents with SchemeModFCallSiteSensitivity with SchemeModFSemantics with LIFOWorklistAlgorithm[SchemeExp]
+    with BigStepModFSemantics with SchemeConstantPropagationDomain with GlobalStore[SchemeExp] with AnalysisLogging[SchemeExp] {
       override def focus(a: Addr): Boolean = !a.toString.toLowerCase().contains("prm")
       override def intraAnalysis(
           cmp: Component

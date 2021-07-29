@@ -5,7 +5,6 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme._
 import maf.modular._
 import maf.modular.incremental.IncrementalConfiguration._
-import maf.modular.incremental.ProgramVersionExtracter._
 import maf.modular.incremental._
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeConstantPropagationDomain
 import maf.modular.incremental.scheme.modconc.IncrementalSchemeModConcSmallStepSemantics
@@ -21,8 +20,11 @@ import org.scalatest.Tag
 
 import scala.concurrent.duration._
 
-/** Tests comparing the initial result of an analysis to the result of an incremental analysis. */
-// TODO: Also factor out onBenchmark.
+/**
+ * Compares the analysis result of an incremental analysis w.r.t. the results obtained by full program analyses. Requires equality for the analysis of
+ * the incremental program version, and subsumption for the analysis of the updated program version.
+ */
+// TODO: Require equality when all optimisations are enabled.
 trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
   lazy val configurations: List[IncrementalConfiguration] = allConfigurations
   def timeout(): Timeout.T = Timeout.start(Duration(5, MINUTES))
@@ -63,7 +65,7 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
           assume(b.finished)
           i.updateAnalysis(timeout())
           assume(i.finished)
-          checkSubsumption(a, i)
+          checkSubsumption(b, i)
 
         } catch {
           case e: VirtualMachineError =>
@@ -111,22 +113,36 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
   def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
 
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] =
-    if (c == allOptimisations || c == noOptimisations) Seq(IncrementalTest) else Seq(IncrementalTest, SlowTest)
+    if (c.rank <= 1 || c == allOptimisations) Seq(IncrementalTest) else Seq(IncrementalTest, SlowTest)
 
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
-    assert(i.visited.size == a.visited.size, "The visited sets of both analyses are not equally big.")
-    assert(i.store.size == a.store.size, "Both analyses contain a different number of elements in their store.")
-    assert(i.visited.diff(a.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
-    a.store.foreach { case (addr, av) =>
-      val iv = i.store.getOrElse(addr, i.lattice.bottom)
-      assert(av == iv, s"Store mismatch at $addr: $av <=> $iv.")
-    } // No need to remove annotations (should not be in the store).
+    // Check components.
+    assert(i.visited == a.visited, "The visited sets of both analyses differ for the initial program version.")
+
+    // Check dependencies.
+    val depsI = i.deps.toSet[(Dependency, Set[i.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })
+    val depsA = a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })
+    assert(depsI == depsA, "Both analyses have not inferred the same dependencies for the initial program version.")
+
+    // Check store.
+    assert(i.store.toSet == a.store.toSet, "Both analyses contain different value/address pairs in their store for the initial program version.")
   }
 
   def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit = {
-    assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit the same components than the full reanalysis.")
+    // Check components.
+    assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit at least the same components than the full reanalysis.")
+    assert(a.visited.diff(i.visited).isEmpty,
+           "The visited set of the incremental update does not subsume the visited set of the full reanalysis."
+    ) // If the size is equal, this checks also the converse assertion.
+
+    // Check dependencies.
+    val depsI = i.deps.toSet[(Dependency, Set[i.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })
+    val depsA = a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })
+    assert(depsI.size >= depsA.size, "The incremental analysis did not infer at least the same dependencies than the full reanalysis.")
+    assert(depsA.diff(depsI).isEmpty, "The dependency set of the incremental update does not subsume the dependency set of the full reanalysis.")
+
+    // Check store.
     assert(i.store.size >= a.store.size, "The incrementally updated store is smaller than the store after a full reanalysis.")
-    assert(a.visited.diff(i.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
     a.store.foreach { case (addr, av) =>
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
       assert(a.lattice.subsumes(iv, av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
@@ -179,19 +195,33 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
   def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
 
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
-    assert(i.visited.size == a.visited.size, "The visited sets of both analyses are not equally big.")
-    assert(i.store.size == a.store.size, "Both analyses contain a different number of elements in their store.")
-    assert(i.visited.diff(a.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
-    a.store.foreach { case (addr, av) =>
-      val iv = i.store.getOrElse(addr, i.lattice.bottom)
-      assert(av == iv, s"Store mismatch at $addr: $av <=> $iv.")
-    } // No need to remove annotations (should not be in the store).
+    // Check components.
+    assert(i.visited == a.visited, "The visited sets of both analyses differ for the initial program version.")
+
+    // Check dependencies.
+    val depsI = i.deps.toSet[(Dependency, Set[i.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })
+    val depsA = a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })
+    assert(depsI == depsA, "Both analyses have not inferred the same dependencies for the initial program version.")
+
+    // Check store.
+    assert(i.store.toSet == a.store.toSet, "Both analyses contain different value/address pairs in their store for the initial program version.")
   }
 
   def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit = {
-    assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit the same components than the full reanalysis.")
+    // Check components.
+    assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit at least the same components than the full reanalysis.")
+    assert(a.visited.diff(i.visited).isEmpty,
+           "The visited set of the incremental update does not subsume the visited set of the full reanalysis."
+    ) // If the size is equal, this checks also the converse assertion.
+
+    // Check dependencies.
+    val depsI = i.deps.toSet[(Dependency, Set[i.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })
+    val depsA = a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })
+    assert(depsI.size >= depsA.size, "The incremental analysis did not infer at least the same dependencies than the full reanalysis.")
+    assert(depsA.diff(depsI).isEmpty, "The dependency set of the incremental update does not subsume the dependency set of the full reanalysis.")
+
+    // Check store.
     assert(i.store.size >= a.store.size, "The incrementally updated store is smaller than the store after a full reanalysis.")
-    assert(a.visited.diff(i.visited).isEmpty) // If the size is equal, this checks also the converse assertion.
     a.store.foreach { case (addr, av) =>
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
       assert(a.lattice.subsumes(iv, av), s"Store mismatch at $addr: $av is not subsumed by $iv.")

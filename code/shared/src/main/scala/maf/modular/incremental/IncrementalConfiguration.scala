@@ -42,6 +42,15 @@ case class IncrementalConfiguration(
     val string = List(ci, di, wi).filterNot(_.isEmpty).mkString("-")
     if (string.isEmpty) "NoOpt" else string
   }
+
+  // Utility to determine between fast/slow tests based on the number of active optimisations.
+  def rank(): Int = {
+    val ci = if (componentInvalidation) 1 else 0
+    val di = if (dependencyInvalidation) 1 else 0
+    val wi = if (writeInvalidation) 1 else 0
+    val cy = if (cyclicValueInvalidation) 1 else 0
+    ci + di + wi + cy
+  }
 }
 
 /** Provides instantiations of all configurations for the incremental analysis. */
@@ -64,7 +73,9 @@ object IncrementalConfiguration {
   lazy val ci_wi_cy: IncrementalConfiguration = IncrementalConfiguration(true, false)
   lazy val di_wi_cy: IncrementalConfiguration = IncrementalConfiguration(false)
 
-  lazy val allOptimisations: IncrementalConfiguration = IncrementalConfiguration() // ci_di_wi_cy
+  lazy val ci_di_wi_cy: IncrementalConfiguration = IncrementalConfiguration()
+
+  lazy val allOptimisations: IncrementalConfiguration = ci_di_wi // TODO: should become ci_di_wi_cy (or vice versa) when all optimisations work.
 
   /** A list of all possible configurations for the incremental analysis (CY requires WI). */
   lazy val allConfigurations: List[IncrementalConfiguration] =
@@ -73,15 +84,15 @@ object IncrementalConfiguration {
       noOptimisations,
       // One optimisation
       ci,
-      di
-      //wi,
+      di,
+      wi,
       // Two optimisations
-      //ci_di,
-      //ci_wi,
-      //di_wi,
+      ci_di,
+      ci_wi,
+      di_wi,
       //wi_cy,
       // Three optimisations
-      //ci_di_wi
+      ci_di_wi,
       //ci_wi_cy,
       //di_wi_cy,
       // Four optimisations
