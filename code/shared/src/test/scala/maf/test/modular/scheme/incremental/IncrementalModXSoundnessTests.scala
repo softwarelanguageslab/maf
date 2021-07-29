@@ -43,9 +43,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
   override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
-  val configurations: List[IncrementalConfiguration] = List(
-    IncrementalConfiguration.ci_di
-  ) // List(IncrementalConfiguration.allOptimisations) // The configurations to test.
+  val configurations: List[IncrementalConfiguration] = List(IncrementalConfiguration.allOptimisations) // The configurations to test.
 
   def runInterpreterWithVersion(
       i: SchemeInterpreter,
@@ -149,7 +147,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 }
 
 trait RemainingConfigurations extends IncrementalModXSoundnessTests {
-  override val configurations = (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
+  override val configurations: List[IncrementalConfiguration] = (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
   override def isSlow(b: Benchmark) = true
 }
 

@@ -73,7 +73,9 @@ object IncrementalConfiguration {
   lazy val ci_wi_cy: IncrementalConfiguration = IncrementalConfiguration(true, false)
   lazy val di_wi_cy: IncrementalConfiguration = IncrementalConfiguration(false)
 
-  lazy val allOptimisations: IncrementalConfiguration = IncrementalConfiguration() // ci_di_wi_cy
+  lazy val ci_di_wi_cy: IncrementalConfiguration = IncrementalConfiguration()
+
+  lazy val allOptimisations: IncrementalConfiguration = ci_di_wi // TODO: should become ci_di_wi_cy (or vice versa) when all optimisations work.
 
   /** A list of all possible configurations for the incremental analysis (CY requires WI). */
   lazy val allConfigurations: List[IncrementalConfiguration] =
@@ -82,15 +84,15 @@ object IncrementalConfiguration {
       noOptimisations,
       // One optimisation
       ci,
-      di
-      //wi,
+      di,
+      wi,
       // Two optimisations
-      //ci_di,
-      //ci_wi,
-      //di_wi,
+      ci_di,
+      ci_wi,
+      di_wi,
       //wi_cy,
       // Three optimisations
-      //ci_di_wi
+      ci_di_wi,
       //ci_wi_cy,
       //di_wi_cy,
       // Four optimisations
