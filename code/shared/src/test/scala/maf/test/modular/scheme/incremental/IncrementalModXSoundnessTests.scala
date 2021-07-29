@@ -147,7 +147,8 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 }
 
 trait RemainingConfigurations extends IncrementalModXSoundnessTests {
-  override val configurations: List[IncrementalConfiguration] = (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
+  override val configurations: List[IncrementalConfiguration] =
+    (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
   override def isSlow(b: Benchmark) = true
 }
 

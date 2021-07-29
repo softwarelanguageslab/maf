@@ -270,12 +270,13 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     }
 
     /**
-     * Registers the provenance information to the global provenance registry.
+     * Registers the provenance information to the global provenance registry. Uses `updateAddrInc` to allow store refinements forthcoming from a
+     * refinement of the provenance value, that were not registered due to the monotonicity of the store _during_ the intra-component analyses.
      *
      * @note
-     *   Will also update the provenances that were already updated by updateAddrInc (but this is ok as the same value is used).
+     *   Will also call updateAddrInc for addresses that were already updated by doWrite (but this is ok as the same value is used).
      */
-    def registerProvenances(): Unit = intraProvenance.foreach({ case (addr, value) => updateProvenance(component, addr, value) })
+    def registerProvenances(): Unit = intraProvenance.foreach({ case (addr, value) => updateAddrInc(component, addr, value) })
 
     /** Refines values in the store that are no longer written to by a component. */
     def refineWrites(): Unit = {

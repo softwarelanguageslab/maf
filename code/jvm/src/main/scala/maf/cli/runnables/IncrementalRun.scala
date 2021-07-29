@@ -10,7 +10,7 @@ import maf.modular.incremental.IncrementalConfiguration._
 import maf.modular.scheme.modf._
 import maf.modular.incremental._
 import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
-import maf.modular.incremental.scheme.lattice.IncrementalSchemeConstantPropagationDomain
+import maf.modular.incremental.scheme.lattice._
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.util.Reader
@@ -42,11 +42,7 @@ object IncrementalRun extends App {
     val a = new IncrementalModConcAnalysisCPLattice(text, config) with IncrementalLogging[SchemeExp] {
       override def intraAnalysis(
           cmp: Component
-        ) = new IntraAnalysis(cmp)
-        with IncrementalSmallStepIntra
-        with KCFAIntra
-        with IncrementalGlobalStoreIntraAnalysis
-        with IncrementalLoggingIntra {
+        ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra {
         override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
           println(s"Analyzing $cmp")
           super.analyzeWithTimeout(timeout)
@@ -70,18 +66,18 @@ object IncrementalRun extends App {
           with IncrementalLoggingIntra
       }
 
-    // Analysis from CI tests.
+    // Analysis from soundness tests.
     def base(program: SchemeExp) = new ModAnalysis[SchemeExp](program)
       with StandardSchemeModFComponents
-      with SchemeModFNoSensitivity // Different
+      with SchemeModFNoSensitivity
       with SchemeModFSemantics
       with LIFOWorklistAlgorithm[SchemeExp]
       with IncrementalSchemeModFBigStepSemantics
-      with IncrementalSchemeConstantPropagationDomain // Different
+      with IncrementalSchemeTypeDomain
       with IncrementalGlobalStore[SchemeExp]
       with IncrementalLogging[SchemeExp] {
-      override def focus(a: Addr): Boolean = !a.toString.toLowerCase().contains("prm")
-      var configuration: IncrementalConfiguration = ci
+      override def focus(a: Addr): Boolean = a.toString == "PtrAddr((cons vars vals) [Some(ε)])"
+      var configuration: IncrementalConfiguration = ci_di_wi
       override def intraAnalysis(
           cmp: Component
         ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
