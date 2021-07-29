@@ -115,8 +115,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         `list`,
         `log`,
         `make-string`,
-        `max`,
-        `min`,
         `null?`,
         `number->string`,
         `number?`,
@@ -419,25 +417,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                } yield res
                            }
         )
-
-    case object `max`
-        extends NoStoreLOpRec("max",
-                              {
-                                case (Nil, _)          => MayFail.failure(PrimitiveVariadicArityError("max", 1, 0))
-                                case (x :: Nil, _)     => x
-                                case (x :: rest, call) => call(rest) >>= { y => ifThenElse(`<`.call(x, y))(y)(x) }
-                              }
-        )
-
-    case object `min`
-        extends NoStoreLOpRec("min",
-                              {
-                                case (Nil, _)          => MayFail.failure(PrimitiveVariadicArityError("min", 1, 0))
-                                case (x :: Nil, _)     => x
-                                case (x :: rest, call) => call(rest) >>= { y => ifThenElse(`<`.call(x, y))(x)(y) }
-                              }
-        )
-
     case object `=` extends NoStoreLOperation("=") {
       def eq(first: V, l: List[V]): MayFail[V, Error] = l match {
         case Nil => bool(true)

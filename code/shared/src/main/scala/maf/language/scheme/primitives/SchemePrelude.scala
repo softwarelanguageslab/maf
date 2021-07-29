@@ -193,7 +193,15 @@ object SchemePrelude {
         |  (if (null? l)
         |      '()
         |      (cons (f (car l)) (map f (cdr l)))))""".stripMargin,
-    //"max" -> "(define (max a b) (if (< a b) b a))", // Variadic => implemented manually.
+    "max" -> 
+      """(define (max ag0 . ags)
+        | (let loop ((cur ags)
+        |            (acc ag0))
+        |   (if (null? cur)
+        |       acc
+        |       (let [(elm (car cur))
+        |             (rst (cdr cur))]
+        |         (loop rst (if (> elm acc) elm acc))))))""".stripMargin,
     "member" ->
       """(define (member e l)
         |  @sensitivity:FA
@@ -213,7 +221,15 @@ object SchemePrelude {
                 |      l
                 |      (memq e (cdr l)))))""".stripMargin,
     "memv" -> "(define (memv e l) @sensitivity:FA (memq e l))",
-    //"min" -> "(define (min a b) (if (< a b) a b))", // Variadic => implemented manually.
+    "min" ->
+      """(define (min ag0 . ags)
+        | (let loop ((cur ags)
+        |            (acc ag0))
+        |   (if (null? cur)
+        |       acc
+        |       (let [(elm (car cur))
+        |             (rst (cdr cur))]
+        |         (loop rst (if (< elm acc) elm acc))))))""".stripMargin,
     "negative?" -> "(define (negative? x) @sensitivity:FA (assert (number? x)) (< x 0))",
     "newline" -> "(define (newline) @sensitivity:FA #f)", // undefined
     "not" -> "(define (not x) @sensitivity:FA (if x #f #t))",
