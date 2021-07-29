@@ -430,13 +430,35 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         sto: Sto,
         kon: Kon
       ): Unit =
-      lattice.getPrimitives(fvl).foreach { prm =>
-        // TODO: non-deterministic control-flow from primitives
-        primitives(prm).call(fun, ags, StoreAdapter(sto), InterpreterBridge(cmp.ctx)) match {
-          case MayFailSuccess((vlu, adp)) => continue(kon, vlu, adp.sto)
-          case MayFailError(_)            => ()
-          case MayFailBoth((vlu, adp), _) => continue(kon, vlu, adp.sto)
+      lattice.getPrimitives(fvl).foreach {
+        case "set-car!" => ags match {
+          case (_, x) :: (_, v) :: Nil =>
+            lattice.getPointerAddresses(x).foreach { adr =>
+              val pai = lookupV(sto, adr)
+              lattice.cdr(pai).foreach { cdr =>
+                val upd = lattice.cons(v, cdr)
+                continue(kon, lattice.bool(false), updateV(sto, adr, upd))
+              }
+            }
+          case _ => () // ignore arity mismatch
         }
+        case "set-cdr!" => ags match {
+          case (_, x) :: (_, v) :: Nil =>
+            lattice.getPointerAddresses(x).foreach { adr =>
+              val pai = lookupV(sto, adr)
+              lattice.car(pai).foreach { car =>
+                val upd = lattice.cons(car, v)
+                continue(kon, lattice.bool(false), updateV(sto, adr, upd))
+              }
+            }
+          case _ => () // ignore arity mismatch
+        }
+        case prm => 
+          primitives(prm).call(fun, ags, StoreAdapter(sto), InterpreterBridge(cmp.ctx)) match {
+            case MayFailSuccess((vlu, adp)) => continue(kon, vlu, adp.sto)
+            case MayFailError(_)            => ()
+            case MayFailBoth((vlu, adp), _) => continue(kon, vlu, adp.sto)
+          }
       }
 
     private def applyClosures(

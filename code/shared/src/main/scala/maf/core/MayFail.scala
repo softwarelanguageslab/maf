@@ -40,6 +40,12 @@ sealed trait MayFail[A, E] extends Serializable {
     case MayFailBoth(a, errs) => MayFailBoth(f(a), errs)
   }
 
+  def foreach(f: A => Unit): Unit = this match {
+    case MayFailSuccess(a) => f(a)
+    case MayFailError(_) => ()
+    case MayFailBoth(a, _) => f(a)
+  }
+
   def mapSet[B](fa: A => B)(fe: E => B): Set[B] = this match {
     case MayFailSuccess(a)    => Set(fa(a))
     case MayFailError(errs)   => errs.map(fe)
