@@ -23,7 +23,7 @@ trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
   def isLock: V => MayFail[V, Error] = x => op(SchemeOp.IsLock)(List(x))
   def vectorLength: V => MayFail[V, Error] = x => op(SchemeOp.VectorLength)(List(x))
   def inexactToExact: V => MayFail[V, Error] = x => op(SchemeOp.InexactToExact)(List(x))
-  def eqq: (V, V) => MayFail[V, Error] = (x, y) => op(SchemeOp.Eq)(List(x, y))
+  def numEq: (V, V) => MayFail[V, Error] = (x, y) => op(SchemeOp.NumEq)(List(x, y))
 
   def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] =
     cond >>= { condv =>
@@ -351,7 +351,10 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `char=?` extends NoStore2Operation("char=?", binaryOp(SchemeOp.CharacterEq))
     case object `char?` extends NoStore1Operation("char?", unaryOp(SchemeOp.IsChar))
     case object `cos` extends NoStore1Operation("cos", unaryOp(SchemeOp.Cos))
-    case object `eq?` extends NoStore2Operation("eq?", eqq)
+    case object `eq?` extends Store2Operation("eq?") {
+      def call(x: V, y: V, store: Store[A,V]): MayFail[(V, store.This),Error] =
+        (lat.eq(x, y)(store.addrEq), store: store.This)
+    }
     case object `error` extends NoStore1Operation("error", x => MayFail.failure(UserError(x.toString)))
     case object `exact->inexact` extends NoStore1Operation("exact->inexact", unaryOp(SchemeOp.ExactToInexact))
     case object `expt` extends NoStore2Operation("expt", binaryOp(SchemeOp.Expt))
@@ -408,7 +411,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                  multrest <- `*`.call(rest)
                                  r <- binaryOp(SchemeOp.Div)(x, multrest)
                                  fl <- unaryOp(SchemeOp.Floor)(r)
-                                 isexact <- eqq(r, fl)
+                                 isexact <- numEq(r, fl)
                                  xisint <- isInteger(x)
                                  multrestisint <- isInteger(multrest)
                                  convert <- and(isexact, and(xisint, multrestisint))
@@ -421,7 +424,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       def eq(first: V, l: List[V]): MayFail[V, Error] = l match {
         case Nil => bool(true)
         case x :: rest =>
-          ifThenElse(binaryOp(SchemeOp.NumEq)(first, x)) {
+          ifThenElse(numEq(first, x)) {
             eq(first, rest)
           } {
             bool(false)
@@ -445,7 +448,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                                         r <- unaryOp(SchemeOp.Sqrt)(x)
                                         fl <- unaryOp(SchemeOp.Floor)(r)
                                         argisexact <- isInteger(x)
-                                        resisexact <- eqq(r, fl)
+                                        resisexact <- numEq(r, fl)
                                         convert <- and(argisexact, resisexact)
                                         exr <- inexactToExact(r)
                                         res <- ifThenElse(convert)(exr)(r)

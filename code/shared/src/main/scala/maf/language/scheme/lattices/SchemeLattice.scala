@@ -142,6 +142,8 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
   def void: L
 
+  def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L
+
   object Injector {
     implicit def inject(c: Closure): L = closure(c)
     implicit def inject(car: L, cdr: L): L = cons(car, cdr)

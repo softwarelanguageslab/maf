@@ -113,9 +113,9 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
       val v1 = inject(n1)
       val v2 = inject(n2)
       if (n1 == n2)
-        isTrue(convert(op(SchemeOp.Eq)(List(v1, v2))))
+        isTrue(convert(op(SchemeOp.NumEq)(List(v1, v2))))
       else
-        isFalse(convert(op(SchemeOp.Eq)(List(v1, v2))))
+        isFalse(convert(op(SchemeOp.NumEq)(List(v1, v2))))
     }
 
     /* TODO: properties that match the specification of other SchemeOps */

@@ -536,25 +536,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Real(n1), Real(n2)) => MayFail.success(Bool(RealLattice[R].eql(n1, n2)))
             case _                    => MayFail.failure(OperatorNotApplicable("number=", args))
           }
-        // TODO: this should be the eql method instead of a binary op?
-        case Eq =>
-          MayFail.success((args(0), args(1)) match {
-            case (Bool(b1), Bool(b2))       => Bool(BoolLattice[B].eql(b1, b2))
-            case (Int(n1), Int(n2))         => Bool(IntLattice[I].eql(n1, n2))
-            case (Real(n1), Real(n2))       => Bool(RealLattice[R].eql(n1, n2))
-            case (Char(c1), Char(c2))       => Bool(CharLattice[C].eql(c1, c2))
-            case (Symbol(s1), Symbol(s2))   => Bool(SymbolLattice[Sym].eql(s1, s2))
-            case (Nil, Nil)                 => True
-            case (Prim(p1), Prim(p2))       => if (p1.intersect(p2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
-            case (Clo(c1), Clo(c2))         => if (c1.intersect(c2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
-            case (_: Cons, _: Cons)         => throw new Exception("should not happen")
-            case (_: Vec, _: Vec)           => throw new Exception("should not happen")
-            case (_: Str, _: Str)           => throw new Exception("should not happen")
-            case (Pointer(p1), Pointer(p2)) => if (p1.intersect(p2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
-            // We can't know for sure that equal addresses are eq (in the abstract). This implementation is not suited for use in a concrete machine!
-            case (Thread(t1), Thread(t2)) => if (t1.intersect(t2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
-            case _                        => False
-          })
         case StringAppend =>
           (args(0), args(1)) match {
             case (Str(s1), Str(s2)) => MayFail.success(Str(StringLattice[S].append(s1, s2)))
@@ -763,6 +744,31 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       case Vec(_, els)                   => els.flatMap(elm => schemeLattice.refs(elm._2)).toSet
       case Clo(cls)                      => cls.flatMap(clo => clo._2.addrs)
     }
+
+    // TODO: this should be the eql method instead?
+    def eq(x: Value, y: Value)(comparePtr: MaybeEq[A]): Value = (x, y) match {
+      case (Bool(b1), Bool(b2))       => Bool(BoolLattice[B].eql(b1, b2))
+      case (Int(n1), Int(n2))         => Bool(IntLattice[I].eql(n1, n2))
+      case (Real(n1), Real(n2))       => Bool(RealLattice[R].eql(n1, n2))
+      case (Char(c1), Char(c2))       => Bool(CharLattice[C].eql(c1, c2))
+      case (Symbol(s1), Symbol(s2))   => Bool(SymbolLattice[Sym].eql(s1, s2))
+      case (Nil, Nil)                 => True
+      case (Prim(p1), Prim(p2))       => if (p1.intersect(p2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
+      // TODO: eq of closures could be improved, but is not really permitted by R5RS anyway ...
+      case (Clo(c1), Clo(c2))         => if (c1.intersect(c2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
+      case (_: Cons, _: Cons)         => throw new Exception("should not happen")
+      case (_: Vec, _: Vec)           => throw new Exception("should not happen")
+      case (_: Str, _: Str)           => throw new Exception("should not happen")
+      case (Pointer(p1), Pointer(p2)) =>
+        Bool(p1.foldLeft(BoolLattice[B].bottom) { (acc1, ptr1) =>
+              p2.foldLeft(acc1) { (acc2, ptr2) =>
+                BoolLattice[B].join(acc2, comparePtr(ptr1, ptr2))
+              }
+            })
+      // We can't know for sure that equal addresses are eq (in the abstract). This implementation is not suited for use in a concrete machine!
+      case (Thread(t1), Thread(t2)) => if (t1.intersect(t2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
+      case _                        => False
+    }
   }
 
   type L = Elements
@@ -868,6 +874,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def void: L = Element(Value.void)
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
     def refs(x: L): Set[Address] = x.foldMapL(x => Value.refs(x))(setMonoid)
+    def eq(xs: L, ys: L)(comparePtr: MaybeEq[A]): L =
+      xs.foldMapL { x =>
+        ys.foldMapL { y =>
+          Element(Value.eq(x, y)(comparePtr))
+        }
+      }
   }
 
   object L {
