@@ -539,7 +539,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         // TODO: this should be the eql method instead of a binary op?
         case Eq =>
           MayFail.success((args(0), args(1)) match {
-            case (Str(s1), Str(s2))         => Bool(StringLattice[S].eql(s1, s2)) /* TODO: this isn't really physical equality for strings */
             case (Bool(b1), Bool(b2))       => Bool(BoolLattice[B].eql(b1, b2))
             case (Int(n1), Int(n2))         => Bool(IntLattice[I].eql(n1, n2))
             case (Real(n1), Real(n2))       => Bool(RealLattice[R].eql(n1, n2))
@@ -550,6 +549,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Clo(c1), Clo(c2))         => if (c1.intersect(c2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
             case (_: Cons, _: Cons)         => throw new Exception("should not happen")
             case (_: Vec, _: Vec)           => throw new Exception("should not happen")
+            case (_: Str, _: Str)           => throw new Exception("should not happen")
             case (Pointer(p1), Pointer(p2)) => if (p1.intersect(p2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
             // We can't know for sure that equal addresses are eq (in the abstract). This implementation is not suited for use in a concrete machine!
             case (Thread(t1), Thread(t2)) => if (t1.intersect(t2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
