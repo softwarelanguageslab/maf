@@ -352,7 +352,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `char?` extends NoStore1Operation("char?", unaryOp(SchemeOp.IsChar))
     case object `cos` extends NoStore1Operation("cos", unaryOp(SchemeOp.Cos))
     case object `eq?` extends Store2Operation("eq?") {
-      def call(x: V, y: V, store: Store[A,V]): MayFail[(V, store.This),Error] =
+      def call(x: V, y: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
         (lat.eq(x, y)(store.addrEq), store: store.This)
     }
     case object `error` extends NoStore1Operation("error", x => MayFail.failure(UserError(x.toString)))

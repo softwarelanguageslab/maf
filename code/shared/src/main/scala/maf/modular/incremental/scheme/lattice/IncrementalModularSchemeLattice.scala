@@ -141,7 +141,7 @@ class IncrementalModularSchemeLattice[
     def eq(xs: AL, ys: AL)(cmp: MaybeEq[A]): AL = {
       val allSources = xs.sources ++ ys.sources
       xs.foldMapL { x =>
-        ys.foldMapL { y => 
+        ys.foldMapL { y =>
           AnnotatedElement(Value.eq(x, y)(cmp), allSources)
         }
       }

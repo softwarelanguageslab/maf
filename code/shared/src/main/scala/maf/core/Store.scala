@@ -44,7 +44,7 @@ trait Store[A <: Address, V] extends SmartHash { store =>
 
   /** Check if two addresses of the store are equal */
   def addrEq: MaybeEq[A] = new MaybeEq[A] {
-    def apply[B: BoolLattice](a1: A, a2: A) = 
+    def apply[B: BoolLattice](a1: A, a2: A) =
       if (a1 == a2) {
         BoolLattice[B].top // we don't know (could be different concrete addresses abstracted to the same abstract address)
       } else {
@@ -52,8 +52,6 @@ trait Store[A <: Address, V] extends SmartHash { store =>
       }
   }
 }
-
-
 
 //
 // MAP-BASED STORES
@@ -205,7 +203,7 @@ trait AbstractCounting[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
       } else if (a1 == a2) {
         BoolLattice[B].top
       } else {
-        BoolLattice[B].inject(false) 
+        BoolLattice[B].inject(false)
       }
   }
 }

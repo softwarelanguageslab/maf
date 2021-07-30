@@ -337,8 +337,7 @@ abstract class RealLatticeTest[R: RealLattice, B: BoolLattice, I: IntLattice, S:
       }
 
       /** Integer conversion is sound */
-      p.property("∀ a: a.toInt ⊑ toInt(inject(a))") =
-        forAll((a: Double) => IntLattice[I].subsumes(toInt[I](inject(a)), IntLattice[I].inject(a.toInt)))
+      p.property("∀ a: a.toInt ⊑ toInt(inject(a))") = forAll((a: Double) => IntLattice[I].subsumes(toInt[I](inject(a)), IntLattice[I].inject(a.toInt)))
 
       /** Ceiling preserves bottom */
       p.property("ceiling(⊥) = ⊥") = ceiling(bottom) == bottom

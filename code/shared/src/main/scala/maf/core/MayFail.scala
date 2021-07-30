@@ -42,7 +42,7 @@ sealed trait MayFail[A, E] extends Serializable {
 
   def foreach(f: A => Unit): Unit = this match {
     case MayFailSuccess(a) => f(a)
-    case MayFailError(_) => ()
+    case MayFailError(_)   => ()
     case MayFailBoth(a, _) => f(a)
   }
 

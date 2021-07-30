@@ -20,7 +20,7 @@ import maf.language.scheme.interpreter._
 
 object AdaptiveRun {
 
-  def main(args: Array[String]): Unit = testModFLocal()
+  def main(args: Array[String]): Unit = testAbstract()
 
   def testConcrete() = {
     val txt = """
@@ -55,13 +55,9 @@ object AdaptiveRun {
   }
 
   def testAbstract(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/various/mceval.scm")
+    val txt = Reader.loadFile("test/R5RS/various/my-test.scm")
     val prg = CSchemeParser.parse(txt)
-    val anl = new SimpleSchemeModFAnalysis(prg)
-      with SchemeModFKCallSiteSensitivity
-      with SchemeConstantPropagationDomain
-      with FIFOWorklistAlgorithm[SchemeExp] {
-      val k = 10
+    val anl = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
       var step = 0
       override def step(timeout: Timeout.T): Unit = {
         val cmp = workList.head

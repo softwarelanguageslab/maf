@@ -76,11 +76,7 @@ class TarjanSCCTests extends AnyPropSpec {
                 Set(Set(0, 1, 2, 4, 5))
     ),
     // `full-cycle` from the AD course.
-    TarjanGraph(8,
-                Set(0, 1, 2, 3, 4, 5),
-                Map((0, Set(1)), (1, Set(2)), (2, Set(5)), (5, Set(4)), (4, Set(3)), (3, Set(0))),
-                Set(Set(0, 1, 2, 3, 4, 5))
-    ),
+    TarjanGraph(8, Set(0, 1, 2, 3, 4, 5), Map((0, Set(1)), (1, Set(2)), (2, Set(5)), (5, Set(4)), (4, Set(3)), (3, Set(0))), Set(Set(0, 1, 2, 3, 4, 5))),
     // `a-list` from the AD course.
     TarjanGraph[Int](9, Set(0, 1, 2, 3, 4, 5), Map((0, Set(1)), (1, Set(2)), (2, Set(5)), (5, Set(4)), (4, Set(3))), Set()),
     // `dag-1` from the AD course.

@@ -45,9 +45,7 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
     val text = Reader.loadFile(benchmark)
     val program = CSchemeParser.parse(text)
     for (c <- configurations) {
-      property(s"Analysis results for $benchmark using $c are equal (initial analysis) or subsuming (incremental update).",
-               testTags(benchmark, c): _*
-      ) {
+      property(s"Analysis results for $benchmark using $c are equal (initial analysis) or subsuming (incremental update).", testTags(benchmark, c): _*) {
         try {
           val a = analysis(program, Old)
           a.analyzeWithTimeout(timeout())
@@ -170,10 +168,7 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
       ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
   }
 
-  class Analysis(program: SchemeExp, version: Version)
-      extends BaseModConcAnalysis(program)
-         with SmallStepModConcSemantics
-         with GlobalStore[SchemeExp] {
+  class Analysis(program: SchemeExp, version: Version) extends BaseModConcAnalysis(program) with SmallStepModConcSemantics with GlobalStore[SchemeExp] {
     override def intraAnalysis(
         cmp: SmallStepModConcComponent
       ): KCFAIntra = new IntraAnalysis(cmp) with SmallStepIntra with KCFAIntra with GlobalStoreIntra {
