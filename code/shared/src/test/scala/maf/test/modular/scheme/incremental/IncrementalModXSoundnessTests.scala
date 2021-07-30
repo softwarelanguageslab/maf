@@ -43,7 +43,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
   override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
-  val configurations: List[IncrementalConfiguration] = List(IncrementalConfiguration.allOptimisations) // The configurations to test.
+  val configurations: List[IncrementalConfiguration] = List(allOptimisations) // The configurations to test.
 
   def runInterpreterWithVersion(
       i: SchemeInterpreter,
@@ -117,17 +117,17 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
       val cResultsNew = evalConcreteWithVersion(program, benchmark, New)
 
       for (c <- configurations) {
-        try {
-          // Check soundness on the updated version of the program.
-          val anlCopy = anlOld.deepCopy()
-          anlCopy.configuration = c
-          updateAnalysis(anlCopy, benchmark)
-          info(s"Checking results of ${c}")
-          compareResults(anlCopy, cResultsNew, c.toString)
-        } catch {
-          case a: AssertionError      => throw new Exception(s"Assertion violation using ${c}.", a)
-          case t: java.lang.Throwable => throw new Exception(s"Analysis error using ${c}.", t)
-        }
+        //try {
+        // Check soundness on the updated version of the program.
+        info(s"Checking results of $c")
+        val anlCopy = anlOld.deepCopy()
+        anlCopy.configuration = c
+        updateAnalysis(anlCopy, benchmark)
+        compareResults(anlCopy, cResultsNew, c.toString)
+        // } catch {
+        //   case a: AssertionError      => throw new Exception(s"Assertion violation using ${c}.", a)
+        //   case t: java.lang.Throwable => throw new Exception(s"Analysis error using ${c}.", t)
+        // }
       }
     }
   }
