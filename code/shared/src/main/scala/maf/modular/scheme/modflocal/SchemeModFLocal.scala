@@ -13,6 +13,10 @@ import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 
+//
+// SMALL-STEP
+//
+
 abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](prog) with SchemeDomain {
   this: SchemeModFLocalSensitivity =>
 
@@ -40,9 +44,11 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
   }
 
   lazy val initialBds: Iterable[(String, Adr, Storable)] =
-    primitives.allPrimitives.map { case (name, p) =>
-      (name, PrmAddr(name), V(lattice.primitive(p.name)))
-    }
+    primitives.allPrimitives.view
+      .filterKeys(initialExp.fv)
+      .map { case (name, p) =>
+        (name, PrmAddr(name), V(lattice.primitive(p.name)))
+      }
 
   // the store is used for several purposes:
   // - mapping variable/pointer addresses to values
