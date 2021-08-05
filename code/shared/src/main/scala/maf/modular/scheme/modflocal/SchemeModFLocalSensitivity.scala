@@ -2,6 +2,13 @@ package maf.modular.scheme.modflocal
 
 import maf.core.Position._
 
+trait SchemeModFWithStoreSensitivity extends SchemeModFWithStore {
+  // parameterised by context-sensitivity policy
+  type Ctx
+  def initialCtx: Ctx
+  def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, ctx: Ctx): Ctx
+}
+
 //
 // general interface for context-sensitivity policy
 //
