@@ -193,7 +193,7 @@ object SchemePrelude {
         |  (if (null? l)
         |      '()
         |      (cons (f (car l)) (map f (cdr l)))))""".stripMargin,
-    "max" -> 
+    "max" ->
       """(define (max ag0 . ags)
         | (let loop ((cur ags)
         |            (acc ag0))

@@ -128,7 +128,6 @@ object SchemeOp {
   case object Expt extends SchemeOp2("expt")
   case object Lt extends SchemeOp2("<")
   case object NumEq extends SchemeOp2("=")
-  case object Eq extends SchemeOp2("eq")
   case object MakeString extends SchemeOp2("make-string")
   case object StringAppend extends SchemeOp2("string-append")
   case object StringRef extends SchemeOp2("string-ref")
@@ -151,7 +150,6 @@ object SchemeOp {
     Expt,
     Lt,
     NumEq,
-    Eq,
     MakeString,
     StringAppend,
     StringRef,

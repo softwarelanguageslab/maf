@@ -18,7 +18,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
   def analyses: List[(SchemeExp => Analysis, String)]
 
   // and can, optionally, be configured in its timeouts (default: 30min.) and the number of concrete runs
-  def timeout() = Timeout.start(Duration(30, MINUTES)) // timeout for the analyses
+  def timeout() = Timeout.start(Duration(10, MINUTES)) // timeout for the analyses
   def runs = 3 // number of runs for the concrete interpreter
 
   // keep the results of the benchmarks in a table
@@ -57,14 +57,30 @@ object AnalysisComparisonAlt1
   def analyses = {
     // run some adaptive analyses
     List(
-      (SchemeAnalyses.contextInsensitiveAnalysis(_), s"0-CFA"),
-      (SchemeAnalyses.kCFAAnalysis(_, 1), "1-CFA"),
-      (SchemeAnalyses.kCFAAnalysis(_, 2), "2-CFA")
+      (SchemeAnalyses.kCFAAnalysis(_, 0), "CI/FI"),
+      (SchemeAnalyses.modflocalAnalysis(_, 0), "CI/FS"),
+      (SchemeAnalyses.kCFAAnalysis(_, 1), "CS/FI"),
+      (SchemeAnalyses.modflocalAnalysis(_, 1), "CS/FS")
     )
   }
   def main(args: Array[String]) = runBenchmarks(
     Set(
-      "test/R5RS/various/fact.scm"
+      //"test/R5RS/gambit/array1.scm",
+      //"test/R5RS/gambit/browse.scm",
+      //"test/R5RS/gambit/compiler.scm",
+      //"test/R5RS/gambit/earley.scm",
+      //"test/R5RS/gambit/graphs.scm",
+      //"test/R5RS/gambit/matrix.scm",
+      "test/R5RS/gambit/mazefun.scm",
+      //"test/R5RS/gambit/nboyer.scm",
+      //"test/R5RS/gambit/nqueens.scm",
+      //"test/R5RS/gambit/paraffins.scm",
+      //"test/R5RS/gambit/primes.scm",
+      //"test/R5RS/gambit/scheme.scm",
+      //"test/R5RS/gambit/sumloop.scm",
+      //"test/R5RS/gabriel/puzzle.scm",
+      //"test/R5RS/gabriel/takl.scm",
+      //"test/R5RS/gabriel/cpstak.scm",
     )
   )
 

@@ -29,9 +29,7 @@ trait BaseSchemeLexicalAddresser {
 
   type Defs = List[Identifier]
 
-  /**
-   * Extract the identifier names of all definitions in a given body Follows R5RS specification on where such definitions can appear
-   */
+  /** Extract the identifier names of all definitions in a given body Follows R5RS specification on where such definitions can appear */
   def defs(exp: SchemeExp): Defs = defs(List(exp))
   def defs(bdy: List[SchemeExp]): Defs = defs(bdy, Nil)
   def defs(bdy: List[SchemeExp], acc: Defs): Defs = bdy match {

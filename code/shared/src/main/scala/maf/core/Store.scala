@@ -4,6 +4,7 @@ import maf.util.SmartHash
 import scala.annotation.tailrec
 import maf.lattice.interfaces.LatticeWithAddrs
 import maf.modular.scheme._
+import maf.lattice.interfaces.BoolLattice
 
 case class UnboundAddress[A <: Address](a: A) extends Error
 
@@ -40,6 +41,16 @@ trait Store[A <: Address, V] extends SmartHash { store =>
   type DeltaStore <: Store[A, V] { type This = store.DeltaStore }
   def deltaStore: DeltaStore
   def integrate(delta: DeltaStore): This
+
+  /** Check if two addresses of the store are equal */
+  def addrEq: MaybeEq[A] = new MaybeEq[A] {
+    def apply[B: BoolLattice](a1: A, a2: A) =
+      if (a1 == a2) {
+        BoolLattice[B].top // we don't know (could be different concrete addresses abstracted to the same abstract address)
+      } else {
+        BoolLattice[B].inject(false) // definitely not the same address
+      }
+  }
 }
 
 //
@@ -183,6 +194,17 @@ trait AbstractCounting[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
     case None                            => throw new Exception("Trying to update an unused address")
     case Some(s) if count(s) == CountOne => update(content + (a -> fresh(a, v)))
     case _                               => extend(a, v)
+  }
+
+  override def addrEq: MaybeEq[A] = new MaybeEq[A] {
+    def apply[B: BoolLattice](a1: A, a2: A): B =
+      if (a1 == a2 && get(a1).map(count(_) == CountOne).getOrElse(false)) {
+        BoolLattice[B].inject(true)
+      } else if (a1 == a2) {
+        BoolLattice[B].top
+      } else {
+        BoolLattice[B].inject(false)
+      }
   }
 }
 

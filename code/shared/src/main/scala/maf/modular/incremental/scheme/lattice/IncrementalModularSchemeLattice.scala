@@ -138,6 +138,14 @@ class IncrementalModularSchemeLattice[
     def nil: AL = AnnotatedElement(Value.nil)
     def void: AL = AnnotatedElement(Value.void)
     def eql[B2: BoolLattice](x: AL, y: AL): B2 = ??? // TODO[medium] implement
+    def eq(xs: AL, ys: AL)(cmp: MaybeEq[A]): AL = {
+      val allSources = xs.sources ++ ys.sources
+      xs.foldMapL { x =>
+        ys.foldMapL { y =>
+          AnnotatedElement(Value.eq(x, y)(cmp), allSources)
+        }
+      }
+    }
 
     override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.values, v.sources.union(addresses))
     override def getAddresses(v: AL): Set[A] = v.sources

@@ -141,11 +141,11 @@ object SchemeAnalyses {
     }
   }
   def modflocalAnalysis(prg: SchemeExp, kCFA: Int) =
-    new SchemeModFLocal(prg) 
-      with SchemeConstantPropagationDomain 
-      with SchemeModFLocalCallSiteSensitivity 
-      with FIFOWorklistAlgorithm[SchemeExp] 
+    new SchemeModFLocal(prg)
+      with SchemeConstantPropagationDomain
+      with SchemeModFLocalCallSiteSensitivity
+      with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults {
-        val k = kCFA
+      val k = kCFA
     }
 }

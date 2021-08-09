@@ -220,7 +220,7 @@ object ConstantPropagation {
         case (Top, _) | (_, Top)                  => RealLattice[F].top
         case (Constant(x), Constant(y)) if y != 0 => RealLattice[F].inject(bigIntToDouble(x) / bigIntToDouble(y))
         // TODO: use MayFail here for when divide-by-zero occurs ...
-        case _                                    => RealLattice[F].bottom
+        case _ => RealLattice[F].bottom
       }
       def expt(n1: I, n2: I): I = binop((x, y) => Math.pow(x.toDouble, y.toDouble).toInt, n1, n2)
       def quotient(n1: I, n2: I): I = binop(_ / _, n1, n2)

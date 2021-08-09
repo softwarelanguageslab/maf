@@ -115,9 +115,6 @@ class TypeSchemeLattice[A <: Address, K] {
           case Lt | NumEq =>
             // Num -> Num -> Bool
             check(args(0).num && args(1).num, Inject.num)(op.name, args)
-          case Eq =>
-            // Any -> Any -> Bool
-            MayFail.success(Inject.bool)
           case StringAppend =>
             // Str -> Str -> Str
             check(args(0).str && args(1).str, Inject.str)(op.name, args)
@@ -199,8 +196,9 @@ class TypeSchemeLattice[A <: Address, K] {
     def void: L = ???
     def acquire(lock: L, caller: TID): MayFail[L, Error] = ???
     def release(lock: L, caller: TID): MayFail[L, Error] = ???
-
+    def eq(x: L, y: L)(cmp: MaybeEq[A]): L = Inject.bool
   }
+
   object L {
     implicit val lattice: SchemeLattice[L, A] = schemeLattice
   }

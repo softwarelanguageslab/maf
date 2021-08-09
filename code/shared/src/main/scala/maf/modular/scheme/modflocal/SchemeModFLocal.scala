@@ -431,29 +431,31 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
         kon: Kon
       ): Unit =
       lattice.getPrimitives(fvl).foreach {
-        case "set-car!" => ags match {
-          case (_, x) :: (_, v) :: Nil =>
-            lattice.getPointerAddresses(x).foreach { adr =>
-              val pai = lookupV(sto, adr)
-              lattice.cdr(pai).foreach { cdr =>
-                val upd = lattice.cons(v, cdr)
-                continue(kon, lattice.bool(false), updateV(sto, adr, upd))
+        case "set-car!" =>
+          ags match {
+            case (_, x) :: (_, v) :: Nil =>
+              lattice.getPointerAddresses(x).foreach { adr =>
+                val pai = lookupV(sto, adr)
+                lattice.cdr(pai).foreach { cdr =>
+                  val upd = lattice.cons(v, cdr)
+                  continue(kon, lattice.bool(false), updateV(sto, adr, upd))
+                }
               }
-            }
-          case _ => () // ignore arity mismatch
-        }
-        case "set-cdr!" => ags match {
-          case (_, x) :: (_, v) :: Nil =>
-            lattice.getPointerAddresses(x).foreach { adr =>
-              val pai = lookupV(sto, adr)
-              lattice.car(pai).foreach { car =>
-                val upd = lattice.cons(car, v)
-                continue(kon, lattice.bool(false), updateV(sto, adr, upd))
+            case _ => () // ignore arity mismatch
+          }
+        case "set-cdr!" =>
+          ags match {
+            case (_, x) :: (_, v) :: Nil =>
+              lattice.getPointerAddresses(x).foreach { adr =>
+                val pai = lookupV(sto, adr)
+                lattice.car(pai).foreach { car =>
+                  val upd = lattice.cons(car, v)
+                  continue(kon, lattice.bool(false), updateV(sto, adr, upd))
+                }
               }
-            }
-          case _ => () // ignore arity mismatch
-        }
-        case prm => 
+            case _ => () // ignore arity mismatch
+          }
+        case prm =>
           primitives(prm).call(fun, ags, StoreAdapter(sto), InterpreterBridge(cmp.ctx)) match {
             case MayFailSuccess((vlu, adp)) => continue(kon, vlu, adp.sto)
             case MayFailError(_)            => ()
