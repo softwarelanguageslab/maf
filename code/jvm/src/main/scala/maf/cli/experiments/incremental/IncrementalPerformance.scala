@@ -105,10 +105,10 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
     // Initial analysis.
 
-    warmUp("initial analysis", maxWarmupRuns, timeout(), timeout => analysis(program, noOptimisations).analyzeWithTimeout(timeout))
+    warmUp("initial analysis", maxWarmupRuns, timeout(), timeout => analysis(program, noOptimisations.disableAsserts()).analyzeWithTimeout(timeout))
     runNTimes("initial analysis",
               measuredRuns,
-              () => analysis(program, noOptimisations),
+              () => analysis(program, noOptimisations.disableAsserts()),
               (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
     ) match {
       case None =>
@@ -126,19 +126,20 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
            maxWarmupRuns,
            timeout(),
            timeout => {
-             val a = analysis(program, noOptimisations)
+             val a = analysis(program, noOptimisations.disableAsserts())
              a.version = New
              a.analyzeWithTimeout(timeout)
            }
     )
-    runNTimes("reanalysis",
-              measuredRuns,
-              () => {
-                val a = analysis(program, noOptimisations)
-                a.version = New
-                a
-              },
-              (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
+    runNTimes(
+      "reanalysis",
+      measuredRuns,
+      () => {
+        val a = analysis(program, noOptimisations.disableAsserts())
+        a.version = New
+        a
+      },
+      (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
     ) match {
       case None     => timeOuts = timeOuts + (reanS -> true)
       case Some(ts) => times = times + (reanS -> ts)
@@ -147,7 +148,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     // Incremental measurements.
 
     // Run the initial analysis.
-    val initAnalysis = analysis(program, allOptimisations) // Allow tracking.
+    val initAnalysis = analysis(program, allOptimisations.disableAsserts()) // Allow tracking.
     initAnalysis.analyzeWithTimeout(timeout())
     if (!initAnalysis.finished) {
       configurations.map(_.toString).foreach(name => results = results.add(file, columnName(timeS, name), NotRun))

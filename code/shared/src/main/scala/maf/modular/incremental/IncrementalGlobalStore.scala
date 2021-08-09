@@ -71,7 +71,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store.
     val value: Value = provenanceValue(addr)
-    assert(lattice.subsumes(inter.store(addr), value)) // The new value can never be greater than the old value.
+    if (configuration.checkAsserts) assert(lattice.subsumes(inter.store(addr), value)) // The new value can never be greater than the old value.
     if (value != inter.store(addr)) {
       trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
       // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
@@ -139,7 +139,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
     // If `old ⊑ nw` we can just use join, which is probably more efficient.
     val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr)
-    assert(newJoin == provenanceValue(addr), s"$addr\n${lattice.compare(newJoin, provenanceValue(addr), "New join", "Provenance value")}")
+    if (configuration.checkAsserts)
+      assert(newJoin == provenanceValue(addr), s"$addr\n${lattice.compare(newJoin, provenanceValue(addr), "New join", "Provenance value")}")
     if (oldJoin == newJoin) return false // Even with this component writing a different value to addr, the store does not change.
     inter.store = inter.store + (addr -> newJoin)
     true

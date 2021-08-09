@@ -1,7 +1,9 @@
 package maf.modular.incremental
 
 /**
- * Utility class to select the optimisations of the incremental analysis that should be enabled.
+ * Utility class to select the optimisations of the incremental analysis that should be enabled. This can be specified using the boolean arguments to
+ * the constructor of the class. Additionally, other analysis specifications can be specified as well. These can be defined using `var` fields (or as
+ * `def`s).
  *
  * @param componentInvalidation
  *   Indicates whether components should be invalidated when they are no longer spawned. This involves a possibly recursive traversal of spawn and
@@ -50,6 +52,19 @@ case class IncrementalConfiguration(
     val wi = if (writeInvalidation) 1 else 0
     val cy = if (cyclicValueInvalidation) 1 else 0
     ci + di + wi + cy
+  }
+
+  /**
+   * * Other analysis specifications **
+   */
+
+  /** Specifies whether assertions should be checked. This flag can be disabled for performance benchmarks. */
+  var checkAsserts: Boolean = true
+
+  def disableAsserts(): IncrementalConfiguration = {
+    val copy = this.copy()
+    copy.checkAsserts = false
+    copy
   }
 }
 
