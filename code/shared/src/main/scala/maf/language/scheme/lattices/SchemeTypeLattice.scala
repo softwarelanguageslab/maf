@@ -203,7 +203,7 @@ class TypeSchemeLattice[A <: Address, K] {
     implicit val lattice: SchemeLattice[L, A] = schemeLattice
   }
 
-  object Primitives extends SchemeLatticePrimitives[L, A] with PrimitiveBuildingBlocks[L, A] {
+  object Primitives extends SchemeLatticePrimitives[L, A] {
     override def allPrimitives = super.allPrimitives ++ ofList(
       List(
         `abs`,
@@ -232,29 +232,17 @@ class TypeSchemeLattice[A <: Address, K] {
         `zero?`,
         `<=`,
         `>`,
-        `>=`,
-        `caar`,
-        `cadr`,
-        `cdar`,
-        `cddr`,
-        `caddr`,
-        `cdddr`,
-        `caadr`,
-        `cdadr`,
-        `cadddr`
+        `>=`
         // TODO: other cxr
         // `vector->list // TODO
         // We decided not to implement some primitives as they can't be properly supported in the framework: reverse, map, for-each, apply
       )
     )
+
+    // shorthand (after instantiating V and A)
     class SimplePrim(val name: String, ret: L) extends SchemePrimitive[L, A] {
-      def call(
-          fexp: SchemeExp,
-          args: List[(SchemeExp, L)],
-          store: Store[A, L],
-          alloc: SchemeInterpreterBridge[L, A]
-        ): MayFail[(L, store.This), Error] =
-        MayFail.success((ret, store: store.This))
+      def call[M[_]: PrimM](fexp: SchemeExp, args: List[(SchemeExp, L)]): M[L] =
+        PrimM[M].unit(ret)
     }
     object `abs` extends SimplePrim("abs", Inject.num)
     object `display` extends SimplePrim("display", Inject.str) // undefined behavior in R5RS
@@ -274,126 +262,5 @@ class TypeSchemeLattice[A <: Address, K] {
     object `<=` extends SimplePrim("<=", Inject.bool)
     object `>` extends SimplePrim(">", Inject.bool)
     object `>=` extends SimplePrim(">=", Inject.bool)
-    object `caar` extends Store1Operation("caar") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
-        dereferencePointer(x, store) { c1 =>
-          L.lattice.car(c1) >>= { car =>
-            dereferencePointer(car, store) { c2 =>
-              L.lattice.car(c2)
-            }
-          }
-        }.map((_, store: store.This))
-    }
-
-    object `cadr` extends Store1Operation("cadr") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
-        dereferencePointer(x, store) { c1 =>
-          L.lattice.cdr(c1) >>= { cdr =>
-            dereferencePointer(cdr, store) { c2 =>
-              L.lattice.car(c2)
-            }
-          }
-        }.map((_, store: store.This))
-    }
-
-    object `cdar` extends Store1Operation("cdar") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
-        dereferencePointer(x, store) { c1 =>
-          L.lattice.cdr(c1) >>= { cdr =>
-            dereferencePointer(cdr, store) { c2 =>
-              L.lattice.car(c2)
-            }
-          }
-        }.map((_, store: store.This))
-    }
-
-    object `cddr` extends Store1Operation("cddr") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
-        dereferencePointer(x, store) { c1 =>
-          L.lattice.cdr(c1) >>= { cdr =>
-            dereferencePointer(cdr, store) { c2 =>
-              L.lattice.cdr(c2)
-            }
-          }
-        }.map((_, store: store.This))
-    }
-
-    object `caddr` extends Store1Operation("caddr") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
-        dereferencePointer(x, store) { c1 =>
-          L.lattice.cdr(c1) >>= { cdr =>
-            dereferencePointer(cdr, store) { c2 =>
-              L.lattice.cdr(c2) >>= { cddr =>
-                dereferencePointer(cddr, store) { c3 =>
-                  L.lattice.car(c3)
-                }
-              }
-            }
-          }
-        }.map((_, store: store.This))
-    }
-
-    object `caadr` extends Store1Operation("caadr") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
-        dereferencePointer(x, store) { c1 =>
-          L.lattice.cdr(c1) >>= { cdr =>
-            dereferencePointer(cdr, store) { c2 =>
-              L.lattice.car(c2) >>= { cadr =>
-                dereferencePointer(cadr, store) { c3 =>
-                  L.lattice.car(c3)
-                }
-              }
-            }
-          }
-        }.map((_, store: store.This))
-    }
-
-    object `cdadr` extends Store1Operation("cdadr") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
-        dereferencePointer(x, store) { c1 =>
-          L.lattice.cdr(c1) >>= { cdr =>
-            dereferencePointer(cdr, store) { c2 =>
-              L.lattice.car(c2) >>= { cadr =>
-                dereferencePointer(cadr, store) { c3 =>
-                  L.lattice.cdr(c3)
-                }
-              }
-            }
-          }
-        }.map((_, store: store.This))
-    }
-    object `cdddr` extends Store1Operation("cdddr") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
-        dereferencePointer(x, store) { c1 =>
-          L.lattice.cdr(c1) >>= { cdr =>
-            dereferencePointer(cdr, store) { c2 =>
-              L.lattice.cdr(c2) >>= { cddr =>
-                dereferencePointer(cddr, store) { c3 =>
-                  L.lattice.cdr(c3)
-                }
-              }
-            }
-          }
-        }.map((_, store: store.This))
-    }
-
-    object `cadddr` extends Store1Operation("cadddr") {
-      def call(x: L, store: Store[A, L]): MayFail[(L, store.This), Error] =
-        dereferencePointer(x, store) { c1 =>
-          L.lattice.cdr(c1) >>= { cdr =>
-            dereferencePointer(cdr, store) { c2 =>
-              L.lattice.cdr(c2) >>= { cddr =>
-                dereferencePointer(cddr, store) { c3 =>
-                  L.lattice.cdr(c3) >>= { cdddr =>
-                    dereferencePointer(cdddr, store) { c4 =>
-                      L.lattice.cdr(c4)
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }.map((_, store: store.This))
-    }
   }
 }

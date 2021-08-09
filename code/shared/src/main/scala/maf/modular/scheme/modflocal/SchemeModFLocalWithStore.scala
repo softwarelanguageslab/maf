@@ -367,7 +367,7 @@ abstract class SchemeModFWithStore(prg: SchemeExp) extends ModAnalysis[SchemeExp
     for {
       sto <- getSto
       ctx <- getCtx
-      res <- prm.call(cll, ags, StoreAdapter(sto), InterpreterBridge(ctx)) match {
+      res <- prm.callMF(cll, ags, StoreAdapter(sto), InterpreterBridge(ctx)) match {
         case MayFailSuccess((vlu, sto)) => setSto(sto.sto).map { _ => vlu }
         case MayFailBoth((vlu, sto), _) => setSto(sto.sto).map { _ => vlu }
         case MayFailError(_) => mzero

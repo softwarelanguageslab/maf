@@ -462,7 +462,7 @@ abstract class SchemeModFLocal(prog: SchemeExp) extends ModAnalysis[SchemeExp](p
             case _ => () // ignore arity mismatch
           }
         case prm =>
-          primitives(prm).call(fun, ags, StoreAdapter(sto), InterpreterBridge(cmp.ctx)) match {
+          primitives(prm).callMF(fun, ags, StoreAdapter(sto), InterpreterBridge(cmp.ctx)) match {
             case MayFailSuccess((vlu, adp)) => continue(kon, vlu, adp.sto)
             case MayFailError(_)            => ()
             case MayFailBoth((vlu, adp), _) => continue(kon, vlu, adp.sto)

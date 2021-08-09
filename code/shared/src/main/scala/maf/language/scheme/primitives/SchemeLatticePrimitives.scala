@@ -3,76 +3,56 @@ package maf.language.scheme.primitives
 import maf.core._
 import maf.language.scheme._
 import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
-import maf.util.Monoid
 
-/** Help code for manually implementing Scheme primitives. */
-trait PrimitiveBuildingBlocks[V, A <: Address] extends Serializable {
-
-  val lat: SchemeLattice[V, A]
-  lazy val latMon: Monoid[V] = maf.util.MonoidInstances.latticeMonoid[V](lat)
-  lazy val mfMon: Monoid[MayFail[V, Error]] = maf.util.MonoidInstances.mayFail[V](latMon)
+class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A])
+    extends SchemePrimitives[V, A] {
+  
+  val lat: SchemeLattice[V, A] = schemeLattice
+  val unspecified = lat.bool(false) /* TODO: introduce an "unspecified" value */
 
   import lat._
+  import Monad._
+  import MonadJoin._
+   
+  // shorthand (after instantiating V and A)
+  type PrimM[M[_]] = SchemePrimM[M, A, V]
+  object PrimM {
+    def apply[M[_]: PrimM]: PrimM[M] = implicitly
+  }
 
-  implicit def buildMF[X](x: X): MayFail[X, Error] = MayFail.success(x)
-  implicit def buildMF[X](err: Error): MayFail[X, Error] = MayFail.failure(err)
+  implicit def fromMF[M[_]: PrimM, X: Lattice](mf: MayFail[X, Error]): M[X] = mf match {
+    case MayFailSuccess(a) => PrimM[M].inject(a)
+    case MayFailError(errs) => PrimM[M].mjoin(errs.map(err => PrimM[M].fail(err): M[X])) 
+    case MayFailBoth(a, errs) => PrimM[M].mjoin(PrimM[M].inject(a), PrimM[M].mjoin(errs.map(err => PrimM[M].fail(err): M[X])))
+  } 
+
+  def unaryOp[M[_]: PrimM](op: SchemeOp.SchemeOp1)(x: V): M[V] = lat.op(op)(List(x))
+  def binaryOp[M[_]: PrimM](op: SchemeOp.SchemeOp2)(x: V, y: V): M[V] = lat.op(op)(List(x, y))
+  def ternaryOp[M[_]: PrimM](op: SchemeOp.SchemeOp3)(x: V, y: V, z: V): M[V] = lat.op(op)(List(x, y, z))
 
   /* Simpler names for frequently used lattice operations. */
-  def isInteger: V => MayFail[V, Error] = x => op(SchemeOp.IsInteger)(List(x))
-  def isVector: V => MayFail[V, Error] = x => op(SchemeOp.IsVector)(List(x))
-  def isLock: V => MayFail[V, Error] = x => op(SchemeOp.IsLock)(List(x))
-  def vectorLength: V => MayFail[V, Error] = x => op(SchemeOp.VectorLength)(List(x))
-  def inexactToExact: V => MayFail[V, Error] = x => op(SchemeOp.InexactToExact)(List(x))
-  def numEq: (V, V) => MayFail[V, Error] = (x, y) => op(SchemeOp.NumEq)(List(x, y))
+  def isInteger[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.IsInteger)(v)
+  def isPointer[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.IsPointer)(v)
+  def isVector[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.IsVector)(v)
+  def isLock[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.IsLock)(v)
+  def vectorLength[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.VectorLength)(v)
+  def inexactToExact[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.InexactToExact)(v)
+  def makeString[M[_]: PrimM](l: V, c: V): M[V] = binaryOp(SchemeOp.MakeString)(l, c)
+  def stringAppend[M[_]: PrimM](x: V, y: V): M[V] = binaryOp(SchemeOp.StringAppend)(x, y)
+  def numEq[M[_]: PrimM](x: V, y: V): M[V] = binaryOp(SchemeOp.NumEq)(x, y)
+  def div[M[_]: PrimM](x: V, y: V): M[V] = binaryOp(SchemeOp.Div)(x, y)
 
-  def ifThenElse(cond: MayFail[V, Error])(thenBranch: => MayFail[V, Error])(elseBranch: => MayFail[V, Error]): MayFail[V, Error] =
-    cond >>= { condv =>
-      val t = if (isTrue(condv)) thenBranch else MayFail.success[V, Error](latMon.zero)
-      val f = if (isFalse(condv)) elseBranch else MayFail.success[V, Error](latMon.zero)
-      mfMon.append(t, f)
+
+  def ifThenElse[M[_]: PrimM](cond: M[V])(thenBranch: => M[V])(elseBranch: => M[V]): M[V] =
+    PrimM[M].flatMap(cond) { condv =>
+      val t = PrimM[M].flatMap(PrimM[M].guard(lat.isTrue(condv))) { _ => thenBranch }
+      val f = PrimM[M].flatMap(PrimM[M].guard(lat.isFalse(condv))) { _ => elseBranch }
+      PrimM[M].mjoin(t, f)
     }
 
   /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
-  def dereferencePointer(x: V, store: Store[A, V])(f: V => MayFail[V, Error]): MayFail[V, Error] =
-    getPointerAddresses(x).foldLeft(MayFail.success[V, Error](bottom))((acc: MayFail[V, Error], a: A) =>
-      for {
-        v <- store.lookupMF(a)
-        res <- f(v)
-        accv <- acc
-      } yield join(accv, res)
-    )
-  def dereferencePointerGetAddressReturnStoreDelta(
-      x: V,
-      store: Store[A, V]
-    )(
-      f: (A, V, store.DeltaStore) => MayFail[(V, store.DeltaStore), Error]
-    ): MayFail[(V, store.DeltaStore), Error] =
-    getPointerAddresses(x).foldLeft(MayFail.success[(V, store.DeltaStore), Error]((bottom, store.deltaStore)))(
-      (acc: MayFail[(V, store.DeltaStore), Error], a: A) =>
-        acc >>= { case (accVal, accSto) =>
-          store.lookupMF(a) >>= (v =>
-            f(a, v, store.deltaStore) >>= { case (res, newStore) =>
-              MayFail.success((join(accVal, res), accSto.join(newStore)))
-            }
-          )
-        }
-    )
-
-  def dereferencePointerGetAddressReturnStore(
-      x: V,
-      store: Store[A, V]
-    )(
-      f: (A, V, store.DeltaStore) => MayFail[(V, store.DeltaStore), Error]
-    ): MayFail[(V, store.This), Error] =
-    dereferencePointerGetAddressReturnStoreDelta(x, store)(f) >>= { case (value, delta) =>
-      MayFail.success((value, store.integrate(delta)))
-    }
-}
-
-class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A])
-    extends SchemePrimitives[V, A]
-       with PrimitiveBuildingBlocks[V, A] {
-  val lat: SchemeLattice[V, A] = schemeLattice
+  def dereferencePointer[M[_]: PrimM, X: Lattice](x: V)(f: (A,V) => M[X]): M[X] = 
+    PrimM[M].deref(lat.getPointerAddresses(x))(f)
 
   // See comments in SchemeR5RSBenchmarks.scala for a list of all supported and unsupported primitives
   def allPrimitives: Map[String, SchemePrimitive[V, A]] = {
@@ -185,706 +165,425 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     )
   }
 
-  class NoStore0Operation(val name: String, val call: () => MayFail[V, Error]) extends SchemePrimitive[V, A] {
-    override def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        alloc: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] = args match {
-      case Nil => call().map(v => (v, store: store.This))
-      case _   => MayFail.failure(PrimitiveArityError(name, 0, args.length))
+  abstract class SchemePrim0(val name: String) extends SchemePrimitive[V, A] {
+    override def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+      case Nil => call()
+      case _   => PrimM[M].fail(PrimitiveArityError(name, 0, args.length))
     }
+    def call[M[_]: PrimM](): M[V]
   }
 
-  class NoStore1Operation(val name: String, val call: V => MayFail[V, Error]) extends SchemePrimitive[V, A] {
-    override def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        alloc: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] = args match {
-      case x :: Nil => call(x._2).map(v => (v, store: store.This))
-      case _        => MayFail.failure(PrimitiveArityError(name, 1, args.length))
+  abstract class SchemePrim1(val name: String) extends SchemePrimitive[V, A] {
+    override def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+      case (_, x) :: Nil => call(x)
+      case _        => PrimM[M].fail(PrimitiveArityError(name, 1, args.length))
     }
+    def call[M[_]: PrimM](x: V): M[V]
   }
 
-  class NoStore2Operation(val name: String, val call: (V, V) => MayFail[V, Error]) extends SchemePrimitive[V, A] {
-    override def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        alloc: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] = args match {
-      case x :: y :: Nil => call(x._2, y._2).map(v => (v, store: store.This))
-      case _             => MayFail.failure(PrimitiveArityError(name, 2, args.length))
+  class SimpleSchemePrim1(name: String, op: SchemeOp.SchemeOp1) extends SchemePrim1(name) {
+    def call[M[_]: PrimM](x: V): M[V] = unaryOp(op)(x)
+  }
+
+  abstract class SchemePrim2(val name: String) extends SchemePrimitive[V, A] {
+    override def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+      case (_, x) :: (_, y) :: Nil => call(x, y)
+      case _   => PrimM[M].fail(PrimitiveArityError(name, 2, args.length))
     }
+    def call[M[_]: PrimM](x: V, y: V): M[V]
   }
 
-  class NoStore3Operation(val name: String, val call: (V, V, V) => MayFail[V, Error]) extends SchemePrimitive[V, A] {
-    override def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        alloc: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] = args match {
-      case x :: y :: z :: Nil => call(x._2, y._2, z._2).map(v => (v, store: store.This))
-      case _                  => MayFail.failure(PrimitiveArityError(name, 3, args.length))
+  class SimpleSchemePrim2(name: String, op: SchemeOp.SchemeOp2) extends SchemePrim2(name) {
+    def call[M[_]: PrimM](x: V, y: V): M[V] = binaryOp(op)(x, y)
+  }
+
+  abstract class SchemePrim3(val name: String) extends SchemePrimitive[V, A] {
+    override def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+      case (_, x) :: (_, y) :: (_, z) :: Nil => call(x, y, z)
+      case _   => PrimM[M].fail(PrimitiveArityError(name, 3, args.length))
     }
+    def call[M[_]: PrimM](x: V, y: V, z: V): M[V]
   }
 
-  abstract class NoStoreLOperation(val name: String) extends SchemePrimitive[V, A] {
-    def call(args: List[V]): MayFail[V, Error]
-    override def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        alloc: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] =
-      call(args.map(_._2)).map(v => (v, store: store.This))
+  class SimpleSchemePrim3(name: String, op: SchemeOp.SchemeOp3) extends SchemePrim3(name) {
+    def call[M[_]: PrimM](x: V, y: V, z: V): M[V] = ternaryOp(op)(x, y, z)
   }
 
-  class NoStoreLOp(val n: String, val c: List[V] => MayFail[V, Error]) extends NoStoreLOperation(n) {
-    def call(args: List[V]): MayFail[V, Error] = c(args)
+  abstract class SchemePrimVarArg(val name: String) extends SchemePrimitive[V, A] {
+    override def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = call(args.map(_._2))
+    def call[M[_]: PrimM](vs: List[V]): M[V]
   }
 
-  class NoStoreLOpRec(val n: String, val c: (List[V], List[V] => MayFail[V, Error]) => MayFail[V, Error]) extends NoStoreLOperation(n) {
-    def call(args: List[V]): MayFail[V, Error] = c(args, call)
-  }
+  object PrimitiveDefs {
 
-  abstract class Store1Operation(val name: String) extends SchemePrimitive[V, A] {
-    override def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        alloc: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] = args match {
-      case x :: Nil => call(x._2, store)
-      case _        => MayFail.failure(PrimitiveArityError(name, 1, args.length))
+    case object `<` extends SimpleSchemePrim2("<", SchemeOp.Lt) // TODO[easy]: < should accept any number of arguments (same for <= etc.)
+    case object `acos` extends SimpleSchemePrim1("acos", SchemeOp.ACos)
+    case object `asin` extends SimpleSchemePrim1("asin", SchemeOp.ASin)
+    case object `atan` extends SimpleSchemePrim1("atan", SchemeOp.ATan)
+    case object `boolean?` extends SimpleSchemePrim1("boolean?", SchemeOp.IsBoolean)
+    case object `ceiling` extends SimpleSchemePrim1("ceiling", SchemeOp.Ceiling)
+    case object `char->integer` extends SimpleSchemePrim1("char->integer", SchemeOp.CharacterToInteger)
+    case object `char-ci<?` extends SimpleSchemePrim2("char-ci<?", SchemeOp.CharacterLtCI)
+    case object `char-ci=?` extends SimpleSchemePrim2("char-ci=?", SchemeOp.CharacterEqCI)
+    case object `char-downcase` extends SimpleSchemePrim1("char-downcase", SchemeOp.CharacterDowncase)
+    case object `char-lower-case?` extends SimpleSchemePrim1("char-lower-case?", SchemeOp.CharacterIsLower)
+    case object `char-upcase` extends SimpleSchemePrim1("char-upcase", SchemeOp.CharacterUpcase)
+    case object `char-upper-case?` extends SimpleSchemePrim1("char-upper-case?", SchemeOp.CharacterIsUpper)
+    case object `char<?` extends SimpleSchemePrim2("char<?", SchemeOp.CharacterLt)
+    case object `char=?` extends SimpleSchemePrim2("char=?", SchemeOp.CharacterEq)
+    case object `char?` extends SimpleSchemePrim1("char?", SchemeOp.IsChar)
+    case object `cos` extends SimpleSchemePrim1("cos", SchemeOp.Cos)
+    case object `eq?` extends SchemePrim2("eq?") {
+      def call[M[_]: PrimM](x: V, y: V) =
+        for {
+          aeq <- PrimM[M].addrEq // analysis determines how equality between 2 addrs is done
+          res <- PrimM[M]inject(lat.eq(x, y)(aeq))
+        } yield res
     }
-    def call(arg: V, sto: Store[A, V]): MayFail[(V, sto.This), Error]
-  }
-
-  abstract class Scheme1Operation(val name: String) extends SchemePrimitive[V, A] {
-    override def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        scheme: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] = args match {
-      case x :: Nil => call(x._2, store, scheme)
-      case _        => MayFail.failure(PrimitiveArityError(name, 1, args.length))
+    case object `error` extends SchemePrim1("error") {
+      def call[M[_]: PrimM](x: V): M[V] = 
+         PrimM[M].fail(UserError(x.toString))
     }
-    def call(
-        x: V,
-        store: Store[A, V],
-        scheme: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error]
-  }
-
-  abstract class Store2Operation(val name: String) extends SchemePrimitive[V, A] {
-    override def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        alloc: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] = args match {
-      case x :: y :: Nil => call(x._2, y._2, store)
-      case _             => MayFail.failure(PrimitiveArityError(name, 2, args.length))
-    }
-    def call(
-        x: V,
-        y: V,
-        store: Store[A, V]
-      ): MayFail[(V, store.This), Error]
-  }
-
-  abstract class Store3Operation(val name: String) extends SchemePrimitive[V, A] {
-    override def call(
-        fpos: SchemeExp,
-        args: List[(SchemeExp, V)],
-        store: Store[A, V],
-        alloc: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] = args match {
-      case x :: y :: z :: Nil => call(x._2, y._2, z._2, store)
-      case _                  => MayFail.failure(PrimitiveArityError(name, 3, args.length))
-    }
-    def call(
-        x: V,
-        y: V,
-        z: V,
-        store: Store[A, V]
-      ): MayFail[(V, store.This), Error]
-  }
-
-  object PrimitiveDefs extends PrimitiveBuildingBlocks[V, A] {
-
-    val lat: SchemeLattice[V, A] = schemeLattice
-
-    import schemeLattice._
-    val unspecified = bool(false) /* TODO: introduce an "unspecified" value */
-
-    def unaryOp(op: SchemeOp)(x: V): MayFail[V, Error] = lat.op(op)(List(x))
-    def binaryOp(op: SchemeOp)(x: V, y: V): MayFail[V, Error] = lat.op(op)(List(x, y))
-    def ternaryOp(
-        op: SchemeOp
-      )(
-        x: V,
-        y: V,
-        z: V
-      ): MayFail[V, Error] = lat.op(op)(List(x, y, z))
-
-    case object `<` extends NoStore2Operation("<", binaryOp(SchemeOp.Lt)) // TODO[easy]: < should accept any number of arguments (same for <= etc.)
-    case object `acos` extends NoStore1Operation("acos", unaryOp(SchemeOp.ACos))
-    case object `asin` extends NoStore1Operation("asin", unaryOp(SchemeOp.ASin))
-    case object `atan` extends NoStore1Operation("atan", unaryOp(SchemeOp.ATan))
-    case object `boolean?` extends NoStore1Operation("boolean?", unaryOp(SchemeOp.IsBoolean))
-    case object `ceiling` extends NoStore1Operation("ceiling", unaryOp(SchemeOp.Ceiling))
-    case object `char->integer` extends NoStore1Operation("char->integer", unaryOp(SchemeOp.CharacterToInteger))
-    case object `char-ci<?` extends NoStore2Operation("char-ci<?", binaryOp(SchemeOp.CharacterLtCI))
-    case object `char-ci=?` extends NoStore2Operation("char-ci=?", binaryOp(SchemeOp.CharacterEqCI))
-    case object `char-downcase` extends NoStore1Operation("char-downcase", unaryOp(SchemeOp.CharacterDowncase))
-    case object `char-lower-case?` extends NoStore1Operation("char-lower-case?", unaryOp(SchemeOp.CharacterIsLower))
-    case object `char-upcase` extends NoStore1Operation("char-upcase", unaryOp(SchemeOp.CharacterUpcase))
-    case object `char-upper-case?` extends NoStore1Operation("char-upper-case?", unaryOp(SchemeOp.CharacterIsUpper))
-    case object `char<?` extends NoStore2Operation("char<?", binaryOp(SchemeOp.CharacterLt))
-    case object `char=?` extends NoStore2Operation("char=?", binaryOp(SchemeOp.CharacterEq))
-    case object `char?` extends NoStore1Operation("char?", unaryOp(SchemeOp.IsChar))
-    case object `cos` extends NoStore1Operation("cos", unaryOp(SchemeOp.Cos))
-    case object `eq?` extends Store2Operation("eq?") {
-      def call(x: V, y: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        (lat.eq(x, y)(store.addrEq), store: store.This)
-    }
-    case object `error` extends NoStore1Operation("error", x => MayFail.failure(UserError(x.toString)))
-    case object `exact->inexact` extends NoStore1Operation("exact->inexact", unaryOp(SchemeOp.ExactToInexact))
-    case object `expt` extends NoStore2Operation("expt", binaryOp(SchemeOp.Expt))
-    case object `floor` extends NoStore1Operation("floor", unaryOp(SchemeOp.Floor))
-    case object `inexact->exact` extends NoStore1Operation("inexact->exact", unaryOp(SchemeOp.InexactToExact))
-    case object `integer->char` extends NoStore1Operation("integer->char", unaryOp(SchemeOp.IntegerToCharacter))
-    case object `integer?` extends NoStore1Operation("integer?", unaryOp(SchemeOp.IsInteger))
-    case object `log` extends NoStore1Operation("log", unaryOp(SchemeOp.Log))
-    case object `modulo` extends NoStore2Operation("modulo", binaryOp(SchemeOp.Modulo))
-    case object `null?` extends NoStore1Operation("null?", unaryOp(SchemeOp.IsNull))
-    case object `number?` extends NoStore1Operation("number?", unaryOp(SchemeOp.IsReal))
-    case object `real?` extends NoStore1Operation("real?", unaryOp(SchemeOp.IsReal))
+    case object `exact->inexact` extends SimpleSchemePrim1("exact->inexact", SchemeOp.ExactToInexact)
+    case object `expt` extends SimpleSchemePrim2("expt", SchemeOp.Expt)
+    case object `floor` extends SimpleSchemePrim1("floor", SchemeOp.Floor)
+    case object `inexact->exact` extends SimpleSchemePrim1("inexact->exact", SchemeOp.InexactToExact)
+    case object `integer->char` extends SimpleSchemePrim1("integer->char", SchemeOp.IntegerToCharacter)
+    case object `integer?` extends SimpleSchemePrim1("integer?", SchemeOp.IsInteger)
+    case object `log` extends SimpleSchemePrim1("log", SchemeOp.Log)
+    case object `modulo` extends SimpleSchemePrim2("modulo", SchemeOp.Modulo)
+    case object `null?` extends SimpleSchemePrim1("null?", SchemeOp.IsNull)
+    case object `number?` extends SimpleSchemePrim1("number?", SchemeOp.IsReal)
+    case object `real?` extends SimpleSchemePrim1("real?", SchemeOp.IsReal)
     /* No support for complex number, so number? is equivalent as real? */
-    case object `procedure?` extends NoStore1Operation("procedure?", unaryOp(SchemeOp.IsProcedure))
-    case object `quotient` extends NoStore2Operation("quotient", binaryOp(SchemeOp.Quotient))
-    case object `random` extends NoStore1Operation("random", unaryOp(SchemeOp.Random))
-    case object `remainder` extends NoStore2Operation("remainder", binaryOp(SchemeOp.Remainder))
-    case object `round` extends NoStore1Operation("round", unaryOp(SchemeOp.Round))
-    case object `sin` extends NoStore1Operation("sin", unaryOp(SchemeOp.Sin))
-    case object `symbol?` extends NoStore1Operation("symbol?", unaryOp(SchemeOp.IsSymbol))
-    case object `tan` extends NoStore1Operation("tan", unaryOp(SchemeOp.Tan))
+    case object `procedure?` extends SimpleSchemePrim1("procedure?", SchemeOp.IsProcedure)
+    case object `quotient` extends SimpleSchemePrim2("quotient", SchemeOp.Quotient)
+    case object `random` extends SimpleSchemePrim1("random", SchemeOp.Random)
+    case object `remainder` extends SimpleSchemePrim2("remainder", SchemeOp.Remainder)
+    case object `round` extends SimpleSchemePrim1("round", SchemeOp.Round)
+    case object `sin` extends SimpleSchemePrim1("sin", SchemeOp.Sin)
+    case object `symbol?` extends SimpleSchemePrim1("symbol?", SchemeOp.IsSymbol)
+    case object `tan` extends SimpleSchemePrim1("tan", SchemeOp.Tan)
 
-    case object `+`
-        extends NoStoreLOpRec("+",
-                              {
-                                case (Nil, _)          => number(0)
-                                case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOp.Plus)(x, _))
-                              }
-        )
+    case object `+`extends SchemePrimVarArg("+") {
+      def call[M[_]: PrimM](vs: List[V]): M[V] =
+        vs.foldLeftM(number(0))((acc, num) => binaryOp(SchemeOp.Plus)(acc, num))
+    }
 
-    case object `-`
-        extends NoStoreLOp("-",
-                           {
-                             case Nil       => MayFail.failure(PrimitiveVariadicArityError("-", 1, 0))
-                             case x :: Nil  => binaryOp(SchemeOp.Minus)(number(0), x)
-                             case x :: rest => `+`.call(rest) >>= (binaryOp(SchemeOp.Minus)(x, _))
-                           }
-        )
+    case object `-` extends SchemePrimVarArg("-") {
+      def call[M[_]: PrimM](args: List[V]): M[V] = args match {
+        case Nil => PrimM[M].fail(PrimitiveVariadicArityError("-", 1, 0))
+        case x :: Nil => binaryOp(SchemeOp.Minus)(number(0), x)
+        case x :: rst =>  `+`.call(rst) >>= { (binaryOp(SchemeOp.Minus)(x, _)) }
+      }
+    }
 
-    case object `*`
-        extends NoStoreLOpRec("*",
-                              {
-                                case (Nil, _)          => number(1)
-                                case (x :: rest, call) => call(rest) >>= (binaryOp(SchemeOp.Times)(x, _))
-                              }
-        )
+    case object `*` extends SchemePrimVarArg("*") {
+      def call[M[_]: PrimM](vs: List[V]): M[V] =
+        vs.foldLeftM(number(1))((acc, num) => binaryOp(SchemeOp.Times)(acc, num))
+    }
 
-    case object `/`
-        extends NoStoreLOp("/",
-                           {
-                             case Nil => MayFail.failure(PrimitiveVariadicArityError("/", 1, 0))
-                             case x :: rest =>
-                               for {
-                                 multrest <- `*`.call(rest)
-                                 r <- binaryOp(SchemeOp.Div)(x, multrest)
-                                 fl <- unaryOp(SchemeOp.Floor)(r)
-                                 isexact <- numEq(r, fl)
-                                 xisint <- isInteger(x)
-                                 multrestisint <- isInteger(multrest)
-                                 convert <- and(isexact, and(xisint, multrestisint))
-                                 exr <- inexactToExact(r)
-                                 res <- ifThenElse(convert)(exr)(r)
-                               } yield res
-                           }
-        )
-    case object `=` extends NoStoreLOperation("=") {
-      def eq(first: V, l: List[V]): MayFail[V, Error] = l match {
-        case Nil => bool(true)
-        case x :: rest =>
+    case object `/` extends SchemePrimVarArg("/") {
+      def call[M[_]: PrimM](vs: List[V]): M[V] = vs match {
+        case Nil => PrimM[M].fail(PrimitiveVariadicArityError("/", 1, 0))
+        case x :: r =>
+          for {
+            multrest <- `*`.call(r)
+            r <- div(x, multrest)
+            fl <- `floor`.call(r)
+            isexact <- numEq(r, fl)
+            xisint <- isInteger(x)
+            multrestisint <- isInteger(multrest)
+            convert = and(isexact, and(xisint, multrestisint))
+            exr <- inexactToExact(r)
+            res <- ifThenElse(PrimM[M].inject(convert))(PrimM[M].inject(exr))(PrimM[M].inject(r))
+          } yield res
+        }
+      }
+
+    case object `=` extends SchemePrimVarArg("=") {
+      def eq[M[_]: PrimM](first: V, l: List[V]): M[V] = l match {
+        case Nil => PrimM[M].unit(bool(true))
+        case x :: r =>
           ifThenElse(numEq(first, x)) {
-            eq(first, rest)
+            eq(first, r)
           } {
-            bool(false)
+            PrimM[M].unit(bool(false))
           }
       }
-      override def call(args: List[V]): MayFail[V, Error] = args match {
-        case Nil       => bool(true)
+      def call[M[_]: PrimM](vs: List[V]): M[V]= vs match {
+        case Nil       => PrimM[M].unit(bool(true))
         case x :: rest => eq(x, rest)
       }
     }
 
-    case object `sqrt`
-        extends NoStore1Operation("sqrt",
-                                  x =>
-                                    ifThenElse(`<`.call(x, number(0))) {
-                                      /* n < 0 */
-                                      MayFail.failure(PrimitiveNotApplicable("sqrt", List(x)))
-                                    } {
-                                      /* n >= 0 */
-                                      for {
-                                        r <- unaryOp(SchemeOp.Sqrt)(x)
-                                        fl <- unaryOp(SchemeOp.Floor)(r)
-                                        argisexact <- isInteger(x)
-                                        resisexact <- numEq(r, fl)
-                                        convert <- and(argisexact, resisexact)
-                                        exr <- inexactToExact(r)
-                                        res <- ifThenElse(convert)(exr)(r)
-                                      } yield res
-                                    }
-        )
+    case object `sqrt` extends SchemePrim1("sqrt") {
+      def call[M[_]: PrimM](x: V): M[V] = 
+        ifThenElse(`<`.call(x, number(0))) {
+          /* n < 0 */
+          PrimM[M].fail(PrimitiveNotApplicable("sqrt", List(x)))
+        } {
+          /* n >= 0 */
+          for {
+            r <- unaryOp(SchemeOp.Sqrt)(x)
+            fl <- `floor`.call(r)
+            argisexact <- isInteger(x)
+            resisexact <- numEq(r, fl)
+            convert = and(argisexact, resisexact)
+            exr <- inexactToExact(r)
+            res <- ifThenElse(PrimM[M].inject(convert))(PrimM[M].inject(exr))(PrimM[M].inject(r))
+          } yield res
+        }
+    } 
 
-    case object `pair?` extends Store1Operation("pair?") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        ifThenElse(unaryOp(SchemeOp.IsPointer)(x)) {
-          dereferencePointer(x, store) { cons =>
-            unaryOp(SchemeOp.IsCons)(cons)
+    abstract class SchemePrimRefTypeCheck(name: String, check: SchemeOp.SchemeOp1) extends SchemePrim1(name) {
+      def call[M[_]: PrimM](x: V): M[V] = 
+        ifThenElse(isPointer(x)) {
+          dereferencePointer(x) { (_, vlu) =>
+            unaryOp(check)(vlu)
           }
         } {
-          bool(false)
-        }.map(v => (v, store: store.This))
+          PrimM[M].unit(bool(false))
+        }
     }
 
-    case object `vector?` extends Store1Operation("vector?") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        for {
-          ispointer <- unaryOp(SchemeOp.IsPointer)(x)
-          isvector <- dereferencePointer(x, store) { v =>
-            isVector(v)
-          }
-        } yield (and(ispointer, isvector), store: store.This)
-    }
-
-    case object `thread?` extends NoStore1Operation("thread?", unaryOp(SchemeOp.IsThread))
-    case object `lock?` extends Store1Operation("lock?") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        ifThenElse(unaryOp(SchemeOp.IsPointer)(x)) {
-          dereferencePointer(x, store) { lock =>
-            unaryOp(SchemeOp.IsLock)(lock)
-          }
-        } {
-          bool(false)
-        }.map(v => (v, store: store.This))
-    }
+    case object `pair?` extends SchemePrimRefTypeCheck("pair?", SchemeOp.IsCons)
+    case object `vector?` extends SchemePrimRefTypeCheck("vector?", SchemeOp.IsVector)
+    case object `thread?` extends SimpleSchemePrim1("thread?", SchemeOp.IsThread)
+    case object `lock?` extends SchemePrimRefTypeCheck("lock?", SchemeOp.IsLock)
 
     case object `string-append` extends SchemePrimitive[V, A] {
       val name = "string-append"
-      private def buildString(args: List[V], store: Store[A, V]): MayFail[V, Error] = args match {
-        case Nil => string("")
-        case x :: otherArgs =>
-          for {
-            rest <- buildString(otherArgs, store)
-            result <- dereferencePointer(x, store)(str => binaryOp(SchemeOp.StringAppend)(str, rest))
-          } yield result
-      }
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] =
-        for {
-          str <- buildString(args.map(_._2), store)
-        } yield {
-          val addr = alloc.pointer(fpos)
-          (lat.pointer(addr), store.extend(addr, str))
+      private def buildString[M[_]: PrimM](args: List[V]): M[V] = 
+        args.foldRightM(string("")) { (x, rst) => 
+          dereferencePointer(x)((_, str) => stringAppend(str, rst))
         }
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] =
+        for {
+          str <- buildString(args.map(_._2))
+          adr <- PrimM[M].allocVal(fpos, str)
+        } yield lat.pointer(adr)
     }
 
     case object `make-string` extends SchemePrimitive[V, A] {
       val name = "make-string"
-      private def makeString(
-          length: V,
-          char: V,
-          fpos: SchemeExp,
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] =
+      private def mkString[M[_]: PrimM](fpos: SchemeExp, length: V, char: V): M[V] =
         for {
-          str <- binaryOp(SchemeOp.MakeString)(length, char)
-        } yield {
-          val addr = alloc.pointer(fpos)
-          (lat.pointer(addr), store.extend(addr, str))
-        }
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
-        case (_, length) :: Nil              => makeString(length, lat.char(0.toChar), fpos, store, alloc)
-        case (_, length) :: (_, char) :: Nil => makeString(length, char, fpos, store, alloc)
-        case l                               => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+          str <- makeString(length, char)
+          adr <- PrimM[M].allocVal(fpos, str)
+        } yield lat.pointer(adr)
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+        case (_, length) :: Nil              => mkString(fpos, length, lat.char(0.toChar))
+        case (_, length) :: (_, char) :: Nil => mkString(fpos, length, char)
+        case l                               => PrimM[M].fail(PrimitiveArityError(name, 1, l.size))
       }
     }
 
     case object `number->string` extends SchemePrimitive[V, A] {
       val name = "number->string"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
         case (_, number) :: Nil =>
           for {
             str <- unaryOp(SchemeOp.NumberToString)(number)
-          } yield {
-            val addr = alloc.pointer(fpos)
-            (lat.pointer(addr), store.extend(addr, str))
-          }
-        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+            adr <- PrimM[M].allocVal(fpos, str)
+          } yield lat.pointer(adr)
+        case l => PrimM[M].fail(PrimitiveArityError(name, 1, l.size))
       }
     }
 
-    case object `string->number` extends Store1Operation("string->number") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store)(unaryOp(SchemeOp.StringToNumber)).map(v => (v, store: store.This))
+    case object `string->number` extends SchemePrim1("string->number") {
+      def call[M[_]: PrimM](x: V): M[V] =
+        dereferencePointer(x) { (_, str) => unaryOp(SchemeOp.StringToNumber)(str) }
     }
 
-    case object `string->symbol` extends Store1Operation("string->symbol") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store)(unaryOp(SchemeOp.StringToSymbol)).map(v => (v, store: store.This))
+    case object `string->symbol` extends SchemePrim1("string->symbol") {
+      def call[M[_]: PrimM](x: V): M[V] =
+        dereferencePointer(x) { (_, str) => unaryOp(SchemeOp.StringToSymbol)(str) }    }
+
+    case object `string-length` extends SchemePrim1("string-length") {
+      def call[M[_]: PrimM](x: V): M[V] =
+        dereferencePointer(x) { (_, str) => unaryOp(SchemeOp.StringLength)(str) }
     }
 
-    case object `string-length` extends Store1Operation("string-length") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store)(unaryOp(SchemeOp.StringLength)).map(v => (v, store: store.This))
+    case object `string-ref` extends SchemePrim2("string-ref") {
+      def call[M[_]: PrimM](x: V, idx: V): M[V] =
+        dereferencePointer(x) { (_, str) => binaryOp(SchemeOp.StringRef)(str, idx) }
     }
 
-    case object `string-ref` extends Store2Operation("string-ref") {
-      def call(
-          x: V,
-          y: V,
-          store: Store[A, V]
-        ): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store)(binaryOp(SchemeOp.StringRef)(_, y)).map(v => (v, store: store.This))
-    }
-
-    case object `string-set!` extends Store3Operation("string-set!") {
-      def call(
-          x: V,
-          idx: V,
-          chr: V,
-          store: Store[A, V]
-        ): MayFail[(V, store.This), Error] =
-        dereferencePointerGetAddressReturnStore(x, store) { (addr, str, store) =>
+    case object `string-set!` extends SchemePrim3("string-set!") {
+      def call[M[_]: PrimM](x: V, idx: V, chr: V): M[V] =
+        dereferencePointer(x) { (adr, str) =>
           for {
             updatedStr <- ternaryOp(SchemeOp.StringSet)(str, idx, chr)
-          } yield (unspecified, store.update(addr, updatedStr))
+            _ <- PrimM[M].updateSto(adr, updatedStr)
+          } yield unspecified
         }
     }
 
-    case object `string<?` extends Store2Operation("string<?") {
-      def call(
-          x: V,
-          y: V,
-          store: Store[A, V]
-        ): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store) { xstr =>
-          dereferencePointer(y, store) { ystr =>
+    case object `string<?` extends SchemePrim2("string<?") {
+      def call[M[_]: PrimM](x: V, y: V): M[V] =
+        dereferencePointer(x) { (_, xstr) =>
+          dereferencePointer(y) { (_, ystr) =>
             binaryOp(SchemeOp.StringLt)(xstr, ystr)
           }
-        }.map(v => (v, store: store.This))
+        }
     }
 
-    case object `string?` extends Store1Operation("string?") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        ifThenElse(unaryOp(SchemeOp.IsPointer)(x)) {
-          dereferencePointer(x, store)(unaryOp(SchemeOp.IsString))
-        } {
-          bool(false)
-        }.map(v => (v, store: store.This))
-    }
+    case object `string?` extends SchemePrimRefTypeCheck("string?", SchemeOp.IsString)
 
     case object `substring` extends SchemePrimitive[V, A] {
       val name = "substring"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
-        case (_, ptr) :: (_, start) :: (_, end) :: Nil =>
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+        case (_, x) :: (_, start) :: (_, end) :: Nil =>
           for {
-            substr <- dereferencePointer(ptr, store) { str =>
-              ternaryOp(SchemeOp.Substring)(str, start, end)
-            }
-          } yield {
-            val addr = alloc.pointer(fpos)
-            (lat.pointer(addr), store.extend(addr, substr))
-          }
-        case _ => MayFail.failure(PrimitiveArityError(name, 3, args.size))
+            substr <- dereferencePointer(x) { (_, str) => ternaryOp(SchemeOp.Substring)(str, start, end) }
+            adr <- PrimM[M].allocVal(fpos, substr)
+          } yield lat.pointer(adr)
+        case _ => PrimM[M].fail(PrimitiveArityError(name, 3, args.size))
       }
     }
 
     case object `symbol->string` extends SchemePrimitive[V, A] {
       val name = "symbol->string"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
         case (_, sym) :: Nil =>
           for {
             str <- unaryOp(SchemeOp.SymbolToString)(sym)
-          } yield {
-            val addr = alloc.pointer(fpos)
-            (lat.pointer(addr), store.extend(addr, str))
-          }
-        case _ => MayFail.failure(PrimitiveArityError(name, 1, args.size))
+            adr <- PrimM[M].allocVal(fpos, str)
+          } yield lat.pointer(adr)
+        case _ => PrimM[M].fail(PrimitiveArityError(name, 1, args.size))
       }
     }
 
     case object `char->string` extends SchemePrimitive[V, A] {
       val name = "char->string"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
         case (_, chr) :: Nil =>
           for {
             str <- unaryOp(SchemeOp.CharacterToString)(chr)
-          } yield {
-            val addr = alloc.pointer(fpos)
-            (lat.pointer(addr), store.extend(addr, str))
-          }
-        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+            adr <- PrimM[M].allocVal(fpos, str)
+          } yield lat.pointer(adr)
+        case l => PrimM[M].fail(PrimitiveArityError(name, 1, l.size))
       }
     }
 
     case object `cons` extends SchemePrimitive[V, A] {
       val name = "cons"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
         case (_, car) :: (_, cdr) :: Nil =>
-          val addr = alloc.pointer(fpos)
-          val consVal = lat.cons(car, cdr)
-          val pointer = lat.pointer(addr)
-          (pointer, store.extend(addr, consVal))
-        case l => MayFail.failure(PrimitiveArityError(name, 2, l.size))
+          for {
+            adr <- PrimM[M].allocVal(fpos, lat.cons(car, cdr))
+          } yield lat.pointer(adr)
+        case l => PrimM[M].fail(PrimitiveArityError(name, 2, l.size))
       }
     }
 
-    case object `car` extends Store1Operation("car") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store)(cons => lat.car(cons)).map(v => (v, store: store.This))
+    case object `car` extends SchemePrim1("car") {
+      def call[M[_]: PrimM](x: V): M[V] =
+        dereferencePointer(x)((_, cons) => lat.car(cons))
     }
-    case object `cdr` extends Store1Operation("cdr") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store)(cons => lat.cdr(cons)).map(v => (v, store: store.This))
+    case object `cdr` extends SchemePrim1("cdr") {
+      def call[M[_]: PrimM](x: V): M[V] =
+        dereferencePointer(x)((_, cons) => lat.cdr(cons))
     }
 
-    case object `set-car!` extends Store2Operation("set-car!") {
-      def call(
-          cell: V,
-          value: V,
-          store: Store[A, V]
-        ): MayFail[(V, store.This), Error] =
-        dereferencePointerGetAddressReturnStore(cell, store) { (addr, cons, store) =>
-          for {
-            cdr <- lat.cdr(cons)
-            updated = lat.cons(value, cdr)
-          } yield (unspecified, store.update(addr, updated))
+    case object `set-car!` extends SchemePrim2("set-car!") {
+      def call[M[_]: PrimM](cell: V, value: V): M[V] =
+        dereferencePointer(cell) { (addr, cons) =>
+          for { 
+            cdr <- fromMF(lat.cdr(cons))
+            _ <- PrimM[M].updateSto(addr, lat.cons(value, cdr))
+          } yield unspecified
         }
     }
 
-    case object `set-cdr!` extends Store2Operation("set-cdr!") {
-      def call(
-          cell: V,
-          value: V,
-          store: Store[A, V]
-        ): MayFail[(V, store.This), Error] =
-        dereferencePointerGetAddressReturnStore(cell, store) { (addr, cons, store) =>
+    case object `set-cdr!` extends SchemePrim2("set-cdr!") {
+      def call[M[_]: PrimM](cell: V, value: V): M[V] =
+        dereferencePointer(cell) { (addr, cons) =>
           for {
-            car <- lat.car(cons)
-            updated = lat.cons(car, value)
-          } yield (unspecified, store.update(addr, updated))
+            car <- fromMF(lat.car(cons))
+            _ <- PrimM[M].updateSto(addr, lat.cons(car, value))
+          } yield unspecified
         }
     }
 
     case object `make-vector` extends SchemePrimitive[V, A] {
       val name = "make-vector"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = {
-        def createVec(size: V, init: V): MayFail[(V, store.This), Error] =
-          isInteger(size) >>= (isint =>
-            if (isTrue(isint)) {
-              val veca = alloc.pointer(fpos)
-              lat.vector(size, init) >>= (vec => (pointer(veca), store.extend(veca, vec)))
-            } else {
-              MayFail.failure(PrimitiveNotApplicable(name, args.map(_._2)))
-            }
-          )
-        args match {
-          case (_, size) :: Nil              => createVec(size, unspecified)
-          case (_, size) :: (_, init) :: Nil => createVec(size, init)
-          case l                             => MayFail.failure(PrimitiveVariadicArityError(name, 1, l.size))
-        }
+      def createVec[M[_]: PrimM](fpos: SchemeExp, size: V, init: V): M[V] =
+        for { 
+          vec <- fromMF(lat.vector(size, init))
+          adr <- PrimM[M].allocVal(fpos, vec)
+        } yield lat.pointer(adr)
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+        case (_, size) :: Nil              => createVec(fpos, size, unspecified)
+        case (_, size) :: (_, init) :: Nil => createVec(fpos, size, init)
+        case l                             => PrimM[M].fail(PrimitiveVariadicArityError(name, 1, l.size))
       }
     }
 
     case object `vector` extends SchemePrimitive[V, A] {
       val name = "vector"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = {
-        val veca = alloc.pointer(fpos)
-        lat.vector(number(args.size), bottom) >>= (emptyvec =>
-          args.zipWithIndex.foldLeft(MayFail.success[V, Error](emptyvec))((acc, arg) =>
-            acc >>= (vec =>
-              arg match {
-                case ((_, value), index) =>
-                  vectorSet(vec, number(index), value)
-              }
-            )
-          )
-        ) >>= (vec => (pointer(veca), store.extend(veca, vec)))
-      }
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] =
+        for {
+          emptyVec <- fromMF(lat.vector(lat.number(args.size), bottom))
+          filledVec <- args.zipWithIndex.foldLeftM(emptyVec) { 
+            case (acc, ((_, arg), idx)) =>
+              vectorSet(acc, lat.number(idx), arg)
+          }
+          adr <- PrimM[M].allocVal(fpos, filledVec)
+        } yield lat.pointer(adr)
     }
 
-    case object `vector-length` extends Store1Operation("vector-length") {
-      def call(arg: V, sto: Store[A, V]): MayFail[(V, sto.This), Error] =
-        dereferencePointer(arg, sto) { vec =>
-          vectorLength(vec)
-        }.map((_, sto: sto.This))
+    case object `vector-length` extends SchemePrim1("vector-length") {
+      def call[M[_]: PrimM](x: V): M[V] =
+        dereferencePointer(x) { (_, vec) => vectorLength(vec) }
     }
 
-    case object `vector-ref` extends Store2Operation("vector-ref") {
-      def call(
-          v: V,
-          index: V,
-          store: Store[A, V]
-        ): MayFail[(V, store.This), Error] =
-        dereferencePointer(v, store) { vec =>
-          lat.vectorRef(vec, index)
-        }.map((_, store: store.This))
+    case object `vector-ref` extends SchemePrim2("vector-ref") {
+      def call[M[_]: PrimM](v: V, idx: V): M[V] =
+        dereferencePointer(v) { (_, vec) => lat.vectorRef(vec, idx) }
     }
 
-    case object `vector-set!` extends SchemePrimitive[V, A] {
-      def name = "vector-set!"
-      def vectorSet(
-          v: V,
-          index: V,
-          newval: V,
-          store: Store[A, V]
-        ): MayFail[(V, store.This), Error] =
-        dereferencePointerGetAddressReturnStore(v, store) { case (veca, vec, store) =>
-          isVector(vec) >>= (test => {
-            val t: MayFail[(V, Option[(A, V)]), Error] =
-              if (isTrue(test)) {
-                lat.vectorSet(vec, index, newval) >>= (newvec => MayFail.success((unspecified, Some((veca, newvec)))))
-              } else {
-                MayFail.success((bottom, None))
-              }
-            val f: MayFail[V, Error] =
-              if (isFalse(test)) {
-                MayFail.failure(PrimitiveNotApplicable(name, List(v, index, newval)))
-              } else {
-                MayFail.success(bottom)
-              }
-            t >>= {
-              case (tv, None) => f.join(MayFail.success(tv), join).map(v => (v, store))
-              case (tv, Some((a, va))) =>
-                f.join(MayFail.success(tv), join).map(v => (v, store.update(a, va)))
-            }
-          })
+    case object `vector-set!` extends SchemePrim3("vector-set!") {
+      def call[M[_]: PrimM](x: V, index: V, newval: V): M[V] =
+        dereferencePointer(x) { (adr, vec) =>
+          for {
+            newvec <- fromMF(lat.vectorSet(vec, index, newval))
+            _ <- PrimM[M].updateSto(adr, newvec)
+          } yield unspecified
         }
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
-        case v :: index :: newval :: Nil => vectorSet(v._2, index._2, newval._2, store)
-        case _                           => MayFail.failure(PrimitiveArityError(name, 3, args.size))
-      }
     }
 
     case object `list` extends SchemePrimitive[V, A] {
       def name = "list"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
-        case Nil => (nil, store: store.This)
-        case (argpos, v) :: rest =>
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = 
+        args.foldRightM(lat.nil) { case ((pos, arg), rst) =>
           for {
-            (restv, store2) <- call(fpos, rest, store, alloc)
-          } yield {
-            val addr = alloc.pointer(argpos)
-            val pair = lat.cons(v, restv)
-            val updatedStore = store2.extend(addr, pair)
-            val pointer = lat.pointer(addr)
-            (pointer, updatedStore)
-          }
-      }
+            adr <- PrimM[M].allocVal(pos, lat.cons(arg, rst))
+          } yield lat.pointer(adr)
+        }
     }
 
     case object `call/cc` extends SchemePrimitive[V, A] {
       val name = "call/cc"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          scheme: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
-        case (_, fun) :: Nil =>
-          val closures = lat.getClosures(fun)
-          val results = closures.collect { case clo @ (SchemeLambda(_, _ :: Nil, _, _), _) =>
-            scheme.callcc(clo, fpos.idn.pos)
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+        case (_, x) :: Nil => 
+          getClosures(x).foldMapM { clo =>
+            for {
+              _ <- PrimM[M].guard(clo._1.check(1))
+              res <- PrimM[M].callcc(clo, fpos.idn.pos)
+            } yield res
           }
-          (lat.join(results), store: store.This)
-        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+        case l => PrimM[M].fail(PrimitiveArityError(name, 1, l.size))
       }
-
     }
 
-    case object `input-port?` extends NoStore1Operation("input-port?", x => unaryOp(SchemeOp.IsInputPort)(x))
+    case object `input-port?` extends SimpleSchemePrim1("input-port?", SchemeOp.IsInputPort)
+    case object `output-port?` extends SimpleSchemePrim1("output-port?", SchemeOp.IsOutputPort)
 
-    case object `output-port?` extends NoStore1Operation("output-port?", x => unaryOp(SchemeOp.IsOutputPort)(x))
-
-    case object `open-input-file` extends Store1Operation("open-input-file") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store) { str =>
+    case object `open-input-file` extends SchemePrim1("open-input-file") {
+      def call[M[_]: PrimM](x: V): M[V] = 
+        dereferencePointer(x) { (_, str) =>
           ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
             for {
               // TODO: this could be cleaner by having a difference between a file input port and string input port, but this would be a bit overkill
@@ -892,25 +591,25 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
               inputPort <- unaryOp(SchemeOp.MakeInputPort)(portstring)
             } yield inputPort
           } {
-            MayFail.failure(PrimitiveNotApplicable("open-input-file", List(x)))
+            PrimM[M].fail(PrimitiveNotApplicable("open-input-file", List(x)))
           }
-        }.map(v => (v, store: store.This))
+        }
     }
 
-    case object `open-input-string` extends Store1Operation("open-input-string") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store) { str =>
+    case object `open-input-string` extends SchemePrim1("open-input-string") {
+      def call[M[_]: PrimM](x: V): M[V] = 
+        dereferencePointer(x) { (_, str) =>
           ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
             unaryOp(SchemeOp.MakeInputPort)(str)
           } {
-            MayFail.failure(PrimitiveNotApplicable("open-input-string", List(x)))
+            PrimM[M].fail(PrimitiveNotApplicable("open-input-string", List(x)))
           }
-        }.map(v => (v, store: store.This))
+        }
     }
 
-    case object `open-output-file` extends Store1Operation("open-output-file") {
-      def call(x: V, store: Store[A, V]): MayFail[(V, store.This), Error] =
-        dereferencePointer(x, store) { str =>
+    case object `open-output-file` extends SchemePrim1("open-output-file") {
+      def call[M[_]: PrimM](x: V): M[V] = 
+        dereferencePointer(x) { (_, str) =>
           ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
             for {
               // TODO: this could be cleaner by having a difference between a file input port and string input port, but this would be a bit overkill
@@ -918,74 +617,84 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
               outputPort <- unaryOp(SchemeOp.MakeOutputPort)(portstring)
             } yield outputPort
           } {
-            MayFail.failure(PrimitiveNotApplicable("open-output-file", List(x)))
-          }
-        }.map(v => (v, store: store.This))
+            PrimM[M].fail(PrimitiveNotApplicable("open-output-file", List(x)))
+          }                  
+        }
     }
 
-    case object `close-input-port`
-        extends NoStore1Operation("close-input-port",
-                                  x =>
-                                    ifThenElse(unaryOp(SchemeOp.IsInputPort)(x)) {
-                                      unspecified
-                                    } {
-                                      MayFail.failure(PrimitiveNotApplicable("close-input-port", List(x)))
-                                    }
-        )
+    case object `close-input-port` extends SchemePrim1("close-input-port") {
+      def call[M[_]: PrimM](x: V): M[V] = 
+        ifThenElse(unaryOp(SchemeOp.IsInputPort)(x)) {
+          PrimM[M].unit(unspecified)
+        } {
+          PrimM[M].fail(PrimitiveNotApplicable("close-input-port", List(x)))
+        }
+    }
 
-    case object `close-output-port`
-        extends NoStore1Operation("close-output-port",
-                                  x =>
-                                    ifThenElse(unaryOp(SchemeOp.IsOutputPort)(x)) {
-                                      unspecified
-                                    } {
-                                      MayFail.failure(PrimitiveNotApplicable("close-output-port", List(x)))
-                                    }
-        )
+    case object `close-output-port` extends SchemePrim1("close-output-port") {
+      def call[M[_]: PrimM](x: V): M[V] =
+        ifThenElse(unaryOp(SchemeOp.IsOutputPort)(x)) {
+          PrimM[M].unit(unspecified)
+        } {
+          PrimM[M].fail(PrimitiveNotApplicable("close-output-port", List(x)))
+        }
+    }
 
-    case object `current-input-port` extends NoStore0Operation("current-input-port", () => unaryOp(SchemeOp.MakeInputPort)(string("__console__")))
+    case object `current-input-port` extends SchemePrim0("current-input-port") {
+      def call[M[_]: PrimM](): M[V] = unaryOp(SchemeOp.MakeInputPort)(string("__console__"))
+    }
 
-    case object `current-output-port` extends NoStore0Operation("current-output-port", () => unaryOp(SchemeOp.MakeOutputPort)(string("__console__")))
+    case object `current-output-port` extends SchemePrim0("current-output-port") {
+      def call[M[_]: PrimM](): M[V] = unaryOp(SchemeOp.MakeOutputPort)(string("__console__"))
+    }
 
-    class ReadOrPeekChar(name: String) extends NoStoreLOperation(name) {
-      def call(args: List[V]): MayFail[V, Error] = args match {
-        case Nil => charTop
-        case inputPort :: Nil =>
-          ifThenElse(unaryOp(SchemeOp.IsInputPort)(inputPort)) {
-            charTop
+    class ReadOrPeekChar(name: String) extends SchemePrimVarArg(name) {
+      def call[M[_]: PrimM](vs: List[V]): M[V] = vs match {
+        case Nil => PrimM[M].unit(charTop)
+        case inp :: Nil =>
+          ifThenElse(unaryOp(SchemeOp.IsInputPort)(inp)) {
+            PrimM[M].unit(charTop)
           } {
-            MayFail.failure(PrimitiveNotApplicable(name, args))
+            PrimM[M].fail(PrimitiveNotApplicable(name, vs))
           }
-        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+        case l => PrimM[M].fail(PrimitiveArityError(name, 1, l.size))
       }
     }
 
     case object `read-char` extends ReadOrPeekChar("read-char")
     case object `peek-char` extends ReadOrPeekChar("peek-char")
 
-    case object `write-char` extends NoStoreLOperation("write-char") {
-      def call(args: List[V]): MayFail[V, Error] = args match {
-        case Nil => unspecified
-        case outputPort :: Nil =>
-          ifThenElse(unaryOp(SchemeOp.IsOutputPort)(outputPort)) {
-            unspecified
+    case object `write-char` extends SchemePrimVarArg("write-char") {
+      def call[M[_]: PrimM](vs: List[V]): M[V] = {
+        def check(res: M[V]): M[V] =
+          ifThenElse(res) {
+            PrimM[M].unit(unspecified)
           } {
-            MayFail.failure(PrimitiveNotApplicable("write-char", args))
+            PrimM[M].fail(PrimitiveNotApplicable(name, vs))
           }
-        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+        vs match {
+          case chr :: Nil => check(unaryOp(SchemeOp.IsChar)(chr))
+          case chr :: out :: Nil =>
+            val res = for {
+                        isChar <- unaryOp(SchemeOp.IsChar)(chr)
+                        isPort <- unaryOp(SchemeOp.IsOutputPort)(out)
+                      } yield and(isChar, isPort)
+            check(res)
+          case l => PrimM[M].fail(PrimitiveArityError(name, 2, l.size))
+        }
       }
     }
-
-    class WriteOrDisplay(name: String) extends NoStoreLOperation(name) {
-      def call(args: List[V]): MayFail[V, Error] = args match {
-        case _ :: Nil => unspecified
+    
+    class WriteOrDisplay(name: String) extends SchemePrimVarArg(name) {
+      def call[M[_]: PrimM](vs: List[V]): M[V] = vs match {
+        case _ :: Nil => PrimM[M].unit(unspecified)
         case _ :: outputPort :: Nil =>
           ifThenElse(unaryOp(SchemeOp.IsOutputPort)(outputPort)) {
-            unspecified
+            PrimM[M].unit(unspecified)
           } {
-            MayFail.failure(PrimitiveNotApplicable(name, args))
+            PrimM[M].fail(PrimitiveNotApplicable(name, vs))
           }
-        case l => MayFail.failure(PrimitiveArityError(name, 1, l.size))
+        case l => PrimM[M].fail(PrimitiveArityError(name, 1, l.size))
       }
     }
 
@@ -994,96 +703,72 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     case object `read` extends SchemePrimitive[V, A] {
       val name = "read"
-      def result(
-          fpos: SchemeExp,
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): (V, store.This) = {
-        val adr = alloc.pointer(fpos)
-        val ptr = lat.pointer(adr)
-        val vlu = lat.join(Seq(ptr, nil, numTop, realTop, charTop, symbolTop, boolTop))
-        val cns = lat.cons(vlu, vlu)
-        // Note #1: creating a vector with these arguments is known to succeed
-        // Note #2: vector should use a different address than the cons-cell
-        val MayFailSuccess(vct) = lat.vector(numTop, vlu)
-        (vlu,
-         store
-           .extend(adr, cns)
-           .extend(adr, vct)
-           .extend(adr, stringTop)
-        )
-      }
-      def argError(args: List[(SchemeExp, V)]) =
-        PrimitiveNotApplicable("read", args)
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
-        case Nil =>
-          result(fpos, store: store.This, alloc)
+      def topValue[M[_]: PrimM](fpos: SchemeExp): M[V] =
+        for {
+          adr <- PrimM[M].allocPtr(fpos)
+          ptr = lat.pointer(adr)
+          vlu = lat.join(Seq(ptr, nil, numTop, realTop, charTop, symbolTop, boolTop))
+          cns = lat.cons(vlu, vlu)
+          // Note #1: creating a vector with these arguments is known to succeed
+          // Note #2: vector (and string) should use a different address than the cons-cell
+          // Note #3: need to ensure that abstract count == +inf for adr!
+          MayFailSuccess(vct) = lat.vector(numTop, vlu)
+          _ <- PrimM[M].extendSto(adr, cns)
+          _ <- PrimM[M].extendSto(adr, vct)
+          _ <- PrimM[M].extendSto(adr, stringTop)
+        } yield vlu
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+        case Nil => topValue(fpos)
         case (_, inp) :: Nil =>
-          unaryOp(SchemeOp.IsInputPort)(inp) >>= { bln =>
-            (isTrue(bln), isFalse(bln)) match {
-              case (true, true)   => result(fpos, store, alloc).addError(argError(args))
-              case (true, false)  => result(fpos, store, alloc)
-              case (false, true)  => argError(args)
-              case (false, false) => (bottom, store: store.This)
-            }
+          ifThenElse(unaryOp(SchemeOp.IsInputPort)(inp)) {
+            topValue(fpos)
+          } {
+            PrimM[M].fail(PrimitiveNotApplicable(name, args))
           }
-        case oth => MayFail.failure(PrimitiveArityError(name, 1, oth.size))
+        case oth => PrimM[M].fail(PrimitiveArityError(name, 1, oth.size))
       }
     }
 
-    case object `eof-object?`
-        extends NoStore1Operation("eof-object?",
-                                  /* TODO: there is no specific encoding for EOF objects, but they can only arise in scenarios where charTop is produced. So we can approximate them as follows */
-                                  x =>
-                                    if (subsumes(x, charTop)) { boolTop }
-                                    else { bool(false) }
-        )
-
-    case object `new-lock` extends SchemePrimitive[V, A] {
-      val name = "new-lock"
-      override def call(
-          fpos: SchemeExp,
-          args: List[(SchemeExp, V)],
-          store: Store[A, V],
-          alloc: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] = args match {
-        case Nil =>
-          val addr = alloc.pointer(fpos)
-          val lock = lat.lock(Set.empty) // An initial lock does not contain any thread since it is not held.
-          val ptr = lat.pointer(addr)
-          (ptr, store.extend(addr, lock))
-        case l => MayFail.failure(PrimitiveArityError(name, 0, l.size))
-      }
-    }
-
-    case object `acquire` extends Scheme1Operation("acquire") {
-      def call(
-          lockPtr: V,
-          store: Store[A, V],
-          scheme: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] =
-        dereferencePointerGetAddressReturnStore(lockPtr, store) { (addr, lock, store) =>
-          for {
-            locked <- lat.acquire(lock, scheme.currentThread)
-          } yield (lat.void, store.update(addr, locked))
+    case object `eof-object?` extends SchemePrim1("eof-object?") {
+      def call[M[_]: PrimM](x: V): M[V] = 
+        /* TODO: there is no specific encoding for EOF objects, but they can only arise in scenarios where charTop is produced. So we can approximate them as follows */
+        if(subsumes(x, charTop)) {
+          PrimM[M].unit(boolTop)
+        } else {
+          PrimM[M].unit(bool(false))
         }
     }
 
-    case object `release` extends Scheme1Operation("release") {
-      def call(
-          lockPtr: V,
-          store: Store[A, V],
-          scheme: SchemeInterpreterBridge[V, A]
-        ): MayFail[(V, store.This), Error] =
-        dereferencePointerGetAddressReturnStore(lockPtr, store) { (addr, lock, store) =>
+    case object `new-lock` extends SchemePrimitive[V, A] {
+      val name = "new-lock"
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = args match {
+        case Nil =>
           for {
-            unlocked <- lat.release(lock, scheme.currentThread)
-          } yield (lat.void, store.update(addr, unlocked))
+            adr <- PrimM[M].allocVal(fpos, lat.lock(Set.empty))
+          } yield lat.pointer(adr)
+        case l => PrimM[M].fail(PrimitiveArityError(name, 0, l.size))
+      }
+    }
+
+    case object `acquire` extends SchemePrim1("acquire") {
+      def call[M[_]: PrimM](x: V): M[V] = 
+        dereferencePointer(x) { (addr, lock) =>
+          for {
+            thread <- PrimM[M].currentThread
+            locked <- fromMF(lat.acquire(lock, thread))
+            _ <- PrimM[M].updateSto(addr, locked)
+          } yield unspecified
+        }
+    }
+
+    case object `release` extends SchemePrim1("release") {
+      def call[M[_]: PrimM](x: V): M[V] = 
+        dereferencePointer(x) { (addr, lock) =>
+          for {
+            thread <- PrimM[M].currentThread
+            unlocked <- fromMF(lat.release(lock, thread))
+            _ <- PrimM[M].updateSto(addr, unlocked)
+          } yield unspecified
         }
     }
   }
