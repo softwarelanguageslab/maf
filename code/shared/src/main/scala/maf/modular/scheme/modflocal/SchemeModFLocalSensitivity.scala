@@ -2,13 +2,6 @@ package maf.modular.scheme.modflocal
 
 import maf.core.Position._
 
-trait SchemeModFWithStoreSensitivity extends SchemeModFWithStore {
-  // parameterised by context-sensitivity policy
-  type Ctx
-  def initialCtx: Ctx
-  def newContext(fex: Exp, clo: lattice.Closure, ags: List[(Exp, Val)], ctx: Ctx): Ctx
-}
-
 //
 // general interface for context-sensitivity policy
 //
@@ -17,7 +10,7 @@ trait SchemeModFLocalSensitivity extends SchemeModFLocal {
   // parameterised by context-sensitivity policy
   type Ctx
   def initialCtx: Ctx
-  def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp): Ctx
+  def newContext(fex: Exp, clo: lattice.Closure, ags: List[(Exp, Val)], ctx: Ctx): Ctx
 }
 
 //
@@ -27,7 +20,7 @@ trait SchemeModFLocalSensitivity extends SchemeModFLocal {
 trait SchemeModFLocalNoSensitivity extends SchemeModFLocalSensitivity {
   type Ctx = Unit
   def initialCtx: Unit = ()
-  def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp): Ctx = ()
+  def newContext(fex: Exp, clo: lattice.Closure, ags: List[(Exp, Val)], ctx: Ctx): Ctx = ()
 }
 
 //
@@ -40,5 +33,6 @@ trait SchemeModFLocalCallSiteSensitivity extends SchemeModFLocalSensitivity {
   // context = list of call sites
   type Ctx = List[Position]
   def initialCtx = Nil
-  def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, cmp: Cmp) = (pos :: cmp.ctx).take(k)
+  def newContext(fex: Exp, clo: lattice.Closure, ags: List[(Exp, Val)], ctx: Ctx) = 
+    (fex.idn.pos :: ctx).take(k)
 }

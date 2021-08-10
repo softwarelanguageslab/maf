@@ -27,18 +27,4 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
     }
     super.updateV(sto, adr, vlu)
   }
-
-  /*
-    if we ever want to include the final program result ...
-
-  override def spawn(cmp: Component) = {
-    cmp match {
-      case HaltComponent(vlu, _) =>
-        val idn = program.idn
-        resultsPerIdn += idn -> (resultsPerIdn(idn) + vlu)
-      case _ => ()
-    }
-    super.spawn(cmp)
-  }
-   */
 }
