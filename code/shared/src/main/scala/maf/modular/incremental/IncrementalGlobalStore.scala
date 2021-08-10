@@ -54,6 +54,38 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    */
   var SCAs: Set[SCA] = Set()
 
+  /**
+   * Computes the join of all values "incoming" in this SCA. The join suffices, as the addresses in the SCA are inter-dependent (i.e., the analysis
+   * will join everything together anyway).
+   * @note
+   *   This implementation computes the incoming value on a "per component" base, by using the provenance.
+   * @return
+   *   The join of all values "incoming" in this SCA.
+   */
+  def incomingSCAValue(sca: SCA): Value = {
+    /*
+    cachedWrites.foldLeft(lattice.bottom) { case (value, (component, addresses)) =>
+      addresses.intersect(sca).foldLeft(value) { case (value, addr) =>
+        if (addressDependencies(component)(addr).union(sca).isEmpty)
+          lattice.join(value, provenance(addr)(component))
+        else value
+      }
+    }
+     */
+    var value = lattice.bottom
+    cachedWrites.foreach { case (component, addresses) =>
+      // All addresses of the SCA written by `component`...
+      addresses.intersect(sca).foreach { addr =>
+        // ...that were not influenced by an address in the SCA...
+        if (addressDependencies(component)(addr).union(sca).isEmpty) {
+          // ...contribute to the incoming value.
+          value = lattice.join(value, provenance(addr)(component))
+        }
+      }
+    }
+    value
+  }
+
   /* ****************************** */
   /* ***** Write invalidation ***** */
   /* ****************************** */
@@ -160,16 +192,23 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     if (configuration.cyclicValueInvalidation) SCAs = Set()
   }
 
-  /* ************************************************************************************************************ */
-  /* ************************************************************************************************************ */
-  /* ***************************************                              *************************************** */
-  /* ***************************************   Intra-component analysis   *************************************** */
-  /* ***************************************                              *************************************** */
-  /* ************************************************************************************************************ */
-  /* ************************************************************************************************************ */
+  /* ************************************ */
+  /* ***** Intra-component analysis ***** */
+  /* ************************************ */
 
   trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra {
     intra =>
+
+    /**
+     * Keep track of the values written by a component to an address. For every address, stores the join of all values written during this
+     * intra-component address.
+     */
+    // TODO: Perhaps collapse this data structure in the global provenance information (requires updating the information without triggers etc, but with joining).
+    var intraProvenance: Map[Addr, Value] = Map().withDefaultValue(lattice.bottom)
+
+    /* ------------------------------------ */
+    /* ----- Intra-component analysis ----- */
+    /* ------------------------------------ */
 
     /** Called upon the (re-)analysis of a component. Here, used to clear out data structures of the incremental global store. */
     abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
@@ -178,65 +217,15 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       super.analyzeWithTimeout(timeout)
     }
 
-    /**
-     * Computes the join of all values "incoming" in this SCA. The join suffices, as the addresses in the SCA are inter-dependent (i.e., the analysis
-     * will join everything together anyway).
-     * @return
-     *   The join of all values "incoming" in this SCA.
-     */
-    def incomingSCAValue(sca: SCA): Value = {
-      var value = lattice.bottom
-      cachedWrites.foreach { case (component, addresses) =>
-        // All addresses of the sca written by `component`...
-        addresses.intersect(sca).foreach { addr =>
-          // ...that were not influenced by an address in the SCA...
-          if (addressDependencies(component)(addr).union(sca).isEmpty) {
-            // ...contribute to the incoming value.
-            value = lattice.join(value, provenance(addr)(component))
-          }
-        }
-      }
-      value
-    }
-
-    /** Refines all values in this SCA to the value "incoming". */
-    def refineSCA(sca: SCA): Unit = {
-      val incoming = incomingSCAValue(sca)
-      // Should be done for every address in the SCA because an SCC/SCA may contain "inner cycles".
-      sca.foreach { addr =>
-        inter.store += addr -> incoming
-        intra.store += addr -> incoming
-        provenance -= addr
-        updateProvenance(component,
-                         addr,
-                         incoming
-        ) // Avoid spurious deletions?! TODO investigate: leads to double the no of assertions in some situations...
-      }
-      // TODO: can this SCA be removed or should this be refined perpetually? In this case, me might need to do this on a commit only.
-      SCAs -= sca
-    }
+    /* ---------------------------------- */
+    /* ----- Basic store operations ----- */
+    /* ---------------------------------- */
 
     override def readAddr(addr: Addr): Value = {
-      if (configuration.cyclicValueInvalidation && version == New) {
-        // Zero or one SCCs will be found.
-        SCAs.find(_.contains(addr)).foreach { sca =>
-          // TODO: should only this be triggered, or should every address in the SCC be triggered? (probably one suffices)
-          trigger(AddrDependency(addr))
-          refineSCA(sca)
-        }
-      }
-      // TODO: if bottom is read, will the analysis continue appropriately?
       val value = super.readAddr(addr)
       if (configuration.cyclicValueInvalidation) lattice.addAddress(value, addr)
       else value
     }
-
-    /**
-     * Keep track of the values written by a component to an address. For every address, stores the join of all values written during this
-     * intra-component address.
-     */
-    // TODO: Perhaps collapse this data structure in the global provenance information (requires updating the information without triggers etc, but with joining).
-    var intraProvenance: Map[Addr, Value] = Map().withDefaultValue(lattice.bottom)
 
     override def writeAddr(addr: Addr, v: Value): Boolean = {
       var value = v
@@ -255,20 +244,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       super.writeAddr(addr, value)
     }
 
-    /**
-     * Called for every written address. Returns true if the dependency needs to be triggered.
-     *
-     * @note
-     *   This function should be overridden to avoid the functionality of GlobalStore to be used. Otherwise this function could be merged into
-     *   refineWrites.
-     */
-    override def doWrite(dep: Dependency): Boolean = dep match {
-      case AddrDependency(addr) if configuration.writeInvalidation =>
-        // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
-        // Also, this would not work, as updateAddr only performs monotonic updates.
-        updateAddrInc(component, addr, intraProvenance(addr))
-      case _ => super.doWrite(dep)
-    }
+    /* ------------------------------ */
+    /* ----- Write invalidation ----- */
+    /* ------------------------------ */
 
     /**
      * Registers the provenance information to the global provenance registry. Uses `updateAddrInc` to allow store refinements forthcoming from a
@@ -291,14 +269,59 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       cachedWrites = cachedWrites + (component -> recentWrites)
     }
 
+    /* ------------------------------------- */
+    /* ----- Cyclic write invalidation ----- */
+    /* ------------------------------------- */
+
+    /** Refines all values in this SCA to the value "incoming". */
+    def refineSCA(sca: SCA): Unit = {
+      val incoming = incomingSCAValue(sca)
+      // Should be done for every address in the SCA because an SCC/SCA may contain "inner cycles".
+      sca.foreach { addr =>
+        inter.store += addr -> incoming
+        intra.store += addr -> incoming
+        provenance -= addr
+        updateProvenance(component,
+                         addr,
+                         incoming
+        ) // Avoid spurious deletions?! TODO investigate: leads to double the no of assertions in some situations...
+      }
+      // TODO: can this SCA be removed or should this be refined perpetually? In this case, we might need to do this on a commit only.
+      SCAs -= sca
+    }
+
+    /* ------------------ */
+    /* ----- Commit ----- */
+    /* ------------------ */
+
+    /**
+     * Called for every written address. Returns true if the dependency needs to be triggered.
+     *
+     * @note
+     *   This function should be overridden to avoid the functionality of GlobalStore to be used. Otherwise this function could be merged into
+     *   refineWrites.
+     */
+    override def doWrite(dep: Dependency): Boolean = dep match {
+      case AddrDependency(addr) if configuration.writeInvalidation =>
+        // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
+        // Also, this would not work, as updateAddr only performs monotonic updates.
+        updateAddrInc(component, addr, intraProvenance(addr))
+      case _ => super.doWrite(dep)
+    }
+
     /** First performs the commit. Then uses information inferred during the analysis of the component to refine the store if possible. */
     override def commit(): Unit = {
-      super.commit() // First do the super commit, as this will cause the actual global store to be updated.
+      // First do the super commit, which will cause the actual global store to be updated.
+      // WI: Takes care of addresses that are written and caused a store update (see `doWrite`).
+      super.commit()
       if (configuration.writeInvalidation) {
-        refineWrites() // Refine the store by removing extra addresses or using the provenance information to refine the values in the store.
-        registerProvenances() // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
+        // Refines the store by removing addresses that are no longer written or by using the provenance information to refine the values in the store.
+        // WI: Takes care of addresses that are no longer written by this component.
+        refineWrites()
+        // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
+        // WI: Takes care of addresses that are written and did not cause a store update.
+        registerProvenances()
       }
     }
   }
-
 }
