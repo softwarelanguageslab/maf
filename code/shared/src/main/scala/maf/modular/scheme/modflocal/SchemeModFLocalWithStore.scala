@@ -31,84 +31,83 @@ abstract class SchemeModFWithStore(prg: SchemeExp) extends ModAnalysis[SchemeExp
   type Pos = Position
   type Cmp = Component
 
-  // parameterised by widening functions
-  // by default, there is no widening
-  def widen(res: Set[(Val, Sto)]): Set[(Val, Sto)] = res
-
   // AnalysisM monad
-  case class AnalysisM[X](run: (Ctx, Env, Sto) => Set[(X, Sto)]) {
-    def flatMap[Y](f: X => AnalysisM[Y]): AnalysisM[Y] =
-      AnalysisM((ctx, env, sto) => run(ctx, env, sto).flatMap(res => f(res._1).run(ctx, env, res._2)))
-    def map[Y](f: X => Y): AnalysisM[Y] =
-      AnalysisM((ctx, env, sto) => run(ctx, env, sto).map(res => (f(res._1), res._2)))
-    def withFilter(p: X => Boolean): AnalysisM[X] = 
-      AnalysisM((ctx, env, sto) => run(ctx, env, sto).filter(res => p(res._1)))
-    def ++(other: AnalysisM[X]): AnalysisM[X] = mplus(this, other)
-  }
-  def unit[X](x: X): AnalysisM[X] = AnalysisM((_, _, sto) => Set((x, sto)))
-  def pick[X](xs: Set[X]): AnalysisM[X] = AnalysisM((_, _, sto) => xs.map((_, sto)))
-  def mzero[X]: AnalysisM[X] = AnalysisM((_, _, _) => Set.empty[(X, Sto)])
-  def mplus[X](x: AnalysisM[X], y: AnalysisM[X]): AnalysisM[X] =
-    AnalysisM((ctx, env, sto) => x.run(ctx, env, sto) ++ y.run(ctx, env, sto))
-  def mplus[X](xs: Iterable[AnalysisM[X]]): AnalysisM[X] =
-    xs.foldLeft[AnalysisM[X]](mzero)((acc, x) => mplus(acc, x))
-  def guard(cnd: Boolean): AnalysisM[Unit] =
-    if (cnd) unit(()) else mzero
-  def inject[X: Lattice](x: X): AnalysisM[X] =
-    guard(!Lattice[X].isBottom(x)).flatMap(_ => unit(x))
-  implicit class MonadicOps[X](xs: Iterable[X]) {
-    def foldLeftM[Y](y: Y)(f: (Y, X) => AnalysisM[Y]): AnalysisM[Y] = xs match {
-      case Nil     => unit(y)
-      case x :: xs => f(y, x).flatMap(acc => xs.foldLeftM(acc)(f))
-    }
-    def mapM[Y](f: X => AnalysisM[Y]): AnalysisM[List[Y]] = xs match {
-      case Nil => unit(Nil)
-      case x :: xs =>
-        for {
-          fx <- f(x)
-          rest <- xs.mapM(f)
-        } yield fx :: rest
-    }
-    def mapM_(f: X => AnalysisM[Unit]): AnalysisM[Unit] = xs match {
-      case Nil     => unit(())
-      case x :: xs => f(x).flatMap(_ => xs.mapM_(f))
-    }
-  }
-	// env ops
-  private def getEnv: AnalysisM[Env] = AnalysisM((_, env, sto) => Set((env, sto)))
-	private def withExtendedEnv[X](nam: String, adr: VarAddr[Ctx])(blk: AnalysisM[X]): AnalysisM[X] =
-		AnalysisM((ctx, env, sto) => blk.run(ctx, env.extend(nam, adr), sto))
-	private def withExtendedEnv[X](bds: Iterable[(String,VarAddr[Ctx])])(blk: AnalysisM[X]): AnalysisM[X] =
-		AnalysisM((ctx, env, sto) => blk.run(ctx, env.extend(bds), sto))
-	private def lookupEnv(nam: String): AnalysisM[VarAddr[Ctx]] =
-		AnalysisM((ctx, env, sto) => env.lookup(nam) match {
-			case Some(adr: VarAddr[Ctx] @unchecked) => Set((adr, sto))
-			case None if env.rst.isDefined =>
-				sto(env.rst.get).asInstanceOf[E].evs.flatMap { nxt =>
-					lookupEnv(nam).run(ctx, nxt, sto)
-				}
-		})
-	// context ops
-	private def getCtx: AnalysisM[Ctx] = AnalysisM((ctx, _, sto) => Set((ctx, sto)))
-	private def allocPtr(exp: Exp): AnalysisM[PtrAddr[Ctx]] =
-		for { ctx <- getCtx } yield PtrAddr(exp, ctx)
-	private def allocVar(vrb: Identifier): AnalysisM[VarAddr[Ctx]] =
-		for { ctx <- getCtx } yield VarAddr(vrb, ctx)
-	// store ops
-  private def getSto: AnalysisM[Sto] =
-    AnalysisM((_, env, sto) => Set((sto, sto))) 
-  private def setSto(sto: Sto): AnalysisM[Unit] =
-    AnalysisM((_, env, _) => Set(((), sto)))
-	protected def extendSto(adr: EnvAddr, evs: Set[Env]): AnalysisM[Unit] = 
-    AnalysisM((_, env, sto) => Set(((), extendE(sto, adr, evs))))
-	protected def extendSto(adr: SchemeAddr[Ctx], vlu: Val): AnalysisM[Unit] =
-    AnalysisM((_, env, sto) => Set(((), extendV(sto, adr, vlu))))
-  protected def extendSto(bds: Iterable[(SchemeAddr[Ctx], Val)]): AnalysisM[Unit] = bds.mapM_ { case (adr, vlu) => extendSto(adr, vlu) }
-	protected def updateSto(adr: SchemeAddr[Ctx], vlu: Val): AnalysisM[Unit] =  //TODO: GC after an update!
-    AnalysisM((_, env, sto) => Set(((), updateV(sto, adr, vlu))))
-	protected def lookupSto(adr: SchemeAddr[Ctx]): AnalysisM[Val] = lookupSto(adr).map(_.asInstanceOf[V].vlu)
-  protected def widen(x: AnalysisM[Val]): AnalysisM[Val] =
-    AnalysisM { (ctx, env, sto) => widen(x.run(ctx, env, sto)) }
+  import Monad._
+  import MonadJoin._
+  
+  case class AnalysisM[X](run: (Ctx, Env, Sto) => Set[(X, Sto)])
+
+  implicit case object AnalysisMInstances extends Monad[AnalysisM] with MonadError[AnalysisM, Error] with MonadJoin[AnalysisM] with SchemePrimM[AnalysisM, Adr, Val] {
+    // MONAD
+    def unit[X](x: X) = 
+      AnalysisM((_, _, sto) => Set((x, sto)))
+    def map[X, Y](m: AnalysisM[X])(f: X => Y) =
+      AnalysisM((ctx, env, sto) => m.run(ctx, env, sto).map(res => (f(res._1), res._2)))
+    def flatMap[X, Y](m: AnalysisM[X])(f: X => AnalysisM[Y]) =
+      AnalysisM((ctx, env, sto) => m.run(ctx, env, sto).flatMap(res => f(res._1).run(ctx, env, res._2)))
+    // MONADJOIN
+    def mbottom[X] = 
+      AnalysisM((_,_,_) => Set.empty)
+    def mjoin[X: Lattice](x: AnalysisM[X], y: AnalysisM[X]) = 
+      AnalysisM((ctx, env, sto) => x.run(ctx, env, sto) ++ y.run(ctx, env, sto))
+    // MONADERROR
+    def fail[X](err: Error) = 
+      mbottom // we are not interested in errors here (at least, not yet ...)
+    // SCHEMEPRIMM
+    def addrEq: AnalysisM[MaybeEq[Adr]] = 
+      AnalysisM((_, _, sto) => Set((sto.addrEq, sto)))
+    def getCtx: AnalysisM[Ctx] =
+      AnalysisM((ctx, _, sto) => Set((ctx, sto)))
+    def allocPtr(exp: SchemeExp) = 
+		  map(getCtx)(PtrAddr(exp, _))
+	  def allocVar(vrb: Identifier) =
+		  map(getCtx)(VarAddr(vrb, _))
+    def extendSto(adr: Adr, vlu: Val): AnalysisM[Unit] = 
+      AnalysisM((_, env, sto) => Set(((), extendV(sto, adr, vlu))))
+    def extendSto(bds: Iterable[(Adr, Val)]): AnalysisM[Unit] = 
+      bds.mapM_ { case (adr, vlu) => extendSto(adr, vlu) }
+  	def updateSto(adr: Adr, vlu: Val) =  //TODO: GC after an update?
+      AnalysisM((_, env, sto) => Set(((), updateV(sto, adr, vlu))))
+    def lookupSto(adr: Adr) = 
+      AnalysisM((_, _, sto) => Set((sto(adr).asInstanceOf[V].vlu, sto)))
+    def getSto: AnalysisM[Sto] =
+      AnalysisM((_, env, sto) => Set((sto, sto))) 
+    def setSto(sto: Sto): AnalysisM[Unit] =
+      AnalysisM((_, env, _) => Set(((), sto)))
+    // ENV STUFF
+    def getEnv: AnalysisM[Env] = AnalysisM((_, env, sto) => Set((env, sto)))
+      AnalysisM((ctx, env, sto) => Set((env, sto)))
+    def withEnv[X](f: Env => Env)(blk: AnalysisM[X]): AnalysisM[X] =
+      AnalysisM((ctx, env, sto) => blk.run(ctx, f(env), sto))
+    def withEnv[X](env: Env)(blk: AnalysisM[X]): AnalysisM[X] =
+      withEnv(_ => env)(blk)
+    def withExtendedEnv[X](nam: String, adr: VarAddr[Ctx])(blk: AnalysisM[X]): AnalysisM[X] =
+		  withEnv(_.extend(nam, adr))(blk)
+    def withExtendedEnv[X](bds: Iterable[(String,VarAddr[Ctx])])(blk: AnalysisM[X]): AnalysisM[X] =
+		  withEnv(_.extend(bds))(blk)
+    def lookupEnv[X: Lattice](nam: String)(f: Adr => AnalysisM[X]): AnalysisM[X] =
+      for {
+        env <- getEnv
+        res <- env.lookup(nam) match {
+          case Some(adr) => f(adr) 
+          case None => 
+            for {
+              evs <- lookupEnvSto(env.rst.get)
+              res <- evs.foldMapM { nxt =>
+                withEnv(nxt)(lookupEnv(nam)(f))
+              }
+            } yield res
+        }
+      } yield res
+	  def extendEnvSto(adr: EnvAddr, evs: Set[Env]): AnalysisM[Unit] = 
+      AnalysisM((_, _, sto) => Set(((), extendE(sto, adr, evs))))
+    def lookupEnvSto(adr: EnvAddr): AnalysisM[Set[Env]] =
+      AnalysisM((_, _, sto) => Set((sto(adr).asInstanceOf[E].evs, sto)))
+    def allocCtx(fex: Exp, clo: lattice.Closure, ags: List[(Exp, Val)]): AnalysisM[Ctx] =
+      for { ctx <- getCtx } yield newContext(fex, clo, ags, ctx)
+    def call(lam: Lam, ctx: Ctx): AnalysisM[Val] = 
+      AnalysisM((_, _, sto) => getResult(CallComponent(lam, ctx, sto)))
+  } 
 
   // TODO: GC these?
   lazy val initialExp: Exp = program
@@ -192,6 +191,8 @@ abstract class SchemeModFWithStore(prg: SchemeExp) extends ModAnalysis[SchemeExp
   def getResult(cmp: Component): Set[(Val, Sto)] =
     results.getOrElse(cmp, Set.empty)
 
+  import AnalysisMInstances._
+
   private def eval(exp: SchemeExp): AnalysisM[Val] = exp match {
     case vlu: SchemeValue             => evalLiteralValue(vlu)
     case lam: SchemeLambdaExp         => evalLambda(lam)
@@ -209,6 +210,7 @@ abstract class SchemeModFWithStore(prg: SchemeExp) extends ModAnalysis[SchemeExp
     case spi: SchemeSplicedPair       => evalSplicedPair(spi)
 		case cll: SchemeFuncall           => evalCall(cll)
     case SchemeAssert(exp, _)         => evalAssert(exp)
+    case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
   }
 
   private def evalLambda(lam: Lam): AnalysisM[Val] =
@@ -225,16 +227,12 @@ abstract class SchemeModFWithStore(prg: SchemeExp) extends ModAnalysis[SchemeExp
 	}
 
 	private def evalVariable(nam: String): AnalysisM[Val] =
-		for {
-			adr <- lookupEnv(nam)
-			vlu <- lookupSto(adr)
-		} yield vlu
+		lookupEnv(nam)(adr => lookupSto(adr))
 
 	private def evalSet(nam: String, rhs: Exp): AnalysisM[Val] = {
 		for {
 			rvl <- eval(rhs) 
-			adr <- lookupEnv(nam)
-			_ <- updateSto(adr, rvl)
+			_ <- lookupEnv(nam)(adr => updateSto(adr, rvl))
 		} yield lattice.void
 	}
 
@@ -343,7 +341,7 @@ abstract class SchemeModFWithStore(prg: SchemeExp) extends ModAnalysis[SchemeExp
 	private def cond(cnd: Val, csq: AnalysisM[Val], alt: AnalysisM[Val]): AnalysisM[Val] = {
 		val tru = guard(lattice.isTrue(cnd)).flatMap(_ => csq)
 		val fls = guard(lattice.isFalse(cnd)).flatMap(_ => alt)
-		widen(tru ++ fls)
+		mjoin(tru, fls)
 	}
 
   private def evalCall(cll: SchemeFuncall): AnalysisM[Val] = 
@@ -354,52 +352,45 @@ abstract class SchemeModFWithStore(prg: SchemeExp) extends ModAnalysis[SchemeExp
     } yield res 
 
   private def applyFun(cll: SchemeFuncall, fun: Val, ags: List[(Exp, Val)]): AnalysisM[Val] =
-    widen(applyPrimitives(cll, fun, ags) ++ applyClosures(cll, fun, ags))
+    mjoin(applyPrimitives(cll, fun, ags), applyClosures(cll, fun, ags))
 
   private def applyPrimitives(cll: SchemeFuncall, fun: Val, ags: List[(Exp, Val)]): AnalysisM[Val] =
-    for {
-      prm <- pick(lattice.getPrimitives(fun)) // TODO: widen here too?
-      res <- applyPrimitive(cll, primitives(prm), ags)
-    } yield res
+    lattice.getPrimitives(fun).foldMapM { prm =>
+      applyPrimitive(cll, primitives(prm), ags)
+    }
 
-  // TODO: no widening in all primitives!
   private def applyPrimitive(cll: SchemeFuncall, prm: Prim, ags: List[(Exp, Val)]): AnalysisM[Val] =
-    for {
-      sto <- getSto
-      ctx <- getCtx
-      res <- prm.callMF(cll, ags, StoreAdapter(sto), InterpreterBridge(ctx)) match {
-        case MayFailSuccess((vlu, sto)) => setSto(sto.sto).map { _ => vlu }
-        case MayFailBoth((vlu, sto), _) => setSto(sto.sto).map { _ => vlu }
-        case MayFailError(_) => mzero
-      }
-    } yield res
+    prm.call(cll, ags)
 
   private def applyClosures(cll: SchemeFuncall, fun: Val, ags: List[(Exp, Val)]): AnalysisM[Val] = {
     val agc = ags.length
-    for {
-      clo <- pick(lattice.getClosures(fun)) // TODO: widen here too?
-      if clo._1.check(agc) // only consider closures with compatible arity
-      res <- applyClosure(cll, clo, ags)
-    } yield res
+    lattice.getClosures(fun).foldMapM { clo =>
+      guard(clo._1.check(agc)).flatMap { _ =>
+        applyClosure(cll, clo, ags)
+      }
+    }
   }
 
   private def applyClosure(cll: SchemeFuncall, clo: lattice.Closure, ags: List[(Exp, Val)]): AnalysisM[Val] = 
+    // TODO: GC here
     for {
-      ctx <- getCtx
-      (lam, lex: Env @unchecked) = clo
-      (fxa, vra) = ags.splitAt(lam.args.length)
-      ncx = allocCtx(lam, lex, ags, cll.idn.pos, ctx) // TODO: GC before extending
-      _ <- extendSto(lam.args.map(VarAddr(_, ncx)).zip(fxa.map(_._2))) // bind fixed args
+      ctx <- allocCtx(cll, clo, ags)
+      _ <- bindArgs(clo, ags, ctx)
+      res <- call(clo._1, ctx)
+    } yield res
+
+  private def bindArgs(clo: lattice.Closure, ags: List[(Exp,Val)], ctx: Ctx): AnalysisM[Unit] = {
+    val (lam, lex: Env @unchecked) = clo
+    val (fxa, vra) = ags.splitAt(lam.args.length)
+    for {
+      _ <- extendSto(lam.args.map(VarAddr(_, ctx)).zip(fxa.map(_._2))) // bind fixed args
       _ <- lam.varArgId match { // bind varargs
         case None => unit(())
-        case Some(varArg) => allocLst(vra).flatMap(extendSto(VarAddr(varArg, ncx), _))
+        case Some(varArg) => allocLst(vra).flatMap(extendSto(VarAddr(varArg, ctx), _))
       }
-      _ <- extendSto(EnvAddr(lam, ncx), Set(lex))
-      sto <- getSto
-      cmp = CallComponent(lam, ncx, sto) 
-      (res, nst) <- pick(getResult(cmp))
-      _ <- setSto(nst)
-    } yield res
+      _ <- extendEnvSto(EnvAddr(lam, ctx), Set(lex))
+    } yield ()
+  }
 
 	private def storeVal(exp: Exp, vlu: Val): AnalysisM[Val] =
 		for {
@@ -429,32 +420,4 @@ abstract class SchemeModFWithStore(prg: SchemeExp) extends ModAnalysis[SchemeExp
   protected def extendV(sto: Store[Adr, Storable], adr: Adr, vlu: Val): sto.This = sto.extend(adr, V(vlu))
   protected def extendE(sto: Store[Adr, Storable], adr: Adr, evs: Set[Env]): sto.This = sto.extend(adr, E(evs))
   protected def updateV(sto: Store[Adr, Storable], adr: Adr, vlu: Val): sto.This = sto.update(adr, V(vlu))
-
-
-  // UGLY CODE AHEAD -- NECESSARY TO BRIDGE WITH PRIMITIVES INTERFACE
-
-  case class StoreAdapter[St <: Store[Adr, Storable] { type This = St }](sto: St) extends Store[Adr, Val] { outer =>
-    // refine the This type
-    type This = StoreAdapter[St]
-    // lookup: only expect values
-    def lookup(adr: Adr) = sto(adr).asInstanceOf[V].vlu match {
-      case Some(V(vlu)) => Some(vlu)
-      case _            => None
-    }
-    def extend(adr: Adr, vlu: Val) = StoreAdapter(extendV(sto, adr, vlu))
-    override def update(adr: Adr, vlu: Val) = StoreAdapter(updateV(sto, adr, vlu))
-    // join operations
-    def empty = StoreAdapter(sto.empty)
-    def join(other: This) = StoreAdapter(sto.join(other.sto))
-    // delta store
-    type DeltaStore = StoreAdapter[sto.DeltaStore]
-    def deltaStore = StoreAdapter(sto.deltaStore)
-    def integrate(delta: DeltaStore) = StoreAdapter(sto.integrate(delta.sto))
-  }
-
-  case class InterpreterBridge(ctx: Ctx) extends SchemeInterpreterBridge[Val, Adr] {
-    def pointer(exp: SchemeExp): Adr = PtrAddr(exp, ctx)
-    def callcc(clo: lattice.Closure, pos: Position): Value = throw new Exception("NYI")
-    def currentThread: TID = throw new Exception("NYI")
-  }
 }

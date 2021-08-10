@@ -6,7 +6,7 @@ trait SchemeModFWithStoreSensitivity extends SchemeModFWithStore {
   // parameterised by context-sensitivity policy
   type Ctx
   def initialCtx: Ctx
-  def allocCtx(lam: Lam, lex: Env, args: List[(Exp, Val)], pos: Pos, ctx: Ctx): Ctx
+  def newContext(fex: Exp, clo: lattice.Closure, ags: List[(Exp, Val)], ctx: Ctx): Ctx
 }
 
 //

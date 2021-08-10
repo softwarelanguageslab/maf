@@ -53,7 +53,7 @@ trait MonadError[M[_], E] extends Monad[M] {
 }
 
 //
-// MonadPlus
+// MonadJoin
 //
 
 trait MonadJoin[M[_]] extends Monad[M] {

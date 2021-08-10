@@ -53,6 +53,15 @@ object Lattice {
     def ceq(x: Set[A], y: => Set[A]): Boolean = x == y
   }
 
+  implicit object UnitLattice extends Lattice[Unit] {
+    def show(v: Unit): String = "()"
+    def top = throw LatticeTopUndefined
+    def bottom = ()
+    def join(x: Unit, y: => Unit): Unit = ()
+    def subsumes(x: Unit, y: => Unit): Boolean = true
+    def eql[B: BoolLattice](x: Unit, y: Unit): B = BoolLattice[B].inject(true)
+  }
+
   def foldMapL[X, L: Lattice](xs: Iterable[X], f: X => L): L = {
     if (xs.isEmpty) {
       Lattice[L].bottom
