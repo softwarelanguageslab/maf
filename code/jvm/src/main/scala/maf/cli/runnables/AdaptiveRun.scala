@@ -41,7 +41,7 @@ object AdaptiveRun {
     val prg = CSchemeParser.parse(txt)
     val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
     anl.analyzeWithTimeoutInSeconds(30)
-    print(anl.getResult(anl.MainComponent))
+    print(anl.results.getOrElse(anl.MainComponent, Set.empty))
   }
 
   def testModConc(): Unit = {

@@ -1,6 +1,6 @@
 package maf.modular.scheme.modflocal
 
-import maf.modular.ModAnalysis
+import maf.modular._
 import maf.modular.scheme._
 import maf.core._
 import maf.language.scheme._
@@ -11,10 +11,11 @@ import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 
 abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics {
-  this: SchemeDomain with SchemeModFLocalSensitivity =>
+  inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
   // more shorthands
   type Cmp = Component
+  type Dep = Dependency
   type Sto = LocalStore[Adr, Storable] // TODO: split the store?
 
   //
@@ -111,61 +112,99 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   // RESULTS
   //
 
-  var results: Map[Component, Set[(Val, Sto)]] = Map.empty
-  def addResult(cmp: Component, res: Set[(Val, Sto)]) =
-    results += cmp -> (getResult(cmp) ++ res)
-  def getResult(cmp: Component): Set[(Val, Sto)] =
-    results.getOrElse(cmp, Set.empty)
+  var results: Map[Cmp, Set[(Val, Sto)]] = Map.empty
+  case class ResultDependency(cmp: Cmp) extends Dependency
 
   //
   // ANALYSISM MONAD
   //
   
-  case class A[X](run: (Ctx, Env, Sto) => Set[(X, Sto)])
+  case class A[X](run: (Ctx, Env, Sto) => (Set[(X, Sto)], Set[Cmp], Set[Dep], Set[Dep]))
 
-  implicit val anl: AnalysisM[A] = new AnalysisM[A] {
-    // MONAD
-    def unit[X](x: X) = 
-      A((_, _, sto) => Set((x, sto)))
-    def map[X, Y](m: A[X])(f: X => Y) = 
-      A((ctx, env, sto) => m.run(ctx, env, sto).map(res => (f(res._1), res._2)))
-    def flatMap[X, Y](m: A[X])(f: X => A[Y]) = 
-      A((ctx, env, sto) => m.run(ctx, env, sto).flatMap(res => f(res._1).run(ctx, env, res._2)))
-    // MONADJOIN
-    def mbottom[X] = 
-      A((_,_,_) => Set.empty)
-    def mjoin[X: Lattice](x: A[X], y: A[X]) = 
-      A((ctx, env, sto) => x.run(ctx, env, sto) ++ y.run(ctx, env, sto))
-    // MONADERROR
-    def fail[X](err: Error) = 
-      mbottom // we are not interested in errors here (at least, not yet ...)
-    // STOREM
-    def addrEq = 
-      A((_, _, sto) => Set((sto.addrEq, sto)))
-    def extendSto(adr: Adr, vlu: Val) = 
-      A((_, env, sto) => Set(((), extendV(sto, adr, vlu))))
-  	def updateSto(adr: Adr, vlu: Val) = 
-      A((_, env, sto) => Set(((), updateV(sto, adr, vlu))))
-    def lookupSto(adr: Adr) = 
-      A((_, _, sto) => Set((lookupV(sto, adr), sto)))
-    // ANALYSISM
-    def getCtx = 
-      A((ctx, _, sto) => Set((ctx, sto)))
-    // ENV STUFF
-    def getEnv = 
-      A((_, env, sto) => Set((env, sto)))
-    def withExtendedEnv[X](nam: String, adr: Adr)(blk: A[X]): A[X] = 
-      A((ctx, env, sto) => blk.run(ctx, env.extend(nam, adr), sto))
-	  def extendEnvSto(adr: EnvAddr, evs: Set[Env]) = 
-      A((_, _, sto) => Set(((), extendE(sto, adr, evs))))
-    def lookupEnvSto(adr: EnvAddr) =
-      A((_, _, sto) => Set((lookupE(sto, adr), sto)))
-    def call(lam: Lam, ctx: Ctx): A[Val] = 
-      A((_, _, sto) => getResult(CallComponent(lam, ctx, sto)))
-  } 
+  def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) { intra =>
 
-  def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) {
-    def analyzeWithTimeout(timeout: Timeout.T): Unit =
-      addResult(cmp, eval(cmp.exp).run(cmp.ctx, cmp.env, cmp.sto))
+    var results = inter.results
+
+    implicit val anl: AnalysisM[A] = new AnalysisM[A] {
+      // MONAD
+      def unit[X](x: X) = 
+        A((_, _, sto) => (Set((x, sto)), Set(), Set(), Set()))
+      def map[X, Y](m: A[X])(f: X => Y) = 
+        A { (ctx, env, sto) => 
+          val (rss, cps, rds, wds) = m.run(ctx, env, sto)
+          (rss.map(res => (f(res._1), res._2)), cps, rds, wds)
+        }
+      def flatMap[X, Y](m: A[X])(f: X => A[Y]) = 
+        A { (ctx, env, sto) => 
+          val (rs1, cs1, rd1, wd1) = m.run(ctx, env, sto)
+          rs1.foldLeft((Set[(Y,Sto)](), cs1, rd1, wd1)) { case (acc, res) =>
+            val (rs2, cs2, rd2, wd2) = f(res._1).run(ctx, env, res._2)
+            (acc._1 ++ rs2, acc._2 ++ cs2, acc._3 ++ rd2, acc._4 ++ wd2)
+          }
+        } 
+      // MONADJOIN
+      def mbottom[X] = 
+        A((_,_,_) => (Set(), Set(), Set(), Set()))
+      def mjoin[X: Lattice](x: A[X], y: A[X]) = 
+        A { (ctx, env, sto) => 
+          val (rs1, cs1, rd1, wd1) = x.run(ctx, env, sto)
+          val (rs2, cs2, rd2, wd2) = y.run(ctx, env, sto)
+          (rs1 ++ rs2, cs1 ++ cs2, rd1 ++ rd2, wd1 ++ wd2)
+        }
+      // MONADERROR
+      def fail[X](err: Error) = 
+        mbottom // we are not interested in errors here (at least, not yet ...)
+      // STOREM
+      def addrEq = 
+        A((_, _, sto) => (Set((sto.addrEq, sto)), Set(), Set(), Set()))
+      def extendSto(adr: Adr, vlu: Val) = 
+        A((_, env, sto) => (Set(((), extendV(sto, adr, vlu))), Set(), Set(), Set()))
+      def updateSto(adr: Adr, vlu: Val) = 
+        A((_, env, sto) => (Set(((), updateV(sto, adr, vlu))), Set(), Set(), Set()))
+      def lookupSto(adr: Adr) = 
+        A((_, _, sto) => (Set((lookupV(sto, adr), sto)), Set(), Set(), Set()))
+      // ANALYSISM
+      def getCtx = 
+        A((ctx, _, sto) => (Set((ctx, sto)), Set(), Set(), Set()))
+      // ENV STUFF
+      def getEnv = 
+        A((_, env, sto) => (Set((env, sto)), Set(), Set(), Set()))
+      def withExtendedEnv[X](nam: String, adr: Adr)(blk: A[X]): A[X] = 
+        A((ctx, env, sto) => blk.run(ctx, env.extend(nam, adr), sto))
+      def extendEnvSto(adr: EnvAddr, evs: Set[Env]) = 
+        A((_, _, sto) => (Set(((), extendE(sto, adr, evs))), Set(), Set(), Set()))
+      def lookupEnvSto(adr: EnvAddr) =
+        A((_, _, sto) => (Set(((lookupE(sto, adr), sto))), Set(), Set(), Set()))
+      def call(lam: Lam, ctx: Ctx): A[Val] = 
+        A { (_, _, sto) => 
+          val cmp = CallComponent(lam, ctx, sto)
+          val res = results.getOrElse(cmp, Set.empty)
+          (res, Set(cmp), Set(ResultDependency(cmp)), Set())
+        }
+    } 
+    
+    def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+      val (res, cps, rds, wds) = eval(cmp.exp).run(cmp.ctx, cmp.env, cmp.sto)
+      val old = results.getOrElse(cmp, Set.empty)
+      if (res != old) {
+        results += cmp -> res
+        trigger(ResultDependency(cmp))
+      }
+      cps.foreach(spawn)
+      rds.foreach(register)
+      assert(wds.isEmpty)
+    }
+    override def doWrite(dep: Dependency): Boolean = dep match {
+      case ResultDependency(cmp) => 
+        val old = inter.results.getOrElse(cmp, Set.empty)
+        val cur = intra.results.getOrElse(cmp, Set.empty)
+        if (old != cur) {
+          inter.results += cmp -> results.getOrElse(cmp, Set.empty)
+          true 
+        } else {
+          false
+        }
+      case _ => super.doWrite(dep)
+    }
   }
 }
