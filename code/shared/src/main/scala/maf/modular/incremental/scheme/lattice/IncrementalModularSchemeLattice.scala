@@ -5,6 +5,7 @@ import maf.language.CScheme.TID
 import maf.language.scheme.lattices._
 import maf.lattice.interfaces._
 import maf.modular.scheme.PtrAddr
+import maf.util.MonoidInstances.setMonoid
 import maf.util.benchmarks.Table
 import maf.util._
 
@@ -33,8 +34,10 @@ class IncrementalModularSchemeLattice[
     def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X = {
       values.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
     }
+
+    /** Convert to a non-annotated value, for use with the non-annotated lattice implementation. */
     def toL(): L = Elements(values)
-    def joinSourcesAndGet(other: AnnotatedElements): Sources = sources.union(other.sources)
+    def joinedSources(other: AnnotatedElements): Sources = sources.union(other.sources) //TODO use a set monoid for this?
   }
   type AL = AnnotatedElements
   object AnnotatedElement extends Serializable {
@@ -43,6 +46,8 @@ class IncrementalModularSchemeLattice[
   }
 
   import maf.util.MonoidInstances._
+
+  /** Provides the monoid implementation for annotated elements AL. */
   implicit val alMonoid: Monoid[AL] = new Monoid[AL] {
     private def insert(vs: List[Value], v: Value): List[Value] = vs match {
       case scala.Nil                     => List(v)
@@ -50,67 +55,39 @@ class IncrementalModularSchemeLattice[
       case v0 :: rest if v.ord == v0.ord => Value.join(v, v0) :: rest
       case v0 :: rest                    => v0 :: insert(rest, v)
     }
-    def append(x: AL, y: => AL): AL = (x, y) match {
-      case (AnnotatedElements(as, asrc), AnnotatedElements(bs, bsrc)) => {
-        val value = bs.foldLeft(as)(insert)
-        val sources = asrc.union(bsrc)
-        AnnotatedElements(value, sources)
-      }
-    }
+    def append(xs: AL, ys: => AL): AL = AnnotatedElements(ys.values.foldLeft(xs.values)(insert), xs.sources.union(ys.sources))
     def zero: AL = AnnotatedElements(scala.Nil, Set())
   }
   implicit val alMFMonoid: Monoid[MayFail[AL, Error]] = MonoidInstances.mayFail[AL]
 
+  /** The actual lattice implementation for AL and A. */
   val incrementalSchemeLattice: IncrementalSchemeLattice[AL, A] = new IncrementalSchemeLattice[AL, A] {
+
+    /** Converts an elements from the non-annotated lattice to the annotated lattice. */
     private def annotate(als: Elements, sources: Sources): AL = AnnotatedElements(als.vs, sources)
 
     def show(x: AL): String = x.toString /* TODO[easy]: implement better */
     def refs(x: AL): Set[Address] = x.foldMapL(Value.refs(_))(setMonoid)
     def isTrue(x: AL): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: AL): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
+
+    /** Apply an operation: apply the operation on the values and join the annotations. */
     def op(op: SchemeOp)(args: List[AL]): MayFail[AL, Error] = {
-      val sources = args.flatMap(_.sources).toSet // Combine all sources.
-      def fold(argsToProcess: List[L], argsvRev: List[Value]): MayFail[AL, Error] = argsToProcess match {
-        case arg :: args =>
-          arg.foldMapL(argv => fold(args, argv :: argsvRev))
-        case List() =>
-          val argsv = argsvRev.reverse
-          op match {
-            // TODO check operations on vectors (are sources correctly combined or don't need all sources to be combined?)
-            case SchemeOp.Car => Value.car(argsv.head).map(annotate(_, sources))
-            case SchemeOp.Cdr => Value.cdr(argsv.head).map(annotate(_, sources))
-            case SchemeOp.VectorRef =>
-              Value.vectorRef(argsv.head, argsv(1)).map(annotate(_, sources))
-            case SchemeOp.VectorSet =>
-              Value.vectorSet(argsv.head, argsv(1), args(2).toL()).map(annotate(_, sources))
-            case _ => Value.op(op)(argsv).map(x => AnnotatedElement(x, sources))
-          }
-      }
-      op.checkArity(args)
-      op match {
-        case SchemeOp.MakeVector =>
-          /* Treated as a special case because args(1) can be bottom (this would be a valid use of MakeVector) */
-          args.head.foldMapL(arg0 => Value.vector(arg0, args(1).toL()).map(v => AnnotatedElement(v, args.head.sources.union(args(1).sources))))
-        case _ => fold(args.map(_.toL()), List())
-      }
+      val sources = args.flatMap(_.sources).toSet // Combine all sources (= join).
+      // Redirect to the non-annotated lattice and annotate afterwards. This allows more reuse of code.
+      schemeLattice.op(op)(args.map(_.toL())).map(annotate(_, sources))
     }
     def join(x: AL, y: => AL): AL = Monoid[AL].append(x, y)
-    def subsumes(x: AL, y: => AL): Boolean =
-      y.foldMapL(y =>
-        /* For every element in y, there exists an element of x that subsumes it */
-        x.foldMapL(x => Value.subsumes(x, y))(boolOrMonoid)
-      )(boolAndMonoid)
+    def subsumes(x: AL, y: => AL): Boolean = schemeLattice.subsumes(x.toL(), y.toL())
     def top: AL = throw LatticeTopUndefined
 
-    def getClosures(x: AL): Set[Closure] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
-    def getContinuations(x: AL): Set[K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)
-    def getPrimitives(x: AL): Set[String] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
-    def getPointerAddresses(x: AL): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
-    def getThreads(x: AL): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
-    def acquire(lock: AL, tid: TID): MayFail[AL, Error] =
-      lock.foldMapL(l => Value.acquire(l, tid).map(annotate(_, lock.sources)))
-    def release(lock: AL, tid: TID): MayFail[AL, Error] =
-      lock.foldMapL(l => Value.release(l, tid).map(annotate(_, lock.sources)))
+    def getClosures(x: AL): Set[Closure] = schemeLattice.getClosures(x.toL())
+    def getContinuations(x: AL): Set[K] = schemeLattice.getContinuations(x.toL())
+    def getPrimitives(x: AL): Set[String] = schemeLattice.getPrimitives(x.toL())
+    def getPointerAddresses(x: AL): Set[A] = schemeLattice.getPointerAddresses(x.toL())
+    def getThreads(x: AL): Set[TID] = schemeLattice.getThreads(x.toL())
+    def acquire(lock: AL, tid: TID): MayFail[AL, Error] = schemeLattice.acquire(lock.toL(), tid).map(annotate(_, lock.sources))
+    def release(lock: AL, tid: TID): MayFail[AL, Error] = schemeLattice.release(lock.toL(), tid).map(annotate(_, lock.sources))
 
     def bottom: AL = AnnotatedElements(List.empty, Set())
 
@@ -131,21 +108,14 @@ class IncrementalModularSchemeLattice[
     def closure(x: Closure): AL = AnnotatedElement(Value.closure(x))
     def cont(x: K): AL = AnnotatedElement(Value.cont(x))
     def symbol(x: String): AL = AnnotatedElement(Value.symbol(x))
-    def cons(car: AL, cdr: AL): AL = AnnotatedElement(Value.cons(car.toL(), cdr.toL()), car.joinSourcesAndGet(cdr))
+    def cons(car: AL, cdr: AL): AL = AnnotatedElement(Value.cons(car.toL(), cdr.toL()), car.joinedSources(cdr))
     def pointer(a: A): AL = AnnotatedElement(Value.pointer(a))
     def thread(tid: TID): AL = AnnotatedElement(Value.thread(tid))
     def lock(threads: Set[TID]): AL = AnnotatedElement(Value.lock(threads))
     def nil: AL = AnnotatedElement(Value.nil)
     def void: AL = AnnotatedElement(Value.void)
-    def eql[B2: BoolLattice](x: AL, y: AL): B2 = ??? // TODO[medium] implement
-    def eq(xs: AL, ys: AL)(cmp: MaybeEq[A]): AL = {
-      val allSources = xs.sources ++ ys.sources
-      xs.foldMapL { x =>
-        ys.foldMapL { y =>
-          AnnotatedElement(Value.eq(x, y)(cmp), allSources)
-        }
-      }
-    }
+    def eql[B2: BoolLattice](x: AL, y: AL): B2 = schemeLattice.eql(x.toL(), y.toL())(BoolLattice[B2])
+    def eq(xs: AL, ys: AL)(cmp: MaybeEq[A]): AL = annotate(schemeLattice.eq(xs.toL(), ys.toL())(cmp), xs.joinedSources(ys))
 
     override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.values, v.sources.union(addresses))
     override def getAddresses(v: AL): Set[A] = v.sources

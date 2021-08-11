@@ -3,7 +3,7 @@ package maf.cli.runnables
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme._
 import maf.modular._
-import maf.modular.incremental.ProgramVersionExtracter.{getInitial, getUpdated}
+import maf.modular.incremental.ProgramVersionExtracter._
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modf._
 import maf.modular.worklist._

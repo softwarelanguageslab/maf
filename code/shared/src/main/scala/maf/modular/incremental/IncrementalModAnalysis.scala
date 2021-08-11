@@ -142,8 +142,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   /** Deletes components that are no longer 'reachable' from the Main component given a spawning relation. */
   def deleteDisconnectedComponents(): Unit =
-    if (deletionFlag) { // Only perform the next steps if there was a component that was unspawned but not collected.
-      //                   In the other case, there can be no unreachable components left.
+    // Only perform the next steps if there was a component that was unspawned but not collected.
+    // In the other case, there can be no unreachable components left.
+    if (deletionFlag) {
       unreachableComponents().foreach(deleteComponent) // Make sure the components are actually deleted.
       deletionFlag = false
     }
@@ -166,6 +167,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
   trait IncrementalIntraAnalysis extends IntraAnalysis {
 
+    /* ----------------------------------- */
+    /* ----- Dependency invalidation ----- */
+    /* ----------------------------------- */
+
     /** Removes outdated dependencies of a component, by only keeping the dependencies that were used during the latest analysis of the component. */
     def refineDependencies(): Unit = {
       if (version == New) { // Check for efficiency but can be omitted.
@@ -174,6 +179,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
         deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
       }
     }
+
+    /* ---------------------------------- */
+    /* ----- Component invalidation ----- */
+    /* ---------------------------------- */
 
     /** Removes outdated components, and components that become transitively outdated, by keeping track of spawning dependencies. */
     def refineComponents(): Unit = {
@@ -192,13 +201,20 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
       if (version == New) deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
     }
 
+    /* ------------------ */
+    /* ----- Commit ----- */
+    /* ------------------ */
+
     /** First removes outdated read dependencies and components before performing the actual commit. */
     override def commit(): Unit = {
       if (configuration.dependencyInvalidation) refineDependencies() // First, remove excess dependencies if this is a reanalysis.
       if (configuration.componentInvalidation) refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
-      if (configuration.componentInvalidation || configuration.dependencyInvalidation)
-        // Update the cache. The cache also needs to be updated when the program is initially analysed. This is also needed for CI, as otherwise components can come "back to life" as dependencies corresponding to deleted components cannot be removed (easily).
+      if (configuration.componentInvalidation || configuration.dependencyInvalidation) {
+        // Update the cache. The cache also needs to be updated when the program is initially analysed.
+        // This is also needed for CI, as otherwise components can come "back to life" as dependencies corresponding to deleted components cannot be removed (easily).
+        // Note that this has to be done _after_ dependency invalidation!
         cachedReadDeps += (component -> R)
+      }
       super.commit() // Then commit and trigger dependencies.
     }
   }
