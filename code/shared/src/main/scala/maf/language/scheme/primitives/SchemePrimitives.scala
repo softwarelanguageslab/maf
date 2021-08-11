@@ -6,20 +6,36 @@ import maf.language.scheme._
 import maf.language.CScheme._
 import maf.language.scheme.lattices.SchemeLattice
 
-trait SchemePrimM[M[_], A <: Address, V] extends MonadJoin[M] with MonadError[M, Error] {
-  type Closure = (SchemeLambdaExp, Environment[A])
-  def allocPtr(exp: SchemeExp): M[A]
+import Monad._
+
+trait StoreM[M[_], A <: Address, V] extends Monad[M] {
   def addrEq: M[MaybeEq[A]]
   def lookupSto(a: A): M[V]
   def extendSto(a: A, v: V): M[Unit]
+  def extendSto(bds: Iterable[(A,V)]): M[Unit] =
+    bds.mapM_ { case (adr, vlu) => extendSto(adr, vlu) }
   def updateSto(a: A, v: V): M[Unit]
+  // let Scala know to use the instance itself as an implicit
+  final private implicit val self: StoreM[M, A, V] = this
+}
+
+trait SchemeAllocM[M[_], A] extends Monad[M] {
+  def allocVar(idn: Identifier): M[A]
+  def allocPtr(exp: SchemeExp): M[A]
+}
+
+trait SchemePrimM[M[_], A <: Address, V] extends Monad[M]
+                                            with MonadJoin[M] 
+                                            with MonadError[M, Error] 
+                                            with SchemeAllocM[M, A]
+                                            with StoreM[M, A, V] {
   // for convenience
   def allocVal(exp: SchemeExp, vlu : V): M[A] =
     flatMap(allocPtr(exp))(adr => map(extendSto(adr, vlu))(_ => adr))
   def deref[X: Lattice](x: Set[A])(f: (A,V) => M[X]): M[X] =
     mfoldMap(x)(a => flatMap(lookupSto(a))(v => f(a,v)))
   // exotic -- not so important if not implemented yet
-  def callcc(clo: Closure, pos: Position): M[V] = throw new Exception("Not supported")
+  def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] = throw new Exception("Not supported")
   def currentThread: M[TID] = throw new Exception("Not supported")
 }
 
@@ -74,6 +90,7 @@ case class MFInstance[A <: Address, V](bri: SchemeInterpreterBridge[V, A]) exten
   def fail[X](err: Error): MF[X,A,V] = new MF[X,A,V] {
     def run(sto: Store[A,V]) = MayFail.failure[(X, sto.This), Error](err)
   }
+  def allocVar(idn: Identifier): MF[A,A,V] = throw new Exception("NYI")
   def allocPtr(exp: SchemeExp): MF[A,A,V] = unit(bri.pointer(exp))
   def addrEq: MF[MaybeEq[A],A,V] = new MF[MaybeEq[A],A,V] {
     def run(sto: Store[A,V]) = MayFail.success((sto.addrEq, sto: sto.This))

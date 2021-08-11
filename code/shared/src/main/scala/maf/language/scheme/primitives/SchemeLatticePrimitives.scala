@@ -526,7 +526,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] =
         for {
           emptyVec <- fromMF(lat.vector(lat.number(args.size), bottom))
-          filledVec <- args.zipWithIndex.foldLeftM(emptyVec) { 
+          filledVec <- args.zipWithIndex.foldLeftM[M, V](emptyVec) { 
             case (acc, ((_, arg), idx)) =>
               vectorSet(acc, lat.number(idx), arg)
           }

@@ -20,8 +20,8 @@ object Monad {
     def >>=[Y](f: X => M[Y]): M[Y] = flatMap(f)
   }
   // some common monad operations on iterables
-  implicit class MonadIterableOps[M[_]: Monad, X](xs: Iterable[X]) {
-    def mapM[Y](f: X => M[Y]): M[List[Y]] = xs match {
+  implicit class MonadIterableOps[X](xs: Iterable[X]) {
+    def mapM[M[_]: Monad, Y](f: X => M[Y]): M[List[Y]] = xs match {
       case Nil => Monad[M].unit(Nil)
       case x :: r => 
         for {
@@ -29,15 +29,15 @@ object Monad {
           rst <- r.mapM(f) 
         } yield fx :: rst 
     }
-    def mapM_[Y](f: X => M[Y]): M[Unit] = xs match {
+    def mapM_[M[_]: Monad](f: X => M[_]): M[Unit] = xs match {
       case Nil => Monad[M].unit(())
       case x :: r => f(x) >>= { _ => r.mapM_(f) }
     }
-    def foldLeftM[Y](acc: Y)(f: (Y, X) => M[Y]): M[Y] = xs match {
+    def foldLeftM[M[_]: Monad, Y](acc: Y)(f: (Y, X) => M[Y]): M[Y] = xs match {
       case Nil => Monad[M].unit(acc)
       case x :: r => f(acc, x) >>= { r.foldLeftM(_)(f) }
     }
-    def foldRightM[Y](nil: Y)(f: (X, Y) => M[Y]): M[Y] = xs match {
+    def foldRightM[M[_]: Monad, Y](nil: Y)(f: (X, Y) => M[Y]): M[Y] = xs match {
       case Nil => Monad[M].unit(nil)
       case x :: r => r.foldRightM(nil)(f) >>= { f(x, _) } 
     }
@@ -82,7 +82,7 @@ object MonadJoin {
     def ++(other: M[X])(implicit ev: Lattice[X]): M[X] = MonadJoin[M].mjoin(self, other)
     def withFilter(p: X => Boolean): M[X] = MonadJoin[M].withFilter(self)(p)
   }
-  implicit class MonadJoinIterableSyntax[M[_]: MonadJoin, X](xs: Iterable[X]) {
-    def foldMapM[Y: Lattice](f: X => M[Y]): M[Y] = MonadJoin[M].mfoldMap(xs)(f)
+  implicit class MonadJoinIterableSyntax[X](xs: Iterable[X]) {
+    def foldMapM[M[_]: MonadJoin, Y: Lattice](f: X => M[Y]): M[Y] = MonadJoin[M].mfoldMap(xs)(f)
   }
 }
