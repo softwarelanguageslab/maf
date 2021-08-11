@@ -241,7 +241,7 @@ class TypeSchemeLattice[A <: Address, K] {
 
     // shorthand (after instantiating V and A)
     class SimplePrim(val name: String, ret: L) extends SchemePrimitive[L, A] {
-      def call[M[_]: PrimM](fexp: SchemeExp, args: List[(SchemeExp, L)]): M[L] =
+      def call[M[_]: PrimM](fexp: SchemeExp, args: List[L]): M[L] =
         PrimM[M].unit(ret)
     }
     object `abs` extends SimplePrim("abs", Inject.num)

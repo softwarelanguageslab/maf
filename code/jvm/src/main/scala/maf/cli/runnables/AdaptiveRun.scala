@@ -20,7 +20,7 @@ import maf.language.scheme.interpreter._
 
 object AdaptiveRun {
 
-  def main(args: Array[String]): Unit = testAbstract()
+  def main(args: Array[String]): Unit = testModFLocal()
 
   def testConcrete() = {
     val txt = """
@@ -37,11 +37,17 @@ object AdaptiveRun {
   }
 
   def testModFLocal(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/various/my-test.scm")
+    val txt = Reader.loadFile("test/R5RS/various/foo.scm")
     val prg = CSchemeParser.parse(txt)
     val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
-    anl.analyzeWithTimeoutInSeconds(30)
-    print(anl.results.getOrElse(anl.MainComponent, Set.empty))
+    anl.analyzeWithTimeoutInSeconds(10)
+    anl.visited.collect {
+      case anl.CallComponent(lam, ctx, sto) => sto.content.view.filterKeys(!_.isInstanceOf[PrmAddr]).toMap
+    }.foreach { sto =>
+      println()
+      sto.foreach { case (adr, vlu) => println(s"$adr -> ${vlu._1}") }
+      println()
+    }
   }
 
   def testModConc(): Unit = {

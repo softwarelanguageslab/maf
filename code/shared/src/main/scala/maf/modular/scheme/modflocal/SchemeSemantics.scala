@@ -52,7 +52,7 @@ trait SchemeSemantics {
       for { ctx <- getCtx } yield VarAddr(idn, ctx)
     def allocPtr(exp: SchemeExp): M[Adr] = 
       for { ctx <- getCtx } yield PtrAddr(exp, ctx)
-    def allocCtx(cll: Cll, clo: Clo, ags: List[(Exp, Val)]): M[Ctx] =
+    def allocCtx(cll: Cll, clo: Clo, ags: List[Val]): M[Ctx] =
       for { ctx <- getCtx } yield newContext(cll, clo, ags, ctx)
     def writePar(par: Identifier, ctx: Ctx, arg: Val): M[Unit] =
       extendSto(VarAddr(par, ctx), arg)
@@ -176,7 +176,7 @@ trait SchemeSemantics {
       _ <- AnalysisM[A].extendSto(adr, clo)
       vls <- ags.mapM(arg => eval(arg))
       cll = SchemeFuncall(lam, ags, nml.idn)
-      res <- applyFun(cll, clo, ags.zip(vls))
+      res <- applyFun(cll, clo, vls)
     } yield res
   }
 
@@ -226,21 +226,21 @@ trait SchemeSemantics {
     for {
       fun <- eval(cll.f)
       ags <- cll.args.mapM(arg => eval(arg))
-      res <- applyFun(cll, fun, cll.args.zip(ags))
+      res <- applyFun(cll, fun, ags)
     } yield res 
 
-  private def applyFun[A[_]: AnalysisM](cll: Cll, fun: Val, ags: List[(Exp, Val)]): A[Val] =
+  private def applyFun[A[_]: AnalysisM](cll: Cll, fun: Val, ags: List[Val]): A[Val] =
     AnalysisM[A].mjoin(applyPrimitives(cll, fun, ags), applyClosures(cll, fun, ags))
 
-  private def applyPrimitives[A[_]: AnalysisM](cll: Cll, fun: Val, ags: List[(Exp, Val)]): A[Val] =
+  private def applyPrimitives[A[_]: AnalysisM](cll: Cll, fun: Val, ags: List[Val]): A[Val] =
     lattice.getPrimitives(fun).foldMapM { prm =>
       applyPrimitive(cll, primitives(prm), ags)
     }
 
-  private def applyPrimitive[A[_]: AnalysisM](cll: Cll, prm: Prim, ags: List[(Exp, Val)]): A[Val] =
+  private def applyPrimitive[A[_]: AnalysisM](cll: Cll, prm: Prim, ags: List[Val]): A[Val] =
     prm.call(cll, ags)
 
-  private def applyClosures[A[_]: AnalysisM](cll: Cll, fun: Val, ags: List[(Exp, Val)]): A[Val] = {
+  private def applyClosures[A[_]: AnalysisM](cll: Cll, fun: Val, ags: List[Val]): A[Val] = {
     val agc = ags.length
     lattice.getClosures(fun).foldMapM { clo =>
       AnalysisM[A].guard(clo._1.check(agc)).flatMap { _ =>
@@ -249,22 +249,25 @@ trait SchemeSemantics {
     }
   }
 
-  private def applyClosure[A[_]: AnalysisM](cll: Cll, clo: Clo, ags: List[(Exp, Val)]): A[Val] = 
+  private def applyClosure[A[_]: AnalysisM](cll: Cll, clo: Clo, ags: List[Val]): A[Val] = 
     // TODO: GC here
     for {
       ctx <- AnalysisM[A].allocCtx(cll, clo, ags)
-      _ <- bindArgs(clo, ags, ctx)
+      _ <- bindArgs(cll, clo, ags, ctx)
       res <- AnalysisM[A].call(clo._1, ctx)
     } yield res
 
-  private def bindArgs[A[_]: AnalysisM](clo: Clo, ags: List[(Exp,Val)], ctx: Ctx): A[Unit] = {
+  private def bindArgs[A[_]: AnalysisM](cll: Cll, clo: Clo, ags: List[Val], ctx: Ctx): A[Unit] = {
     val (lam, lex: Env @unchecked) = clo
-    val (fxa, vra) = ags.splitAt(lam.args.length)
     for {
-      _ <- AnalysisM[A].writePar(lam.args.zip(fxa.map(_._2)), ctx) // bind fixed args
+      _ <- AnalysisM[A].writePar(lam.args.zip(ags), ctx) // bind fixed args
       _ <- lam.varArgId match { // bind varargs
         case None => AnalysisM[A].unit(())
-        case Some(varArg) => allocLst(vra).flatMap(AnalysisM[A].writePar(varArg, ctx, _))
+        case Some(varArg) =>
+          val len = lam.args.length
+          val (_, vag) = ags.splitAt(len)
+          val (_, vex) = cll.args.splitAt(len)
+          allocLst(vex.zip(vag)).flatMap(AnalysisM[A].writePar(varArg, ctx, _))
       }
       _ <- AnalysisM[A].writeEnv(lam, ctx, lex) //bind env
     } yield ()

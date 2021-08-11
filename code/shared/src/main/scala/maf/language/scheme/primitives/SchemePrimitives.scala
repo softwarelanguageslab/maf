@@ -45,14 +45,14 @@ trait SchemePrimitive[V, A <: Address] extends Primitive {
   // They can be called given the calling expression and arguments using any compatible SchemePrimM monad
   def call[M[_]](
     fexp: SchemeExp,
-    args: List[(SchemeExp, V)]
+    args: List[V]
   )(implicit m: SchemePrimM[M, A, V]): M[V]
   //
   // Legacy interface
   //
   def callMF(
     fexp: SchemeExp,
-    args: List[(SchemeExp, V)],
+    args: List[V],
     store: Store[A, V],
     scheme: SchemeInterpreterBridge[V, A]
   ): MayFail[(V, store.This), Error] =
