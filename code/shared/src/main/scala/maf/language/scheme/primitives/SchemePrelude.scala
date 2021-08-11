@@ -151,6 +151,7 @@ object SchemePrelude {
         |       0
         |       (+ 1 (rec (cdr l)))))))
         |  (rec l)))""".stripMargin,
+    "list" -> "(define (list . args) args)",
     "list-ref" ->
       """(define (list-ref l index)
         |  @sensitivity:FA

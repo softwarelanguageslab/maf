@@ -92,7 +92,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         `inexact->exact`,
         `integer->char`,
         `integer?`,
-        `list`,
         `log`,
         `make-string`,
         `null?`,
@@ -551,16 +550,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             newvec <- fromMF(lat.vectorSet(vec, index, newval))
             _ <- PrimM[M].updateSto(adr, newvec)
           } yield unspecified
-        }
-    }
-
-    case object `list` extends SchemePrimitive[V, A] {
-      def name = "list"
-      def call[M[_]: PrimM](fpos: SchemeExp, args: List[(SchemeExp, V)]): M[V] = 
-        args.foldRightM(lat.nil) { case ((pos, arg), rst) =>
-          for {
-            adr <- PrimM[M].allocVal(pos, lat.cons(arg, rst))
-          } yield lat.pointer(adr)
         }
     }
 
