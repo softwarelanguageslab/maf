@@ -185,8 +185,16 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   override def updateAnalysis(timeout: Timeout.T): Unit = {
     // If cycle invalidation is enabled, compute which addresses are interdependent.
     // TODO: how about changes to the SCCs during the reanalysis? New addresses can become part of a SCC or SCCs can become merged (or split)
-    if (configuration.cyclicValueInvalidation)
+    if (configuration.cyclicValueInvalidation) {
       SCAs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
+      val addrs = SCAs.flatten
+      addrs.flatMap(provenance).map(_._1).foreach(addToWorkList)
+      addrs.foreach { addr =>
+        store = store + (addr -> lattice.bottom)
+        provenance -= addr
+      }
+      cachedWrites = cachedWrites.map({ case (k, v) => (k, v -- addrs) }).withDefaultValue(Set())
+    }
     super.updateAnalysis(timeout)
     // Clear the data as it is no longer needed. (This is not really required but reduces the memory footprint of the result.)
     if (configuration.cyclicValueInvalidation) SCAs = Set()

@@ -77,7 +77,7 @@ object IncrementalRun extends App {
       with IncrementalGlobalStore[SchemeExp]
       with IncrementalLogging[SchemeExp] {
       override def focus(a: Addr): Boolean = a.toString == "PtrAddr((cons vars vals) [Some(ε)])"
-      var configuration: IncrementalConfiguration = ci_di_wi
+      var configuration: IncrementalConfiguration = wi_cy
       override def intraAnalysis(
           cmp: Component
         ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
@@ -94,7 +94,7 @@ object IncrementalRun extends App {
   }
 
   val modConcbenchmarks: List[String] = List()
-  val modFbenchmarks: List[String] = List("test/DEBUG3.scm")
+  val modFbenchmarks: List[String] = List("test/DEBUG1.scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
   modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
