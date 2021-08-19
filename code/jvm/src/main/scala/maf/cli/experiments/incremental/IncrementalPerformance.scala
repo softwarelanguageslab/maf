@@ -210,7 +210,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp] {
   override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
   override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-  val configurations: List[IncrementalConfiguration] = List()
+  val configurations: List[IncrementalConfiguration] = List(ci_di_wi)
 }
 
 object IncrementalSchemeModFPerformance extends IncrementalSchemePerformance {
@@ -240,8 +240,8 @@ object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformanc
 object IncrementalSchemeModXPerformance {
   def main(args: Array[String]): Unit = {
     IncrementalSchemeModFPerformance.main(args)
-    IncrementalSchemeModFCPPerformance.main(args)
-    IncrementalSchemeModConcPerformance.main(args)
-    IncrementalSchemeModConcCPPerformance.main(args)
+    //IncrementalSchemeModFCPPerformance.main(args)
+    //IncrementalSchemeModConcPerformance.main(args)
+    //IncrementalSchemeModConcCPPerformance.main(args)
   }
 }

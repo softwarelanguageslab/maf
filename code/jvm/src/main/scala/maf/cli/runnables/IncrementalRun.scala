@@ -91,10 +91,14 @@ object IncrementalRun extends App {
     println(a.visited)
     a.updateAnalysis(timeout())
     println(a.visited)
+    val b = base(text)
+    b.version = New
+    b.analyzeWithTimeout(timeout())
+    println(b.visited)
   }
 
   val modConcbenchmarks: List[String] = List()
-  val modFbenchmarks: List[String] = List("test/DEBUG1.scm")
+  val modFbenchmarks: List[String] = List("test/changes/scheme/multiple-dwelling (fine).scm")
   val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
   modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))

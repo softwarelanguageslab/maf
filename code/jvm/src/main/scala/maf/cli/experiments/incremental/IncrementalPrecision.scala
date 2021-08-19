@@ -23,6 +23,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
   final val lpS: String = "Less precise" // Precision of incremental update is lower than the one of a full reanalysis.
 
   final val propertiesS: List[String] = List(eqS, lpS, mpS)
+  override lazy val analysesS: List[String] = configurations.map(_.toString)
 
   var results: Table[String] = Table.empty.withDefaultValue(" ")
   val error: String = errS
@@ -92,7 +93,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
       if (!runAnalysis(config.toString, timeOut => a1.updateAnalysis(timeOut))) compareAnalyses(file, a1, a2)
       else {
         propertiesS.foreach(o => results = results.add(file, columnName(o, config.toString), infS))
-        print("timed out - ")
+        print(" timed out - ")
       }
     }
   }
@@ -117,7 +118,7 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 
-  val configurations: List[IncrementalConfiguration] = List()
+  val configurations: List[IncrementalConfiguration] = List(allOptimisations)
 }
 
 object IncrementalSchemeModFPrecision extends IncrementalSchemePrecision {
@@ -136,6 +137,7 @@ object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision {
   val outputFile: String = "precision/modf-CP.txt"
 }
 
+/*
 object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
@@ -143,6 +145,7 @@ object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecisi
 
   val outputFile: String = "precision/modf-CP-StoreOpt.txt"
 }
+ */
 
 object IncrementalSchemeModConcPrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
@@ -160,6 +163,7 @@ object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision {
   val outputFile: String = "precision/modconc-CP.txt"
 }
 
+/*
 object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
@@ -167,14 +171,15 @@ object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrec
 
   val outputFile: String = "precision/modconc-CP-StoreOpt.txt"
 }
+ */
 
 object IncrementalSchemeModXPrecision {
   def main(args: Array[String]): Unit = {
-    //IncrementalSchemeModFPrecision.main(args)
+    IncrementalSchemeModFPrecision.main(args)
     //IncrementalSchemeModFCPPrecision.main(args)
-    IncrementalSchemeModFCPPrecisionStoreOpt.main(args)
+    //IncrementalSchemeModFCPPrecisionStoreOpt.main(args)
     //IncrementalSchemeModConcPrecision.main(args)
     //IncrementalSchemeModConcCPPrecision.main(args)
-    IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
+    //IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
   }
 }

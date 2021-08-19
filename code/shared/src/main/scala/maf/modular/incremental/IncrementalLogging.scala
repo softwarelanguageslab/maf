@@ -95,10 +95,14 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
          |      * ${deletedA.toSet[Addr].map[(Addr, Int)]({ a: Addr => (a, deletedA.count(_ == a)) }).toString()}
          |##########################################""".stripMargin
 
-  // Starting the incremental analysis.
-  override def updateAnalysis(timeout: Timeout.T): Unit = {
+  override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+    super.analyzeWithTimeout(timeout)
     logger.logU("\n\n" + tableToString())
     logger.logU("\n" + storeString())
+  }
+
+  // Starting the incremental analysis.
+  override def updateAnalysis(timeout: Timeout.T): Unit = {
     logger.resetNumbering()
     logger.logU("\nUpdating analysis\n")
     insertTable(Left("Updating analysis"))
