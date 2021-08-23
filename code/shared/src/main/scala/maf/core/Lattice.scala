@@ -16,7 +16,13 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable {
   /** A lattice has a top element (might be undefined) */
   def top: L
 
-  /** Elements of the lattice can be joined together */
+  /**
+   * Elements of the lattice can be joined together
+   * @note
+   *   Note that the second parameter of join is "by name", which means this parameter is evaluated upon _every_ use. This has two consequences: (1)
+   *   the computation of `y` may be performed multiple times, and (2) the computation of `y` may not be performed at all, in which case possible side
+   *   effects that would be performed are lost.
+   */
   def join(x: L, y: => L): L
 
   /** Joining multiple elements */
