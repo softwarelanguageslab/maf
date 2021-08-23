@@ -27,6 +27,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
   private def legend(): String =
     """***** LEGEND OF ABBREVIATIONS *****
+      |ADEP  An address value dependency is registered. Includes the "source" address and the address where the value flows to.
       |ANLY  Analysis of a component, indicating the step of the analysis and the number of times the current component is now analysed.
       |CI    Component invalidation: the given component is deleted.
       |COMI  Indicates the component's analysis is committed.
@@ -59,6 +60,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             table = table.add(stepString, s"σ($addr)", v.toString).add(stepString, s"P($addr)", p)
           }
         )
+        addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach { case (addr, valueSources) =>
+          if (focus(addr)) {
+            table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
+          }
+        }
         botRead.foreach(addr => table = table.add(stepString, "Bot", addr.toString))
         botRead = None
     }
@@ -66,8 +72,12 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
   private def tableToString(): String = {
     val storeCols = table.allColumns.filter(_.startsWith("σ")).toList.sorted
-    val provcols = table.allColumns.filter(_.startsWith("P(")).toList.sorted
-    table.prettyString(rowName = "Step", rows = (0 until step).toList.map(_.toString), columns = "Phase" :: storeCols ::: provcols ::: List("Bot"))
+    val provCols = table.allColumns.filter(_.startsWith("P(")).toList.sorted
+    val depCols = table.allColumns.filter(_.startsWith("~>")).toList.sorted
+    table.prettyString(rowName = "Step",
+                       rows = (0 until step).toList.map(_.toString),
+                       columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot")
+    )
   }
 
   // Collect some numbers
@@ -95,10 +105,15 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
          |      * ${deletedA.toSet[Addr].map[(Addr, Int)]({ a: Addr => (a, deletedA.count(_ == a)) }).toString()}
          |##########################################""".stripMargin
 
+  // Avoids logging the store twice from `updateAnalysis`.
+  var logEnd = true
+
   override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
     super.analyzeWithTimeout(timeout)
-    logger.logU("\n\n" + tableToString())
-    logger.logU("\n" + storeString())
+    if (logEnd) {
+      logger.logU("\n\n" + tableToString())
+      logger.logU("\n" + storeString())
+    }
   }
 
   // Starting the incremental analysis.
@@ -107,12 +122,14 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     logger.logU("\nUpdating analysis\n")
     insertTable(Left("Updating analysis"))
     try {
+      logEnd = false
       super.updateAnalysis(timeout)
-      if (configuration.cyclicValueInvalidation) {
-        addressDependencies.foreach({ case (cmp, map) =>
-          map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
-        })
-      }
+      logEnd = true
+      //if (configuration.cyclicValueInvalidation) {
+      //  addressDependencies.foreach({ case (cmp, map) =>
+      //    map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
+      //  })
+      //}
       logger.logU("\n\n" + getSummary())
       logger.logU("\n\n" + tableToString())
       logger.logU("\n" + storeString())
@@ -185,7 +202,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
     // Writing an address.
     override def writeAddr(addr: Addr, value: Value): Boolean = {
-      if (configuration.cyclicValueInvalidation) lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $addr -> $r ($component)"))
+      if (configuration.cyclicValueInvalidation) lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> $addr"))
       val b = super.writeAddr(addr, value)
       logger.log(s"WRIT $value => $addr (${if (b) "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
       b

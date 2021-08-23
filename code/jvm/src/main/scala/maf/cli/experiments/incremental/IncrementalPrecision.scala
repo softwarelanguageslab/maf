@@ -121,7 +121,7 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
   val configurations: List[IncrementalConfiguration] = List(allOptimisations)
 }
 
-object IncrementalSchemeModFPrecision extends IncrementalSchemePrecision {
+object IncrementalSchemeModFTypePrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
@@ -147,7 +147,7 @@ object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecisi
 }
  */
 
-object IncrementalSchemeModConcPrecision extends IncrementalSchemePrecision {
+object IncrementalSchemeModConcTypePrecision extends IncrementalSchemePrecision {
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
@@ -175,7 +175,7 @@ object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrec
 
 object IncrementalSchemeModXPrecision {
   def main(args: Array[String]): Unit = {
-    IncrementalSchemeModFPrecision.main(args)
+    IncrementalSchemeModFTypePrecision.main(args)
     //IncrementalSchemeModFCPPrecision.main(args)
     //IncrementalSchemeModFCPPrecisionStoreOpt.main(args)
     //IncrementalSchemeModConcPrecision.main(args)

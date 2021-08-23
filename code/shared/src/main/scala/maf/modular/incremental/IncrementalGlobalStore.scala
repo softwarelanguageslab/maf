@@ -197,10 +197,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     // TODO: how about changes to the SCCs during the reanalysis? New addresses can become part of a SCC or SCCs can become merged (or split)
     if (configuration.cyclicValueInvalidation) {
       SCAs = computeSCAs()
-      SCAs.foreach { sca =>
-        val incoming = incomingSCAValue(sca)
-        incomingValues = incomingValues + (sca -> incoming)
-      }
+      println(SCAs)
+      //incomingValues = incomingValues + SCAs.map(s => (s, incomingSCAValue(s)))
       val addrs = SCAs.flatten
       addrs.flatMap(provenance).map(_._1).foreach(addToWorkList)
       addrs.foreach { addr =>
