@@ -87,15 +87,14 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
       }
   }
   // Join
-  def join(other: This): This = {
-    val newContent = other.content.foldLeft(content) { case (acc, (a, s)) =>
+  def join(other: This): This = update(joinContent(other.content))
+  final protected def joinContent(other: Map[A, S]): Map[A, S] =
+    other.foldLeft(content) { case (acc, (a, s)) =>
       acc.get(a) match {
         case None       => acc + (a -> s)
         case Some(accS) => acc + (a -> join(accS, s))
       }
     }
-    update(newContent)
-  }
   // Delta store
   type DeltaStore <: DeltaMapStore { type This = outer.DeltaStore }
   trait DeltaMapStore extends MapStore[A, S, V] { delta =>
@@ -105,12 +104,6 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
   }
   def integrate(delta: DeltaStore): This =
     update(delta.content.foldLeft(content) { case (acc, (a, s)) => acc + (a -> s) })
-  // d1 'after' d0
-  // assumes that d1: sto1.DeltaStore, where sto1 = this.integrate(d0)
-  def compose(d1: This#DeltaStore, d0: DeltaStore): DeltaStore = {
-    // assert(d1.parent == integrate(d0))
-    d0.update(d0.content ++ d1.content)
-  }
 }
 
 //
@@ -246,12 +239,23 @@ trait LocalStoreT[A <: Address, V]
   }
   // delta store
   type DeltaStore = LocalDeltaStore
-  def deltaStore = LocalDeltaStore(Map.empty)
-  case class LocalDeltaStore(content: Map[A, (V, Set[A], AbstractCount)])(implicit val lattice: LatticeWithAddrs[V, A])
+  def deltaStore = LocalDeltaStore(Map.empty, Set.empty)
+  case class LocalDeltaStore(content: Map[A, (V, Set[A], AbstractCount)], updates: Set[A])(implicit val lattice: LatticeWithAddrs[V, A])
       extends DeltaMapStore
          with LocalStoreT[A, V] {
     type This = outer.LocalDeltaStore
-    def update(content: Map[A, (V, Set[A], AbstractCount)]) = outer.LocalDeltaStore(content)
+    def update(content: Map[A, (V, Set[A], AbstractCount)]) = outer.LocalDeltaStore(content, updates)
+    // tracking updated bindings
+    private def addUpdated(a: A) = this.copy(updates = updates + a)
+    private def addUpdated(a: Iterable[A]) = this.copy(updates = updates ++ a)
+    override def update(a: A, v: V) = super.update(a, v).addUpdated(a)
+    override def join(other: outer.LocalDeltaStore): outer.LocalDeltaStore = super.join(other).addUpdated(other.updates)
+  }
+  // d1 'after' d0
+  // assumes that d1: sto1.DeltaStore, where sto1 = this.integrate(d0)
+  def compose(d1: This#DeltaStore, d0: DeltaStore): DeltaStore = {
+    // assert(d1.parent == integrate(d0))
+    LocalDeltaStore(d0.content ++ d1.content, d0.updates ++ d1.updates.filter(content.contains(_)))
   }
 }
 
