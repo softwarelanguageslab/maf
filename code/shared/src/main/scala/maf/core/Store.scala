@@ -35,7 +35,6 @@ trait Store[A <: Address, V] extends SmartHash { store =>
   def updateOrExtend(a: A, v: V): This = extend(a, v)
 
   /** Join with another store */
-  def empty: This
   def join(other: This): This
   /* Delta stores represent changes to this store */
   type DeltaStore <: Store[A, V] { type This = store.DeltaStore }
@@ -102,9 +101,16 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
   trait DeltaMapStore extends MapStore[A, S, V] { delta =>
     type This >: this.type <: outer.DeltaMapStore { type This = delta.This }
     override def get(a: A): Option[S] = content.get(a).orElse(outer.get(a))
+    def parent: MapStore[A, S, V] = outer
   }
   def integrate(delta: DeltaStore): This =
     update(delta.content.foldLeft(content) { case (acc, (a, s)) => acc + (a -> s) })
+  // d1 'after' d0
+  // assumes that d1: sto1.DeltaStore, where sto1 = this.integrate(d0)
+  def compose(d1: This#DeltaStore, d0: DeltaStore): DeltaStore = {
+    // assert(d1.parent == integrate(d0))
+    d0.update(d0.content ++ d1.content)
+  }
 }
 
 //

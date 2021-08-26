@@ -9,7 +9,7 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
 
   var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
 
-  override def extendV(sto: Sto, adr: Adr, vlu: Val): Sto = {
+  override def extendV(sto: Sto, adr: Adr, vlu: Val): Dlt = {
     adr match {
       case _: VarAddr[_] | _: PtrAddr[_] =>
         resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
@@ -18,7 +18,7 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
     super.extendV(sto, adr, vlu)
   }
 
-  override def updateV(sto: Sto, adr: Adr, vlu: Val): Sto = {
+  override def updateV(sto: Sto, adr: Adr, vlu: Val): Dlt = {
     adr match {
       case _: VarAddr[_] | _: PtrAddr[_] =>
         resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)

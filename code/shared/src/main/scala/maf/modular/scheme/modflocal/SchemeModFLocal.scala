@@ -17,6 +17,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   type Cmp = Component
   type Dep = Dependency
   type Sto = LocalStore[Adr, Storable] // TODO: split the store?
+  type Dlt = Sto#DeltaStore
 
   //
   // INITIALISATION
@@ -72,11 +73,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   }
 
   def lookupV(sto: Sto, adr: Adr): Val = sto(adr).asInstanceOf[V].vlu
-  def extendV(sto: Sto, adr: Adr, vlu: Val): Sto = sto.extend(adr, V(vlu))
-  def updateV(sto: Sto, adr: Adr, vlu: Val): Sto = sto.update(adr, V(vlu))
+  def extendV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.deltaStore.extend(adr, V(vlu))
+  def updateV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.deltaStore.update(adr, V(vlu))
 
   def lookupE(sto: Sto, adr: Adr): Set[Env] = sto(adr).asInstanceOf[E].evs
-  def extendE(sto: Sto, adr: Adr, evs: Set[Env]): Sto = sto.extend(adr, E(evs))
+  def extendE(sto: Sto, adr: Adr, evs: Set[Env]): Dlt = sto.deltaStore.extend(adr, E(evs))
 
   //
   // COMPONENTS
@@ -112,14 +113,15 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   // RESULTS
   //
 
-  var results: Map[Cmp, Set[(Val, Sto)]] = Map.empty
+  var results: Map[Cmp, Set[(Val, Dlt)]] = Map.empty
   case class ResultDependency(cmp: Cmp) extends Dependency
 
   //
   // ANALYSISM MONAD
   //
   
-  case class A[X](run: (Ctx, Env, Sto) => (Set[(X, Sto)], Set[Cmp], Set[Dep], Set[Dep]))
+  // TODO: more type safety coming with path-dependent functions in Scala 3!
+  case class A[X](run: (Ctx, Env, Sto) => (Set[(X, Dlt)], Set[Cmp], Set[Dep], Set[Dep]))
 
   def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) { intra =>
 
@@ -128,7 +130,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     implicit val anl: AnalysisM[A] = new AnalysisM[A] {
       // MONAD
       def unit[X](x: X) = 
-        A((_, _, sto) => (Set((x, sto)), Set(), Set(), Set()))
+        A((_, _, sto) => (Set((x, sto.deltaStore)), Set(), Set(), Set()))
       def map[X, Y](m: A[X])(f: X => Y) = 
         A { (ctx, env, sto) => 
           val (rss, cps, rds, wds) = m.run(ctx, env, sto)
@@ -137,9 +139,10 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       def flatMap[X, Y](m: A[X])(f: X => A[Y]) = 
         A { (ctx, env, sto) => 
           val (rs1, cs1, rd1, wd1) = m.run(ctx, env, sto)
-          rs1.foldLeft((Set[(Y,Sto)](), cs1, rd1, wd1)) { case (acc, res) =>
-            val (rs2, cs2, rd2, wd2) = f(res._1).run(ctx, env, res._2)
-            (acc._1 ++ rs2, acc._2 ++ cs2, acc._3 ++ rd2, acc._4 ++ wd2)
+          rs1.foldLeft((Set[(Y,Dlt)](), cs1, rd1, wd1)) { case (acc, (x, d0: sto.DeltaStore @unchecked)) =>
+            val (rs2, cs2, rd2, wd2) = f(x).run(ctx, env, sto.integrate(d0))
+            val rs3 = rs2.map { case (x, d1) => (x, sto.compose(d1, d0)) }
+            (acc._1 ++ rs3, acc._2 ++ cs2, acc._3 ++ rd2, acc._4 ++ wd2)
           }
         } 
       // MONADJOIN
@@ -156,25 +159,25 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         mbottom // we are not interested in errors here (at least, not yet ...)
       // STOREM
       def addrEq = 
-        A((_, _, sto) => (Set((sto.addrEq, sto)), Set(), Set(), Set()))
+        A((_, _, sto) => (Set((sto.addrEq, sto.deltaStore)), Set(), Set(), Set()))
       def extendSto(adr: Adr, vlu: Val) = 
         A((_, env, sto) => (Set(((), extendV(sto, adr, vlu))), Set(), Set(), Set()))
       def updateSto(adr: Adr, vlu: Val) = 
         A((_, env, sto) => (Set(((), updateV(sto, adr, vlu))), Set(), Set(), Set()))
       def lookupSto(adr: Adr) = 
-        A((_, _, sto) => (Set((lookupV(sto, adr), sto)), Set(), Set(), Set()))
+        A((_, _, sto) => (Set((lookupV(sto, adr), sto.deltaStore)), Set(), Set(), Set()))
       // ANALYSISM
       def getCtx = 
-        A((ctx, _, sto) => (Set((ctx, sto)), Set(), Set(), Set()))
+        A((ctx, _, sto) => (Set((ctx, sto.deltaStore)), Set(), Set(), Set()))
       // ENV STUFF
       def getEnv = 
-        A((_, env, sto) => (Set((env, sto)), Set(), Set(), Set()))
+        A((_, env, sto) => (Set((env, sto.deltaStore)), Set(), Set(), Set()))
       def withExtendedEnv[X](nam: String, adr: Adr)(blk: A[X]): A[X] = 
         A((ctx, env, sto) => blk.run(ctx, env.extend(nam, adr), sto))
       def extendEnvSto(adr: EnvAddr, evs: Set[Env]) = 
         A((_, _, sto) => (Set(((), extendE(sto, adr, evs))), Set(), Set(), Set()))
       def lookupEnvSto(adr: EnvAddr) =
-        A((_, _, sto) => (Set(((lookupE(sto, adr), sto))), Set(), Set(), Set()))
+        A((_, _, sto) => (Set(((lookupE(sto, adr), sto.deltaStore))), Set(), Set(), Set()))
       def call(lam: Lam, ctx: Ctx): A[Val] = 
         A { (_, _, sto) => 
           val cmp = CallComponent(lam, ctx, sto)
