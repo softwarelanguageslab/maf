@@ -54,11 +54,21 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    */
   var SCAs: Set[SCA] = Set()
 
+  def computeSCAs(): Set[SCA] =
+    Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
+
+  /** Keeps track of all "incoming" values to an SCA. */
+  // TODO (maybe): merge with SCAs.
+  var incomingValues: Map[SCA, Value] = Map().withDefaultValue(lattice.bottom)
+
   /**
    * Computes the join of all values "incoming" in this SCA. The join suffices, as the addresses in the SCA are inter-dependent (i.e., the analysis
    * will join everything together anyway).
    * @note
    *   This implementation computes the incoming value on a "per component" base, by using the provenance.
+   * @note
+   *   We do not distinguish between contributions by components that are partially incoming: if a component writes 2 values to an address and one is
+   *   incoming, no incoming values will be detected. TODO Improve upon this?
    * @return
    *   The join of all values "incoming" in this SCA.
    */
@@ -185,8 +195,18 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
   override def updateAnalysis(timeout: Timeout.T): Unit = {
     // If cycle invalidation is enabled, compute which addresses are interdependent.
     // TODO: how about changes to the SCCs during the reanalysis? New addresses can become part of a SCC or SCCs can become merged (or split)
-    if (configuration.cyclicValueInvalidation)
-      SCAs = Tarjan.scc[Addr](store.keySet, addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
+    if (configuration.cyclicValueInvalidation) {
+      SCAs = computeSCAs()
+      println(SCAs)
+      //incomingValues = incomingValues + SCAs.map(s => (s, incomingSCAValue(s)))
+      val addrs = SCAs.flatten
+      addrs.flatMap(provenance).map(_._1).foreach(addToWorkList)
+      addrs.foreach { addr =>
+        store = store + (addr -> lattice.bottom)
+        provenance -= addr
+      }
+      cachedWrites = cachedWrites.map({ case (k, v) => (k, v -- addrs) }).withDefaultValue(Set())
+    }
     super.updateAnalysis(timeout)
     // Clear the data as it is no longer needed. (This is not really required but reduces the memory footprint of the result.)
     if (configuration.cyclicValueInvalidation) SCAs = Set()
@@ -274,20 +294,17 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     /* ------------------------------------- */
 
     /** Refines all values in this SCA to the value "incoming". */
-    def refineSCA(sca: SCA): Unit = {
-      val incoming = incomingSCAValue(sca)
+    def refineSCA(sca: SCA, incoming: Value): Unit = {
       // Should be done for every address in the SCA because an SCC/SCA may contain "inner cycles".
       sca.foreach { addr =>
         inter.store += addr -> incoming
         intra.store += addr -> incoming
-        provenance -= addr
-        updateProvenance(component,
-                         addr,
-                         incoming
-        ) // Avoid spurious deletions?! TODO investigate: leads to double the no of assertions in some situations...
+        provenance += (addr -> provenance(addr).map(kv => if (cachedReadDeps(kv._1).contains(AddrDependency(addr))) (kv._1, incoming) else kv))
+        updateAddrInc(component, // Call updateAddrInc to ensure triggers happen.
+                      addr,
+                      incoming
+        )
       }
-      // TODO: can this SCA be removed or should this be refined perpetually? In this case, we might need to do this on a commit only.
-      SCAs -= sca
     }
 
     /* ------------------ */
@@ -322,6 +339,39 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         // WI: Takes care of addresses that are written and did not cause a store update.
         registerProvenances()
       }
+      /*
+      if (configuration.cyclicValueInvalidation && version == New) {
+        // Compute the new SCAs and the corresponding incoming values.
+        val newSCAs = computeSCAs().map(sca => (sca, incomingSCAValue(sca)))
+        // Check which SCAs need to be cleaned and triggered.
+        // * SCA remained equal but has lower incoming => refine.
+        // * SCAs merged: incoming values are joined => Do nothing (this is automagic).
+        // * New SCA: new incoming value needs to be computed => Do nothing (this is automagic as well).
+        // * SCA split: new incoming values need to be computed => Check if the incoming values are lower than before and recompute if needed.
+        // * SCA split and merged simultaneously: ?
+        /*
+        SCAs.foreach { sca =>
+          val splits = newSCAs.filter(_._1.intersect(sca).nonEmpty)
+          val oldIncoming = incomingValues(sca)
+          if (splits.size == 1 && !lattice.subsumes(splits.head._2, oldIncoming)) { // The old SCA corresponds to exactly one new SCA, and the incoming value is refined.
+            refineSCA(splits.head._1, splits.head._2)
+          } else if (splits.size > 1) { // The addresses of the old SCA are scattered across new SCAs.
+            splits.foreach(s => if (!lattice.subsumes(s._2, oldIncoming)) refineSCA(s._1, s._2))
+          }
+        }
+       */
+        // If SCAs are merged, check whether the new incoming value still subsumes the join of the old incoming values. If not: refine.
+        val merges = newSCAs.map(s => (s, SCAs.filter(_.intersect(s._1).nonEmpty))) //.filter(_._2.size > 1)
+        val mergeIncomingOld = merges.map(s => (s._1, s._2.map(incomingValues).fold(lattice.bottom)(lattice.join(_, _))))
+        mergeIncomingOld.foreach { case ((sca, incoming), incomingOld) =>
+          if (!lattice.subsumes(incoming, incomingOld))
+            refineSCA(sca, incoming)
+        }
+        // Store the new SCAs with their new incoming values.
+        incomingValues = incomingValues ++ newSCAs
+        SCAs = newSCAs.map(_._1)
+      }
+       */
     }
   }
 }

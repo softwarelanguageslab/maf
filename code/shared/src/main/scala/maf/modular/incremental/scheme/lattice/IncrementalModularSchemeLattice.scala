@@ -77,7 +77,11 @@ class IncrementalModularSchemeLattice[
       // Redirect to the non-annotated lattice and annotate afterwards. This allows more reuse of code.
       schemeLattice.op(op)(args.map(_.toL())).map(annotate(_, sources))
     }
-    def join(x: AL, y: => AL): AL = Monoid[AL].append(x, y)
+    def join(x: AL, y: => AL): AL = {
+      val ys =
+        y // Breaks laziness: we want y to be evaluated exactly once. If not, y will be evaluates twice (once to get the value and once to get the sources).
+      AnnotatedElements(schemeLattice.join(x.toL(), ys.toL()).vs, x.sources.union(ys.sources))
+    } // Monoid[AL].append(x, y)
     def subsumes(x: AL, y: => AL): Boolean = schemeLattice.subsumes(x.toL(), y.toL())
     def top: AL = throw LatticeTopUndefined
 

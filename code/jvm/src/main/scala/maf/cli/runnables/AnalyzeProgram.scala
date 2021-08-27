@@ -40,7 +40,7 @@ object AnalyzeProgram extends App {
   }
 
   val bench: List[String] = List(
-    "test/DEBUG3.scm"
+    "test/DEBUG2.scm"
   )
 
   // Used by webviz.
