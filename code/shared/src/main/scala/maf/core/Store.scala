@@ -171,16 +171,17 @@ trait AbstractGC[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
 //
 
 sealed trait AbstractCount {
-  def inc: AbstractCount
   def join(other: AbstractCount): AbstractCount
+  def +(cnt: => AbstractCount): AbstractCount
+  def inc: AbstractCount = this + CountOne
 }
 case object CountOne extends AbstractCount {
-  def inc = CountInf
   def join(other: AbstractCount) = other
+  def +(cnt: => AbstractCount) = CountInf
 }
 case object CountInf extends AbstractCount {
-  def inc = CountInf
   def join(other: AbstractCount) = this
+  def +(cnt: => AbstractCount) = this
 }
 
 trait AbstractCounting[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
@@ -257,6 +258,17 @@ trait LocalStoreT[A <: Address, V]
     // assert(d1.parent == integrate(d0))
     LocalDeltaStore(d0.content ++ d1.content, d0.updates ++ d1.updates.filter(content.contains(_)))
   }
+  // replay changes of d
+  // assumes that d: sto.DeltaStore, where sto = this.collect(rs) (for some rs)
+  def replay(d: This#DeltaStore): DeltaStore =
+    LocalDeltaStore(d.content.foldLeft(Map.empty[A, (V, Set[A], AbstractCount)]) { case (acc, (adr, s@(v, r, c))) => 
+      if(d.parent.content.contains(adr)) {
+        acc + (adr -> s)
+      } else get(adr) match {
+        case None               => acc + (adr -> s)
+        case Some((v2, r2, c2)) => acc + (adr -> ((lattice.join(v2,v), r2 ++ r, c2 + c)))
+      }
+    }, d.updates)
 }
 
 case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A], AbstractCount)])(implicit val lattice: LatticeWithAddrs[V, A])

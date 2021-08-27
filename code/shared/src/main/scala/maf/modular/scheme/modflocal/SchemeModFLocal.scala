@@ -117,6 +117,21 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
   var results: Res = Map.empty
   case class ResultDependency(cmp: Cmp) extends Dependency
+  
+  //
+  // GC'ing
+  //
+
+  def withRestrictedStore[X](rs: Set[Adr])(blk: A[X]): A[X] =
+    A { (res, ctx, env, sto) => 
+      val (rss, cps, rds, wds) = blk.run(res, ctx, env, sto.collect(rs))
+      (rss.map { case (x, d) => (x, sto.replay(d)) }, cps, rds, wds)
+    }
+
+  override protected def applyClosure(cll: Cll, clo: Clo, ags: List[Val]): A[Val] = 
+    withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ clo._2.addrs) {
+      super.applyClosure(cll, clo, ags)
+    }
 
   //
   // ANALYSISM MONAD
