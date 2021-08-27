@@ -4,16 +4,15 @@ import maf.core._
 import maf.language.scheme._
 import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
 
-class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A])
-    extends SchemePrimitives[V, A] {
-  
+class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A]) extends SchemePrimitives[V, A] {
+
   val lat: SchemeLattice[V, A] = schemeLattice
   val unspecified = lat.bool(false) /* TODO: introduce an "unspecified" value */
 
   import lat._
   import Monad._
   import MonadJoin._
-   
+
   // shorthand (after instantiating V and A)
   type PrimM[M[_]] = SchemePrimM[M, A, V]
   object PrimM {
@@ -21,10 +20,10 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
   }
 
   implicit def fromMF[M[_]: PrimM, X: Lattice](mf: MayFail[X, Error]): M[X] = mf match {
-    case MayFailSuccess(a) => PrimM[M].inject(a)
-    case MayFailError(errs) => PrimM[M].mjoin(errs.map(err => PrimM[M].fail(err): M[X])) 
+    case MayFailSuccess(a)    => PrimM[M].inject(a)
+    case MayFailError(errs)   => PrimM[M].mjoin(errs.map(err => PrimM[M].fail(err): M[X]))
     case MayFailBoth(a, errs) => PrimM[M].mjoin(PrimM[M].inject(a), PrimM[M].mjoin(errs.map(err => PrimM[M].fail(err): M[X])))
-  } 
+  }
 
   def unaryOp[M[_]: PrimM](op: SchemeOp.SchemeOp1)(x: V): M[V] = lat.op(op)(List(x))
   def binaryOp[M[_]: PrimM](op: SchemeOp.SchemeOp2)(x: V, y: V): M[V] = lat.op(op)(List(x, y))
@@ -42,7 +41,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
   def numEq[M[_]: PrimM](x: V, y: V): M[V] = binaryOp(SchemeOp.NumEq)(x, y)
   def div[M[_]: PrimM](x: V, y: V): M[V] = binaryOp(SchemeOp.Div)(x, y)
 
-
   def ifThenElse[M[_]: PrimM](cond: M[V])(thenBranch: => M[V])(elseBranch: => M[V]): M[V] =
     PrimM[M].flatMap(cond) { condv =>
       val t = PrimM[M].flatMap(PrimM[M].guard(lat.isTrue(condv))) { _ => thenBranch }
@@ -51,7 +49,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
 
   /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining everything together */
-  def dereferencePointer[M[_]: PrimM, X: Lattice](x: V)(f: (A,V) => M[X]): M[X] = 
+  def dereferencePointer[M[_]: PrimM, X: Lattice](x: V)(f: (A, V) => M[X]): M[X] =
     PrimM[M].deref(lat.getPointerAddresses(x))(f)
 
   // See comments in SchemeR5RSBenchmarks.scala for a list of all supported and unsupported primitives
@@ -188,7 +186,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
   abstract class SchemePrim2(val name: String) extends SchemePrimitive[V, A] {
     def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match {
       case x :: y :: Nil => call(fpos, x, y)
-      case _   => PrimM[M].fail(PrimitiveArityError(name, 2, args.length))
+      case _             => PrimM[M].fail(PrimitiveArityError(name, 2, args.length))
     }
     def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V): M[V]
   }
@@ -201,7 +199,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
   abstract class SchemePrim3(val name: String) extends SchemePrimitive[V, A] {
     def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match {
       case x :: y :: z :: Nil => call(fpos, x, y, z)
-      case _   => PrimM[M].fail(PrimitiveArityError(name, 3, args.length))
+      case _                  => PrimM[M].fail(PrimitiveArityError(name, 3, args.length))
     }
     def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V, z: V): M[V]
   }
@@ -236,12 +234,12 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V) =
         for {
           aeq <- PrimM[M].addrEq // analysis determines how equality between 2 addrs is done
-          res <- PrimM[M]inject(lat.eq(x, y)(aeq))
+          res <- PrimM[M] inject (lat.eq(x, y)(aeq))
         } yield res
     }
     case object `error` extends SchemePrim1("error") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
-         PrimM[M].fail(UserError(x.toString))
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+        PrimM[M].fail(UserError(x.toString))
     }
     case object `exact->inexact` extends SchemePrimOp1("exact->inexact", SchemeOp.ExactToInexact)
     case object `expt` extends SchemePrimOp2("expt", SchemeOp.Expt)
@@ -264,7 +262,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `symbol?` extends SchemePrimOp1("symbol?", SchemeOp.IsSymbol)
     case object `tan` extends SchemePrimOp1("tan", SchemeOp.Tan)
 
-    case object `+`extends SchemePrimVarArg("+") {
+    case object `+` extends SchemePrimVarArg("+") {
       def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] = call(vs)
       def call[M[_]: PrimM](vs: List[V]): M[V] =
         vs.foldLeftM(number(0))((acc, num) => binaryOp(SchemeOp.Plus)(acc, num))
@@ -272,9 +270,9 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     case object `-` extends SchemePrimVarArg("-") {
       def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match {
-        case Nil => PrimM[M].fail(PrimitiveVariadicArityError("-", 1, 0))
+        case Nil      => PrimM[M].fail(PrimitiveVariadicArityError("-", 1, 0))
         case x :: Nil => binaryOp(SchemeOp.Minus)(number(0), x)
-        case x :: rst =>  `+`.call(rst) >>= { (binaryOp(SchemeOp.Minus)(x, _)) }
+        case x :: rst => `+`.call(rst) >>= { (binaryOp(SchemeOp.Minus)(x, _)) }
       }
     }
 
@@ -299,8 +297,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             exr <- inexactToExact(r)
             res <- ifThenElse(PrimM[M].inject(convert))(PrimM[M].inject(exr))(PrimM[M].inject(r))
           } yield res
-        }
       }
+    }
 
     case object `=` extends SchemePrimVarArg("=") {
       def eq[M[_]: PrimM](first: V, l: List[V]): M[V] = l match {
@@ -319,7 +317,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
 
     case object `sqrt` extends SchemePrim1("sqrt") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         ifThenElse(`<`.call(x, number(0))) {
           /* n < 0 */
           PrimM[M].fail(PrimitiveNotApplicable("sqrt", List(x)))
@@ -335,10 +333,10 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             res <- ifThenElse(PrimM[M].inject(convert))(PrimM[M].inject(exr))(PrimM[M].inject(r))
           } yield res
         }
-    } 
+    }
 
     abstract class SchemePrimRefTypeCheck(name: String, check: SchemeOp.SchemeOp1) extends SchemePrim1(name) {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         ifThenElse(isPointer(x)) {
           dereferencePointer(x) { (_, vlu) =>
             unaryOp(check)(vlu)
@@ -354,8 +352,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `lock?` extends SchemePrimRefTypeCheck("lock?", SchemeOp.IsLock)
 
     case object `string-append` extends SchemePrimVarArg("string-append") {
-      private def buildString[M[_]: PrimM](args: List[V]): M[V] = 
-        args.foldRightM(string("")) { (x, rst) => 
+      private def buildString[M[_]: PrimM](args: List[V]): M[V] =
+        args.foldRightM(string("")) { (x, rst) =>
           dereferencePointer(x)((_, str) => stringAppend(str, rst))
         }
       def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
@@ -372,14 +370,14 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
           adr <- PrimM[M].allocVal(fpos, str)
         } yield lat.pointer(adr)
       def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match {
-        case length :: Nil          => mkString(fpos, length, lat.char(0.toChar))
-        case length :: char :: Nil  => mkString(fpos, length, char)
-        case l                      => PrimM[M].fail(PrimitiveArityError(name, 1, l.size))
+        case length :: Nil         => mkString(fpos, length, lat.char(0.toChar))
+        case length :: char :: Nil => mkString(fpos, length, char)
+        case l                     => PrimM[M].fail(PrimitiveArityError(name, 1, l.size))
       }
     }
 
     case object `number->string` extends SchemePrim1("number->string") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         for {
           str <- unaryOp(SchemeOp.NumberToString)(x)
           adr <- PrimM[M].allocVal(fpos, str)
@@ -393,7 +391,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     case object `string->symbol` extends SchemePrim1("string->symbol") {
       def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-        dereferencePointer(x) { (_, str) => unaryOp(SchemeOp.StringToSymbol)(str) }    }
+        dereferencePointer(x) { (_, str) => unaryOp(SchemeOp.StringToSymbol)(str) }
+    }
 
     case object `string-length` extends SchemePrim1("string-length") {
       def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
@@ -427,7 +426,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `string?` extends SchemePrimRefTypeCheck("string?", SchemeOp.IsString)
 
     case object `substring` extends SchemePrim3("substring") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V, start: V, end: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V, start: V, end: V): M[V] =
         for {
           substr <- dereferencePointer(x) { (_, str) => ternaryOp(SchemeOp.Substring)(str, start, end) }
           adr <- PrimM[M].allocVal(fpos, substr)
@@ -435,7 +434,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
 
     case object `symbol->string` extends SchemePrim1("symbol->string") {
-      def call[M[_]: PrimM](fpos: SchemeExp, sym: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, sym: V): M[V] =
         for {
           str <- unaryOp(SchemeOp.SymbolToString)(sym)
           adr <- PrimM[M].allocVal(fpos, str)
@@ -469,7 +468,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `set-car!` extends SchemePrim2("set-car!") {
       def call[M[_]: PrimM](fpos: SchemeExp, cell: V, value: V): M[V] =
         dereferencePointer(cell) { (addr, cons) =>
-          for { 
+          for {
             cdr <- fromMF(lat.cdr(cons))
             _ <- PrimM[M].updateSto(addr, lat.cons(value, cdr))
           } yield unspecified
@@ -488,14 +487,14 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
 
     case object `make-vector` extends SchemePrimVarArg("make-vector") {
       def createVec[M[_]: PrimM](fpos: SchemeExp, size: V, init: V): M[V] =
-        for { 
+        for {
           vec <- fromMF(lat.vector(size, init))
           adr <- PrimM[M].allocVal(fpos, vec)
         } yield lat.pointer(adr)
       def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match {
-        case size :: Nil          => createVec(fpos, size, unspecified)
-        case size :: init :: Nil  => createVec(fpos, size, init)
-        case l                    => PrimM[M].fail(PrimitiveVariadicArityError(name, 1, l.size))
+        case size :: Nil         => createVec(fpos, size, unspecified)
+        case size :: init :: Nil => createVec(fpos, size, init)
+        case l                   => PrimM[M].fail(PrimitiveVariadicArityError(name, 1, l.size))
       }
     }
 
@@ -503,8 +502,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
         for {
           emptyVec <- fromMF(lat.vector(lat.number(args.size), bottom))
-          filledVec <- args.zipWithIndex.foldLeftM[M, V](emptyVec) { 
-            case (acc, (arg, idx)) => vectorSet(acc, lat.number(idx), arg)
+          filledVec <- args.zipWithIndex.foldLeftM[M, V](emptyVec) { case (acc, (arg, idx)) =>
+            vectorSet(acc, lat.number(idx), arg)
           }
           adr <- PrimM[M].allocVal(fpos, filledVec)
         } yield lat.pointer(adr)
@@ -544,7 +543,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `output-port?` extends SchemePrimOp1("output-port?", SchemeOp.IsOutputPort)
 
     case object `open-input-file` extends SchemePrim1("open-input-file") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         dereferencePointer(x) { (_, str) =>
           ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
             for {
@@ -559,7 +558,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
 
     case object `open-input-string` extends SchemePrim1("open-input-string") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         dereferencePointer(x) { (_, str) =>
           ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
             unaryOp(SchemeOp.MakeInputPort)(str)
@@ -570,7 +569,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
 
     case object `open-output-file` extends SchemePrim1("open-output-file") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         dereferencePointer(x) { (_, str) =>
           ifThenElse(unaryOp(SchemeOp.IsString)(str)) {
             for {
@@ -580,12 +579,12 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             } yield outputPort
           } {
             PrimM[M].fail(PrimitiveNotApplicable("open-output-file", List(x)))
-          }                  
+          }
         }
     }
 
     case object `close-input-port` extends SchemePrim1("close-input-port") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         ifThenElse(unaryOp(SchemeOp.IsInputPort)(x)) {
           PrimM[M].unit(unspecified)
         } {
@@ -638,15 +637,15 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
           case chr :: Nil => check(unaryOp(SchemeOp.IsChar)(chr))
           case chr :: out :: Nil =>
             val res = for {
-                        isChar <- unaryOp(SchemeOp.IsChar)(chr)
-                        isPort <- unaryOp(SchemeOp.IsOutputPort)(out)
-                      } yield and(isChar, isPort)
+              isChar <- unaryOp(SchemeOp.IsChar)(chr)
+              isPort <- unaryOp(SchemeOp.IsOutputPort)(out)
+            } yield and(isChar, isPort)
             check(res)
           case l => PrimM[M].fail(PrimitiveArityError(name, 2, l.size))
         }
       }
     }
-    
+
     class WriteOrDisplay(name: String) extends SchemePrimVarArg(name) {
       def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] = vs match {
         case _ :: Nil => PrimM[M].unit(unspecified)
@@ -691,9 +690,9 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
 
     case object `eof-object?` extends SchemePrim1("eof-object?") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         /* TODO: there is no specific encoding for EOF objects, but they can only arise in scenarios where charTop is produced. So we can approximate them as follows */
-        if(subsumes(x, charTop)) {
+        if (subsumes(x, charTop)) {
           PrimM[M].unit(boolTop)
         } else {
           PrimM[M].unit(bool(false))
@@ -708,7 +707,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
 
     case object `acquire` extends SchemePrim1("acquire") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         dereferencePointer(x) { (addr, lock) =>
           for {
             thread <- PrimM[M].currentThread
@@ -719,7 +718,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     }
 
     case object `release` extends SchemePrim1("release") {
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] = 
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         dereferencePointer(x) { (addr, lock) =>
           for {
             thread <- PrimM[M].currentThread

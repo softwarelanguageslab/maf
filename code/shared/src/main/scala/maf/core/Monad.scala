@@ -6,8 +6,8 @@ package maf.core
 
 trait Monad[M[_]] {
   def unit[X](x: X): M[X]
-  def map[X,Y](m: M[X])(f: X => Y): M[Y]
-  def flatMap[X,Y](m: M[X])(f: X => M[Y]): M[Y]
+  def map[X, Y](m: M[X])(f: X => Y): M[Y]
+  def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y]
 }
 
 object Monad {
@@ -23,23 +23,23 @@ object Monad {
   implicit class MonadIterableOps[X](xs: Iterable[X]) {
     def mapM[M[_]: Monad, Y](f: X => M[Y]): M[List[Y]] = xs match {
       case Nil => Monad[M].unit(Nil)
-      case x :: r => 
+      case x :: r =>
         for {
           fx <- f(x)
-          rst <- r.mapM(f) 
-        } yield fx :: rst 
+          rst <- r.mapM(f)
+        } yield fx :: rst
     }
     def mapM_[M[_]: Monad](f: X => M[_]): M[Unit] = xs match {
-      case Nil => Monad[M].unit(())
+      case Nil    => Monad[M].unit(())
       case x :: r => f(x) >>= { _ => r.mapM_(f) }
     }
     def foldLeftM[M[_]: Monad, Y](acc: Y)(f: (Y, X) => M[Y]): M[Y] = xs match {
-      case Nil => Monad[M].unit(acc)
+      case Nil    => Monad[M].unit(acc)
       case x :: r => f(acc, x) >>= { r.foldLeftM(_)(f) }
     }
     def foldRightM[M[_]: Monad, Y](nil: Y)(f: (X, Y) => M[Y]): M[Y] = xs match {
-      case Nil => Monad[M].unit(nil)
-      case x :: r => r.foldRightM(nil)(f) >>= { f(x, _) } 
+      case Nil    => Monad[M].unit(nil)
+      case x :: r => r.foldRightM(nil)(f) >>= { f(x, _) }
     }
   }
 }
@@ -58,16 +58,16 @@ trait MonadError[M[_], E] extends Monad[M] {
 
 trait MonadJoin[M[_]] extends Monad[M] {
   def mbottom[X]: M[X]
-  def mjoin[X: Lattice](x: M[X], y: M[X]): M[X] 
+  def mjoin[X: Lattice](x: M[X], y: M[X]): M[X]
   // for convenience
   def mjoin[X: Lattice](xs: Iterable[M[X]]): M[X] =
-    xs.foldLeft(mbottom: M[X])((acc, m) => mjoin(acc,m))
+    xs.foldLeft(mbottom: M[X])((acc, m) => mjoin(acc, m))
   def mfold[X: Lattice](xs: Iterable[X]): M[X] =
     mjoin(xs.map(unit))
   def mfoldMap[X, Y: Lattice](xs: Iterable[X])(f: X => M[Y]): M[Y] =
     mjoin(xs.map(f))
   def guard(cnd: Boolean): M[Unit] =
-    if(cnd) unit(()) else mbottom
+    if (cnd) unit(()) else mbottom
   def withFilter[X](m: M[X])(p: X => Boolean): M[X] =
     flatMap(m)(x => map(guard(p(x)))(_ => x))
   def inject[X: Lattice](x: X): M[X] =

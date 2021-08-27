@@ -261,14 +261,18 @@ trait LocalStoreT[A <: Address, V]
   // replay changes of d
   // assumes that d: sto.DeltaStore, where sto = this.collect(rs) (for some rs)
   def replay(d: This#DeltaStore): DeltaStore =
-    LocalDeltaStore(d.content.foldLeft(Map.empty[A, (V, Set[A], AbstractCount)]) { case (acc, (adr, s@(v, r, c))) => 
-      if(d.parent.content.contains(adr)) {
-        acc + (adr -> s)
-      } else get(adr) match {
-        case None               => acc + (adr -> s)
-        case Some((v2, r2, c2)) => acc + (adr -> ((lattice.join(v2,v), r2 ++ r, c2 + c)))
-      }
-    }, d.updates)
+    LocalDeltaStore(
+      d.content.foldLeft(Map.empty[A, (V, Set[A], AbstractCount)]) { case (acc, (adr, s @ (v, r, c))) =>
+        if (d.parent.content.contains(adr)) {
+          acc + (adr -> s)
+        } else
+          get(adr) match {
+            case None               => acc + (adr -> s)
+            case Some((v2, r2, c2)) => acc + (adr -> ((lattice.join(v2, v), r2 ++ r, c2 + c)))
+          }
+      },
+      d.updates
+    )
 }
 
 case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A], AbstractCount)])(implicit val lattice: LatticeWithAddrs[V, A])

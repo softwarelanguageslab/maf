@@ -41,13 +41,15 @@ object AdaptiveRun {
     val prg = CSchemeParser.parse(txt)
     val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
     anl.analyzeWithTimeoutInSeconds(10)
-    anl.visited.collect {
-      case anl.CallComponent(lam, ctx, sto) => sto.content.view.filterKeys(!_.isInstanceOf[PrmAddr]).toMap
-    }.foreach { sto =>
-      println()
-      sto.foreach { case (adr, vlu) => println(s"$adr -> ${vlu._1}") }
-      println()
-    }
+    anl.visited
+      .collect { case anl.CallComponent(lam, ctx, sto) =>
+        sto.content.view.filterKeys(!_.isInstanceOf[PrmAddr]).toMap
+      }
+      .foreach { sto =>
+        println()
+        sto.foreach { case (adr, vlu) => println(s"$adr -> ${vlu._1}") }
+        println()
+      }
   }
 
   def testModConc(): Unit = {
