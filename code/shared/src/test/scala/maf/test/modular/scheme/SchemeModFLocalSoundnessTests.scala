@@ -30,7 +30,9 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
       "test/R5RS/various/infinite-1.scm",
       "test/R5RS/various/infinite-2.scm",
       "test/R5RS/various/infinite-3.scm",
-      "test/R5RS/various/four-in-a-row.scm"
+      "test/R5RS/various/four-in-a-row.scm",
+      "test/R5RS/various/church-2-num.scm",
+      "test/R5RS/various/church-6.scm"
     ).contains(b)
 
 }
