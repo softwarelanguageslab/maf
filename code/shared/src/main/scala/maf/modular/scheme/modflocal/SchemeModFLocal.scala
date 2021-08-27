@@ -113,7 +113,9 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   // RESULTS
   //
 
-  var results: Map[Cmp, Set[(Val, Dlt)]] = Map.empty
+  type Res = Map[Cmp, Set[(Val, Dlt)]]
+
+  var results: Res = Map.empty
   case class ResultDependency(cmp: Cmp) extends Dependency
 
   //
@@ -121,73 +123,77 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   //
   
   // TODO: more type safety coming with path-dependent functions in Scala 3!
-  case class A[X](run: (Ctx, Env, Sto) => (Set[(X, Dlt)], Set[Cmp], Set[Dep], Set[Dep]))
+  case class A[X](run: (Res, Ctx, Env, Sto) => (Set[(X, Dlt)], Set[Cmp], Set[Dep], Set[Dep]))
+
+  implicit override val analysisM: AnalysisM[A] = new AnalysisM[A] {
+    // MONAD
+    def unit[X](x: X) = 
+      A((_, _, _, sto) => (Set((x, sto.deltaStore)), Set(), Set(), Set()))
+    def map[X, Y](m: A[X])(f: X => Y) = 
+      A { (res, ctx, env, sto) => 
+        val (rss, cps, rds, wds) = m.run(res, ctx, env, sto)
+        (rss.map(res => (f(res._1), res._2)), cps, rds, wds)
+      }
+    def flatMap[X, Y](m: A[X])(f: X => A[Y]) = 
+      A { (res, ctx, env, sto) => 
+        val (rs1, cs1, rd1, wd1) = m.run(res, ctx, env, sto)
+        rs1.foldLeft((Set[(Y,Dlt)](), cs1, rd1, wd1)) { case (acc, (x, d0: sto.DeltaStore @unchecked)) =>
+          val (rs2, cs2, rd2, wd2) = f(x).run(res, ctx, env, sto.integrate(d0))
+          val rs3 = rs2.map { case (x, d1) => (x, sto.compose(d1, d0)) }
+          (acc._1 ++ rs3, acc._2 ++ cs2, acc._3 ++ rd2, acc._4 ++ wd2)
+        }
+      } 
+    // MONADJOIN
+    def mbottom[X] = 
+      A((_,_,_,_) => (Set(), Set(), Set(), Set()))
+    def mjoin[X: Lattice](x: A[X], y: A[X]) = 
+      A { (res, ctx, env, sto) => 
+        val (rs1, cs1, rd1, wd1) = x.run(res, ctx, env, sto)
+        val (rs2, cs2, rd2, wd2) = y.run(res, ctx, env, sto)
+        (rs1 ++ rs2, cs1 ++ cs2, rd1 ++ rd2, wd1 ++ wd2)
+      }
+    // MONADERROR
+    def fail[X](err: Error) = 
+      mbottom // we are not interested in errors here (at least, not yet ...)
+    // STOREM
+    def addrEq = 
+      A((_, _, _, sto) => (Set((sto.addrEq, sto.deltaStore)), Set(), Set(), Set()))
+    def extendSto(adr: Adr, vlu: Val) = 
+      A((_, _, env, sto) => (Set(((), extendV(sto, adr, vlu))), Set(), Set(), Set()))
+    def updateSto(adr: Adr, vlu: Val) = 
+      A((_, _, env, sto) => (Set(((), updateV(sto, adr, vlu))), Set(), Set(), Set()))
+    def lookupSto(adr: Adr) = 
+      A((_, _, _, sto) => (Set((lookupV(sto, adr), sto.deltaStore)), Set(), Set(), Set()))
+    // ANALYSISM
+    def getCtx = 
+      A((_, ctx, _, sto) => (Set((ctx, sto.deltaStore)), Set(), Set(), Set()))
+    // ENV STUFF
+    def getEnv = 
+      A((_, _, env, sto) => (Set((env, sto.deltaStore)), Set(), Set(), Set()))
+    def withExtendedEnv[X](nam: String, adr: Adr)(blk: A[X]): A[X] = 
+      A((res, ctx, env, sto) => blk.run(res, ctx, env.extend(nam, adr), sto))
+    def extendEnvSto(adr: EnvAddr, evs: Set[Env]) = 
+      A((_, _, _, sto) => (Set(((), extendE(sto, adr, evs))), Set(), Set(), Set()))
+    def lookupEnvSto(adr: EnvAddr) =
+      A((_, _, _, sto) => (Set(((lookupE(sto, adr), sto.deltaStore))), Set(), Set(), Set()))
+    def call(lam: Lam, ctx: Ctx): A[Val] = 
+      A { (res, _, _, sto) => 
+        val cmp = CallComponent(lam, ctx, sto)
+        val rss = res.getOrElse(cmp, Set.empty)
+        (rss, Set(cmp), Set(ResultDependency(cmp)), Set())
+      }
+  } 
+
+  //
+  // THE INTRA-ANALYSIS
+  //
 
   def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) { intra =>
 
     var results = inter.results
-
-    implicit val anl: AnalysisM[A] = new AnalysisM[A] {
-      // MONAD
-      def unit[X](x: X) = 
-        A((_, _, sto) => (Set((x, sto.deltaStore)), Set(), Set(), Set()))
-      def map[X, Y](m: A[X])(f: X => Y) = 
-        A { (ctx, env, sto) => 
-          val (rss, cps, rds, wds) = m.run(ctx, env, sto)
-          (rss.map(res => (f(res._1), res._2)), cps, rds, wds)
-        }
-      def flatMap[X, Y](m: A[X])(f: X => A[Y]) = 
-        A { (ctx, env, sto) => 
-          val (rs1, cs1, rd1, wd1) = m.run(ctx, env, sto)
-          rs1.foldLeft((Set[(Y,Dlt)](), cs1, rd1, wd1)) { case (acc, (x, d0: sto.DeltaStore @unchecked)) =>
-            val (rs2, cs2, rd2, wd2) = f(x).run(ctx, env, sto.integrate(d0))
-            val rs3 = rs2.map { case (x, d1) => (x, sto.compose(d1, d0)) }
-            (acc._1 ++ rs3, acc._2 ++ cs2, acc._3 ++ rd2, acc._4 ++ wd2)
-          }
-        } 
-      // MONADJOIN
-      def mbottom[X] = 
-        A((_,_,_) => (Set(), Set(), Set(), Set()))
-      def mjoin[X: Lattice](x: A[X], y: A[X]) = 
-        A { (ctx, env, sto) => 
-          val (rs1, cs1, rd1, wd1) = x.run(ctx, env, sto)
-          val (rs2, cs2, rd2, wd2) = y.run(ctx, env, sto)
-          (rs1 ++ rs2, cs1 ++ cs2, rd1 ++ rd2, wd1 ++ wd2)
-        }
-      // MONADERROR
-      def fail[X](err: Error) = 
-        mbottom // we are not interested in errors here (at least, not yet ...)
-      // STOREM
-      def addrEq = 
-        A((_, _, sto) => (Set((sto.addrEq, sto.deltaStore)), Set(), Set(), Set()))
-      def extendSto(adr: Adr, vlu: Val) = 
-        A((_, env, sto) => (Set(((), extendV(sto, adr, vlu))), Set(), Set(), Set()))
-      def updateSto(adr: Adr, vlu: Val) = 
-        A((_, env, sto) => (Set(((), updateV(sto, adr, vlu))), Set(), Set(), Set()))
-      def lookupSto(adr: Adr) = 
-        A((_, _, sto) => (Set((lookupV(sto, adr), sto.deltaStore)), Set(), Set(), Set()))
-      // ANALYSISM
-      def getCtx = 
-        A((ctx, _, sto) => (Set((ctx, sto.deltaStore)), Set(), Set(), Set()))
-      // ENV STUFF
-      def getEnv = 
-        A((_, env, sto) => (Set((env, sto.deltaStore)), Set(), Set(), Set()))
-      def withExtendedEnv[X](nam: String, adr: Adr)(blk: A[X]): A[X] = 
-        A((ctx, env, sto) => blk.run(ctx, env.extend(nam, adr), sto))
-      def extendEnvSto(adr: EnvAddr, evs: Set[Env]) = 
-        A((_, _, sto) => (Set(((), extendE(sto, adr, evs))), Set(), Set(), Set()))
-      def lookupEnvSto(adr: EnvAddr) =
-        A((_, _, sto) => (Set(((lookupE(sto, adr), sto.deltaStore))), Set(), Set(), Set()))
-      def call(lam: Lam, ctx: Ctx): A[Val] = 
-        A { (_, _, sto) => 
-          val cmp = CallComponent(lam, ctx, sto)
-          val res = results.getOrElse(cmp, Set.empty)
-          (res, Set(cmp), Set(ResultDependency(cmp)), Set())
-        }
-    } 
     
     def analyzeWithTimeout(timeout: Timeout.T): Unit = {
-      val (res, cps, rds, wds) = eval(cmp.exp).run(cmp.ctx, cmp.env, cmp.sto)
+      val (res, cps, rds, wds) = eval(cmp.exp).run(results, cmp.ctx, cmp.env, cmp.sto)
       val old = results.getOrElse(cmp, Set.empty)
       if (res != old) {
         results += cmp -> res
