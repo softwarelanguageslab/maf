@@ -113,6 +113,11 @@ case class MFInstance[A <: Address, V](bri: SchemeInterpreterBridge[V, A]) exten
         )
         .map { case (v, delta) => (v, sto.integrate(delta)) }
   }
+  // exotic
+  override def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): MF[V, A, V] = 
+    unit(bri.callcc(clo, pos))
+  override def currentThread: MF[TID, A, V] = 
+    unit(bri.currentThread)
 }
 
 // Primitive-specific errors
