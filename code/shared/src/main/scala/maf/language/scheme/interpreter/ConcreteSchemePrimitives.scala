@@ -1305,7 +1305,7 @@ trait ConcreteSchemePrimitives {
         lookupStore(ptr) match {
           case Value.Lock(lck) =>
             lck.lock()
-            Value.Void
+            Value.Undefined(Identity.none)
           case v => throw new UnexpectedValueTypeException[Value](v)
         }
       }
@@ -1316,7 +1316,7 @@ trait ConcreteSchemePrimitives {
         lookupStore(ptr) match {
           case Value.Lock(lck) =>
             lck.unlock()
-            Value.Void
+            Value.Undefined(Identity.none)
           case v => throw new UnexpectedValueTypeException[Value](v)
         }
       }

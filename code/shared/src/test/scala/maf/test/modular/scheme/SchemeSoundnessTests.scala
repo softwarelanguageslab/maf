@@ -118,7 +118,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
             s"""
             | Result at $idn is unsound:
             | - concrete value: $concreteValue
-            | - abstract values: $abstractValues
+            | - abstract values: ${analysis.lattice.join(abstractValues)}
             """.stripMargin
           if (message.isEmpty) {
             fail(failureMsg)
