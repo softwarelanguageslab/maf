@@ -16,7 +16,25 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-  //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/my-test.scm")
+  override def isSlow(b: Benchmark): Boolean =
+    Set(
+      "test/R5RS/various/rsa.scm",
+      "test/R5RS/various/quasiquoting-simple.scm",
+      "test/R5RS/various/SICP-compiler.scm",
+      "test/R5RS/various/church.scm",
+      "test/R5RS/various/foo.scm",
+      "test/R5RS/various/mceval.scm",
+      "test/R5RS/various/regex.scm",
+      "test/R5RS/various/grid.scm",
+      "test/R5RS/various/widen.scm",
+      "test/R5RS/various/infinite-1.scm",
+      "test/R5RS/various/infinite-2.scm",
+      "test/R5RS/various/infinite-3.scm",
+      "test/R5RS/various/four-in-a-row.scm",
+      "test/R5RS/various/church-2-num.scm",
+      "test/R5RS/various/church-6.scm"
+    ).contains(b)
+
 }
 
 class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
@@ -29,4 +47,5 @@ class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoun
       with SchemeModFLocalAnalysisResults {
       val k = 1
     }
+  override def isSlow(b: String): Boolean = true // don't run this for fast tests
 }

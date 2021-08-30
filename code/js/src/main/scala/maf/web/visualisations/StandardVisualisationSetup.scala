@@ -53,17 +53,5 @@ object StandardModFVisualisationSetup extends StandardVisualisationSetup {
 
 @JSExportTopLevel("standardModFLocalVisualisationSetup")
 object StandardModFLocalVisualisationSetup extends StandardVisualisationSetup {
-  def createAnalysis(txt: String): Analysis = {
-    val prg = SchemeParser.parse(txt)
-    new SchemeModFLocal(prg)
-      with SchemeConstantPropagationDomain
-      with SchemeModFLocalNoSensitivity
-      with FIFOWorklistAlgorithm[SchemeExp]
-      with WebVisualisationAnalysis[SchemeExp] {
-      override def intraAnalysis(cmp: Component): SchemeIntraAnalysis with DependencyTrackingIntra = new SchemeIntraAnalysis(cmp)
-        with DependencyTrackingIntra
-      def module(cmp: Component) = ??? // not revelant here
-      def moduleName(mdl: Module) = ??? // not relevant here
-    }
-  }
+  def createAnalysis(txt: String): Analysis = ???
 }
