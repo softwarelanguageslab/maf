@@ -48,7 +48,7 @@ object AnalyzeProgram extends App {
     val program = SchemeParser.parse(text)
     new SimpleSchemeModFAnalysis(program)
       with SchemeModFNoSensitivity
-      with ModularSchemeDomain(SchemeConstantPropagationDomain)
+      with SchemeConstantPropagationDomain
       with DependencyTracking[SchemeExp]
       with FIFOWorklistAlgorithm[SchemeExp] {
       override def intraAnalysis(cmp: SchemeModFComponent) =
@@ -60,7 +60,7 @@ object AnalyzeProgram extends App {
   def nonIncAnalysis(program: SchemeExp) = {
     new ModAnalysis[SchemeExp](getUpdated(program)) // Select the program version here.
     with StandardSchemeModFComponents with SchemeModFCallSiteSensitivity with SchemeModFSemantics with LIFOWorklistAlgorithm[SchemeExp]
-    with BigStepModFSemantics with ModularSchemeDomain(SchemeConstantPropagationDomain) with GlobalStore[SchemeExp] with AnalysisLogging[SchemeExp] {
+    with BigStepModFSemantics with SchemeConstantPropagationDomain with GlobalStore[SchemeExp] with AnalysisLogging[SchemeExp] {
       override def focus(a: Addr): Boolean = !a.toString.toLowerCase().contains("prm")
       override def intraAnalysis(
           cmp: Component

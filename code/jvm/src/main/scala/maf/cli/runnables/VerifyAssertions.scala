@@ -19,7 +19,7 @@ object VerifyAssertions {
       with SchemeModFSemantics
       with SchemeAssertSemantics
       with StandardSchemeModFComponents
-      with ModularSchemeDomain(SchemeTypeDomain)
+      with SchemeTypeDomain
       with SchemeModFKCallSiteSensitivity
       with LIFOWorklistAlgorithm[SchemeExp] {
       val k = 2

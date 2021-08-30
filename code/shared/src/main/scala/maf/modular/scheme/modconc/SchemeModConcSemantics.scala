@@ -167,7 +167,7 @@ abstract class SimpleSchemeModConcAnalysis(prg: SchemeExp)
 class MyModConcAnalysis1(prg: SchemeExp)
     extends SimpleSchemeModConcAnalysis(prg)
        with SchemeModConcStandardSensitivity
-       with ModularSchemeDomain(SchemeConstantPropagationDomain)
+       with SchemeConstantPropagationDomain
        with LIFOWorklistAlgorithm[SchemeExp] {
   override def modFAnalysis(intra: SchemeModConcIntra) = new ModFAnalysis(intra)
   class ModFAnalysis(intra: SchemeModConcIntra) extends InnerModFAnalysis(intra) with SchemeModFNoSensitivity with RandomWorklistAlgorithm[SchemeExp]

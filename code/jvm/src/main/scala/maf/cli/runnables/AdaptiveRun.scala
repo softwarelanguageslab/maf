@@ -39,7 +39,7 @@ object AdaptiveRun {
   def testModFLocal(): Unit = {
     val txt = Reader.loadFile("test/R5RS/various/foo.scm")
     val prg = CSchemeParser.parse(txt)
-    val anl = new SchemeModFLocal(prg) with ModularSchemeDomain(SchemeConstantPropagationDomain) with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
+    val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
     anl.analyzeWithTimeoutInSeconds(10)
     anl.visited
       .collect { case anl.CallComponent(lam, ctx, sto) =>
@@ -63,7 +63,7 @@ object AdaptiveRun {
   def testAbstract(): Unit = {
     val txt = Reader.loadFile("test/R5RS/various/my-test.scm")
     val prg = CSchemeParser.parse(txt)
-    val anl = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with ModularSchemeDomain(SchemeConstantPropagationDomain) with FIFOWorklistAlgorithm[SchemeExp] {
+    val anl = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
       var step = 0
       override def step(timeout: Timeout.T): Unit = {
         val cmp = workList.head
@@ -85,7 +85,7 @@ object AdaptiveRun {
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
       with AdaptiveKCFA
-      with ModularSchemeDomain(SchemeConstantPropagationDomain)
+      with SchemeConstantPropagationDomain
       with FIFOWorklistAlgorithm[SchemeExp] {
       // logging the analysis
       var step = 0
