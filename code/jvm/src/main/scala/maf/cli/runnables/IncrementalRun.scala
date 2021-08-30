@@ -77,7 +77,7 @@ object IncrementalRun extends App {
       with IncrementalGlobalStore[SchemeExp]
       with IncrementalLogging[SchemeExp] {
       override def focus(a: Addr): Boolean = a.toString.equals("ret (try [ε])") || a.toString.equals("ret (λ@8:9 [ε])")
-      var configuration: IncrementalConfiguration = noOptimisations
+      var configuration: IncrementalConfiguration = wi_cy
       override def intraAnalysis(
           cmp: Component
         ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
@@ -89,14 +89,15 @@ object IncrementalRun extends App {
     val a = base(text)
     //  a.logger.logU("BASE + INC")
     a.analyzeWithTimeout(timeout())
-    println(a.visited)
+    //println(a.visited)
     a.updateAnalysis(timeout())
-    println(a.visited)
+    //println(a.visited)
     //  val b = base(text)
     //  b.version = New
     //  b.logger.logU("REAN")
     //  b.analyzeWithTimeout(timeout())
     // println(b.visited)
+    println("Done")
   }
 
   val modConcbenchmarks: List[String] = List()

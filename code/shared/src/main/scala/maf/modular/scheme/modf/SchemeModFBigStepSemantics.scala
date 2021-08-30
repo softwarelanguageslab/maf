@@ -53,7 +53,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
   import EvalM._
 
   // helper
-  private def cond(
+  protected def cond(
       prd: Value,
       csq: => EvalM[Value],
       alt: => EvalM[Value]
@@ -157,7 +157,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
     private def evalAnd(exps: List[SchemeExp]): EvalM[Value] =
       if (exps.isEmpty) { unit(lattice.bool(true)) }
       else { evalAndLoop(exps) }
-    private def evalAndLoop(exps: List[SchemeExp]): EvalM[Value] = (exps: @unchecked) match {
+    protected def evalAndLoop(exps: List[SchemeExp]): EvalM[Value] = (exps: @unchecked) match {
       case exp :: Nil => eval(exp)
       case exp :: rst =>
         for {
@@ -165,7 +165,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
           res <- cond(vlu, evalAndLoop(rst), unit(lattice.bool(false)))
         } yield res
     }
-    private def evalOr(exps: List[SchemeExp]): EvalM[Value] = exps match {
+    protected def evalOr(exps: List[SchemeExp]): EvalM[Value] = exps match {
       case Nil => unit(lattice.bool(false))
       case exp :: rst =>
         for {

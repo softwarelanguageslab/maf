@@ -1,2 +1,11 @@
-(define (f x y) 1)
-(f #f #f)
+(define (phi x2)
+  (<change>
+    (not x2)
+    x2))
+(define (try f)
+  (or (not (f #f)) #t))
+(define (sat-solve-4 pred)
+  (try (lambda (n1)
+         (try (lambda (n2)
+                (pred n2))))))
+(sat-solve-4 phi)

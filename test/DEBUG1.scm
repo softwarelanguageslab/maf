@@ -3,7 +3,7 @@
     (not x2)
     x2))
 (define (try f)
-  (or (f #t)))
+  (or (f #t) #t))
 (define (sat-solve-4 pred)
   (try (lambda (n1)
          (try (lambda (n2)
