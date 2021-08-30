@@ -4,7 +4,7 @@ import java.io.File
 
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.SchemeExp
-import maf.modular.scheme.SchemeConstantPropagationDomain
+import maf.modular.scheme._
 import maf.modular.scheme.ssmodconc._
 import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.modular._
@@ -18,7 +18,7 @@ object SimpleTimingTest extends App {
   type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
 
   def analysis(program: SchemeExp): Analysis =
-    new ModAnalysis(program) with KKallocModConc with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] {
+    new ModAnalysis(program) with KKallocModConc with ModularSchemeDomain(SchemeConstantPropagationDomain) with LIFOWorklistAlgorithm[SchemeExp] {
       val k = 1
       override def intraAnalysis(component: SmallStepModConcComponent) =
         new IntraAnalysis(component) with SmallStepIntra with KCFAIntra

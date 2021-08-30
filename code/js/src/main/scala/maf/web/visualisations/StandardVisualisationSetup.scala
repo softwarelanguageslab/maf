@@ -35,7 +35,7 @@ object StandardModFVisualisationSetup extends StandardVisualisationSetup {
     val program = SchemeParser.parse(text)
     new SimpleSchemeModFAnalysis(program)
       with SchemeModFNoSensitivity
-      with SchemeConstantPropagationDomain
+      with ModularSchemeDomain(SchemeConstantPropagationDomain)
       with FIFOWorklistAlgorithm[SchemeExp]
       with WebVisualisationAnalysis[SchemeExp] {
       override def intraAnalysis(cmp: SchemeModFComponent) =

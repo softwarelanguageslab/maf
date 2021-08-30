@@ -7,7 +7,7 @@ import maf.lattice._
 import maf.modular.scheme._
 
 trait IncrementalSchemeDomain extends IncrementalAbstractDomain[SchemeExp] with SchemeDomain {
-  implicit override val lattice: IncrementalSchemeLattice[Value, Address]
+  implicit override lazy val lattice: IncrementalSchemeLattice[Value, Address]
 }
 
 trait IncrementalModularSchemeDomain extends IncrementalSchemeDomain {
@@ -41,12 +41,12 @@ object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrappe
   type R = Type.R
   type C = Type.C
   type Sym = Type.Sym
-  lazy val modularLattice = new IncrementalModularSchemeLattice
-  lazy val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
+  val modularLattice = new IncrementalModularSchemeLattice
+  val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
 }
 
 trait IncrementalSchemeTypeDomain extends IncrementalModularSchemeDomain {
-  lazy val modularLatticeWrapper = IncrementalSchemeTypeDomain
+  val modularLatticeWrapper = IncrementalSchemeTypeDomain
 }
 
 object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeLatticeWrapper {
@@ -56,10 +56,10 @@ object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSche
   type R = ConstantPropagation.R
   type C = ConstantPropagation.C
   type Sym = ConstantPropagation.Sym
-  lazy val modularLattice = new IncrementalModularSchemeLattice
-  lazy val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
+  val modularLattice = new IncrementalModularSchemeLattice
+  val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
 }
 
 trait IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeDomain {
-  lazy val modularLatticeWrapper = IncrementalSchemeConstantPropagationDomain
+  val modularLatticeWrapper = IncrementalSchemeConstantPropagationDomain
 }

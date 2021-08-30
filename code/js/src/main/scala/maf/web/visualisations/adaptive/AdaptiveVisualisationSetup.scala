@@ -30,7 +30,7 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
     new AdaptiveModAnalysis(prg, rate = 100)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
-      with SchemeConstantPropagationDomain
+      with ModularSchemeDomain(SchemeConstantPropagationDomain)
       with FIFOWorklistAlgorithm[SchemeExp]
       with WebVisualisationAnalysisAdaptive[SchemeExp]
       with WebSummaryAdaptiveAnalysis

@@ -254,13 +254,13 @@ trait LocalStoreT[A <: Address, V]
   }
   // d1 'after' d0
   // assumes that d1: sto1.DeltaStore, where sto1 = this.integrate(d0)
-  def compose(d1: This#DeltaStore, d0: DeltaStore): DeltaStore = {
+  def compose(d1: LocalStoreT[A,V]#LocalDeltaStore, d0: DeltaStore): DeltaStore = {
     // assert(d1.parent == integrate(d0))
     LocalDeltaStore(d0.content ++ d1.content, d0.updates ++ d1.updates.filter(content.contains(_)))
   }
   // replay changes of d
   // assumes that d: sto.DeltaStore, where sto = this.collect(rs) (for some rs)
-  def replay(d: This#DeltaStore): DeltaStore =
+  def replay(d: LocalStoreT[A,V]#LocalDeltaStore): DeltaStore =
     LocalDeltaStore(
       d.content.foldLeft(Map.empty[A, (V, Set[A], AbstractCount)]) { case (acc, (adr, s @ (v, r, c))) =>
         if (d.parent.content.contains(adr)) {

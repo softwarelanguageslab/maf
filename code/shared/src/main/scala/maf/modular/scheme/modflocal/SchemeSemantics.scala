@@ -19,7 +19,7 @@ trait SchemeSemantics {
   type Exp = SchemeExp
   type Lam = SchemeLambdaExp
   type Cll = SchemeFuncall
-  type Clo = lattice.Closure
+  type Clo = (Lam, Environment[Adr])
   type Env = NestedEnv[Adr, EnvAddr]
   type Idn = Identity
   type Pos = Position
@@ -57,7 +57,7 @@ trait SchemeSemantics {
     def writePar(par: Identifier, ctx: Ctx, arg: Val): M[Unit] =
       extendSto(VarAddr(par, ctx), arg)
     def writePar(prs: Iterable[(Identifier, Val)], ctx: Ctx): M[Unit] =
-      prs.mapM_[M] { case (par, vlu) => writePar(par, ctx, vlu) }
+      prs.mapM_[M, Unit] { case (par, vlu) => writePar(par, ctx, vlu) }
     def writeEnv(lam: Lam, ctx: Ctx, env: Env): M[Unit] =
       extendEnvSto(EnvAddr(lam, ctx), Set(env))
     def extendEnvSto(adr: EnvAddr, evs: Set[Env]): M[Unit]

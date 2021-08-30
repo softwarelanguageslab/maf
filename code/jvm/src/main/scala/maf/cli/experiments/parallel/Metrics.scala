@@ -47,7 +47,7 @@ object Metric {
         with BigStepModFSemantics
         with CallDepthFirstWorklistAlgorithm[SchemeExp]
         with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
+        with ModularSchemeDomain(SchemeConstantPropagationDomain) {
         val k = kCFA
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
@@ -67,7 +67,7 @@ object Metric {
         with BigStepModFSemantics
         with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
         with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
+        with ModularSchemeDomain(SchemeConstantPropagationDomain) {
         val k = kCFA
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
@@ -86,7 +86,7 @@ object Metric {
         with BigStepModFSemantics
         with MostVisitedFirstWorklistAlgorithm[SchemeExp]
         with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
+        with ModularSchemeDomain(SchemeConstantPropagationDomain) {
         val k = kCFA
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
@@ -106,7 +106,7 @@ object Metric {
         with BigStepModFSemantics
         with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
         with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
+        with ModularSchemeDomain(SchemeConstantPropagationDomain) {
         val k = kCFA
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }
@@ -126,7 +126,7 @@ object Metric {
         with BigStepModFSemantics
         with BiggerEnvironmentFirstWorklistAlgorithm.ModF
         with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
+        with ModularSchemeDomain(SchemeConstantPropagationDomain) {
         val k = kCFA
         override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
       }

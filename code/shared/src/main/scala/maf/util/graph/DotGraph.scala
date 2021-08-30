@@ -72,7 +72,7 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]() {
   }
 
   object G {
-    implicit val typeclass = new Graph[G, N, E] {
+    implicit val typeclass: Graph[G, N, E] = new Graph[G, N, E] {
       def empty = new G(Map[N, Int](), 0, Set[N](), Map[N, Set[(E, N)]]())
       def addNode(g: G, node: N) = g._addNode(node)
       def addEdge(

@@ -398,7 +398,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         case StringToNumber =>
           args(0) match {
             // TODO: string may also be a float!
-            case Str(s) => StringLattice[S].toNumber(s).map(Int)
+            case Str(s) => StringLattice[S].toNumber(s).map(Int.apply)
             case _      => MayFail.failure(OperatorNotApplicable("string->number", args))
           }
         case IntegerToCharacter =>
@@ -803,7 +803,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
   }
   implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
-  val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] {
+  val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] { lat =>
     def show(x: L): String = x.toString /* TODO[easy]: implement better */
     def isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
     def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
@@ -840,7 +840,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def top: L = throw LatticeTopUndefined
 
     def getClosures(x: L): Set[Closure] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
-    def getContinuations(x: L): Set[K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)
+    def getContinuations(x: L): Set[lat.K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)
     def getPrimitives(x: L): Set[String] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
     def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
@@ -864,7 +864,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def bool(x: Boolean): L = Element(Value.bool(x))
     def primitive(x: String): L = Element(Value.primitive(x))
     def closure(x: Closure): L = Element(Value.closure(x))
-    def cont(x: K): L = Element(Value.cont(x))
+    def cont(x: lat.K): L = Element(Value.cont(x))
     def symbol(x: String): L = Element(Value.symbol(x))
     def cons(car: L, cdr: L): L = Element(Value.cons(car, cdr))
     def pointer(a: A): L = Element(Value.pointer(a))

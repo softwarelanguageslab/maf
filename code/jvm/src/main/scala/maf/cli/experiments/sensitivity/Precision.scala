@@ -32,11 +32,11 @@ object PrecisionComparison
 
   // The base analysis
   def baseAnalysis(prg: SchemeExp): Analysis =
-    new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp]
+    new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with ModularSchemeDomain(SchemeConstantPropagationDomain) with LIFOWorklistAlgorithm[SchemeExp]
 
   // The analysis with improved precision
   def improvedAnalysis(prg: SchemeExp): Analysis =
-    new SimpleSchemeModFAnalysis(prg) with SchemeModFUserGuidedSensitivity1 with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] {
+    new SimpleSchemeModFAnalysis(prg) with SchemeModFUserGuidedSensitivity1 with ModularSchemeDomain(SchemeConstantPropagationDomain) with LIFOWorklistAlgorithm[SchemeExp] {
       override def toString() = "Improved"
     }
 

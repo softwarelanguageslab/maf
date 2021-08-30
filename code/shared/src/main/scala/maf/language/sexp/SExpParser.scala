@@ -33,6 +33,8 @@ import scala.util.parsing.combinator.token._
 import scala.util.parsing.combinator.lexical._
 import scala.util.parsing.combinator.syntactical._
 import scala.util.parsing.input._
+import scala.util.parsing.combinator._
+import scala.util.parsing.combinator.syntactical.TokenParsers
 
 trait SExpTokens extends Tokens {
   trait SExpToken extends Token with Positional
@@ -195,7 +197,7 @@ class SExpLexer extends Lexical with SExpTokens {
 
 object SExpParser extends TokenParsers {
   type Tokens = SExpTokens
-  override val lexical = new SExpLexer
+  override val lexical: SExpLexer = new SExpLexer
   import lexical._
 
   def bool: Parser[Value] = elem("boolean", _.isInstanceOf[TBoolean]) ^^ { case TBoolean(b) =>
@@ -277,7 +279,7 @@ object SExpParser extends TokenParsers {
   def exp(tag: PTag): Parser[SExp] = value(tag) | identifier(tag) | list(tag) | quoted(tag) | quasiquoted(tag) | unquoted(tag) | unquotedSplicing(tag)
   def expList(tag: PTag): Parser[List[SExp]] = rep1(exp(tag))
 
-  def parse(s: String, tag: PTag = noTag): List[SExp] = expList(tag)(new lexical.Scanner(s)) match {
+  def parse(s: String, tag: PTag = noTag): List[SExp] = expList(tag)(new Scanner(s)) match {
     case Success(res, next) if next.atEnd => res
     case Success(res, next) if !next.atEnd =>
       throw new Exception(
@@ -293,7 +295,7 @@ object SExpParser extends TokenParsers {
    * - doesn't require having reached the end of the reader after parsing
    * - can use any reader as input (instead of reading a full string from the beginning)
    */
-  def parseIn(s: Reader[Char], tag: PTag = noTag): (SExp, Int) = exp(tag)(new lexical.Scanner(s)) match {
+  def parseIn(s: Reader[Char], tag: PTag = noTag): (SExp, Int) = exp(tag)(new Scanner(s)) match {
     case Success(res, next) => (res, next.offset)
     case failure: NoSuccess => throw new Exception(s"cannot parse expression: $failure")
   }

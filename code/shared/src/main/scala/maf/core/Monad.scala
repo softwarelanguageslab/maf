@@ -18,6 +18,7 @@ object Monad {
     def map[Y](f: X => Y): M[Y] = Monad[M].map(self)(f)
     def flatMap[Y](f: X => M[Y]): M[Y] = Monad[M].flatMap(self)(f)
     def >>=[Y](f: X => M[Y]): M[Y] = flatMap(f)
+    def >>>[Y](m: => M[Y]): M[Y] = flatMap(_ => m)
   }
   // some common monad operations on iterables
   implicit class MonadIterableOps[X](xs: Iterable[X]) {
@@ -29,9 +30,9 @@ object Monad {
           rst <- r.mapM(f)
         } yield fx :: rst
     }
-    def mapM_[M[_]: Monad](f: X => M[_]): M[Unit] = xs match {
+    def mapM_[M[_]: Monad, Y](f: X => M[Y]): M[Unit] = xs match {
       case Nil    => Monad[M].unit(())
-      case x :: r => f(x) >>= { _ => r.mapM_(f) }
+      case x :: r => f(x) >>> { r.mapM_(f) }
     }
     def foldLeftM[M[_]: Monad, Y](acc: Y)(f: (Y, X) => M[Y]): M[Y] = xs match {
       case Nil    => Monad[M].unit(acc)

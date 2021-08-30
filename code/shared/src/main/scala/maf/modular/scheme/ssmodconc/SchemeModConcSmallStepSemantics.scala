@@ -33,10 +33,7 @@ case class ThreadComponent[Ctx](
 
 /** Provides a small-step ModConc semantics for a concurrent Scheme with threads. Additionally supported primitives (upon R5RS): fork, join. */
 trait SmallStepModConcSemantics
-    extends ModAnalysis[SchemeExp]
-       with GlobalStore[SchemeExp]
-       with ReturnValue[SchemeExp]
-       with SchemeSetup
+    extends SchemeSetup
        with ContextSensitiveComponents[SchemeExp] {
 
   type Env = Environment[Addr]
@@ -82,7 +79,7 @@ trait SmallStepModConcSemantics
   }
   def context(cmp: Component): Option[ComponentContext] = view(cmp) match {
     case MainComponent              => None
-    case ThreadComponent(_, _, ctx) => Some(ctx)
+    case ThreadComponent(_, _, _)   => Some(())
   }
 
   //XXXXXXXXXXXXXXXXXXXXXXXXXX//

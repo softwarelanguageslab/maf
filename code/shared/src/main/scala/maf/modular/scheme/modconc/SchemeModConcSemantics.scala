@@ -91,7 +91,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiv
       extends ModAnalysis[SchemeExp](body(intra.component))
          with BaseSchemeModFSemantics
          with BigStepModFSemantics
-         with StandardSchemeModFComponents {
+         with StandardSchemeModFComponents { modf =>
     // SCHEME ENVIRONMENT SETUP
     lazy val baseEnv = env(intra.component)
     // SCHEME LATTICE SETUP
@@ -106,7 +106,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiv
     override def store = intra.store
     override def store_=(s: Map[Addr, Value]) = intra.store = s
     // SYNCING DEPENDENCIES
-    override def register(target: Component, dep: Dependency) = {
+    override def register(target: modf.Component, dep: Dependency) = {
       super.register(target, dep)
       intra.register(dep)
     }
@@ -115,8 +115,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiv
       intra.trigger(dep)
     }
     // MODF INTRA-ANALYSIS EXTENDED WITH SUPPORT FOR THREADS
-    def intraAnalysis(cmp: Component) = new InnerModFIntra(cmp)
-    class InnerModFIntra(cmp: Component) extends IntraAnalysis(cmp) with BigStepModFIntra { modf =>
+    def intraAnalysis(cmp: modf.Component) = new InnerModFIntra(cmp)
+    class InnerModFIntra(cmp: modf.Component) extends IntraAnalysis(cmp) with BigStepModFIntra { modf =>
       var T: Set[inter.Component] = Set.empty
       def spawnThread(t: inter.Component) = T += t
       def readThreadResult(t: inter.Component) = readAddr(inter.returnAddr(t))
@@ -167,7 +167,7 @@ abstract class SimpleSchemeModConcAnalysis(prg: SchemeExp)
 class MyModConcAnalysis1(prg: SchemeExp)
     extends SimpleSchemeModConcAnalysis(prg)
        with SchemeModConcStandardSensitivity
-       with SchemeConstantPropagationDomain
+       with ModularSchemeDomain(SchemeConstantPropagationDomain)
        with LIFOWorklistAlgorithm[SchemeExp] {
   override def modFAnalysis(intra: SchemeModConcIntra) = new ModFAnalysis(intra)
   class ModFAnalysis(intra: SchemeModConcIntra) extends InnerModFAnalysis(intra) with SchemeModFNoSensitivity with RandomWorklistAlgorithm[SchemeExp]

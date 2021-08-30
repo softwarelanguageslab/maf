@@ -17,7 +17,7 @@ trait AdaptiveSchemeModF extends SchemeModFSoundnessTests { outer =>
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity
       with AdaptiveKCFA
-      with SchemeConstantPropagationDomain
+      with ModularSchemeDomain(SchemeConstantPropagationDomain)
       with FIFOWorklistAlgorithm[SchemeExp]
 }
 

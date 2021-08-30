@@ -12,7 +12,7 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
   def name = "MODF LOCAL (context-insensitive)"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
-      with SchemeConstantPropagationDomain
+      with ModularSchemeDomain(SchemeConstantPropagationDomain)
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
@@ -41,7 +41,7 @@ class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoun
   def name = "MODF LOCAL (call-site sensitive)"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
-      with SchemeConstantPropagationDomain
+      with ModularSchemeDomain(SchemeConstantPropagationDomain)
       with SchemeModFLocalCallSiteSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults {

@@ -126,10 +126,10 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
     out.writeObject(this)
     out.close()
   }
-
+  
   def init() =
     visited = visited + initialComponent
-
+        
   init()
 }
 

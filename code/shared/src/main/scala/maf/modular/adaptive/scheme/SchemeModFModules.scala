@@ -1,5 +1,6 @@
 package maf.modular.adaptive.scheme
 
+import maf.core._
 import maf.modular.scheme.modf._
 import maf.language.scheme._
 import maf.modular.scheme.modf.SchemeModFComponent._
@@ -7,7 +8,7 @@ import maf.modular.scheme.ModularSchemeDomain
 
 trait SchemeModFModules extends BaseSchemeModFSemantics with ModularSchemeDomain {
 
-  import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
+  lazy val lat = modularLatticeWrapper.modularLattice.schemeLattice
 
   trait SchemeModule
   case object MainModule extends SchemeModule {
@@ -28,5 +29,5 @@ trait SchemeModFModules extends BaseSchemeModFSemantics with ModularSchemeDomain
     case _            => throw new Exception("Should not happen!")
   }
 
-  def module(clo: lat.Closure): LambdaModule = LambdaModule(clo._1)
+  def module(clo: (SchemeLambdaExp, Environment[Addr])): LambdaModule = LambdaModule(clo._1)
 }

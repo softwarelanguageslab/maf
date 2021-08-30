@@ -22,7 +22,7 @@ object ParallelModFAnalyses {
     with CallDepthFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
-    with SchemeConstantPropagationDomain {
+    with ModularSchemeDomain(SchemeConstantPropagationDomain) {
 
     override def toString() = s"call-depth-first (n = $n ; k = $kcfa)"
     val k = kcfa
@@ -40,7 +40,7 @@ object ParallelModFAnalyses {
     with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
-    with SchemeConstantPropagationDomain {
+    with ModularSchemeDomain(SchemeConstantPropagationDomain) {
 
     override def toString() = s"least-visited-first (n = $n ; k = $kcfa)"
     val k = kcfa
@@ -59,7 +59,7 @@ object ParallelModFAnalyses {
     with MostVisitedFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
-    with SchemeConstantPropagationDomain {
+    with ModularSchemeDomain(SchemeConstantPropagationDomain) {
 
     override def toString() = s"most-visited-first (n = $n ; k = $kcfa)"
     val k = kcfa
@@ -78,7 +78,7 @@ object ParallelModFAnalyses {
     with MostVisitedFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
-    with SchemeConstantPropagationDomain {
+    with ModularSchemeDomain(SchemeConstantPropagationDomain) {
 
     override def toString() = s"deep-expressions-first (n = $n ; k = $kcfa)"
     val k = kcfa
@@ -97,7 +97,7 @@ object ParallelModFAnalyses {
     with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
-    with SchemeConstantPropagationDomain {
+    with ModularSchemeDomain(SchemeConstantPropagationDomain) {
 
     override def toString() = s"deep-expressions-first (n = $n ; k = $kcfa)"
     val k = kcfa
@@ -116,7 +116,7 @@ object ParallelModFAnalyses {
     with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
-    with SchemeConstantPropagationDomain {
+    with ModularSchemeDomain(SchemeConstantPropagationDomain) {
 
     override def toString() = s"call-depth-first (n = $n ; k = $kcfa)"
     val k = kcfa
@@ -135,7 +135,7 @@ object ParallelModFAnalyses {
     with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
-    with SchemeConstantPropagationDomain {
+    with ModularSchemeDomain(SchemeConstantPropagationDomain) {
 
     override def toString() = s"least-dependencies-first (n = $n ; k = $kcfa)"
     val k = kcfa
@@ -154,7 +154,7 @@ object ParallelModFAnalyses {
     with BiggerEnvironmentFirstWorklistAlgorithm.ModF
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
-    with SchemeConstantPropagationDomain {
+    with ModularSchemeDomain(SchemeConstantPropagationDomain) {
 
     override def toString() = s"bigger-env-first (n = $n ; k = $kcfa)"
     val k = kcfa
@@ -173,7 +173,7 @@ object ParallelModFAnalyses {
     with SmallerEnvironmentFirstWorklistAlgorithm.ModF
     with ParallelWorklistAlgorithm[SchemeExp]
     with SchemeModFKCallSiteSensitivity
-    with SchemeConstantPropagationDomain {
+    with ModularSchemeDomain(SchemeConstantPropagationDomain) {
 
     override def toString() = s"smaller-env-first (n = $n ; k = $kcfa)"
     val k = kcfa

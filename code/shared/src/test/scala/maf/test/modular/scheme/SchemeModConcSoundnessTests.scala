@@ -27,7 +27,7 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
   def name = "ModConc + big-step ModF (parallel n = 4)"
   def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program)
     with SchemeModConcStandardSensitivity
-    with SchemeConstantPropagationDomain
+    with ModularSchemeDomain(SchemeConstantPropagationDomain)
     with CallDepthFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp] {
     override def workers: Int = 4
@@ -75,7 +75,7 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
   def name = "small-step ModConc"
   def analysis(
       program: SchemeExp
-    ): Analysis = new ModAnalysis(program) with KKallocModConc with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] {
+    ): Analysis = new ModAnalysis(program) with KKallocModConc with ModularSchemeDomain(SchemeConstantPropagationDomain) with LIFOWorklistAlgorithm[SchemeExp] {
     val k = 1
     override def intraAnalysis(component: SmallStepModConcComponent) = new IntraAnalysis(component) with SmallStepIntra with KCFAIntra
   }

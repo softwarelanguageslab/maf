@@ -44,7 +44,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 
   def analysis(text: SchemeExp) =
     // Not really clean, we only want a proper ConstantPropagationLattice definition
-    new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    new SimpleSchemeModFAnalysis(text) with ModularSchemeDomain(SchemeConstantPropagationDomain) with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 
   override def testExpr(program: String, answer: Any): Unit = {
     val text = SchemeParser.parse(program)
@@ -78,7 +78,7 @@ class SchemeCPSInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 
   def analysis(text: SchemeExp) =
     // Not really clean, we only want a proper ConstantPropagationLattice definition
-    new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    new SimpleSchemeModFAnalysis(text) with ModularSchemeDomain(SchemeConstantPropagationDomain) with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 
   override def testExpr(program: String, answer: Any): Unit = {
     val text = SchemeParser.parse(program)
@@ -107,17 +107,17 @@ class SchemeCPSInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 class ConstantPropagationBigStepModFR5RSCorrectnessTests extends SchemeR5RSTests {
   def analysis(
       text: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    ) = new SimpleSchemeModFAnalysis(text) with ModularSchemeDomain(SchemeConstantPropagationDomain) with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 class PowersetBigStepModFR5RSCorrectnessTests extends SchemeR5RSTests {
   def analysis(
       text: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(text) with SchemePowersetDomain with SchemeModFFullArgumentSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    ) = new SimpleSchemeModFAnalysis(text) with ModularSchemeDomain(SchemePowersetDomain) with SchemeModFFullArgumentSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 class TypeBigStepModFR5RSCorrectnessTests extends SchemeR5RSTests {
   def analysis(
       text: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(text) with SchemeTypeDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    ) = new SimpleSchemeModFAnalysis(text) with ModularSchemeDomain(SchemeTypeDomain) with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 }

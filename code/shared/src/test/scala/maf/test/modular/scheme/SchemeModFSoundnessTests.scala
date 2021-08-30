@@ -16,7 +16,7 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests {
   def name = "big-step semantics"
   def analysis(
       program: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(program) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    ) = new SimpleSchemeModFAnalysis(program) with ModularSchemeDomain(SchemeConstantPropagationDomain) with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 }
 
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
@@ -25,7 +25,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
     with SchemeModFSemantics
     with SmallStepModFSemantics
     with StandardSchemeModFComponents
-    with SchemeConstantPropagationDomain
+    with ModularSchemeDomain(SchemeConstantPropagationDomain)
     with SchemeModFNoSensitivity
     with LIFOWorklistAlgorithm[SchemeExp] {
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with SmallStepIntra
@@ -35,7 +35,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests {
 trait ParallelSchemeModF extends SchemeModFSoundnessTests {
   def name = "parallel analysis (n = 8)"
   def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
-    with SchemeConstantPropagationDomain
+    with ModularSchemeDomain(SchemeConstantPropagationDomain)
     with SchemeModFNoSensitivity
     with CallDepthFirstWorklistAlgorithm[SchemeExp]
     with ParallelWorklistAlgorithm[SchemeExp] {

@@ -10,7 +10,7 @@ import maf.util.Writer
 import scala.concurrent.duration._
 
 abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]
-    extends PrecisionBenchmarks {
+    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb] {
 
   // the precision comparison is parameterized by:
   // - the analyses to compare in terms of precision

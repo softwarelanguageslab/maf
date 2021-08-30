@@ -43,7 +43,7 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable {
 object Lattice {
   def apply[L: Lattice]: Lattice[L] = implicitly
 
-  implicit def SetLattice[A: Show] = new Lattice[Set[A]] {
+  implicit def setLattice[A: Show]: Lattice[Set[A]] = new Lattice[Set[A]] {
     def show(x: Set[A]): String = "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
     def top = throw LatticeTopUndefined
     def bottom: Set[A] = Set.empty
