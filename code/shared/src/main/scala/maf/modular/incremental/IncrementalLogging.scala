@@ -108,7 +108,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   // Avoids logging the store twice from `updateAnalysis`.
   var logEnd = true
 
-  override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+  override def run(timeout: Timeout.T): Unit = {
     super.analyzeWithTimeout(timeout)
     if (logEnd) {
       logger.logU("\n\n" + tableToString())

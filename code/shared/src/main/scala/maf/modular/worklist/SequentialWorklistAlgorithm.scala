@@ -35,7 +35,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
   }
 
   // step until worklist is empty or timeout is reached
-  def analyzeWithTimeout(timeout: Timeout.T): Unit =
+  def run(timeout: Timeout.T): Unit =
     while (!finished && !timeout.reached)
       step(timeout)
 }
@@ -91,7 +91,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
   }
 
   // step until worklist is empty or timeout is reached
-  def analyzeWithTimeout(timeout: Timeout.T): Unit =
+  def run(timeout: Timeout.T): Unit =
     while (!finished && !timeout.reached)
       step(timeout)
 }
