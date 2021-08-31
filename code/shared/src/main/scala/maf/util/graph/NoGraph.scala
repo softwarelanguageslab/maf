@@ -4,7 +4,7 @@ package maf.util.graph
 class NoGraph[N <: GraphElement, E <: GraphElement] {
   case class G()
   object G {
-    implicit val typeclass = new Graph[G, N, E] {
+    implicit val typeclass: Graph[G, N, E] = new Graph[G, N, E] {
       def empty = G()
       def addNode(g: G, node: N) = g
       def addEdge(

@@ -59,8 +59,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
       List(
         `modulo`,
         `*`,
-        `+`,
-        `-`,
+        SchemePlus,
+        SchemeMinus,
         `/`,
         `acos`,
         `asin`,
@@ -262,17 +262,17 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     case object `symbol?` extends SchemePrimOp1("symbol?", SchemeOp.IsSymbol)
     case object `tan` extends SchemePrimOp1("tan", SchemeOp.Tan)
 
-    case object `+` extends SchemePrimVarArg("+") {
+    case object SchemePlus extends SchemePrimVarArg("+") {
       def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] = call(vs)
       def call[M[_]: PrimM](vs: List[V]): M[V] =
         vs.foldLeftM(number(0))((acc, num) => binaryOp(SchemeOp.Plus)(acc, num))
     }
 
-    case object `-` extends SchemePrimVarArg("-") {
+    case object SchemeMinus extends SchemePrimVarArg("-") {
       def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match {
         case Nil      => PrimM[M].fail(PrimitiveVariadicArityError("-", 1, 0))
         case x :: Nil => binaryOp(SchemeOp.Minus)(number(0), x)
-        case x :: rst => `+`.call(rst) >>= { (binaryOp(SchemeOp.Minus)(x, _)) }
+        case x :: rst => SchemePlus.call(rst) >>= { (binaryOp(SchemeOp.Minus)(x, _)) }
       }
     }
 

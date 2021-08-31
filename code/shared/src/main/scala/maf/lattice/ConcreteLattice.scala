@@ -7,7 +7,9 @@ import maf.util.datastructures.SmartUnion._
 import NumOps._
 
 class ConcreteLattice {
+
   sealed trait L[+X] {
+
     def foldMap[Y: Lattice](f: X => Y): Y = this match {
       case Top => Lattice[Y].top
       case Values(content) =>
@@ -22,8 +24,10 @@ class ConcreteLattice {
       case _                                  => body
     }
   }
+
+
   case object Top extends L[Nothing]
-  case class Values[X](content: Set[X]) extends L[X]
+  case class Values[X](values: Set[X]) extends L[X]
 
   def makeValues[X](contents: Set[X]): L[X] = Values(contents)
 
@@ -40,7 +44,7 @@ class ConcreteLattice {
       case Values(content1) =>
         y match {
           case Top              => Top
-          case Values(content2) => makeValues(sunion(content1, content2))
+          case Values(content2) => makeValues(sunion(content1.toSet[A], content2.toSet[A]))
         }
     }
     def subsumes(x: L[A], y: => L[A]): Boolean = x match {
@@ -48,7 +52,7 @@ class ConcreteLattice {
       case Values(content1) =>
         y match {
           case Top              => false
-          case Values(content2) => content2.subsetOf(content1)
+          case Values(content2) => content2.toSet[A].subsetOf(content1.toSet[A])
         }
     }
     def eql[B2: BoolLattice](x: L[A], y: L[A]): B2 = y.guardBot {

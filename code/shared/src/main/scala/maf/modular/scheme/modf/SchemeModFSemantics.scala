@@ -36,7 +36,7 @@ trait BaseSchemeModFSemantics
     case c: Call[_] => SchemeBody(c.lambda.body)
   }
 
-  type ComponentContent = Option[lattice.Closure]
+  type ComponentContent = Option[(SchemeLambdaExp, Environment[Address])]
   def content(cmp: Component) = view(cmp) match {
     case Main       => None
     case c: Call[_] => Some(c.clo)
@@ -51,7 +51,7 @@ trait BaseSchemeModFSemantics
 
   /** Creates a new context given a closure, a list of argument values and the position of the call site. */
   def allocCtx(
-      clo: lattice.Closure,
+      clo: (SchemeLambdaExp, Environment[Address]),
       args: List[Value],
       call: Position,
       caller: Component
@@ -206,7 +206,7 @@ trait BaseSchemeModFSemantics
     protected val interpreterBridge: SchemeInterpreterBridge[Value, Addr] = new SchemeInterpreterBridge[Value, Addr] {
       def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
       def callcc(
-          clo: lattice.Closure,
+          clo: (SchemeLambdaExp, Environment[Address]),
           fpos: Position
         ): Value = modf.callcc(clo, fpos)
       def currentThread = throw new Exception("Concurrency not available in ModF")
@@ -248,7 +248,7 @@ trait BaseSchemeModFSemantics
       lattice.closure((lambda, env.restrictTo(lambda.fv)))
 
     protected def callcc(
-        closure: lattice.Closure,
+        closure: (SchemeLambdaExp, Environment[Address]),
         fpos: Position
       ): Value = {
       val ctx = allocCtx(closure, Nil, fpos, component)
@@ -273,7 +273,7 @@ trait BaseSchemeModFSemantics
   }
 }
 
-trait SchemeModFSemantics extends BaseSchemeModFSemantics with StandardSchemeModFAllocator with SchemeSetup {
+trait SchemeModFSemantics extends SchemeSetup with BaseSchemeModFSemantics with StandardSchemeModFAllocator {
   def baseEnv = initialEnv
 }
 

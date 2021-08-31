@@ -53,7 +53,7 @@ object IncrementalVisualisationSetup extends VisualisationSetup {
   override def analysisCommandHandler(anl: Analysis): PartialFunction[String, Unit] = {
     if (initialised)
       super.analysisCommandHandler(anl)
-    else { (_: String) =>
+    else { case (_: String) =>
       println("Setup in progress, cannot step analysis.")
     }
   }

@@ -38,7 +38,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
   // useful shorthands
   lazy val intLat = implicitly[IntLattice[I]]
   lazy val blnLat = implicitly[BoolLattice[B]]
-  implicit lazy val valLat = modularLattice.schemeLattice
+  implicit val valLat: SchemeLattice[modularLattice.L, SimpleAddr] = modularLattice.schemeLattice
 
   // useful helpers (TODO: some of these probably already exist somewhere in ScalaCheck)
   def genTuple[X, Y](genX: Gen[X], genY: Gen[Y]): Gen[(X, Y)] =
@@ -60,7 +60,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
   // we'll use the "real" primitives
   def primitives = new SchemeLatticePrimitives[modularLattice.L, SimpleAddr]
   // the modular lattice that is used
-  lazy val modularLattice: ModularSchemeLattice[SimpleAddr, S, B, I, R, C, Sym] = new ModularSchemeLattice
+  final lazy val modularLattice: ModularSchemeLattice[SimpleAddr, S, B, I, R, C, Sym] = new ModularSchemeLattice
 
   type L = modularLattice.L
   type V = modularLattice.Value

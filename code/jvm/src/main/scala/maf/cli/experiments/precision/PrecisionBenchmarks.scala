@@ -20,6 +20,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     }
   }
 
+  implicit def cpAnalysis(anl: ModularSchemeDomain): Analysis = anl 
+
   sealed trait BaseAddr extends Address { def printable = true; def idn: Identity }
   case class VarAddr(vrb: Identifier) extends BaseAddr { def idn: Identity = vrb.idn; override def toString = s"<variable $vrb>" }
   case class PtrAddr(exp: Expression) extends BaseAddr { def idn = exp.idn; override def toString = s"<pointer $exp>" }

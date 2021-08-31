@@ -51,14 +51,14 @@ class WebVisualisationIncremental(
                   (node: Node) =>
                     node match {
                       case node: CmpNode => deletedComponent(node.component);
-                      case _: Node       => false
+                      case _             => false
                     }
     )
     nodes.classed(__CSS_MAIN_NODE__,
                   (node: Node) =>
                     node match {
                       case node: CmpNode => node.component == analysis.initialComponent;
-                      case _: Node       => false
+                      case _             => false
                     }
     )
   }

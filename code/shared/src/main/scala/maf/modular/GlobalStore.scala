@@ -19,7 +19,8 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
   type Addr = Address
 
   // parameterized by some store that can be accessed and modified
-  var store: Map[Addr, Value]
+  def store: Map[Addr, Value]
+  def store_=(store: Map[Addr, Value]): Unit
 
   def writeAddr(addr: Addr, value: Value): Boolean =
     updateAddr(inter.store, addr, value)

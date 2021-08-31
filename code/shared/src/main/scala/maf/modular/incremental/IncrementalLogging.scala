@@ -98,17 +98,17 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
          |  - component deletions: ${deletedC.size}
          |      * distinct components deleted: ${deletedC.toSet.size}
          |      * deleted components in final result: ${deletedC.toSet.count(visited)}
-         |      * ${deletedC.toSet[Component].map[(Component, Int)]({ c: Component => (c, deletedC.count(_ == c)) }).toString()}
+         |      * ${deletedC.toSet[Component].map[(Component, Int)]({ (c: Component) => (c, deletedC.count(_ == c)) }).toString()}
          |  - deleted Addresses:  ${deletedA.size} (might have been recreated later)
          |      * distinct addresses: ${deletedA.toSet.size}
          |      * deleted addresses in final store: ${deletedA.toSet.count(store.keySet)}
-         |      * ${deletedA.toSet[Addr].map[(Addr, Int)]({ a: Addr => (a, deletedA.count(_ == a)) }).toString()}
+         |      * ${deletedA.toSet[Addr].map[(Addr, Int)]({ (a: Addr) => (a, deletedA.count(_ == a)) }).toString()}
          |##########################################""".stripMargin
 
   // Avoids logging the store twice from `updateAnalysis`.
   var logEnd = true
 
-  override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+  override def run(timeout: Timeout.T): Unit = {
     super.analyzeWithTimeout(timeout)
     if (logEnd) {
       logger.logU("\n\n" + tableToString())

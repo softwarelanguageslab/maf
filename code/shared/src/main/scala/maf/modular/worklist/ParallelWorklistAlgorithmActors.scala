@@ -149,7 +149,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
     val infDuration = scala.concurrent.duration.Duration(10, TimeUnit.DAYS) // TODO: Akka doesn't seem to support infinite timeouts?
     implicit val infTimeout = akka.util.Timeout(infDuration)
     implicit val scheduler = actorSystem
-    val future = actorSystem.ask(replyTo => Master.Start(timeout, replyTo))
+    val future = actorSystem.ask[Boolean](replyTo => Master.Start(timeout, replyTo))
     if (Await.result(future, infDuration)) {
       done = true
       actorSystem.terminate()

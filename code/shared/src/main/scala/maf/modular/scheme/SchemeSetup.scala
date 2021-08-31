@@ -37,10 +37,13 @@ trait SchemeSetup
     val preludedProgram = SchemePrelude.addPrelude(originalProgram)
     CSchemeUndefiner.undefine(List(preludedProgram))
   }
-  lazy val initialBds: Iterable[(String, Addr, Value)] = primitives.allPrimitives.map { case (name, p) =>
+  final lazy val initialBds: Iterable[(String, Addr, Value)] = primitives.allPrimitives.map { case (name, p) =>
     (name, PrmAddr(name), lattice.primitive(p.name))
   }
-  lazy val initialEnv: Environment[Addr] = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
+  final lazy val initialEnv: Environment[Addr] = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
   // Set up initial environment and install the primitives in the global store.
-  initialBds.foreach(bnd => store += bnd._2 -> bnd._3)
+  override def init() = {
+    super.init()
+    initialBds.foreach(bnd => store += bnd._2 -> bnd._3)
+  }
 }
