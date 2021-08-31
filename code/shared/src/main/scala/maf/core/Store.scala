@@ -67,7 +67,7 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
   implicit val lattice: Lattice[V]
   // Elements of type S should support the following operations
   def value(s: S): V
-  def fresh(a: A, v: V): S
+  def fresh(v: V): S
   def extend(s: S, v: V): S
   def join(s1: S, s2: S): S
   // Lookup
@@ -76,7 +76,7 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
   def extend(a: A, v: V): This = extendOption(a, v).getOrElse(this)
   def extendOption(a: A, v: V): Option[This] = get(a) match {
     case None if lattice.isBottom(v) => None
-    case None                        => Some(bind(a, fresh(a, v)))
+    case None                        => Some(bind(a, fresh(v)))
     case Some(old) =>
       val updated = extend(old, v)
       if (updated == old) {
@@ -114,7 +114,7 @@ trait BasicStoreT[A <: Address, V] extends MapStore[A, V, V] { outer =>
   implicit val lattice: Lattice[V]
   // S = values
   def value(v: V): V = v
-  def fresh(a: A, v: V): V = v
+  def fresh(v: V): V = v
   def extend(v1: V, v2: V): V = lattice.join(v1, v2)
   def join(v1: V, v2: V): V = lattice.join(v1, v2)
   type DeltaStore = BasicDeltaStore
@@ -192,7 +192,7 @@ trait AbstractCounting[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
   // can do strong updates iff count == 1
   override def update(a: A, v: V): This = get(a) match {
     case None                            => throw new Exception("Trying to update an unused address")
-    case Some(s) if count(s) == CountOne => bind(a, fresh(a, v))
+    case Some(s) if count(s) == CountOne => bind(a, fresh(v))
     case _                               => extend(a, v)
   }
 
@@ -221,7 +221,7 @@ trait LocalStoreT[A <: Address, V]
   def value(s: (V, Set[A], AbstractCount)): V = s._1
   def refs(s: (V, Set[A], AbstractCount)): Set[A] = s._2
   def count(s: (V, Set[A], AbstractCount)): AbstractCount = s._3
-  def fresh(a: A, v: V) = (v, lattice.refs(v), countFor(a))
+  def fresh(v: V) = (v, lattice.refs(v), CountOne)
   def extend(s: (V, Set[A], AbstractCount), v: V) = {
     val newValue = lattice.join(s._1, v)
     if (newValue != s._1) {
@@ -233,11 +233,6 @@ trait LocalStoreT[A <: Address, V]
   }
   def join(s1: (V, Set[A], AbstractCount), s2: (V, Set[A], AbstractCount)) =
     (lattice.join(s1._1, s2._1), s1._2 ++ s2._2, s1._3.join(s2._3))
-  // TODO: parameterize this properly instead of hacking it in here
-  def countFor(a: A): AbstractCount = a match {
-    case _: VarAddr[_] | _: PtrAddr[_] | _: PrmAddr => CountOne
-    case _                                          => CountInf
-  }
   // delta store
   type DeltaStore = LocalDeltaStore
   def deltaStore = LocalDeltaStore(Map.empty, Set.empty)
