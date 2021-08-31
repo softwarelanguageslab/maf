@@ -29,7 +29,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
           res <- cond(vlu,
                       evalAndLoop(rst), //.map(v => addAddresses(v, getAddresses(vlu))),
                       unit(vlu)
-          ) // Make sure the annotations of all addresses are kept in the result.
+          ) // Make sure the annotations of all computed values are kept in the result.
         } yield res
     }
 
@@ -44,7 +44,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
       case exp :: rst =>
         for {
           vlu <- eval(exp)
-          res <- cond(vlu, unit(vlu), evalOr(rst)) //.map(v => addAddresses(v, getAddresses(vlu))))
+          res <- cond(vlu, unit(vlu), evalOrLoop(rst)) //.map(v => addAddresses(v, getAddresses(vlu))))
         } yield res
     }
   }
