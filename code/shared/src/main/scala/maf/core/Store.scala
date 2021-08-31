@@ -61,9 +61,8 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
   type This >: this.type <: MapStore[A, S, V] { type This = outer.This }
   // consists out of a mapping from addresses of type A to elements of type S
   val content: Map[A, S]
-  def update(content: Map[A, S]): This
   def get(a: A): Option[S] = content.get(a)
-  def empty = update(Map.empty)
+  def bind(adr: A, elm: S): This
   // Elements of type V should form a lattice
   implicit val lattice: Lattice[V]
   // Elements of type S should support the following operations
@@ -77,22 +76,21 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
   def extend(a: A, v: V): This = extendOption(a, v).getOrElse(this)
   def extendOption(a: A, v: V): Option[This] = get(a) match {
     case None if lattice.isBottom(v) => None
-    case None                        => Some(update(content + (a -> fresh(a, v))))
+    case None                        => Some(bind(a, fresh(a, v)))
     case Some(old) =>
       val updated = extend(old, v)
       if (updated == old) {
         None
       } else {
-        Some(update(content + (a -> updated)))
+        Some(bind(a, updated))
       }
   }
   // Join
-  def join(other: This): This = update(joinContent(other.content))
-  final protected def joinContent(other: Map[A, S]): Map[A, S] =
-    other.foldLeft(content) { case (acc, (a, s)) =>
+  def join(other: This): This = 
+    other.content.foldLeft(this: This) { case (acc, (a, s)) =>
       acc.get(a) match {
-        case None       => acc + (a -> s)
-        case Some(accS) => acc + (a -> join(accS, s))
+        case None       => acc.bind(a, s)
+        case Some(accS) => acc.bind(a, join(accS, s))
       }
     }
   // Delta store
@@ -103,7 +101,7 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
     def parent: MapStore[A, S, V] = outer
   }
   def integrate(delta: DeltaStore): This =
-    update(delta.content.foldLeft(content) { case (acc, (a, s)) => acc + (a -> s) })
+    delta.content.foldLeft(this: This) { case (acc, (a, s)) => acc.bind(a, s) }
 }
 
 //
@@ -123,13 +121,13 @@ trait BasicStoreT[A <: Address, V] extends MapStore[A, V, V] { outer =>
   def deltaStore = BasicDeltaStore(Map.empty)
   case class BasicDeltaStore(content: Map[A, V])(implicit val lattice: Lattice[V]) extends DeltaMapStore with BasicStoreT[A, V] {
     type This = outer.BasicDeltaStore
-    def update(content: Map[A, V]) = outer.BasicDeltaStore(content)
+    def bind(adr: A, vlu: V) = outer.BasicDeltaStore(content + (adr -> vlu))
   }
 }
 
 case class BasicStore[A <: Address, V](content: Map[A, V])(implicit val lattice: Lattice[V]) extends BasicStoreT[A, V] { outer =>
   type This = BasicStore[A, V]
-  def update(updated: Map[A, V]) = BasicStore(updated)
+  def bind(adr: A, vlu: V) = BasicStore(content + (adr -> vlu))
 }
 
 //
@@ -143,13 +141,15 @@ trait AbstractGC[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
   implicit override val lattice: LatticeWithAddrs[V, A]
   // need to be able to extract addresses at given address
   def refs(s: S): Set[A]
+  // need to be able to make an empty instance
+  def empty: This
   // stop-and-copy style GC
   def collect(roots: Set[A]): This =
-    scan(roots, Set.empty, Map.empty)
+    scan(roots, Set.empty, empty)
   @tailrec
-  private def scan(toMove: Set[A], moved: Set[A], current: Map[A, S]): This =
+  private def scan(toMove: Set[A], moved: Set[A], current: This): This =
     if (toMove.isEmpty) {
-      update(current)
+      current
     } else {
       val addr = toMove.head
       val rest = toMove.tail
@@ -160,9 +160,9 @@ trait AbstractGC[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
         scan(rest ++ newRefs, moved + addr, updated)
       }
     }
-  private def move(addr: A, to: Map[A, S]): (Map[A, S], Set[A]) = content.get(addr) match {
+  private def move(addr: A, to: This): (This, Set[A]) = content.get(addr) match {
     case None    => (to, Set.empty)
-    case Some(s) => (to + (addr -> s), refs(s))
+    case Some(s) => (to.bind(addr, s), refs(s))
   }
 }
 
@@ -192,7 +192,7 @@ trait AbstractCounting[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
   // can do strong updates iff count == 1
   override def update(a: A, v: V): This = get(a) match {
     case None                            => throw new Exception("Trying to update an unused address")
-    case Some(s) if count(s) == CountOne => update(content + (a -> fresh(a, v)))
+    case Some(s) if count(s) == CountOne => bind(a, fresh(a, v))
     case _                               => extend(a, v)
   }
 
@@ -245,7 +245,8 @@ trait LocalStoreT[A <: Address, V]
       extends DeltaMapStore
          with LocalStoreT[A, V] {
     type This = outer.LocalDeltaStore
-    def update(content: Map[A, (V, Set[A], AbstractCount)]) = outer.LocalDeltaStore(content, updates)
+    def empty = outer.LocalDeltaStore(Map.empty, Set.empty)
+    def bind(a: A, s: (V, Set[A], AbstractCount)) = outer.LocalDeltaStore(content + (a -> s), updates)
     // tracking updated bindings
     private def addUpdated(a: A) = this.copy(updates = updates + a)
     private def addUpdated(a: Iterable[A]) = this.copy(updates = updates ++ a)
@@ -278,7 +279,8 @@ trait LocalStoreT[A <: Address, V]
 case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A], AbstractCount)])(implicit val lattice: LatticeWithAddrs[V, A])
     extends LocalStoreT[A, V] {
   type This = LocalStore[A, V]
-  def update(content: Map[A, (V, Set[A], AbstractCount)]): LocalStore[A, V] = LocalStore(content)
+  def empty = LocalStore(Map.empty)
+  def bind(a: A, s: (V, Set[A], AbstractCount)): LocalStore[A, V] = LocalStore(content + (a -> s))
 }
 
 object LocalStore {
