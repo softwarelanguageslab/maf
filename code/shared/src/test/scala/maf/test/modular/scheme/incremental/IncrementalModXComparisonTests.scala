@@ -143,7 +143,7 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
     assert(i.store.size >= a.store.size, "The incrementally updated store is smaller than the store after a full reanalysis.")
     a.store.foreach { case (addr, av) =>
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
-      assert(a.lattice.subsumes(iv, av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
+      assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
     }
   }
 }
@@ -219,7 +219,7 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
     assert(i.store.size >= a.store.size, "The incrementally updated store is smaller than the store after a full reanalysis.")
     a.store.foreach { case (addr, av) =>
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
-      assert(a.lattice.subsumes(iv, av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
+      assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
     }
   }
 }

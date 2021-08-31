@@ -5,7 +5,7 @@ case class ReachableStatesConditionGraph[N <: GraphElement, E <: GraphElement](
   case class G(states: Set[N])
 
   object G {
-    implicit val typeclass = new Graph[G, N, E] {
+    implicit val typeclass: Graph[G, N, E] = new Graph[G, N, E] {
       def empty = new G(Set.empty)
       def addNode(g: G, node: N) =
         if (condition(node)) {

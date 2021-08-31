@@ -1,6 +1,8 @@
 package maf.modular.scheme.modf
 
+import maf.core._
 import maf.core.Position._
+import maf.language.scheme._
 
 // TODO: make allocCtx an abstract method of this trait
 trait SchemeModFSensitivity extends BaseSchemeModFSemantics
@@ -13,7 +15,7 @@ case object NoContext extends Serializable {
 trait SchemeModFNoSensitivity extends SchemeModFSensitivity {
   type ComponentContext = NoContext.type
   def allocCtx(
-      clo: lattice.Closure,
+      clo: (SchemeLambdaExp, Environment[Address]),
       args: List[Value],
       call: Position,
       caller: Component
@@ -27,7 +29,7 @@ case class ArgContext(values: List[_]) { //TODO: preserve type information
 trait SchemeModFFullArgumentSensitivity extends SchemeModFSensitivity {
   type ComponentContext = ArgContext
   def allocCtx(
-      clo: lattice.Closure,
+      clo: (SchemeLambdaExp, Environment[Address]),
       args: List[Value],
       call: Position,
       caller: Component
@@ -42,7 +44,7 @@ trait SchemeModFKCallSiteSensitivity extends SchemeModFSensitivity {
   val k: Int
   type ComponentContext = CallSiteContext
   def allocCtx(
-      clo: lattice.Closure,
+      clo: (SchemeLambdaExp, Environment[Address]),
       args: List[Value],
       call: Position,
       caller: Component
@@ -69,7 +71,7 @@ case class ArgCallSiteContext(
 trait SchemeModFFullArgumentCallSiteSensitivity extends SchemeModFSensitivity {
   type ComponentContext = ArgCallSiteContext
   def allocCtx(
-      clo: lattice.Closure,
+      clo: (SchemeLambdaExp, Environment[Address]),
       args: List[Value],
       call: Position,
       caller: Component
@@ -80,7 +82,7 @@ trait SchemeModFFullArgumentCallSiteSensitivity extends SchemeModFSensitivity {
 trait SchemeModFUserGuidedSensitivity1 extends SchemeModFSensitivity {
   type ComponentContext = Any
   def allocCtx(
-      clo: lattice.Closure,
+      clo: (SchemeLambdaExp, Environment[Address]),
       args: List[Value],
       call: Position,
       caller: Component

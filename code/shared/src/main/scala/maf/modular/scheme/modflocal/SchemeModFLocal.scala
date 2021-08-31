@@ -17,7 +17,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   type Cmp = Component
   type Dep = Dependency
   type Sto = LocalStore[Adr, Storable] // TODO: split the store?
-  type Dlt = Sto#DeltaStore
 
   //
   // INITIALISATION
@@ -73,11 +72,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   }
 
   def lookupV(sto: Sto, adr: Adr): Val = sto(adr).asInstanceOf[V].vlu
-  def extendV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.deltaStore.extend(adr, V(vlu))
-  def updateV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.deltaStore.update(adr, V(vlu))
+  def extendV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore = sto.deltaStore.extend(adr, V(vlu))
+  def updateV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore = sto.deltaStore.update(adr, V(vlu))
 
   def lookupE(sto: Sto, adr: Adr): Set[Env] = sto(adr).asInstanceOf[E].evs
-  def extendE(sto: Sto, adr: Adr, evs: Set[Env]): Dlt = sto.deltaStore.extend(adr, E(evs))
+  def extendE(sto: Sto, adr: Adr, evs: Set[Env]): sto.DeltaStore = sto.deltaStore.extend(adr, E(evs))
 
   //
   // COMPONENTS
@@ -86,14 +85,14 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   sealed trait Component extends Serializable {
     def exp: Exp
     def env: Env
-    def sto: Sto
-    def ctx: Ctx
+    val sto: Sto
+    val ctx: Ctx
   }
   case object MainComponent extends Component {
-    def exp = initialExp
-    def env = initialEnv
-    def sto = initialSto
-    def ctx = initialCtx
+    val exp = initialExp
+    val env = initialEnv
+    val sto = initialSto
+    val ctx = initialCtx
     override def toString = "main"
   }
   case class CallComponent(lam: Lam, ctx: Ctx, sto: Sto) extends Component {
@@ -113,7 +112,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   // RESULTS
   //
 
-  type Res = Map[Cmp, Set[(Val, Dlt)]]
+  type Res = Map[Cmp, Any] // Res is actually (cmp: Cmp) => Set[(Val, cmp.sto.DeltaStore)]
 
   var results: Res = Map.empty
   case class ResultDependency(cmp: Cmp) extends Dependency
@@ -138,7 +137,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   //
 
   // TODO: more type safety coming with path-dependent functions in Scala 3!
-  case class A[X](run: (Res, Ctx, Env, Sto) => (Set[(X, Dlt)], Set[Cmp], Set[Dep], Set[Dep]))
+  case class A[X](run: (res: Res, ctx: Ctx, env: Env, sto: Sto) => (Set[(X, sto.DeltaStore)], Set[Cmp], Set[Dep], Set[Dep]))
 
   implicit override val analysisM: AnalysisM[A] = new AnalysisM[A] {
     // MONAD
@@ -152,7 +151,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
       A { (res, ctx, env, sto) =>
         val (rs1, cs1, rd1, wd1) = m.run(res, ctx, env, sto)
-        rs1.foldLeft((Set[(Y, Dlt)](), cs1, rd1, wd1)) { case (acc, (x, d0: sto.DeltaStore @unchecked)) =>
+        rs1.foldLeft((Set[(Y, sto.DeltaStore)](), cs1, rd1, wd1)) { case (acc, (x, d0)) =>
           val (rs2, cs2, rd2, wd2) = f(x).run(res, ctx, env, sto.integrate(d0))
           val rs3 = rs2.map { case (x, d1) => (x, sto.compose(d1, d0)) }
           (acc._1 ++ rs3, acc._2 ++ cs2, acc._3 ++ rd2, acc._4 ++ wd2)
@@ -194,7 +193,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def call(lam: Lam, ctx: Ctx): A[Val] =
       A { (res, _, _, sto) =>
         val cmp = CallComponent(lam, ctx, sto)
-        val rss = res.getOrElse(cmp, Set.empty)
+        val rss = res.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, sto.DeltaStore)]]
         (rss, Set(cmp), Set(ResultDependency(cmp)), Set())
       }
   }
@@ -208,9 +207,9 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       val (res, cps, rds, wds) = eval(cmp.exp).run(results, cmp.ctx, cmp.env, cmp.sto)
-      val old = results.getOrElse(cmp, Set.empty)
+      val old = results.get(cmp)
       if (res != old) {
-        results += cmp -> res
+        results = results + (cmp -> res)
         trigger(ResultDependency(cmp))
       }
       cps.foreach(spawn)

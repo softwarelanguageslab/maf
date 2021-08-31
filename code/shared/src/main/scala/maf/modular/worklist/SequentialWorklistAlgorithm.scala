@@ -35,7 +35,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] 
   }
 
   // step until worklist is empty or timeout is reached
-  def analyzeWithTimeout(timeout: Timeout.T): Unit =
+  def run(timeout: Timeout.T): Unit =
     while (!finished && !timeout.reached)
       step(timeout)
 }
@@ -58,7 +58,7 @@ trait RandomWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgo
 // TODO: use an immutable priority queue, or reuse SequentialWorklistAlgorithm differently here
 trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] {
   // choose the priority ordering of components
-  implicit val ordering: Ordering[Component]
+  implicit lazy val ordering: Ordering[Component]
   // worklist is a priority queue
   var worklistSet: Set[Component] = Set(initialComponent)
   lazy val worklist: PriorityQueue[Component] = PriorityQueue(initialComponent)
@@ -91,7 +91,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
   }
 
   // step until worklist is empty or timeout is reached
-  def analyzeWithTimeout(timeout: Timeout.T): Unit =
+  def run(timeout: Timeout.T): Unit =
     while (!finished && !timeout.reached)
       step(timeout)
 }

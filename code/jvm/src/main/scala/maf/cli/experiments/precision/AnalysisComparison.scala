@@ -10,7 +10,7 @@ import maf.util.benchmarks._
 import scala.concurrent.duration._
 
 abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]
-    extends PrecisionBenchmarks {
+    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb] {
 
   // the precision comparison is parameterized by:
   // - the base analysis (= lowest precision) to compare to
@@ -66,7 +66,7 @@ object AnalysisComparison1
   def otherAnalyses() =
     // run some regular k-cfa analyses
     List(0, 1, 2, 3).map { k =>
-      (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
+      ((e: SchemeExp) => SchemeAnalyses.kCFAAnalysis(e, k): Analysis, s"k-cfa (k = $k)")
     } ++
       // run some adaptive analyses
       List.empty

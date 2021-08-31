@@ -16,7 +16,7 @@ abstract class AdaptiveAnalysisComparison[
     Chr: CharLattice,
     Str: StringLattice,
     Smb: SymbolLattice]
-    extends PrecisionBenchmarks {
+    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb] {
 
   // the precision comparison is parameterized by:
   // - a timeout and number of concrete runs

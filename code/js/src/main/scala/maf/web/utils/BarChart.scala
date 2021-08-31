@@ -128,7 +128,7 @@ abstract class BarChart(
     all
       .select("rect")
       .attr("width", xScale.bandwidth())
-      .attr("height", (d: Data) => realHeight - yScale(value(d)))
+      .attr("height", (d: Data) => realHeight.asInstanceOf[Double] - yScale(value(d)))
     selection.exit().remove()
   }
 

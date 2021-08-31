@@ -65,12 +65,12 @@ class ConcreteGenerator[T](g: Gen[T])(implicit lat: Lattice[Concrete.L[T]]) exte
   def any = Gen.oneOf(topgen, isetgen.gen.map(x => Concrete.Values(x)))
   def le(l: Concrete.L[T]) = l match {
     case Concrete.Top             => any
-    case Concrete.Values(content) => isetgen.genSubset(content).map(x => Concrete.Values(x))
+    case Concrete.Values(content) => isetgen.genSubset(content.toSet[T]).map(x => Concrete.Values(x))
   }
   override val shrink = Shrink {
     case Concrete.Top => Stream.empty
     case Concrete.Values(vs) =>
-      Shrink.shrinkContainer[Set, T].shrink(vs).map(Concrete.Values(_))
+      Shrink.shrinkContainer[Set, T].shrink(vs.toSet[T]).map(Concrete.Values(_))
   }
 }
 

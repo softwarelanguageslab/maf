@@ -13,8 +13,6 @@ import maf.util.datastructures.MultiSet
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
   this: AdaptiveContextSensitivityPolicy =>
 
-  import modularLatticeWrapper.modularLattice.{schemeLattice => lat}
-
   // disable warning messages and debug logging by default (can be override for custom logging)
   protected def warn(message: => String): Unit = ()
   protected def debug(message: => String): Unit = ()
@@ -213,13 +211,13 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     reduceContextsForModule(getAddrModule(addrs.head).asInstanceOf[LambdaModule])
   }
 
-  private def reduceClosures(cls: Set[lat.Closure]) = {
+  private def reduceClosures(cls: Set[(SchemeLambdaExp, Environment[Addr])]) = {
     val groupByFunction = cls.groupBy[SchemeLambdaExp](_._1)
-    val selected = selectLargest[(SchemeLambdaExp, Set[lat.Closure])](groupByFunction, _._2.size)
+    val selected = selectLargest[(SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])])](groupByFunction, _._2.size)
     selected.foreach { case (fn, closures) => reduceClosuresForFunction(fn, closures) }
   }
 
-  private def reduceClosuresForFunction(fn: SchemeLambdaExp, closures: Set[lat.Closure]) = {
+  private def reduceClosuresForFunction(fn: SchemeLambdaExp, closures: Set[(SchemeLambdaExp, Environment[Addr])]) = {
     //debug(s"Reducing ${closures.size} closures")
     reduceContextsForModule(getParentModule(closures.head).asInstanceOf[LambdaModule])
   }
@@ -274,11 +272,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics {
     case None          => MainModule
     case Some((_, lm)) => lm
   }
-  def getParentModule(clo: lat.Closure): SchemeModule =
+  def getParentModule(clo: (SchemeLambdaExp, Environment[Addr])): SchemeModule =
     clo._2.asInstanceOf[WrappedEnv[Addr, SchemeModule]].data
   private def sizeOfValue(value: Value): Int =
     value.vs.map(sizeOfV).sum
-  private def sizeOfV(v: modularLatticeWrapper.modularLattice.Value): Int = v match {
+  private def sizeOfV(v: ValueElement): Int = v match {
     case modularLatticeWrapper.modularLattice.Pointer(ptrs)    => ptrs.size
     case modularLatticeWrapper.modularLattice.Clo(closures)    => closures.size
     case modularLatticeWrapper.modularLattice.Cons(car, cdr)   => sizeOfValue(car) + sizeOfValue(cdr)

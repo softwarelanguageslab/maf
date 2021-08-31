@@ -7,7 +7,7 @@ import maf.language.scheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.util._
 
-class TypeSchemeLattice[A <: Address, K] {
+class TypeSchemeLattice[A <: Address] {
 
   case class L(
       str: Boolean = false,
@@ -21,7 +21,7 @@ class TypeSchemeLattice[A <: Address, K] {
       prims: Set[String] = Set.empty,
       clos: Set[(SchemeLambdaExp, schemeLattice.Env)] = Set.empty,
       ptrs: Set[A] = Set.empty,
-      consCells: (L, L) = (L(), L()))
+      consCells: (L, L) = (Inject.bottom, Inject.bottom))
       extends SmartHash {
     def isBottom: Boolean =
       !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom

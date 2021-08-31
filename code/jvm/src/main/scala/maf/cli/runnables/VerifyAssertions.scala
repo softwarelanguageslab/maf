@@ -2,7 +2,7 @@ package maf.cli.runnables
 
 import maf.language.scheme._
 import maf.modular.ModAnalysis
-import maf.modular.scheme.SchemeTypeDomain
+import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.util.Reader
