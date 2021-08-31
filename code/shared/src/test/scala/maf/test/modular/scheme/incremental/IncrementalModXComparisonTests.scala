@@ -110,8 +110,7 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
   def analysis(e: SchemeExp, version: Version) = new Analysis(e, version)
   def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
 
-  def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] =
-    if (c == allOptimisations) Seq(IncrementalTest) else Seq(IncrementalTest, SlowTest)
+  def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] = Seq(IncrementalTest, SlowTest)
 
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
     // Check components.

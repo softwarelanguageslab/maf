@@ -28,7 +28,9 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
     with SchemeDomain
     with IncrementalModAnalysis[SchemeExp]
 
-  def testTags(b: Benchmark): Seq[Tag] = if (b.contains("cscheme")) Seq(IncrementalTest, SlowTest) else Seq(IncrementalTest)
+  private val fast: Set[String] = Set("baseline", "collatz", "nboyer", "satCoarse", "scheme")
+
+  def testTags(b: Benchmark): Seq[Tag] = if (fast.forall(f => !b.contains(f))) Seq(IncrementalTest, SlowTest) else Seq(IncrementalTest)
 
   def parse(benchmark: Benchmark): SchemeExp = CSchemeParser.parse(Reader.loadFile(benchmark))
 

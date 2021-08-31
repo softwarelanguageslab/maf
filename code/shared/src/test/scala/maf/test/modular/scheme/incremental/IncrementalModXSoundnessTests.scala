@@ -171,12 +171,11 @@ class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType {
   override def name = "Incremental ModConc CP"
-
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, allOptimisations)
+  override def isSlow(b: Benchmark): Boolean = true
 }
 
 class IncrementalSmallStepModConcTypeRemainingConfigs extends IncrementalSmallStepModConcType with RemainingConfigurations
-
 class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStepModConcCP with RemainingConfigurations
 
 /** Implements soundness tests for an incremental ModF type analysis. */
@@ -201,10 +200,9 @@ class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialI
 /** Implements soundness tests for an incremental ModF CP analysis. */
 class IncrementalModFCP extends IncrementalModFType {
   override def name = "Incremental ModF CP"
-
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, allOptimisations)
+  override def isSlow(b: Benchmark): Boolean = true
 }
 
 class IncrementalModFTypeRemainingConfigs extends IncrementalModFType with RemainingConfigurations
-
 class IncrementalModFCPRemainingConfigs extends IncrementalModFCP with RemainingConfigurations
