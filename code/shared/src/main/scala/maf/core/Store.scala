@@ -160,9 +160,10 @@ trait AbstractGC[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
         scan(rest ++ newRefs, moved + addr, updated)
       }
     }
-  private def move(addr: A, to: This): (This, Set[A]) = content.get(addr) match {
-    case None    => (to, Set.empty)
-    case Some(s) => (to.bind(addr, s), refs(s))
+  private def move(addr: A, to: This): (This, Set[A]) = get(addr) match {
+    case None                               => (to, Set.empty)
+    case Some(s) if content.contains(addr)  => (to.bind(addr, s), refs(s))
+    case Some(s)                            => (to, refs(s)) 
   }
 }
 
