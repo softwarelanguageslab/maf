@@ -20,7 +20,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
         registerComponent(exp, component)
         super.eval(exp)
     }
-
+    /*
     override protected def evalAndLoop(exps: List[SchemeExp]): EvalM[Value] = exps match {
       case exp :: Nil => eval(exp)
       case exp :: rst =>
@@ -47,5 +47,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
           res <- cond(vlu, unit(vlu), evalOrLoop(rst)) //.map(v => addAddresses(v, getAddresses(vlu))))
         } yield res
     }
+
+     */
   }
 }
