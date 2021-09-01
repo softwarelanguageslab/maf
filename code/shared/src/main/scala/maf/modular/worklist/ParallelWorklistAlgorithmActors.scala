@@ -41,6 +41,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
             for (cmp <- cmps)
               workers ! Worker.DoWork(intraAnalysis(cmp), timeout, context.self)
             running(workers, cmps, timeout, replyTo)
+          case _ => throw new Exception(s"Unexpected message $msg")
         }
       )
     def running(
@@ -75,6 +76,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
               }
             case TimedOut(cmp) =>
               pause(workers, queued - cmp, Set(cmp), replyTo)
+            case _ => throw new Exception(s"Unexpected message $msg")
           }
         )
       }
@@ -101,6 +103,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
             } else {
               pause(workers, updatedWaitingFor, updatedCmps + intra.component, replyTo)
             }
+          case msg => throw new Exception(s"Unexpected message $msg")
         }
       }
     def apply(): Behaviour[MasterMessage] = Behaviours.setup { context =>

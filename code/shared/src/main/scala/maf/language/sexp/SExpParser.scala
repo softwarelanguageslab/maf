@@ -156,6 +156,7 @@ class SExpLexer extends Lexical with SExpTokens {
         case Success(List('@'), _) => Failure("not a valid identifier: @", in)
         case Success(cs, next)     => Success(cs.mkString(""), next)
         case Failure(msg, next)    => Failure(msg, next)
+        case e: Error              => e
       })(in)
     }
     (initial ~ rep(subsequent) ^^ { case i ~ s => s"$i${s.mkString}" }
@@ -281,7 +282,7 @@ object SExpParser extends TokenParsers {
 
   def parse(s: String, tag: PTag = noTag): List[SExp] = expList(tag)(new Scanner(s)) match {
     case Success(res, next) if next.atEnd => res
-    case Success(res, next) if !next.atEnd =>
+    case Success(res, next) =>
       throw new Exception(
         s"cannot fully parse expression, stopped at ${next.pos} after parsing $res"
       )

@@ -358,6 +358,7 @@ class SchemeInterpreter(
         } yield res
       case SchemeCodeChange(old, nw, _) =>
         if (version == Old) tailcall(eval(old, env, timeout, version)) else tailcall(eval(nw, env, timeout, version))
+      case _ => throw new Exception(s"Unsupported Scheme expression: $e")
     }
   }
 }

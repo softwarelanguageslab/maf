@@ -297,13 +297,14 @@ class CPSSchemeInterpreter(
     val argvs = argvsRev.reverse
     f match {
       case Value.Clo(SchemeLambda(_, argNames, body, _), env2) =>
-        Step(SchemeBody(body), extendEnv(argNames, argvs, env2), RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
+        Step(SchemeBody(body), extendEnv(argNames, argvs, env2), cc)
       case Value.Clo(SchemeVarArgLambda(_, argNames, vararg, body, _), env2) =>
         val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
         extendStore(varArgAddr, makeList(call.args.drop(argNames.length).zip(argvs.drop(argNames.length))))
         val envExt = extendEnv(argNames, argvs, env2) + (vararg.name -> varArgAddr)
-        Step(SchemeBody(body), envExt, RetC(newAddr(AddrInfo.RetAddr(SchemeBody(body))), cc))
+        Step(SchemeBody(body), envExt, cc)
       case Value.Primitive(p) => Kont(Primitives.allPrimitives(p).call(call, call.args.zip(argvs)), cc)
+      case _ => throw new Exception("Expected a function or primitive to apply")
     }
   }
 

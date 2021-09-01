@@ -67,7 +67,7 @@ class TypeSchemeLattice[A <: Address] {
               IsProcedure | IsInputPort | IsOutputPort | Not =>
             // Any -> Bool
             MayFail.success(Inject.bool)
-          case Ceiling | Floor | Round | Log | Random | Sin | Cos | ACos | Tan | ATan | Sqrt | ExactToInexact | InexactToExact =>
+          case Ceiling | Floor | Round | Log | Random | Sin | ASin | Cos | ACos | Tan | ATan | Sqrt | ExactToInexact | InexactToExact =>
             // Num -> Num
             check(args(0).num, Inject.num)(op.name, args)
           case VectorLength =>
@@ -75,6 +75,8 @@ class TypeSchemeLattice[A <: Address] {
             throw new Exception("NYI: vectors in type lattice")
           case StringLength =>
             // String -> Num
+            check(args(0).str, Inject.str)(op.name, args)
+          case StringSet =>
             check(args(0).str, Inject.str)(op.name, args)
           case NumberToString =>
             // Number -> String
