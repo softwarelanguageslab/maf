@@ -3,6 +3,7 @@ package maf.language.scheme
 import maf.core._
 import maf.language.change.ChangeExp
 import maf.language.sexp._
+import maf.language.scheme.ContractSchemeExp
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression
@@ -626,4 +627,42 @@ case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp {
   def label: Label = JOI
   def subexpressions: List[Expression] = List(tExp)
   override val height: Int = tExp.height + 1
+}
+
+trait ContractSchemeExp extends SchemeExp 
+
+case object DPC extends Label // Dependent contract 
+case object FLC extends Label // Flat contract 
+case object MON extends Label // Monitor
+
+case class ContractSchemeDepContract(
+  domains: List[SchemeExp], 
+  rangeMaker: SchemeExp, 
+  idn: Identity
+) extends ContractSchemeExp  {
+  def fv: Set[String] = domains.flatMap(_.fv).toSet ++ rangeMaker.fv
+  def label: Label = DPC
+  def subexpressions: List[Expression] = rangeMaker :: domains
+  override def toString: String = s"(~>d ${domains.map(_.toString)} $rangeMaker)"
+}
+
+case class ContractSchemeFlatContract(
+    expression: SchemeExp,
+    idn: Identity
+) extends ContractSchemeExp {
+  def fv: Set[String] = expression.fv
+  def label: Label = FLC
+  def subexpressions: List[Expression] = List(expression)
+  override def toString: String = s"(flat $expression)"
+}
+
+case class ContractSchemeMon(
+  contract: SchemeExp,
+  expression: SchemeExp, 
+  idn: Identity,
+) extends ContractSchemeExp {
+  def fv: Set[String] = contract.fv ++ expression.fv
+  def label: Label = MON
+  def subexpressions: List[Expression] = List(contract, expression)
+  override def toString: String = s"(mon $contract $expression)"
 }
