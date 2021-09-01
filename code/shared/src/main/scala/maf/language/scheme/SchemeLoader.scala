@@ -46,13 +46,11 @@ object SchemeLoader {
         case (Right(car), Right(cdr)) => Left(SExpList(car, SExpList(cdr, SExpValue(Value.Nil, Identity.none))))
       }
     case value @ SExpValue(_, _) => Left(value)
-    case _                       => throw new Exception("Invalid s-expression.")
   }
 
   def SExpAppend(car: SExp, cdr: SExp): SExp = car match {
     case id @ SExpId(_)           => SExpPair(id, cdr, Identity.none)
     case SExpPair(car, cadr, idn) => SExpPair(car, SExpAppend(cadr, cdr), idn)
     case value @ SExpValue(_, _)  => SExpPair(value, cdr, Identity.none)
-    case _                        => throw new Exception("Invalid s-expression.")
   }
 }

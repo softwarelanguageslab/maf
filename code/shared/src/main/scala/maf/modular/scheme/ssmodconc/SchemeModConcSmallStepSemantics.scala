@@ -505,7 +505,6 @@ trait SmallStepModConcSemantics
       case sexp.Value.Real(r)      => lattice.real(r)
       case sexp.Value.String(s)    => allocateStr(exp)(s)
       case sexp.Value.Symbol(s)    => lattice.symbol(s)
-      case _                       => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
 
     // Function application.

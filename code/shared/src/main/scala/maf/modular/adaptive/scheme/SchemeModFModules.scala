@@ -26,7 +26,6 @@ trait SchemeModFModules extends BaseSchemeModFSemantics with ModularSchemeDomain
   def module(cmp: Component): SchemeModule = view(cmp) match {
     case Main         => MainModule
     case Call(clo, _) => module(clo)
-    case _            => throw new Exception("Should not happen!")
   }
 
   def module(clo: (SchemeLambdaExp, Environment[Addr])): LambdaModule = LambdaModule(clo._1)
