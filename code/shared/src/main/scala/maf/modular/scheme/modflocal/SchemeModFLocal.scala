@@ -136,7 +136,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   // ANALYSISM MONAD
   //
 
-  // TODO: make this an opaque type
   type A[X] = (res: Res, ctx: Ctx, env: Env, sto: Sto) => (Set[(X, sto.DeltaStore)], Set[Cmp], Set[Dep], Set[Dep])
 
   given analysisM: AnalysisM[A] with {
@@ -206,9 +205,10 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       val (res, cps, rds, wds) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto)
+      val rgc = res.map { case (x, d) => (x, d.collect(lattice.refs(x) ++ d.updates)) } 
       val old = results.get(cmp)
-      if (res != old) {
-        results = results + (cmp -> res)
+      if (rgc != old) {
+        results = results + (cmp -> rgc)
         trigger(ResultDependency(cmp))
       }
       cps.foreach(spawn)
