@@ -67,7 +67,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
 
   // useful to reduce the size of counterexample instances
   implicit val shrinkL: Shrink[L] = Shrink[L] { case modularLattice.Elements(vs) =>
-    Shrink.shrinkContainer[List, V].shrink(vs).map(modularLattice.Elements)
+    Shrink.shrinkContainer[List, V].shrink(vs).map(modularLattice.Elements(_))
   }
   implicit val shrinkV: Shrink[V] = Shrink[V] {
     case modularLattice.Vec(siz, els) =>
@@ -124,12 +124,12 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     } yield ((lam, emptyEnv))
     // a generator for each type of value
     val anyNilV: Gen[V] = Gen.const(modularLattice.Nil)
-    val anyIntV: Gen[V] = intGen.any.retryUntil(_ != IntLattice[I].bottom).map(modularLattice.Int)
-    val anyStrV: Gen[V] = strGen.any.retryUntil(_ != StringLattice[S].bottom).map(modularLattice.Str)
-    val anyBlnV: Gen[V] = blnGen.any.retryUntil(_ != BoolLattice[B].bottom).map(modularLattice.Bool)
-    val anyReaV: Gen[V] = reaGen.any.retryUntil(_ != RealLattice[R].bottom).map(modularLattice.Real)
-    val anyChrV: Gen[V] = chrGen.any.retryUntil(_ != CharLattice[C].bottom).map(modularLattice.Char)
-    val anySymV: Gen[V] = symGen.any.retryUntil(_ != SymbolLattice[Sym].bottom).map(modularLattice.Symbol)
+    val anyIntV: Gen[V] = intGen.any.retryUntil(_ != IntLattice[I].bottom).map(modularLattice.Int(_))
+    val anyStrV: Gen[V] = strGen.any.retryUntil(_ != StringLattice[S].bottom).map(modularLattice.Str(_))
+    val anyBlnV: Gen[V] = blnGen.any.retryUntil(_ != BoolLattice[B].bottom).map(modularLattice.Bool(_))
+    val anyReaV: Gen[V] = reaGen.any.retryUntil(_ != RealLattice[R].bottom).map(modularLattice.Real(_))
+    val anyChrV: Gen[V] = chrGen.any.retryUntil(_ != CharLattice[C].bottom).map(modularLattice.Char(_))
+    val anySymV: Gen[V] = symGen.any.retryUntil(_ != SymbolLattice[Sym].bottom).map(modularLattice.Symbol(_))
     val anyPrmV: Gen[V] =
       pickAtMost(3, Gen.oneOf(primitives.allPrimitives.toList.map(_._1))).retryUntil(_.nonEmpty).map(ps => modularLattice.Prim(ps.toSet))
     val anyPtrV: Gen[V] = pickAtMost(3, anyAddr).retryUntil(_.nonEmpty).map(ps => modularLattice.Pointer(ps.toSet))
@@ -147,15 +147,15 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     // any value
     // any value subsumed by a given value
     def le(l: V): Gen[V] = l match {
-      case modularLattice.Str(s)      => strGen.le(s).retryUntil(_ != StringLattice[S].bottom).map(modularLattice.Str)
-      case modularLattice.Bool(b)     => blnGen.le(b).retryUntil(_ != BoolLattice[B].bottom).map(modularLattice.Bool)
-      case modularLattice.Int(i)      => intGen.le(i).retryUntil(_ != IntLattice[I].bottom).map(modularLattice.Int)
-      case modularLattice.Real(r)     => reaGen.le(r).retryUntil(_ != RealLattice[R].bottom).map(modularLattice.Real)
-      case modularLattice.Char(c)     => chrGen.le(c).retryUntil(_ != CharLattice[C].bottom).map(modularLattice.Char)
-      case modularLattice.Symbol(s)   => symGen.le(s).retryUntil(_ != SymbolLattice[Sym].bottom).map(modularLattice.Symbol)
-      case modularLattice.Prim(ps)    => Gen.someOf(ps).retryUntil(_.nonEmpty).map(_.toSet).map(modularLattice.Prim)
-      case modularLattice.Clo(cs)     => Gen.someOf(cs).retryUntil(_.nonEmpty).map(_.toSet).map(modularLattice.Clo)
-      case modularLattice.Pointer(ps) => Gen.someOf(ps).retryUntil(_.nonEmpty).map(_.toSet).map(modularLattice.Pointer)
+      case modularLattice.Str(s)      => strGen.le(s).retryUntil(_ != StringLattice[S].bottom).map(modularLattice.Str(_))
+      case modularLattice.Bool(b)     => blnGen.le(b).retryUntil(_ != BoolLattice[B].bottom).map(modularLattice.Bool(_))
+      case modularLattice.Int(i)      => intGen.le(i).retryUntil(_ != IntLattice[I].bottom).map(modularLattice.Int(_))
+      case modularLattice.Real(r)     => reaGen.le(r).retryUntil(_ != RealLattice[R].bottom).map(modularLattice.Real(_))
+      case modularLattice.Char(c)     => chrGen.le(c).retryUntil(_ != CharLattice[C].bottom).map(modularLattice.Char(_))
+      case modularLattice.Symbol(s)   => symGen.le(s).retryUntil(_ != SymbolLattice[Sym].bottom).map(modularLattice.Symbol(_))
+      case modularLattice.Prim(ps)    => Gen.someOf(ps).retryUntil(_.nonEmpty).map(_.toSet).map(modularLattice.Prim(_))
+      case modularLattice.Clo(cs)     => Gen.someOf(cs).retryUntil(_.nonEmpty).map(_.toSet).map(modularLattice.Clo(_))
+      case modularLattice.Pointer(ps) => Gen.someOf(ps).retryUntil(_.nonEmpty).map(_.toSet).map(modularLattice.Pointer(_))
       case modularLattice.Cons(a, d) =>
         for {
           ale <- SchemeValueLatticeGenerator.le(a)
