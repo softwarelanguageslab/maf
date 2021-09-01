@@ -38,7 +38,7 @@ object Writer {
   }
 
   def openTimeStamped(path: String): Writer =
-    path.split("\\.") match {
+    path.split("\\.").nn match {
       case Array(file, ext) => open(file + "_" + Clock.nowStr() + "." + ext)
       case _                => throw new Exception(s"Illegal path: $path")
     }
