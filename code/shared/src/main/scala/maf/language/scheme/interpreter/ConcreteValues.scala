@@ -40,9 +40,6 @@ object ConcreteValues {
     case class PtrAddr(exp: SchemeExp) extends AddrInfo {
       def idn = exp.idn
     }
-    case class RetAddr(exp: SchemeExp) extends AddrInfo {
-      def idn = exp.idn
-    }
   }
 
   object Value {
