@@ -125,6 +125,7 @@ trait BaseSchemeUndefiner {
       } yield SchemeAssert(expUndef, pos)
     case SchemeVar(id)           => done(SchemeVar(id))
     case SchemeValue(value, pos) => done(SchemeValue(value, pos))
+    case _ => throw new Exception(s"Unsupported scheme expression $exp")
   }
 
   def undefineBody(exps: List[SchemeExp]): TailRec[List[SchemeExp]] = exps match {

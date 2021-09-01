@@ -304,6 +304,7 @@ class CPSSchemeInterpreter(
         val envExt = extendEnv(argNames, argvs, env2) + (vararg.name -> varArgAddr)
         Step(SchemeBody(body), envExt, cc)
       case Value.Primitive(p) => Kont(Primitives.allPrimitives(p).call(call, call.args.zip(argvs)), cc)
+      case _ => throw new Exception("Expected a function or primitive to apply")
     }
   }
 
