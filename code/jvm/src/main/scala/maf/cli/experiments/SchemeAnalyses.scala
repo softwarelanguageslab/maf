@@ -138,11 +138,9 @@ object SchemeAnalyses {
       override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra
     }
   }
-  def modflocalAnalysis(prg: SchemeExp, kCFA: Int) =
+  def modflocalAnalysis(prg: SchemeExp, k: Int) =
     new SchemeModFLocal(prg) with SchemeConstantPropagationDomain
-      with SchemeModFLocalCallSiteSensitivity
+      with SchemeModFLocalCallSiteSensitivity(k)
       with FIFOWorklistAlgorithm[SchemeExp]
-      with SchemeModFLocalAnalysisResults {
-      val k = kCFA
-    }
+      with SchemeModFLocalAnalysisResults
 }

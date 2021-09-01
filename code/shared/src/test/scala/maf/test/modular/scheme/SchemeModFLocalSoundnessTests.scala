@@ -42,10 +42,8 @@ class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoun
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
-      with SchemeModFLocalCallSiteSensitivity
+      with SchemeModFLocalCallSiteSensitivity(1)
       with FIFOWorklistAlgorithm[SchemeExp]
-      with SchemeModFLocalAnalysisResults {
-      val k = 1
-    }
+      with SchemeModFLocalAnalysisResults
   override def isSlow(b: String): Boolean = true // don't run this for fast tests
 }
