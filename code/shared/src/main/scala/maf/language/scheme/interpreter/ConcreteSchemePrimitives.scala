@@ -1067,7 +1067,7 @@ trait ConcreteSchemePrimitives {
         case (_, Value.Pointer(a)) :: (_, Value.Integer(from)) :: (_, Value.Integer(to)) :: Nil if from <= to =>
           val str = getString(a)
           if (0 <= from && to <= str.size) {
-            allocateStr(fexp, str.substring(bigIntToInt(from), bigIntToInt(to)))
+            allocateStr(fexp, str.substring(bigIntToInt(from), bigIntToInt(to)).nn)
           } else {
             stackedException(s"$name (${fexp.idn.pos}): indices $from and $to are out of range")
           }

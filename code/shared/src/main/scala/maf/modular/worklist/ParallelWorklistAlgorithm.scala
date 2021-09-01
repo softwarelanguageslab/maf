@@ -9,7 +9,7 @@ import scala.collection.mutable.PriorityQueue
 trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] with GlobalStore[Expr] with PriorityQueueWorklistAlgorithm[Expr] {
   inter =>
 
-  def workers: Int = Runtime.getRuntime.availableProcessors() // <- number of workers for the threadpool
+  def workers: Int = Runtime.getRuntime.nn.availableProcessors() // <- number of workers for the threadpool
   var workerThreads: List[Worker] = Nil // <- we only instantiate this upon calling `analyze`
   var currentTimeout: Timeout.T = _ // <- we only set the timeout upon calling `analyze`
 

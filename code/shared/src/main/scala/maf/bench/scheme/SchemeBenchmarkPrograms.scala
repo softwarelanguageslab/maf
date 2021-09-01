@@ -5,6 +5,10 @@ import java.io.File
 import maf.util.datastructures.SmartUnion
 
 import scala.util.Random
+
+// null values are used here due to Java interop
+import scala.language.unsafeNulls
+
 object SchemeBenchmarkPrograms {
 
   def files(dir: File): Array[File] = {
@@ -21,14 +25,14 @@ object SchemeBenchmarkPrograms {
       noDr ++ dr.flatMap(recur)
     }
     val root = new File(directory)
-    val base = root.getAbsolutePath.length - directory.length
-    recur(root).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
+    val base = root.getAbsolutePath.nn.length - directory.length
+    recur(root).map(_.getAbsolutePath.nn.substring(base).nn).toSet -- exclude.map(file => s"$directory/$file")
   }
 
   def fromFolder(directory: String)(exclude: String*): Set[String] = {
     val root = new File(directory)
-    val base = root.getAbsolutePath.length - directory.length
-    files(root).filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude.map(file => s"$directory/$file")
+    val base = root.getAbsolutePath.nn.length - directory.length
+    files(root).filter(!_.isDirectory).map(_.getAbsolutePath.nn.substring(base).nn).toSet -- exclude.map(file => s"$directory/$file")
   }
 
   // Only include certain listed programs.

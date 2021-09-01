@@ -135,7 +135,7 @@ object ConstantPropagation {
                   .to(s.size)
                   .collect({
                     case to2 if BoolLattice[B].isTrue(IntLattice[I2].eql[B](to, IntLattice[I2].inject(to2))) =>
-                      inject(s.substring(from2, to2))
+                      inject(s.substring(from2, to2).nn)
                   }))
             })
             .flatten)

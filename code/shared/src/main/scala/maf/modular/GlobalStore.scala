@@ -85,7 +85,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
   /** Returns a string representation of the store. */
   def storeString(primitives: Boolean = false): String = {
     val strings = store.map({ case (a, v) => s"${StringUtil.toWidth(a.toString, 50)}: $v" })
-    val filtered = if (primitives) strings else strings.filterNot(_.toLowerCase.startsWith("prm"))
+    val filtered = if (primitives) strings else strings.filterNot(_.toLowerCase.nn.startsWith("prm"))
     val size = filtered.size
     val infoString = "σ" * 150 + s"\nThe store contains $size addresses (primitive addresses ${if (primitives) "included" else "excluded"}).\n"
     filtered.toList.sorted.mkString(infoString, "\n", "\n" + "σ" * 150)

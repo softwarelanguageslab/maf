@@ -43,6 +43,6 @@ object Clock {
 
   val stdFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
 
-  def now(): Date = Calendar.getInstance().getTime
-  def nowStr(): String = stdFormat.format(now())
+  def now(): Date = Calendar.getInstance().nn.getTime.nn
+  def nowStr(): String = stdFormat.format(now()).nn
 }

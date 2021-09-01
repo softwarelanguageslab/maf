@@ -7,7 +7,7 @@ import maf.util.Reader
 object SchemeLoader {
 
   def load(file: String, e: SExp): List[SExp] = {
-    val prefix = file.split("/").dropRight(1).mkString("") + "/"
+    val prefix = file.split("/").nn.dropRight(1).mkString("") + "/"
     load(e, prefix, List(file)) match {
       case Left(e)   => List(e)
       case Right(es) => es

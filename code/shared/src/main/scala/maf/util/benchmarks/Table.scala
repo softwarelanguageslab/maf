@@ -123,7 +123,7 @@ case class Table[V](data: Map[(String, String), V], default: Option[V]) {
       format: V => String = _.toString()
     ): String = {
     val headerStr = s"\\begin{table}\n\\center\n\\begin{tabular}{l${"c" * columns.length}}\n\\toprule\n"
-    val content = extract(rows, columns, rowName, v => format(v).replace("_", "\\_"))
+    val content = extract(rows, columns, rowName, v => format(v).replace("_", "\\_").nn)
       .map(_.mkString(" & "))
       .mkString("", "\\\\\n", "\\\\\n")
     val footerStr = "\\bottomrule\n\\end{tabular}\n\\end{table}"

@@ -134,7 +134,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
     }
   }
 
-  lazy val actorSystem = ActorSystem(Master(), "analysis-actor-system", ActorConfig.config)
+  lazy val actorSystem = ActorSystem(Master(), "analysis-actor-system", ActorConfig.config.nn)
 
   private var done = false
   def finished: Boolean = done

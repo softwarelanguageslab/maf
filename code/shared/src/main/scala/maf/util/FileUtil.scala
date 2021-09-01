@@ -6,6 +6,9 @@ import java.io._
 import maf.util.Writer.Writer
 import maf.util.benchmarks.Clock
 
+// null values are used here due to Java interop
+import scala.language.unsafeNulls
+
 object Reader {
 
   def loadFile(file: String): String = {
@@ -30,7 +33,7 @@ object Writer {
 
   def open(path: String): Writer = {
     val file = new File(path)
-    file.getParentFile().mkdirs() // Creates the directory containing the file if it does not exists
+    file.getParentFile().nn.mkdirs() // Creates the directory containing the file if it does not exists
     new BufferedWriter(new FileWriter(file))
   }
 
