@@ -12,7 +12,7 @@ sealed trait SchemeOp {
 
 object SchemeOp {
 
-  abstract class SchemeOp1(val name: String) extends SchemeOp {
+  sealed trait SchemeOp1(val name: String) extends SchemeOp {
     val arity = 1
   }
 
@@ -114,7 +114,7 @@ object SchemeOp {
     MakeOutputPort
   )
 
-  abstract class SchemeOp2(val name: String) extends SchemeOp {
+  sealed trait SchemeOp2(val name: String) extends SchemeOp {
     val arity = 2
   }
 
@@ -162,7 +162,7 @@ object SchemeOp {
     VectorRef
   )
 
-  abstract class SchemeOp3(val name: String) extends SchemeOp {
+  sealed trait SchemeOp3(val name: String) extends SchemeOp {
     val arity = 3
   }
 
