@@ -65,6 +65,8 @@ trait BaseSchemeLexicalAddresser {
       throw new Exception(s"Duplicate definition of identifier $id")
     case localFrame :: rest =>
       (localFrame + (id.name -> id)) :: rest
+    case Nil =>
+      throw new Exception("Unable to extend an empty frame")
   }
   def newLocalFrame(frame: Frame): Frame = Map[String, Identifier]() :: frame
 

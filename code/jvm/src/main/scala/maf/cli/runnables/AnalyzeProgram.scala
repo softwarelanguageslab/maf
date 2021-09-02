@@ -12,6 +12,9 @@ import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 
+// null values are used here due to Java interop
+import scala.language.unsafeNulls
+
 object AnalyzeProgram extends App {
   def one(bench: String, timeout: () => Timeout.T): Unit = {
     val text = CSchemeParser.parse(Reader.loadFile(bench))
@@ -61,7 +64,7 @@ object AnalyzeProgram extends App {
     new ModAnalysis[SchemeExp](getUpdated(program)) // Select the program version here.
     with StandardSchemeModFComponents with SchemeModFCallSiteSensitivity with SchemeModFSemantics with LIFOWorklistAlgorithm[SchemeExp]
     with BigStepModFSemantics with SchemeConstantPropagationDomain with GlobalStore[SchemeExp] with AnalysisLogging[SchemeExp] {
-      override def focus(a: Addr): Boolean = !a.toString.toLowerCase().contains("prm")
+      override def focus(a: Addr): Boolean = !a.toString.toLowerCase().nn.contains("prm")
       override def intraAnalysis(
           cmp: Component
         ) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra with AnalysisLoggingIntra

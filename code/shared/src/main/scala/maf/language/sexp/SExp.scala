@@ -18,7 +18,7 @@ object Value {
     override def toString = value.toString
   }
   case class Real(value: Double) extends Value {
-    override def toString = f"$value%e".replace(",", ".") // Might not preserve full precision, but will be in a Scheme-compatible format
+    override def toString = f"$value%e".replace(",", ".").nn // Might not preserve full precision, but will be in a Scheme-compatible format
   }
   case class Boolean(value: SBoolean) extends Value {
     override def toString = if (value) "#t" else "#f"

@@ -238,7 +238,6 @@ trait BaseSchemeModFSemantics
       case sexp.Value.Character(c) => lattice.char(c)
       case sexp.Value.Symbol(s)    => lattice.symbol(s)
       case sexp.Value.Nil          => lattice.nil
-      case _                       => throw new Exception(s"Unsupported Scheme literal: $literal")
     }
     // The current component serves as the lexical environment of the closure.
     protected def newClosure(

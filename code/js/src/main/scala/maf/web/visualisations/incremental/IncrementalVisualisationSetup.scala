@@ -123,7 +123,7 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
       println("Preparation finished. Starting reanalysis.")
     } catch {
       case t: Throwable =>
-        System.err.println(t.getMessage) // Will display an error in the console.
+        System.err.nn.println(t.getMessage) // Will display an error in the console.
         throw t
     }
   }

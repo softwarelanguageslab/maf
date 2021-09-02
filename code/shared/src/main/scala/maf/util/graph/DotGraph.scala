@@ -49,9 +49,9 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]() {
       _nodes.foreach { (n) =>
         val id = ids(n)
         val label =
-          n.label.replace("<", "&lt;").replace(">", "&gt;").replace("&lt;br/&gt;", "<br/>")
+          n.label.replace("<", "&lt;").nn.replace(">", "&gt;").nn.replace("&lt;br/&gt;", "<br/>").nn
         val color = n.color
-        val tooltip = n.metadata.toString.replace("<", "&lt;").replace(">", "&gt;")
+        val tooltip = n.metadata.toString.replace("<", "&lt;").nn.replace(">", "&gt;").nn
         writer.write(
           s"node_$id[shape=box, xlabel=$id, label=<$label>, fillcolor=<$color> style=<filled>, tooltip=<$tooltip>];\n"
         )

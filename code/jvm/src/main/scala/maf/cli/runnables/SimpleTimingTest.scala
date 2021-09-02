@@ -13,6 +13,9 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
+// null values are used here due to Java interop
+import scala.language.unsafeNulls
+
 object SimpleTimingTest extends App {
 
   type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
@@ -59,8 +62,8 @@ object SimpleTimingTest extends App {
 
     def fromFolder(directory: String, exclude: String*): Set[String] = {
       val root = new File(directory)
-      val base = root.getAbsolutePath.length - directory.length
-      files(root).filter(!_.isDirectory).map(_.getAbsolutePath.substring(base)).toSet -- exclude
+      val base = root.getAbsolutePath.nn.length - directory.length
+      files(root).filter(!_.isDirectory).map(_.getAbsolutePath.nn.substring(base).nn).toSet -- exclude
         .map(file => s"$directory/$file")
     }
 

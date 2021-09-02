@@ -8,7 +8,7 @@ import maf.test.ParserTest
 class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
   val lexical = new SExpLexer
   def checkExpected(parser: lexical.Parser[lexical.SExpToken])(input: String, expected: String) =
-    parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray)) match {
+    parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray.nn)) match {
       case lexical.Success(res, next) =>
         if (!next.atEnd) { println(s"Parsed $res from $input, incorrect") }
         assert(next.atEnd); assert(res.chars == expected)
@@ -18,7 +18,7 @@ class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
 
   val bools = Table("boolean", "#t", "#f", "#T", "#F")
   property("SExpLexer should lex booleans without error", ParserTest) {
-    forAll(bools) { s => check(lexical.boolean)(s.toLowerCase); check(lexical.token)(s.toLowerCase) }
+    forAll(bools) { s => check(lexical.boolean)(s.toLowerCase.nn); check(lexical.token)(s.toLowerCase.nn) }
   }
 
   val integers = Table("integer", "100", "-231")

@@ -57,7 +57,7 @@ object IncrementalRun extends App {
   def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
       new IncrementalSchemeModFAnalysisTypeLattice(text, configuration) with IncrementalLogging[SchemeExp] {
-        override def focus(a: Addr): Boolean = a.toString.toLowerCase().contains("ret")
+        override def focus(a: Addr): Boolean = a.toString.toLowerCase().nn.contains("ret")
 
         override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
           with IncrementalSchemeModFBigStepIntra

@@ -28,9 +28,7 @@ trait SchemeModFLocalNoSensitivity extends SchemeModFLocalSensitivity { this: Sc
 // instantiation #2: call-site sensitivity (parameterised by k)
 //
 
-trait SchemeModFLocalCallSiteSensitivity extends SchemeModFLocalSensitivity { this: SchemeDomain =>
-  // parameterized by some k
-  def k: Int
+trait SchemeModFLocalCallSiteSensitivity(k: Int) extends SchemeModFLocalSensitivity { this: SchemeDomain =>
   // context = list of call sites
   type Ctx = List[Position]
   def initialCtx = Nil

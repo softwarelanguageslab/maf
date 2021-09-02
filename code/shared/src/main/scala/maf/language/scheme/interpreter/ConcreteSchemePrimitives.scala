@@ -1067,7 +1067,7 @@ trait ConcreteSchemePrimitives {
         case (_, Value.Pointer(a)) :: (_, Value.Integer(from)) :: (_, Value.Integer(to)) :: Nil if from <= to =>
           val str = getString(a)
           if (0 <= from && to <= str.size) {
-            allocateStr(fexp, str.substring(bigIntToInt(from), bigIntToInt(to)))
+            allocateStr(fexp, str.substring(bigIntToInt(from), bigIntToInt(to)).nn)
           } else {
             stackedException(s"$name (${fexp.idn.pos}): indices $from and $to are out of range")
           }
@@ -1141,6 +1141,7 @@ trait ConcreteSchemePrimitives {
           lookupStore(a) match {
             case Value.Vector(siz, els, ini) if idx >= 0 && idx < siz => els.getOrElse(idx, ini)
             case Value.Vector(siz, _, _) => stackedException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
+            case v => throw new Exception(s"Vector expected; found $v")
           }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
@@ -1157,6 +1158,7 @@ trait ConcreteSchemePrimitives {
               extendStore(a, updatedVct)
               Value.Undefined(Identity.none)
             case Value.Vector(siz, _, _) => stackedException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
+            case v => throw new Exception(s"Vector expected; found $v")
           }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }

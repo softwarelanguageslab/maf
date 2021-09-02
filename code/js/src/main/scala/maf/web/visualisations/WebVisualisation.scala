@@ -12,6 +12,9 @@ import maf.web.utils.D3Helpers._
 import scala.scalajs.js
 import org.scalajs.dom.document
 
+// null values are used here due to JS interop
+import scala.language.unsafeNulls
+
 trait WebVisualisationAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] with DependencyTracking[Expr] {
 
   type Module
