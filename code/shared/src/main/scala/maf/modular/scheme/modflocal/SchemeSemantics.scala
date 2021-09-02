@@ -96,7 +96,7 @@ trait SchemeSemantics {
   }
 
   private def evalLambda(lam: Lam): A[Val] =
-    for { env <- getEnv } yield lattice.closure((lam, env))
+    for { env <- getEnv } yield lattice.closure((lam, env.restrictTo(lam.fv)))
 
   private def evalLiteralValue(exp: SchemeValue): A[Val] = exp.value match {
     case sexp.Value.String(s)    => storeVal(exp, lattice.string(s))
