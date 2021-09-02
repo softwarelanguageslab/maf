@@ -24,7 +24,12 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
   lazy val initialExp: Exp = program
   lazy val initialEnv: Env = NestedEnv(initialBds.map(p => (p._1, p._2)).toMap, None)
-  lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))
+  lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))(shouldCount)
+
+  private def shouldCount(adr: Adr): Boolean = adr match {
+    case _: VarAddr[_] | _: PtrAddr[_] | _: PrmAddr => true
+    case _                                          => false
+  }
 
   override lazy val program: SchemeExp = {
     val originalProgram = super.program
@@ -205,7 +210,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     def analyzeWithTimeout(timeout: Timeout.T): Unit = {
       val (res, cps, rds, wds) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto)
-      val rgc = res.map { case (x, d) => (x, d.collect(lattice.refs(x) ++ d.updates)) } 
+      val rgc = res.map { case (x, d) => (x, d.collect(lattice.refs(x) ++ d.updates)) }
       val old = results.get(cmp)
       if (rgc != old) {
         results = results + (cmp -> rgc)

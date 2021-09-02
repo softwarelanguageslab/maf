@@ -29,16 +29,18 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     WorkListMonitor.notify()
   }
   class Worker(i: Int) extends Thread(s"worker-thread-$i") {
-    override def run(): Unit = try while (true) {
-      val cmp = popWorklist()
-      val intra = intraAnalysis(cmp)
-      intra.analyzeWithTimeout(currentTimeout)
-      if (currentTimeout.reached) {
-        pushResult(TimedOut(cmp))
-      } else {
-        pushResult(Completed(intra))
+    override def run(): Unit = try
+      while (true) {
+        val cmp = popWorklist()
+        val intra = intraAnalysis(cmp)
+        intra.analyzeWithTimeout(currentTimeout)
+        if (currentTimeout.reached) {
+          pushResult(TimedOut(cmp))
+        } else {
+          pushResult(Completed(intra))
+        }
       }
-    } catch {
+    catch {
       case _: InterruptedException => ()
     }
   }

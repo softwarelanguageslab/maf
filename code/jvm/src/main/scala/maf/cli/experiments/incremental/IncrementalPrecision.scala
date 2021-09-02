@@ -53,8 +53,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     allAddr.foreach({ a =>
       val incr = iStore(a)
       val rean = rStore(a)
-      if (incr == rean)
-        e += 1 // Both results are the same => equally precise.
+      if (incr == rean) e += 1 // Both results are the same => equally precise.
       else if (inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]))
         l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
       else {

@@ -37,17 +37,25 @@ object AdaptiveRun {
   }
 
   def testModFLocal(): Unit = {
-    val txt = Reader.loadFile("test/R5RS/various/foo.scm")
+    val txt = Reader.loadFile("test/R5RS/various/grid.scm")
     val prg = CSchemeParser.parse(txt)
     val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
+    def printStore(sto: anl.Sto) =
+      sto.content.view
+        .filterKeys(!_.isInstanceOf[PrmAddr])
+        .filterKeys(!_.isInstanceOf[anl.EnvAddr])
+        .toMap
+        .foreach { case (a, s) =>
+          println(s"$a -> ${sto.value(s).asInstanceOf[anl.V].vlu}")
+        }
     anl.analyzeWithTimeoutInSeconds(10)
     anl.visited
-      .collect { case anl.CallComponent(lam, ctx, sto) =>
-        sto.content.view.filterKeys(!_.isInstanceOf[PrmAddr]).toMap
-      }
-      .foreach { sto =>
+      .collect { case cll: anl.CallComponent => cll }
+      .foreach { case cmp @ anl.CallComponent(lam, _, sto) =>
         println()
-        sto.foreach { case (adr, vlu) => println(s"$adr -> ${vlu._1}") }
+        println(s"COMPONENT ${lam.lambdaName} WHERE")
+        printStore(sto)
+        println(s"==> ${anl.results(cmp)}")
         println()
       }
   }

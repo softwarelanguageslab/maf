@@ -156,8 +156,7 @@ class IncrementalModularSchemeLattice[
               .sorted
               .mkString("Pointer(", ", ", ")")
             table = table.add(v.typeName, name, ptrs)
-          } else
-            table = table.add(v.typeName, name, v.toString)
+          } else table = table.add(v.typeName, name, v.toString)
         }
       }
       insertList(xname, x.values)

@@ -102,18 +102,17 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
   private var initialized: Boolean = false
 
   /* Runs the analysis with a timeout. Implementation should be provided by the worklist algorithm. */
-  protected def run(timeout: Timeout.T): Unit  
+  protected def run(timeout: Timeout.T): Unit
 
   /**
-   * Runs the analysis with a given timeout. Extra care should be taken when using this method,
-   * as the analysis results are not guaranteed to be sound if the timeout is triggered. Therefore, it is recommended to explicitly check afterwards
-   * if the analysis terminated using the `finished` method. Alternatively, one can use the `analyze` method to ensure the full (and sound) analysis
-   * result is computed.
+   * Runs the analysis with a given timeout. Extra care should be taken when using this method, as the analysis results are not guaranteed to be sound
+   * if the timeout is triggered. Therefore, it is recommended to explicitly check afterwards if the analysis terminated using the `finished` method.
+   * Alternatively, one can use the `analyze` method to ensure the full (and sound) analysis result is computed.
    * @param timeout
    *   allows this method to return before termination of the analysis if the given timeout is reached
    */
   final def analyzeWithTimeout(timeout: Timeout.T): Unit = {
-    if(!initialized) {
+    if (!initialized) {
       init()
       initialized = true
     }
@@ -138,10 +137,10 @@ abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable wit
     out.writeObject(this)
     out.close()
   }
-  
+
   def init() =
     visited = visited + initialComponent
-        
+
 }
 
 object ModAnalysis {

@@ -1141,7 +1141,7 @@ trait ConcreteSchemePrimitives {
           lookupStore(a) match {
             case Value.Vector(siz, els, ini) if idx >= 0 && idx < siz => els.getOrElse(idx, ini)
             case Value.Vector(siz, _, _) => stackedException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
-            case v => throw new Exception(s"Vector expected; found $v")
+            case v                       => throw new Exception(s"Vector expected; found $v")
           }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }
@@ -1158,7 +1158,7 @@ trait ConcreteSchemePrimitives {
               extendStore(a, updatedVct)
               Value.Undefined(Identity.none)
             case Value.Vector(siz, _, _) => stackedException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
-            case v => throw new Exception(s"Vector expected; found $v")
+            case v                       => throw new Exception(s"Vector expected; found $v")
           }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
       }

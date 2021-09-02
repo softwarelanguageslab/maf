@@ -21,6 +21,3 @@ object ContractSchemeUndefiner extends BaseSchemeUndefiner {
       case _ => super.undefineExp(exp)
   }
 }
-
-
-
