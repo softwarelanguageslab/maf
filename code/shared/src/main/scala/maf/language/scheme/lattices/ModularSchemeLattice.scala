@@ -224,11 +224,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       import SchemeOp._
       op.checkArity(args)
       op match {
-        case Car => throw new Exception("ModularSchemeLattice: car SchemeOp not supported on Value")
-        case Cdr => throw new Exception("ModularSchemeLattice: cdr SchemeOp not supported on Value")
+        case Car        => throw new Exception("ModularSchemeLattice: car SchemeOp not supported on Value")
+        case Cdr        => throw new Exception("ModularSchemeLattice: cdr SchemeOp not supported on Value")
         case MakeVector => throw new Exception("ModularSchemeLattice: make-vector SchemeOp not supported on Value")
-        case VectorRef => throw new Exception("ModularSchemeLattice: vector-ref SchemeOp not supported on Value")
-        case VectorSet => throw new Exception("ModularSchemeLattice: vector-set SchemeOp not supported on Value")
+        case VectorRef  => throw new Exception("ModularSchemeLattice: vector-ref SchemeOp not supported on Value")
+        case VectorSet  => throw new Exception("ModularSchemeLattice: vector-set SchemeOp not supported on Value")
         case IsNull =>
           MayFail.success(args(0) match {
             case Nil => True

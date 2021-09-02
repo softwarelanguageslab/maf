@@ -139,7 +139,8 @@ object SchemeAnalyses {
     }
   }
   def modflocalAnalysis(prg: SchemeExp, k: Int) =
-    new SchemeModFLocal(prg) with SchemeConstantPropagationDomain
+    new SchemeModFLocal(prg)
+      with SchemeConstantPropagationDomain
       with SchemeModFLocalCallSiteSensitivity(k)
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults

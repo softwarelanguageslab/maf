@@ -27,13 +27,10 @@ object SExpUtils {
     }
   }
 
-  /** 
-   * Maps over a list of s-expressions
-   */
+  /** Maps over a list of s-expressions */
   def smap[A](lst: SExp, f: (SExp) => A): List[A] = lst match {
-    case SExpPair(car, cdr, _) => 
+    case SExpPair(car, cdr, _) =>
       f(car) :: smap(cdr, f)
     case snil => List()
   }
 }
-

@@ -18,13 +18,13 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
       with SchemeModFLocalAnalysisResults
   override def isSlow(b: Benchmark): Boolean =
     Set(
-      "test/R5RS/various/SICP-compiler.scm",  // TIMES OUT
-      "test/R5RS/various/mceval.scm",         // TIMES OUT
-      "test/R5RS/various/four-in-a-row.scm",  // TIMES OUT
-      "test/R5RS/various/church-2-num.scm",   // TIMES OUT DUE TO INFINTE CP DOMAIN
-      "test/R5RS/various/church-6.scm",       // TIMES OUT DUE TO INFINTE CP DOMAIN
+      "test/R5RS/various/SICP-compiler.scm", // TIMES OUT
+      "test/R5RS/various/mceval.scm", // TIMES OUT
+      "test/R5RS/various/four-in-a-row.scm", // TIMES OUT
+      "test/R5RS/various/church-2-num.scm", // TIMES OUT DUE TO INFINTE CP DOMAIN
+      "test/R5RS/various/church-6.scm", // TIMES OUT DUE TO INFINTE CP DOMAIN
       // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
-      "test/R5RS/various/infinite-1.scm", 
+      "test/R5RS/various/infinite-1.scm",
       "test/R5RS/various/infinite-2.scm",
       "test/R5RS/various/infinite-3.scm",
     ).contains(b)

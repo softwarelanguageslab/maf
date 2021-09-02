@@ -25,7 +25,6 @@ class ConcreteLattice {
     }
   }
 
-
   case object Top extends L[Nothing]
   case class Values[X](values: Set[X]) extends L[X]
 

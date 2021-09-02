@@ -40,16 +40,18 @@ object AdaptiveRun {
     val txt = Reader.loadFile("test/R5RS/various/grid.scm")
     val prg = CSchemeParser.parse(txt)
     val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
-    def printStore(sto: anl.Sto) = 
-      sto.content.view.filterKeys(!_.isInstanceOf[PrmAddr])
-                      .filterKeys(!_.isInstanceOf[anl.EnvAddr]).toMap
-                      .foreach { case (a, s) =>
-                        println(s"$a -> ${sto.value(s).asInstanceOf[anl.V].vlu}")
-                      }
+    def printStore(sto: anl.Sto) =
+      sto.content.view
+        .filterKeys(!_.isInstanceOf[PrmAddr])
+        .filterKeys(!_.isInstanceOf[anl.EnvAddr])
+        .toMap
+        .foreach { case (a, s) =>
+          println(s"$a -> ${sto.value(s).asInstanceOf[anl.V].vlu}")
+        }
     anl.analyzeWithTimeoutInSeconds(10)
     anl.visited
       .collect { case cll: anl.CallComponent => cll }
-      .foreach { case cmp@anl.CallComponent(lam, _, sto) =>
+      .foreach { case cmp @ anl.CallComponent(lam, _, sto) =>
         println()
         println(s"COMPONENT ${lam.lambdaName} WHERE")
         printStore(sto)

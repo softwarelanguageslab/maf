@@ -86,7 +86,7 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
       }
   }
   // Join
-  def join(other: This): This = 
+  def join(other: This): This =
     other.content.foldLeft(this: This) { case (acc, (a, s)) =>
       acc.get(a) match {
         case None       => acc.bind(a, s)
@@ -161,9 +161,9 @@ trait AbstractGC[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
       }
     }
   private def move(addr: A, to: This): (This, Set[A]) = get(addr) match {
-    case None                               => (to, Set.empty)
-    case Some(s) if content.contains(addr)  => (to.bind(addr, s), refs(s))
-    case Some(s)                            => (to, refs(s)) 
+    case None                              => (to, Set.empty)
+    case Some(s) if content.contains(addr) => (to.bind(addr, s), refs(s))
+    case Some(s)                           => (to, refs(s))
   }
 }
 
@@ -258,13 +258,13 @@ trait LocalStoreT[A <: Address, V](shouldCount: A => Boolean)
   }
   // d1 'after' d0
   // assumes that d1: sto1.DeltaStore, where sto1 = this.integrate(d0)
-  def compose(d1: LocalStoreT[A,V]#LocalDeltaStore, d0: DeltaStore): DeltaStore = {
+  def compose(d1: LocalStoreT[A, V]#LocalDeltaStore, d0: DeltaStore): DeltaStore = {
     // assert(d1.parent == integrate(d0))
     LocalDeltaStore(d0.content ++ d1.content, d0.updates ++ d1.updates.filter(content.contains(_)))
   }
   // replay changes of d
   // assumes that d: sto.DeltaStore, where sto = this.collect(rs) (for some rs)
-  def replay(d: LocalStoreT[A,V]#LocalDeltaStore): DeltaStore =
+  def replay(d: LocalStoreT[A, V]#LocalDeltaStore): DeltaStore =
     LocalDeltaStore(
       d.content.foldLeft(Map.empty[A, (V, Set[A], AbstractCount)]) { case (acc, (adr, s @ (v, r, c))) =>
         if (d.parent.content.contains(adr)) {
@@ -279,7 +279,11 @@ trait LocalStoreT[A <: Address, V](shouldCount: A => Boolean)
     )
 }
 
-case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A], AbstractCount)])(shouldCount: A => Boolean)(implicit val lattice: LatticeWithAddrs[V, A])
+case class LocalStore[A <: Address, V](
+    content: Map[A, (V, Set[A], AbstractCount)]
+  )(
+    shouldCount: A => Boolean
+  )(implicit val lattice: LatticeWithAddrs[V, A])
     extends LocalStoreT[A, V](shouldCount) {
   type This = LocalStore[A, V]
   def empty = LocalStore(Map.empty)(shouldCount)
@@ -287,8 +291,8 @@ case class LocalStore[A <: Address, V](content: Map[A, (V, Set[A], AbstractCount
 }
 
 object LocalStore {
-  def empty[A <: Address, V](shouldCount: A => Boolean)(implicit lattice: LatticeWithAddrs[V, A]): LocalStore[A, V] = LocalStore(Map.empty)(shouldCount)
+  def empty[A <: Address, V](shouldCount: A => Boolean)(implicit lattice: LatticeWithAddrs[V, A]): LocalStore[A, V] =
+    LocalStore(Map.empty)(shouldCount)
   def from[A <: Address, V](content: Iterable[(A, V)])(shouldCount: A => Boolean)(implicit lattice: LatticeWithAddrs[V, A]): LocalStore[A, V] =
     content.foldLeft(empty(shouldCount))((acc, bnd) => acc.extend(bnd._1, bnd._2))
 }
-

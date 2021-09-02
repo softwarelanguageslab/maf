@@ -161,9 +161,9 @@ object ConstantPropagation {
           i: I2,
           c: C2
         ): S = s match {
-        case Bottom => Bottom
+        case Bottom                                                         => Bottom
         case _ if i == IntLattice[I2].bottom || c == CharLattice[C2].bottom => Bottom
-        case Top => Top
+        case Top                                                            => Top
         case Constant(str) =>
           (i, c) match {
             case (Constant(idx: BigInt), Constant(chr: Char)) => Constant(str.updated(idx.toInt, chr))

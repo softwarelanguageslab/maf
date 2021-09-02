@@ -629,17 +629,17 @@ case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp {
   override val height: Int = tExp.height + 1
 }
 
-trait ContractSchemeExp extends SchemeExp 
+trait ContractSchemeExp extends SchemeExp
 
-case object DPC extends Label // Dependent contract 
-case object FLC extends Label // Flat contract 
+case object DPC extends Label // Dependent contract
+case object FLC extends Label // Flat contract
 case object MON extends Label // Monitor
 
 case class ContractSchemeDepContract(
-  domains: List[SchemeExp], 
-  rangeMaker: SchemeExp, 
-  idn: Identity
-) extends ContractSchemeExp  {
+    domains: List[SchemeExp],
+    rangeMaker: SchemeExp,
+    idn: Identity)
+    extends ContractSchemeExp {
   def fv: Set[String] = domains.flatMap(_.fv).toSet ++ rangeMaker.fv
   def label: Label = DPC
   def subexpressions: List[Expression] = rangeMaker :: domains
@@ -648,8 +648,8 @@ case class ContractSchemeDepContract(
 
 case class ContractSchemeFlatContract(
     expression: SchemeExp,
-    idn: Identity
-) extends ContractSchemeExp {
+    idn: Identity)
+    extends ContractSchemeExp {
   def fv: Set[String] = expression.fv
   def label: Label = FLC
   def subexpressions: List[Expression] = List(expression)
@@ -657,10 +657,10 @@ case class ContractSchemeFlatContract(
 }
 
 case class ContractSchemeMon(
-  contract: SchemeExp,
-  expression: SchemeExp, 
-  idn: Identity,
-) extends ContractSchemeExp {
+    contract: SchemeExp,
+    expression: SchemeExp,
+    idn: Identity)
+    extends ContractSchemeExp {
   def fv: Set[String] = contract.fv ++ expression.fv
   def label: Label = MON
   def subexpressions: List[Expression] = List(contract, expression)

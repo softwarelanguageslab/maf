@@ -9,7 +9,7 @@ import maf.language.scheme._
  *   A type of Contexts that can be used to distinguish more addresses. The type context is covariant.
  */
 trait SchemeAddr[+Context] extends Address {
-  protected def showCtx(ctx: Any) = 
+  protected def showCtx(ctx: Any) =
     if (ctx == ()) then "" else s"[$ctx]"
 }
 case class VarAddr[Context](id: Identifier, ctx: Context) extends SchemeAddr[Context] {
