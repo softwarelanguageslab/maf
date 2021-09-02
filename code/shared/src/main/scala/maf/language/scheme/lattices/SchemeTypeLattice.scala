@@ -1,6 +1,7 @@
 package maf.language.scheme.lattices
 
 import maf.core._
+import maf.language.ContractScheme.ContractValues._
 import maf.language.CScheme.TID
 import maf.language.scheme.primitives._
 import maf.language.scheme._
@@ -21,10 +22,13 @@ class TypeSchemeLattice[A <: Address] {
       prims: Set[String] = Set.empty,
       clos: Set[(SchemeLambdaExp, schemeLattice.Env)] = Set.empty,
       ptrs: Set[A] = Set.empty,
-      consCells: (L, L) = (Inject.bottom, Inject.bottom))
-      extends SmartHash {
+      consCells: (L, L) = (Inject.bottom, Inject.bottom), 
+      arr: Boolean = false, 
+      grd: Boolean = false, 
+      flt: Boolean = false
+    ) extends SmartHash {
     def isBottom: Boolean =
-      !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom
+      !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt
   }
   object Inject {
     val bottom: L = L()
@@ -40,6 +44,9 @@ class TypeSchemeLattice[A <: Address] {
     def pointer(a: A): L = L(ptrs = Set(a))
     def clo(clo: schemeLattice.Closure): L = L(clos = Set(clo))
     def cons(car: L, cdr: L): L = L(consCells = (car, cdr))
+    def arr: L = L(arr = true)
+    def grd: L = L(grd = true)
+    def flt: L = L(flt = true)
   }
 
   def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
@@ -151,7 +158,10 @@ class TypeSchemeLattice[A <: Address] {
         prims = x.prims.union(y.prims),
         clos = x.clos.union(y.clos),
         ptrs = x.ptrs.union(y.ptrs),
-        consCells = (join(x.consCells._1, y.consCells._1), join(x.consCells._2, y.consCells._2))
+        consCells = (join(x.consCells._1, y.consCells._1), join(x.consCells._2, y.consCells._2)),
+        arr = x.arr || y.arr,
+        grd = x.grd || y.grd,
+        flt = x.flt || y.flt
       )
     def subsumes(x: L, y: => L): Boolean =
       (if (x.str) y.str else true) &&
@@ -165,13 +175,21 @@ class TypeSchemeLattice[A <: Address] {
         y.prims.subsetOf(x.prims) &&
         y.clos.subsetOf(y.clos) &&
         subsumes(x.consCells._1, y.consCells._1) &&
-        subsumes(x.consCells._1, y.consCells._2)
+        subsumes(x.consCells._1, y.consCells._2) &&
+        (if (x.arr) y.arr else true) &&
+        (if (x.grd) y.grd else true) &&
+        (if (x.flt) y.flt else true)
+
     def top: L = ???
     def getClosures(x: L): Set[Closure] = x.clos
     def getPrimitives(x: L): Set[String] = x.prims
     def getPointerAddresses(x: L): Set[A] = Set()
     def getThreads(x: L): Set[TID] = throw new Exception("Not supported.")
     def getContinuations(x: L): Set[K] = ???
+    def getBlames(x: L): Set[Blame] = throw new Exception("Not supported")
+    def getGrds(x: L): Set[Grd[L]] = Set()
+    def getArrs(x: L): Set[Arr[L]] = Set()
+    def getFlats(x: L): Set[Flat[L]] = Set()
     def bottom: L = Inject.bottom
 
     def number(x: BigInt): L = Inject.num
@@ -195,6 +213,10 @@ class TypeSchemeLattice[A <: Address] {
     def thread(tid: TID): L = ???
     def cont(k: K): L = ???
     def lock(threads: Set[TID]) = ???
+    def blame(blame: Blame): L = throw new Exception("Not supported")
+    def arr(arr: Arr[L]): L = Inject.arr
+    def grd(grd: Grd[L]): L = Inject.grd 
+    def flat(flt: Flat[L]): L = Inject.flt 
     def void: L = ???
     def acquire(lock: L, caller: TID): MayFail[L, Error] = ???
     def release(lock: L, caller: TID): MayFail[L, Error] = ???

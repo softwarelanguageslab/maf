@@ -2,6 +2,7 @@ package maf.modular.incremental.scheme.lattice
 
 import maf.core._
 import maf.language.CScheme.TID
+import maf.language.ContractScheme.ContractValues._
 import maf.language.scheme.lattices._
 import maf.lattice.interfaces._
 import maf.modular.scheme.PtrAddr
@@ -90,6 +91,10 @@ class IncrementalModularSchemeLattice[
     def getPrimitives(x: AL): Set[String] = schemeLattice.getPrimitives(x.toL())
     def getPointerAddresses(x: AL): Set[A] = schemeLattice.getPointerAddresses(x.toL())
     def getThreads(x: AL): Set[TID] = schemeLattice.getThreads(x.toL())
+    def getBlames(x: AL): Set[Blame] = schemeLattice.getBlames(x.toL())
+    def getGrds(x: AL): Set[Grd[AL]] = schemeLattice.getGrds(x.toL()).map(_.map(annotate(_, Set())))  // TODO[medium] not sure what to pass to annotate
+    def getArrs(x: AL): Set[Arr[AL]] = schemeLattice.getArrs(x.toL()).map(_.map(annotate(_, Set())))  // TODO[medium] not sure what to pass to annotate
+    def getFlats(x: AL): Set[Flat[AL]] = schemeLattice.getFlats(x.toL()).map(_.map(annotate(_, Set()))) // TODO[medium] not sure what to pass to annotate
     def acquire(lock: AL, tid: TID): MayFail[AL, Error] = schemeLattice.acquire(lock.toL(), tid).map(annotate(_, lock.sources))
     def release(lock: AL, tid: TID): MayFail[AL, Error] = schemeLattice.release(lock.toL(), tid).map(annotate(_, lock.sources))
 
@@ -116,6 +121,10 @@ class IncrementalModularSchemeLattice[
     def pointer(a: A): AL = AnnotatedElement(Value.pointer(a))
     def thread(tid: TID): AL = AnnotatedElement(Value.thread(tid))
     def lock(threads: Set[TID]): AL = AnnotatedElement(Value.lock(threads))
+    def blame(blame: Blame): AL = AnnotatedElement(Value.blame(blame))
+    def grd(grd: Grd[AL]): AL = AnnotatedElement(Value.grd(grd.map(_.toL())))
+    def arr(arr: Arr[AL]): AL  = AnnotatedElement(Value.arr(arr.map(_.toL())))
+    def flat(flt: Flat[AL]): AL = AnnotatedElement(Value.flt(flt.map(_.toL())))
     def nil: AL = AnnotatedElement(Value.nil)
     def void: AL = AnnotatedElement(Value.void)
     def eql[B2: BoolLattice](x: AL, y: AL): B2 = schemeLattice.eql(x.toL(), y.toL())(BoolLattice[B2])
