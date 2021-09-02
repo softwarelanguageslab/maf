@@ -2,7 +2,4 @@
          (inc (lambda (n)
                 (lambda (f x)
                   (f (n f x)))))
-         (plus (lambda (m n)
-                 (lambda (f x)
-                   (m f (n f x))))))
   ((inc (inc zero)) (lambda (x) (+ x 1)) 0))
