@@ -20,8 +20,7 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
     Set(
       "test/R5RS/various/SICP-compiler.scm",  // TIMES OUT
       "test/R5RS/various/mceval.scm",         // TIMES OUT
-      "test/R5RS/various/grid.scm",           // SOUNDNESS ISSUE!!
-      "test/R5RS/various/four-in-a-row.scm",  // SOUNDNESS ISSUE!!
+      "test/R5RS/various/four-in-a-row.scm",  // TIMES OUT
       "test/R5RS/various/church-2-num.scm",   // TIMES OUT DUE TO INFINTE CP DOMAIN
       "test/R5RS/various/church-6.scm",       // TIMES OUT DUE TO INFINTE CP DOMAIN
       // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons

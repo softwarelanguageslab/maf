@@ -253,6 +253,7 @@ trait LocalStoreT[A <: Address, V](shouldCount: A => Boolean)
     private def addUpdated(a: A) = this.copy(updates = updates + a)
     private def addUpdated(a: Iterable[A]) = this.copy(updates = updates ++ a)
     override def update(a: A, v: V) = super.update(a, v).addUpdated(a)
+    override def collect(rs: Set[A]) = super.collect(rs).addUpdated(updates)
     override def join(other: outer.LocalDeltaStore): outer.LocalDeltaStore = super.join(other).addUpdated(other.updates)
   }
   // d1 'after' d0
