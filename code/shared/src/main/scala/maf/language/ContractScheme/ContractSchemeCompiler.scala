@@ -15,7 +15,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler {
 
   // TODO: create special kind of Lambda expression that ignores its arguments
   private def rangeToRangerMaker(range: SchemeExp): SchemeExp =
-    SchemeLambda(None, List(Identifier("0", Identity.none)), List(range), range.idn)
+    SchemeLambda(None, List(Identifier("0arg", Identity.none)), List(range), range.idn)
 
   // TODO: also take vararg into account eg. (define (f . a) exp) is a function that takes any number of arguments
   private def compile_params(params: SExp): List[Identifier] = params match {
@@ -51,12 +51,16 @@ object ContractSchemeCompiler extends BaseSchemeCompiler {
         compiledExpr <- tailcall(_compile(expr))
       } yield ContractSchemeFlatContract(compiledExpr, expr.idn)
 
+    case Ident("flat") :::: _ => throw new Exception(s"Parse error, flat expects exactly one argument at ${exp.idn}")
+
     // (mon contract expr)
-    case Ident("mon") :::: contract :::: expr =>
+    case Ident("mon") :::: contract :::: expr :::: snil =>
       for {
         compiledContract <- tailcall(_compile(contract))
         compiledExpr <- tailcall(_compile(expr))
       } yield ContractSchemeMon(compiledContract, compiledExpr, expr.idn)
+
+    case Ident("mon") :::: _ => throw new Exception(s"Parse error, mon expects exactly two arguments at ${exp.idn}")
 
     // (define/contract (f argument ...) contract expr ...)
     case Ident("define/contract") :::: (IdentWithIdentity(f, idn) :::: params) :::: contract :::: expressions => for {
@@ -73,6 +77,8 @@ object ContractSchemeCompiler extends BaseSchemeCompiler {
         ),
         exp.idn
       )
+
+    case Ident("define/contract") :::: _ => throw new Exception(s"Parse error, invalid usage of define/contract at ${exp.idn}")
 
     case _ => super._compile(exp)
   }

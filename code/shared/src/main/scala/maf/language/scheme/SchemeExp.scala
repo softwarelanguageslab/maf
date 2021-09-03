@@ -644,7 +644,7 @@ case class ContractSchemeDepContract(
   def fv: Set[String] = domains.flatMap(_.fv).toSet ++ rangeMaker.fv
   def label: Label = DPC
   def subexpressions: List[Expression] = rangeMaker :: domains
-  override def toString: String = s"(~>d ${domains.map(_.toString)} $rangeMaker)"
+  override def toString: String = s"(~>d ${domains.map(_.toString).mkString(" ")} $rangeMaker)"
 }
 
 case class ContractSchemeFlatContract(
