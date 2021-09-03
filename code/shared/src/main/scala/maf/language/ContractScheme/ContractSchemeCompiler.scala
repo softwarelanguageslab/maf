@@ -8,15 +8,7 @@ import maf.core.{Identifier, Identity}
 object ContractSchemeCompiler extends BaseSchemeCompiler {
   import scala.util.control.TailCalls._
   import maf.language.sexp.SExpUtils._
-
-  private def sequence[A](tailrecs: List[TailRec[A]]): TailRec[List[A]] = tailrecs match {
-    case List() => done(List())
-    case x :: xs =>
-      for {
-        v <- x
-        vs <- sequence(xs)
-      } yield (v :: vs)
-  }
+  import maf.util.TailrecUtil._
 
   private def compile_contracts(contracts: SExp): TailRec[List[SchemeExp]] =
     sequence(smap(contracts, this._compile))

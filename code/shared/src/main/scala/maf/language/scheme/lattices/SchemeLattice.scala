@@ -3,6 +3,7 @@ package maf.language.scheme.lattices
 import maf.core._
 import maf.lattice.interfaces._
 import maf.language.CScheme.TID
+import maf.language.ContractScheme.ContractValues._
 import maf.language.scheme._
 
 /** A lattice for Scheme should support the following operations */
@@ -54,6 +55,18 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
   /** Extract the thread identifiers in this value */
   def getThreads(x: L): Set[TID]
+
+  /** Extract the blames in this value */ 
+  def getBlames(x: L): Set[Blame]
+
+  /** Extract the guard values in this value */ 
+  def getGrds(x: L): Set[Grd[L]]
+
+  /** Extract the arrow values in this value */ 
+  def getArrs(x: L): Set[Arr[L]]
+
+  /** Extract the flat contract vlaues in this value */ 
+  def getFlats(x: L): Set[Flat[L]]
 
   /** Injection of an integer */
   def number(x: BigInt): L
@@ -139,6 +152,18 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
   /** Releases a given lock. */
   def release(lock: L, caller: TID): MayFail[L, Error]
+
+  /** Injection of a blame in the abstract domain */
+  def blame(blame: Blame): L
+
+  /** Injection of a guard value in the abstract domain */
+  def grd(grd: Grd[L]): L
+
+  /** Injection of an arrow value in the abstract domain */ 
+  def arr(arr: Arr[L]): L 
+
+  /** Injection of a flat value in the abstract domain */ 
+  def flat(flt: Flat[L]): L
 
   def void: L
 

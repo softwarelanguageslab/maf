@@ -2,6 +2,7 @@ package maf.language.scheme.lattices
 
 import maf.core._
 import maf.language.CScheme.TID
+import maf.language.ContractScheme.ContractValues._
 import maf.language.scheme.primitives.SchemePrimitive
 import maf.lattice.interfaces._
 import maf.util.datastructures.SmartUnion._
@@ -120,6 +121,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def typeName = "LOCK"
     override def toString: String = threads.mkString("Lock{", ", ", "}")
   }
+
   case object Void extends Value {
     def ord = 15
     def typeName = "VOID"
@@ -134,6 +136,30 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def ord = 17
     def typeName = "OPRT"
     override def toString: String = s"OutputPort{$id}"
+  }
+
+  case class Blames(blames: Set[Blame]) extends Value {
+    def ord = 18
+    def typeName = "BLAME"
+    override def toString: String = s"<blame: ${blames.map(_.toString).mkString(",")}>"
+  }
+
+  case class Grds(grds: Set[Grd[L]]) extends Value {
+    def ord = 19
+    def typeName = "GRD"
+    override def toString: String = s"<grd: ${grds.map(_.toString).mkString(",")}>"
+  }
+
+  case class Arrs(arrs: Set[Arr[L]]) extends Value {
+    def ord = 20
+    def typeName = "ARR"
+    override def toString: String = s"<arr: ${arrs.map(_.toString).mkString(",")}>"
+  }
+
+  case class Flats(flats: Set[Flat[L]]) extends Value {
+    def ord = 21
+    def typeName = "FLT"
+    override def toString: String = s"<arr: ${flats.map(_.toString).mkString(",")}>"
   }
 
   /** The injected true value */
@@ -178,6 +204,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       case (Void, Void)                     => Void
       case (InputPort(l1), InputPort(l2))   => InputPort(join(l1, l2))
       case (OutputPort(l1), OutputPort(l2)) => OutputPort(join(l1, l2))
+      case (Blames(l1), Blames(l2))         => Blames(sunion(l1, l2))
+      case (Arrs(l1), Arrs(l2))             => Arrs(sunion(l1, l2))
+      case (Grds(l1), Grds(l2))             => Grds(sunion(l1, l2))
+      case (Flats(l1), Flats(l2))           => Flats(sunion(l1, l2))
       case _                                => throw new Exception(s"Illegal join of $x and $y")
     }
 
@@ -208,6 +238,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
           case (Lock(l1), Lock(l2))             => l2.subsetOf(l1)
           case (InputPort(l1), InputPort(l2))   => subsumes(l1, l2)
           case (OutputPort(l1), OutputPort(l2)) => subsumes(l1, l2)
+          case (Blames(l1), Blames(l2))         => l2.subsetOf(l1)
+          case (Arrs(l1), Arrs(l2))             => l2.subsetOf(l1)
+          case (Grds(l1), Grds(l2))             => l2.subsetOf(l1)
+          case (Flats(l1), Flats(l2))           => l2.subsetOf(l1)
           case _                                => false
         }
       }
@@ -608,6 +642,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def thread(tid: TID): Value = Thread(Set(tid))
     def lock(threads: Set[TID]): Value = Lock(threads)
     def void: Value = Void
+    def blame(blame: Blame): Value = Blames(Set(blame))
+    def grd(grd: Grd[L]): Value = Grds(Set(grd))
+    def arr(arr: Arr[L]): Value = Arrs(Set(arr))
+    def flt(flt: Flat[L]): Value = Flats(Set(flt))
+
     def getClosures(x: Value): Set[schemeLattice.Closure] = x match {
       case Clo(closures) => closures
       case _             => Set.empty
@@ -632,6 +671,27 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       case Lock(l) => l
       case _       => Set.empty
     }
+
+    def getBlames(x: Value): Set[Blame] = x match {
+      case Blames(l) => l 
+      case _         => Set.empty
+    }
+
+    def getGrds(x: Value): Set[Grd[L]] = x match {
+      case Grds(l) => l 
+      case _         => Set.empty
+    }
+  
+    def getArrs(x: Value): Set[Arr[L]] = x match {
+      case Arrs(l) => l 
+      case _         => Set.empty
+    }
+
+    def getFlats(x: Value): Set[Flat[L]] = x match {
+      case Flats(l) => l 
+      case _         => Set.empty
+    }  
+
     def car(x: Value): MayFail[L, Error] = x match {
       case Cons(car, _) => MayFail.success(car)
       case _            => MayFail.failure(TypeError("expecting cons to access car", x))
@@ -738,14 +798,17 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     }
 
     def refs(x: Value): Set[Address] = x match {
-      case Bool(_) | Char(_) | Int(_) | Real(_) | Str(_) | Symbol(_) | Prim(_) | Void | Nil => Set.empty
-      case InputPort(id)                                                                    => refs(id)
-      case OutputPort(id)                                                                   => refs(id)
+      case Bool(_) | Char(_) | Int(_) | Real(_) | Str(_) | Symbol(_) | Prim(_) | Void | Nil | Blames(_) => Set.empty
+      case InputPort(id)                                                                                => refs(id)
+      case OutputPort(id)                                                                               => refs(id)
       case Thread(_) | Lock(_) | Kont(_) => ??? // TODO: don't know enough about these types to compute refs
       case Pointer(ptrs)                 => ptrs.toSet[Address]
       case Cons(car, cdr)                => schemeLattice.refs(car) ++ schemeLattice.refs(cdr)
       case Vec(_, els)                   => els.flatMap(elm => schemeLattice.refs(elm._2)).toSet
       case Clo(cls)                      => cls.flatMap(clo => clo._2.addrs)
+      case Arrs(arrs)                    => arrs.flatMap(arr => schemeLattice.refs(arr.contract) ++ schemeLattice.refs(arr.e))
+      case Grds(grds)                    => grds.flatMap(grd => grd.domain.flatMap(schemeLattice.refs(_)) ++ schemeLattice.refs(grd.rangeMaker))
+      case Flats(flts)                   => flts.flatMap(flt => schemeLattice.refs(flt.contract))
     }
 
     // TODO: this should be the eql method instead?
@@ -759,6 +822,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       case (Prim(p1), Prim(p2))     => if (p1.intersect(p2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
       // TODO: eq of closures could be improved, but is not really permitted by R5RS anyway ...
       case (Clo(c1), Clo(c2)) => if (c1.intersect(c2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
+      case (Blames(b1), Blames(b2)) => if (b1.intersect(b2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
+      // TODO: implement eq for contract values
       case (_: Cons, _: Cons) => throw new Exception("should not happen")
       case (_: Vec, _: Vec)   => throw new Exception("should not happen")
       case (_: Str, _: Str)   => throw new Exception("should not happen")
@@ -846,6 +911,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def getContinuations(x: L): Set[lat.K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)
     def getPrimitives(x: L): Set[String] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
+    def getBlames(x: L): Set[Blame] = x.foldMapL(x => Value.getBlames(x))(setMonoid)
+    def getGrds(x: L): Set[Grd[L]] =  x.foldMapL(x => Value.getGrds(x))(setMonoid)
+    def getArrs(x: L): Set[Arr[L]] = x.foldMapL(x => Value.getArrs(x))(setMonoid)
+    def getFlats(x: L): Set[Flat[L]] = x.foldMapL(x => Value.getFlats(x))(setMonoid)
     def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
     def acquire(lock: L, tid: TID): MayFail[L, Error] =
       lock.foldMapL(l => Value.acquire(l, tid))
@@ -873,6 +942,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def pointer(a: A): L = Element(Value.pointer(a))
     def thread(tid: TID): L = Element(Value.thread(tid))
     def lock(threads: Set[TID]): L = Element(Value.lock(threads))
+    def blame(blame: Blame): L = Element(Value.blame(blame))
+    def grd(grd: Grd[L]): L = Element(Value.grd(grd))
+    def arr(arr: Arr[L]): L = Element(Value.arr(arr))
+    def flat(flt: Flat[L]): L = Element(Value.flt(flt))
     def nil: L = Element(Value.nil)
     def void: L = Element(Value.void)
     def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
