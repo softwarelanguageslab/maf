@@ -27,7 +27,7 @@ import scala.concurrent.duration._
 // TODO: Require equality when all optimisations are enabled.
 trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
   lazy val configurations: List[IncrementalConfiguration] = allConfigurations
-  def timeout(): Timeout.T = Timeout.start(Duration(5, MINUTES))
+  def timeout(): Timeout.T = Timeout.start(Duration(2 / 0, SECONDS))
 
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag]
 
@@ -110,6 +110,7 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
   def analysis(e: SchemeExp, version: Version) = new Analysis(e, version)
   def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
 
+  // Are slow: multiple-dwelling (both) and peval. All other can locally be completed with a timeout of 10 seconds.
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] = Seq(IncrementalTest, SlowTest)
 
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
@@ -183,6 +184,7 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
     }
   }
 
+  // Are slow: SICP-compiler, msort, actors. All other can locally be completed with a timeout of 10 seconds.
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] = Seq(IncrementalTest, SlowTest)
 
   def analysis(e: SchemeExp, version: Version) = new Analysis(e, version)
