@@ -230,24 +230,16 @@ case class SchemeLetrec(
   val label: Label = LTR
 }
 
-/** Named-let: (let name ((v1 e1) ...) body...) TODO: desugar to letrec according to R5RS */
-case class SchemeNamedLet(
-    name: Identifier,
-    bindings: List[(Identifier, SchemeExp)],
-    body: List[SchemeExp],
-    idn: Identity)
-    extends SchemeLettishExp {
-  override def toString: String = {
-    val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
-    val bo = body.mkString(" ")
-    s"(let $name ($bi) $bo)"
+/** Named-let: (let name ((v1 e1) ...) body...) */
+object SchemeNamedLet {
+  def apply(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idn: Identity): SchemeExp = {
+    val (prs, ags) = bindings.unzip
+    val fnDef = 
+      SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, idn))),
+                   List((SchemeVar(Identifier(name.name, idn)))),
+                   idn)
+    SchemeFuncall(fnDef, ags, idn)
   }
-  def fv: Set[String] =
-    bindings.map(_._2).flatMap(_.fv).toSet ++ (body
-      .flatMap(_.fv)
-      .toSet -- (bindings.map(_._1.name).toSet + name.name))
-  val label: Label = NLT
-  override def subexpressions: List[Expression] = name :: super.subexpressions
 }
 
 /** A set! expression: (set! variable value) */

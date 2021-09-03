@@ -85,7 +85,6 @@ trait SchemeSemantics {
     case SchemeLet(bds, bdy, _)     => evalLet(bds, bdy)
     case SchemeLetStar(bds, bdy, _) => evalLetStar(bds, bdy)
     case SchemeLetrec(bds, bdy, _)  => evalLetrec(bds, bdy)
-    case nml: SchemeNamedLet        => evalNamedLet(nml)
     case SchemeAnd(eps, _)          => evalAnd(eps)
     case SchemeOr(eps, _)           => evalOr(eps)
     case pai: SchemePair            => evalPair(pai)
@@ -167,20 +166,6 @@ trait SchemeSemantics {
           vlu <- evalSequence(bdy)
         } yield vlu
       }
-    } yield res
-  }
-
-  private def evalNamedLet(nml: SchemeNamedLet): A[Val] = {
-    val nam = nml.name
-    val (prs, ags) = nml.bindings.unzip
-    val lam = SchemeLambda(Some(nam.name), prs, nml.body, nml.idn)
-    for {
-      adr <- allocVar(nam)
-      clo <- withExtendedEnv(nam.name, adr) { evalLambda(lam) }
-      _ <- extendSto(adr, clo)
-      vls <- ags.mapM(arg => eval(arg))
-      cll = SchemeFuncall(lam, ags, nml.idn)
-      res <- applyFun(cll, clo, vls)
     } yield res
   }
 

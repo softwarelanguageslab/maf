@@ -15,7 +15,6 @@ object ProgramVersionExtracter {
     case SchemeLet(bindings, body, idn)                    => SchemeLet(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
     case SchemeLetStar(bindings, body, idn)                => SchemeLetStar(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
     case SchemeLetrec(bindings, body, idn)                 => SchemeLetrec(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
-    case SchemeNamedLet(name, bindings, body, idn)   => SchemeNamedLet(name, bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
     case SchemeSet(variable, value, idn)             => SchemeSet(variable, getVersion(value), idn)
     case SchemeSetLex(variable, lexAddr, value, idn) => SchemeSetLex(variable, lexAddr, getVersion(value), idn)
     case SchemeBegin(exps, idn)                      => SchemeBegin(exps.map(getVersion), idn)

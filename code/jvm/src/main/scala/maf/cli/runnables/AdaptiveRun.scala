@@ -39,9 +39,7 @@ object AdaptiveRun {
 
   def testTransform(): Unit = {
     val prg = """
-      (lambda (x y)
-        (set! x y)
-        x)
+      (let loop ((x 1)) (loop (+ x 1)))
     """
     val parsed = CSchemeParser.parse(prg)
     val transf = SchemeMutableVarBoxer.transform(parsed, Set("+", "-"))

@@ -302,7 +302,6 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
       case SchemeLet(bindings, body, _)              => evalLet(bindings, List(), body, env, stack)
       case SchemeLetrec(bindings, body, _)           => evalLetRec(bindings, body, env, stack)
       case SchemeLetStar(bindings, body, _)          => evalLetStar(bindings, body, env, stack)
-      case SchemeNamedLet(name, bindings, body, idn) => evalNamedLet(name, bindings, body, env, stack, idn)
       case SchemeOr(exps, _)                         => evalOr(exps, env, stack)
       case SchemeAssert(exp, _)                      => evalAssert(exp, env, stack)
       case SchemeSplicedPair(_, _, _)                => throw new Exception("Splicing not supported.")

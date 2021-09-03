@@ -277,14 +277,6 @@ class SchemeInterpreter(
         }
         /* Then evaluate all bindings in the extended environment */
         tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout, version))
-      case SchemeNamedLet(name, bindings, body, pos) =>
-        val addr = newAddr(AddrInfo.VarAddr(name))
-        val env2 = env + (name.name -> addr)
-        val (prs, ags) = bindings.unzip
-        val lambda = SchemeLambda(Some(name.name), prs, body, pos)
-        val clo = Value.Clo(lambda, env2)
-        extendStore(addr, clo)
-        tailcall(eval(SchemeFuncall(lambda, ags, pos), env2, timeout, version))
       case SchemeSet(id, v, pos) =>
         /* TODO: primitives can be reassigned with set! without being redefined */
         val addr = env.get(id.name) match {

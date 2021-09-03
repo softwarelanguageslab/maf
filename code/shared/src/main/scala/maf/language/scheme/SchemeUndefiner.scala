@@ -94,14 +94,6 @@ trait BaseSchemeUndefiner {
           },
         bindings
       ).flatMap(bindingsv => tailcall(undefineBody(body)).map(bodyv => SchemeLetrec(bindingsv, bodyv, pos)))
-    case SchemeNamedLet(name, bindings, body, pos) =>
-      trampolineM(
-        (x: (Identifier, SchemeExp)) =>
-          x match {
-            case (b, v) => tailcall(undefine1(v)).map(vv => (b, vv))
-          },
-        bindings
-      ).flatMap(bindingsv => tailcall(undefineBody(body)).map(bodyv => SchemeNamedLet(name, bindingsv, bodyv, pos)))
     case SchemeSet(variable, value, pos) =>
       tailcall(undefine1(value)).map(v => SchemeSet(variable, v, pos))
     case SchemeBegin(exps, pos) =>

@@ -102,8 +102,6 @@ object SchemeMutableVarBoxer {
             SchemeLetStar(rewriteBindings(bds, mut, rew), rewriteBody(body, mut, rew), pos)
         case SchemeLetrec(bds, body, pos) =>
             SchemeLetrec(rewriteBindings(bds, mut, rew), rewriteBody(body, mut, rew), pos)
-        case SchemeNamedLet(nam, bds, bdy, pos) => 
-            ???
     }
 
     private def rewriteBindings(bds: List[(Identifier, SchemeExp)], mut: Set[LexicalRef], rew: Rewrites): List[(Identifier, SchemeExp)] = 
@@ -118,7 +116,7 @@ object SchemeMutableVarBoxer {
         val mutPrs = prs.map(LexicalRef.VarRef(_): LexicalRef.VarRef).filter(mut)
         val rewPrs = mutPrs.map(ref => (ref, genSym(ref.id.name)))
         if rewPrs.isEmpty then 
-            bdy
+            rewriteBody(bdy, mut, rew)
         else 
             val bds = rewPrs.map { (ref: LexicalRef.VarRef, gen: String) => 
                 (Identifier(gen, Identity.none), SchemeRef(SchemeVar(Identifier(ref.id.name, Identity.none)), ref.id.idn))

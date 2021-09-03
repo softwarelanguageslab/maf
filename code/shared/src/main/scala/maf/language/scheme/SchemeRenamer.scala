@@ -77,25 +77,7 @@ object SchemeRenamer {
               }
           }
       }
-    case SchemeNamedLet(name, bindings, body, pos) =>
-      countl(bindings.map(_._1), names, count) match {
-        case (variables, names1, count1) =>
-          renameList(bindings.map(_._2), names1, count1) match {
-            case (exps, count2) =>
-              renameList(body, names1, count2) match {
-                case (body1, count3) =>
-                  (
-                    SchemeNamedLet(
-                      name /* TODO: rename it as well */,
-                      variables.zip(exps),
-                      body1,
-                      pos
-                    ),
-                    count3
-                  )
-              }
-          }
-      }
+
     case SchemeSet(variable, value, pos) =>
       rename(value, names, count) match {
         case (value1, count1) =>

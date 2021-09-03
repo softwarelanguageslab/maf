@@ -183,13 +183,6 @@ class CPSSchemeInterpreter(
       Step(e, extEnv, LtrC(i, rest, extEnv, let, cc))
     case SchemeLetStar(Nil, body, pos)             => Step(SchemeBegin(body, pos), env, cc)
     case let @ SchemeLetStar((i, e) :: rest, _, _) => Step(e, env, LtsC(i, rest, env, let, cc))
-    case SchemeNamedLet(name, bindings, body, pos) =>
-      val addr = newAddr(AddrInfo.VarAddr(name))
-      val extEnv = env + (name.name -> addr)
-      val (prs, ags) = bindings.unzip
-      val lambda = SchemeLambda(Some(name.name), prs, body, pos)
-      extendStore(addr, Value.Clo(lambda, extEnv))
-      Step(SchemeFuncall(lambda, ags, pos), extEnv, cc)
     case SchemeOr(Nil, _)           => Kont(Value.Bool(false), cc)
     case SchemeOr(first :: Nil, _)  => Step(first, env, cc)
     case SchemeOr(first :: rest, _) => Step(first, env, OrrC(rest, env, cc))

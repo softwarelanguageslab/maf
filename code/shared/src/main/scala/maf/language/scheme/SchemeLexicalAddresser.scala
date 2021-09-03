@@ -114,13 +114,6 @@ trait BaseSchemeLexicalAddresser {
       val bdsLex = vrs.zip(translate(eps, extEnv))
       val bdyLex = translateBody(body, extEnv)
       SchemeLetrec(bdsLex, bdyLex, pos)
-    case SchemeNamedLet(name, bindings, body, pos) =>
-      val (prs, eps) = bindings.unzip
-      val bdsLex = prs.zip(translate(eps, lenv))
-      val letEnv = lenv.newFrame.extend(name)
-      val extEnv = letEnv.newFrame.extend(prs)
-      val bdyLex = translateBody(body, extEnv)
-      SchemeNamedLet(name, bdsLex, bdyLex, pos)
     case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
   }
 

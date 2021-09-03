@@ -80,7 +80,6 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
       case SchemeLet(bindings, body, _)              => evalLet(bindings, body)
       case SchemeLetStar(bindings, body, _)          => evalLetStar(bindings, body)
       case SchemeLetrec(bindings, body, _)           => evalLetRec(bindings, body)
-      case SchemeNamedLet(name, bindings, body, pos) => evalNamedLet(name, bindings, body, pos)
       case call @ SchemeFuncall(fun, args, _)        => evalCall(call, fun, args)
       case SchemeAnd(exps, _)                        => evalAnd(exps)
       case SchemeOr(exps, _)                         => evalOr(exps)

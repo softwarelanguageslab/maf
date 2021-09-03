@@ -141,14 +141,6 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
           bind(id, env2, lattice.bottom)
         }
         evalLetrec(bindings, body, extEnv, cnt)
-      case SchemeNamedLet(id, bindings, body, pos) =>
-        val (prs, ags) = bindings.unzip
-        val lambda = SchemeLambda(Some(id.name), prs, body, pos)
-        val extEnv = bind(id, env, lattice.bottom)
-        val closure = newClosure(lambda, extEnv)
-        assign(id, extEnv, closure)
-        val call = SchemeFuncall(lambda, ags, pos)
-        evalArgs(call, closure, ags, Nil, env, cnt)
       case call @ SchemeFuncall(fexp, args, _) =>
         val frm = FunFrame(call, args, env)
         Set(EvalState(fexp, env, frm :: cnt))
