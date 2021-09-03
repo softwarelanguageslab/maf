@@ -43,4 +43,14 @@ class SExpParserSimpleTests extends AnyFlatSpec {
     assert(program(0).isInstanceOf[SExpId])
     assert(program(0).asInstanceOf[SExpId].id.name == "->")
   }
+
+  "An identifier starting with ~" should "be parsed without error" in {
+    val program = SExpParser.parse("~>")
+    assert(program(0).isInstanceOf[SExpId])
+    assert(program(0).asInstanceOf[SExpId].id.name == "~>")
+
+    val program2 = SExpParser.parse("~>d")
+    assert(program2(0).isInstanceOf[SExpId])
+    assert(program2(0).asInstanceOf[SExpId].id.name == "~>d")
+  }
 }
