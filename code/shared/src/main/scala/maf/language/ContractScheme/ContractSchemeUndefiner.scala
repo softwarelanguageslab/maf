@@ -16,10 +16,10 @@ object ContractSchemeUndefiner extends BaseSchemeUndefiner {
         _ 
       ) :: rest => (for {
         bodyv <- tailcall(undefineBody(List(expression)))
-        contract <- tailcall(undefine1(contract))
+        contractv <- tailcall(undefine1(contract))
       } yield SchemeDefineVariable(
         name, 
-        SchemeLambda(Some(name.name), params, bodyv, expression.idn),
+        ContractSchemeMon(contractv, SchemeLambda(Some(name.name), params, bodyv, expression.idn), exps.head.idn),
         exps.head.idn
       )).flatMap(expr => undefine(expr :: rest, defs, idn))
 
