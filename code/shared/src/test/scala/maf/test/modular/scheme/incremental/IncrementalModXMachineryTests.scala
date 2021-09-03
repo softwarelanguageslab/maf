@@ -1,24 +1,24 @@
 package maf.test.modular.scheme.incremental
 
 import maf.language.CScheme.CSchemeParser
-import maf.language.scheme._
-import maf.modular.incremental.IncrementalConfiguration._
-import maf.modular.incremental._
-import maf.modular.scheme.SchemeDomain
-import maf.modular._
-import maf.modular.incremental.scheme.lattice._
-import maf.modular.incremental.scheme.modconc._
-import maf.modular.incremental.scheme.modf._
-import maf.modular.scheme.modf._
+import maf.language.scheme.*
+import maf.modular.incremental.IncrementalConfiguration.*
+import maf.modular.incremental.*
+import maf.modular.scheme.{SchemeConstantPropagationDomain, SchemeDomain}
+import maf.modular.*
+import maf.modular.incremental.scheme.lattice.*
+import maf.modular.incremental.scheme.modconc.*
+import maf.modular.incremental.scheme.modf.*
+import maf.modular.scheme.modf.*
 import maf.modular.scheme.ssmodconc.KKallocModConc
-import maf.modular.worklist._
-import maf.test._
+import maf.modular.worklist.*
+import maf.test.*
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 import org.scalatest.Tag
 import org.scalatest.propspec.AnyPropSpec
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class IncrementalModXMachineryTests extends AnyPropSpec {
   type Benchmark = String
@@ -187,25 +187,41 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
       with IncrementalSchemeModFBigStepSemantics
       with IncrementalSchemeConstantPropagationDomain
       with IncrementalGlobalStore[SchemeExp]
-      with IncrementalLogging[SchemeExp] {
-      override def focus(a: Addr): Boolean = !a.toString.toLowerCase().nn.contains("prm")
+      //with IncrementalLogging[SchemeExp]
+      {
+      // override def focus(a: Addr): Boolean = !a.toString.toLowerCase().nn.contains("prm")
       var configuration: IncrementalConfiguration = allOptimisations
       override def intraAnalysis(
           cmp: Component
-        ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
+        ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis //with IncrementalLoggingIntra
+    }
+
+    def getStandard(p: SchemeExp) = new ModAnalysis[SchemeExp](p)
+      with StandardSchemeModFComponents
+      with SchemeModFCallSiteSensitivity
+      with SchemeModFSemantics
+      with FIFOWorklistAlgorithm[SchemeExp]
+      with BigStepModFSemantics
+      with SchemeConstantPropagationDomain
+      with GlobalStore[SchemeExp] {
+      override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra
     }
 
     // Expected results.
-    val exp1 =
-      "(AddrDep(ret (g [[3:4]])),f [[12:8]])\n(AddrDep(VarAddr(f@1:10 [None])),main)\n(AddrDep(VarAddr(g@5:10 [None])),h [[13:2]])\n(AddrDep(ret (h [[6:4]])),g [[3:4]])\n(AddrDep(VarAddr(d@1:18 [Some([12:8])])),f [[12:8]])\n(AddrDep(VarAddr(fn@9:12 [Some([13:2])])),h [[13:2]])\n(AddrDep(VarAddr(a@1:12 [Some([12:8])])),f [[12:8]])\n(AddrDep(PrmAddr(number?)),h [[13:2]])\n(AddrDep(ret (λ@6:7 [[12:8]])),h [[6:4]])\n(AddrDep(ret (f [[12:8]])),h [[13:2]])\n(AddrDep(PrmAddr(number?)),h [[6:4]])\n(AddrDep(VarAddr(c@1:16 [Some([12:8])])),f [[12:8]])\n(AddrDep(VarAddr(j@7:10 [None])),h [[6:4]])\n(AddrDep(ret (j [[4:14]])),f [[12:8]])\n(AddrDep(PrmAddr(+)),f [[12:8]])\n(AddrDep(VarAddr(fn@9:12 [Some([6:4])])),h [[6:4]])\n(AddrDep(VarAddr(h@9:10 [None])),h [[6:4]])\n(AddrDep(VarAddr(e@1:20 [Some([12:8])])),f [[12:8]])\n(AddrDep(VarAddr(a@5:12 [Some([3:4])])),g [[3:4]])\n(AddrDep(ret (h [[13:2]])),main)\n(AddrDep(VarAddr(b@1:14 [Some([12:8])])),f [[12:8]])\n(AddrDep(VarAddr(g@5:10 [None])),h [[6:4]])\n(AddrDep(VarAddr(j@7:10 [None])),h [[13:2]])\n(AddrDep(VarAddr(h@9:10 [None])),main)\n(AddrDep(VarAddr(h@9:10 [None])),h [[13:2]])"
-        .split("\n")
-        .nn
-        .toSet
-    val exp2 =
-      "(AddrDep(ret (h [[6:4]])),g [[3:4]])\n(AddrDep(VarAddr(h@9:10 [None])),j [[2:22]])\n(AddrDep(VarAddr(not@not:1:10 [None])),> [[4:68]])\n(AddrDep(VarAddr(h@9:10 [None])),h [[4:41]])\n(AddrDep(ret (f [[12:8]])),h [[13:2]])\n(AddrDep(VarAddr(y@>:1:14 [Some([4:68])])),> [[4:68]])\n(AddrDep(VarAddr(g@5:10 [None])),j [[2:22]])\n(AddrDep(ret (g [[3:4]])),f [[12:8]])\n(AddrDep(VarAddr(@sensitivity:FA@@sensitivity:FA:1:9 [None])),not [[>:1:55]])\n(AddrDep(ret (h [[4:41]])),λ@4:21 [[12:8]])\n(AddrDep(VarAddr(j@7:10 [None])),h [[4:18]])\n(AddrDep(VarAddr(f@1:10 [None])),main)\n(AddrDep(ret (j [[2:22]])),f [[12:8]])\n(AddrDep(VarAddr(@sensitivity:FA@@sensitivity:FA:1:9 [None])),> [[4:68]])\n(AddrDep(VarAddr(x@not:1:14 [Some([>:1:55])])),not [[>:1:55]])\n(AddrDep(ret (h [[4:18]])),f [[12:8]])\n(AddrDep(VarAddr(t@4:52 [Some([12:8])])),λ@4:44 [[12:8]])\n(AddrDep(VarAddr(f@1:10 [None])),j [[2:22]])\n(AddrDep(VarAddr(g@5:10 [None])),h [[13:2]])\n(AddrDep(VarAddr(h@9:10 [None])),f [[12:8]])\n(AddrDep(VarAddr(g@5:10 [None])),h [[4:41]])\n(AddrDep(VarAddr(h@9:10 [None])),h [[4:18]])\n(AddrDep(VarAddr(d@1:18 [Some([12:8])])),f [[12:8]])\n(AddrDep(PrmAddr(number?)),h [[6:4]])\n(AddrDep(VarAddr(c@1:16 [Some([12:8])])),f [[12:8]])\n(AddrDep(VarAddr(j@7:10 [None])),h [[6:4]])\n(AddrDep(VarAddr(f@4:56 [Some([12:8])])),λ@4:44 [[12:8]])\n(AddrDep(VarAddr(fn@9:12 [Some([13:2])])),h [[13:2]])\n(AddrDep(VarAddr(j@7:10 [None])),h [[4:41]])\n(AddrDep(VarAddr(d@4:35 [Some([12:8])])),λ@4:21 [[12:8]])\n(AddrDep(VarAddr(fn@9:12 [Some([6:4])])),h [[6:4]])\n(AddrDep(VarAddr(@sensitivity:FA@@sensitivity:FA:1:9 [None])),<= [[>:1:60]])\n(AddrDep(VarAddr(<=@<=:1:10 [None])),> [[4:68]])\n(AddrDep(PrmAddr(<)),<= [[>:1:60]])\n(AddrDep(PrmAddr(=)),<= [[>:1:60]])\n(AddrDep(VarAddr(x@<=:1:13 [Some([>:1:60])])),<= [[>:1:60]])\n(AddrDep(VarAddr(g@4:54 [Some([12:8])])),λ@4:44 [[12:8]])\n(AddrDep(ret (λ@4:44 [[12:8]])),h [[4:41]])\n(AddrDep(PrmAddr(number?)),h [[4:41]])\n(AddrDep(PrmAddr(number?)),h [[13:2]])\n(AddrDep(VarAddr(y@<=:1:15 [Some([>:1:60])])),<= [[>:1:60]])\n(AddrDep(ret (λ@4:21 [[12:8]])),h [[4:18]])\n(AddrDep(ret (λ@6:7 [[12:8]])),h [[6:4]])\n(AddrDep(VarAddr(x@>:1:12 [Some([4:68])])),> [[4:68]])\n(AddrDep(PrmAddr(number?)),h [[4:18]])\n(AddrDep(ret (not [[>:1:55]])),> [[4:68]])\n(AddrDep(VarAddr(>@>:1:10 [None])),λ@4:44 [[12:8]])\n(AddrDep(VarAddr(h@9:10 [None])),h [[6:4]])\n(AddrDep(VarAddr(e@1:20 [Some([12:8])])),f [[12:8]])\n(AddrDep(VarAddr(a@5:12 [Some([3:4])])),g [[3:4]])\n(AddrDep(VarAddr(fn@9:12 [Some([4:41])])),h [[4:41]])\n(AddrDep(ret (h [[13:2]])),main)\n(AddrDep(VarAddr(g@5:10 [None])),h [[6:4]])\n(AddrDep(VarAddr(j@7:10 [None])),h [[13:2]])\n(AddrDep(VarAddr(g@5:10 [None])),h [[4:18]])\n(AddrDep(VarAddr(h@9:10 [None])),main)\n(AddrDep(VarAddr(h@9:10 [None])),h [[13:2]])\n(AddrDep(ret (<= [[>:1:60]])),> [[4:68]])\n(AddrDep(ret (> [[4:68]])),λ@4:44 [[12:8]])\n(AddrDep(VarAddr(fn@9:12 [Some([4:18])])),h [[4:18]])\n(AddrDep(VarAddr(args@list:1:17 [Some([8:17])])),list [[8:17]])\n(AddrDep(ret (list [[8:17]])),j [[2:22]])\n(AddrDep(VarAddr(list@list:1:10 [None])),j [[2:22]])"
-        .split("\n")
-        .nn
-        .toSet
+    val exp1 = {
+      val a = getStandard(ProgramVersionExtracter.getInitial(CSchemeParser.parse(program)))
+      a.analyzeWithTimeout(timeout())
+      if (a.finished)
+        a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) })
+      else ""
+    }
+    val exp2 = {
+      val a = getStandard(ProgramVersionExtracter.getUpdated(CSchemeParser.parse(program)))
+      a.analyzeWithTimeout(timeout())
+      if (a.finished)
+        a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) })
+      else ""
+    }
     /* val exp3 = exp2 ++ Set(
       "(AddrDep(VarAddr(h@9:10 [None])),j [[4:14]])",
       "(AddrDep(VarAddr(f@1:10 [None])),j [[4:14]])",
@@ -218,6 +234,8 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
     for (c <- allConfigurations.filter(c => c.dependencyInvalidation && c.componentInvalidation)) {
       property(s"Dependency invalidation works on an artificial example using ${c}.", IncrementalTest) {
         try {
+          assume(exp1 != "")
+          assume(exp2 != "")
           val a = base.deepCopy()
           a.configuration = c
           a.analyzeWithTimeout(timeout())
