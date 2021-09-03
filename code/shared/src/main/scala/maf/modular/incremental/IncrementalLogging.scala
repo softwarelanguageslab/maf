@@ -109,7 +109,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   var logEnd = true
 
   override def run(timeout: Timeout.T): Unit = {
-    super.analyzeWithTimeout(timeout)
+    super.run(timeout)
     if (logEnd) {
       logger.logU("\n\n" + tableToString())
       logger.logU("\n" + storeString())
