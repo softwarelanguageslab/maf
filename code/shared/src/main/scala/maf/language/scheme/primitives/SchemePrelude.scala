@@ -329,7 +329,11 @@ object SchemePrelude {
     "ref" -> "(define (ref x) @sensitivity:FA (cons x '()))",
     "deref" -> "(define deref car)",
     "ref-set" -> "(define ref-set set-car!)",
-    "void" -> "(define (void) #f)"
+    "void" -> "(define (void) #f)", 
+    "__toplevel_cons" -> "cons",
+    "__toplevel_car" -> "car",
+    "__toplevel_cdr" -> "cdr",
+    "__toplevel_set-cdr!" -> "set-cdr!"
     /*
     "ref" -> "(define (ref x) (cons x (new-lock))",
     "deref" ->

@@ -600,6 +600,30 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp {
   def subexpressions: List[Expression] = List(exp)
 }
 
+/** Creates explicit (mutable) reference */
+object SchemeRef {
+    def apply(exp: SchemeExp, idn: Identity) =
+        SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", idn)),
+                      List(SchemeValue(Value.Symbol("ref"), idn), exp),
+                      idn)
+}
+
+/** Dereferences an explicit (mutable) reference */
+object SchemeDeref {
+    def apply(ref: SchemeExp, idn: Identity) = 
+        SchemeFuncall(SchemeVar(Identifier("__toplevel_cdr", idn)),
+                      List(ref),
+                      idn)
+}
+
+/** Updates an explicit (mutable) reference */
+object SchemeSetRef {
+    def apply(ref: SchemeExp, exp: SchemeExp, idn: Identity) = 
+        SchemeFuncall(SchemeVar(Identifier("__toplevel_set-cdr!", idn)),
+                      List(ref, exp),
+                      idn)
+}
+
 /** A code change in a Scheme program. */
 case class SchemeCodeChange(
     old: SchemeExp,

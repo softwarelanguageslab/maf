@@ -4,12 +4,12 @@ import maf.language.scheme._
 
 object CSchemeLexicalAddresser extends BaseSchemeLexicalAddresser {
 
-  override def translate(exp: SchemeExp, scope: CSchemeLexicalAddresser.Scope): SchemeExp = exp match {
-    case CSchemeFork(exp, idn) => CSchemeFork(translate(exp, scope), idn)
-    case CSchemeJoin(exp, idn) => CSchemeJoin(translate(exp, scope), idn)
+  override def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = exp match {
+    case CSchemeFork(exp, idn) => CSchemeFork(translate(exp, lenv), idn)
+    case CSchemeJoin(exp, idn) => CSchemeJoin(translate(exp, lenv), idn)
 
-    case SchemeCodeChange(old, nw, idn) => SchemeCodeChange(translate(old, scope), translate(nw, scope), idn)
+    case SchemeCodeChange(old, nw, idn) => SchemeCodeChange(translate(old, lenv), translate(nw, lenv), idn)
 
-    case _ => super.translate(exp, scope)
+    case _ => super.translate(exp, lenv)
   }
 }

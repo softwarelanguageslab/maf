@@ -17,10 +17,11 @@ import scala.language.reflectiveCalls
 
 import maf.cli.experiments.SchemeAnalyses
 import maf.language.scheme.interpreter._
+import maf.language.scheme.SchemeMutableVarBoxer
 
 object AdaptiveRun {
 
-  def main(args: Array[String]): Unit = testModFLocal()
+  def main(args: Array[String]): Unit = testTransform()
 
   def testConcrete() = {
     val txt = """
@@ -34,6 +35,17 @@ object AdaptiveRun {
         println(s"${addr} -> ${value}")
       case _ => ()
     }
+  }
+
+  def testTransform(): Unit = {
+    val prg = """
+      (lambda (x y)
+        (set! x y)
+        x)
+    """
+    val parsed = CSchemeParser.parse(prg)
+    val transf = SchemeMutableVarBoxer.transform(parsed, Set("+", "-"))
+    println(transf)
   }
 
   def testModFLocal(): Unit = {

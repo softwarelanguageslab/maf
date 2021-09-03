@@ -3,27 +3,9 @@ package maf.language.scheme
 import maf.core.Identifier
 
 /** Lexical references can either be: */
-trait LexicalRef
-
-/** A reference to a primitive in the global environment */
-case class PrimRef(nam: String) extends LexicalRef {
-  override def toString = s"<prim ${nam}>"
-}
-
-/** A reference to a local variable */
-case class LocalRef(id: Identifier) extends LexicalRef {
-  override def toString = s"<local ${id.name}>"
-}
-
-/** A reference to a non-local variable (in the lexical scope) */
-case class NonLocalRef(id: Identifier, depth: Int) extends LexicalRef {
-  override def toString = s"<non-local@${depth} ${id.name}>"
-}
-
-/** A reference to a global variable (=> at the top of the lexical scope) */
-case class GlobalRef(id: Identifier) extends LexicalRef {
-  override def toString = s"<global ${id.name}>"
-}
+enum LexicalRef:
+  case PrmRef(nam: String)
+  case VarRef(id: Identifier)
 
 trait BaseSchemeLexicalAddresser {
 
@@ -47,153 +29,105 @@ trait BaseSchemeLexicalAddresser {
   }
 
   /** A frame is a mapping from variable names to the lexical definition site */
-  type Frame = List[LocalFrame]
-  type LocalFrame = Map[String, Identifier]
+  type Frame = Map[String, Identifier]
+  type Scope = List[Frame]
 
-  val emptyFrame: Frame = List(Map[String, Identifier]())
+  val emptyFrame: Frame = Map.empty
+  val emptyScope: Scope = List.empty
 
-  def lookupFrame(frame: Frame, name: String): Option[Identifier] = frame match {
+  def lookup(scope: Scope, name: String): Option[Identifier] = scope match {
     case Nil => None
-    case localFrm :: rest =>
-      localFrm.get(name) match {
-        case None  => lookupFrame(rest, name)
-        case found => found
-      }
+    case frame :: rest => frame.get(name).orElse(lookup(rest, name))
   }
-  def extendFrame(frame: Frame, id: Identifier): Frame = frame match {
-    case localFrame :: _ if localFrame.contains(id.name) =>
-      throw new Exception(s"Duplicate definition of identifier $id")
-    case localFrame :: rest =>
-      (localFrame + (id.name -> id)) :: rest
-    case Nil =>
-      throw new Exception("Unable to extend an empty frame")
+
+  def extendScope(scope: Scope, id: Identifier): Scope = scope match {
+    case frame :: _ if frame.contains(id.name) => throw new Exception(s"Duplicate definition of identifier $id")
+    case frame :: rest => (frame + (id.name -> id)) :: rest
+    case Nil => throw new Exception("Unable to extend an empty frame")
   }
-  def newLocalFrame(frame: Frame): Frame = Map[String, Identifier]() :: frame
 
-  /** A scope consists out of multiple frames */
-  case class Scope(
-      current: Frame,
-      lexical: List[Frame],
-      global: Set[String])
-
-  /** Given a variable reference, compute the corresponding lexical address in the given scope */
-  def resolve(id: Identifier, scope: Scope): LexicalRef =
-    lookupFrame(scope.current, id.name) match {
-      case Some(identifier) => LocalRef(identifier)
-      case None =>
-        resolveLexical(id.name, scope.lexical, 1) match {
-          case Some((identifier, depth)) if depth == scope.lexical.length =>
-            GlobalRef(identifier)
-          case Some((identifier, depth)) =>
-            NonLocalRef(identifier, depth)
-          case None if scope.global.contains(id.name) =>
-            PrimRef(id.name)
-          case None => throw new Exception(s"Undefined variable reference at ${id.idn.pos}: $id")
-        }
+  def newFrame(scope: Scope): Scope = Map.empty :: scope
+  
+  case class LexicalEnv(scope: Scope)(globals: String => Boolean) {
+    def newFrame = LexicalEnv(emptyFrame :: scope)(globals)
+    def extend(id: Identifier): LexicalEnv = LexicalEnv(extendScope(scope, id))(globals)
+    def extend(ids: Iterable[Identifier]): LexicalEnv = ids.foldLeft(this)((acc, idf) => acc.extend(idf))
+    def resolve(nam: String): LexicalRef = lookup(scope, nam) match {
+      case Some(idf) => LexicalRef.VarRef(idf)
+      case None if globals(nam) => LexicalRef.PrmRef(nam)
+      case None => throw new Exception(s"Undefined variable $nam")
     }
-  def resolveLexical(
-      nam: String,
-      frames: List[Frame],
-      depth: Int
-    ): Option[(Identifier, Int)] =
-    if (frames.isEmpty) { None }
-    else
-      lookupFrame(frames.head, nam) match {
-        case Some(identifier) => Some((identifier, depth))
-        case None             => resolveLexical(nam, frames.tail, depth + 1)
-      }
+  }
 
-  def newFrame(scope: Scope): Scope =
-    scope.copy(current = emptyFrame, lexical = scope.current :: scope.lexical)
-  def newLocalFrame(scope: Scope): Scope =
-    scope.copy(current = newLocalFrame(scope.current))
-  def extend(scope: Scope, id: Identifier): Scope =
-    scope.copy(current = extendFrame(scope.current, id))
-  def extend(scope: Scope, ids: Iterable[Identifier]): Scope =
-    ids.foldLeft(scope)(extend)
+  def initialLEnv(globals: String => Boolean) = LexicalEnv(emptyScope)(globals)
 
-  def translateProgram(prg: SchemeExp, global: Set[String]): SchemeExp =
-    this.translate(prg, extend(Scope(emptyFrame, Nil, global), defs(prg)))
+  def translateProgram(prg: SchemeExp, globals: String => Boolean = _ => true): SchemeExp =
+    this.translate(prg, initialLEnv(globals).extend(defs(prg)))
 
-  def translate(exp: SchemeExp, scope: Scope): SchemeExp = exp match {
-    case vexp: SchemeValue => vexp
+  def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = exp match {
+    case vexp: SchemeValue => 
+      vexp
     case SchemeLambda(nam, prs, bdy, pos) =>
-      val extScp = extend(newFrame(scope), prs)
-      val bdyLex = translateBody(bdy, newLocalFrame(extScp))
-      SchemeLambda(nam, prs, bdyLex, pos)
+      SchemeLambda(nam, prs, translateBody(bdy, lenv.newFrame.extend(prs)), pos)
     case SchemeVarArgLambda(nam, prs, vararg, bdy, pos) =>
-      val extScp = extend(extend(newFrame(scope), prs), vararg)
-      val bdyLex = translateBody(bdy, newLocalFrame(extScp))
-      SchemeVarArgLambda(nam, prs, vararg, bdyLex, pos)
+      SchemeVarArgLambda(nam, prs, vararg, translateBody(bdy, lenv.newFrame.extend(prs).extend(vararg)), pos)
     case SchemeVar(id) =>
-      SchemeVarLex(id, resolve(id, scope))
+      SchemeVarLex(id, lenv.resolve(id.name))
     case SchemeBegin(eps, pos) =>
-      SchemeBegin(translate(eps, scope), pos)
+      SchemeBegin(translate(eps, lenv), pos)
     case SchemeDefineVariable(id, vexp, pos) =>
-      val vexpLex = this.translate(vexp, scope)
-      SchemeDefineVariable(id, vexpLex, pos)
+      SchemeDefineVariable(id, translate(vexp, lenv), pos)
     case SchemeDefineFunction(id, prs, bdy, pos) =>
-      val extScp = extend(newFrame(scope), prs)
-      val bdyLex = translateBody(bdy, newLocalFrame(extScp))
-      SchemeDefineFunction(id, prs, bdyLex, pos)
+      SchemeDefineFunction(id, prs, translateBody(bdy, lenv.newFrame.extend(prs)), pos)
     case SchemeDefineVarArgFunction(id, prs, vararg, bdy, pos) =>
-      val extScp = extend(extend(newFrame(scope), prs), vararg)
-      val bdyLex = translateBody(bdy, newLocalFrame(extScp))
-      SchemeDefineVarArgFunction(id, prs, vararg, bdyLex, pos)
+      SchemeDefineVarArgFunction(id, prs, vararg, translateBody(bdy, lenv.newFrame.extend(prs).extend(vararg)), pos)
     case SchemeSet(id, vexp, pos) =>
-      val vexpLex = this.translate(vexp, scope)
-      val varAddr = resolve(id, scope)
-      SchemeSetLex(id, varAddr, vexpLex, pos)
+      SchemeSetLex(id, lenv.resolve(id.name), translate(vexp, lenv), pos)
     case SchemeIf(prd, csq, alt, pos) =>
-      SchemeIf(this.translate(prd, scope), this.translate(csq, scope), this.translate(alt, scope), pos)
+      SchemeIf(translate(prd, lenv), translate(csq, lenv), translate(alt, lenv), pos)
     case SchemePair(car, cdr, pos) =>
-      SchemePair(this.translate(car, scope), this.translate(cdr, scope), pos)
+      SchemePair(translate(car, lenv), translate(cdr, lenv), pos)
     case SchemeSplicedPair(splice, cdr, pos) =>
-      SchemeSplicedPair(this.translate(splice, scope), this.translate(cdr, scope), pos)
+      SchemeSplicedPair(translate(splice, lenv), translate(cdr, lenv), pos)
     case SchemeFuncall(fun, args, pos) =>
-      SchemeFuncall(this.translate(fun, scope), translate(args, scope), pos)
+      SchemeFuncall(translate(fun, lenv), translate(args, lenv), pos)
     case SchemeAnd(exps, pos) =>
-      SchemeAnd(translate(exps, scope), pos)
+      SchemeAnd(translate(exps, lenv), pos)
     case SchemeOr(exps, pos) =>
-      SchemeOr(translate(exps, scope), pos)
+      SchemeOr(translate(exps, lenv), pos)
     case SchemeAssert(exp, pos) =>
-      SchemeAssert(translate(exp, scope), pos)
+      SchemeAssert(translate(exp, lenv), pos)
     case SchemeLet(bindings, body, pos) =>
       val (vrs, eps) = bindings.unzip
-      val bdsLex = vrs.zip(eps.map(this.translate(_, scope)))
-      val extScp = extend(newLocalFrame(scope), vrs)
-      val bdyLex = translateBody(body, newLocalFrame(extScp))
+      val bdsLex = vrs.zip(translate(eps, lenv))
+      val bdyLex = translateBody(body, lenv.newFrame.extend(vrs))
       SchemeLet(bdsLex, bdyLex, pos)
     case SchemeLetStar(bindings, body, pos) =>
-      var curScp = scope
-      val bdsLex = bindings.map { case (id, vexp) =>
-        val bnd = (id, this.translate(vexp, curScp))
-        curScp = extend(newLocalFrame(curScp), id)
-        bnd
+      val (bdsLex, extEnv) = bindings.foldLeft[(List[(Identifier, SchemeExp)], LexicalEnv)]((Nil, lenv.newFrame)) {
+        case ((accBds, accEnv), (id, vexp)) => ((id, translate(vexp, accEnv)) :: accBds, accEnv.extend(id))
       }
-      val bdyLex = translateBody(body, newLocalFrame(curScp))
-      SchemeLetStar(bdsLex, bdyLex, pos)
+      val bdyLex = translateBody(body, extEnv)
+      SchemeLetStar(bdsLex.reverse, bdyLex, pos)
     case SchemeLetrec(bindings, body, pos) =>
       val (vrs, eps) = bindings.unzip
-      val extScp = extend(newLocalFrame(scope), vrs)
-      val bdsLex = vrs.zip(eps.map(this.translate(_, extScp)))
-      val bdyLex = translateBody(body, newLocalFrame(extScp))
+      val extEnv = lenv.newFrame.extend(vrs)
+      val bdsLex = vrs.zip(translate(eps, extEnv))
+      val bdyLex = translateBody(body, extEnv)
       SchemeLetrec(bdsLex, bdyLex, pos)
     case SchemeNamedLet(name, bindings, body, pos) =>
       val (prs, eps) = bindings.unzip
-      val bdsLex = prs.zip(eps.map(this.translate(_, scope)))
-      val letScp = extend(newLocalFrame(scope), name)
-      val extScp = extend(newFrame(letScp), prs)
-      val bdyLex = translateBody(body, newLocalFrame(extScp))
+      val bdsLex = prs.zip(translate(eps, lenv))
+      val letEnv = lenv.newFrame.extend(name)
+      val extEnv = letEnv.newFrame.extend(prs)
+      val bdyLex = translateBody(body, extEnv)
       SchemeNamedLet(name, bdsLex, bdyLex, pos)
     case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
   }
 
-  def translate(bdy: List[SchemeExp], scope: Scope): List[SchemeExp] =
-    bdy.map(exp => this.translate(exp, scope))
-
-  def translateBody(body: List[SchemeExp], scope: Scope): List[SchemeExp] =
-    translate(body, extend(scope, defs(body)))
+  def translate(bdy: List[SchemeExp], lenv: LexicalEnv): List[SchemeExp] = 
+    bdy.map(translate(_, lenv))
+  def translateBody(body: List[SchemeExp], lenv: LexicalEnv): List[SchemeExp] =
+    translate(body, lenv.newFrame.extend(defs(body)))
 }
 
 object SchemeLexicalAddresser extends BaseSchemeLexicalAddresser
