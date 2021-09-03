@@ -85,8 +85,6 @@ trait SchemeSemantics {
     case SchemeLet(bds, bdy, _)     => evalLet(bds, bdy)
     case SchemeLetStar(bds, bdy, _) => evalLetStar(bds, bdy)
     case SchemeLetrec(bds, bdy, _)  => evalLetrec(bds, bdy)
-    case pai: SchemePair            => evalPair(pai)
-    case spi: SchemeSplicedPair     => evalSplicedPair(spi)
     case cll: SchemeFuncall         => evalCall(cll)
     case SchemeAssert(exp, _)       => evalAssert(exp)
     case _                          => throw new Exception(s"Unsupported Scheme expression: $exp")
@@ -167,20 +165,6 @@ trait SchemeSemantics {
     } yield res
   }
 
-  private def evalPair(pai: SchemePair): A[Val] =
-    for {
-      car <- eval(pai.car)
-      cdr <- eval(pai.cdr)
-      pai <- allocPai(pai, car, cdr)
-    } yield pai
-
-  private def evalSplicedPair(spi: SchemeSplicedPair): A[Val] =
-    for {
-      spl <- eval(spi.splice)
-      cdr <- eval(spi.cdr)
-      res <- append(spl, cdr)
-    } yield res
-
   // by default, asserts are ignored
   protected def evalAssert(exp: Exp): A[Val] = AnalysisM[A].unit(lattice.void)
 
@@ -258,7 +242,4 @@ trait SchemeSemantics {
         pai <- allocPai(exp, vlu, rst)
       } yield pai
   }
-
-  private def append(x: Val, y: Val): A[Val] =
-    throw new Exception("NYI -- append")
 }

@@ -85,10 +85,6 @@ trait BaseSchemeLexicalAddresser {
       SchemeSetLex(id, lenv.resolve(id.name), translate(vexp, lenv), pos)
     case SchemeIf(prd, csq, alt, pos) =>
       SchemeIf(translate(prd, lenv), translate(csq, lenv), translate(alt, lenv), pos)
-    case SchemePair(car, cdr, pos) =>
-      SchemePair(translate(car, lenv), translate(cdr, lenv), pos)
-    case SchemeSplicedPair(splice, cdr, pos) =>
-      SchemeSplicedPair(translate(splice, lenv), translate(cdr, lenv), pos)
     case SchemeFuncall(fun, args, pos) =>
       SchemeFuncall(translate(fun, lenv), translate(args, lenv), pos)
     case SchemeAssert(exp, pos) =>

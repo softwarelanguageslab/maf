@@ -66,10 +66,6 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         args: List[SchemeExp],
         env: Env)
         extends Frame
-    case class PairCarFrm(pairExp: SchemePair, env: Env) extends Frame
-    case class PairCdrFrm(carValue: Value, pairExp: SchemePair) extends Frame
-    case class SplicedCarFrm(pairExp: SchemeSplicedPair, env: Env) extends Frame
-    case class SplicedCdrFrm(carValue: Value, pairExp: SchemeSplicedPair) extends Frame
 
     // the main analyze method
     def analyzeWithTimeout(timeout: Timeout.T): Unit = {
@@ -144,12 +140,6 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         Set(EvalState(fexp, env, frm :: cnt))
       case SchemeAssert(exp, _) =>
         evalAssert(exp, env, cnt)
-      case pair: SchemePair =>
-        val frm = PairCarFrm(pair, env)
-        Set(EvalState(pair.car, env, frm :: cnt))
-      case spliced: SchemeSplicedPair =>
-        val frm = SplicedCarFrm(spliced, env)
-        Set(EvalState(spliced.splice, env, frm :: cnt))
       case _ =>
         throw new Exception(s"Unsupported Scheme expression: $exp")
     }
@@ -244,18 +234,6 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
       case ArgsFrame(fexp, fval, curExp, toEval, args, env) =>
         val newArgs = (curExp, vlu) :: args
         evalArgs(fexp, fval, toEval, newArgs, env, cnt)
-      case PairCarFrm(pair, env) =>
-        val frm = PairCdrFrm(vlu, pair)
-        Set(EvalState(pair.cdr, env, frm :: cnt))
-      case PairCdrFrm(carVlu, pairExp) =>
-        val result = allocateCons(pairExp)(carVlu, vlu)
-        Set(KontState(result, cnt))
-      case SplicedCarFrm(spliced, env) =>
-        val frm = SplicedCdrFrm(vlu, spliced)
-        Set(EvalState(spliced.cdr, env, frm :: cnt))
-      case SplicedCdrFrm(spliceValue, pairExp) =>
-        val result = append(pairExp)((pairExp.splice, spliceValue), (pairExp.cdr, vlu))
-        Set(KontState(result, cnt))
     }
   }
 }

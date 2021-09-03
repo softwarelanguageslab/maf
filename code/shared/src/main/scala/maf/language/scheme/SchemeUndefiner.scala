@@ -98,16 +98,6 @@ trait BaseSchemeUndefiner {
       tailcall(undefine1(value)).map(v => SchemeSet(variable, v, pos))
     case SchemeBegin(exps, pos) =>
       tailcall(undefineBody(exps)).map(expsv => SchemeBegin(expsv, pos))
-    case SchemePair(car, cdr, pos) =>
-      for {
-        carUndef <- tailcall(undefine1(car))
-        cdrUndef <- tailcall(undefine1(cdr))
-      } yield SchemePair(carUndef, cdrUndef, pos)
-    case SchemeSplicedPair(exps, cdr, pos) =>
-      for {
-        spliceUndef <- tailcall(undefine1(exps))
-        cdrUndef <- tailcall(undefine1(cdr))
-      } yield SchemeSplicedPair(spliceUndef, cdrUndef, pos)
     case SchemeAssert(exp, pos) =>
       for {
         expUndef <- tailcall(undefine1(exp))

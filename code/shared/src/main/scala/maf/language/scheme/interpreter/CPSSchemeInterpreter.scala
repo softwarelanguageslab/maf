@@ -107,8 +107,6 @@ class CPSSchemeInterpreter(
 
   case class BegC(exps: List[SchemeExp], env: Env, cc: Continuation) extends InternalContinuation
 
-  case class CdrC(cdr: SchemeExp, env: Env, e: SchemeExp, cc: Continuation) extends InternalContinuation
-
   case class EndC() extends Continuation // End of the program.
   case class FunC(args: List[SchemeExp], env: Env, call: SchemeFuncall, cc: Continuation) extends InternalContinuation
 
@@ -176,14 +174,12 @@ class CPSSchemeInterpreter(
       Step(e, extEnv, LtrC(i, rest, extEnv, let, cc))
     case SchemeLetStar(Nil, body, pos)             => Step(SchemeBegin(body, pos), env, cc)
     case let @ SchemeLetStar((i, e) :: rest, _, _) => Step(e, env, LtsC(i, rest, env, let, cc))
-    case SchemePair(car, cdr, _)    => Step(car, env, CdrC(cdr, env, exp, cc))
     case SchemeSet(variable, value, _) =>
       env.get(variable.name) match {
         case Some(addr) => Step(value, env, SetC(addr, cc))
         case None       => stackedException(s"Unbound variable $variable at position ${variable.idn}.")
       }
     case SchemeSetLex(_, _, _, _)   => stackedException("Unsupported: lexical addresses.")
-    case SchemeSplicedPair(_, _, _) => stackedException("NYI -- Unquote splicing")
     case SchemeValue(value, _)      => Kont(evalLiteral(value, exp), cc)
     case SchemeVar(id) =>
       env.get(id.name).flatMap(lookupStoreOption).map(Kont(_, cc)).getOrElse(stackedException(s"Unbound variable $id at position ${id.idn}."))
@@ -203,7 +199,6 @@ class CPSSchemeInterpreter(
     case ArgC(first :: rest, env, f, argv, call, cc)     => Step(first, env, ArgC(rest, env, f, v :: argv, call, cc))
     case BegC(first :: Nil, env, cc)                     => Step(first, env, cc)
     case BegC(first :: rest, env, cc)                    => Step(first, env, BegC(rest, env, cc))
-    case CdrC(cdr, env, exp, cc)                         => Step(cdr, env, PaiC(v, exp, cc))
     case FunC(args, env, call, cc)                       => continueArgs(v, args, env, call, cc)
     case IffC(_, alt, env, cc) if v == Value.Bool(false) => Step(alt, env, cc)
     case IffC(cons, _, env, cc)                          => Step(cons, env, cc)

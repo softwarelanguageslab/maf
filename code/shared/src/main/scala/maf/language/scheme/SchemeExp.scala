@@ -545,38 +545,16 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarEx
   override def toString: String = lexAddr.toString
 }
 
-case class SchemePair(
-    car: SchemeExp,
-    cdr: SchemeExp,
-    idn: Identity)
-    extends SchemeExp {
-  override def toString: String = s"`($contentToString)"
-  private def contentToString: String = cdr match {
-    case SchemeValue(Value.Nil, _) => printElement(car)
-    case pair: SchemePair          => s"${printElement(car)} ${pair.contentToString}"
-    case _                         => s"${printElement(car)} . ${printElement(cdr)}"
-  }
-  private def printElement(elm: SchemeExp): String = elm match {
-    case SchemeValue(Value.Symbol(sym), _) => sym
-    case SchemeValue(v, _)                 => v.toString
-    case pair: SchemePair                  => s"(${pair.contentToString})"
-    case _                                 => s",$elm"
-  }
-  def fv: Set[String] = car.fv ++ cdr.fv
-  val label: Label = PAI
-  def subexpressions: List[Expression] = List(car, cdr)
+object SchemePair {
+  def apply(car: SchemeExp, cdr: SchemeExp, idn: Identity): SchemeExp =
+    SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", idn)), List(car, cdr), idn) 
 }
 
-case class SchemeSplicedPair(
-    splice: SchemeExp,
-    cdr: SchemeExp,
-    idn: Identity)
-    extends SchemeExp {
-  override def toString: String = s"`(,@$splice . ,$cdr)"
-  def fv: Set[String] = splice.fv ++ cdr.fv
-  val label: Label = SPA
-  def subexpressions: List[Expression] = List(splice, cdr)
+object SchemeSplicedPair {
+  def apply(splice: SchemeExp, cdr: SchemeExp, idn: Identity): SchemeExp =
+    SchemeFuncall(SchemeVar(Identifier("__toplevel_append", idn)), List(splice, cdr), idn) 
 }
+
 
 /** A literal value (number, symbol, string, ...) */
 case class SchemeValue(value: Value, idn: Identity) extends SchemeExp {

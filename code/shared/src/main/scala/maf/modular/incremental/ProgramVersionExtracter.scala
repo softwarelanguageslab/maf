@@ -21,8 +21,6 @@ object ProgramVersionExtracter {
     case SchemeDefineVariable(name, value, idn)      => SchemeDefineVariable(name, getVersion(value), idn)
     case SchemeDefineFunction(name, args, body, idn) => SchemeDefineFunction(name, args, body.map(getVersion), idn)
     case SchemeDefineVarArgFunction(name, args, vararg, body, idn) => SchemeDefineVarArgFunction(name, args, vararg, body.map(getVersion), idn)
-    case SchemePair(car, cdr, idn)                                 => SchemePair(getVersion(car), getVersion(cdr), idn)
-    case SchemeSplicedPair(splice, cdr, idn)                       => SchemeSplicedPair(getVersion(splice), getVersion(cdr), idn)
 
     // Assume no nested changes.
     case SchemeCodeChange(old, _, _) if version == Old => old

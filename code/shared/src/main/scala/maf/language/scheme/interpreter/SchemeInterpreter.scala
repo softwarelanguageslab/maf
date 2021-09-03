@@ -303,16 +303,6 @@ class SchemeInterpreter(
             }
           case None => stackedException(s"Undefined variable $id at position ${id.idn}.")
         }
-      case SchemePair(car, cdr, _) =>
-        for {
-          carv <- eval(car, env, timeout, version)
-          cdrv <- eval(cdr, env, timeout, version)
-        } yield allocateCons(e, carv, cdrv)
-      case SchemeSplicedPair(_, _, _) =>
-        stackedException("NYI -- Unquote splicing")
-      //val splicev = eval(splice,env,timeout)
-      //val cdrv    = eval(cdr,env,timeout)
-      //Primitives.Append.append(splicev,cdrv)
       case SchemeValue(v, _) =>
         done(evalLiteral(v, e))
       case CSchemeFork(body, _) =>

@@ -84,10 +84,6 @@ object SchemeMutableVarBoxer {
             SchemeBegin(eps.map(rewrite(_, mut, rew)), pos)
         case SchemeIf(prd, csq, alt, pos) =>
             SchemeIf(rewrite(prd, mut, rew), rewrite(csq, mut, rew), rewrite(alt, mut, rew), pos)
-        case SchemePair(car, cdr, pos) =>
-            SchemePair(rewrite(car, mut, rew), rewrite(cdr, mut, rew), pos)
-        case SchemeSplicedPair(splice, cdr, pos) =>
-            SchemeSplicedPair(rewrite(splice, mut, rew), rewrite(cdr, mut, rew), pos)
         case SchemeFuncall(fun, args, pos) =>
             SchemeFuncall(rewrite(fun, mut, rew), args.map(rewrite(_, mut, rew)), pos)
         case SchemeAssert(exp, pos) =>

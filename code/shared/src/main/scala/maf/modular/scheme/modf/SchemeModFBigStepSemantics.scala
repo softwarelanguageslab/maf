@@ -82,8 +82,6 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
       case SchemeLetrec(bindings, body, _)           => evalLetRec(bindings, body)
       case call @ SchemeFuncall(fun, args, _)        => evalCall(call, fun, args)
       case SchemeAssert(exp, _)                      => evalAssert(exp)
-      case pair: SchemePair                          => evalPair(pair)
-      case pair: SchemeSplicedPair                   => evalSplicedPair(pair)
       case _                                         => throw new Exception(s"Unsupported Scheme expression: $exp")
     }
     private def evalVariable(id: Identifier): EvalM[Value] =
@@ -134,7 +132,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
           res <- evalSequence(body)
         } yield res
       }
-      
+
     protected def evalAssert(exp: SchemeExp): EvalM[Value] =
       // Assertions are not evaluated by default
       unit(lattice.void)
@@ -150,15 +148,5 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
         returned = applyFun(exp, funVal, args.zip(argVals), fun.idn.pos)
         result <- inject(returned)
       } yield result
-    private def evalPair(pairExp: SchemePair): EvalM[Value] =
-      for {
-        carv <- eval(pairExp.car)
-        cdrv <- eval(pairExp.cdr)
-      } yield allocateCons(pairExp)(carv, cdrv)
-    private def evalSplicedPair(pairExp: SchemeSplicedPair): EvalM[Value] =
-      for {
-        splicev <- eval(pairExp.splice)
-        cdrv <- eval(pairExp.cdr)
-      } yield append(pairExp)((pairExp.splice, splicev), (pairExp.cdr, cdrv))
   }
 }

@@ -217,12 +217,6 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
         alt: Exp,
         env: Env)
         extends Frame
-    case class PairCarFrame(
-        cdr: SchemeExp,
-        env: Env,
-        pair: Exp)
-        extends Frame
-    case class PairCdrFrame(car: Value, pair: Exp) extends Frame
     case class SetFrame(variable: Identifier, env: Env) extends Frame
     case class OperatorFrame(
         args: Exps,
@@ -291,7 +285,6 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
 
       // Multi-step evaluation.
       case c @ SchemeFuncall(f, args, _)             => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
-      case e @ SchemePair(car, cdr, _)               => Set(Eval(car, env, extendKStore(car, PairCarFrame(cdr, env, e), stack)))
       case SchemeSet(variable, value, _)             => Set(Eval(value, env, extendKStore(value, SetFrame(variable, env), stack)))
       case SchemeBegin(exps, _)                      => evalSequence(exps, env, stack)
       case SchemeIf(cond, cons, alt, _)              => evalIf(cond, cons, alt, env, stack)
@@ -299,7 +292,6 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
       case SchemeLetrec(bindings, body, _)           => evalLetRec(bindings, body, env, stack)
       case SchemeLetStar(bindings, body, _)          => evalLetStar(bindings, body, env, stack)
       case SchemeAssert(exp, _)                      => evalAssert(exp, env, stack)
-      case SchemeSplicedPair(_, _, _)                => throw new Exception("Splicing not supported.")
 
       // Multithreading.
       case CSchemeFork(body, _) => evalFork(body, env, stack)
@@ -403,8 +395,6 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
       ): Set[State] = frame match {
       case SequenceFrame(exps, env)       => evalSequence(exps, env, stack)
       case IfFrame(cons, alt, env)        => conditional(vl, Eval(cons, env, stack), Eval(alt, env, stack))
-      case PairCarFrame(cdr, env, pair)   => Set(Eval(cdr, env, extendKStore(cdr, PairCdrFrame(vl, pair), stack)))
-      case PairCdrFrame(carv, pair)       => Set(Kont(allocateCons(pair)(carv, vl), stack))
       case SetFrame(variable, env)        => Set(Kont(assign(variable, vl, env), stack)) // Returns bottom.
       case OperatorFrame(args, env, fexp) => evalArgs(args, fexp, vl, List(), env, stack)
       case OperandsFrame(todo, done, env, f, fexp) => evalArgs(todo.tail, fexp, f, (todo.head, vl) :: done, env, stack)
