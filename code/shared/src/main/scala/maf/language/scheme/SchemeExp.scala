@@ -369,27 +369,31 @@ object SchemeCase {
 }
 
 /** An and expression: (and exps...) */
-case class SchemeAnd(exps: List[SchemeExp], idn: Identity) extends SchemeExp {
-  override def toString: String = {
-    val e = exps.mkString(" ")
-    s"(and $e)"
+object SchemeAnd {
+  def apply(eps: List[SchemeExp], idn: Identity): SchemeExp = eps match {
+    case Nil => SchemeValue(Value.Boolean(true), idn)
+    case exp :: Nil => exp
+    case exp :: rst => SchemeIf(exp, 
+                                SchemeAnd(rst, idn), 
+                                SchemeValue(Value.Boolean(false), idn), 
+                                idn) 
   }
-  def fv: Set[String] = exps.flatMap(_.fv).toSet
-  override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
-  val label: Label = AND
-  def subexpressions: List[Expression] = exps
 }
 
 /** An or expression: (or exps...) */
-case class SchemeOr(exps: List[SchemeExp], idn: Identity) extends SchemeExp {
-  override def toString: String = {
-    val e = exps.mkString(" ")
-    s"(or $e)"
+object SchemeOr {
+  def apply(eps: List[SchemeExp], idn: Identity): SchemeExp = eps match {
+    case Nil => SchemeValue(Value.Boolean(false), idn)
+    case exp :: Nil => exp
+    case exp :: rst =>
+      val tmp = "__or_res"
+      SchemeLet(List((Identifier(tmp, exp.idn), exp)),
+                List((SchemeIf(SchemeVar(Identifier(tmp, Identity.none)),
+                               SchemeVar(Identifier(tmp, Identity.none)),
+                               SchemeOr(rst, idn),
+                               idn))),
+                idn)
   }
-  def fv: Set[String] = exps.flatMap(_.fv).toSet
-  override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
-  val label: Label = ORR
-  def subexpressions: List[Expression] = exps
 }
 
 /** A variable definition: (define name value) */

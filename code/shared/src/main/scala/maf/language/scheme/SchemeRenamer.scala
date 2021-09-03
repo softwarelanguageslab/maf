@@ -95,14 +95,6 @@ object SchemeRenamer {
       renameList(body, names, count) match {
         case (body1, count1) => (SchemeBegin(body1, pos), count1)
       }
-    case SchemeAnd(exps, pos) =>
-      renameList(exps, names, count) match {
-        case (exps1, count1) => (SchemeAnd(exps1, pos), count1)
-      }
-    case SchemeOr(exps, pos) =>
-      renameList(exps, names, count) match {
-        case (exps1, count1) => (SchemeOr(exps1, pos), count1)
-      }
     case SchemeAssert(exp, pos) =>
       rename(exp, names, count) match {
         case (exp1, count1) => (SchemeAssert(exp1, pos), count1)

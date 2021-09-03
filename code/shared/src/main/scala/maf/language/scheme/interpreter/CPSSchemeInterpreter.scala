@@ -103,8 +103,6 @@ class CPSSchemeInterpreter(
   }
 
   // format: off
-  case class AndC(exps: List[SchemeExp], env: Env, cc: Continuation) extends InternalContinuation
-
   case class ArgC(exps: List[SchemeExp], env: Env, f: Value, argv: List[Value], call: SchemeFuncall, cc: Continuation) extends InternalContinuation
 
   case class BegC(exps: List[SchemeExp], env: Env, cc: Continuation) extends InternalContinuation
@@ -123,8 +121,6 @@ class CPSSchemeInterpreter(
   case class LtsC(i: Identifier, bnd: List[(Identifier, SchemeExp)], env: Env, let: SchemeLetStar, cc: Continuation) extends InternalContinuation
 
   case class LtrC(i: Identifier, bnd: List[(Identifier, SchemeExp)], env: Env, let: SchemeLetrec, cc: Continuation) extends InternalContinuation
-
-  case class OrrC(exps: List[SchemeExp], env: Env, cc: Continuation) extends InternalContinuation
 
   case class PaiC(car: Value, e: SchemeExp, cc: Continuation) extends InternalContinuation
 
@@ -160,9 +156,6 @@ class CPSSchemeInterpreter(
       version: Version,
       cc: Continuation
     ): State = exp match {
-    case SchemeAnd(Nil, _)                             => Kont(Value.Bool(true), cc)
-    case SchemeAnd(first :: Nil, _)                    => Step(first, env, cc)
-    case SchemeAnd(first :: rest, _)                   => Step(first, env, AndC(rest, env, cc))
     case SchemeAssert(_, _)                            => Kont(Value.Void, cc) // Currently ignored.
     case SchemeBegin(Nil, _)                           => Kont(Value.Void, cc) // Allow empty begin (same than other interpreter).
     case SchemeBegin(first :: Nil, _)                  => Step(first, env, cc)
@@ -183,9 +176,6 @@ class CPSSchemeInterpreter(
       Step(e, extEnv, LtrC(i, rest, extEnv, let, cc))
     case SchemeLetStar(Nil, body, pos)             => Step(SchemeBegin(body, pos), env, cc)
     case let @ SchemeLetStar((i, e) :: rest, _, _) => Step(e, env, LtsC(i, rest, env, let, cc))
-    case SchemeOr(Nil, _)           => Kont(Value.Bool(false), cc)
-    case SchemeOr(first :: Nil, _)  => Step(first, env, cc)
-    case SchemeOr(first :: rest, _) => Step(first, env, OrrC(rest, env, cc))
     case SchemePair(car, cdr, _)    => Step(car, env, CdrC(cdr, env, exp, cc))
     case SchemeSet(variable, value, _) =>
       env.get(variable.name) match {
@@ -209,9 +199,6 @@ class CPSSchemeInterpreter(
   }
 
   def apply(v: Value, cc: Continuation): State = cc match {
-    case AndC(_, _, cc) if v == Value.Bool(false)        => Kont(v, cc)
-    case AndC(first :: Nil, env, cc)                     => Step(first, env, cc)
-    case AndC(first :: rest, env, cc)                    => Step(first, env, AndC(rest, env, cc))
     case ArgC(Nil, _, f, argv, call, cc)                 => continueBody(f, v :: argv, call, cc)
     case ArgC(first :: rest, env, f, argv, call, cc)     => Step(first, env, ArgC(rest, env, f, v :: argv, call, cc))
     case BegC(first :: Nil, env, cc)                     => Step(first, env, cc)
@@ -242,9 +229,6 @@ class CPSSchemeInterpreter(
       }
     case LtsC(i, Nil, env, let, cc)               => Step(SchemeBegin(let.body, let.idn), extendEnv(env, (i, v)), cc)
     case LtsC(i1, (i2, e) :: rest, env, let, cc)  => val extEnv = extendEnv(env, (i1, v)); Step(e, extEnv, LtsC(i2, rest, extEnv, let, cc))
-    case OrrC(_, _, cc) if v != Value.Bool(false) => Kont(v, cc)
-    case OrrC(first :: Nil, env, cc)              => Step(first, env, cc)
-    case OrrC(first :: rest, env, cc)             => Step(first, env, OrrC(rest, env, cc))
     case PaiC(car, e, cc)                         => Kont(allocateCons(e, car, v), cc)
     case RetC(addr, cc)                           => extendStore(addr, v); Kont(v, cc)
     case SetC(addr, cc)                           => extendStore(addr, v); Kont(Value.Void, cc)

@@ -289,28 +289,6 @@ class SchemeInterpreter(
         } yield Value.Void
       case SchemeBegin(exps, _) =>
         evalSequence(exps, env, timeout, version)
-      case SchemeAnd(Nil, _) =>
-        done(Value.Bool(true))
-      case SchemeAnd(e :: Nil, _) =>
-        tailcall(eval(e, env, timeout, version))
-      case SchemeAnd(e :: exps, pos) =>
-        for {
-          v1 <- eval(e, env, timeout, version)
-          v2 <- v1 match {
-            case Value.Bool(false) => done(Value.Bool(false))
-            case _                 => tailcall(eval(SchemeAnd(exps, pos), env, timeout, version))
-          }
-        } yield v2
-      case SchemeOr(Nil, _) =>
-        done(Value.Bool(false))
-      case SchemeOr(e :: exps, pos) =>
-        for {
-          v1 <- tailcall(eval(e, env, timeout, version))
-          v2 <- v1 match {
-            case Value.Bool(false) => tailcall(eval(SchemeOr(exps, pos), env, timeout, version))
-            case v                 => done(v)
-          }
-        } yield v2
       case SchemeAssert(_, _) =>
         done(Value.Void)
       case SchemeDefineVariable(_, _, _)             => ???

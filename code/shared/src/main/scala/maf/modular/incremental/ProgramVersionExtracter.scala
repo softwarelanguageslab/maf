@@ -18,8 +18,6 @@ object ProgramVersionExtracter {
     case SchemeSet(variable, value, idn)             => SchemeSet(variable, getVersion(value), idn)
     case SchemeSetLex(variable, lexAddr, value, idn) => SchemeSetLex(variable, lexAddr, getVersion(value), idn)
     case SchemeBegin(exps, idn)                      => SchemeBegin(exps.map(getVersion), idn)
-    case SchemeAnd(exps, idn)                        => SchemeAnd(exps.map(getVersion), idn)
-    case SchemeOr(exps, idn)                         => SchemeOr(exps.map(getVersion), idn)
     case SchemeDefineVariable(name, value, idn)      => SchemeDefineVariable(name, getVersion(value), idn)
     case SchemeDefineFunction(name, args, body, idn) => SchemeDefineFunction(name, args, body.map(getVersion), idn)
     case SchemeDefineVarArgFunction(name, args, vararg, body, idn) => SchemeDefineVarArgFunction(name, args, vararg, body.map(getVersion), idn)

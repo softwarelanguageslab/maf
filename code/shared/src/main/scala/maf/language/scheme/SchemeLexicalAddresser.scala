@@ -91,10 +91,6 @@ trait BaseSchemeLexicalAddresser {
       SchemeSplicedPair(translate(splice, lenv), translate(cdr, lenv), pos)
     case SchemeFuncall(fun, args, pos) =>
       SchemeFuncall(translate(fun, lenv), translate(args, lenv), pos)
-    case SchemeAnd(exps, pos) =>
-      SchemeAnd(translate(exps, lenv), pos)
-    case SchemeOr(exps, pos) =>
-      SchemeOr(translate(exps, lenv), pos)
     case SchemeAssert(exp, pos) =>
       SchemeAssert(translate(exp, lenv), pos)
     case SchemeLet(bindings, body, pos) =>

@@ -81,8 +81,6 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
       case SchemeLetStar(bindings, body, _)          => evalLetStar(bindings, body)
       case SchemeLetrec(bindings, body, _)           => evalLetRec(bindings, body)
       case call @ SchemeFuncall(fun, args, _)        => evalCall(call, fun, args)
-      case SchemeAnd(exps, _)                        => evalAnd(exps)
-      case SchemeOr(exps, _)                         => evalOr(exps)
       case SchemeAssert(exp, _)                      => evalAssert(exp)
       case pair: SchemePair                          => evalPair(pair)
       case pair: SchemeSplicedPair                   => evalSplicedPair(pair)
@@ -136,42 +134,7 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics {
           res <- evalSequence(body)
         } yield res
       }
-    private def evalNamedLet(
-        id: Identifier,
-        bindings: List[(Identifier, SchemeExp)],
-        body: List[SchemeExp],
-        idn: Identity
-      ): EvalM[Value] =
-      for {
-        env <- getEnv
-        (prs, ags) = bindings.unzip
-        lambda = SchemeLambda(Some(id.name), prs, body, idn)
-        extEnv = bind(id, env, lattice.bottom)
-        closure = newClosure(lambda, extEnv)
-        _ = assign(id, extEnv, closure)
-        call = SchemeFuncall(lambda, ags, idn)
-        argVals <- ags.mapM(exp => for { vlu <- eval(exp) } yield (exp, vlu))
-      } yield applyFun(call, closure, argVals, id.idn.pos)
-    // R5RS specification: if all exps are 'thruty', then the value is that of the last expression
-    private def evalAnd(exps: List[SchemeExp]): EvalM[Value] =
-      if (exps.isEmpty) { unit(lattice.bool(true)) }
-      else { evalAndLoop(exps) }
-    protected def evalAndLoop(exps: List[SchemeExp]): EvalM[Value] = (exps: @unchecked) match {
-      case exp :: Nil => eval(exp)
-      case exp :: rst =>
-        for {
-          vlu <- eval(exp)
-          res <- cond(vlu, evalAndLoop(rst), unit(lattice.bool(false)))
-        } yield res
-    }
-    protected def evalOr(exps: List[SchemeExp]): EvalM[Value] = exps match {
-      case Nil => unit(lattice.bool(false))
-      case exp :: rst =>
-        for {
-          vlu <- eval(exp)
-          res <- cond(vlu, unit(vlu), evalOr(rst))
-        } yield res
-    }
+      
     protected def evalAssert(exp: SchemeExp): EvalM[Value] =
       // Assertions are not evaluated by default
       unit(lattice.void)

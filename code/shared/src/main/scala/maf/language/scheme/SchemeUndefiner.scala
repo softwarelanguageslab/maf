@@ -98,9 +98,6 @@ trait BaseSchemeUndefiner {
       tailcall(undefine1(value)).map(v => SchemeSet(variable, v, pos))
     case SchemeBegin(exps, pos) =>
       tailcall(undefineBody(exps)).map(expsv => SchemeBegin(expsv, pos))
-    case SchemeAnd(args, pos) =>
-      trampolineM(undefine1, args).map(argsv => SchemeAnd(argsv, pos))
-    case SchemeOr(args, pos) => trampolineM(undefine1, args).map(argsv => SchemeOr(argsv, pos))
     case SchemePair(car, cdr, pos) =>
       for {
         carUndef <- tailcall(undefine1(car))

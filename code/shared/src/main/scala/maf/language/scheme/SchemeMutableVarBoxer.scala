@@ -90,10 +90,6 @@ object SchemeMutableVarBoxer {
             SchemeSplicedPair(rewrite(splice, mut, rew), rewrite(cdr, mut, rew), pos)
         case SchemeFuncall(fun, args, pos) =>
             SchemeFuncall(rewrite(fun, mut, rew), args.map(rewrite(_, mut, rew)), pos)
-        case SchemeAnd(exps, pos) =>
-            SchemeAnd(exps.map(rewrite(_, mut, rew)), pos)
-        case SchemeOr(exps, pos) =>
-            SchemeOr(exps.map(rewrite(_, mut, rew)), pos)
         case SchemeAssert(exp, pos) =>
             SchemeAssert(rewrite(exp, mut, rew), pos)
         case SchemeLet(bds, body, pos) =>

@@ -85,8 +85,6 @@ trait SchemeSemantics {
     case SchemeLet(bds, bdy, _)     => evalLet(bds, bdy)
     case SchemeLetStar(bds, bdy, _) => evalLetStar(bds, bdy)
     case SchemeLetrec(bds, bdy, _)  => evalLetrec(bds, bdy)
-    case SchemeAnd(eps, _)          => evalAnd(eps)
-    case SchemeOr(eps, _)           => evalOr(eps)
     case pai: SchemePair            => evalPair(pai)
     case spi: SchemeSplicedPair     => evalSplicedPair(spi)
     case cll: SchemeFuncall         => evalCall(cll)
@@ -167,25 +165,6 @@ trait SchemeSemantics {
         } yield vlu
       }
     } yield res
-  }
-
-  private def evalAnd(eps: List[Exp]): A[Val] = evalAndLoop(eps, lattice.bool(true))
-  private def evalAndLoop(eps: List[Exp], lst: Val): A[Val] = eps match {
-    case Nil => AnalysisM[A].unit(lst)
-    case exp :: rst =>
-      for {
-        vlu <- eval(exp)
-        res <- cond(vlu, evalAndLoop(rst, vlu), AnalysisM[A].unit(lattice.bool(false)))
-      } yield res
-  }
-
-  private def evalOr(eps: List[Exp]): A[Val] = eps match {
-    case Nil => unit(lattice.bool(false))
-    case exp :: rst =>
-      for {
-        vlu <- eval(exp)
-        res <- cond(vlu, AnalysisM[A].unit(vlu), evalOr(rst))
-      } yield res
   }
 
   private def evalPair(pai: SchemePair): A[Val] =

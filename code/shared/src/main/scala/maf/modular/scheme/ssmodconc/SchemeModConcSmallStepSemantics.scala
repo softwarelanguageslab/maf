@@ -217,8 +217,6 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
         alt: Exp,
         env: Env)
         extends Frame
-    case class AndFrame(exps: Exps, env: Env) extends Frame
-    case class OrFrame(exps: Exps, env: Env) extends Frame
     case class PairCarFrame(
         cdr: SchemeExp,
         env: Env,
@@ -295,14 +293,11 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
       case c @ SchemeFuncall(f, args, _)             => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
       case e @ SchemePair(car, cdr, _)               => Set(Eval(car, env, extendKStore(car, PairCarFrame(cdr, env, e), stack)))
       case SchemeSet(variable, value, _)             => Set(Eval(value, env, extendKStore(value, SetFrame(variable, env), stack)))
-      case SchemeAnd(Nil, _)                         => Set(Kont(lattice.bool(true), stack))
-      case SchemeAnd(e :: es, _)                     => evalAnd(e, es, env, stack)
       case SchemeBegin(exps, _)                      => evalSequence(exps, env, stack)
       case SchemeIf(cond, cons, alt, _)              => evalIf(cond, cons, alt, env, stack)
       case SchemeLet(bindings, body, _)              => evalLet(bindings, List(), body, env, stack)
       case SchemeLetrec(bindings, body, _)           => evalLetRec(bindings, body, env, stack)
       case SchemeLetStar(bindings, body, _)          => evalLetStar(bindings, body, env, stack)
-      case SchemeOr(exps, _)                         => evalOr(exps, env, stack)
       case SchemeAssert(exp, _)                      => evalAssert(exp, env, stack)
       case SchemeSplicedPair(_, _, _)                => throw new Exception("Splicing not supported.")
 
@@ -332,28 +327,6 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
         stack: Stack
       ): Set[State] =
       Set(Eval(cond, env, extendKStore(cond, IfFrame(cons, alt, env), stack)))
-
-    private def evalAnd(
-        first: SchemeExp,
-        rest: List[SchemeExp],
-        env: Env,
-        stack: Stack
-      ): Set[State] =
-      if (rest.isEmpty) {
-        Set(Eval(first, env, stack))
-      } else {
-        val frm = AndFrame(rest, env)
-        Set(Eval(first, env, extendKStore(first, frm, stack)))
-      }
-
-    private def evalOr(
-        exps: Exps,
-        env: Env,
-        stack: Stack
-      ): Set[State] = exps match {
-      case Nil       => Set(Kont(lattice.bool(false), stack))
-      case e :: exps => Set(Eval(e, env, extendKStore(e, OrFrame(exps, env), stack)))
-    }
 
     private def evalAssert(
         exp: SchemeExp,
@@ -412,23 +385,6 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
         Set(Eval(exp, env2, extendKStore(exp, LetRecFrame(id, rest, body, env2), stack)))
     }
 
-    private def evalNamedLet(
-        name: Identifier,
-        bindings: List[(Identifier, Exp)],
-        body: Exps,
-        env: Env,
-        stack: Stack,
-        idn: Identity
-      ): Set[State] = {
-      val (form, actu) = bindings.unzip
-      val lambda = SchemeLambda(Some(name.name), form, body, idn)
-      val env2 = define(name, lattice.bottom, env)
-      val clo = lattice.closure((lambda, env2))
-      assign(name, clo, env2)
-      val call = SchemeFuncall(lambda, actu, name.idn)
-      evalArgs(actu, call, clo, Nil, env, stack)
-    }
-
     private def evalFork(
         body: Exp,
         env: Env,
@@ -447,8 +403,6 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
       ): Set[State] = frame match {
       case SequenceFrame(exps, env)       => evalSequence(exps, env, stack)
       case IfFrame(cons, alt, env)        => conditional(vl, Eval(cons, env, stack), Eval(alt, env, stack))
-      case AndFrame(exps, env)            => conditional(vl, evalAnd(exps.head, exps.tail, env, stack), Set[State](Kont(lattice.bool(false), stack)))
-      case OrFrame(exps, env)             => conditional(vl, Set[State](Kont(vl, stack)), evalOr(exps, env, stack))
       case PairCarFrame(cdr, env, pair)   => Set(Eval(cdr, env, extendKStore(cdr, PairCdrFrame(vl, pair), stack)))
       case PairCdrFrame(carv, pair)       => Set(Kont(allocateCons(pair)(carv, vl), stack))
       case SetFrame(variable, env)        => Set(Kont(assign(variable, vl, env), stack)) // Returns bottom.

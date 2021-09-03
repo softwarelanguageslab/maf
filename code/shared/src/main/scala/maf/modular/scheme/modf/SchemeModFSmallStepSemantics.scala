@@ -66,8 +66,6 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         args: List[SchemeExp],
         env: Env)
         extends Frame
-    case class AndFrame(exps: List[SchemeExp], env: Env) extends Frame
-    case class OrFrame(exps: List[SchemeExp], env: Env) extends Frame
     case class PairCarFrm(pairExp: SchemePair, env: Env) extends Frame
     case class PairCdrFrm(carValue: Value, pairExp: SchemePair) extends Frame
     case class SplicedCarFrm(pairExp: SchemeSplicedPair, env: Env) extends Frame
@@ -144,12 +142,6 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
       case call @ SchemeFuncall(fexp, args, _) =>
         val frm = FunFrame(call, args, env)
         Set(EvalState(fexp, env, frm :: cnt))
-      case SchemeAnd(Nil, _) =>
-        Set(KontState(lattice.bool(true), cnt))
-      case SchemeAnd(first :: rest, _) =>
-        evalAnd(first, rest, env, cnt)
-      case SchemeOr(exps, _) =>
-        evalOr(exps, env, cnt)
       case SchemeAssert(exp, _) =>
         evalAssert(exp, env, cnt)
       case pair: SchemePair =>
@@ -221,29 +213,6 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         val frm = ArgsFrame(fexp, fval, exp, rest, ags, env)
         Set(EvalState(exp, env, frm :: cnt))
     }
-    private def evalAnd(
-        first: SchemeExp,
-        rest: List[SchemeExp],
-        env: Env,
-        cnt: Kont
-      ): Set[State] =
-      if (rest.isEmpty) {
-        Set(EvalState(first, env, cnt))
-      } else {
-        val frm = AndFrame(rest, env)
-        Set(EvalState(first, env, frm :: cnt))
-      }
-    private def evalOr(
-        exps: List[SchemeExp],
-        env: Env,
-        cnt: Kont
-      ): Set[State] = exps match {
-      case Nil =>
-        Set(KontState(lattice.bool(false), cnt))
-      case nxt :: rst =>
-        val frm = OrFrame(rst, env)
-        Set(EvalState(nxt, env, frm :: cnt))
-    }
     private def evalAssert(
         exp: SchemeExp,
         env: Env,
@@ -275,10 +244,6 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
       case ArgsFrame(fexp, fval, curExp, toEval, args, env) =>
         val newArgs = (curExp, vlu) :: args
         evalArgs(fexp, fval, toEval, newArgs, env, cnt)
-      case AndFrame(exps, env) =>
-        conditional(vlu, evalAnd(exps.head, exps.tail, env, cnt), Set(KontState(lattice.bool(false), cnt)))
-      case OrFrame(exps, env) =>
-        conditional(vlu, Set(KontState(vlu, cnt)), evalOr(exps, env, cnt))
       case PairCarFrm(pair, env) =>
         val frm = PairCdrFrm(vlu, pair)
         Set(EvalState(pair.cdr, env, frm :: cnt))
