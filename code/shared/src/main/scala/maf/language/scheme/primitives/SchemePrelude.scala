@@ -365,13 +365,13 @@ object SchemePrelude {
   def addPrelude(prg: List[SchemeExp]): List[SchemeExp] = {
     var prelude: List[SchemeExp] = List()
     var work: Set[String] = SchemeBody.fv(prg)
-    var visited: Set[String] = Set()
+    var added: Set[String] = Set.empty
     while (work.nonEmpty) {
-      val free = work.filter(primDefs.contains).filterNot(visited)
+      val free = work.filter(primDefs.contains).filterNot(added)
       val defs = free.map(primDefsParsed)
       prelude = defs.toList ::: prelude  
-      work = work.tail ++ defs.flatMap(_.fv)
-      visited ++= free
+      work = defs.flatMap(_.fv)
+      added ++= free
     }
     prelude ::: prg
   }
