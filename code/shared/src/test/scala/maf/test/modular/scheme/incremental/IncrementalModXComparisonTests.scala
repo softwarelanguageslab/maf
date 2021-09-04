@@ -27,7 +27,7 @@ import scala.concurrent.duration._
 // TODO: Require equality when all optimisations are enabled.
 trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
   lazy val configurations: List[IncrementalConfiguration] = allConfigurations
-  def timeout(): Timeout.T = Timeout.start(Duration(2 / 0, SECONDS))
+  def timeout(): Timeout.T = Timeout.start(Duration(20, SECONDS))
 
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag]
 
