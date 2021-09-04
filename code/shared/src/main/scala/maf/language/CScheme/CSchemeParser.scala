@@ -3,6 +3,7 @@ package maf.language.CScheme
 import maf.core.Position._
 import maf.language.scheme._
 import maf.language.sexp._
+import maf.language.scheme.primitives.SchemePrelude
 
 object CSchemeParser {
 
@@ -13,7 +14,10 @@ object CSchemeParser {
   def undefine(exps: List[SchemeExp]): SchemeExp = CSchemeUndefiner.undefine(exps)
 
   /** Parse a string representing a CScheme program. */
-  def parse(s: String, tag: PTag = noTag): SchemeExp = undefine(List(SchemeBody(SExpParser.parse(s, tag).map(compile))))
+  def parse(s: String, tag: PTag = noTag): List[SchemeExp] = SExpParser.parse(s, tag).map(compile)
+
+  /** Parse a program, add its prelude and undefine it */
+  def parseProgram(prg: String): SchemeExp = undefine(SchemePrelude.addPrelude(CSchemeParser.parse(prg)))
 
   /** Extension to the parser to allow loading definitions from different files. */
   def parseL(

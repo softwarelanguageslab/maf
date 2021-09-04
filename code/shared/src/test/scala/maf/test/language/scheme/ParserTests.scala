@@ -18,7 +18,7 @@ trait SchemeParserTestsSpec extends SchemeBenchmarkTests {
       val printed = parsed.toString
       val reparsed = SchemeParser.parse(printed, Position.newTag("MAF"))
       assert(parsed.toString == reparsed.toString, "Printing and parsing again gives a result different from the original parse")
-      assert(reparsed.subexpressions.forall(e => e.idn.pos.tag.contains("MAF") || e.idn == NoCodeIdentity && e.idn.pos.tag.isEmpty))
+      assert(reparsed.flatMap(_.subexpressions).forall(e => e.idn.pos.tag.contains("MAF") || e.idn == NoCodeIdentity && e.idn.pos.tag.isEmpty))
     }
 }
 

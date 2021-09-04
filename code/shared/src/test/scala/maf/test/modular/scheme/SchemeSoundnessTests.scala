@@ -34,9 +34,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       t: Timeout.T
     ): Value =
     i.run(p, t) // If there are code changes in the file, runs the "new" version by default (ensures compatibility with files containing changes).
-  protected def evalConcrete(originalProgram: SchemeExp, benchmark: Benchmark): Map[Identity, Set[Value]] = {
-    val preluded = SchemePrelude.addPrelude(originalProgram)
-    val program = CSchemeUndefiner.undefine(List(preluded))
+  protected def evalConcrete(program: SchemeExp, benchmark: Benchmark): Map[Identity, Set[Value]] = {
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
@@ -146,7 +144,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
-      val program = CSchemeParser.parse(content)
+      val program = CSchemeParser.parseProgram(content)
       // run the program using a concrete interpreter
       val concreteResults = evalConcrete(program, benchmark)
       // analyze the program using a ModF analysis

@@ -23,7 +23,7 @@ object IncrementalRun extends App {
   // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
   // Useful when reducing a program when debugging the analysis.
   def interpretProgram(file: String): Unit = {
-    val prog = CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(Reader.loadFile(file)))))
+    val prog = CSchemeParser.parseProgram(Reader.loadFile(file))
     val i = new SchemeInterpreter((_, _) => (), stack = true)
     print("*")
     i.run(prog, Timeout.start(Duration(3, MINUTES)), Old)
@@ -38,7 +38,7 @@ object IncrementalRun extends App {
       timeout: () => Timeout.T
     ): Unit = {
     println(s"***** $bench *****")
-    val text = CSchemeParser.parse(Reader.loadFile(bench))
+    val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
     val a = new IncrementalModConcAnalysisCPLattice(text, config) with IncrementalLogging[SchemeExp] {
       override def intraAnalysis(
           cmp: Component
@@ -85,7 +85,7 @@ object IncrementalRun extends App {
 
     println(s"***** $bench *****")
     //  interpretProgram(bench)
-    val text = CSchemeParser.parse(Reader.loadFile(bench))
+    val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
     val a = base(text)
     //  a.logger.logU("BASE + INC")
     a.analyzeWithTimeout(timeout())

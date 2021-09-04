@@ -32,7 +32,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
 
   def testTags(b: Benchmark): Seq[Tag] = if (fast.forall(f => !b.contains(f))) Seq(IncrementalTest, SlowTest) else Seq(IncrementalTest)
 
-  def parse(benchmark: Benchmark): SchemeExp = CSchemeParser.parse(Reader.loadFile(benchmark))
+  def parse(benchmark: Benchmark): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(benchmark))
 
   def sequentialAnalysis(e: SchemeExp): Analysis =
     new ModAnalysis[SchemeExp](e)
@@ -123,7 +123,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
           |(a)""".stripMargin
 
     // Base analysis.
-    val base: Analysis = new ModAnalysis[SchemeExp](CSchemeParser.parse(program))
+    val base: Analysis = new ModAnalysis[SchemeExp](CSchemeParser.parseProgram(program))
       with StandardSchemeModFComponents
       with SchemeModFNoSensitivity
       with SchemeModFSemantics
@@ -179,7 +179,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
       |      (fn 1 0 g h j)))
       |(h f)""".stripMargin
 
-    val base: Analysis = new ModAnalysis[SchemeExp](CSchemeParser.parse(program))
+    val base: Analysis = new ModAnalysis[SchemeExp](CSchemeParser.parseProgram(program))
       with StandardSchemeModFComponents
       with SchemeModFCallSiteSensitivity
       with SchemeModFSemantics
@@ -209,14 +209,14 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
 
     // Expected results.
     val exp1 = {
-      val a = getStandard(ProgramVersionExtracter.getInitial(CSchemeParser.parse(program)))
+      val a = getStandard(ProgramVersionExtracter.getInitial(CSchemeParser.parseProgram(program)))
       a.analyzeWithTimeout(timeout())
       if (a.finished)
         a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) })
       else ""
     }
     val exp2 = {
-      val a = getStandard(ProgramVersionExtracter.getUpdated(CSchemeParser.parse(program)))
+      val a = getStandard(ProgramVersionExtracter.getUpdated(CSchemeParser.parseProgram(program)))
       a.analyzeWithTimeout(timeout())
       if (a.finished)
         a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) })

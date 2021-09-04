@@ -31,12 +31,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     case _                                          => false
   }
 
-  override lazy val program: SchemeExp = {
-    val originalProgram = super.program
-    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
-    CSchemeUndefiner.undefine(List(preludedProgram))
-  }
-
   private lazy val initialBds: Iterable[(String, Adr, Storable)] =
     primitives.allPrimitives.view
       .filterKeys(initialExp.fv)

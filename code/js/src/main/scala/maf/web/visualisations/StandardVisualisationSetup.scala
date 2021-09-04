@@ -32,7 +32,7 @@ trait StandardVisualisationSetup extends VisualisationSetup {
 object StandardModFVisualisationSetup extends StandardVisualisationSetup {
 
   def createAnalysis(text: String): Analysis = {
-    val program = SchemeParser.parse(text)
+    val program = SchemeParser.parseProgram(text)
     new SimpleSchemeModFAnalysis(program)
       with SchemeModFNoSensitivity
       with SchemeConstantPropagationDomain

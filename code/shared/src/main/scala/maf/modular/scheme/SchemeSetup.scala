@@ -31,12 +31,6 @@ trait SchemeSetup
       .view
       .mapValues(_.values.toSet)
       .toMap
-  // Ensure that the program is translated to use lexical addresses first!
-  override def program: SchemeExp = {
-    val originalProgram = super.program
-    val preludedProgram = SchemePrelude.addPrelude(originalProgram)
-    CSchemeUndefiner.undefine(List(preludedProgram))
-  }
   final lazy val initialBds: Iterable[(String, Addr, Value)] = primitives.allPrimitives.map { case (name, p) =>
     (name, PrmAddr(name), lattice.primitive(p.name))
   }

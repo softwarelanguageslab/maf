@@ -28,7 +28,7 @@ object AdaptiveRun {
     val txt = """
     (define x 2) x
     """
-    val prg = CSchemeParser.parse(txt)
+    val prg = CSchemeParser.parseProgram(txt)
     val int = new SchemeInterpreter(io = new FileIO(Map()))
     int.run(prg, Timeout.none)
     int.store.foreach {
@@ -40,18 +40,23 @@ object AdaptiveRun {
 
   def testTransform(): Unit = {
     val prg = """
-      (define (inc x) (+ x 1))
+      (define (map f lst)
+        (if (null? lst)
+            '()
+            (cons (f (car lst)) (map f (cdr lst)))))
+
+
+      (define (inc n) (+ n 1))
       (map inc '(1 2 3))
     """
-    val parsed = CSchemeParser.parse(prg)
-    val prelud = SchemePrelude.addPrelude(parsed)
+    val parsed = CSchemeParser.parseProgram(prg)
     //val transf = SchemeMutableVarBoxer.transform(prelud, Set("+", "-"))
-    println(prelud)
+    println(parsed)
   }
 
   def testModFLocal(): Unit = {
     val txt = Reader.loadFile("test/R5RS/various/grid.scm")
-    val prg = CSchemeParser.parse(txt)
+    val prg = CSchemeParser.parseProgram(txt)
     val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
     def printStore(sto: anl.Sto) =
       sto.content.view
@@ -75,7 +80,7 @@ object AdaptiveRun {
 
   def testModConc(): Unit = {
     val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")
-    val prg = CSchemeParser.parse(txt)
+    val prg = CSchemeParser.parseProgram(txt)
     val anl = SchemeAnalyses.modConcAnalysis(prg, 0)
     anl.analyzeWithTimeout(Timeout.start(Duration(60, SECONDS)))
     print(anl.store)
@@ -83,7 +88,7 @@ object AdaptiveRun {
 
   def testAbstract(): Unit = {
     val txt = Reader.loadFile("test/R5RS/various/my-test.scm")
-    val prg = CSchemeParser.parse(txt)
+    val prg = CSchemeParser.parseProgram(txt)
     val anl = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
       var step = 0
       override def step(timeout: Timeout.T): Unit = {
@@ -101,7 +106,7 @@ object AdaptiveRun {
 
   def testAbstractAdaptive(): Unit = {
     val txt = Reader.loadFile("test/R5RS/various/mceval.scm")
-    val prg = CSchemeParser.parse(txt)
+    val prg = CSchemeParser.parseProgram(txt)
     val anl = new AdaptiveModAnalysis(prg, rate = 1000)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity

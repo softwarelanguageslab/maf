@@ -25,7 +25,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 
   type Analysis = IncrementalModAnalysis[SchemeExp] with IncrementalGlobalStore[SchemeExp] with SchemeAssertSemantics
 
-  def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
+  def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
 
   override val catchErrors: Boolean = true // Put to false for debugging.
 

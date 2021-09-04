@@ -17,7 +17,7 @@ import scala.language.unsafeNulls
 
 object AnalyzeProgram extends App {
   def one(bench: String, timeout: () => Timeout.T): Unit = {
-    val text = CSchemeParser.parse(Reader.loadFile(bench))
+    val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
     /* val a = new ModAnalysis(text) with KKallocModConc with SchemeConstantPropagationDomain
     with LIFOWorklistAlgorithm[SchemeExp] {
       val k = 1
@@ -48,7 +48,7 @@ object AnalyzeProgram extends App {
 
   // Used by webviz.
   def newStandardAnalysis(text: String) = {
-    val program = SchemeParser.parse(text)
+    val program = SchemeParser.parseProgram(text)
     new SimpleSchemeModFAnalysis(program)
       with SchemeModFNoSensitivity
       with SchemeConstantPropagationDomain

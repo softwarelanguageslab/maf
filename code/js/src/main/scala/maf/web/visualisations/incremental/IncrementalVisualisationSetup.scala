@@ -25,7 +25,7 @@ object IncrementalVisualisationSetup extends VisualisationSetup {
   var initialised: Boolean = false
 
   def createAnalysis(text: String): IncrementalAnalysis = {
-    val program: SchemeExp = CSchemeParser.parse(text)
+    val program: SchemeExp = CSchemeParser.parseProgram(text)
     new IncrementalAnalysis(program, IncrementalConfiguration.allOptimisations)
   }
 

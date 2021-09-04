@@ -242,8 +242,6 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       times: Int = 1
     ): Option[ResultMap] = {
     print(s"Running concrete interpreter on $path ($times times)")
-    val preluded = SchemePrelude.addPrelude(program)
-    val undefined = SchemeParser.undefine(List(preluded))
     var idnResults: ResultMap = Map.empty.withDefaultValue(baseLattice.bottom)
     def addResult(idn: Identity, vlu: ConcreteValues.Value) =
       idnResults += idn -> (baseLattice.join(idnResults(idn), convertConcreteValue(vlu)))
@@ -251,7 +249,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       for (_ <- 1 to times) {
         print(".")
         val interpreter = new SchemeInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
-        interpreter.run(undefined, timeout)
+        interpreter.run(program, timeout)
       }
       println()
       Some(idnResults)
@@ -282,7 +280,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
    */
   def runBenchmark(benchmark: Benchmark) = {
     val txt = Reader.loadFile(benchmark)
-    val prg = SchemeParser.parse(txt)
+    val prg = SchemeParser.parseProgram(txt)
     forBenchmark(benchmark, prg)
   }
 }

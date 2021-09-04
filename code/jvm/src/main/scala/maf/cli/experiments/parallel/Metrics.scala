@@ -144,7 +144,7 @@ trait Metrics {
   var results = Table.empty[Metric.SequenceBasedMetric].withDefaultValue(Metric.SequenceBasedMetric(List()))
 
   def metricForFile(file: String, metric: Metric): Metric.SequenceBasedMetric = {
-    val program = CSchemeParser.parse(Reader.loadFile(file))
+    val program = CSchemeParser.parseProgram(Reader.loadFile(file))
     metric.forProgram(program)
   }
 

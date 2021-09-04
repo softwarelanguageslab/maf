@@ -113,7 +113,7 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
     case _          => true
   }
 
-  override def parse(string: String): SchemeExp = CSchemeParser.parse(Reader.loadFile(string))
+  override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 

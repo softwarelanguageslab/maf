@@ -9,21 +9,6 @@ enum LexicalRef:
 
 trait BaseSchemeLexicalAddresser {
 
-  type Defs = List[Identifier]
-
-  /** Extract the identifier names of all definitions in a given body Follows R5RS specification on where such definitions can appear */
-  def defs(exp: SchemeExp): Defs = defs(List(exp))
-  def defs(bdy: List[SchemeExp]): Defs = defs(bdy, Nil)
-  def defs(bdy: List[SchemeExp], acc: Defs): Defs = bdy match {
-    case SchemeDefineVariable(id, _, _) :: rest =>
-      defs(rest, id :: acc)
-    case SchemeBegin(exps, _) :: rest =>
-      defs(rest, defs(exps, acc))
-    case _ :: rest =>
-      defs(rest, acc)
-    case _ => acc
-  }
-
   /** A frame is a mapping from variable names to the lexical definition site */
   type Frame = Map[String, Identifier]
   type Scope = List[Frame]
@@ -58,7 +43,7 @@ trait BaseSchemeLexicalAddresser {
   def initialLEnv(globals: String => Boolean) = LexicalEnv(emptyScope)(globals)
 
   def translateProgram(prg: SchemeExp, globals: String => Boolean = _ => true): SchemeExp =
-    this.translate(prg, initialLEnv(globals).extend(defs(prg)))
+    this.translate(prg, initialLEnv(globals).extend(SchemeBody.defs(List(prg))))
 
   def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = exp match {
     case vexp: SchemeValue => 
@@ -104,7 +89,7 @@ trait BaseSchemeLexicalAddresser {
   def translate(bdy: List[SchemeExp], lenv: LexicalEnv): List[SchemeExp] = 
     bdy.map(translate(_, lenv))
   def translateBody(body: List[SchemeExp], lenv: LexicalEnv): List[SchemeExp] =
-    translate(body, lenv.newFrame.extend(defs(body)))
+    translate(body, lenv.newFrame.extend(SchemeBody.defs(body)))
 }
 
 object SchemeLexicalAddresser extends BaseSchemeLexicalAddresser

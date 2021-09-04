@@ -332,7 +332,7 @@ object SchemeInterpreter {
   def main(args: Array[String]): Unit =
     if (args.length == 1) {
       val text = Reader.loadFile(args(0))
-      val pgm = SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(SchemeParser.parse(text))))
+      val pgm = SchemeUndefiner.undefine(SchemePrelude.addPrelude(SchemeParser.parse(text)))
       val interpreter = new SchemeInterpreter((id, v) => ())
       val res = interpreter.run(pgm, Timeout.start(timeout))
       println(s"Result: $res")

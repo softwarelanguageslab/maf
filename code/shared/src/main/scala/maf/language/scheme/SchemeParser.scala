@@ -2,6 +2,7 @@ package maf.language.scheme
 
 import maf.core.Position._
 import maf.language.sexp._
+import maf.language.scheme.primitives.SchemePrelude
 
 object SchemeParser {
 
@@ -15,5 +16,8 @@ object SchemeParser {
   def undefine(exps: List[SchemeExp]): SchemeExp = SchemeUndefiner.undefine(exps)
 
   /** Parse a string representing a Scheme program */
-  def parse(s: String, tag: PTag = noTag): SchemeExp = SchemeBody(SExpParser.parse(s, tag).map(compile))
+  def parse(s: String, tag: PTag = noTag): List[SchemeExp] = SExpParser.parse(s, tag).map(compile)
+
+  /** Parse a program (including adding a prelude and undefining it) */
+  def parseProgram(prg: String): SchemeExp = undefine(SchemePrelude.addPrelude(parse(prg)))
 }

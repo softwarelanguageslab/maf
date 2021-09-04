@@ -43,7 +43,7 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
 
   def onBenchmark(benchmark: Benchmark): Unit = {
     val text = Reader.loadFile(benchmark)
-    val program = CSchemeParser.parse(text)
+    val program = CSchemeParser.parseProgram(text)
     for (c <- configurations) {
       property(s"Analysis results for $benchmark using $c are equal (initial analysis) or subsuming (incremental update).", testTags(benchmark, c): _*) {
         try {

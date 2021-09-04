@@ -49,7 +49,7 @@ trait PerformanceEvaluation {
   // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
   def measureAnalysis(file: String, analysis: SchemeExp => Analysis): PerformanceResult = {
     // Parse the program
-    val program = CSchemeParser.parse(Reader.loadFile(file))
+    val program = CSchemeParser.parseProgram(Reader.loadFile(file))
     // Warm-up
     print(s"* WARM-UP ($maxWarmupRuns) - ")
     val warmupTimeout = maxWarmupTime

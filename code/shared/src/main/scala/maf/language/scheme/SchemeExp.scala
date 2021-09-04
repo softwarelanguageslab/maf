@@ -8,22 +8,16 @@ import maf.language.scheme.ContractSchemeExp
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression
 
-case object AND extends Label // And
 case object BEG extends Label // Begin
-case object DFF extends Label // Function definition
 case object DFV extends Label // Variable definition
-case object DVA extends Label // Variable argument definition
 case object FNC extends Label // Function call (application)
 case object IFF extends Label // If expression
 case object LAM extends Label // Lambda expression
 case object LET extends Label // Let expression
 case object LTR extends Label // Letrec expression
 case object LTS extends Label // Let* expression
-case object NLT extends Label // Named let
-case object ORR extends Label // Or
-case object PAI extends Label // Pair
+case object PAI extends Label // Pair expression
 case object SET extends Label // Assignment
-case object SPA extends Label // Spliced pair
 case object VAL extends Label // Value
 case object VAR extends Label // Variable
 case object ASS extends Label // Assertion
@@ -69,7 +63,7 @@ sealed trait SchemeLambdaExp extends SchemeExp {
   // a short name for this function
   def lambdaName: String = name.getOrElse(s"λ@${idn.pos}")
   // free variables
-  lazy val fv: Set[String] = body.flatMap(_.fv).toSet -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
+  lazy val fv: Set[String] = SchemeBody.fv(body) -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
   // height
   override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
   def annotation: Option[(String, String)] = body match {
@@ -179,9 +173,7 @@ case class SchemeLet(
     s"(let ($bi) $bo)"
   }
   def fv: Set[String] =
-    bindings.map(_._2).flatMap(_.fv).toSet ++ (body.flatMap(_.fv).toSet -- bindings
-      .map(_._1.name)
-      .toSet)
+    bindings.map(_._2).flatMap(_.fv).toSet ++ (SchemeBody.fv(body)-- bindings.map(_._1.name).toSet)
   val label: Label = LET
 }
 
@@ -203,7 +195,7 @@ case class SchemeLetStar(
           case (id, e) => (acc._1 + id.name, acc._2 ++ (e.fv -- acc._1))
         }
       )
-      ._2 ++ (body.flatMap(_.fv).toSet -- bindings.map(_._1.name).toSet)
+      ._2 ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
   val label: Label = LTS
 }
 
@@ -219,7 +211,7 @@ case class SchemeLetrec(
     s"(letrec ($bi) $bo)"
   }
   def fv: Set[String] =
-    (bindings.map(_._2).flatMap(_.fv).toSet ++ body.flatMap(_.fv).toSet) -- bindings
+    (bindings.map(_._2).flatMap(_.fv).toSet ++ SchemeBody.fv(body)) -- bindings
       .map(_._1.name)
       .toSet
   val label: Label = LTR
@@ -283,6 +275,15 @@ object SchemeBody {
     case exp :: Nil => exp
     case exp :: _   => SchemeBegin(exps, exp.idn)
   }
+  def defs(bdy: List[SchemeExp]): List[Identifier] = defs(bdy, Nil)
+  def defs(bdy: List[SchemeExp], cur: List[Identifier]): List[Identifier] =
+    bdy.foldLeft(cur)((acc, exp) => exp match {
+      case SchemeBegin(eps, _) => SchemeBody.defs(eps, acc)
+      case SchemeDefineVariable(nam, _, _) => nam :: acc  
+      case _ => acc
+    })
+  def fv(bdy: List[SchemeExp]): Set[String] = 
+    bdy.flatMap(_.fv).toSet -- defs(bdy).map(_.name)
 }
 
 /** A cond expression: (cond (test1 body1...) ...). Desugared according to R5RS. */
@@ -398,35 +399,10 @@ case class SchemeDefineVariable(
     idn: Identity)
     extends SchemeExp {
   override def toString: String = s"(define $name $value)"
-  def fv: Set[String] = value.fv
+  def fv: Set[String] = value.fv - name.name
   override val height: Int = 1 + value.height
   val label: Label = DFV
   def subexpressions: List[Expression] = List(name, value)
-}
-
-/** A function definition: (define (name args...) body...) */
-sealed trait SchemeDefineFunctionExp extends SchemeExp {
-  val name: Identifier
-  val args: List[Identifier]
-  val body: List[SchemeExp]
-  val idn: Identity
-  def fv: Set[String] = body.flatMap(_.fv).toSet -- (args.map(_.name).toSet + name.name)
-  def subexpressions: List[Expression] = name :: args ::: body
-  def annotation: Option[(String, String)] = body match {
-    case SchemeVar(id) :: _ =>
-      if (id.name.startsWith("@")) {
-        id.name.split(':') match {
-          case Array(name, value) => Some((name, value))
-          case _                  => throw new Exception(s"Invalid annotation: $id")
-        }
-      } else {
-        None
-      }
-    case _ => None
-  }
-  override def isomorphic(other: Expression): Boolean =
-    super.isomorphic(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
-  override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
 }
 
 /** Function definition of the form (define (f arg ...) body) */

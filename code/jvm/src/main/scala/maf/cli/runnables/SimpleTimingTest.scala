@@ -30,7 +30,7 @@ object SimpleTimingTest extends App {
   def run(benchmark: String): Unit = {
     System.out.print(benchmark + " ")
     System.out.flush()
-    val text = CSchemeParser.parse(Reader.loadFile(benchmark))
+    val text = CSchemeParser.parseProgram(Reader.loadFile(benchmark))
     val a = analysis(text)
     val to = Timeout.start(Duration(1, MINUTES))
     val time = Timer.timeOnly(a.analyzeWithTimeout(to))

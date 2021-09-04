@@ -16,15 +16,12 @@ trait Dependency extends SmartHash
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and provides some
  * utility functionality.
  */
-abstract class ModAnalysis[Expr <: Expression](prog: Expr) extends Cloneable with Serializable { inter =>
+abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Cloneable with Serializable { inter =>
 
   // parameterized by a component representation
   type Component <: Serializable
   def initialComponent: Component
   def expr(cmp: Component): Expr
-
-  // Retrieve a (possibly modified) version of the program
-  def program: Expr = prog
 
   // some form of "worklist" is required to keep track of which components need to be (re-)analyzed
   // this method is responsible for adding a given component to that worklist

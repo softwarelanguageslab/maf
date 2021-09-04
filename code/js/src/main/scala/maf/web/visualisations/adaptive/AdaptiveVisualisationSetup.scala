@@ -26,7 +26,7 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
   type Analysis = WebVisualisationAnalysisAdaptive[SchemeExp] with WebSummaryAdaptiveAnalysis
 
   def createAnalysis(text: String) = {
-    val prg = SchemeParser.parse(text)
+    val prg = SchemeParser.parseProgram(text)
     new AdaptiveModAnalysis(prg, rate = 100)
       with AdaptiveSchemeModFSemantics
       with AdaptiveContextSensitivity

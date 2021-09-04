@@ -11,7 +11,7 @@ import org.openjdk.jmh.annotations.{Benchmark, BenchmarkMode, Mode, OutputTimeUn
 
 trait PerformanceEvaluationJMH {
   def runProgram(file: String, analysis: SchemeExp => ModAnalysis[SchemeExp]): Unit = {
-    val program = CSchemeParser.parse(Reader.loadFile(s"../../$file"))
+    val program = CSchemeParser.parseProgram(Reader.loadFile(s"../../$file"))
     val _ = analysis(program).analyze()
   }
 }

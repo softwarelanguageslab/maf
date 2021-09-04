@@ -14,7 +14,7 @@ object VerifyAssertions {
 
   def test(program: String): Unit = {
     val txt = Reader.loadFile(program)
-    val prg = SchemeParser.parse(txt)
+    val prg = SchemeParser.parseProgram(txt)
     val analysis = new ModAnalysis(prg)
       with SchemeModFSemantics
       with SchemeAssertSemantics

@@ -24,7 +24,7 @@ trait SchemeR5RSTests extends AnyPropSpec {
   def analysis(text: SchemeExp): Analysis
 
   def testExpr(program: String, answer: Any): Unit = {
-    val text = SchemeParser.parse(program)
+    val text = SchemeParser.parseProgram(program)
     val a = analysis(text)
     val l = a.lattice.asInstanceOf[L]
 
@@ -47,7 +47,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
     new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 
   override def testExpr(program: String, answer: Any): Unit = {
-    val text = SchemeParser.parse(program)
+    val text = SchemeParser.parseProgram(program)
     val a = analysis(text)
     val l = a.lattice.asInstanceOf[L]
 
@@ -55,7 +55,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 
     val interpreter =
       new SchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
-    val v = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(text))), Timeout.start(Duration(30, SECONDS)))
+    val v = interpreter.run(text, Timeout.start(Duration(30, SECONDS)))
     val result = v match {
       case ConcreteValues.Value.Nil          => l.nil
       case ConcreteValues.Value.Str(s)       => l.string(s)
@@ -81,7 +81,7 @@ class SchemeCPSInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
     new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 
   override def testExpr(program: String, answer: Any): Unit = {
-    val text = SchemeParser.parse(program)
+    val text = SchemeParser.parseProgram(program)
     val a = analysis(text)
     val l = a.lattice.asInstanceOf[L]
 
@@ -89,7 +89,7 @@ class SchemeCPSInterpreterR5RSCorrectnessTests extends SchemeR5RSTests {
 
     val interpreter =
       new CPSSchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
-    val v = interpreter.run(SchemeUndefiner.undefine(List(SchemePrelude.addPrelude(text))), Timeout.start(Duration(30, SECONDS)))
+    val v = interpreter.run(text, Timeout.start(Duration(30, SECONDS)))
     val result = v match {
       case ConcreteValues.Value.Nil          => l.nil
       case ConcreteValues.Value.Str(s)       => l.string(s)

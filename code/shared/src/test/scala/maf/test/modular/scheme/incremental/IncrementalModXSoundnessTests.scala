@@ -53,12 +53,10 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     ): ConcreteValues.Value = i.run(p, t, version)
 
   protected def evalConcreteWithVersion(
-      originalProgram: SchemeExp,
+      program: SchemeExp,
       benchmark: Benchmark,
       version: Version
     ): Map[Identity, Set[Value]] = {
-    val preluded = SchemePrelude.addPrelude(originalProgram)
-    val program = CSchemeUndefiner.undefine(List(preluded))
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
@@ -105,7 +103,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
-      val program = CSchemeParser.parse(content)
+      val program = CSchemeParser.parseProgram(content)
 
       val cResultsOld = evalConcreteWithVersion(program, benchmark, Old)
 

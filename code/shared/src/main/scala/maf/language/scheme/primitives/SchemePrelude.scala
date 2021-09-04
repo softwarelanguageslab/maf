@@ -2,6 +2,7 @@ package maf.language.scheme.primitives
 
 import maf.core._
 import maf.language.scheme._
+import maf.language.CScheme._
 
 object SchemePrelude {
 
@@ -354,24 +355,24 @@ object SchemePrelude {
   )
 
   val primDefsParsed: Map[String, SchemeExp] = primDefs.map { case (nam, str) =>
-    val exp = SchemeParser.parse(str, Position.newTag(nam))
+    val exp = SchemeBody(SchemeParser.parse(str, Position.newTag(nam)))
     (nam, exp)
   }
 
   val primNames: Set[String] = primDefs.keySet
 
   /** Transively adds all required definitions to the prelude, except the ones listed in `excl`. */
-  def addPrelude(exp: SchemeExp): SchemeExp = {
+  def addPrelude(prg: List[SchemeExp]): List[SchemeExp] = {
     var prelude: List[SchemeExp] = List()
-    var work: Set[SchemeExp] = Set(exp)
+    var work: Set[String] = SchemeBody.fv(prg)
     var visited: Set[String] = Set()
     while (work.nonEmpty) {
-      val free = work.head.fv.filter(primDefs.contains).filterNot(visited)
+      val free = work.filter(primDefs.contains).filterNot(visited)
       val defs = free.map(primDefsParsed)
       prelude = defs.toList ::: prelude  
-      work = work.tail ++ defs
+      work = work.tail ++ defs.flatMap(_.fv)
       visited ++= free
     }
-    SchemeBody(prelude ::: List(exp))
+    prelude ::: prg
   }
 }

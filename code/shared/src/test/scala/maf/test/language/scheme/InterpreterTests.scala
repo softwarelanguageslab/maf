@@ -60,7 +60,7 @@ class InterpreterTests() extends AnyPropSpec {
   }
 
   def onBenchmark(benchmark: String): Unit = {
-    val program: SchemeExp = CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(Reader.loadFile(benchmark)))))
+    val program: SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(benchmark))
     property(s"The Scheme interpreters give the same result for $benchmark", InterpreterTest, SlowTest) {
       try {
         // TODO (maybe): run in parallel?

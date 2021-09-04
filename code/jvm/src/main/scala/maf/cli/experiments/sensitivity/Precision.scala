@@ -50,7 +50,7 @@ object PrecisionComparison
 
   def check(benchmark: Benchmark) = {
     val txt = Reader.loadFile(benchmark)
-    val prg = SchemeParser.parse(txt)
+    val prg = SchemeParser.parseProgram(txt)
     val con = runInterpreter(prg, path).get
     val abs = runAnalysis(baseAnalysis, "base analysis", prg, path).get
     val allKeys = con.keys ++ abs.keys
