@@ -19,26 +19,6 @@ trait BaseSchemeUndefiner {
     ): TailRec[SchemeExp] =
     exps match {
       case Nil => done(SchemeBegin(Nil, Identity.none))
-      case SchemeDefineFunction(name, args, body, pos) :: rest =>
-        tailcall(
-          tailcall(undefineBody(body)).flatMap(bodyv =>
-            undefine(
-              SchemeDefineVariable(name, SchemeLambda(Some(name.name), args, bodyv, exps.head.idn), pos) :: rest,
-              defs,
-              idn
-            )
-          )
-        )
-      case SchemeDefineVarArgFunction(name, args, vararg, body, pos) :: rest =>
-        tailcall(
-          tailcall(undefineBody(body)).flatMap(bodyv =>
-            undefine(
-              SchemeDefineVariable(name, SchemeVarArgLambda(Some(name.name), args, vararg, bodyv, exps.head.idn), pos) :: rest,
-              defs,
-              idn
-            )
-          )
-        )
       case SchemeDefineVariable(name, value, pos) :: rest =>
         tailcall(undefine1(value)).flatMap(v => tailcall(undefine(rest, (name, v) :: defs, idn.orElse(Some(pos)))))
       case _ :: _ =>
@@ -109,10 +89,8 @@ trait BaseSchemeUndefiner {
 
   def undefineBody(exps: List[SchemeExp]): TailRec[List[SchemeExp]] = exps match {
     case Nil                                            => done(Nil)
-    case SchemeDefineFunction(_, _, _, _) :: _          => tailcall(undefine(exps, List(), None)).map(v => List(v))
-    case SchemeDefineVarArgFunction(_, _, _, _, _) :: _ => tailcall(undefine(exps, List(), None)).map(v => List(v))
     case SchemeDefineVariable(_, _, _) :: _             => tailcall(undefine(exps, List(), None)).map(v => List(v))
-    case exp :: rest => this.undefineExp(exp).flatMap(e1 => tailcall(undefineBody(rest)).flatMap(e2 => done(e1 :: e2)))
+    case exp :: rest => undefineExp(exp).flatMap(e1 => tailcall(undefineBody(rest)).flatMap(e2 => done(e1 :: e2)))
   }
 }
 

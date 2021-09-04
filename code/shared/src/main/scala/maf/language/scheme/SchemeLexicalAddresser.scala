@@ -17,10 +17,6 @@ trait BaseSchemeLexicalAddresser {
   def defs(bdy: List[SchemeExp], acc: Defs): Defs = bdy match {
     case SchemeDefineVariable(id, _, _) :: rest =>
       defs(rest, id :: acc)
-    case SchemeDefineFunction(id, _, _, _) :: rest =>
-      defs(rest, id :: acc)
-    case SchemeDefineVarArgFunction(id, _, _, _, _) :: rest =>
-      defs(rest, id :: acc)
     case SchemeBegin(exps, _) :: rest =>
       defs(rest, defs(exps, acc))
     case _ :: rest =>
@@ -77,10 +73,6 @@ trait BaseSchemeLexicalAddresser {
       SchemeBegin(translate(eps, lenv), pos)
     case SchemeDefineVariable(id, vexp, pos) =>
       SchemeDefineVariable(id, translate(vexp, lenv), pos)
-    case SchemeDefineFunction(id, prs, bdy, pos) =>
-      SchemeDefineFunction(id, prs, translateBody(bdy, lenv.newFrame.extend(prs)), pos)
-    case SchemeDefineVarArgFunction(id, prs, vararg, bdy, pos) =>
-      SchemeDefineVarArgFunction(id, prs, vararg, translateBody(bdy, lenv.newFrame.extend(prs).extend(vararg)), pos)
     case SchemeSet(id, vexp, pos) =>
       SchemeSetLex(id, lenv.resolve(id.name), translate(vexp, lenv), pos)
     case SchemeIf(prd, csq, alt, pos) =>

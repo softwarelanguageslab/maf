@@ -36,19 +36,14 @@ case object ASS extends Label // Assertion
     case SchemeLet(bindings, body, idn) =>
     case SchemeLetStar(bindings, body, idn) =>
     case SchemeLetrec(bindings, body, idn) =>
-    case SchemeNamedLet(name, bindings, body, idn) =>
     case SchemeSet(variable, value, idn) =>
     case SchemeSetLex(variable, lexAddr, value, idn) =>
     case SchemeBegin(exps, idn) =>
-    case SchemeAnd(exps, idn) =>
-    case SchemeOr(exps, idn) =>
     case SchemeDefineVariable(name, value, idn) =>
     case SchemeDefineFunction(name, args, body, idn) =>
     case SchemeDefineVarArgFunction(name, args, vararg, body, idn) =>
     case SchemeVar(id) =>
     case SchemeVarLex(id, lexAdr) =>
-    case SchemePair(car, cdr, idn) =>
-    case SchemeSplicedPair(splice, cdr, idn) =>
     case SchemeValue(value, idn) =>
  */
 
@@ -434,37 +429,23 @@ sealed trait SchemeDefineFunctionExp extends SchemeExp {
   override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeDefineFunctionExp].args.length
 }
 
-case class SchemeDefineFunction(
-    name: Identifier,
-    args: List[Identifier],
-    body: List[SchemeExp],
-    idn: Identity)
-    extends SchemeDefineFunctionExp {
-  override def toString: String = {
-    val a = args.mkString(" ")
-    val b = body.mkString(" ")
-    s"(define ($name $a) $b)"
-  }
-  override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
-  val label: Label = DFF
+/** Function definition of the form (define (f arg ...) body) */
+object SchemeDefineFunction {
+  def apply(name: Identifier,
+            args: List[Identifier],
+            body: List[SchemeExp],
+            idn: Identity): SchemeExp = 
+    SchemeDefineVariable(name, SchemeLambda(Some(name.name), args, body, idn), idn)
 }
 
-case class SchemeDefineVarArgFunction(
-    name: Identifier,
-    args: List[Identifier],
-    vararg: Identifier,
-    body: List[SchemeExp],
-    idn: Identity)
-    extends SchemeDefineFunctionExp {
-  override def toString: String = {
-    val a = s"${args.mkString(" ")} . $vararg"
-    val b = body.mkString(" ")
-    s"(define ($name $a) $b)"
-  }
-  override def fv: Set[String] = super.fv - vararg.name
-  override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
-  val label: Label = DVA
-  override def subexpressions: List[Expression] = vararg :: super.subexpressions
+/** Function definition with varargs of the form (define (f arg . vararg ...) body) */
+object SchemeDefineVarArgFunction {
+  def apply(name: Identifier,
+            args: List[Identifier],
+            vararg: Identifier,
+            body: List[SchemeExp],
+            idn: Identity): SchemeExp =
+    SchemeDefineVariable(name, SchemeVarArgLambda(Some(name.name), args, vararg, body, idn), idn)
 }
 
 /**

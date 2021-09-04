@@ -292,8 +292,6 @@ class SchemeInterpreter(
       case SchemeAssert(_, _) =>
         done(Value.Void)
       case SchemeDefineVariable(_, _, _)             => ???
-      case SchemeDefineFunction(_, _, _, _)          => ???
-      case SchemeDefineVarArgFunction(_, _, _, _, _) => ???
       case SchemeVar(id) =>
         env.get(id.name) match {
           case Some(addr) =>

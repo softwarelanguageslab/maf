@@ -76,10 +76,6 @@ object SchemeMutableVarBoxer {
             SchemeLambda(nam, prs, rewriteLambdaBody(prs, bdy, mut, rew), pos)
         case SchemeVarArgLambda(nam, prs, vararg, bdy, pos) =>
             SchemeVarArgLambda(nam, prs, vararg, rewriteLambdaBody(prs :+ vararg, bdy, mut, rew), pos)
-        case SchemeDefineFunction(id, prs, bdy, pos) =>
-            SchemeDefineFunction(id, prs, rewriteLambdaBody(prs, bdy, mut, rew), pos)
-        case SchemeDefineVarArgFunction(id, prs, vararg, bdy, pos) =>
-            SchemeDefineVarArgFunction(id, prs, vararg, rewriteLambdaBody(prs :+ vararg, bdy, mut, rew), pos)
         case SchemeBegin(eps, pos) =>
             SchemeBegin(eps.map(rewrite(_, mut, rew)), pos)
         case SchemeIf(prd, csq, alt, pos) =>

@@ -104,14 +104,6 @@ object SchemeRenamer {
       rename(value, names, count) match {
         case (value1, count1) => (SchemeDefineVariable(name, value1, pos), count1)
       }
-    case SchemeDefineFunction(name, args, body, pos) =>
-      countl(args, names, count) match {
-        case (args1, names1, count1) =>
-          renameList(body, names1, count1) match {
-            case (body1, count2) =>
-              (SchemeDefineFunction(name, args1, body1, pos), count2)
-          }
-      }
     case SchemeVar(id) =>
       names.get(id.name) match {
         case Some(n) => (SchemeVar(Identifier(n, id.idn)), count)

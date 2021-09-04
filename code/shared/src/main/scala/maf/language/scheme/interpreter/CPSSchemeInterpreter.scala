@@ -160,8 +160,6 @@ class CPSSchemeInterpreter(
     case SchemeBegin(first :: rest, _)                 => Step(first, env, BegC(rest, env, cc))
     case SchemeCodeChange(old, _, _) if version == New => Step(old, env, cc)
     case SchemeCodeChange(_, nw, _) if version == Old  => Step(nw, env, cc)
-    case SchemeDefineFunction(_, _, _, _)              => stackedException("Undefined expression expected.")
-    case SchemeDefineVarArgFunction(_, _, _, _, _)     => stackedException("Undefined expression expected.")
     case SchemeDefineVariable(_, _, _)                 => stackedException("Undefined expression expected.")
     case call @ SchemeFuncall(f, args, _)              => Step(f, env, FunC(args, env, call, cc))
     case SchemeIf(cond, cons, alt, _)                  => Step(cond, env, IffC(cons, alt, env, cc))

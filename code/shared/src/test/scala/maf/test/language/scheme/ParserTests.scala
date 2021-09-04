@@ -31,10 +31,4 @@ class AnnotationTests extends AnyFlatSpec {
     assert(parsed.isInstanceOf[SchemeLambda])
     assert(parsed.asInstanceOf[SchemeLambda].annotation == Some(("@annot", "test")))
   }
-  "Annotated defines" should "have their annotation accessible" in {
-    val program = "(define (foo x) @annot:test x)"
-    val parsed = SchemeParser.parse(program)
-    assert(parsed.isInstanceOf[SchemeDefineFunction])
-    assert(parsed.asInstanceOf[SchemeDefineFunction].annotation == Some(("@annot", "test")))
-  }
 }
