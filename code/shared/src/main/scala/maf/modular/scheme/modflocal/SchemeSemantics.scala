@@ -79,7 +79,6 @@ trait SchemeSemantics {
     case vlu: SchemeValue           => evalLiteralValue(vlu)
     case lam: SchemeLambdaExp       => evalLambda(lam)
     case SchemeVar(id)              => evalVariable(id.name)
-    case SchemeSet(id, rhs, _)      => evalSet(id.name, rhs)
     case SchemeBegin(eps, _)        => evalSequence(eps)
     case SchemeIf(prd, thn, alt, _) => evalIf(prd, thn, alt)
     case SchemeLet(bds, bdy, _)     => evalLet(bds, bdy)
@@ -105,13 +104,6 @@ trait SchemeSemantics {
 
   private def evalVariable(nam: String): A[Val] =
     lookupEnv(nam)(adr => lookupSto(adr))
-
-  private def evalSet(nam: String, rhs: Exp): A[Val] = {
-    for {
-      rvl <- eval(rhs)
-      res <- lookupEnv(nam)(adr => updateSto(adr, rvl))
-    } yield lattice.void
-  }
 
   private def evalSequence(eps: Iterable[Exp]): A[Val] =
     eps.foldLeftM(lattice.void)((_, exp) => eval(exp))
