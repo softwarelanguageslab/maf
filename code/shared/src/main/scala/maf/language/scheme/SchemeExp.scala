@@ -634,6 +634,7 @@ trait ContractSchemeExp extends SchemeExp
 case object DPC extends Label // Dependent contract
 case object FLC extends Label // Flat contract
 case object MON extends Label // Monitor
+case object DFC extends Label // define/contract
 
 case class ContractSchemeDepContract(
     domains: List[SchemeExp],
@@ -643,7 +644,7 @@ case class ContractSchemeDepContract(
   def fv: Set[String] = domains.flatMap(_.fv).toSet ++ rangeMaker.fv
   def label: Label = DPC
   def subexpressions: List[Expression] = rangeMaker :: domains
-  override def toString: String = s"(~>d ${domains.map(_.toString)} $rangeMaker)"
+  override def toString: String = s"(~>d ${domains.map(_.toString).mkString(" ")} $rangeMaker)"
 }
 
 case class ContractSchemeFlatContract(
@@ -665,4 +666,17 @@ case class ContractSchemeMon(
   def label: Label = MON
   def subexpressions: List[Expression] = List(contract, expression)
   override def toString: String = s"(mon $contract $expression)"
+}
+
+case class ContractSchemeDefineContract(
+  name: Identifier, 
+  params: List[Identifier],
+  contract: SchemeExp, 
+  expression: SchemeExp,
+  idn: Identity
+) extends ContractSchemeExp {
+  def fv: Set[String] = contract.fv ++ (expression.fv -- params.map(_.name))
+  def label: Label = DFC
+  def subexpressions: List[Expression] = List(contract, expression)
+  override def toString: String = s"(define/contract ($name ${params.mkString(" ")}) $expression)"
 }
