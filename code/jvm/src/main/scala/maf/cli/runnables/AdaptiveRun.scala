@@ -19,6 +19,7 @@ import maf.cli.experiments.SchemeAnalyses
 import maf.language.scheme.interpreter._
 import maf.language.scheme.SchemeMutableVarBoxer
 import maf.language.scheme.primitives.SchemePrelude
+import maf.language.CScheme.CSchemeLexicalAddresser
 
 object AdaptiveRun {
 
@@ -40,18 +41,14 @@ object AdaptiveRun {
 
   def testTransform(): Unit = {
     val prg = """
-      (define (map f lst)
-        (if (null? lst)
-            '()
-            (cons (f (car lst)) (map f (cdr lst)))))
-
-
-      (define (inc n) (+ n 1))
-      (map inc '(1 2 3))
+      (define (f n) (+ n 1))
+      (set! f (lambda (y) (- y 1)))
+      (map f '(1 2 3))
     """
-    val parsed = CSchemeParser.parseProgram(prg)
-    //val transf = SchemeMutableVarBoxer.transform(prelud, Set("+", "-"))
-    println(parsed)
+    val parsed = CSchemeParser.parse(prg)
+    val prelud = SchemePrelude.addPrelude(parsed, Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+    val transf = SchemeMutableVarBoxer.transform(prelud)
+    transf.foreach(println)
   }
 
   def testModFLocal(): Unit = {

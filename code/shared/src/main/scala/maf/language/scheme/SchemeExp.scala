@@ -253,7 +253,7 @@ case class SchemeSetLex(
     value: SchemeExp,
     idn: Identity)
     extends SchemeSetExp {
-  override def toString = s"(set! $lexAddr $value)"
+  override def toString = s"(set! $variable $value)"
 }
 
 /** A begin clause: (begin body...) */
@@ -499,7 +499,7 @@ case class SchemeVar(id: Identifier) extends SchemeVarExp {
 }
 
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp {
-  override def toString: String = lexAddr.toString
+  override def toString: String = id.name
 }
 
 object SchemePair {

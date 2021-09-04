@@ -140,11 +140,14 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       Seq(SoundnessTest)
     }
 
+  def parseProgram(txt: String): SchemeExp =
+    CSchemeParser.parseProgram(txt)
+
   def onBenchmark(benchmark: Benchmark): Unit =
     property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
-      val program = CSchemeParser.parseProgram(content)
+      val program = parseProgram(content)
       // run the program using a concrete interpreter
       val concreteResults = evalConcrete(program, benchmark)
       // analyze the program using a ModF analysis

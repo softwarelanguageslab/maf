@@ -361,10 +361,10 @@ object SchemePrelude {
 
   val primNames: Set[String] = primDefs.keySet
 
-  /** Transively adds all required definitions to the prelude, except the ones listed in `excl`. */
-  def addPrelude(prg: List[SchemeExp]): List[SchemeExp] = {
+  /** Transively adds all required definitions to the prelude, in addition to those mentioned in `incl`. */
+  def addPrelude(prg: List[SchemeExp], incl: Set[String] = Set.empty): List[SchemeExp] = {
     var prelude: List[SchemeExp] = List()
-    var work: Set[String] = SchemeBody.fv(prg)
+    var work: Set[String] = SchemeBody.fv(prg) ++ incl
     var added: Set[String] = Set.empty
     while (work.nonEmpty) {
       val free = work.filter(primDefs.contains).filterNot(added)

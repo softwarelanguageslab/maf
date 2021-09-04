@@ -42,8 +42,8 @@ trait BaseSchemeLexicalAddresser {
 
   def initialLEnv(globals: String => Boolean) = LexicalEnv(emptyScope)(globals)
 
-  def translateProgram(prg: SchemeExp, globals: String => Boolean = _ => true): SchemeExp =
-    this.translate(prg, initialLEnv(globals).extend(SchemeBody.defs(List(prg))))
+  def translateProgram(prg: List[SchemeExp], globals: String => Boolean = _ => true): List[SchemeExp] =
+    translateBody(prg, initialLEnv(globals).newFrame.extend(SchemeBody.defs(prg)))
 
   def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = exp match {
     case vexp: SchemeValue => 

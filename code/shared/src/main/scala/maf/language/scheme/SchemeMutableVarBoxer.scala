@@ -24,7 +24,7 @@ object SchemeMutableVarBoxer {
     //      * all definitions of these variables using `new-ref`
     //      * all assignments to these variables using `set-ref!`
     //      * all references to these variables using `deref`
-    def transform(exp: SchemeExp, globals: Set[String]): SchemeExp = {
+    def transform(exp: List[SchemeExp]): List[SchemeExp] = {
         // first, collect all mutable vars
         var mutable: Set[LexicalRef] = Set.empty
         object LexicalTranslator extends BaseSchemeLexicalAddresser {
@@ -35,38 +35,42 @@ object SchemeMutableVarBoxer {
                 case res => res
             }
         }
-        val translated = LexicalTranslator.translateProgram(exp, globals)
+        val translated = LexicalTranslator.translateProgram(exp)
         // then, rewrite for mutable vars
         rewriteProgram(translated, mutable)
     }
 
-    type Rewrites = Map[LexicalRef, String]
+    type Rewrites = Map[LexicalRef, Identifier]
 
     private def genSym(nam: String) = s"__ref_var_$nam"
 
-    private def rewriteProgram(exp: SchemeExp, mut: Set[LexicalRef]): SchemeExp =
+    private def rewriteProgram(exp: List[SchemeExp], mut: Set[LexicalRef]): List[SchemeExp] =
         val mutPrms = mut.collect[LexicalRef.PrmRef] { case prm: LexicalRef.PrmRef => prm }
-        val rewPrms = mutPrms.map { prm => (prm, genSym(prm.nam)) }
+        val rewPrms = mutPrms.map { prm => (prm, Identifier(genSym(prm.nam), Identity.none)) }
         if rewPrms.isEmpty then 
-            rewrite(exp, mut, Map.empty)
+            rewriteBody(exp, mut, Map.empty)
         else
-            val bds = rewPrms.toList.map { (prm: LexicalRef.PrmRef, gen: String) => 
-                (Identifier(gen, Identity.none), SchemeRef(SchemeVar(Identifier(prm.nam, Identity.none)), Identity.none))
+            val bds = rewPrms.toList.map { (prm: LexicalRef.PrmRef, idf: Identifier) => 
+                (idf, SchemeRef(SchemeVar(Identifier(prm.nam, Identity.none)), Identity.none))
             }
-            SchemeLet(bds, List(rewrite(exp, mut, rewPrms.toMap[LexicalRef, String])), Identity.none)
+            List(SchemeLet(bds, rewriteBody(exp, mut, rewPrms.toMap[LexicalRef, Identifier]), Identity.none))
+
+    private def varRef(rew: Rewrites, id: Identifier, lex: LexicalRef): SchemeVar =
+        rew.get(lex) match {
+            case Some(oth) => SchemeVar(Identifier(oth.name, id.idn)) // SchemeVarLex(Identifier(oth.name, id.idn), LexicalRef.VarRef(oth))
+            case None => SchemeVar(id) // SchemeVarLex(id, lex)
+        }
 
     private def rewrite(exp: SchemeExp, mut: Set[LexicalRef], rew: Rewrites): SchemeExp = exp match {
         case vlu: SchemeValue => vlu
         case SchemeVarLex(id, lex) =>
             if mut(lex) then
-                SchemeDeref(SchemeVar(Identifier(rew.getOrElse(lex, id.name), id.idn)), id.idn)
+                SchemeDeref(varRef(rew, id, lex), id.idn)
             else
                 SchemeVar(id)
         case SchemeSetLex(id, lex, vexp, idn) =>
             assert(mut(lex)) // must mean that lex is marked as mutable!
-            SchemeSetRef(SchemeVar(Identifier(rew.getOrElse(lex, id.name), id.idn)),
-                         rewrite(vexp, mut, rew),
-                         idn)
+            SchemeSetRef(varRef(rew, id, lex), rewrite(vexp, mut, rew), idn)
         case SchemeDefineVariable(id, vexp, pos) =>
             if mut(LexicalRef.VarRef(id)) then 
                 SchemeDefineVariable(Identifier(id.name, Identity.none), SchemeRef(rewrite(vexp, mut, rew), id.idn), pos)
@@ -102,12 +106,12 @@ object SchemeMutableVarBoxer {
 
     private def rewriteLambdaBody(prs: List[Identifier], bdy: List[SchemeExp], mut: Set[LexicalRef], rew: Rewrites): List[SchemeExp] =
         val mutPrs = prs.map(LexicalRef.VarRef(_): LexicalRef.VarRef).filter(mut)
-        val rewPrs = mutPrs.map(ref => (ref, genSym(ref.id.name)))
+        val rewPrs = mutPrs.map(ref => (ref, Identifier(genSym(ref.id.name), Identity.none)))
         if rewPrs.isEmpty then 
             rewriteBody(bdy, mut, rew)
         else 
-            val bds = rewPrs.map { (ref: LexicalRef.VarRef, gen: String) => 
-                (Identifier(gen, Identity.none), SchemeRef(SchemeVar(Identifier(ref.id.name, Identity.none)), ref.id.idn))
+            val bds = rewPrs.map { (ref: LexicalRef.VarRef, idf: Identifier) => 
+                (idf, SchemeRef(SchemeVar(Identifier(ref.id.name, Identity.none)), ref.id.idn))
             }
             List(SchemeLet(bds, rewriteBody(bdy, mut, rew ++ rewPrs), Identity.none))
 
