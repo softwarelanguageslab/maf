@@ -18,6 +18,7 @@ import scala.language.reflectiveCalls
 import maf.cli.experiments.SchemeAnalyses
 import maf.language.scheme.interpreter._
 import maf.language.scheme.SchemeMutableVarBoxer
+import maf.language.scheme.primitives.SchemePrelude
 
 object AdaptiveRun {
 
@@ -39,11 +40,13 @@ object AdaptiveRun {
 
   def testTransform(): Unit = {
     val prg = """
-      (let loop ((x 1)) (loop (+ x 1)))
+      (define (inc x) (+ x 1))
+      (map inc '(1 2 3))
     """
     val parsed = CSchemeParser.parse(prg)
-    val transf = SchemeMutableVarBoxer.transform(parsed, Set("+", "-"))
-    println(transf)
+    val prelud = SchemePrelude.addPrelude(parsed)
+    //val transf = SchemeMutableVarBoxer.transform(prelud, Set("+", "-"))
+    println(prelud)
   }
 
   def testModFLocal(): Unit = {

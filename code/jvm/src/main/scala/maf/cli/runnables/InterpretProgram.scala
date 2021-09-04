@@ -12,7 +12,7 @@ object InterpretProgram extends App {
   val interpreter = new SchemeInterpreter((_, _) => (), stack = true)
   val res = interpreter.run(
     CSchemeUndefiner.undefine(
-      List(SchemePrelude.addPrelude(CSchemeParser.parse(text), Set("newline", "display")))
+      List(SchemePrelude.addPrelude(CSchemeParser.parse(text)))
     ),
     Timeout.none,
     New

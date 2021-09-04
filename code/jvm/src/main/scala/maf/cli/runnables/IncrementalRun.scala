@@ -23,7 +23,7 @@ object IncrementalRun extends App {
   // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
   // Useful when reducing a program when debugging the analysis.
   def interpretProgram(file: String): Unit = {
-    val prog = CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(Reader.loadFile(file)), Set("newline", "display"))))
+    val prog = CSchemeUndefiner.undefine(List(SchemePrelude.addPrelude(CSchemeParser.parse(Reader.loadFile(file)))))
     val i = new SchemeInterpreter((_, _) => (), stack = true)
     print("*")
     i.run(prog, Timeout.start(Duration(3, MINUTES)), Old)

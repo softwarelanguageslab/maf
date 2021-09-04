@@ -361,20 +361,17 @@ object SchemePrelude {
   val primNames: Set[String] = primDefs.keySet
 
   /** Transively adds all required definitions to the prelude, except the ones listed in `excl`. */
-  def addPrelude(exp: SchemeExp, excl: Set[String] = Set()): SchemeExp = {
+  def addPrelude(exp: SchemeExp): SchemeExp = {
     var prelude: List[SchemeExp] = List()
-    var work: List[Expression] = List(exp)
+    var work: Set[SchemeExp] = Set(exp)
     var visited: Set[String] = Set()
-
-    while (work.nonEmpty)
-      work.head match {
-        case Identifier(name, _) if primNames.contains(name) && !visited.contains(name) && !excl.contains(name) =>
-          val exp = primDefsParsed(name)
-          prelude = exp :: prelude
-          work = exp :: work.tail // If a primitive depends on other primitives, make sure to also inline them.
-          visited = visited + name
-        case e => work = e.subexpressions ::: work.tail // There will be no subexpressions if e is an Identifier for which the conditions do not hold.
-      }
+    while (work.nonEmpty) {
+      val free = work.head.fv.filter(primDefs.contains).filterNot(visited)
+      val defs = free.map(primDefsParsed)
+      prelude = defs.toList ::: prelude  
+      work = work.tail ++ defs
+      visited ++= free
+    }
     SchemeBody(prelude ::: List(exp))
   }
 }
