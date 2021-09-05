@@ -58,15 +58,14 @@ object AdaptiveRun {
     def printStore(sto: anl.Sto) =
       sto.content.view
         .filterKeys(!_.isInstanceOf[PrmAddr])
-        .filterKeys(!_.isInstanceOf[anl.EnvAddr])
         .toMap
         .foreach { case (a, s) =>
-          println(s"$a -> ${sto.value(s).asInstanceOf[anl.V].vlu}")
+          println(s"$a -> ${sto.value(s)}")
         }
     anl.analyzeWithTimeoutInSeconds(10)
     anl.visited
       .collect { case cll: anl.CallComponent => cll }
-      .foreach { case cmp @ anl.CallComponent(lam, _, sto) =>
+      .foreach { case cmp @ anl.CallComponent((lam, _), _, sto) =>
         println()
         println(s"COMPONENT ${lam.lambdaName} WHERE")
         printStore(sto)

@@ -10,6 +10,7 @@ sealed trait Environment[A <: Address] extends SmartHash { outer =>
 
   /** Looks up a value in the environment */
   def lookup(name: String): Option[A]
+  def apply(name: String): A = lookup(name).get
 
   /** Extend the environment */
   def extend(name: String, a: A): This
@@ -54,6 +55,7 @@ case class WrappedEnv[A <: Address, D](
 }
 
 object Environment {
+  def empty[A <: Address]: Environment[A] = BasicEnvironment(Map.empty)
   def apply[A <: Address](bds: Iterable[(String, A)]): Environment[A] = BasicEnvironment(bds.toMap)
 }
 

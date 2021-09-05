@@ -16,14 +16,14 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   // more shorthands
   type Cmp = Component
   type Dep = Dependency
-  type Sto = LocalStore[Adr, Storable] // TODO: split the store?
+  type Sto = LocalStore[Adr, Val]
 
   //
   // INITIALISATION
   //
 
   lazy val initialExp: Exp = program
-  lazy val initialEnv: Env = NestedEnv(initialBds.map(p => (p._1, p._2)).toMap, None)
+  lazy val initialEnv: Env = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
   lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))(shouldCount)
 
   private def shouldCount(adr: Adr): Boolean = adr match {
@@ -31,51 +31,19 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     case _              => false
   }
 
-  private lazy val initialBds: Iterable[(String, Adr, Storable)] =
+  private lazy val initialBds: Iterable[(String, Adr, Val)] =
     primitives.allPrimitives.view
       .filterKeys(initialExp.fv)
       .map { case (name, p) =>
-        (name, PrmAddr(name), V(lattice.primitive(p.name)))
+        (name, PrmAddr(name), lattice.primitive(p.name))
       }
 
   //
-  // THE STORE
+  // CALLBACKS (can be overriden)
   //
 
-  // the store is used for several purposes:
-  // - mapping variable/pointer addresses to values
-  // - mapping environment addresses to environments
-  sealed trait Storable
-  case class V(vlu: Value) extends Storable
-  case class E(evs: Set[Env]) extends Storable
-
-  implicit def storableLattice: LatticeWithAddrs[Storable, Adr] = new LatticeWithAddrs[Storable, Adr] {
-    def bottom: Storable = throw new Exception("No single bottom element in Storable lattice")
-    override def isBottom(x: Storable) = x match {
-      case V(vlu) => vlu == lattice.bottom
-      case E(evs) => evs.isEmpty
-    }
-    def join(x: Storable, y: => Storable): Storable = (x, y) match {
-      case (V(v1), V(v2)) => V(lattice.join(v1, v2))
-      case (E(e1), E(e2)) => E(e1 ++ e2)
-      case _              => throw new Exception(s"Attempting to join incompatible elements $x and $y")
-    }
-    def refs(x: Storable): Set[Adr] = x match {
-      case V(vlu) => lattice.refs(vlu)
-      case E(evs) => evs.flatMap(_.addrs)
-    }
-    def top: Storable = throw new Exception("No top element in Storable lattice")
-    def subsumes(x: Storable, y: => Storable): Boolean = throw new Exception("NYI")
-    def eql[B: BoolLattice](x: Storable, y: Storable): B = throw new Exception("NYI")
-    def show(v: Storable): String = v.toString
-  }
-
-  def lookupV(sto: Sto, adr: Adr): Val = sto(adr).asInstanceOf[V].vlu
-  def extendV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore = sto.deltaStore.extend(adr, V(vlu))
-  def updateV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore = sto.deltaStore.update(adr, V(vlu))
-
-  def lookupE(sto: Sto, adr: Adr): Set[Env] = sto(adr).asInstanceOf[E].evs
-  def extendE(sto: Sto, adr: Adr, evs: Set[Env]): sto.DeltaStore = sto.deltaStore.extend(adr, E(evs))
+  def extendV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore = sto.deltaStore.extend(adr, vlu)
+  def updateV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore = sto.deltaStore.update(adr, vlu)
 
   //
   // COMPONENTS
@@ -94,13 +62,9 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     val ctx = initialCtx
     override def toString = "main"
   }
-  case class CallComponent(lam: Lam, ctx: Ctx, sto: Sto) extends Component {
+  case class CallComponent(clo: Clo, ctx: Ctx, sto: Sto) extends Component {
+    val (lam, env) = clo
     def exp = SchemeBody(lam.body)
-    def env = {
-      val fixedArgEnv = lam.args.map(par => (par.name, VarAddr(par, ctx))).toMap
-      val varArgEnv = lam.varArgId.map(par => (par.name, (VarAddr(par, ctx)))).toMap
-      NestedEnv(fixedArgEnv ++ varArgEnv, Some(EnvAddr(lam, ctx)))
-    }
     override def toString = s"${lam.lambdaName} [$ctx] [$sto]"
   }
 
@@ -126,9 +90,9 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       (rss.map { case (x, d) => (x, sto.replay(d)) }, cps, rds, wds)
     }
 
-  override protected def applyClosure(cll: Cll, clo: Clo, ags: List[Val]): A[Val] =
-    withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ clo._2.addrs) {
-      super.applyClosure(cll, clo, ags)
+  override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
+    withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
+      super.applyClosure(cll, lam, ags, fvs)
     }
 
   //
@@ -174,22 +138,21 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def updateSto(adr: Adr, vlu: Val) =
       (_, _, env, sto) => (Set(((), updateV(sto, adr, vlu))), Set(), Set(), Set())
     def lookupSto(adr: Adr) =
-      (_, _, _, sto) => (Set((lookupV(sto, adr), sto.deltaStore)), Set(), Set(), Set())
-    // ANALYSISM
+      (_, _, _, sto) => (Set((sto(adr), sto.deltaStore)), Set(), Set(), Set())
+    // CTX STUFF
     def getCtx =
       (_, ctx, _, sto) => (Set((ctx, sto.deltaStore)), Set(), Set(), Set())
+    def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
+      (res, ctx, env, sto) => blk(res, f(ctx), env, sto)
     // ENV STUFF
     def getEnv =
       (_, _, env, sto) => (Set((env, sto.deltaStore)), Set(), Set(), Set())
-    def withExtendedEnv[X](nam: String, adr: Adr)(blk: A[X]): A[X] =
-      (res, ctx, env, sto) => blk(res, ctx, env.extend(nam, adr), sto)
-    def extendEnvSto(adr: EnvAddr, evs: Set[Env]) =
-      (_, _, _, sto) => (Set(((), extendE(sto, adr, evs))), Set(), Set(), Set())
-    def lookupEnvSto(adr: EnvAddr) =
-      (_, _, _, sto) => (Set(((lookupE(sto, adr), sto.deltaStore))), Set(), Set(), Set())
-    def call(lam: Lam, ctx: Ctx): A[Val] =
-      (res, _, _, sto) => {
-        val cmp = CallComponent(lam, ctx, sto)
+    def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
+      (res, ctx, env, sto) => blk(res, ctx, f(env), sto)
+    // CALL STUFF
+    def call(lam: Lam): A[Val] =
+      (res, ctx, env, sto) => {
+        val cmp = CallComponent((lam, env), ctx, sto)
         val rss = res.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, sto.DeltaStore)]]
         (rss, Set(cmp), Set(ResultDependency(cmp)), Set())
       }

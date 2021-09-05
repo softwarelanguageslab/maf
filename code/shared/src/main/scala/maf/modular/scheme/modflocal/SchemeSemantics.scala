@@ -19,50 +19,27 @@ trait SchemeSemantics {
   type Exp = SchemeExp
   type Lam = SchemeLambdaExp
   type Cll = SchemeFuncall
-  type Clo = (Lam, Environment[Adr])
-  type Env = NestedEnv[Adr, EnvAddr]
+  type Env = Environment[Adr]
+  type Clo = (Lam, Env)
   type Idn = Identity
   type Pos = Position
 
-  case class EnvAddr(lam: Lam, ctx: Ctx) extends Address {
-    def idn = lam.idn
-    def printable = true
-    override def toString = s"EnvAddr(${lam.lambdaName}, $ctx)"
-  }
-
   trait AnalysisM[M[_]] extends SchemePrimM[M, Adr, Val] {
     def getEnv: M[Env]
-    def lookupEnv[X: Lattice](nam: String)(f: Adr => M[X]): M[X] = {
-      def find(cur: Env): M[X] =
-        cur.lookup(nam) match {
-          case Some(adr) => f(adr)
-          case None =>
-            for {
-              evs <- lookupEnvSto(cur.rst.get)
-              res <- evs.foldMapM(find)
-            } yield res
-        }
-      flatMap(getEnv)(find)
-    }
-    def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X]
+    def withEnv[X](f: Env => Env)(blk: M[X]): M[X]
+    def lookupEnv(nam: String): M[Adr] = 
+      for { env <- getEnv } yield env(nam)
+    def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
+      withEnv(_.extend(nam, adr))(blk)
     def withExtendedEnv[X](bds: Iterable[(String, Adr)])(blk: M[X]): M[X] =
-      bds.foldRight(blk) { case ((nam, adr), rst) => withExtendedEnv(nam, adr)(rst) }
+      withEnv(_.extend(bds))(blk)
     def getCtx: M[Ctx]
+    def withCtx[X](ctx: Ctx => Ctx)(blk: M[X]): M[X]
     def allocVar(idn: Identifier): M[Adr] =
       for { ctx <- getCtx } yield VarAddr(idn, ctx)
     def allocPtr(exp: SchemeExp): M[Adr] =
       for { ctx <- getCtx } yield PtrAddr(exp, ctx)
-    def allocCtx(cll: Cll, clo: Clo, ags: List[Val]): M[Ctx] =
-      for { ctx <- getCtx } yield newContext(cll, clo, ags, ctx)
-    def writePar(par: Identifier, ctx: Ctx, arg: Val): M[Unit] =
-      extendSto(VarAddr(par, ctx), arg)
-    def writePar(prs: Iterable[(Identifier, Val)], ctx: Ctx): M[Unit] =
-      prs.mapM_[M, Unit] { case (par, vlu) => writePar(par, ctx, vlu) }
-    def writeEnv(lam: Lam, ctx: Ctx, env: Env): M[Unit] =
-      extendEnvSto(EnvAddr(lam, ctx), Set(env))
-    def extendEnvSto(adr: EnvAddr, evs: Set[Env]): M[Unit]
-    def lookupEnvSto(adr: EnvAddr): M[Set[Env]]
-    def call(lam: Lam, ctx: Ctx): M[Val]
+    def call(lam: Lam): M[Val]
     // Scala is too stupid to figure this out...
     implicit final private val self: AnalysisM[M] = this
   }
@@ -103,7 +80,10 @@ trait SchemeSemantics {
   }
 
   private def evalVariable(nam: String): A[Val] =
-    lookupEnv(nam)(adr => lookupSto(adr))
+    for {
+      adr <- lookupEnv(nam)
+      vlu <- lookupSto(adr)
+    } yield vlu
 
   private def evalSequence(eps: Iterable[Exp]): A[Val] =
     eps.foldLeftM(lattice.void)((_, exp) => eval(exp))
@@ -186,36 +166,48 @@ trait SchemeSemantics {
 
   private def applyClosures(cll: Cll, fun: Val, ags: List[Val]): A[Val] = {
     val agc = ags.length
-    lattice.getClosures(fun).foldMapM { clo =>
-      guard(clo._1.check(agc)).flatMap { _ =>
-        applyClosure(cll, clo, ags)
-      }
+    lattice.getClosures(fun).foldMapM { (lam, lex) =>
+      for {
+        _ <- guard(lam.check(agc))
+        fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))
+        res <- applyClosure(cll, lam, ags, fvs)
+      } yield res
     }
   }
 
-  protected def applyClosure(cll: Cll, clo: Clo, ags: List[Val]): A[Val] =
-    // TODO: GC here
-    for {
-      ctx <- allocCtx(cll, clo, ags)
-      _ <- bindArgs(cll, clo, ags, ctx)
-      res <- call(clo._1, ctx)
-    } yield res
+  protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
+    withCtx(newContext(cll, lam, ags, _)) {
+      argBindings(cll, lam, ags, fvs) >>= { bds =>
+        val envBds = bds.map((nam, adr, _) => (nam, adr))
+        val stoBds = bds.map((_, adr, vlu) => (adr, vlu))
+        withEnv(_ => Environment(envBds)) {
+          extendSto(stoBds) >>> call(lam)
+        }
+      }
+    }
 
-  private def bindArgs(cll: Cll, clo: Clo, ags: List[Val], ctx: Ctx): A[Unit] = {
-    val (lam, lex: Env @unchecked) = clo
+  private def argBindings(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[List[(String, Adr, Val)]] =
     for {
-      _ <- writePar(lam.args.zip(ags), ctx) // bind fixed args
-      _ <- lam.varArgId match { // bind varargs
-        case None => unit(())
+      // fixed args
+      fxa <- lam.args.zip(ags).mapM((idf, vlu) => allocVar(idf).map((idf.name, _, vlu)))
+      // vararg (optional)
+      vra <- lam.varArgId match { 
+        case None => unit(Nil)
         case Some(varArg) =>
           val len = lam.args.length
           val (_, vag) = ags.splitAt(len)
           val (_, vex) = cll.args.splitAt(len)
-          allocLst(vex.zip(vag)).flatMap(writePar(varArg, ctx, _))
+          for {
+            lst <- allocLst(vex.zip(vag))
+            adr <- allocVar(varArg)
+          } yield List((varArg.name, adr, lst))
       }
-      _ <- writeEnv(lam, ctx, lex) //bind env
-    } yield ()
-  }
+      // free variables
+      frv <- fvs.mapM((adr, vlu) => adr match {
+        case VarAddr(idf, _) => allocVar(idf).map((idf.name, _, vlu))
+        case PrmAddr(nam) => unit((nam, adr, vlu))
+      }) 
+    } yield fxa ++ vra ++ frv
 
   private def storeVal(exp: Exp, vlu: Val): A[Val] =
     for {
