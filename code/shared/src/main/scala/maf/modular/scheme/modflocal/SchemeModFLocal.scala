@@ -182,7 +182,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         val old = inter.results.getOrElse(cmp, Set.empty)
         val cur = intra.results.getOrElse(cmp, Set.empty)
         if (old != cur) {
-          inter.results += cmp -> results.getOrElse(cmp, Set.empty)
+          inter.results += cmp -> cur
           true
         } else {
           false

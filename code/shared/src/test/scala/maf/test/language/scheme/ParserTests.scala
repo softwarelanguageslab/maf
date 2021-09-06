@@ -13,9 +13,9 @@ trait SchemeParserTestsSpec extends SchemeBenchmarkTests {
       val content = Reader.loadFile(benchmark)
       val parsed = SchemeParser.parse(content)
       // Check that the parsing was succesful
-      assert(parsed.toString.nonEmpty)
+      assert(parsed.nonEmpty)
       // Check that printing and parsing the result again gives the same result
-      val printed = parsed.toString
+      val printed = parsed.mkString(" ")
       val reparsed = SchemeParser.parse(printed, Position.newTag("MAF"))
       assert(parsed.toString == reparsed.toString, "Printing and parsing again gives a result different from the original parse")
       assert(reparsed.flatMap(_.subexpressions).forall(e => e.idn.pos.tag.contains("MAF") || e.idn == NoCodeIdentity && e.idn.pos.tag.isEmpty))
