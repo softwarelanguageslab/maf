@@ -11,13 +11,13 @@ import maf.web.visualisations._
 import scala.scalajs.js
 
 object WebVisualisationAdaptive:
-  val d3 = js.Dynamic.global.d3
-  lazy val __NODE_COLORS__ = List("blue", "green", "yellow", "red")
-  lazy val __NO_OF_COLORS__ = __NODE_COLORS__.length
-  lazy val __COLOR_SCALE__ = d3
-    .scaleOrdinal()
-    .domain(d3.range(__NO_OF_COLORS__))
-    .range(__NODE_COLORS__)
+    val d3 = js.Dynamic.global.d3
+    lazy val __NODE_COLORS__ = List("blue", "green", "yellow", "red")
+    lazy val __NO_OF_COLORS__ = __NODE_COLORS__.length
+    lazy val __COLOR_SCALE__ = d3
+      .scaleOrdinal()
+      .domain(d3.range(__NO_OF_COLORS__))
+      .range(__NODE_COLORS__)
 
 //
 // REQUIRED ANALYSIS EXTENSION
@@ -25,14 +25,14 @@ object WebVisualisationAdaptive:
 
 trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] with WebVisualisationAnalysis[Expr]:
 
-  def adaptiveWebVis = webvis.asInstanceOf[WebVisualisationAdaptive]
+    def adaptiveWebVis = webvis.asInstanceOf[WebVisualisationAdaptive]
 
-  override def adaptAnalysis() =
-    super.adaptAnalysis()
-    this.dependencies = adaptMap(adaptComponent, adaptSet(adaptComponent))(this.dependencies)
-    adaptiveWebVis.dirty = true // ensure the webvis will refresh its data
+    override def adaptAnalysis() =
+        super.adaptAnalysis()
+        this.dependencies = adaptMap(adaptComponent, adaptSet(adaptComponent))(this.dependencies)
+        adaptiveWebVis.dirty = true // ensure the webvis will refresh its data
 
-  override def intraAnalysis(cmp: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
+    override def intraAnalysis(cmp: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
 
 //
 // WEB VISUALISATION FOR ADAPTIVE ANALYSES
@@ -44,18 +44,16 @@ class WebVisualisationAdaptive(
     height: Int)
     extends WebVisualisation(width, height):
 
-  // dirty flag set after visualisation needs to be refreshed due to adaptation
-  var dirty = false
+    // dirty flag set after visualisation needs to be refreshed due to adaptation
+    var dirty = false
 
-  override def componentKey(cmp: analysis.Component) = analysis.module(cmp)
-  override def componentText(cmp: analysis.Component) = s"$cmp"
+    override def componentKey(cmp: analysis.Component) = analysis.module(cmp)
+    override def componentText(cmp: analysis.Component) = s"$cmp"
 
-  override def refreshDataAfterStep() =
-    if this.dirty then
-      super.refreshData() // <- do a full refresh
-    else
-      super.refreshDataAfterStep()
+    override def refreshDataAfterStep() =
+      if this.dirty then super.refreshData() // <- do a full refresh
+      else super.refreshDataAfterStep()
 
-  override def refreshData() =
-    super.refreshData()
-    this.dirty = false
+    override def refreshData() =
+        super.refreshData()
+        this.dirty = false

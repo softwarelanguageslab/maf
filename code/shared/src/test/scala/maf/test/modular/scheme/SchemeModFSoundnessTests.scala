@@ -9,44 +9,44 @@ import maf.modular.worklist._
 import maf.test._
 
 trait SchemeModFSoundnessTests extends SchemeSoundnessTests:
-  override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModFTest
+    override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModFTest
 
 trait BigStepSchemeModF extends SchemeModFSoundnessTests:
-  def name = "big-step semantics"
-  def analysis(
-      program: SchemeExp
-    ) = new SimpleSchemeModFAnalysis(program) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+    def name = "big-step semantics"
+    def analysis(
+        program: SchemeExp
+      ) = new SimpleSchemeModFAnalysis(program) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests:
-  def name = "small-step semantics"
-  def analysis(program: SchemeExp) = new ModAnalysis(program)
-    with SchemeModFSemantics
-    with SmallStepModFSemantics
-    with StandardSchemeModFComponents
-    with SchemeConstantPropagationDomain
-    with SchemeModFNoSensitivity
-    with LIFOWorklistAlgorithm[SchemeExp] {
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with SmallStepIntra
-  }
+    def name = "small-step semantics"
+    def analysis(program: SchemeExp) = new ModAnalysis(program)
+      with SchemeModFSemantics
+      with SmallStepModFSemantics
+      with StandardSchemeModFComponents
+      with SchemeConstantPropagationDomain
+      with SchemeModFNoSensitivity
+      with LIFOWorklistAlgorithm[SchemeExp] {
+      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with SmallStepIntra
+    }
 
 trait ParallelSchemeModF extends SchemeModFSoundnessTests:
-  def name = "parallel analysis (n = 8)"
-  def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
-    with SchemeConstantPropagationDomain
-    with SchemeModFNoSensitivity
-    with CallDepthFirstWorklistAlgorithm[SchemeExp]
-    with ParallelWorklistAlgorithm[SchemeExp] {
-    override def workers = 8
-    override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
-  }
+    def name = "parallel analysis (n = 8)"
+    def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
+      with SchemeConstantPropagationDomain
+      with SchemeModFNoSensitivity
+      with CallDepthFirstWorklistAlgorithm[SchemeExp]
+      with ParallelWorklistAlgorithm[SchemeExp] {
+      override def workers = 8
+      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
+    }
 
 // concrete test suites to run ...
 
 class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with AllSequentialBenchmarks:
-  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b) || b.contains("infinite")
+    override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b) || b.contains("infinite")
 
 class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllSequentialBenchmarks:
-  override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
+    override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
 
 class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with AllSequentialBenchmarks:
-  override def isSlow(b: Benchmark) = true
+    override def isSlow(b: Benchmark) = true
