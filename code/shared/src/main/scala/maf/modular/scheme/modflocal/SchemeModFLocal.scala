@@ -81,8 +81,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     def withRestrictedStore[X](rs: Set[Adr])(blk: A[X]): A[X] =
       (res, ctx, env, sto) => {
-        val (rss, cps, rds, wds) = blk(res, ctx, env, sto.collect(rs))
-        (rss.map { case (x, d) => (x, sto.replay(d)) }, cps, rds, wds)
+        val (rss, cps) = blk(res, ctx, env, sto.collect(rs))
+        (rss.map((x, d) => (x, sto.replay(d))), cps)
       }
 
     override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
@@ -94,54 +94,54 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // ANALYSISM MONAD
     //
 
-    type A[X] = (res: Res, ctx: Ctx, env: Env, sto: Sto) => (Set[(X, sto.DeltaStore)], Set[Cmp], Set[Dep], Set[Dep])
+    type A[X] = (res: Res, ctx: Ctx, env: Env, sto: Sto) => (Set[(X, sto.DeltaStore)], Set[Cmp])
 
     given analysisM: AnalysisM[A] with
         // MONAD
         def unit[X](x: X) =
-          (_, _, _, sto) => (Set((x, sto.deltaStore)), Set(), Set(), Set())
+          (_, _, _, sto) => (Set((x, sto.deltaStore)), Set())
         def map[X, Y](m: A[X])(f: X => Y) =
           (res, ctx, env, sto) => {
-            val (rss, cps, rds, wds) = m(res, ctx, env, sto)
-            (rss.map(res => (f(res._1), res._2)), cps, rds, wds)
+            val (rss, cps) = m(res, ctx, env, sto)
+            (rss.map(res => (f(res._1), res._2)), cps)
           }
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
           (res, ctx, env, sto) =>
-              val (rs1, cs1, rd1, wd1) = m(res, ctx, env, sto)
-              rs1.foldLeft((Set[(Y, sto.DeltaStore)](), cs1, rd1, wd1)) { case (acc, (x, d0)) =>
-                val (rs2, cs2, rd2, wd2) = f(x)(res, ctx, env, sto.integrate(d0))
+              val (rs1, cs1) = m(res, ctx, env, sto)
+              rs1.foldLeft((Set[(Y, sto.DeltaStore)](), cs1)) { case (acc, (x, d0)) =>
+                val (rs2, cs2) = f(x)(res, ctx, env, sto.integrate(d0))
                 val rs3 = rs2.map { case (x, d1) => (x, sto.compose(d1, d0)) }
-                (acc._1 ++ rs3, acc._2 ++ cs2, acc._3 ++ rd2, acc._4 ++ wd2)
+                (acc._1 ++ rs3, acc._2 ++ cs2)
               }
         // MONADJOIN
         def mbottom[X] =
-          (_, _, _, _) => (Set(), Set(), Set(), Set())
+          (_, _, _, _) => (Set.empty, Set.empty)
         def mjoin[X: Lattice](x: A[X], y: A[X]) =
           (res, ctx, env, sto) => {
-            val (rs1, cs1, rd1, wd1) = x(res, ctx, env, sto)
-            val (rs2, cs2, rd2, wd2) = y(res, ctx, env, sto)
-            (rs1 ++ rs2, cs1 ++ cs2, rd1 ++ rd2, wd1 ++ wd2)
+            val (rs1, cs1) = x(res, ctx, env, sto)
+            val (rs2, cs2) = y(res, ctx, env, sto)
+            (rs1 ++ rs2, cs1 ++ cs2)
           }
         // MONADERROR
         def fail[X](err: Error) =
           mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-          (_, _, _, sto) => (Set((sto.addrEq, sto.deltaStore)), Set(), Set(), Set())
+          (_, _, _, sto) => (Set((sto.addrEq, sto.deltaStore)), Set())
         def extendSto(adr: Adr, vlu: Val) =
-          (_, _, env, sto) => (Set(((), extendV(sto, adr, vlu))), Set(), Set(), Set())
+          (_, _, env, sto) => (Set(((), extendV(sto, adr, vlu))), Set())
         def updateSto(adr: Adr, vlu: Val) =
-          (_, _, env, sto) => (Set(((), updateV(sto, adr, vlu))), Set(), Set(), Set())
+          (_, _, env, sto) => (Set(((), updateV(sto, adr, vlu))), Set())
         def lookupSto(adr: Adr) =
-          (_, _, _, sto) => (Set((sto(adr), sto.deltaStore)), Set(), Set(), Set())
+          (_, _, _, sto) => (Set((sto(adr), sto.deltaStore)), Set())
         // CTX STUFF
         def getCtx =
-          (_, ctx, _, sto) => (Set((ctx, sto.deltaStore)), Set(), Set(), Set())
+          (_, ctx, _, sto) => (Set((ctx, sto.deltaStore)), Set())
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
           (res, ctx, env, sto) => blk(res, f(ctx), env, sto)
         // ENV STUFF
         def getEnv =
-          (_, _, env, sto) => (Set((env, sto.deltaStore)), Set(), Set(), Set())
+          (_, _, env, sto) => (Set((env, sto.deltaStore)), Set())
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
           (res, ctx, env, sto) => blk(res, ctx, f(env), sto)
         // CALL STUFF
@@ -149,7 +149,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           (res, ctx, env, sto) => {
             val cmp = CallComponent(lam, env, ctx, sto)
             val rss = res.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, sto.DeltaStore)]]
-            (rss, Set(cmp), Set(ResultDependency(cmp)), Set())
+            (rss, Set(cmp))
           }
 
     //
@@ -157,18 +157,18 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     //
 
     def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) { intra =>
+
       var results = inter.results
 
       def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          val (res, cps, rds, wds) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto)
+          val (res, cps) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto)
           val rgc = res.map { case (x, d) => (x, d.collect(lattice.refs(x) ++ d.updates)) }
           val old = results.get(cmp)
           if rgc != old then
               results = results + (cmp -> rgc)
               trigger(ResultDependency(cmp))
           cps.foreach(spawn)
-          rds.foreach(register)
-          assert(wds.isEmpty)
+          cps.foreach(cmp => register(ResultDependency(cmp)))
       override def doWrite(dep: Dependency): Boolean = dep match
           case ResultDependency(cmp) =>
             val old = inter.results.getOrElse(cmp, Set.empty)
