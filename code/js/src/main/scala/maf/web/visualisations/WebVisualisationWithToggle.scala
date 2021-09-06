@@ -10,7 +10,7 @@ trait WebVisualisationWithToggle extends WebVisualisation {
   private var enabled = true
   // ... using a button
   private lazy val toggleButton: dom.html.Button = Button("Hide graph visualisation") {
-    if (enabled) {
+    if enabled then {
       enabled = false
       toggleButton.innerHTML = "Show graph visualisation"
       svgDiv.removeChild(svgNode)
@@ -24,13 +24,13 @@ trait WebVisualisationWithToggle extends WebVisualisation {
 
   // when disabled, updates do not happen before/after stepping
   override def beforeStep() = {
-    if (enabled) {
+    if enabled then {
       super.beforeStep()
     }
   }
 
   override def afterStep() = {
-    if (enabled) {
+    if enabled then {
       super.afterStep()
     }
   }

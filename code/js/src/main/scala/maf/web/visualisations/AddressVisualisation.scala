@@ -46,7 +46,7 @@ trait AddressVisualisation extends WebVisualisation {
     super.refreshData()
     // Also add nodes for the addresses.
     analysis.store.keySet.foreach { addr =>
-      if (!addr.isInstanceOf[PrmAddr]) {
+      if !addr.isInstanceOf[PrmAddr] then {
         val node = getNode(addr)
         nodesData += node
         // Using the standard Global Store, we can only visualise read dependencies.

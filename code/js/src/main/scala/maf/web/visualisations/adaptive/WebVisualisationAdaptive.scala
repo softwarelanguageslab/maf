@@ -54,7 +54,7 @@ class WebVisualisationAdaptive(
   override def componentText(cmp: analysis.Component) = s"$cmp"
 
   override def refreshDataAfterStep() =
-    if (this.dirty) {
+    if this.dirty then {
       super.refreshData() // <- do a full refresh
     } else {
       super.refreshDataAfterStep()

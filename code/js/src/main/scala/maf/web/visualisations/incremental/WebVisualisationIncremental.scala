@@ -20,7 +20,7 @@ trait VisualisableIncrementalModAnalysis[Expr <: Expression]
 
   trait VisualisableIntraAnalysis extends IncrementalIntraAnalysis with DependencyTrackingIntra with GlobalStoreIntra {
     override def refineComponents(): Unit = {
-      if (C.contains(component)) recursive = recursive + component
+      if C.contains(component) then recursive = recursive + component
       else recursive = recursive - component
       super.refineComponents()
     }

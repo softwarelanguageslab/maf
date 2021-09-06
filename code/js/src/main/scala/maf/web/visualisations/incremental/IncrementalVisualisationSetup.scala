@@ -51,7 +51,7 @@ object IncrementalVisualisationSetup extends VisualisationSetup {
 
   // Avoid handling keys while initialisation is in progress.
   override def analysisCommandHandler(anl: Analysis): PartialFunction[String, Unit] = {
-    if (initialised)
+    if initialised then
       super.analysisCommandHandler(anl)
     else { case (_: String) =>
       println("Setup in progress, cannot step analysis.")
@@ -113,7 +113,7 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
     try {
       println("Starting initial analysis.") // Will be logged to console.
       analyzeWithTimeout(Timeout.start(Duration(5, MINUTES)))
-      if (finished)
+      if finished then
         println("Finished initial analysis. Preparing for reanalysis.")
       else throw new TimeoutException("Initial analysis timed out.")
       version = New

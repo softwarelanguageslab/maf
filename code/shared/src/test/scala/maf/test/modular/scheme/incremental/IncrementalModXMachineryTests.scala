@@ -30,7 +30,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
 
   private val fast: Set[String] = Set("baseline", "collatz", "nboyer", "satCoarse", "scheme")
 
-  def testTags(b: Benchmark): Seq[Tag] = if (fast.forall(f => !b.contains(f))) Seq(IncrementalTest, SlowTest) else Seq(IncrementalTest)
+  def testTags(b: Benchmark): Seq[Tag] = if fast.forall(f => !b.contains(f)) then Seq(IncrementalTest, SlowTest) else Seq(IncrementalTest)
 
   def parse(benchmark: Benchmark): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(benchmark))
 
@@ -142,7 +142,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
     val exp2 = Set("main", "a [ε]", "d [ε]") // main, a, d.
 
     // Actual test.
-    for (c <- allConfigurations.filter(_.componentInvalidation)) {
+    for c <- allConfigurations.filter(_.componentInvalidation) do {
       property(s"Component invalidation works on an artificial example using ${c}.", IncrementalTest) {
         try {
           val a = base.deepCopy()
@@ -211,14 +211,14 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
     val exp1 = {
       val a = getStandard(ProgramVersionExtracter.getInitial(CSchemeParser.parseProgram(program)))
       a.analyzeWithTimeout(timeout())
-      if (a.finished)
+      if a.finished then
         a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) })
       else ""
     }
     val exp2 = {
       val a = getStandard(ProgramVersionExtracter.getUpdated(CSchemeParser.parseProgram(program)))
       a.analyzeWithTimeout(timeout())
-      if (a.finished)
+      if a.finished then
         a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) })
       else ""
     }
@@ -231,7 +231,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
      */
 
     // Actual test. Note that component invalidation lowers the number of dependencies and is hence required (expected results obtained by performing a full analysis on both program versions).
-    for (c <- allConfigurations.filter(c => c.dependencyInvalidation && c.componentInvalidation)) {
+    for c <- allConfigurations.filter(c => c.dependencyInvalidation && c.componentInvalidation) do {
       property(s"Dependency invalidation works on an artificial example using ${c}.", IncrementalTest) {
         try {
           assume(exp1 != "")

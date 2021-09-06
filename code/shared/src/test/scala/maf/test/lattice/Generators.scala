@@ -30,8 +30,8 @@ class BooleanGenerator[B: BoolLattice] extends LatticeGenerator[B] {
 
   def any = Gen.oneOf(bot, t, f, top)
   def le(l: B) =
-    if (l == bot) { Gen.const(bot) }
-    else if (l == top) { Gen.oneOf(bot, t, f) }
+    if l == bot then { Gen.const(bot) }
+    else if l == top then { Gen.oneOf(bot, t, f) }
     else { Gen.oneOf(l, bot) }
 }
 object ConcreteBooleanGenerator extends BooleanGenerator[Concrete.B]
@@ -48,13 +48,13 @@ case class SetGen[A](g: Gen[A]) {
   implicit val toTraversable = (s: Set[A]) => new Traversable[A] {
     def foreach[U](f: A => U): Unit = s.foreach({ x => f(x) })
   }*/
-  val gen: Gen[Set[A]] = for {
+  val gen: Gen[Set[A]] = for
     n <- Gen.choose(0, 10)
     s <- Gen.buildableOfN[Set[A], A](n, g)
-  } yield s
+  yield s
   def genSubset(set: Set[A]): Gen[Set[A]] = {
     val list = set.toList
-    for { n <- Gen.choose(0, set.size) } yield scala.util.Random.shuffle(list).take(n).toSet
+    for  n <- Gen.choose(0, set.size)  yield scala.util.Random.shuffle(list).take(n).toSet
   }
 }
 
@@ -94,12 +94,12 @@ object TypeGenerator extends LatticeGenerator[Type.T] {
 
 abstract class ConstantPropagationGenerator[X](gen: Gen[X])(implicit lat: Lattice[ConstantPropagation.L[X]])
     extends LatticeGenerator[ConstantPropagation.L[X]] {
-  def constgen: Gen[ConstantPropagation.L[X]] = for { x <- gen } yield ConstantPropagation.Constant(x)
+  def constgen: Gen[ConstantPropagation.L[X]] = for  x <- gen  yield ConstantPropagation.Constant(x)
   def botgen: Gen[ConstantPropagation.L[X]] = lat.bottom
   def topgen: Gen[ConstantPropagation.L[X]] = lat.top
   def any: Gen[ConstantPropagation.L[X]] = Gen.oneOf(constgen, botgen, topgen)
-  def le(l: ConstantPropagation.L[X]) = if (l == lat.top) { any }
-  else if (l == lat.bottom) { botgen }
+  def le(l: ConstantPropagation.L[X]) = if l == lat.top then { any }
+  else if l == lat.bottom then { botgen }
   else { Gen.oneOf(l, lat.bottom) }
 }
 

@@ -65,7 +65,7 @@ class AdaptiveSummaryVisualisation(
   // keep a stack of views currently shown
   private var viewStack: List[View] = List.empty
   private def unrollViewStackUntil(view: View) = {
-    while (viewStack.head != view) {
+    while viewStack.head != view do {
       node.removeChild(viewStack.head.node)
       viewStack = viewStack.tail
     }
@@ -138,7 +138,7 @@ class AdaptiveSummaryVisualisation(
         currentSelection = sel
       }
       private def toggle(sel: Selection) =
-        if (currentSelection == sel) {
+        if currentSelection == sel then {
           setSelection(None)
         } else {
           setSelection(sel)

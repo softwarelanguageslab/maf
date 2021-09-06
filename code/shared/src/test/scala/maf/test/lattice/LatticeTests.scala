@@ -16,7 +16,7 @@ abstract class LatticeSpecification extends AnyPropSpec with Checkers {
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 100)
   def checkAll(props: Properties): Unit =
-    for ((name, prop) <- props.properties)
+    for (name, prop) <- props.properties do
       property(name, LatticeTest)(check(prop))
   def newProperties(name: String)(f: Properties => Properties): Properties = {
     val p = new Properties(name)

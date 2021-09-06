@@ -83,7 +83,7 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
   }
 
   private def stepUntilAdapt(anl: Analysis): Unit =
-    if (!anl.finished && !anl.willAdapt) {
+    if !anl.finished && !anl.willAdapt then {
       anl.step(Timeout.none)
       js.timers.setTimeout(0) {
         stepUntilAdapt(anl)

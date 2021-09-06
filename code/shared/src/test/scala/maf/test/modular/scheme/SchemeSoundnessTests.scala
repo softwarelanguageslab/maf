@@ -39,7 +39,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     try
-      for (_ <- 1 to times) {
+      for _ <- 1 to times do {
         val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
                                                 io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
         )
@@ -113,14 +113,14 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
     concreteResults.foreach { case (idn, concreteValues) =>
       val abstractValues = analysisResults.getOrElse(idn, Set.empty)
       concreteValues.foreach { concreteValue =>
-        if (!abstractValues.exists(checkSubsumption(analysis)(concreteValue, _))) {
+        if !abstractValues.exists(checkSubsumption(analysis)(concreteValue, _)) then {
           val failureMsg =
             s"""
             | Result at $idn is unsound:
             | - concrete value: $concreteValue
             | - abstract values: ${analysis.lattice.join(abstractValues)}
             """.stripMargin
-          if (message.isEmpty) {
+          if message.isEmpty then {
             fail(failureMsg)
           } else {
             fail(s"$message > $failureMsg")
@@ -134,7 +134,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
   def isSlow(b: Benchmark) = false
 
   def testTags(b: Benchmark): Seq[Tag] =
-    if (isSlow(b)) {
+    if isSlow(b) then {
       Seq(SoundnessTest, SlowTest)
     } else {
       Seq(SoundnessTest)

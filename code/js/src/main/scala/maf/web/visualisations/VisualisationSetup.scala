@@ -58,7 +58,7 @@ trait VisualisationSetup {
   }
 
   protected def keyHandler(key: String): Unit =
-    if (analysis.isDefined) {
+    if analysis.isDefined then {
       analysisCommandHandler(analysis.get).lift(key)
     }
 
@@ -74,7 +74,7 @@ trait VisualisationSetup {
   protected def onClick() = this.analysis.foreach(stepAnalysis)
 
   private def stepAnalysis(anl: Analysis) =
-    if (!anl.finished) {
+    if !anl.finished then {
       anl.step(Timeout.none)
     } else {
       println("The analysis has already terminated")
@@ -85,7 +85,7 @@ trait VisualisationSetup {
       timeout: Timeout.T = Timeout.none,
       stepLimit: Option[Int] = None
     ): Unit =
-    if (!anl.finished && !timeout.reached && stepLimit.map(_ > 0).getOrElse(true)) {
+    if !anl.finished && !timeout.reached && stepLimit.map(_ > 0).getOrElse(true) then {
       anl.step(timeout)
       js.timers.setTimeout(0) { // <- gives JS time to update between steps
         stepUntil(anl, timeout, stepLimit.map(_ - 1))

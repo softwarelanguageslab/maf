@@ -195,7 +195,7 @@ abstract class WebVisualisation(width: Int, height: Int) {
     edges.attr(
       "d",
       (edge: JsAny) =>
-        if (edge.source == edge.target) {
+        if edge.source == edge.target then {
           val cx = edge.source.x.asInstanceOf[Double]
           val cy = edge.source.y.asInstanceOf[Double]
           val x1 = cx - __CIRCLE_RADIUS__
@@ -369,7 +369,7 @@ abstract class WebVisualisation(width: Int, height: Int) {
 
   private def onDragStart(node: JsAny): Unit = {
     val isActive = d3.event.active.asInstanceOf[Int]
-    if (isActive == 0) simulation.alphaTarget(0.3).restart()
+    if isActive == 0 then simulation.alphaTarget(0.3).restart()
     node.fx = node.x
     node.fy = node.y
   }
@@ -379,7 +379,7 @@ abstract class WebVisualisation(width: Int, height: Int) {
   }
   private def onDragEnd(node: JsAny): Unit = {
     val isActive = d3.event.active.asInstanceOf[Int]
-    if (isActive == 0) simulation.alphaTarget(0)
+    if isActive == 0 then simulation.alphaTarget(0)
     node.fx = null
     node.fy = null
   }

@@ -60,7 +60,7 @@ abstract class BarChart(
   // TODO: parameterise this using an overridable method `setupYAxis(max: Int)`
   private var currentMax = 1
   private def increaseMax(max: Int) = {
-    while (currentMax < max) { currentMax *= 2 }
+    while currentMax < max do { currentMax *= 2 }
     yScale.domain(Seq(0, currentMax))
     yAxis.ticks(Math.min(10, currentMax))
   }
@@ -98,7 +98,7 @@ abstract class BarChart(
       .style("text-anchor", "end")
 
     // setup the y-axis
-    if (data.nonEmpty) { increaseMax(value(data.maxBy(value))) }
+    if data.nonEmpty then { increaseMax(value(data.maxBy(value))) }
     yAxisNode.call(yAxis)
 
     // draw the bars
@@ -194,7 +194,7 @@ trait BarChartFocus extends BarChart {
     focused = true
   }
   def resetFocus() =
-    if (focused) {
+    if focused then {
       innerNode
         .selectAll(".bar")
         .classed("focused", false)
@@ -246,7 +246,7 @@ trait BarChartStats extends BarChart {
     val length = data.size
     totalText.text(s"total: $length")
     // set the average text
-    if (length == 0) {
+    if length == 0 then {
       averageText.text("average: N/A")
     } else {
       val average = data.map(value).sum / length
