@@ -4,23 +4,10 @@ import maf.core._
 import maf.language.change.ChangeExp
 import maf.language.sexp._
 import maf.language.scheme.ContractSchemeExp
+import Label.*
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression
-
-case object BEG extends Label // Begin
-case object DFV extends Label // Variable definition
-case object FNC extends Label // Function call (application)
-case object IFF extends Label // If expression
-case object LAM extends Label // Lambda expression
-case object LET extends Label // Let expression
-case object LTR extends Label // Letrec expression
-case object LTS extends Label // Let* expression
-case object PAI extends Label // Pair expression
-case object SET extends Label // Assignment
-case object VAL extends Label // Value
-case object VAR extends Label // Variable
-case object ASS extends Label // Assertion
 
 /*
     case SchemeLambda(name, args, body, idn) =>
@@ -547,9 +534,6 @@ case class SchemeCodeChange(
 
 trait CSchemeExp extends SchemeExp
 
-case object FRK extends Label // Fork
-case object JOI extends Label // Join
-
 /** Fork a thread with an expression to evaluate. */
 case class CSchemeFork(body: SchemeExp, idn: Identity) extends CSchemeExp {
   def fv: Set[String] = body.fv
@@ -567,11 +551,6 @@ case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp {
 }
 
 trait ContractSchemeExp extends SchemeExp
-
-case object DPC extends Label // Dependent contract
-case object FLC extends Label // Flat contract
-case object MON extends Label // Monitor
-case object DFC extends Label // define/contract
 
 case class ContractSchemeDepContract(
     domains: List[SchemeExp],

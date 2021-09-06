@@ -62,7 +62,7 @@ case class SExpPair(
       case SExpValue(Value.Nil, _) => s"$car"
       case _                       => s"$car . $cdr"
     }
-  val label: Label = PAI
+  val label: Label = Label.PAI
   def subexpressions: List[Expression] = List(car, cdr)
 }
 
@@ -83,14 +83,14 @@ object SExpList {
 case class SExpId(id: Identifier) extends SExp {
   val idn: Identity = id.idn
   override def toString: String = id.toString
-  val label: Label = SYM
+  val label: Label = Label.SYM
   def subexpressions: List[Expression] = List(id)
 }
 
 /** A literal value, such as 1, "foo", 'foo, etc. */
 case class SExpValue(value: Value, idn: Identity) extends SExp {
   override def toString: String = value.toString
-  val label: Label = VAL
+  val label: Label = Label.VAL
   def subexpressions: List[Expression] = List()
   override lazy val hash: Int = (label, value).hashCode()
 }
