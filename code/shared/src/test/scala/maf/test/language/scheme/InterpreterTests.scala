@@ -15,7 +15,7 @@ import org.scalatest.propspec.AnyPropSpec
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 
-class InterpreterTests() extends AnyPropSpec {
+class InterpreterTests() extends AnyPropSpec:
 
   val benchmarks: Set[String] = SchemeBenchmarkPrograms.sequentialBenchmarks -- Set(
     "test/R5RS/various/my-test.scm" // Result depends on random numbers.
@@ -29,7 +29,7 @@ class InterpreterTests() extends AnyPropSpec {
       v1: ConcreteValues.Value,
       v2: ConcreteValues.Value,
       visited: Map[Addr, Addr] = Map()
-    ): Option[Boolean] = (v1, v2) match {
+    ): Option[Boolean] = (v1, v2) match
     case (ConcreteValues.Value.Cons(car1, cdr1), ConcreteValues.Value.Cons(car2, cdr2)) =>
       compareValues(car1, car2, visited).flatMap(b => if b then compareValues(cdr1, cdr2, visited) else Some(b))
     case (ConcreteValues.Value.Pointer(p1), ConcreteValues.Value.Pointer(p2)) =>
@@ -57,27 +57,22 @@ class InterpreterTests() extends AnyPropSpec {
         }
       else Some(false)
     case _ => Some(v1 == v2)
-  }
 
-  def onBenchmark(benchmark: String): Unit = {
+  def onBenchmark(benchmark: String): Unit =
     val program: SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(benchmark))
     property(s"The Scheme interpreters give the same result for $benchmark", InterpreterTest, SlowTest) {
-      try {
+      try
         // TODO (maybe): run in parallel?
         val r1: ConcreteValues.Value = interpreter.run(program, Timeout.start(Duration(60, SECONDS)))
         val r2: ConcreteValues.Value = CPSinterpreter.run(program, Timeout.start(Duration(60, SECONDS)))
-        compareValues(r1, r2) match {
+        compareValues(r1, r2) match
           case Some(b) =>
             assert(b, s"The return value of the CPS interpreter ($r2) did not match the return value of the recursive interpreter ($r1).")
           case None => cancel(s"Cannot compare results of $benchmark as they involve threads.")
-        }
-      } catch {
+      catch
         case _: TimeoutException    => cancel(s"One of the interpreters timed out on $benchmark.")
         case e: VirtualMachineError => cancel(s"Interpretation of $benchmark encountered an error: $e.")
-      }
     }
-  }
 
   benchmarks.foreach(onBenchmark)
 
-}

@@ -5,7 +5,7 @@ import maf.util._
 import maf.language.ContractScheme._
 import maf.core._
 
-trait ContractParserTestsSpec extends SchemeBenchmarkTests {
+trait ContractParserTestsSpec extends SchemeBenchmarkTests:
   // TODO[small] abstract this away into a ParserTestsSpec that is paramatrized over the parser (also see SchemeParserTestsSpec)
   def onBenchmark(benchmark: Benchmark) =
     property(s"ContractSchemeParser can correctly parse $benchmark", ParserTest) {
@@ -20,6 +20,5 @@ trait ContractParserTestsSpec extends SchemeBenchmarkTests {
       assert(parsed.toString == reparsed.toString, "Printing and parsing again gives a result different from the original parse")
       assert(reparsed.subexpressions.forall(e => e.idn.pos.tag.contains("MAF") || e.idn == NoCodeIdentity && e.idn.pos.tag.isEmpty))
     }
-}
 
 class ContractParserTests extends ContractParserTestsSpec with ContractBenchmarks

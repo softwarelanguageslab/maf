@@ -9,7 +9,7 @@ import maf.language.sexp._
 import maf.lattice.interfaces._
 import maf.test.lattice._
 
-trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
+trait SchemeLatticeGenerator[L] extends LatticeGenerator[L]:
   /* unary ops */
   val anyUnaryOp: Gen[SchemeOp.SchemeOp1] = Gen.oneOf(SchemeOp.unaryOperators)
   implicit val arbUnop: Arbitrary[SchemeOp.SchemeOp1] = Arbitrary(anyUnaryOp)
@@ -23,7 +23,6 @@ trait SchemeLatticeGenerator[L] extends LatticeGenerator[L] {
   def anyPai: Gen[L]
   def anyVec: Gen[L]
   def anyInt: Gen[L]
-}
 
 abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I: IntLattice, R: RealLattice, C: CharLattice, Sym: SymbolLattice](
     strGen: LatticeGenerator[S],
@@ -31,7 +30,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     intGen: LatticeGenerator[I],
     reaGen: LatticeGenerator[R],
     chrGen: LatticeGenerator[C],
-    symGen: LatticeGenerator[Sym]) {
+    symGen: LatticeGenerator[Sym]):
 
   val emptyEnv = Environment[SimpleAddr](Iterable.empty)
 
@@ -53,10 +52,9 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     yield lst
 
   // for the purposes of generating arbitrary Scheme values, we can just represent addresses with integers
-  case class SimpleAddr(addr: Int) extends Address {
+  case class SimpleAddr(addr: Int) extends Address:
     def printable = true
     def idn = Identity.none
-  }
   // we'll use the "real" primitives
   def primitives = new SchemeLatticePrimitives[modularLattice.L, SimpleAddr]
   // the modular lattice that is used
@@ -81,7 +79,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     for  vluShrinked <- Shrink.shrink(vlu)  yield (idx, vluShrinked)
   }
 
-  object SchemeValueLatticeGenerator extends SchemeLatticeGenerator[L] {
+  object SchemeValueLatticeGenerator extends SchemeLatticeGenerator[L]:
     /* Generate any Scheme value */
     lazy val any: Gen[L] = for
       nil <- pickAtMost(1, SchemeVLatticeGenerator.anyNilV)
@@ -101,20 +99,18 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     /* Generate any vector */
     def anyVec: Gen[L] = SchemeVLatticeGenerator.anyVecV.map(modularLattice.Element(_))
     /* Generate a Scheme value subsumed by a given Scheme value */
-    def le(l: L): Gen[L] = l match {
+    def le(l: L): Gen[L] = l match
       case modularLattice.Elements(vs) =>
         for
           subset <- Gen.someOf(vs)
           subsumed <- Gen.sequence[List[V], V](subset.map(SchemeVLatticeGenerator.le))
         yield modularLattice.Elements(subsumed.sortBy(_.ord))
-    }
     /* Generating specific values */
     def anyInt = SchemeVLatticeGenerator.anyIntV.map(modularLattice.Element(_))
     /* Shrinking values */
     override val shrink = shrinkL
-  }
 
-  object SchemeVLatticeGenerator {
+  object SchemeVLatticeGenerator:
     // helpers
     val anyAddr: Gen[SimpleAddr] = Gen.choose(0, 100).map(SimpleAddr(_)) // addresses are faked in 100 different variations
     val anyClosure: Gen[valLat.Closure] = for
@@ -146,7 +142,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     yield modularLattice.Vec(siz, con)
     // any value
     // any value subsumed by a given value
-    def le(l: V): Gen[V] = l match {
+    def le(l: V): Gen[V] = l match
       case modularLattice.Str(s)      => strGen.le(s).retryUntil(_ != StringLattice[S].bottom).map(modularLattice.Str(_))
       case modularLattice.Bool(b)     => blnGen.le(b).retryUntil(_ != BoolLattice[B].bottom).map(modularLattice.Bool(_))
       case modularLattice.Int(i)      => intGen.le(i).retryUntil(_ != IntLattice[I].bottom).map(modularLattice.Int(_))
@@ -167,7 +163,6 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
           cle <- vectorContentLe(c, sle)
         yield modularLattice.Vec(sle, cle)
       case _ => Gen.const(l)
-    }
     // with the current representation, vectors are tricky to handle
     private def vectorContent(siz: I): Gen[Map[I, L]] = for
       maxSize <- Gen.choose(0, 5)
@@ -179,13 +174,10 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
       values <- Gen.sequence[Set[List[(I, L)]], List[(I, L)]](subsumed).map(_.flatten)
       augmented <- Gen.choose(0, 5).flatMap(Gen.mapOfN(_, genTuple(intGen.any, SchemeValueLatticeGenerator.any)))
     yield vectorNormalize((values ++ augmented).toMap, siz)
-    private def vectorNormalize(bds: Map[I, L], siz: I): Map[I, L] = {
+    private def vectorNormalize(bds: Map[I, L], siz: I): Map[I, L] =
       val bds1 = bds.filter { case (idx, _) => blnLat.isTrue(intLat.lt(idx, siz)) }
       val idxs = bds1.map(_._1)
       bds1.filter(bnd => !idxs.exists(idx => idx != bnd._1 && intLat.subsumes(idx, bnd._1)))
-    }
-  }
-}
 
 object ConstantModularSchemeLattice
     extends ModularSchemeLatticeGenerator(ConstantPropagationStringGenerator,

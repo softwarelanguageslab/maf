@@ -25,7 +25,7 @@ import scala.concurrent.duration._
  * the incremental program version, and subsumption for the analysis of the updated program version.
  */
 // TODO: Require equality when all optimisations are enabled.
-trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
+trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
   lazy val configurations: List[IncrementalConfiguration] = allConfigurations
   def timeout(): Timeout.T = Timeout.start(Duration(20, SECONDS))
 
@@ -41,12 +41,12 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
   def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit
   def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit
 
-  def onBenchmark(benchmark: Benchmark): Unit = {
+  def onBenchmark(benchmark: Benchmark): Unit =
     val text = Reader.loadFile(benchmark)
     val program = CSchemeParser.parseProgram(text)
-    for c <- configurations do {
+    for c <- configurations do
       property(s"Analysis results for $benchmark using $c are equal (initial analysis) or subsuming (incremental update).", testTags(benchmark, c): _*) {
-        try {
+        try
           val a = analysis(program, Old)
           a.analyzeWithTimeout(timeout())
           assume(a.finished)
@@ -65,17 +65,13 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests {
           assume(i.finished)
           checkSubsumption(b, i)
 
-        } catch {
+        catch
           case e: VirtualMachineError =>
             System.gc()
             cancel(s"Analysis of $benchmark encountered an error: $e.")
-        }
       }
-    }
-  }
-}
 
-class ModFComparisonTests extends IncrementalModXComparisonTests with SequentialIncrementalBenchmarks {
+class ModFComparisonTests extends IncrementalModXComparisonTests with SequentialIncrementalBenchmarks:
 
   abstract class BaseAnalysis(program: SchemeExp)
       extends ModAnalysis[SchemeExp](program)
@@ -88,24 +84,21 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
   class IncrementalAnalysis(program: SchemeExp)
       extends BaseAnalysis(program)
       with IncrementalSchemeModFBigStepSemantics
-      with IncrementalGlobalStore[SchemeExp] {
+      with IncrementalGlobalStore[SchemeExp]:
     var configuration: IncrementalConfiguration = allOptimisations
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
-  }
 
-  class Analysis(program: SchemeExp, version: Version) extends BaseAnalysis(program) with BigStepModFSemantics with GlobalStore[SchemeExp] {
+  class Analysis(program: SchemeExp, version: Version) extends BaseAnalysis(program) with BigStepModFSemantics with GlobalStore[SchemeExp]:
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra {
-      override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
+      override protected def eval(exp: SchemeExp): EvalM[Value] = exp match
         case SchemeCodeChange(e, _, _) if version == Old => eval(e)
         case SchemeCodeChange(_, e, _) if version == New => eval(e)
         case _                                           => super.eval(exp)
-      }
     }
-  }
 
   def analysis(e: SchemeExp, version: Version) = new Analysis(e, version)
   def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
@@ -113,7 +106,7 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
   // Are slow: multiple-dwelling (both) and peval. All other can locally be completed with a timeout of 10 seconds.
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] = Seq(IncrementalTest, SlowTest)
 
-  def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
+  def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit =
     // Check components.
     assert(i.visited == a.visited, "The visited sets of both analyses differ for the initial program version.")
 
@@ -124,9 +117,8 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
 
     // Check store.
     assert(i.store.toSet == a.store.toSet, "Both analyses contain different value/address pairs in their store for the initial program version.")
-  }
 
-  def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit = {
+  def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit =
     // Check components.
     assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit at least the same components than the full reanalysis.")
     assert(a.visited.diff(i.visited).isEmpty,
@@ -145,30 +137,26 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
       assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
     }
-  }
-}
 
-class ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks {
+class ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks:
   abstract class BaseModConcAnalysis(prg: SchemeExp)
       extends ModAnalysis[SchemeExp](prg)
       with KKallocModConc
       with LIFOWorklistAlgorithm[SchemeExp]
-      with IncrementalSchemeConstantPropagationDomain {
+      with IncrementalSchemeConstantPropagationDomain:
     val k: Int = 1
-  }
 
   class IncrementalAnalysis(program: SchemeExp)
       extends BaseModConcAnalysis(program)
       with IncrementalSchemeModConcSmallStepSemantics
-      with IncrementalGlobalStore[SchemeExp] {
+      with IncrementalGlobalStore[SchemeExp]:
     var configuration: IncrementalConfiguration = allOptimisations
 
     override def intraAnalysis(
         cmp: Component
       ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
-  }
 
-  class Analysis(program: SchemeExp, version: Version) extends BaseModConcAnalysis(program) with SmallStepModConcSemantics with GlobalStore[SchemeExp] {
+  class Analysis(program: SchemeExp, version: Version) extends BaseModConcAnalysis(program) with SmallStepModConcSemantics with GlobalStore[SchemeExp]:
     override def intraAnalysis(
         cmp: SmallStepModConcComponent
       ): KCFAIntra = new IntraAnalysis(cmp) with SmallStepIntra with KCFAIntra with GlobalStoreIntra {
@@ -176,13 +164,11 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
           exp: Exp,
           env: Env,
           stack: Stack
-        ): Set[State] = exp match {
+        ): Set[State] = exp match
         case SchemeCodeChange(e, _, _) if version == Old => Set(Eval(e, env, stack))
         case SchemeCodeChange(_, e, _) if version == New => Set(Eval(e, env, stack))
         case _                                           => super.evaluate(exp, env, stack)
-      }
     }
-  }
 
   // Are slow: SICP-compiler, msort, actors. All other can locally be completed with a timeout of 10 seconds.
   def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag] = Seq(IncrementalTest, SlowTest)
@@ -190,7 +176,7 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
   def analysis(e: SchemeExp, version: Version) = new Analysis(e, version)
   def incAnalysis(e: SchemeExp) = new IncrementalAnalysis(e)
 
-  def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit = {
+  def checkEqual(a: Analysis, i: IncrementalAnalysis): Unit =
     // Check components.
     assert(i.visited == a.visited, "The visited sets of both analyses differ for the initial program version.")
 
@@ -201,9 +187,8 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
 
     // Check store.
     assert(i.store.toSet == a.store.toSet, "Both analyses contain different value/address pairs in their store for the initial program version.")
-  }
 
-  def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit = {
+  def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit =
     // Check components.
     assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit at least the same components than the full reanalysis.")
     assert(a.visited.diff(i.visited).isEmpty,
@@ -222,5 +207,3 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
       val iv = i.store.getOrElse(addr, i.lattice.bottom)
       assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
     }
-  }
-}

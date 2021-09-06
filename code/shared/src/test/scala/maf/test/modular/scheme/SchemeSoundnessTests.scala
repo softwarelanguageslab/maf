@@ -17,7 +17,7 @@ import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 
-trait SchemeSoundnessTests extends SchemeBenchmarkTests {
+trait SchemeSoundnessTests extends SchemeBenchmarkTests:
   // analysis must support basic Scheme semantics
   type Analysis = ModAnalysis[SchemeExp] with AnalysisResults[SchemeExp] with SchemeDomain
   // the analysis that is used to analyse the programs
@@ -34,18 +34,17 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       t: Timeout.T
     ): Value =
     i.run(p, t) // If there are code changes in the file, runs the "new" version by default (ensures compatibility with files containing changes).
-  protected def evalConcrete(program: SchemeExp, benchmark: Benchmark): Map[Identity, Set[Value]] = {
+  protected def evalConcrete(program: SchemeExp, benchmark: Benchmark): Map[Identity, Set[Value]] =
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     try
-      for _ <- 1 to times do {
+      for _ <- 1 to times do
         val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
                                                 io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
         )
         runInterpreter(interpreter, program, timeout)
-      }
-    catch {
+    catch
       case _: TimeoutException =>
         alert(s"Concrete evaluation of $benchmark timed out.")
       case ChildThreadDiedException(_) =>
@@ -53,26 +52,23 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       case e: VirtualMachineError =>
         System.gc()
         alert(s"Concrete evaluation of $benchmark failed with $e")
-    }
     idnResults
-  }
   protected def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
-    try {
+    try
       // analyze the program using a ModF analysis
       val anl = analysis(program)
       val timeout = analysisTimeout(benchmark)
       anl.analyzeWithTimeout(timeout)
       assume(anl.finished, "Analysis timed out")
       anl
-    } catch {
+    catch
       case e: VirtualMachineError =>
         System.gc()
         cancel(s"Analysis of $benchmark encountered an error: $e")
-    }
 
-  protected def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value): Boolean = {
+  protected def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value): Boolean =
     val lat = analysis.lattice
-    v match {
+    v match
       case Value.Undefined(_)  => true
       case Value.Unbound(_)    => true
       case Value.Void          => lat.subsumes(abs, lat.void)
@@ -101,44 +97,38 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
           } &&
           (els.size == siz || checkSubsumption(analysis)(ini, lat.op(SchemeOp.VectorRef)(List(abs, lat.numTop)).getOrElse(lat.bottom)))
       case v => throw new Exception(s"Unknown concrete value type: $v.")
-    }
-  }
 
   protected def compareResults(
       analysis: Analysis,
       concreteResults: Map[Identity, Set[Value]],
       message: String = ""
-    ): Unit = {
+    ): Unit =
     val analysisResults = analysis.resultsPerIdn
     concreteResults.foreach { case (idn, concreteValues) =>
       val abstractValues = analysisResults.getOrElse(idn, Set.empty)
       concreteValues.foreach { concreteValue =>
-        if !abstractValues.exists(checkSubsumption(analysis)(concreteValue, _)) then {
+        if !abstractValues.exists(checkSubsumption(analysis)(concreteValue, _)) then
           val failureMsg =
             s"""
             | Result at $idn is unsound:
             | - concrete value: $concreteValue
             | - abstract values: ${analysis.lattice.join(abstractValues)}
             """.stripMargin
-          if message.isEmpty then {
+          if message.isEmpty then
             fail(failureMsg)
-          } else {
+          else
             fail(s"$message > $failureMsg")
-          }
-        }
       }
     }
-  }
 
   // indicate if a benchmark is slow or not
   def isSlow(b: Benchmark) = false
 
   def testTags(b: Benchmark): Seq[Tag] =
-    if isSlow(b) then {
+    if isSlow(b) then
       Seq(SoundnessTest, SlowTest)
-    } else {
+    else
       Seq(SoundnessTest)
-    }
 
   def parseProgram(txt: String): SchemeExp =
     CSchemeParser.parseProgram(txt)
@@ -155,4 +145,3 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests {
       // check if the analysis results soundly (over-)approximate the concrete results
       compareResults(anl, concreteResults)
     }
-}

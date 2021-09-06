@@ -8,7 +8,7 @@ import maf.web.utils.JSHelpers._
 
 import scala.scalajs.js
 
-object AddressVisualisationIncremental {
+object AddressVisualisationIncremental:
   val __CSS_DELADDR_NODE__ = "del_addr_node" // Deleted address (node).
   val __CSS_WRITE_EDGE__ = "write_edge"
   val __CSS_DELREAD_EDGE__ = "del_read" // Deleted read.
@@ -19,9 +19,8 @@ object AddressVisualisationIncremental {
   val __SVG_WRITE_ARROW__ = "writearrow"
   val __SVG_DREAD_ARROW__ = "delreadarrow"
   val __SVG_DWRITE_ARROW__ = "delwritearrow"
-}
 
-trait AddressVisualisationIncremental extends WebVisualisationIncremental with AddressVisualisation {
+trait AddressVisualisationIncremental extends WebVisualisationIncremental with AddressVisualisation:
 
   var oldWriteDeps: Map[analysis.Component, Set[analysis.Addr]] = Map().withDefaultValue(Set.empty)
 
@@ -34,7 +33,7 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
     analysis.cachedWrites(edge.source.asInstanceOf[CmpNode].component).contains(edge.target.asInstanceOf[AddrNode].address)
 
   // Now also add edges for writes.
-  override def refreshData(): Unit = {
+  override def refreshData(): Unit =
     super.refreshData()
     analysis.provenance.foreach { case (addr, prov) =>
       val addrNode = getNode(addr)
@@ -45,9 +44,8 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
         edgesData += edge
       }
     }
-  }
 
-  override def refreshDataAfterStep(): Unit = {
+  override def refreshDataAfterStep(): Unit =
     super.refreshDataAfterStep()
     val writerNode = getNode(prevComponent)
     analysis.cachedWrites(prevComponent).foreach { addr =>
@@ -57,9 +55,8 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
         edgesData += edge
     }
     oldWriteDeps = analysis.cachedWrites
-  }
 
-  override def classifyNodes(): Unit = {
+  override def classifyNodes(): Unit =
     super.classifyNodes()
     nodes.classed(__CSS_DELADDR_NODE__,
                   (node: Node) =>
@@ -68,33 +65,29 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
                       case _           => false
                     }
     )
-  }
 
-  override def classifyEdges(): Unit = {
+  override def classifyEdges(): Unit =
     super.classifyEdges()
     edges
       .classed(__CSS_DELREAD_EDGE__, (edge: Edge) => isReadEdge(edge) && !isExistingReadEdge(edge))
       .classed(__CSS_WRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && isExistingWriteEdge(edge))
       .classed(__CSS_DELWRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && !isExistingWriteEdge(edge))
-  }
 
-  override def classifyLabels(): Unit = {
+  override def classifyLabels(): Unit =
     super.classifyLabels()
     labels
       .classed(__CSS_EXISTING_WRITE__, (edge: Edge) => isWriteEdge(edge) && isExistingWriteEdge(edge))
       .classed(__CSS_FORMER_WRITE__, (edge: Edge) => isWriteEdge(edge) && !isExistingWriteEdge(edge))
-  }
 
-  override def setupMarker(svg: JsAny): js.Dynamic = {
+  override def setupMarker(svg: JsAny): js.Dynamic =
     super.setupMarker(svg)
     newMarker(svg, __SVG_WRITE_ARROW__).attr("fill", "tan").attr("stroke", "tan")
     newMarker(svg, __SVG_DREAD_ARROW__).attr("fill", "lightgray").attr("stroke", "lightgray")
     newMarker(svg, __SVG_DWRITE_ARROW__).attr("fill", "lightgray").attr("stroke", "lightgray")
-  }
 
   // Based on http://bl.ocks.org/jhb/5955887.
   // TODO: get text in the right place, in the right colour and remove old text.
-  override def refreshHook(): Unit = {
+  override def refreshHook(): Unit =
     super.refreshHook()
     // Update the labels on the edges
     val labelsUpdate = labels.data(edgesData, (e: Edge) => (e.source.data(), e.target.data()))
@@ -115,14 +108,12 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
       )
     classifyLabels()
     labelsUpdate.exit().remove()
-  }
 
-}
 
 // Ensures all edges and addresses remain shown.
-trait RetainAllIncremental extends RetainAll {
+trait RetainAllIncremental extends RetainAll:
   this: AddressVisualisationIncremental =>
-  override def deleteOnStep(cmp: analysis.Component): Unit = {
+  override def deleteOnStep(cmp: analysis.Component): Unit =
     super.deleteOnStep(cmp)
     val writerNode = getNode(cmp)
     oldWriteDeps(cmp).foreach { addr =>
@@ -130,14 +121,10 @@ trait RetainAllIncremental extends RetainAll {
         val edge = getEdge(writerNode, addrNode)
         edgesData -= edge
     }
-  }
-}
 
 // Only shows the addresses read and written by the component last analysed.
-trait RetainUpdatedIncremental extends RetainUpdated {
+trait RetainUpdatedIncremental extends RetainUpdated:
   this: AddressVisualisationIncremental =>
-  override def deleteOnStep(cmp: analysis.Component): Unit = {
+  override def deleteOnStep(cmp: analysis.Component): Unit =
     super.deleteOnStep(cmp)
     edgesData = edgesData.filterNot(_.target.isInstanceOf[AddrNode]) // For Incremental Address Visualisation.
-  }
-}

@@ -11,21 +11,19 @@ import maf.test.LatticeTest
 
 /** TODO[medium] tests for scheme lattice */
 
-abstract class LatticeSpecification extends AnyPropSpec with Checkers {
+abstract class LatticeSpecification extends AnyPropSpec with Checkers:
   // by default, check each property for at least 100 instances
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 100)
   def checkAll(props: Properties): Unit =
     for (name, prop) <- props.properties do
       property(name, LatticeTest)(check(prop))
-  def newProperties(name: String)(f: Properties => Properties): Properties = {
+  def newProperties(name: String)(f: Properties => Properties): Properties =
     val p = new Properties(name)
     f(p)
-  }
   def conditional(p: Boolean, q: => Boolean): Boolean = !p || q
-}
 
-abstract class LatticeTest[L: Lattice](gen: LatticeGenerator[L]) extends LatticeSpecification {
+abstract class LatticeTest[L: Lattice](gen: LatticeGenerator[L]) extends LatticeSpecification:
   val laws: Properties =
     newProperties("Lattice") { p =>
         implicit val arb = gen.anyArb
@@ -71,9 +69,8 @@ abstract class LatticeTest[L: Lattice](gen: LatticeGenerator[L]) extends Lattice
         p
     }
   checkAll(laws)
-}
 
-abstract class BoolLatticeTest[B: BoolLattice](gen: LatticeGenerator[B]) extends LatticeTest[B](gen) {
+abstract class BoolLatticeTest[B: BoolLattice](gen: LatticeGenerator[B]) extends LatticeTest[B](gen):
   val boolLaws: Properties =
     newProperties("Bool") { p =>
       newProperties("BoolLattice") { p =>
@@ -101,9 +98,8 @@ abstract class BoolLatticeTest[B: BoolLattice](gen: LatticeGenerator[B]) extends
       }
     }
   checkAll(boolLaws)
-}
 
-abstract class StringLatticeTest[S: StringLattice, I: IntLattice](gen: LatticeGenerator[S]) extends LatticeTest[S](gen) {
+abstract class StringLatticeTest[S: StringLattice, I: IntLattice](gen: LatticeGenerator[S]) extends LatticeTest[S](gen):
   val stringLaws: Properties =
     newProperties("String") { p =>
         implicit val arb = gen.anyArb
@@ -145,10 +141,9 @@ abstract class StringLatticeTest[S: StringLattice, I: IntLattice](gen: LatticeGe
         p
     }
   checkAll(stringLaws)
-}
 
-abstract class IntLatticeTest[I: IntLattice, B: BoolLattice, R: RealLattice, S: StringLattice](gen: LatticeGenerator[I]) extends LatticeTest[I](gen) {
-  val intLaws: Properties = {
+abstract class IntLatticeTest[I: IntLattice, B: BoolLattice, R: RealLattice, S: StringLattice](gen: LatticeGenerator[I]) extends LatticeTest[I](gen):
+  val intLaws: Properties =
     newProperties("Int") { p =>
         implicit val arb = gen.anyArb
         val lat: IntLattice[I] = implicitly
@@ -315,13 +310,11 @@ abstract class IntLatticeTest[I: IntLattice, B: BoolLattice, R: RealLattice, S: 
 
         p
     }
-  }
   checkAll(intLaws)
-}
 
 abstract class RealLatticeTest[R: RealLattice, B: BoolLattice, I: IntLattice, S: StringLattice](gen: LatticeGenerator[R])
-    extends LatticeTest[R](gen) {
-  val realLaws: Properties = {
+    extends LatticeTest[R](gen):
+  val realLaws: Properties =
     newProperties("Real") { p =>
         implicit val arb = gen.anyArb
         val lat: RealLattice[R] = implicitly
@@ -469,21 +462,17 @@ abstract class RealLatticeTest[R: RealLattice, B: BoolLattice, I: IntLattice, S:
           forAll((a: Double) => StringLattice[S].subsumes(lat.toString[S](inject(a)), StringLattice[S].inject(a.toString)))
         p
     }
-  }
   checkAll(realLaws)
-}
 
-abstract class CharLatticeTest[C: CharLattice](gen: LatticeGenerator[C]) extends LatticeTest[C](gen) {
+abstract class CharLatticeTest[C: CharLattice](gen: LatticeGenerator[C]) extends LatticeTest[C](gen):
   val charLaws: Properties =
     newProperties("Char")(p => p)
   checkAll(charLaws)
-}
 
-abstract class SymbolLatticeTest[Sym: SymbolLattice](gen: LatticeGenerator[Sym]) extends LatticeTest[Sym](gen) {
+abstract class SymbolLatticeTest[Sym: SymbolLattice](gen: LatticeGenerator[Sym]) extends LatticeTest[Sym](gen):
   val symbolLaws: Properties =
     newProperties("Symbol")(p => p)
   checkAll(symbolLaws)
-}
 
 class ConcreteBoolTest extends BoolLatticeTest[Concrete.B](ConcreteBooleanGenerator)
 class ConcreteStringTest extends StringLatticeTest[Concrete.S, Concrete.I](ConcreteStringGenerator)

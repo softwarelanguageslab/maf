@@ -20,7 +20,7 @@ import org.scalatest.propspec.AnyPropSpec
 
 import scala.concurrent.duration.*
 
-class IncrementalModXMachineryTests extends AnyPropSpec {
+class IncrementalModXMachineryTests extends AnyPropSpec:
   type Benchmark = String
   type Analysis = ModAnalysis[SchemeExp]
     with GlobalStore[SchemeExp]
@@ -67,22 +67,20 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
 
   def timeout(): Timeout.T = Timeout.start(Duration(5, MINUTES))
 
-  def runAnalysis(makeAnalysis: SchemeExp => Analysis, benchmark: Benchmark): Analysis = {
+  def runAnalysis(makeAnalysis: SchemeExp => Analysis, benchmark: Benchmark): Analysis =
     val a = makeAnalysis(parse(benchmark))
-    try {
+    try
       val to = timeout()
       a.analyzeWithTimeout(to)
       assume(a.finished, "Analysis timed out.")
-    } catch {
+    catch
       case e: VirtualMachineError =>
         System.gc()
         cancel(s"Analysis of $benchmark encountered an error: $e.")
-    }
     a
-  }
 
   /** Tests whether the analysis correctly infers components that should be reanalysed. */
-  def testUpdatedComponents(): Unit = {
+  def testUpdatedComponents(): Unit =
     val expectedResults: List[(String, SchemeExp => Analysis, Set[String])] = List(
       ("test/changes/scheme/fib.scm", sequentialAnalysis, Set("λ@1:16 [[4:50]]", "λ@1:16 [[4:23]]", "λ@1:16 [[5:4]]")),
       ("test/changes/scheme/satRem.scm", sequentialAnalysis, Set("λ@15:23 [[11:8]]", "main", "λ@15:23 [[11:15]]")),
@@ -98,10 +96,9 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
         assert(directlyAffected.forall(affected.contains), s" - Directly affected component mismatch.")
       }
     }
-  }
 
   /** Tests whether the deletion of components works correctly using an artificial code example. */
-  def testComponentDeletion(): Unit = {
+  def testComponentDeletion(): Unit =
     // Artificial program.
     val program: String =
       """(define (a)
@@ -142,9 +139,9 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
     val exp2 = Set("main", "a [ε]", "d [ε]") // main, a, d.
 
     // Actual test.
-    for c <- allConfigurations.filter(_.componentInvalidation) do {
+    for c <- allConfigurations.filter(_.componentInvalidation) do
       property(s"Component invalidation works on an artificial example using ${c}.", IncrementalTest) {
-        try {
+        try
           val a = base.deepCopy()
           a.configuration = c
           a.analyzeWithTimeout(timeout())
@@ -153,17 +150,14 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
           a.updateAnalysis(timeout())
           // a.deleteDisconnectedComponents() // Normally performed automatically by CI.
           assert(a.visited.map(_.toString) == exp2)
-        } catch {
+        catch
           case e: VirtualMachineError =>
             System.gc()
             cancel(s"Analysis of program encountered an error: $e.")
-        }
       }
-    }
-  }
 
   /** Tests whether the deletion of dependencies works correctly using an artificial code example. */
-  def testDependencyDeletion(): Unit = {
+  def testDependencyDeletion(): Unit =
     val program: String =
       """(define (f a b c d e)
       |  (<change> (+ a b) (e))
@@ -208,20 +202,18 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
     }
 
     // Expected results.
-    val exp1 = {
+    val exp1 =
       val a = getStandard(ProgramVersionExtracter.getInitial(CSchemeParser.parseProgram(program)))
       a.analyzeWithTimeout(timeout())
       if a.finished then
         a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) })
       else ""
-    }
-    val exp2 = {
+    val exp2 =
       val a = getStandard(ProgramVersionExtracter.getUpdated(CSchemeParser.parseProgram(program)))
       a.analyzeWithTimeout(timeout())
       if a.finished then
         a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) })
       else ""
-    }
     /* val exp3 = exp2 ++ Set(
       "(AddrDep(VarAddr(h@9:10 [None])),j [[4:14]])",
       "(AddrDep(VarAddr(f@1:10 [None])),j [[4:14]])",
@@ -231,9 +223,9 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
      */
 
     // Actual test. Note that component invalidation lowers the number of dependencies and is hence required (expected results obtained by performing a full analysis on both program versions).
-    for c <- allConfigurations.filter(c => c.dependencyInvalidation && c.componentInvalidation) do {
+    for c <- allConfigurations.filter(c => c.dependencyInvalidation && c.componentInvalidation) do
       property(s"Dependency invalidation works on an artificial example using ${c}.", IncrementalTest) {
-        try {
+        try
           assume(exp1 != "")
           assume(exp2 != "")
           val a = base.deepCopy()
@@ -245,17 +237,13 @@ class IncrementalModXMachineryTests extends AnyPropSpec {
           a.updateAnalysis(timeout())
           val d2 = a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) })
           assert(d2 == exp2) // (if (c.componentInvalidation) exp2 else exp3))
-        } catch {
+        catch
           case e: VirtualMachineError =>
             System.gc()
             cancel(s"Analysis of program encountered an error: $e.")
-        }
       }
-    }
 
-  }
 
   testComponentDeletion()
   testDependencyDeletion()
   testUpdatedComponents()
-}

@@ -6,7 +6,7 @@ import maf.language.sexp._
 import maf.test._
 import maf.util._
 
-trait SExpParserTestsSpec extends SchemeBenchmarkTests {
+trait SExpParserTestsSpec extends SchemeBenchmarkTests:
   def onBenchmark(benchmark: Benchmark) =
     property(s"SExpParser can correctly parse $benchmark", ParserTest) {
       val content = Reader.loadFile(benchmark)
@@ -18,11 +18,10 @@ trait SExpParserTestsSpec extends SchemeBenchmarkTests {
       val reparsed = SExpParser.parse(printed)
       assert(parsed.mkString("") == reparsed.mkString(""), "Printing and parsing again gives a result different from the original parse")
     }
-}
 
 class SExpParserTests extends SExpParserTestsSpec with AllSequentialBenchmarks
 
-class SExpParserSimpleTests extends AnyFlatSpec {
+class SExpParserSimpleTests extends AnyFlatSpec:
   "File that ends with a comment" should "be parsed without error" in {
     // Issue #8
     val program = "#t ;; foo"
@@ -53,4 +52,3 @@ class SExpParserSimpleTests extends AnyFlatSpec {
     assert(program2(0).isInstanceOf[SExpId])
     assert(program2(0).asInstanceOf[SExpId].id.name == "~>d")
   }
-}

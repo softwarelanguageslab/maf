@@ -13,39 +13,35 @@ trait VisualisableIncrementalModAnalysis[Expr <: Expression]
     extends IncrementalModAnalysis[Expr]
     with IncrementalGlobalStore[Expr]
     with WebVisualisationAnalysis[Expr]
-    with AddressVisualisationAnalysis[Expr] {
+    with AddressVisualisationAnalysis[Expr]:
   var recursive: Set[Component] = Set() // Collects the set of recursive components, since self-edges are omitted in the set `cachedSpawns`.
 
   override def intraAnalysis(cmp: Component): VisualisableIntraAnalysis
 
-  trait VisualisableIntraAnalysis extends IncrementalIntraAnalysis with DependencyTrackingIntra with GlobalStoreIntra {
-    override def refineComponents(): Unit = {
+  trait VisualisableIntraAnalysis extends IncrementalIntraAnalysis with DependencyTrackingIntra with GlobalStoreIntra:
+    override def refineComponents(): Unit =
       if C.contains(component) then recursive = recursive + component
       else recursive = recursive - component
       super.refineComponents()
-    }
-  }
 
   /** Hook that is called after a file is loaded. */
   def initAnalysis(): Unit
-}
 
-object WebVisualisationIncremental {
+object WebVisualisationIncremental:
   val __CSS_DELETED_NODE__ = "node_deleted"
   val __CSS_DELETED_EDGE__ = "edge_deleted"
   val __SVG_DELETED_ARROW__ = "endarrow_deleted"
   val __CSS_MAIN_NODE__ = "node_main"
-}
 
 class WebVisualisationIncremental(
     override val analysis: VisualisableIncrementalModAnalysis[_],
     width: Int,
     height: Int)
-    extends WebVisualisation(width, height) {
+    extends WebVisualisation(width, height):
 
   def deletedComponent(cmp: analysis.Component): Boolean = !analysis.visited.contains(cmp) && !analysis.workList.contains(cmp)
 
-  override def classifyNodes(): Unit = {
+  override def classifyNodes(): Unit =
     super.classifyNodes()
     nodes.classed(__CSS_DELETED_NODE__,
                   (node: Node) =>
@@ -61,9 +57,8 @@ class WebVisualisationIncremental(
                       case _             => false
                     }
     )
-  }
 
-  override def classifyEdges(): Unit = {
+  override def classifyEdges(): Unit =
     super.classifyEdges()
     edges.classed(
       __CSS_DELETED_EDGE__,
@@ -82,7 +77,6 @@ class WebVisualisationIncremental(
           case _ =>
         }
     ) // Check that it is not a currently existing self-edge.
-  }
 
   /**
    * Ensures all new nodes and edges in the analysis are drawn. May not shown nodes that have ceased to exist.
@@ -93,7 +87,7 @@ class WebVisualisationIncremental(
    *   Nodes and edges that were created and deleted by the analysis since the last update of the visualisation data will not be shown using this
    *   method.
    */
-  override def refreshData(): Unit = {
+  override def refreshData(): Unit =
     // Add all components currently in the analysis.
     analysis.visited.foreach { cmp =>
         val node = getNode(cmp)
@@ -110,9 +104,8 @@ class WebVisualisationIncremental(
         }
       case _ =>
     }
-  }
 
-  override def refreshDataAfterStep() = {
+  override def refreshDataAfterStep() =
     val sourceNode = getNode(prevComponent)
     // Add new edges.
     analysis.dependencies(prevComponent).foreach { otherCmp =>
@@ -121,9 +114,8 @@ class WebVisualisationIncremental(
         nodesData += targetNode
         edgesData += edge
     }
-  }
 
-  override def setupMarker(svg: JsAny): js.Dynamic = {
+  override def setupMarker(svg: JsAny): js.Dynamic =
     super.setupMarker(svg)
     val marker = svg
       .select("defs")
@@ -138,6 +130,4 @@ class WebVisualisationIncremental(
       .attr("fill", "darkgray")
       .attr("stroke", "darkgray")
     marker.append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5")
-  }
 
-}

@@ -10,19 +10,17 @@ import maf.modular.scheme.ssmodconc._
 import maf.modular.worklist._
 import maf.test._
 
-trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
+trait SchemeModConcSoundnessTests extends SchemeSoundnessTests:
   override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModConcTest
   override def concreteRuns(b: Benchmark) =
-    if SchemeBenchmarkPrograms.threads.contains(b) then {
+    if SchemeBenchmarkPrograms.threads.contains(b) then
       // run concurrent benchmarks more than once in the concrete to get
       3
-    } else {
+    else
       // other (sequential) benchmarks are just ran once
       1
-    }
-}
 
-trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
+trait SimpleSchemeModConc extends SchemeModConcSoundnessTests:
   override def testTags(b: Benchmark) = super.testTags(b) :+ BigStepTest
   def name = "ModConc + big-step ModF (parallel n = 4)"
   def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program)
@@ -34,13 +32,12 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
     override def intraAnalysis(cmp: SchemeModConcComponent) = new SchemeModConcIntra(cmp) with ParallelIntra
     def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra) with SchemeModFNoSensitivity with RandomWorklistAlgorithm[SchemeExp]
   }
-}
 
 class SimpleSchemeModConcSoundnessTests
     extends SchemeModConcSoundnessTests
     with SimpleSchemeModConc
     with ThreadBenchmarks
-    with VariousSequentialBenchmarks {
+    with VariousSequentialBenchmarks:
   override def isSlow(b: Benchmark): Boolean =
     SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
       Set(
@@ -68,9 +65,8 @@ class SimpleSchemeModConcSoundnessTests
         "test/R5RS/gambit/nboyer.scm",
         "test/concurrentScheme/threads/tsp.scm"
       )(b)
-}
 
-trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
+trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests:
   override def testTags(b: Benchmark) = super.testTags(b) :+ SmallStepTest
   def name = "small-step ModConc"
   def analysis(
@@ -79,9 +75,8 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests {
     val k = 1
     override def intraAnalysis(component: SmallStepModConcComponent) = new IntraAnalysis(component) with SmallStepIntra with KCFAIntra
   }
-}
 
-class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks with AllSequentialBenchmarks {
+class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks with AllSequentialBenchmarks:
   override def isSlow(b: Benchmark): Boolean =
     // (SchemeBenchmarks.sequentialBenchmarks.contains(b) && !SchemeBenchmarks.other.contains(b)) ||
     SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
@@ -153,4 +148,3 @@ class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with T
         test/concurrentScheme/threads/mceval.scm timed out.
    */
 
-}

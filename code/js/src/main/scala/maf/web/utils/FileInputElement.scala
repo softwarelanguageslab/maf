@@ -4,8 +4,8 @@ package maf.web.utils
 import org.scalajs.dom
 import org.scalajs.dom._
 
-object FileInputElement {
-  def apply(handler: String => Unit): html.Input = {
+object FileInputElement:
+  def apply(handler: String => Unit): html.Input =
     val input = document.createElement("input").asInstanceOf[html.Input]
     input.setAttribute("type", "file")
     input.addEventListener(
@@ -19,5 +19,3 @@ object FileInputElement {
       false
     )
     return input
-  }
-}

@@ -10,7 +10,7 @@ import maf.web.visualisations._
 // Scala.js-related imports
 import scala.scalajs.js
 
-object WebVisualisationAdaptive {
+object WebVisualisationAdaptive:
   val d3 = js.Dynamic.global.d3
   lazy val __NODE_COLORS__ = List("blue", "green", "yellow", "red")
   lazy val __NO_OF_COLORS__ = __NODE_COLORS__.length
@@ -18,24 +18,21 @@ object WebVisualisationAdaptive {
     .scaleOrdinal()
     .domain(d3.range(__NO_OF_COLORS__))
     .range(__NODE_COLORS__)
-}
 
 //
 // REQUIRED ANALYSIS EXTENSION
 //
 
-trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] with WebVisualisationAnalysis[Expr] {
+trait WebVisualisationAnalysisAdaptive[Expr <: Expression] extends AdaptiveModAnalysis[Expr] with GlobalStore[Expr] with WebVisualisationAnalysis[Expr]:
 
   def adaptiveWebVis = webvis.asInstanceOf[WebVisualisationAdaptive]
 
-  override def adaptAnalysis() = {
+  override def adaptAnalysis() =
     super.adaptAnalysis()
     this.dependencies = adaptMap(adaptComponent, adaptSet(adaptComponent))(this.dependencies)
     adaptiveWebVis.dirty = true // ensure the webvis will refresh its data
-  }
 
   override def intraAnalysis(cmp: Component): IntraAnalysis with GlobalStoreIntra with DependencyTrackingIntra
-}
 
 //
 // WEB VISUALISATION FOR ADAPTIVE ANALYSES
@@ -45,7 +42,7 @@ class WebVisualisationAdaptive(
     override val analysis: WebVisualisationAnalysisAdaptive[_],
     width: Int,
     height: Int)
-    extends WebVisualisation(width, height) {
+    extends WebVisualisation(width, height):
 
   // dirty flag set after visualisation needs to be refreshed due to adaptation
   var dirty = false
@@ -54,14 +51,11 @@ class WebVisualisationAdaptive(
   override def componentText(cmp: analysis.Component) = s"$cmp"
 
   override def refreshDataAfterStep() =
-    if this.dirty then {
+    if this.dirty then
       super.refreshData() // <- do a full refresh
-    } else {
+    else
       super.refreshDataAfterStep()
-    }
 
-  override def refreshData() = {
+  override def refreshData() =
     super.refreshData()
     this.dirty = false
-  }
-}

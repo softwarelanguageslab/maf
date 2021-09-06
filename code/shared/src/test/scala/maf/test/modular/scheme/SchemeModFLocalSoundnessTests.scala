@@ -7,15 +7,14 @@ import maf.modular.scheme._
 import maf.modular.worklist._
 import maf.language.scheme.primitives.SchemePrelude
 
-trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests {
+trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests:
   override def parseProgram(txt: String): SchemeExp =
       val parsed = SchemeParser.parse(txt)
       val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
       val transf = SchemeMutableVarBoxer.transform(prelud)
       SchemeParser.undefine(transf)
-}
 
-class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
+class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
   def name = "MODF LOCAL (context-insensitive)"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
@@ -36,9 +35,8 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
       "test/R5RS/various/infinite-3.scm",
     ).contains(b)
 
-}
 
-class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {
+class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
   def name = "MODF LOCAL (call-site sensitive)"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
@@ -47,4 +45,3 @@ class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoun
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
   override def isSlow(b: String): Boolean = true // don't run this for fast tests
-}

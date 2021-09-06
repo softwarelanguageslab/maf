@@ -6,7 +6,7 @@ import maf.language.scheme.lattices._
 import maf.test.lattice._
 
 // inherits the standard lattice tests from `LatticeTest`
-class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeLattice: SchemeLattice[L, _]) extends LatticeTest(gen) {
+class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeLattice: SchemeLattice[L, _]) extends LatticeTest(gen):
   // because of higher entropy in Scheme lattice values, verify each property with more examples!
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 1000)
@@ -21,11 +21,10 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
 
       import schemeLattice._
       /* */
-      def convert(mf: MayFail[L, Error]): L = mf match {
+      def convert(mf: MayFail[L, Error]): L = mf match
         case MayFailSuccess(v) => v
         case MayFailBoth(v, _) => v
         case MayFailError(_)   => bottom
-      }
       p.property("⊥ ⊑ ⊥") = subsumes(bottom, bottom)
       p.property("∀ x: ⊥ ⊑ x") = forAll((x: L) => subsumes(x, bottom))
       p.property("∀ x: join(x, ⊥) = join(⊥, x) = x") = forAll((x: L) => join(x, bottom) == x && join(bottom, x) == x)
@@ -44,10 +43,9 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
       }
       p.property("injection preserves truth") = isTrue(inject(true)) && isFalse(inject(false))
       p.property("!isTrue(⊥) && !isFalse(⊥)") = !isTrue(bottom) && !isFalse(bottom)
-      p.property("isTrue(BoolTop) && isFalse(BoolTop)") = {
+      p.property("isTrue(BoolTop) && isFalse(BoolTop)") =
         val boolTop = join(inject(true), inject(false))
         isTrue(boolTop) && isFalse(boolTop)
-      }
       /* Unary operators preserve bottom */
       p.property("∀ unop: unop(⊥) = ⊥") = forAll((unop: SchemeOp.SchemeOp1) => convert(op(unop)(List(bottom))) == bottom)
       /* Unary operators are monotone */
@@ -137,7 +135,6 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
       p
   }
   checkAll(schemeLaws)
-}
 
 class ConcreteSchemeLatticeTests extends SchemeLatticeTests(ConcreteModularSchemeLattice.SchemeValueLatticeGenerator)
 class ConstantSchemeLatticeTests extends SchemeLatticeTests(ConstantModularSchemeLattice.SchemeValueLatticeGenerator)

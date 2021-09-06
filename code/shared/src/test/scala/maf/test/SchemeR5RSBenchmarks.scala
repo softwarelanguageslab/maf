@@ -1,6 +1,6 @@
 package maf.test
 
-object SchemeR5RSBenchmarks {
+object SchemeR5RSBenchmarks:
 
   val bench: List[(String, Any)] = List(
     ("'()", Nil),
@@ -496,4 +496,3 @@ object SchemeR5RSBenchmarks {
     // Section not supported.
   )
 
-}

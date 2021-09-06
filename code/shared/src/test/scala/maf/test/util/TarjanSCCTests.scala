@@ -4,18 +4,17 @@ import maf.test.UtilityTest
 import maf.util.graph.Tarjan
 import org.scalatest.propspec.AnyPropSpec
 
-class TarjanSCCTests extends AnyPropSpec {
+class TarjanSCCTests extends AnyPropSpec:
 
   case class TarjanGraph[N](
       id: Int,
       nodes: Set[N],
       edges: Map[N, Set[N]],
-      expectedResult: Set[Set[N]]) {
+      expectedResult: Set[Set[N]]):
     def test(): Unit = property(s"Tarjan correctly computes SCCs for graph $id.", UtilityTest) {
       val scc = Tarjan.scc(nodes, edges)
       assert(scc == expectedResult, s"Tarjan SCC returned $scc for graph $id, whilst $expectedResult was expected.")
     }
-  }
 
   private case class Node(name: Int)
 
@@ -119,4 +118,3 @@ class TarjanSCCTests extends AnyPropSpec {
   )
 
   graphs.foreach(_.test())
-}

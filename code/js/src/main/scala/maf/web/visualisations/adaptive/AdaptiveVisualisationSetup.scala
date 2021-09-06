@@ -21,11 +21,11 @@ import maf.web.visualisations._
 //
 
 @JSExportTopLevel("adaptiveVisualisationSetup")
-object AdaptiveVisualisationSetup extends VisualisationSetup {
+object AdaptiveVisualisationSetup extends VisualisationSetup:
 
   type Analysis = WebVisualisationAnalysisAdaptive[SchemeExp] with WebSummaryAdaptiveAnalysis
 
-  def createAnalysis(text: String) = {
+  def createAnalysis(text: String) =
     val prg = SchemeParser.parseProgram(text)
     new AdaptiveModAnalysis(prg, rate = 100)
       with AdaptiveSchemeModFSemantics
@@ -47,26 +47,23 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
       lazy val t = 100
       // log every step in the console
       var step = 0
-      override def step(timeout: Timeout.T): Unit = {
+      override def step(timeout: Timeout.T): Unit =
         val cmp = workList.head
         step += 1
         println(s"[$step] Analysing ${view(cmp)}")
         super.step(timeout)
-      }
     }
-  }
 
   def createVisualisation(
       analysis: Analysis,
       width: Int,
       height: Int
-    ): Node = {
+    ): Node =
     // create both a webvis and a summary vis
     val sumvis = new AdaptiveSummaryVisualisation(analysis, width, (0.75 * height).toInt)
     val webvis = new WebVisualisationAdaptive(analysis, width, height) with WebVisualisationWithToggle
     // create the parent
     VStack(sumvis.node, webvis.node)
-  }
 
   //
   // INPUT HANDLING
@@ -77,16 +74,13 @@ object AdaptiveVisualisationSetup extends VisualisationSetup {
   override def analysisCommandHandler(anl: Analysis) =
     analysisCommandHandlerAdaptive(anl).orElse(super.analysisCommandHandler(anl))
 
-  private def analysisCommandHandlerAdaptive(anl: Analysis): PartialFunction[String, Unit] = {
+  private def analysisCommandHandlerAdaptive(anl: Analysis): PartialFunction[String, Unit] =
     case "a" | "A" => anl.adaptAnalysis()
     case "c" | "C" => stepUntilAdapt(anl)
-  }
 
   private def stepUntilAdapt(anl: Analysis): Unit =
-    if !anl.finished && !anl.willAdapt then {
+    if !anl.finished && !anl.willAdapt then
       anl.step(Timeout.none)
       js.timers.setTimeout(0) {
         stepUntilAdapt(anl)
       }
-    }
-}

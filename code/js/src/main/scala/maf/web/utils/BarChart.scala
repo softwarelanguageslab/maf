@@ -13,7 +13,7 @@ abstract class BarChart(
     val width: Int,
     val height: Int,
     val padding: Int = 100,
-    barWidth: Int = 50) {
+    barWidth: Int = 50):
 
   // visualises of a certain kind of data ...
   type Data
@@ -59,11 +59,10 @@ abstract class BarChart(
 
   // TODO: parameterise this using an overridable method `setupYAxis(max: Int)`
   private var currentMax = 1
-  private def increaseMax(max: Int) = {
+  private def increaseMax(max: Int) =
     while currentMax < max do { currentMax *= 2 }
     yScale.domain(Seq(0, currentMax))
     yAxis.ticks(Math.min(10, currentMax))
-  }
 
   // convience method to give the enclosing SVG a certain class
   def classed(className: String) = svgNode.classed(className, true)
@@ -78,7 +77,7 @@ abstract class BarChart(
   protected def onMouseLeave(node: dom.Node, data: Data) =
     d3.select(node).classed("hovered", false)
 
-  def loadData(data: Iterable[Data]): Unit = {
+  def loadData(data: Iterable[Data]): Unit =
 
     val n = data.length
     val realWidth = n * barWidth
@@ -130,39 +129,34 @@ abstract class BarChart(
       .attr("width", xScale.bandwidth())
       .attr("height", (d: Data) => realHeight.asInstanceOf[Double] - yScale(value(d)))
     selection.exit().remove()
-  }
 
   // convencience method: arrange bars in descending order
   def loadDataSorted(data: Iterable[Data]) =
     loadData(data.toList.sortBy(value)(Ordering[Int].reverse))
-}
 
 //
 // trait for adding a tooltip to the bar
 //
 
-trait BarChartTooltip extends BarChart {
+trait BarChartTooltip extends BarChart:
 
   // should be implemented to determine corresponding text in the tooltip
   protected def tooltipText(d: Data): String
 
-  override protected def onMouseOver(node: dom.Node, data: Data) = {
+  override protected def onMouseOver(node: dom.Node, data: Data) =
     super.onMouseOver(node, data)
     tooltip.html(tooltipText(data)) // TODO: escape some chars for inline HTML
     tooltip.style("visibility", "visible")
-  }
 
-  override protected def onMouseMove(node: dom.Node, data: Data) = {
+  override protected def onMouseMove(node: dom.Node, data: Data) =
     super.onMouseMove(node, data)
     tooltip
       .style("left", s"${d3.event.pageX + 20}px")
       .style("top", s"${d3.event.pageY}px")
-  }
 
-  override protected def onMouseLeave(node: dom.Node, data: Data) = {
+  override protected def onMouseLeave(node: dom.Node, data: Data) =
     super.onMouseLeave(node, data)
     tooltip.style("visibility", "hidden")
-  }
 
   // TODO: some of these fixed constants might want to be parameterised
   lazy val tooltip = d3
@@ -176,38 +170,34 @@ trait BarChartTooltip extends BarChart {
     .style("border-width", "2px")
     .style("border-radius", "5px")
     .style("padding", "5px")
-}
 
 //
 // trait for allowing focusing on bars in the barchart
 //
 
-trait BarChartFocus extends BarChart {
+trait BarChartFocus extends BarChart:
 
   var focused: Boolean = false
   def focus(data: Data): Unit = focus(_ == data)
-  def focus(included: Data => Boolean): Unit = {
+  def focus(included: Data => Boolean): Unit =
     innerNode
       .selectAll(".bar")
       .classed("focused", (d: Data) => included(d))
       .classed("unfocused", (d: Data) => !included(d))
     focused = true
-  }
   def resetFocus() =
-    if focused then {
+    if focused then
       innerNode
         .selectAll(".bar")
         .classed("focused", false)
         .classed("unfocused", false)
       focused = false
-    }
-}
 
 //
 // trait for adding simple stats (total, average) to the top of the bar chart
 //
 
-trait BarChartStats extends BarChart {
+trait BarChartStats extends BarChart:
   // can be overriden for custom behaviour when clicking on / hovering over the labels
   protected def onTotalClick(node: dom.Node) = ()
   protected def onTotalMouseOver(node: dom.Node) = d3.select(node).classed("hovered", true)
@@ -239,28 +229,24 @@ trait BarChartStats extends BarChart {
       .on("mousemove", { (jsthis: dom.Node) => onAverageMouseMove(jsthis) }: js.ThisFunction)
       .on("mouseleave", { (jsthis: dom.Node) => onAverageMouseLeave(jsthis) }: js.ThisFunction)
   // update the labels when loading in new data
-  override def loadData(data: Iterable[Data]) = {
+  override def loadData(data: Iterable[Data]) =
     // load the data as usual
     super.loadData(data)
     // set the length text
     val length = data.size
     totalText.text(s"total: $length")
     // set the average text
-    if length == 0 then {
+    if length == 0 then
       averageText.text("average: N/A")
-    } else {
+    else
       val average = data.map(value).sum / length
       averageText.text(s"average: $average")
-    }
-  }
-}
 
 //
 // convenience class for barcharts with simple data
 //
 
-class SimpleBarChart(width: Int, height: Int) extends BarChart(width, height) {
+class SimpleBarChart(width: Int, height: Int) extends BarChart(width, height):
   type Data = (_, Int)
   def key(d: Data) = d._1.toString
   def value(d: Data) = d._2
-}

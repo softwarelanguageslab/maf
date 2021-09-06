@@ -5,15 +5,14 @@ import org.scalatest.propspec._
 import maf.language.sexp._
 import maf.test.ParserTest
 
-class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
+class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks:
   val lexical = new SExpLexer
   def checkExpected(parser: lexical.Parser[lexical.SExpToken])(input: String, expected: String) =
-    parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray.nn)) match {
+    parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray.nn)) match
       case lexical.Success(res, next) =>
         if !next.atEnd then { println(s"Parsed $res from $input, incorrect") }
         assert(next.atEnd); assert(res.chars == expected)
       case res => throw new Exception(s"Parse failure: $res")
-    }
   def check(parser: lexical.Parser[lexical.SExpToken])(input: String) = checkExpected(parser)(input, input)
 
   val bools = Table("boolean", "#t", "#f", "#T", "#F")
@@ -70,4 +69,3 @@ class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
   property("SExpLexer should lex special tokens without error", ParserTest) {
     forAll(specialTokens)(check(lexical.token))
   }
-}
