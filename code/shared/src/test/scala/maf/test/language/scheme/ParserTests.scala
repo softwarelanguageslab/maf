@@ -27,7 +27,7 @@ class SchemeParserTests extends SchemeParserTestsSpec with AllBenchmarks
 class AnnotationTests extends AnyFlatSpec {
   "Annotated lambdas" should "have their annotation accessible" in {
     val program = "(lambda (x) @annot:test x)"
-    val parsed = SchemeParser.parse(program)
+    val parsed = SchemeParser.parse(program).head
     assert(parsed.isInstanceOf[SchemeLambda])
     assert(parsed.asInstanceOf[SchemeLambda].annotation == Some(("@annot", "test")))
   }
