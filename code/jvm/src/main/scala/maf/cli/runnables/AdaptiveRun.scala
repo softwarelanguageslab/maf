@@ -63,7 +63,7 @@ object AdaptiveRun:
         anl.analyzeWithTimeoutInSeconds(10)
         anl.visited
           .collect { case cll: anl.CallComponent => cll }
-          .foreach { case cmp @ anl.CallComponent((lam, _), _, sto) =>
+          .foreach { case cmp @ anl.CallComponent(lam, _, _, sto) =>
             println()
             println(s"COMPONENT ${lam.lambdaName} WHERE")
             printStore(sto)

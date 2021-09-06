@@ -59,8 +59,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         val sto = initialSto
         val ctx = initialCtx
         override def toString = "main"
-    case class CallComponent(clo: Clo, ctx: Ctx, sto: Sto) extends Component:
-        val (lam, env) = clo
+    case class CallComponent(lam: Lam, env: Env, ctx: Ctx, sto: Sto) extends Component:
         def exp = SchemeBody(lam.body)
         override def toString = s"${lam.lambdaName} [$ctx] [$sto]"
 
@@ -148,7 +147,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         // CALL STUFF
         def call(lam: Lam): A[Val] =
           (res, ctx, env, sto) => {
-            val cmp = CallComponent((lam, env), ctx, sto)
+            val cmp = CallComponent(lam, env, ctx, sto)
             val rss = res.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, sto.DeltaStore)]]
             (rss, Set(cmp), Set(ResultDependency(cmp)), Set())
           }
