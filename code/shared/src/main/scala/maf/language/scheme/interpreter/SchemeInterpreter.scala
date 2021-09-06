@@ -291,7 +291,7 @@ class SchemeInterpreter(
         evalSequence(exps, env, timeout, version)
       case SchemeAssert(_, _) =>
         done(Value.Void)
-      case SchemeDefineVariable(_, _, _)             => ???
+      case SchemeDefineVariable(_, _, _) => ???
       case SchemeVar(id) =>
         env.get(id.name) match {
           case Some(addr) =>

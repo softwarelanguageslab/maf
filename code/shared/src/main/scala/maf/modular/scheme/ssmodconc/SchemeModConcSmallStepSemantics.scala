@@ -284,14 +284,14 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
       case SchemeVar(id)                         => Set(Kont(lookup(id, env), stack))
 
       // Multi-step evaluation.
-      case c @ SchemeFuncall(f, args, _)             => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
-      case SchemeSet(variable, value, _)             => Set(Eval(value, env, extendKStore(value, SetFrame(variable, env), stack)))
-      case SchemeBegin(exps, _)                      => evalSequence(exps, env, stack)
-      case SchemeIf(cond, cons, alt, _)              => evalIf(cond, cons, alt, env, stack)
-      case SchemeLet(bindings, body, _)              => evalLet(bindings, List(), body, env, stack)
-      case SchemeLetrec(bindings, body, _)           => evalLetRec(bindings, body, env, stack)
-      case SchemeLetStar(bindings, body, _)          => evalLetStar(bindings, body, env, stack)
-      case SchemeAssert(exp, _)                      => evalAssert(exp, env, stack)
+      case c @ SchemeFuncall(f, args, _)    => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
+      case SchemeSet(variable, value, _)    => Set(Eval(value, env, extendKStore(value, SetFrame(variable, env), stack)))
+      case SchemeBegin(exps, _)             => evalSequence(exps, env, stack)
+      case SchemeIf(cond, cons, alt, _)     => evalIf(cond, cons, alt, env, stack)
+      case SchemeLet(bindings, body, _)     => evalLet(bindings, List(), body, env, stack)
+      case SchemeLetrec(bindings, body, _)  => evalLetRec(bindings, body, env, stack)
+      case SchemeLetStar(bindings, body, _) => evalLetStar(bindings, body, env, stack)
+      case SchemeAssert(exp, _)             => evalAssert(exp, env, stack)
 
       // Multithreading.
       case CSchemeFork(body, _) => evalFork(body, env, stack)
@@ -393,10 +393,10 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
         frame: Frame,
         stack: Stack
       ): Set[State] = frame match {
-      case SequenceFrame(exps, env)       => evalSequence(exps, env, stack)
-      case IfFrame(cons, alt, env)        => conditional(vl, Eval(cons, env, stack), Eval(alt, env, stack))
-      case SetFrame(variable, env)        => Set(Kont(assign(variable, vl, env), stack)) // Returns bottom.
-      case OperatorFrame(args, env, fexp) => evalArgs(args, fexp, vl, List(), env, stack)
+      case SequenceFrame(exps, env)                => evalSequence(exps, env, stack)
+      case IfFrame(cons, alt, env)                 => conditional(vl, Eval(cons, env, stack), Eval(alt, env, stack))
+      case SetFrame(variable, env)                 => Set(Kont(assign(variable, vl, env), stack)) // Returns bottom.
+      case OperatorFrame(args, env, fexp)          => evalArgs(args, fexp, vl, List(), env, stack)
       case OperandsFrame(todo, done, env, f, fexp) => evalArgs(todo.tail, fexp, f, (todo.head, vl) :: done, env, stack)
       case LetFrame(id, todo, done, body, env)     => evalLet(todo, (id, vl) :: done, body, env, stack)
       case LetStarFrame(id, todo, body, env)       => evalLetStar(todo, body, define(id, vl, env), stack)

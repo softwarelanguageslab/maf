@@ -27,7 +27,7 @@ trait SchemeSemantics {
   trait AnalysisM[M[_]] extends SchemePrimM[M, Adr, Val] {
     def getEnv: M[Env]
     def withEnv[X](f: Env => Env)(blk: M[X]): M[X]
-    def lookupEnv(nam: String): M[Adr] = 
+    def lookupEnv(nam: String): M[Adr] =
       for { env <- getEnv } yield env(nam)
     def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
       withEnv(_.extend(nam, adr))(blk)
@@ -191,7 +191,7 @@ trait SchemeSemantics {
       // fixed args
       fxa <- lam.args.zip(ags).mapM((idf, vlu) => allocVar(idf).map((idf.name, _, vlu)))
       // vararg (optional)
-      vra <- lam.varArgId match { 
+      vra <- lam.varArgId match {
         case None => unit(Nil)
         case Some(varArg) =>
           val len = lam.args.length
@@ -203,10 +203,12 @@ trait SchemeSemantics {
           } yield List((varArg.name, adr, lst))
       }
       // free variables
-      frv <- fvs.mapM((adr, vlu) => adr match {
-        case VarAddr(idf, _) => allocVar(idf).map((idf.name, _, vlu))
-        case PrmAddr(nam) => unit((nam, adr, vlu))
-      }) 
+      frv <- fvs.mapM((adr, vlu) =>
+        adr match {
+          case VarAddr(idf, _) => allocVar(idf).map((idf.name, _, vlu))
+          case PrmAddr(nam)    => unit((nam, adr, vlu))
+        }
+      )
     } yield fxa ++ vra ++ frv
 
   private def storeVal(exp: Exp, vlu: Val): A[Val] =

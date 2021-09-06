@@ -330,7 +330,7 @@ object SchemePrelude {
     "ref" -> "(define (ref x) @sensitivity:FA (cons x '()))",
     "deref" -> "(define deref car)",
     "ref-set" -> "(define ref-set set-car!)",
-    "void" -> "(define (void) #f)", 
+    "void" -> "(define (void) #f)",
     "__toplevel_cons" -> "(define __toplevel_cons cons)",
     "__toplevel_car" -> "(define __toplevel_car car)",
     "__toplevel_cdr" -> "(define __toplevel_cdr cdr)",
@@ -369,7 +369,7 @@ object SchemePrelude {
     while (work.nonEmpty) {
       val free = work.filter(primDefs.contains).filterNot(added)
       val defs = free.map(primDefsParsed)
-      prelude = defs.toList ::: prelude  
+      prelude = defs.toList ::: prelude
       work = defs.flatMap(_.fv)
       added ++= free
     }

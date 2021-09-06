@@ -22,11 +22,11 @@ class TypeSchemeLattice[A <: Address] {
       prims: Set[String] = Set.empty,
       clos: Set[(SchemeLambdaExp, schemeLattice.Env)] = Set.empty,
       ptrs: Set[A] = Set.empty,
-      consCells: (L, L) = (Inject.bottom, Inject.bottom), 
-      arr: Boolean = false, 
-      grd: Boolean = false, 
-      flt: Boolean = false
-    ) extends SmartHash {
+      consCells: (L, L) = (Inject.bottom, Inject.bottom),
+      arr: Boolean = false,
+      grd: Boolean = false,
+      flt: Boolean = false)
+      extends SmartHash {
     def isBottom: Boolean =
       !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt
   }
@@ -215,8 +215,8 @@ class TypeSchemeLattice[A <: Address] {
     def lock(threads: Set[TID]) = ???
     def blame(blame: Blame): L = throw new Exception("Not supported")
     def arr(arr: Arr[L]): L = Inject.arr
-    def grd(grd: Grd[L]): L = Inject.grd 
-    def flat(flt: Flat[L]): L = Inject.flt 
+    def grd(grd: Grd[L]): L = Inject.grd
+    def flat(flt: Flat[L]): L = Inject.flt
     def void: L = ???
     def acquire(lock: L, caller: TID): MayFail[L, Error] = ???
     def release(lock: L, caller: TID): MayFail[L, Error] = ???

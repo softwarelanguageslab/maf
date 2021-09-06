@@ -15,10 +15,10 @@ object ProgramVersionExtracter {
     case SchemeLet(bindings, body, idn)                    => SchemeLet(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
     case SchemeLetStar(bindings, body, idn)                => SchemeLetStar(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
     case SchemeLetrec(bindings, body, idn)                 => SchemeLetrec(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
-    case SchemeSet(variable, value, idn)             => SchemeSet(variable, getVersion(value), idn)
-    case SchemeSetLex(variable, lexAddr, value, idn) => SchemeSetLex(variable, lexAddr, getVersion(value), idn)
-    case SchemeBegin(exps, idn)                      => SchemeBegin(exps.map(getVersion), idn)
-    case SchemeDefineVariable(name, value, idn)      => SchemeDefineVariable(name, getVersion(value), idn)
+    case SchemeSet(variable, value, idn)                   => SchemeSet(variable, getVersion(value), idn)
+    case SchemeSetLex(variable, lexAddr, value, idn)       => SchemeSetLex(variable, lexAddr, getVersion(value), idn)
+    case SchemeBegin(exps, idn)                            => SchemeBegin(exps.map(getVersion), idn)
+    case SchemeDefineVariable(name, value, idn)            => SchemeDefineVariable(name, getVersion(value), idn)
 
     // Assume no nested changes.
     case SchemeCodeChange(old, _, _) if version == Old => old

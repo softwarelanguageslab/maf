@@ -88,9 +88,9 @@ trait BaseSchemeUndefiner {
   }
 
   def undefineBody(exps: List[SchemeExp]): TailRec[List[SchemeExp]] = exps match {
-    case Nil                                            => done(Nil)
-    case SchemeDefineVariable(_, _, _) :: _             => tailcall(undefine(exps, List(), None)).map(v => List(v))
-    case exp :: rest => undefineExp(exp).flatMap(e1 => tailcall(undefineBody(rest)).flatMap(e2 => done(e1 :: e2)))
+    case Nil                                => done(Nil)
+    case SchemeDefineVariable(_, _, _) :: _ => tailcall(undefine(exps, List(), None)).map(v => List(v))
+    case exp :: rest                        => undefineExp(exp).flatMap(e1 => tailcall(undefineBody(rest)).flatMap(e2 => done(e1 :: e2)))
   }
 }
 

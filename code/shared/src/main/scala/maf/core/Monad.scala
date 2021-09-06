@@ -23,32 +23,25 @@ object Monad {
   // some common monad operations on iterables
   implicit class MonadIterableOps[X](xs: Iterable[X]) {
 
-    def mapM[M[_]: Monad, Y](f: X => M[Y]): M[List[Y]] = 
-      if xs.isEmpty then 
-        Monad[M].unit(Nil)
-      else 
+    def mapM[M[_]: Monad, Y](f: X => M[Y]): M[List[Y]] =
+      if xs.isEmpty then Monad[M].unit(Nil)
+      else
         for {
           fx <- f(xs.head)
           rst <- xs.tail.mapM(f)
         } yield fx :: rst
 
     def mapM_[M[_]: Monad, Y](f: X => M[Y]): M[Unit] =
-      if xs.isEmpty then
-        Monad[M].unit(())
-      else 
-        f(xs.head) >>> { xs.tail.mapM_(f) }
+      if xs.isEmpty then Monad[M].unit(())
+      else f(xs.head) >>> { xs.tail.mapM_(f) }
 
     def foldLeftM[M[_]: Monad, Y](acc: Y)(f: (Y, X) => M[Y]): M[Y] =
-      if xs.isEmpty then
-        Monad[M].unit(acc)
-      else
-        f(acc, xs.head) >>= { xs.tail.foldLeftM(_)(f) }
+      if xs.isEmpty then Monad[M].unit(acc)
+      else f(acc, xs.head) >>= { xs.tail.foldLeftM(_)(f) }
 
-    def foldRightM[M[_]: Monad, Y](nil: Y)(f: (X, Y) => M[Y]): M[Y] = 
-      if xs.isEmpty then
-        Monad[M].unit(nil)
-      else
-        xs.tail.foldRightM(nil)(f) >>= { f(xs.head, _) }
+    def foldRightM[M[_]: Monad, Y](nil: Y)(f: (X, Y) => M[Y]): M[Y] =
+      if xs.isEmpty then Monad[M].unit(nil)
+      else xs.tail.foldRightM(nil)(f) >>= { f(xs.head, _) }
   }
 }
 

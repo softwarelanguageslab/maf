@@ -177,8 +177,8 @@ class CPSSchemeInterpreter(
         case Some(addr) => Step(value, env, SetC(addr, cc))
         case None       => stackedException(s"Unbound variable $variable at position ${variable.idn}.")
       }
-    case SchemeSetLex(_, _, _, _)   => stackedException("Unsupported: lexical addresses.")
-    case SchemeValue(value, _)      => Kont(evalLiteral(value, exp), cc)
+    case SchemeSetLex(_, _, _, _) => stackedException("Unsupported: lexical addresses.")
+    case SchemeValue(value, _)    => Kont(evalLiteral(value, exp), cc)
     case SchemeVar(id) =>
       env.get(id.name).flatMap(lookupStoreOption).map(Kont(_, cc)).getOrElse(stackedException(s"Unbound variable $id at position ${id.idn}."))
     case SchemeVarLex(_, _) => stackedException("Unsupported: lexical addresses.")
@@ -220,11 +220,11 @@ class CPSSchemeInterpreter(
         case Nil             => Step(SchemeBegin(let.body, let.idn), env, cc)
         case (i2, e) :: rest => Step(e, env, LtrC(i2, rest, env, let, cc))
       }
-    case LtsC(i, Nil, env, let, cc)               => Step(SchemeBegin(let.body, let.idn), extendEnv(env, (i, v)), cc)
-    case LtsC(i1, (i2, e) :: rest, env, let, cc)  => val extEnv = extendEnv(env, (i1, v)); Step(e, extEnv, LtsC(i2, rest, extEnv, let, cc))
-    case PaiC(car, e, cc)                         => Kont(allocateCons(e, car, v), cc)
-    case RetC(addr, cc)                           => extendStore(addr, v); Kont(v, cc)
-    case SetC(addr, cc)                           => extendStore(addr, v); Kont(Value.Void, cc)
+    case LtsC(i, Nil, env, let, cc)              => Step(SchemeBegin(let.body, let.idn), extendEnv(env, (i, v)), cc)
+    case LtsC(i1, (i2, e) :: rest, env, let, cc) => val extEnv = extendEnv(env, (i1, v)); Step(e, extEnv, LtsC(i2, rest, extEnv, let, cc))
+    case PaiC(car, e, cc)                        => Kont(allocateCons(e, car, v), cc)
+    case RetC(addr, cc)                          => extendStore(addr, v); Kont(v, cc)
+    case SetC(addr, cc)                          => extendStore(addr, v); Kont(Value.Void, cc)
   }
 
   // Evaluate the arguments of a function.

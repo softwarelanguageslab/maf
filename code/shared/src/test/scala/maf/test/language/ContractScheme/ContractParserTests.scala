@@ -7,11 +7,11 @@ import maf.core._
 
 trait ContractParserTestsSpec extends SchemeBenchmarkTests {
   // TODO[small] abstract this away into a ParserTestsSpec that is paramatrized over the parser (also see SchemeParserTestsSpec)
-  def onBenchmark(benchmark: Benchmark) = 
+  def onBenchmark(benchmark: Benchmark) =
     property(s"ContractSchemeParser can correctly parse $benchmark", ParserTest) {
       val content = Reader.loadFile(benchmark)
       val parsed = ContractSchemeParser.parse(content)
-  
+
       // Check that the parsing was succesful
       assert(parsed.toString.nonEmpty)
       // Check that printing and parsing the result again gives the same result

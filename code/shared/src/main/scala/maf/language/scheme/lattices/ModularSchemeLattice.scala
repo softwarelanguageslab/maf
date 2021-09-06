@@ -673,24 +673,24 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     }
 
     def getBlames(x: Value): Set[Blame] = x match {
-      case Blames(l) => l 
+      case Blames(l) => l
       case _         => Set.empty
     }
 
     def getGrds(x: Value): Set[Grd[L]] = x match {
-      case Grds(l) => l 
-      case _         => Set.empty
+      case Grds(l) => l
+      case _       => Set.empty
     }
-  
+
     def getArrs(x: Value): Set[Arr[L]] = x match {
-      case Arrs(l) => l 
-      case _         => Set.empty
+      case Arrs(l) => l
+      case _       => Set.empty
     }
 
     def getFlats(x: Value): Set[Flat[L]] = x match {
-      case Flats(l) => l 
-      case _         => Set.empty
-    }  
+      case Flats(l) => l
+      case _        => Set.empty
+    }
 
     def car(x: Value): MayFail[L, Error] = x match {
       case Cons(car, _) => MayFail.success(car)
@@ -821,7 +821,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       case (Nil, Nil)               => True
       case (Prim(p1), Prim(p2))     => if (p1.intersect(p2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
       // TODO: eq of closures could be improved, but is not really permitted by R5RS anyway ...
-      case (Clo(c1), Clo(c2)) => if (c1.intersect(c2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
+      case (Clo(c1), Clo(c2))       => if (c1.intersect(c2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
       case (Blames(b1), Blames(b2)) => if (b1.intersect(b2).isEmpty) Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
       // TODO: implement eq for contract values
       case (_: Cons, _: Cons) => throw new Exception("should not happen")
@@ -912,7 +912,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     def getPrimitives(x: L): Set[String] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
     def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
     def getBlames(x: L): Set[Blame] = x.foldMapL(x => Value.getBlames(x))(setMonoid)
-    def getGrds(x: L): Set[Grd[L]] =  x.foldMapL(x => Value.getGrds(x))(setMonoid)
+    def getGrds(x: L): Set[Grd[L]] = x.foldMapL(x => Value.getGrds(x))(setMonoid)
     def getArrs(x: L): Set[Arr[L]] = x.foldMapL(x => Value.getArrs(x))(setMonoid)
     def getFlats(x: L): Set[Flat[L]] = x.foldMapL(x => Value.getFlats(x))(setMonoid)
     def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)

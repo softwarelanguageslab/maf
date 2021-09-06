@@ -1,7 +1,7 @@
 package maf.bench.scheme
 
-object ContractBenchmarkPrograms  {
-  lazy val nguyenSafeOcty: Set[String] = 
+object ContractBenchmarkPrograms {
+  lazy val nguyenSafeOcty: Set[String] =
     SchemeBenchmarkPrograms.fromFolder("test/scv/NguyenGTH18/safe/octy")(
       ".DS_Store",
       "ex-03.rkt",
@@ -13,7 +13,6 @@ object ContractBenchmarkPrograms  {
       "ex-14.rkt",
     )
 
-  lazy val allBenchmarks: Set[String] = 
+  lazy val allBenchmarks: Set[String] =
     nguyenSafeOcty
 }
-

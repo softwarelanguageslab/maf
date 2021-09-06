@@ -173,7 +173,7 @@ case class SchemeLet(
     s"(let ($bi) $bo)"
   }
   def fv: Set[String] =
-    bindings.map(_._2).flatMap(_.fv).toSet ++ (SchemeBody.fv(body)-- bindings.map(_._1.name).toSet)
+    bindings.map(_._2).flatMap(_.fv).toSet ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
   val label: Label = LET
 }
 
@@ -221,10 +221,8 @@ case class SchemeLetrec(
 object SchemeNamedLet {
   def apply(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idn: Identity): SchemeExp = {
     val (prs, ags) = bindings.unzip
-    val fnDef = 
-      SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, idn))),
-                   List((SchemeVar(Identifier(name.name, idn)))),
-                   idn)
+    val fnDef =
+      SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, idn))), List((SchemeVar(Identifier(name.name, idn)))), idn)
     SchemeFuncall(fnDef, ags, idn)
   }
 }
@@ -277,12 +275,14 @@ object SchemeBody {
   }
   def defs(bdy: List[SchemeExp]): List[Identifier] = defs(bdy, Nil)
   def defs(bdy: List[SchemeExp], cur: List[Identifier]): List[Identifier] =
-    bdy.foldLeft(cur)((acc, exp) => exp match {
-      case SchemeBegin(eps, _) => SchemeBody.defs(eps, acc)
-      case SchemeDefineVariable(nam, _, _) => nam :: acc  
-      case _ => acc
-    })
-  def fv(bdy: List[SchemeExp]): Set[String] = 
+    bdy.foldLeft(cur)((acc, exp) =>
+      exp match {
+        case SchemeBegin(eps, _)             => SchemeBody.defs(eps, acc)
+        case SchemeDefineVariable(nam, _, _) => nam :: acc
+        case _                               => acc
+      }
+    )
+  def fv(bdy: List[SchemeExp]): Set[String] =
     bdy.flatMap(_.fv).toSet -- defs(bdy).map(_.name)
 }
 
@@ -367,28 +367,24 @@ object SchemeCase {
 /** An and expression: (and exps...) */
 object SchemeAnd {
   def apply(eps: List[SchemeExp], idn: Identity): SchemeExp = eps match {
-    case Nil => SchemeValue(Value.Boolean(true), idn)
+    case Nil        => SchemeValue(Value.Boolean(true), idn)
     case exp :: Nil => exp
-    case exp :: rst => SchemeIf(exp, 
-                                SchemeAnd(rst, idn), 
-                                SchemeValue(Value.Boolean(false), idn), 
-                                idn) 
+    case exp :: rst => SchemeIf(exp, SchemeAnd(rst, idn), SchemeValue(Value.Boolean(false), idn), idn)
   }
 }
 
 /** An or expression: (or exps...) */
 object SchemeOr {
   def apply(eps: List[SchemeExp], idn: Identity): SchemeExp = eps match {
-    case Nil => SchemeValue(Value.Boolean(false), idn)
+    case Nil        => SchemeValue(Value.Boolean(false), idn)
     case exp :: Nil => exp
     case exp :: rst =>
       val tmp = "__or_res"
-      SchemeLet(List((Identifier(tmp, exp.idn), exp)),
-                List((SchemeIf(SchemeVar(Identifier(tmp, Identity.none)),
-                               SchemeVar(Identifier(tmp, Identity.none)),
-                               SchemeOr(rst, idn),
-                               idn))),
-                idn)
+      SchemeLet(
+        List((Identifier(tmp, exp.idn), exp)),
+        List((SchemeIf(SchemeVar(Identifier(tmp, Identity.none)), SchemeVar(Identifier(tmp, Identity.none)), SchemeOr(rst, idn), idn))),
+        idn
+      )
   }
 }
 
@@ -407,20 +403,13 @@ case class SchemeDefineVariable(
 
 /** Function definition of the form (define (f arg ...) body) */
 object SchemeDefineFunction {
-  def apply(name: Identifier,
-            args: List[Identifier],
-            body: List[SchemeExp],
-            idn: Identity): SchemeExp = 
+  def apply(name: Identifier, args: List[Identifier], body: List[SchemeExp], idn: Identity): SchemeExp =
     SchemeDefineVariable(name, SchemeLambda(Some(name.name), args, body, idn), idn)
 }
 
 /** Function definition with varargs of the form (define (f arg . vararg ...) body) */
 object SchemeDefineVarArgFunction {
-  def apply(name: Identifier,
-            args: List[Identifier],
-            vararg: Identifier,
-            body: List[SchemeExp],
-            idn: Identity): SchemeExp =
+  def apply(name: Identifier, args: List[Identifier], vararg: Identifier, body: List[SchemeExp], idn: Identity): SchemeExp =
     SchemeDefineVariable(name, SchemeVarArgLambda(Some(name.name), args, vararg, body, idn), idn)
 }
 
@@ -504,14 +493,13 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarEx
 
 object SchemePair {
   def apply(car: SchemeExp, cdr: SchemeExp, idn: Identity): SchemeExp =
-    SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", idn)), List(car, cdr), idn) 
+    SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", idn)), List(car, cdr), idn)
 }
 
 object SchemeSplicedPair {
   def apply(splice: SchemeExp, cdr: SchemeExp, idn: Identity): SchemeExp =
-    SchemeFuncall(SchemeVar(Identifier("__toplevel_append", idn)), List(splice, cdr), idn) 
+    SchemeFuncall(SchemeVar(Identifier("__toplevel_append", idn)), List(splice, cdr), idn)
 }
-
 
 /** A literal value (number, symbol, string, ...) */
 case class SchemeValue(value: Value, idn: Identity) extends SchemeExp {
@@ -533,26 +521,20 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp {
 
 /** Creates explicit (mutable) reference */
 object SchemeRef {
-    def apply(exp: SchemeExp, idn: Identity) =
-        SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", idn)),
-                      List(SchemeValue(Value.Symbol("ref"), idn), exp),
-                      idn)
+  def apply(exp: SchemeExp, idn: Identity) =
+    SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", idn)), List(SchemeValue(Value.Symbol("ref"), idn), exp), idn)
 }
 
 /** Dereferences an explicit (mutable) reference */
 object SchemeDeref {
-    def apply(ref: SchemeExp, idn: Identity) = 
-        SchemeFuncall(SchemeVar(Identifier("__toplevel_cdr", idn)),
-                      List(ref),
-                      idn)
+  def apply(ref: SchemeExp, idn: Identity) =
+    SchemeFuncall(SchemeVar(Identifier("__toplevel_cdr", idn)), List(ref), idn)
 }
 
 /** Updates an explicit (mutable) reference */
 object SchemeSetRef {
-    def apply(ref: SchemeExp, exp: SchemeExp, idn: Identity) = 
-        SchemeFuncall(SchemeVar(Identifier("__toplevel_set-cdr!", idn)),
-                      List(ref, exp),
-                      idn)
+  def apply(ref: SchemeExp, exp: SchemeExp, idn: Identity) =
+    SchemeFuncall(SchemeVar(Identifier("__toplevel_set-cdr!", idn)), List(ref, exp), idn)
 }
 
 /** A code change in a Scheme program. */
@@ -624,12 +606,12 @@ case class ContractSchemeMon(
 }
 
 case class ContractSchemeDefineContract(
-  name: Identifier, 
-  params: List[Identifier],
-  contract: SchemeExp, 
-  expression: SchemeExp,
-  idn: Identity
-) extends ContractSchemeExp {
+    name: Identifier,
+    params: List[Identifier],
+    contract: SchemeExp,
+    expression: SchemeExp,
+    idn: Identity)
+    extends ContractSchemeExp {
   def fv: Set[String] = contract.fv ++ (expression.fv -- params.map(_.name))
   def label: Label = DFC
   def subexpressions: List[Expression] = List(contract, expression)

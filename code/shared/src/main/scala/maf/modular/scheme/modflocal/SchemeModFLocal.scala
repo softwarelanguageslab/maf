@@ -27,8 +27,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))(shouldCount)
 
   private def shouldCount(adr: Adr): Boolean = adr match {
-    case _: PtrAddr[_]  => true
-    case _              => false
+    case _: PtrAddr[_] => true
+    case _             => false
   }
 
   private lazy val initialBds: Iterable[(String, Adr, Val)] =

@@ -19,7 +19,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler {
 
   // TODO: also take vararg into account eg. (define (f . a) exp) is a function that takes any number of arguments
   private def compile_params(params: SExp): List[Identifier] = params match {
-    case IdentWithIdentity(name, idn) :::: rest => 
+    case IdentWithIdentity(name, idn) :::: rest =>
       Identifier(name, idn) :: compile_params(rest)
     case snil => List()
   }
@@ -63,7 +63,8 @@ object ContractSchemeCompiler extends BaseSchemeCompiler {
     case Ident("mon") :::: _ => throw new Exception(s"Parse error, mon expects exactly two arguments at ${exp.idn}")
 
     // (define/contract (f argument ...) contract expr ...)
-    case Ident("define/contract") :::: (IdentWithIdentity(f, idn) :::: params) :::: contract :::: expressions => for {
+    case Ident("define/contract") :::: (IdentWithIdentity(f, idn) :::: params) :::: contract :::: expressions =>
+      for {
         compiledParams <- done(compile_params(params))
         compiledContract <- tailcall(_compile(contract))
         compiledExpressions <- compile_sequence(expressions)
