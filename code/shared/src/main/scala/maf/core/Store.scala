@@ -20,11 +20,11 @@ trait Store[A <: Address, V] extends SmartHash { store =>
   // Derived operations
   def apply(a: A): V = lookup(a).get
   def lookupDefault(a: A, default: V): V = lookup(a) match
-    case Some(a) => a
-    case None    => default
+      case Some(a) => a
+      case None    => default
   def lookupMF(a: A): MayFail[V, Error] = lookup(a) match
-    case Some(a) => MayFail.success(a)
-    case None    => MayFail.failure(UnboundAddress(a))
+      case Some(a) => MayFail.success(a)
+      case None    => MayFail.failure(UnboundAddress(a))
 
   /** Update (strong update if possible) an entry in the store */
   def update(a: A, v: V): This = extend(a, v)
@@ -42,10 +42,8 @@ trait Store[A <: Address, V] extends SmartHash { store =>
   /** Check if two addresses of the store are equal */
   def addrEq: MaybeEq[A] = new MaybeEq[A] {
     def apply[B: BoolLattice](a1: A, a2: A) =
-      if a1 == a2 then
-        BoolLattice[B].top // we don't know (could be different concrete addresses abstracted to the same abstract address)
-      else
-        BoolLattice[B].inject(false) // definitely not the same address
+      if a1 == a2 then BoolLattice[B].top // we don't know (could be different concrete addresses abstracted to the same abstract address)
+      else BoolLattice[B].inject(false) // definitely not the same address
   }
 }
 
@@ -72,20 +70,18 @@ trait MapStore[A <: Address, S, V] extends Store[A, V] { outer =>
   // Extend
   def extend(a: A, v: V): This = extendOption(a, v).getOrElse(this)
   def extendOption(a: A, v: V): Option[This] = get(a) match
-    case None if lattice.isBottom(v) => None
-    case None                        => Some(bind(a, fresh(a, v)))
-    case Some(old) =>
-      val updated = extend(old, v)
-      if updated == old then
-        None
-      else
-        Some(bind(a, updated))
+      case None if lattice.isBottom(v) => None
+      case None                        => Some(bind(a, fresh(a, v)))
+      case Some(old) =>
+        val updated = extend(old, v)
+        if updated == old then None
+        else Some(bind(a, updated))
   // Join
   def join(other: This): This =
     other.content.foldLeft(this: This) { case (acc, (a, s)) =>
       acc.get(a) match
-        case None       => acc.bind(a, s)
-        case Some(accS) => acc.bind(a, join(accS, s))
+          case None       => acc.bind(a, s)
+          case Some(accS) => acc.bind(a, join(accS, s))
     }
   // Delta store
   type DeltaStore <: DeltaMapStore { type This = outer.DeltaStore }
@@ -114,8 +110,8 @@ trait BasicStoreT[A <: Address, V] extends MapStore[A, V, V] { outer =>
   type DeltaStore = BasicDeltaStore
   def deltaStore = BasicDeltaStore(Map.empty)
   case class BasicDeltaStore(content: Map[A, V])(implicit val lattice: Lattice[V]) extends DeltaMapStore with BasicStoreT[A, V]:
-    type This = outer.BasicDeltaStore
-    def bind(adr: A, vlu: V) = outer.BasicDeltaStore(content + (adr -> vlu))
+      type This = outer.BasicDeltaStore
+      def bind(adr: A, vlu: V) = outer.BasicDeltaStore(content + (adr -> vlu))
 }
 
 case class BasicStore[A <: Address, V](content: Map[A, V])(implicit val lattice: Lattice[V]) extends BasicStoreT[A, V] { outer =>
@@ -141,20 +137,18 @@ trait AbstractGC[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
     scan(roots, Set.empty, empty)
   @tailrec
   private def scan(toMove: Set[A], moved: Set[A], current: This): This =
-    if toMove.isEmpty then
-      current
+    if toMove.isEmpty then current
     else
-      val addr = toMove.head
-      val rest = toMove.tail
-      if moved(addr) then
-        scan(rest, moved, current)
-      else
-        val (updated, newRefs) = move(addr, current)
-        scan(rest ++ newRefs, moved + addr, updated)
+        val addr = toMove.head
+        val rest = toMove.tail
+        if moved(addr) then scan(rest, moved, current)
+        else
+            val (updated, newRefs) = move(addr, current)
+            scan(rest ++ newRefs, moved + addr, updated)
   private def move(addr: A, to: This): (This, Set[A]) = get(addr) match
-    case None                              => (to, Set.empty)
-    case Some(s) if content.contains(addr) => (to.bind(addr, s), refs(s))
-    case Some(s)                           => (to, refs(s))
+      case None                              => (to, Set.empty)
+      case Some(s) if content.contains(addr) => (to.bind(addr, s), refs(s))
+      case Some(s)                           => (to, refs(s))
 }
 
 //
@@ -162,15 +156,15 @@ trait AbstractGC[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
 //
 
 sealed trait AbstractCount:
-  def join(other: AbstractCount): AbstractCount
-  def +(cnt: => AbstractCount): AbstractCount
-  def inc: AbstractCount = this + CountOne
+    def join(other: AbstractCount): AbstractCount
+    def +(cnt: => AbstractCount): AbstractCount
+    def inc: AbstractCount = this + CountOne
 case object CountOne extends AbstractCount:
-  def join(other: AbstractCount) = other
-  def +(cnt: => AbstractCount) = CountInf
+    def join(other: AbstractCount) = other
+    def +(cnt: => AbstractCount) = CountInf
 case object CountInf extends AbstractCount:
-  def join(other: AbstractCount) = this
-  def +(cnt: => AbstractCount) = this
+    def join(other: AbstractCount) = this
+    def +(cnt: => AbstractCount) = this
 
 trait AbstractCounting[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
   // refine the This type
@@ -184,18 +178,15 @@ trait AbstractCounting[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
     if enableCounting(a) then CountOne else CountInf
   // can do strong updates iff count == 1
   override def update(a: A, v: V): This = get(a) match
-    case None                            => throw new Exception("Trying to update an unused address")
-    case Some(s) if count(s) == CountOne => bind(a, fresh(a, v))
-    case _                               => extend(a, v)
+      case None                            => throw new Exception("Trying to update an unused address")
+      case Some(s) if count(s) == CountOne => bind(a, fresh(a, v))
+      case _                               => extend(a, v)
 
   override def addrEq: MaybeEq[A] = new MaybeEq[A] {
     def apply[B: BoolLattice](a1: A, a2: A): B =
-      if a1 == a2 && get(a1).map(count(_) == CountOne).getOrElse(false) then
-        BoolLattice[B].inject(true)
-      else if a1 == a2 then
-        BoolLattice[B].top
-      else
-        BoolLattice[B].inject(false)
+      if a1 == a2 && get(a1).map(count(_) == CountOne).getOrElse(false) then BoolLattice[B].inject(true)
+      else if a1 == a2 then BoolLattice[B].top
+      else BoolLattice[B].inject(false)
   }
 }
 
@@ -205,8 +196,8 @@ trait AbstractCounting[A <: Address, S, V] extends MapStore[A, S, V] { outer =>
 
 trait LocalStoreT[A <: Address, V](shouldCount: A => Boolean)
     extends MapStore[A, (V, Set[A], AbstractCount), V]
-       with AbstractGC[A, (V, Set[A], AbstractCount), V]
-       with AbstractCounting[A, (V, Set[A], AbstractCount), V] { outer =>
+    with AbstractGC[A, (V, Set[A], AbstractCount), V]
+    with AbstractCounting[A, (V, Set[A], AbstractCount), V] { outer =>
   type This >: this.type <: LocalStoreT[A, V] { type This = outer.This }
   // S = value + refs(value) + abstract count
   def value(s: (V, Set[A], AbstractCount)): V = s._1
@@ -214,12 +205,11 @@ trait LocalStoreT[A <: Address, V](shouldCount: A => Boolean)
   def count(s: (V, Set[A], AbstractCount)): AbstractCount = s._3
   def fresh(a: A, v: V) = (v, lattice.refs(v), countFor(a))
   def extend(s: (V, Set[A], AbstractCount), v: V) =
-    val newValue = lattice.join(s._1, v)
-    if newValue != s._1 then
-      // we assume that refs(X U Y) = refs(X) ++ refs(Y)
-      (newValue, s._2 ++ lattice.refs(v), s._3.inc)
-    else
-      (s._1, s._2, s._3.inc)
+      val newValue = lattice.join(s._1, v)
+      if newValue != s._1 then
+          // we assume that refs(X U Y) = refs(X) ++ refs(Y)
+          (newValue, s._2 ++ lattice.refs(v), s._3.inc)
+      else (s._1, s._2, s._3.inc)
   def join(s1: (V, Set[A], AbstractCount), s2: (V, Set[A], AbstractCount)) =
     (lattice.join(s1._1, s2._1), s1._2 ++ s2._2, s1._3.join(s2._3))
   def enableCounting(a: A) = shouldCount(a)
@@ -228,16 +218,16 @@ trait LocalStoreT[A <: Address, V](shouldCount: A => Boolean)
   def deltaStore = LocalDeltaStore(Map.empty, Set.empty)
   case class LocalDeltaStore(content: Map[A, (V, Set[A], AbstractCount)], updates: Set[A])(implicit val lattice: LatticeWithAddrs[V, A])
       extends DeltaMapStore
-         with LocalStoreT[A, V](shouldCount):
-    type This = outer.LocalDeltaStore
-    def empty = outer.LocalDeltaStore(Map.empty, Set.empty)
-    def bind(a: A, s: (V, Set[A], AbstractCount)) = outer.LocalDeltaStore(content + (a -> s), updates)
-    // tracking updated bindings
-    private def addUpdated(a: A) = this.copy(updates = updates + a)
-    private def addUpdated(a: Iterable[A]) = this.copy(updates = updates ++ a)
-    override def update(a: A, v: V) = super.update(a, v).addUpdated(a)
-    override def collect(rs: Set[A]) = super.collect(rs).addUpdated(updates)
-    override def join(other: outer.LocalDeltaStore): outer.LocalDeltaStore = super.join(other).addUpdated(other.updates)
+      with LocalStoreT[A, V](shouldCount):
+      type This = outer.LocalDeltaStore
+      def empty = outer.LocalDeltaStore(Map.empty, Set.empty)
+      def bind(a: A, s: (V, Set[A], AbstractCount)) = outer.LocalDeltaStore(content + (a -> s), updates)
+      // tracking updated bindings
+      private def addUpdated(a: A) = this.copy(updates = updates + a)
+      private def addUpdated(a: Iterable[A]) = this.copy(updates = updates ++ a)
+      override def update(a: A, v: V) = super.update(a, v).addUpdated(a)
+      override def collect(rs: Set[A]) = super.collect(rs).addUpdated(updates)
+      override def join(other: outer.LocalDeltaStore): outer.LocalDeltaStore = super.join(other).addUpdated(other.updates)
   // d1 'after' d0
   // assumes that d1: sto1.DeltaStore, where sto1 = this.integrate(d0)
   def compose(d1: LocalStoreT[A, V]#LocalDeltaStore, d0: DeltaStore): DeltaStore =
@@ -251,10 +241,10 @@ trait LocalStoreT[A <: Address, V](shouldCount: A => Boolean)
         if d.parent.content.contains(adr) then {
           acc + (adr -> s)
         } else
-          get(adr) match {
-            case None               => acc + (adr -> s)
-            case Some((v2, r2, c2)) => acc + (adr -> ((lattice.join(v2, v), r2 ++ r, c2 + c)))
-          }
+            get(adr) match {
+              case None               => acc + (adr -> s)
+              case Some((v2, r2, c2)) => acc + (adr -> ((lattice.join(v2, v), r2 ++ r, c2 + c)))
+            }
       },
       d.updates
     )
@@ -266,12 +256,12 @@ case class LocalStore[A <: Address, V](
     shouldCount: A => Boolean
   )(implicit val lattice: LatticeWithAddrs[V, A])
     extends LocalStoreT[A, V](shouldCount):
-  type This = LocalStore[A, V]
-  def empty = LocalStore(Map.empty)(shouldCount)
-  def bind(a: A, s: (V, Set[A], AbstractCount)): LocalStore[A, V] = LocalStore(content + (a -> s))(shouldCount)
+    type This = LocalStore[A, V]
+    def empty = LocalStore(Map.empty)(shouldCount)
+    def bind(a: A, s: (V, Set[A], AbstractCount)): LocalStore[A, V] = LocalStore(content + (a -> s))(shouldCount)
 
 object LocalStore:
-  def empty[A <: Address, V](shouldCount: A => Boolean)(implicit lattice: LatticeWithAddrs[V, A]): LocalStore[A, V] =
-    LocalStore(Map.empty)(shouldCount)
-  def from[A <: Address, V](content: Iterable[(A, V)])(shouldCount: A => Boolean)(implicit lattice: LatticeWithAddrs[V, A]): LocalStore[A, V] =
-    content.foldLeft(empty(shouldCount))((acc, bnd) => acc.extend(bnd._1, bnd._2))
+    def empty[A <: Address, V](shouldCount: A => Boolean)(implicit lattice: LatticeWithAddrs[V, A]): LocalStore[A, V] =
+      LocalStore(Map.empty)(shouldCount)
+    def from[A <: Address, V](content: Iterable[(A, V)])(shouldCount: A => Boolean)(implicit lattice: LatticeWithAddrs[V, A]): LocalStore[A, V] =
+      content.foldLeft(empty(shouldCount))((acc, bnd) => acc.extend(bnd._1, bnd._2))

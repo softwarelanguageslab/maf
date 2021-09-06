@@ -241,14 +241,14 @@ abstract class WebVisualisation(width: Int, height: Int) {
     // refresh the nodes
     nodesData = Set.empty[Node]
     analysis.visited.foreach { cmp =>
-      val node = getNode(cmp)
-      nodesData += node
-      val targets = analysis.dependencies(cmp)
-      targets.foreach { target =>
-        val targetNode = getNode(target)
-        val edge = getEdge(node, targetNode)
-        edgesData += edge
-      }
+        val node = getNode(cmp)
+        nodesData += node
+        val targets = analysis.dependencies(cmp)
+        targets.foreach { target =>
+            val targetNode = getNode(target)
+            val edge = getEdge(node, targetNode)
+            edgesData += edge
+        }
     }
   }
 
@@ -271,16 +271,16 @@ abstract class WebVisualisation(width: Int, height: Int) {
   protected def refreshDataAfterStep(): Unit = {
     val sourceNode = getNode(prevComponent)
     prevCalls.foreach { otherCmp =>
-      val targetNode = getNode(otherCmp)
-      val edge = getEdge(sourceNode, targetNode)
-      edgesData -= edge
+        val targetNode = getNode(otherCmp)
+        val edge = getEdge(sourceNode, targetNode)
+        edgesData -= edge
     }
     // add the new edges
     analysis.dependencies(prevComponent).foreach { otherCmp =>
-      val targetNode = getNode(otherCmp)
-      val edge = getEdge(sourceNode, targetNode)
-      nodesData += targetNode
-      edgesData += edge
+        val targetNode = getNode(otherCmp)
+        val edge = getEdge(sourceNode, targetNode)
+        nodesData += targetNode
+        edgesData += edge
     }
   }
 

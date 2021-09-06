@@ -9,10 +9,10 @@ import maf.language.scheme.primitives.SchemePrelude
 
 trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests {
   override def parseProgram(txt: String): SchemeExp =
-    val parsed = SchemeParser.parse(txt)
-    val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
-    val transf = SchemeMutableVarBoxer.transform(prelud)
-    SchemeParser.undefine(transf)
+      val parsed = SchemeParser.parse(txt)
+      val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+      val transf = SchemeMutableVarBoxer.transform(prelud)
+      SchemeParser.undefine(transf)
 }
 
 class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks {

@@ -9,17 +9,17 @@ import maf.language.CScheme._
 sealed trait SchemeModConcComponent extends SmartHash with TID
 // The main thread
 case object MainThread extends SchemeModConcComponent:
-  override def toString: String = "main-thread"
+    override def toString: String = "main-thread"
 // A thread that was spawned in some component
 case class Thread[Context](
     exp: SchemeExp,
     env: Environment[Address],
     ctx: Context)
     extends SchemeModConcComponent:
-  override def toString: String = s"thread@${exp.idn}"
+    override def toString: String = s"thread@${exp.idn}"
 
 trait StandardSchemeModConcComponents extends SchemeModConcSemantics:
-  type Component = SchemeModConcComponent
-  lazy val initialComponent = MainThread
-  def newComponent(thread: Thread[ComponentContext]) = thread
-  def view(cmp: Component) = cmp
+    type Component = SchemeModConcComponent
+    lazy val initialComponent = MainThread
+    def newComponent(thread: Thread[ComponentContext]) = thread
+    def view(cmp: Component) = cmp

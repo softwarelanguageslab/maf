@@ -52,9 +52,9 @@ trait AddressVisualisation extends WebVisualisation {
         // Using the standard Global Store, we can only visualise read dependencies.
         val readers: Set[analysis.Component] = analysis.deps(AddrDependency(addr))
         readers.foreach { reader =>
-          val readerNode = getNode(reader)
-          val edge = getEdge(node, readerNode) // Edge from addr -> reader.
-          edgesData += edge
+            val readerNode = getNode(reader)
+            val edge = getEdge(node, readerNode) // Edge from addr -> reader.
+            edgesData += edge
         }
       }
     }

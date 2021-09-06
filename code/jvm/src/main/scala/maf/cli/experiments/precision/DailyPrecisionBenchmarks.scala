@@ -18,25 +18,25 @@ object DailyPrecisionBenchmarks
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ]:
-  // analyses to compare
-  def baseAnalysis(prg: SchemeExp): Analysis =
-    SchemeAnalyses.contextInsensitiveAnalysis(prg)
-  def otherAnalyses() = List(
-    (SchemeAnalyses.callSiteContextSensitiveAnalysis, "1CS")
-    //(SchemeAnalyses.adaptiveAnalysisPolicy3(_, 5), "adaptive-policy-3")
-  )
+    // analyses to compare
+    def baseAnalysis(prg: SchemeExp): Analysis =
+      SchemeAnalyses.contextInsensitiveAnalysis(prg)
+    def otherAnalyses() = List(
+      (SchemeAnalyses.callSiteContextSensitiveAnalysis, "1CS")
+      //(SchemeAnalyses.adaptiveAnalysisPolicy3(_, 5), "adaptive-policy-3")
+    )
 
-  // benchmarks to run
-  def benchmarks = SchemeBenchmarkPrograms.gabriel
+    // benchmarks to run
+    def benchmarks = SchemeBenchmarkPrograms.gabriel
 
-  // timeout configuration
-  override def analysisTimeout() = Timeout.start(Duration(15, MINUTES)) //timeout for (non-base) analyses
-  override def concreteTimeout() = Timeout.start(Duration(5, MINUTES))
+    // timeout configuration
+    override def analysisTimeout() = Timeout.start(Duration(15, MINUTES)) //timeout for (non-base) analyses
+    override def concreteTimeout() = Timeout.start(Duration(5, MINUTES))
 
-  // entry point
-  def main(args: Array[String]) =
-    benchmarks.foreach(runBenchmark)
-    println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
-    Writer.setDefaultWriter(Writer.open("benchOutput/precision/daily-precision-benchmarks.csv"))
-    Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
-    Writer.closeDefaultWriter()
+    // entry point
+    def main(args: Array[String]) =
+        benchmarks.foreach(runBenchmark)
+        println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
+        Writer.setDefaultWriter(Writer.open("benchOutput/precision/daily-precision-benchmarks.csv"))
+        Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
+        Writer.closeDefaultWriter()

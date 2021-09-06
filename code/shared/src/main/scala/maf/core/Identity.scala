@@ -6,16 +6,16 @@ import maf.util.SmartHash
 
 /** An identity to distinguish expressions. */
 sealed trait Identity extends Serializable:
-  val idn: IDN
-  def pos: Position = idn // Extra positional information of the element in the source code. Used for printing and during tests.
-  override def toString: String = pos.toString
+    val idn: IDN
+    def pos: Position = idn // Extra positional information of the element in the source code. Used for printing and during tests.
+    override def toString: String = pos.toString
 
 /** An identity for AST elements. */
 case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
 
 /** Neutral identity for to elements not in the code (constructed by the analysis). */
 case object NoCodeIdentity extends Identity:
-  val idn: IDN = Identity.newId(Position(-1, 0))
+    val idn: IDN = Identity.newId(Position(-1, 0))
 
 /*
 trait UniqueIdentity {
@@ -53,32 +53,32 @@ trait UniqueIdentity {
  */
 
 trait PositionalIdentity:
-  type IDN = Position
-  def apply(p: scala.util.parsing.input.Position, t: PTag = noTag): Identity = SimpleIdentity(Position(p.line, p.column, t))
-  def newId(pos: Position): IDN = pos
+    type IDN = Position
+    def apply(p: scala.util.parsing.input.Position, t: PTag = noTag): Identity = SimpleIdentity(Position(p.line, p.column, t))
+    def newId(pos: Position): IDN = pos
 
 // To go back to the other identity implementation, comment out PositionalIdentity, reinstate UniqueIdentity and change the inheritance below.
 object Identity extends PositionalIdentity:
-  def none: Identity = NoCodeIdentity
+    def none: Identity = NoCodeIdentity
 
 object Position:
 
-  type PTag = Option[String] // Tag for positions (can e.g. be used when ASTs of multiple parsings need to be combined).
+    type PTag = Option[String] // Tag for positions (can e.g. be used when ASTs of multiple parsings need to be combined).
 
-  val noTag: PTag = None
-  def newTag(tag: String): PTag = Some(tag)
+    val noTag: PTag = None
+    def newTag(tag: String): PTag = Some(tag)
 
-  case class Position(
-      line: Int,
-      col: Int,
-      tag: PTag = noTag)
-      extends SmartHash:
-    override def toString: String = tag match
-      case None    => s"$line:$col"
-      case Some(t) => s"$t:$line:$col"
+    case class Position(
+        line: Int,
+        col: Int,
+        tag: PTag = noTag)
+        extends SmartHash:
+        override def toString: String = tag match
+            case None    => s"$line:$col"
+            case Some(t) => s"$t:$line:$col"
 
-  def apply(
-      line: Int,
-      col: Int,
-      tag: PTag = noTag
-    ): Position = Position(line, col, tag)
+    def apply(
+        line: Int,
+        col: Int,
+        tag: PTag = noTag
+      ): Position = Position(line, col, tag)

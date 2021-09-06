@@ -61,7 +61,7 @@ object IncrementalVisualisationSetup extends VisualisationSetup {
 
 class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfiguration)
     extends IncrementalSchemeModFAssertionAnalysisCPLattice(program, configuration)
-       with VisualisableIncrementalModAnalysis[SchemeExp] {
+    with VisualisableIncrementalModAnalysis[SchemeExp] {
 
   type Module = Option[SchemeLambdaExp]
 

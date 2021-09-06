@@ -1,4 +1,4 @@
 package maf.core
 
 trait Primitive extends Serializable:
-  def name: String
+    def name: String

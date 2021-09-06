@@ -83,8 +83,8 @@ class AdaptiveSummaryVisualisation(
   def refresh() = viewStack.foreach(_.refresh())
   def adapt() = {
     viewStack.foreach { view =>
-      view.adapt()
-      view.refresh()
+        view.adapt()
+        view.refresh()
     }
   }
 

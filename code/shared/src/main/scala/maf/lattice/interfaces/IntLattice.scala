@@ -24,4 +24,4 @@ trait IntLattice[I] extends Lattice[I] { self =>
 }
 
 object IntLattice:
-  def apply[I: IntLattice]: IntLattice[I] = implicitly
+    def apply[I: IntLattice]: IntLattice[I] = implicitly

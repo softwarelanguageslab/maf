@@ -28,4 +28,4 @@ trait RealLattice[R] extends Lattice[R] { self =>
 }
 
 object RealLattice:
-  def apply[R: RealLattice]: RealLattice[R] = implicitly
+    def apply[R: RealLattice]: RealLattice[R] = implicitly

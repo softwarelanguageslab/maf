@@ -11,9 +11,9 @@ import scala.scalajs.js
 
 trait VisualisableIncrementalModAnalysis[Expr <: Expression]
     extends IncrementalModAnalysis[Expr]
-       with IncrementalGlobalStore[Expr]
-       with WebVisualisationAnalysis[Expr]
-       with AddressVisualisationAnalysis[Expr] {
+    with IncrementalGlobalStore[Expr]
+    with WebVisualisationAnalysis[Expr]
+    with AddressVisualisationAnalysis[Expr] {
   var recursive: Set[Component] = Set() // Collects the set of recursive components, since self-edges are omitted in the set `cachedSpawns`.
 
   override def intraAnalysis(cmp: Component): VisualisableIntraAnalysis
@@ -96,17 +96,17 @@ class WebVisualisationIncremental(
   override def refreshData(): Unit = {
     // Add all components currently in the analysis.
     analysis.visited.foreach { cmp =>
-      val node = getNode(cmp)
-      nodesData += node
+        val node = getNode(cmp)
+        nodesData += node
     }
     // Add all edges currently in the analysis.
     nodesData.foreach {
       case sourceNode: CmpNode =>
         val targets = analysis.dependencies(sourceNode.component)
         targets.foreach { target =>
-          val targetNode = getNode(target)
-          val edge = getEdge(sourceNode, targetNode)
-          edgesData += edge
+            val targetNode = getNode(target)
+            val edge = getEdge(sourceNode, targetNode)
+            edgesData += edge
         }
       case _ =>
     }
@@ -116,10 +116,10 @@ class WebVisualisationIncremental(
     val sourceNode = getNode(prevComponent)
     // Add new edges.
     analysis.dependencies(prevComponent).foreach { otherCmp =>
-      val targetNode = getNode(otherCmp)
-      val edge = getEdge(sourceNode, targetNode)
-      nodesData += targetNode
-      edgesData += edge
+        val targetNode = getNode(otherCmp)
+        val edge = getEdge(sourceNode, targetNode)
+        nodesData += targetNode
+        edgesData += edge
     }
   }
 

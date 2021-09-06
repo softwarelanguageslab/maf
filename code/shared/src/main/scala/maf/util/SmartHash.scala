@@ -9,5 +9,5 @@ import scala.runtime.ScalaRunTime
 // with this trait will make that happen. this one optimization can
 // improve performance by orders of magnitude.
 trait SmartHash extends Product with Serializable:
-  private lazy val cached = ScalaRunTime._hashCode(this)
-  override def hashCode(): Int = cached
+    private lazy val cached = ScalaRunTime._hashCode(this)
+    override def hashCode(): Int = cached

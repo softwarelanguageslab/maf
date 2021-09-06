@@ -79,16 +79,16 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
 
   abstract class BaseAnalysis(program: SchemeExp)
       extends ModAnalysis[SchemeExp](program)
-         with StandardSchemeModFComponents
-         with SchemeModFNoSensitivity
-         with SchemeModFSemantics
-         with IncrementalSchemeConstantPropagationDomain // Use the incremental domain for both.
-         with LIFOWorklistAlgorithm[SchemeExp]
+      with StandardSchemeModFComponents
+      with SchemeModFNoSensitivity
+      with SchemeModFSemantics
+      with IncrementalSchemeConstantPropagationDomain // Use the incremental domain for both.
+      with LIFOWorklistAlgorithm[SchemeExp]
 
   class IncrementalAnalysis(program: SchemeExp)
       extends BaseAnalysis(program)
-         with IncrementalSchemeModFBigStepSemantics
-         with IncrementalGlobalStore[SchemeExp] {
+      with IncrementalSchemeModFBigStepSemantics
+      with IncrementalGlobalStore[SchemeExp] {
     var configuration: IncrementalConfiguration = allOptimisations
     override def intraAnalysis(
         cmp: Component
@@ -151,16 +151,16 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
 class ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks {
   abstract class BaseModConcAnalysis(prg: SchemeExp)
       extends ModAnalysis[SchemeExp](prg)
-         with KKallocModConc
-         with LIFOWorklistAlgorithm[SchemeExp]
-         with IncrementalSchemeConstantPropagationDomain {
+      with KKallocModConc
+      with LIFOWorklistAlgorithm[SchemeExp]
+      with IncrementalSchemeConstantPropagationDomain {
     val k: Int = 1
   }
 
   class IncrementalAnalysis(program: SchemeExp)
       extends BaseModConcAnalysis(program)
-         with IncrementalSchemeModConcSmallStepSemantics
-         with IncrementalGlobalStore[SchemeExp] {
+      with IncrementalSchemeModConcSmallStepSemantics
+      with IncrementalGlobalStore[SchemeExp] {
     var configuration: IncrementalConfiguration = allOptimisations
 
     override def intraAnalysis(

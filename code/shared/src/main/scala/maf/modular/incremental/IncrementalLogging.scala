@@ -14,19 +14,19 @@ import maf.util.benchmarks.{Table, Timeout}
  *   The type of the expressions under analysis.
  */
 trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr]:
-  inter =>
+    inter =>
 
-  val logger: NumberedLog = Logger.numbered()
-  var table: Table[String] = Table.empty.withDefaultValue("")
-  var step: Int = 0 // The current intra-component analysis.
-  var botRead: Option[Addr] =
-    None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
-  var repeats: Map[Component, Integer] = Map.empty.withDefaultValue(0) // Keep track of how many times every component has been analysed.
+    val logger: NumberedLog = Logger.numbered()
+    var table: Table[String] = Table.empty.withDefaultValue("")
+    var step: Int = 0 // The current intra-component analysis.
+    var botRead: Option[Addr] =
+      None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
+    var repeats: Map[Component, Integer] = Map.empty.withDefaultValue(0) // Keep track of how many times every component has been analysed.
 
-  def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
+    def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
 
-  private def legend(): String =
-    """***** LEGEND OF ABBREVIATIONS *****
+    private def legend(): String =
+      """***** LEGEND OF ABBREVIATIONS *****
       |ADEP  An address value dependency is registered. Includes the "source" address and the address where the value flows to.
       |ANLY  Analysis of a component, indicating the step of the analysis and the number of times the current component is now analysed.
       |CI    Component invalidation: the given component is deleted.
@@ -42,49 +42,50 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       |***** ANALYSIS SUMMARY TABLE *****
       |The column "bot" indicates whether bottom was read from the store (including the address), and hence whether the analysis of a component was prematurely terminated.
       |""".stripMargin
-  logger.logU(legend())
+    logger.logU(legend())
 
-  private def insertTable(messageOrComponent: Either[String, Component]): Unit =
-    val stepString = step.toString
-    step = step + 1
-    messageOrComponent match
-      case Left(msg) =>
-        table = table.add(stepString, "Phase", msg)
-      case Right(cmp) =>
-        val addrs = store.keySet
-        table = table.add(stepString, "Phase", cmp.toString)
-        addrs.foreach(addr =>
-          if focus(addr) then {
-            val v = store.getOrElse(addr, lattice.bottom)
-            val p = provenance(addr).map({ case (c, v) => s"$v ($c)" }).mkString("; ")
-            table = table.add(stepString, s"σ($addr)", v.toString).add(stepString, s"P($addr)", p)
-          }
+    private def insertTable(messageOrComponent: Either[String, Component]): Unit =
+        val stepString = step.toString
+        step = step + 1
+        messageOrComponent match
+            case Left(msg) =>
+              table = table.add(stepString, "Phase", msg)
+            case Right(cmp) =>
+              val addrs = store.keySet
+              table = table.add(stepString, "Phase", cmp.toString)
+              addrs.foreach(addr =>
+                if focus(addr) then {
+                  val v = store.getOrElse(addr, lattice.bottom)
+                  val p = provenance(addr).map({ case (c, v) => s"$v ($c)" }).mkString("; ")
+                  table = table.add(stepString, s"σ($addr)", v.toString).add(stepString, s"P($addr)", p)
+                }
+              )
+              addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach {
+                case (addr, valueSources) =>
+                  if focus(addr) then
+                      table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
+              }
+              botRead.foreach(addr => table = table.add(stepString, "Bot", addr.toString))
+              botRead = None
+
+    private def tableToString(): String =
+        val storeCols = table.allColumns.filter(_.startsWith("σ")).toList.sorted
+        val provCols = table.allColumns.filter(_.startsWith("P(")).toList.sorted
+        val depCols = table.allColumns.filter(_.startsWith("~>")).toList.sorted
+        table.prettyString(rowName = "Step",
+                           rows = (0 until step).toList.map(_.toString),
+                           columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot")
         )
-        addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach { case (addr, valueSources) =>
-          if focus(addr) then
-            table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
-        }
-        botRead.foreach(addr => table = table.add(stepString, "Bot", addr.toString))
-        botRead = None
 
-  private def tableToString(): String =
-    val storeCols = table.allColumns.filter(_.startsWith("σ")).toList.sorted
-    val provCols = table.allColumns.filter(_.startsWith("P(")).toList.sorted
-    val depCols = table.allColumns.filter(_.startsWith("~>")).toList.sorted
-    table.prettyString(rowName = "Step",
-                       rows = (0 until step).toList.map(_.toString),
-                       columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot")
-    )
+    // Collect some numbers
+    private var intraC: Long = 0
+    private var intraCU: Long = 0
+    private var deletedA: List[Addr] = Nil
+    private var deletedC: List[Component] = Nil
 
-  // Collect some numbers
-  private var intraC: Long = 0
-  private var intraCU: Long = 0
-  private var deletedA: List[Addr] = Nil
-  private var deletedC: List[Component] = Nil
-
-  def getSummary(): String =
-    configuration.infoString() + "\n" +
-      s"""##########################################
+    def getSummary(): String =
+      configuration.infoString() + "\n" +
+        s"""##########################################
          |Analysis Summary:
          |  - components: ${visited.size}
          |      ${visited.mkString(", ")}
@@ -101,105 +102,103 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
          |      * ${deletedA.toSet[Addr].map[(Addr, Int)]({ (a: Addr) => (a, deletedA.count(_ == a)) }).toString()}
          |##########################################""".stripMargin
 
-  // Avoids logging the store twice from `updateAnalysis`.
-  var logEnd = true
+    // Avoids logging the store twice from `updateAnalysis`.
+    var logEnd = true
 
-  override def run(timeout: Timeout.T): Unit =
-    super.run(timeout)
-    if logEnd then
-      logger.logU("\n\n" + tableToString())
-      logger.logU("\n" + storeString())
+    override def run(timeout: Timeout.T): Unit =
+        super.run(timeout)
+        if logEnd then
+            logger.logU("\n\n" + tableToString())
+            logger.logU("\n" + storeString())
 
-  // Starting the incremental analysis.
-  override def updateAnalysis(timeout: Timeout.T): Unit =
-    logger.resetNumbering()
-    logger.logU("\nUpdating analysis\n")
-    insertTable(Left("Updating analysis"))
-    try
-      logEnd = false
-      super.updateAnalysis(timeout)
-      logEnd = true
-      //if (configuration.cyclicValueInvalidation) {
-      //  addressDependencies.foreach({ case (cmp, map) =>
-      //    map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
-      //  })
-      //}
-      logger.logU("\n\n" + getSummary())
-      logger.logU("\n\n" + tableToString())
-      logger.logU("\n" + storeString())
-    catch
-      case t: Throwable =>
-        logger.logException(t)
-        logger.logU("\n\n" + getSummary())
-        logger.logU("\n\n" + tableToString())
-        logger.logU("\n" + storeString())
-        throw t
+    // Starting the incremental analysis.
+    override def updateAnalysis(timeout: Timeout.T): Unit =
+        logger.resetNumbering()
+        logger.logU("\nUpdating analysis\n")
+        insertTable(Left("Updating analysis"))
+        try
+            logEnd = false
+            super.updateAnalysis(timeout)
+            logEnd = true
+            //if (configuration.cyclicValueInvalidation) {
+            //  addressDependencies.foreach({ case (cmp, map) =>
+            //    map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
+            //  })
+            //}
+            logger.logU("\n\n" + getSummary())
+            logger.logU("\n\n" + tableToString())
+            logger.logU("\n" + storeString())
+        catch
+            case t: Throwable =>
+              logger.logException(t)
+              logger.logU("\n\n" + getSummary())
+              logger.logU("\n\n" + tableToString())
+              logger.logU("\n" + storeString())
+              throw t
 
-  override def deregister(target: Component, dep: Dependency): Unit =
-    logger.log(s"DI   $target <-\\- $dep")
-    super.deregister(target, dep)
+    override def deregister(target: Component, dep: Dependency): Unit =
+        logger.log(s"DI   $target <-\\- $dep")
+        super.deregister(target, dep)
 
-  override def deleteComponent(cmp: Component): Unit =
-    logger.log(s"CI   $cmp")
-    deletedC = cmp :: deletedC
-    super.deleteComponent(cmp)
+    override def deleteComponent(cmp: Component): Unit =
+        logger.log(s"CI   $cmp")
+        deletedC = cmp :: deletedC
+        super.deleteComponent(cmp)
 
-  override def deleteAddress(addr: Addr): Unit =
-    deletedA = addr :: deletedA
-    super.deleteAddress(addr)
+    override def deleteAddress(addr: Addr): Unit =
+        deletedA = addr :: deletedA
+        super.deleteAddress(addr)
 
-  override def trigger(dep: Dependency): Unit =
-    logger.log(s"TRIG $dep [adding: ${deps(dep)}]")
-    super.trigger(dep)
+    override def trigger(dep: Dependency): Unit =
+        logger.log(s"TRIG $dep [adding: ${deps(dep)}]")
+        super.trigger(dep)
 
-  //override def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit = {
-  //  logger.log(s"PROV $addr: $value")
-  //  super.updateProvenance(cmp, addr, value)
-  //}
+    //override def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit = {
+    //  logger.log(s"PROV $addr: $value")
+    //  super.updateProvenance(cmp, addr, value)
+    //}
 
-  override def updateAddrInc(
-      cmp: Component,
-      addr: Addr,
-      nw: Value
-    ): Boolean =
-    val b = super.updateAddrInc(cmp, addr, nw)
-    logger.log(s"IUPD $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)")
-    b
+    override def updateAddrInc(
+        cmp: Component,
+        addr: Addr,
+        nw: Value
+      ): Boolean =
+        val b = super.updateAddrInc(cmp, addr, nw)
+        logger.log(s"IUPD $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)")
+        b
 
-  trait IncrementalLoggingIntra extends IncrementalGlobalStoreIntraAnalysis:
-    intra =>
+    trait IncrementalLoggingIntra extends IncrementalGlobalStoreIntraAnalysis:
+        intra =>
 
-    // Analysis of a component.
-    abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-      logger.logU("") // Adds a newline to the log.
-      if version == Old then intraC += 1 else intraCU += 1
-      repeats = repeats + (component -> (repeats(component) + 1))
-      logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
-      if configuration.cyclicValueInvalidation then logger.log(s"RSAD Resetting addressDependencies for $component.")
-      super.analyzeWithTimeout(timeout)
+        // Analysis of a component.
+        abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            logger.logU("") // Adds a newline to the log.
+            if version == Old then intraC += 1 else intraCU += 1
+            repeats = repeats + (component -> (repeats(component) + 1))
+            logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
+            if configuration.cyclicValueInvalidation then logger.log(s"RSAD Resetting addressDependencies for $component.")
+            super.analyzeWithTimeout(timeout)
 
-    // Reading an address.
-    override def readAddr(addr: Addr): Value =
-      val v = super.readAddr(addr)
-      if v == lattice.bottom then botRead = Some(addr) else botRead = None
-      logger.log(s"READ $addr => $v")
-      v
+        // Reading an address.
+        override def readAddr(addr: Addr): Value =
+            val v = super.readAddr(addr)
+            if v == lattice.bottom then botRead = Some(addr) else botRead = None
+            logger.log(s"READ $addr => $v")
+            v
 
-    // Writing an address.
-    override def writeAddr(addr: Addr, value: Value): Boolean =
-      if configuration.cyclicValueInvalidation then lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> $addr"))
-      val b = super.writeAddr(addr, value)
-      logger.log(s"WRIT $value => $addr (${if b then "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
-      b
+        // Writing an address.
+        override def writeAddr(addr: Addr, value: Value): Boolean =
+            if configuration.cyclicValueInvalidation then lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> $addr"))
+            val b = super.writeAddr(addr, value)
+            logger.log(s"WRIT $value => $addr (${if b then "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
+            b
 
-    // Registering of provenances.
-    override def registerProvenances(): Unit =
-      intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV $addr: $value") })
-      super.registerProvenances()
+        // Registering of provenances.
+        override def registerProvenances(): Unit =
+            intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV $addr: $value") })
+            super.registerProvenances()
 
-    override def commit(): Unit =
-      logger.log("COMI")
-      super.commit()
-      insertTable(Right(component))
-
-
+        override def commit(): Unit =
+            logger.log("COMI")
+            super.commit()
+            insertTable(Right(component))

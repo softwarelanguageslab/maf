@@ -15,11 +15,11 @@ object Div {
     val div = document.createElement("div").asInstanceOf[html.Div]
     d3.select(div).style("overflow", "hidden")
     children.foreach { child =>
-      arrangement match {
-        case Horizontal => d3.select(child).style("float", "left")
-        case Vertical   => () // default is apparently vertical anyway in CSS
-      }
-      div.appendChild(child)
+        arrangement match {
+          case Horizontal => d3.select(child).style("float", "left")
+          case Vertical   => () // default is apparently vertical anyway in CSS
+        }
+        div.appendChild(child)
     }
     return div
   }

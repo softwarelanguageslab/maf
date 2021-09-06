@@ -18,16 +18,16 @@ trait ScVModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
   }
 
   def summary: ScvAnalysisSummary[Value] =
-    var returnValues = Map[Any, Value]()
-    var blames = Map[Any, Set[Blame]]()
+      var returnValues = Map[Any, Value]()
+      var blames = Map[Any, Set[Blame]]()
 
-    store.foreach {
-      case (ReturnAddr(cmp, _), value)       => returnValues = returnValues.updated(cmp, value)
-      case (ScvExceptionAddr(cmp, _), value) => blames = blames.updated(cmp, lattice.getBlames(value))
-      case _                                 => ()
-    }
+      store.foreach {
+        case (ReturnAddr(cmp, _), value)       => returnValues = returnValues.updated(cmp, value)
+        case (ScvExceptionAddr(cmp, _), value) => blames = blames.updated(cmp, lattice.getBlames(value))
+        case _                                 => ()
+      }
 
-    ScvAnalysisSummary(returnValues, blames)
+      ScvAnalysisSummary(returnValues, blames)
 
   def getReturnValue(component: Component): Option[Value] =
     summary.getReturnValue(component)
@@ -38,4 +38,4 @@ case class ScvAnalysisSummary[Value](
     returnValues: Map[Any, Value],
     blames: Map[Any, Set[Blame]]):
 
-  def getReturnValue(component: Any): Option[Value] = returnValues.get(component)
+    def getReturnValue(component: Any): Option[Value] = returnValues.get(component)

@@ -19,14 +19,14 @@ class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
   val bools = Table("boolean", "#t", "#f", "#T", "#F")
   property("SExpLexer should lex booleans without error", ParserTest) {
     forAll(bools) { s =>
-      check(lexical.boolean)(s.toLowerCase.nn); check(lexical.token)(s.toLowerCase.nn)
+        check(lexical.boolean)(s.toLowerCase.nn); check(lexical.token)(s.toLowerCase.nn)
     }
   }
 
   val integers = Table("integer", "100", "-231")
   property("SExpLexer should lex integers without error", ParserTest) {
     forAll(integers) { s =>
-      check(lexical.integer)(s); check(lexical.token)(s)
+        check(lexical.integer)(s); check(lexical.token)(s)
     }
   }
 
@@ -41,28 +41,28 @@ class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
   )
   property("SExpLexer should lex reals without error", ParserTest) {
     forAll(reals) { (s, exp) =>
-      checkExpected(lexical.real)(s, exp); checkExpected(lexical.token)(s, exp)
+        checkExpected(lexical.real)(s, exp); checkExpected(lexical.token)(s, exp)
     }
   }
 
   val characters = Table("character", "#\\a", "#\\b", /* "#\\u03BB", "#\\Whitespace", */ "#\\λ")
   property("SExpLexer should lex characters without error", ParserTest) {
     forAll(characters) { s =>
-      check(lexical.character)(s); check(lexical.token)(s)
+        check(lexical.character)(s); check(lexical.token)(s)
     }
   }
 
   val strings = Table("string", "\"foo\"", "\"foo\\\"bar\\\"foo\"", "\"foo\nbar\"")
   property("SExpLexer should lex strings without error", ParserTest) {
     forAll(strings) { s =>
-      check(lexical.string)(s); check(lexical.token)(s)
+        check(lexical.string)(s); check(lexical.token)(s)
     }
   }
 
   val identifiers = Table("identifier", "foo", "+", "1+", "1-", "<<test>>", "-fl", "1st-foo")
   property("SExpLexer should lex identifiers without error", ParserTest) {
     forAll(identifiers) { s =>
-      check(lexical.identifier)(s); check(lexical.token)(s)
+        check(lexical.identifier)(s); check(lexical.token)(s)
     }
   }
 

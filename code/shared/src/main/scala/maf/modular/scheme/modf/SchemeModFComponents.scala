@@ -8,24 +8,24 @@ import maf.language.scheme._
 sealed trait SchemeModFComponent extends SmartHash
 
 object SchemeModFComponent:
-  // The main function call, i.e. the entry point of the program (corresponding to all top-level code)
-  case object Main extends SchemeModFComponent:
-    override def toString: String = "main"
-  // A call to a specific closure
-  case class Call[Context](
-      clo: (SchemeLambdaExp, Environment[Address]),
-      ctx: Context)
-      extends SchemeModFComponent:
-    // convenience accessors
-    lazy val (lambda, env) = clo
-    override def toString: String = s"${lambda.lambdaName} [$ctx]"
+    // The main function call, i.e. the entry point of the program (corresponding to all top-level code)
+    case object Main extends SchemeModFComponent:
+        override def toString: String = "main"
+    // A call to a specific closure
+    case class Call[Context](
+        clo: (SchemeLambdaExp, Environment[Address]),
+        ctx: Context)
+        extends SchemeModFComponent:
+        // convenience accessors
+        lazy val (lambda, env) = clo
+        override def toString: String = s"${lambda.lambdaName} [$ctx]"
 
 trait StandardSchemeModFComponents extends BaseSchemeModFSemantics:
-  import SchemeModFComponent._
-  type Component = SchemeModFComponent
-  lazy val initialComponent = Main
-  def newComponent(call: Call[ComponentContext]) = call
-  def view(cmp: Component): SchemeModFComponent = cmp
+    import SchemeModFComponent._
+    type Component = SchemeModFComponent
+    lazy val initialComponent = Main
+    def newComponent(call: Call[ComponentContext]) = call
+    def view(cmp: Component): SchemeModFComponent = cmp
 
 /*package maf.modular.scheme
 

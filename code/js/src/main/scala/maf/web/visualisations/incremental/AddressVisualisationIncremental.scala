@@ -51,10 +51,10 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
     super.refreshDataAfterStep()
     val writerNode = getNode(prevComponent)
     analysis.cachedWrites(prevComponent).foreach { addr =>
-      val addrNode: AddrNode = getNode(addr)
-      val edge = getEdge(writerNode, addrNode)
-      nodesData += addrNode
-      edgesData += edge
+        val addrNode: AddrNode = getNode(addr)
+        val edge = getEdge(writerNode, addrNode)
+        nodesData += addrNode
+        edgesData += edge
     }
     oldWriteDeps = analysis.cachedWrites
   }
@@ -126,9 +126,9 @@ trait RetainAllIncremental extends RetainAll {
     super.deleteOnStep(cmp)
     val writerNode = getNode(cmp)
     oldWriteDeps(cmp).foreach { addr =>
-      val addrNode: AddrNode = getNode(addr)
-      val edge = getEdge(writerNode, addrNode)
-      edgesData -= edge
+        val addrNode: AddrNode = getNode(addr)
+        val edge = getEdge(writerNode, addrNode)
+        edgesData -= edge
     }
   }
 }

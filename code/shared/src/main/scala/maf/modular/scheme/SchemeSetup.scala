@@ -14,28 +14,28 @@ import maf.modular.scheme._
  */
 trait SchemeSetup
     extends ModAnalysis[SchemeExp]
-       with GlobalStore[SchemeExp]
-       with ReturnValue[SchemeExp]
-       with SchemeDomain
-       with AnalysisResults[SchemeExp]:
-  // Provide a global store
-  override var store: Map[Addr, Value] = Map.empty
-  // collect result from variable and pointer addresses
-  def resultsPerIdn: Map[Identity, Set[Value]] =
-    store
-      .filter(_._1 match {
-        case _: VarAddr[_] | _: PtrAddr[_] => true
-        case _                             => false
-      })
-      .groupBy(_._1.idn)
-      .view
-      .mapValues(_.values.toSet)
-      .toMap
-  final lazy val initialBds: Iterable[(String, Addr, Value)] = primitives.allPrimitives.map { case (name, p) =>
-    (name, PrmAddr(name), lattice.primitive(p.name))
-  }
-  final lazy val initialEnv: Environment[Addr] = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
-  // Set up initial environment and install the primitives in the global store.
-  override def init() =
-    super.init()
-    initialBds.foreach(bnd => store += bnd._2 -> bnd._3)
+    with GlobalStore[SchemeExp]
+    with ReturnValue[SchemeExp]
+    with SchemeDomain
+    with AnalysisResults[SchemeExp]:
+    // Provide a global store
+    override var store: Map[Addr, Value] = Map.empty
+    // collect result from variable and pointer addresses
+    def resultsPerIdn: Map[Identity, Set[Value]] =
+      store
+        .filter(_._1 match {
+          case _: VarAddr[_] | _: PtrAddr[_] => true
+          case _                             => false
+        })
+        .groupBy(_._1.idn)
+        .view
+        .mapValues(_.values.toSet)
+        .toMap
+    final lazy val initialBds: Iterable[(String, Addr, Value)] = primitives.allPrimitives.map { case (name, p) =>
+      (name, PrmAddr(name), lattice.primitive(p.name))
+    }
+    final lazy val initialEnv: Environment[Addr] = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
+    // Set up initial environment and install the primitives in the global store.
+    override def init() =
+        super.init()
+        initialBds.foreach(bnd => store += bnd._2 -> bnd._3)

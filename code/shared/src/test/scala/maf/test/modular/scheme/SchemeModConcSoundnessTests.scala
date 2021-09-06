@@ -38,9 +38,9 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests {
 
 class SimpleSchemeModConcSoundnessTests
     extends SchemeModConcSoundnessTests
-       with SimpleSchemeModConc
-       with ThreadBenchmarks
-       with VariousSequentialBenchmarks {
+    with SimpleSchemeModConc
+    with ThreadBenchmarks
+    with VariousSequentialBenchmarks {
   override def isSlow(b: Benchmark): Boolean =
     SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
       Set(
