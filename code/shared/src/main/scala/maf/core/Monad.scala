@@ -83,9 +83,16 @@ object MonadJoin:
 /// MonadStateT
 ///
 
-case class MonadStateT[S, M[_]: Monad, A](run: S => M[(A, S)])
+trait StateOps[S, M[_, _]]:
+    def get: M[S, S]
+    def put(s: S): M[S, Unit]
+
+class MonadStateT[S, M[_]: Monad, A](val run: S => M[(A, S)])
 
 object MonadStateT:
+    def apply[S, M[_]: Monad, A](run: S => M[(A, S)]): MonadStateT[S, M, A] =
+      new MonadStateT(run)
+
     implicit def stateInstance[S, M[_]: Monad]: Monad[[A] =>> MonadStateT[S, M, A]] = new Monad:
         private type SM[A] = MonadStateT[S, M, A]
         def unit[X](x: X): SM[X] =
@@ -104,6 +111,13 @@ object MonadStateT:
             }
           )
 
+    implicit def stateOpsInstance[S, M[_]: Monad]: StateOps[S, [S, A] =>> MonadStateT[S, M, A]] = new StateOps:
+        private type SM[A] = MonadStateT[S, M, A]
+        def get: SM[S] = MonadStateT((s: S) => Monad[M].unit((s, s)))
+        def put(snew: S): SM[Unit] = MonadStateT((s: S) => Monad[M].unit(((), snew)))
+
+    def lift[S, M[_]: Monad, X](v: M[X]): MonadStateT[S, M, X] = MonadStateT((s: S) => Monad[M].map(v)((_, s)))
+
 ///
 /// SetMonad
 ///
@@ -116,4 +130,5 @@ object SetMonad:
         def map[X, Y](m: M[X])(f: X => Y): M[Y] =
           m.map(f)
         def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y] =
-          m.flatMap(f)
+            m.flatMap(f)
+            m.flatMap(f)
