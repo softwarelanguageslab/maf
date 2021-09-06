@@ -1,36 +1,32 @@
 package maf.util.graph
 
-sealed trait GraphMetadata {
+sealed trait GraphMetadata:
 
   /** Find a specific key in this metadata, if present */
   def find(key: String): Option[GraphMetadata] = None
-}
-case class GraphMetadataMap(map: Map[String, GraphMetadata]) extends GraphMetadata {
+case class GraphMetadataMap(map: Map[String, GraphMetadata]) extends GraphMetadata:
   override def find(key: String) = map.get(key)
-}
 case class GraphMetadataString(str: String) extends GraphMetadata
 case class GraphMetadataBool(bool: Boolean) extends GraphMetadata
 case class GraphMetadataValue[V](v: V) extends GraphMetadata
 case object GraphMetadataNone extends GraphMetadata
 
-trait GraphElement {
+trait GraphElement:
   def label: String
   def color: Color
   def metadata: GraphMetadata
-}
 
-class NoTransition extends GraphElement {
+class NoTransition extends GraphElement:
   def label = ""
   def color = Colors.Black
   def metadata = GraphMetadataNone
-}
 
 object EmptyGraphElement
 
 /**
  * A graph with nodes of type N and edges of type E. Edges have a specific type because they may contain information (i.e., they can be annotated).
  */
-trait Graph[G, N <: GraphElement, E <: GraphElement] {
+trait Graph[G, N <: GraphElement, E <: GraphElement]:
 
   /** The empty graph */
   def empty: G
@@ -69,15 +65,14 @@ trait Graph[G, N <: GraphElement, E <: GraphElement] {
 
   /** Finds nodes from the graph satisfying the predicate */
   def findNodes(g: G, p: N => Boolean): Set[N]
-}
 
-object Graph {
+object Graph:
   def apply[G, N <: GraphElement, E <: GraphElement]()(implicit g: Graph[G, N, E]): Graph[G, N, E] =
     g
 
   implicit class GraphOps[G, N <: GraphElement, E <: GraphElement](
       g: G
-    )(implicit ev: Graph[G, N, E]) {
+    )(implicit ev: Graph[G, N, E]):
     def addNode(node: N): G = ev.addNode(g, node)
     def addEdge(
         node1: N,
@@ -94,5 +89,3 @@ object Graph {
     def nodes: Int = ev.nodes(g)
     def edges: Int = ev.nodes(g)
     def findNodes(p: N => Boolean): Set[N] = ev.findNodes(g, p)
-  }
-}

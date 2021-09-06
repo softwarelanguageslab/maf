@@ -20,12 +20,12 @@ case class IncrementalConfiguration(
     componentInvalidation: Boolean = true,
     dependencyInvalidation: Boolean = true,
     writeInvalidation: Boolean = true,
-    cyclicValueInvalidation: Boolean = true) {
+    cyclicValueInvalidation: Boolean = true):
 
-  if (cyclicValueInvalidation && !writeInvalidation)
+  if cyclicValueInvalidation && !writeInvalidation then
     throw new Exception("Illegal configuration state: cyclic value invalidation requires write invalidation.")
 
-  private def booleanToString(b: Boolean): String = if (b) "enabled" else "disabled"
+  private def booleanToString(b: Boolean): String = if b then "enabled" else "disabled"
 
   def infoString(): String =
     s"""****** Incremental configuration ******
@@ -35,24 +35,22 @@ case class IncrementalConfiguration(
        |    - Cycle detection: ${booleanToString(cyclicValueInvalidation)}
        |***************************************""".stripMargin
 
-  override def toString: String = {
-    val ci = if (componentInvalidation) "CI" else ""
-    val di = if (dependencyInvalidation) "DI" else ""
-    val wi = if (writeInvalidation) {
-      if (cyclicValueInvalidation) "WI+CY" else "WI"
-    } else ""
+  override def toString: String =
+    val ci = if componentInvalidation then "CI" else ""
+    val di = if dependencyInvalidation then "DI" else ""
+    val wi = if writeInvalidation then
+      if cyclicValueInvalidation then "WI+CY" else "WI"
+    else ""
     val string = List(ci, di, wi).filterNot(_.isEmpty).mkString("-")
-    if (string.isEmpty) "NoOpt" else string
-  }
+    if string.isEmpty then "NoOpt" else string
 
   // Utility to determine between fast/slow tests based on the number of active optimisations.
-  def rank(): Int = {
-    val ci = if (componentInvalidation) 1 else 0
-    val di = if (dependencyInvalidation) 1 else 0
-    val wi = if (writeInvalidation) 1 else 0
-    val cy = if (cyclicValueInvalidation) 1 else 0
+  def rank(): Int =
+    val ci = if componentInvalidation then 1 else 0
+    val di = if dependencyInvalidation then 1 else 0
+    val wi = if writeInvalidation then 1 else 0
+    val cy = if cyclicValueInvalidation then 1 else 0
     ci + di + wi + cy
-  }
 
   /**
    * * Other analysis specifications **
@@ -61,15 +59,13 @@ case class IncrementalConfiguration(
   /** Specifies whether assertions should be checked. This flag can be disabled for performance benchmarks. */
   var checkAsserts: Boolean = true
 
-  def disableAsserts(): IncrementalConfiguration = {
+  def disableAsserts(): IncrementalConfiguration =
     val copy = this.copy()
     copy.checkAsserts = false
     copy
-  }
-}
 
 /** Provides instantiations of all configurations for the incremental analysis. */
-object IncrementalConfiguration {
+object IncrementalConfiguration:
 
   // For simplicity, already instantiate all possible configurations here so they can be referred by name.
 
@@ -111,4 +107,3 @@ object IncrementalConfiguration {
       // Four optimisations
       allOptimisations,
     )
-}

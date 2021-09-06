@@ -10,7 +10,7 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.worklist._
 
-object ParallelModFAnalyses {
+object ParallelModFAnalyses:
   def callDepthFirst(
       prg: SchemeExp,
       n: Int,
@@ -180,9 +180,8 @@ object ParallelModFAnalyses {
     override def workers = n
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
   }
-}
 
-object ParallelModFBenchmarks {
+object ParallelModFBenchmarks:
   def paperName: Map[String, String] = List(
     ("test/R5RS/WeiChenRompf2019/meta-circ.scm", "meta-circ"),
     ("test/R5RS/WeiChenRompf2019/earley.sch", "earley"),
@@ -250,48 +249,40 @@ object ParallelModFBenchmarks {
   )
 
   def for2CFA = all.filter(b => !(excludedFor2CFA.contains(b)))
-}
 
-trait BaseResultsModFSetup extends PerformanceEvaluation {
+trait BaseResultsModFSetup extends PerformanceEvaluation:
   override def analysisRuns = 10 // reduced for getting results faster
   override def analysisTime = Timeout.start(Duration(10, MINUTES))
   def k: Int
   def analyses: List[(SchemeExp => Analysis, String)] = List(
     (SchemeAnalyses.kCFAAnalysis(_, k), s"base ModF ($k-CFA)")
   )
-}
 
-object BaseResultsModF0CFA extends BaseResultsModFSetup {
+object BaseResultsModF0CFA extends BaseResultsModFSetup:
   def k = 0
   def benchmarks = ParallelModFBenchmarks.all
-}
 
-object BaseResultsModF2CFA extends BaseResultsModFSetup {
+object BaseResultsModF2CFA extends BaseResultsModFSetup:
   def k = 2
   def benchmarks = ParallelModFBenchmarks.for2CFA
-}
 
-object BaseResultsModF {
-  def loccount(file: String): Int = {
+object BaseResultsModF:
+  def loccount(file: String): Int =
     import scala.io.Source
     Source.fromFile(file).getLines().length
-  }
-  def formatInMinuteSeconds(ms: Double): String = {
+  def formatInMinuteSeconds(ms: Double): String =
     val seconds = (ms / 1000).round.toInt
     val minutes = seconds / 60
     val remainingSeconds = seconds - (minutes * 60)
-    if (minutes > 0) {
+    if minutes > 0 then
       s"${minutes}m${remainingSeconds}s"
-    } else {
+    else
       s"${seconds}s"
-    }
-  }
-  def formatResult(result: PerformanceResult) = result match {
+  def formatResult(result: PerformanceResult) = result match
     case Completed(res) => s"${formatInMinuteSeconds(res.mean)} \\pm ${formatInMinuteSeconds(res.stddev)}"
     case TimedOut       => "\\infty"
     case NoData         => "\\infty"
-  }
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     BaseResultsModF0CFA.run()
     BaseResultsModF0CFA.exportCSV("data/modf-base-context-insensitive.csv", BaseResultsModF0CFA.format _, timestamped = false)
     BaseResultsModF0CFA.exportCSV("data/modf-base-context-insensitive.csv-stddev", BaseResultsModF0CFA.formatStddev _, timestamped = false)
@@ -305,10 +296,8 @@ object BaseResultsModF {
       val twoCFA = BaseResultsModF2CFA.results.get(benchmark, "base ModF (2-CFA)").get
       println(s"\\prog{$shortName} & $loc & ${formatResult(zeroCFA)} & ${formatResult(twoCFA)} \\\\ \\hline")
     }
-  }
-}
 
-trait ParallelModFPerformance extends PerformanceEvaluation {
+trait ParallelModFPerformance extends PerformanceEvaluation:
   override def analysisRuns = 10 // reduced for getting results faster
   override def analysisTime = Timeout.start(Duration(10, MINUTES))
   def k: Int
@@ -317,26 +306,22 @@ trait ParallelModFPerformance extends PerformanceEvaluation {
   def benchmarks: Iterable[Benchmark]
   def analyses: List[(SchemeExp => Analysis, String)] =
     cores.map(n => (SchemeAnalyses.parallelKCFAAnalysis(_, n, k), s"parallel (n = $n, $k-CFA)"))
-  def main(args: Array[String]) = {
+  def main(args: Array[String]) =
     run()
     exportCSV(outputFile, format _, timestamped = false)
     exportCSV(outputFile + "-stddev", formatStddev _, timestamped = false)
-  }
-}
 
-object ParallelModFPerformance0CFA extends ParallelModFPerformance {
+object ParallelModFPerformance0CFA extends ParallelModFPerformance:
   def k = 0
   def outputFile = "data/modf-context-insensitive.csv"
   def benchmarks = ParallelModFBenchmarks.all
-}
 
-object ParallelModFPerformance2CFA extends ParallelModFPerformance {
+object ParallelModFPerformance2CFA extends ParallelModFPerformance:
   def k = 2
   def outputFile = "data/modf-context-sensitive.csv"
   def benchmarks = ParallelModFBenchmarks.for2CFA
-}
 
-trait ParallelModFPerformanceMetrics extends ParallelModFPerformance {
+trait ParallelModFPerformanceMetrics extends ParallelModFPerformance:
   def n = 8
   override def cores = List(n)
   override def analyses = List(
@@ -350,21 +335,18 @@ trait ParallelModFPerformanceMetrics extends ParallelModFPerformance {
     (ParallelModFAnalyses.biggerEnvironmentFirst(_, n, k), "bigger-env"),
     (ParallelModFAnalyses.smallerEnvironmentFirst(_, n, k), "smaller-env")
   )
-}
 
-object ParallelPerformanceMetrics0CFA extends ParallelModFPerformanceMetrics {
+object ParallelPerformanceMetrics0CFA extends ParallelModFPerformanceMetrics:
   def k = 0
   def outputFile = "data/modf-context-insensitive-metrics.csv"
   def benchmarks = ParallelModFBenchmarks.all
-}
 
-object ParallelPerformanceMetrics2CFA extends ParallelModFPerformanceMetrics {
+object ParallelPerformanceMetrics2CFA extends ParallelModFPerformanceMetrics:
   def k = 2
   def outputFile = "data/modf-context-sensitive-metrics.csv"
   def benchmarks = ParallelModFBenchmarks.for2CFA
-}
 
-object ParallelPerformanceModConc extends PerformanceEvaluation {
+object ParallelPerformanceModConc extends PerformanceEvaluation:
   override def analysisRuns = 10 // reduced for getting results faster
   override def analysisTime = Timeout.start(Duration(10, MINUTES))
   def benchmarks: Iterable[String] = List(
@@ -396,8 +378,6 @@ object ParallelPerformanceModConc extends PerformanceEvaluation {
           (SchemeAnalyses.parallelModConc(_, n, m, 5), s"parallel (n = $n; m = $m)")
         }
       }
-  def main(args: Array[String]) = {
+  def main(args: Array[String]) =
     run()
     exportCSV("data/modconc.csv", format _, timestamped = false)
-  }
-}

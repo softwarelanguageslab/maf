@@ -23,6 +23,5 @@ trait IntLattice[I] extends Lattice[I] { self =>
   def toChar[C: CharLattice](n: I): C
 }
 
-object IntLattice {
+object IntLattice:
   def apply[I: IntLattice]: IntLattice[I] = implicitly
-}

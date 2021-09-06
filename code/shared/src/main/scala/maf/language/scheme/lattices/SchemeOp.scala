@@ -1,20 +1,17 @@
 package maf.language.scheme.lattices
 
-sealed trait SchemeOp {
+sealed trait SchemeOp:
   val arity: Int
   val name: String
   def checkArity[L](args: List[L]): Unit =
-    if (args.size != arity) {
+    if args.size != arity then
       // This is a runtime error because a lattice operation is improperly called by the analysis developper
       throw new Exception(s"SchemeOp ${name} expects ${arity} arguments but got ${args.size}")
-    }
-}
 
-object SchemeOp {
+object SchemeOp:
 
-  sealed trait SchemeOp1(val name: String) extends SchemeOp {
+  sealed trait SchemeOp1(val name: String) extends SchemeOp:
     val arity = 1
-  }
 
   case object Car extends SchemeOp1("car")
   case object Cdr extends SchemeOp1("cdr")
@@ -114,9 +111,8 @@ object SchemeOp {
     MakeOutputPort
   )
 
-  sealed trait SchemeOp2(val name: String) extends SchemeOp {
+  sealed trait SchemeOp2(val name: String) extends SchemeOp:
     val arity = 2
-  }
 
   case object Plus extends SchemeOp2("+")
   case object Minus extends SchemeOp2("-")
@@ -162,13 +158,11 @@ object SchemeOp {
     VectorRef
   )
 
-  sealed trait SchemeOp3(val name: String) extends SchemeOp {
+  sealed trait SchemeOp3(val name: String) extends SchemeOp:
     val arity = 3
-  }
 
   case object Substring extends SchemeOp3("substring")
   case object VectorSet extends SchemeOp3("vector-set!")
   case object StringSet extends SchemeOp3("string-set!")
 
   val ternaryOperators: Iterable[SchemeOp3] = Set(Substring, VectorSet, StringSet)
-}

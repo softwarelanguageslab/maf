@@ -21,11 +21,11 @@ import maf.language.scheme.SchemeMutableVarBoxer
 import maf.language.scheme.primitives.SchemePrelude
 import maf.language.CScheme.CSchemeLexicalAddresser
 
-object AdaptiveRun {
+object AdaptiveRun:
 
   def main(args: Array[String]): Unit = testTransform()
 
-  def testConcrete() = {
+  def testConcrete() =
     val txt = """
     (define x 2) x
     """
@@ -37,9 +37,8 @@ object AdaptiveRun {
         println(s"${addr} -> ${value}")
       case _ => ()
     }
-  }
 
-  def testTransform(): Unit = {
+  def testTransform(): Unit =
     val prg = """
       (define (f n) (+ n 1))
       (set! f (lambda (y) (- y 1)))
@@ -49,9 +48,8 @@ object AdaptiveRun {
     val prelud = SchemePrelude.addPrelude(parsed, Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
     val transf = SchemeMutableVarBoxer.transform(prelud)
     transf.foreach(println)
-  }
 
-  def testModFLocal(): Unit = {
+  def testModFLocal(): Unit =
     val txt = Reader.loadFile("test/R5RS/various/grid.scm")
     val prg = CSchemeParser.parseProgram(txt)
     val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
@@ -72,35 +70,31 @@ object AdaptiveRun {
         println(s"==> ${anl.results(cmp)}")
         println()
       }
-  }
 
-  def testModConc(): Unit = {
+  def testModConc(): Unit =
     val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")
     val prg = CSchemeParser.parseProgram(txt)
     val anl = SchemeAnalyses.modConcAnalysis(prg, 0)
     anl.analyzeWithTimeout(Timeout.start(Duration(60, SECONDS)))
     print(anl.store)
-  }
 
-  def testAbstract(): Unit = {
+  def testAbstract(): Unit =
     val txt = Reader.loadFile("test/R5RS/various/my-test.scm")
     val prg = CSchemeParser.parseProgram(txt)
     val anl = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
       var step = 0
-      override def step(timeout: Timeout.T): Unit = {
+      override def step(timeout: Timeout.T): Unit =
         val cmp = workList.head
         step += 1
         println(s"[$step] Analysing ${view(cmp)}")
         super.step(timeout)
-      }
     }
     anl.analyze()
     //debugClosures(analysis)
     //println(anl.finished)
     debugResults(anl, false)
-  }
 
-  def testAbstractAdaptive(): Unit = {
+  def testAbstractAdaptive(): Unit =
     val txt = Reader.loadFile("test/R5RS/various/mceval.scm")
     val prg = CSchemeParser.parseProgram(txt)
     val anl = new AdaptiveModAnalysis(prg, rate = 1000)
@@ -111,12 +105,11 @@ object AdaptiveRun {
       with FIFOWorklistAlgorithm[SchemeExp] {
       // logging the analysis
       var step = 0
-      override def step(timeout: Timeout.T): Unit = {
+      override def step(timeout: Timeout.T): Unit =
         //val cmp = workList.head
         step += 1
         //println(s"[$step] Analysing ${view(cmp)}")
         super.step(timeout)
-      }
       override protected def debug(message: => String) = println(s"DEBUG: [$step] $message")
       override protected def warn(message: => String) = println(s"WARN: [$step] $message")
     }
@@ -126,7 +119,6 @@ object AdaptiveRun {
     println(s"Steps: ${anl.step}")
     println(s"Finished: ${anl.finished}")
     debugResults(anl, false)
-  }
 
   def debugResults(machine: BaseSchemeModFSemantics, printMore: Boolean = false): Unit =
     machine.store.foreach {
@@ -134,4 +126,3 @@ object AdaptiveRun {
         println(s"$cmp => $result")
       case _ => ()
     }
-}

@@ -27,6 +27,5 @@ trait RealLattice[R] extends Lattice[R] { self =>
   def toString[S: StringLattice](n: R): S
 }
 
-object RealLattice {
+object RealLattice:
   def apply[R: RealLattice]: RealLattice[R] = implicitly
-}

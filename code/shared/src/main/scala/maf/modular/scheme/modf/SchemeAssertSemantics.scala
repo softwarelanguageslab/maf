@@ -3,37 +3,33 @@ package maf.modular.scheme.modf
 import maf.language.scheme._
 import maf.modular.scheme.modf.EvalM._
 
-trait SchemeAssertSemantics extends BigStepModFSemantics {
+trait SchemeAssertSemantics extends BigStepModFSemantics:
   var assertionsFailed: Set[(Component, SchemeExp)] = Set.empty
 
-  protected def assertViolated(component: Component, exp: SchemeExp): Unit = {
+  protected def assertViolated(component: Component, exp: SchemeExp): Unit =
     assertionsFailed = assertionsFailed + ((component, exp))
     assertionsVerified = assertionsVerified - ((component, exp))
-  }
 
   var assertionsVerified: Set[(Component, SchemeExp)] = Set.empty
 
-  protected def assertVerified(component: Component, exp: SchemeExp): Unit = {
+  protected def assertVerified(component: Component, exp: SchemeExp): Unit =
     assertionsVerified = assertionsVerified + ((component, exp))
     assertionsFailed = assertionsFailed - ((component, exp))
-  }
 
-  def printAssertions(): Unit = {
-    (assertionsVerified.size, assertionsFailed.size) match { // Not the prettiest solution but it works.
+  def printAssertions(): Unit =
+    (assertionsVerified.size, assertionsFailed.size) match // Not the prettiest solution but it works.
       case (1, 1) => println(s"1 assertion was verified, 1 assertion could not be verified.")
       case (1, n) => println(s"1 assertion was verified, $n assertions could not be verified.")
       case (m, 1) => println(s"$m assertions were verified, 1 assertion could not be verified.")
       case (m, n) => println(s"$m assertions were verified, $n assertions could not be verified.")
-    }
     assertionsVerified.foreach({ case (cmp, a) => println(s"Verified $a ($cmp)") })
     assertionsFailed.foreach({ case (cmp, a) => println(s"Failed $a ($cmp)") })
-  }
 
   override def intraAnalysis(cmp: Component): AssertionModFIntra
 
-  trait AssertionModFIntra extends IntraAnalysis with BigStepModFIntra {
+  trait AssertionModFIntra extends IntraAnalysis with BigStepModFIntra:
     override def evalAssert(exp: SchemeExp): EvalM[Value] =
-      for {
+      for
         v <- eval(exp)
         res <- merge(
           // We are conservative: we only consider an assertion verified if it is certainly only true. (Putting this tests here avoids a dependency on the order in which assertViolated and assertVerified are called.Ò
@@ -46,6 +42,4 @@ trait SchemeAssertSemantics extends BigStepModFSemantics {
             lattice.void
           }
         )
-      } yield res
-  }
-}
+      yield res

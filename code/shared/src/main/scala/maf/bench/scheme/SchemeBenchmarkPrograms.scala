@@ -9,31 +9,27 @@ import scala.util.Random
 // null values are used here due to Java interop
 import scala.language.unsafeNulls
 
-object SchemeBenchmarkPrograms {
+object SchemeBenchmarkPrograms:
 
-  def files(dir: File): Array[File] = {
+  def files(dir: File): Array[File] =
     val lst = dir.listFiles()
-    if (lst == null) Array()
+    if lst == null then Array()
     else lst
-  }
 
   // Just include an entire folder of programs, except some that are explicitly specified. The directory name should not end with a "/".
-  def fromFolderR(directory: String)(exclude: String*): Set[String] = {
-    def recur(dir: File): Array[File] = {
+  def fromFolderR(directory: String)(exclude: String*): Set[String] =
+    def recur(dir: File): Array[File] =
       val here = files(dir)
       val (dr, noDr) = here.partition(_.isDirectory)
       noDr ++ dr.flatMap(recur)
-    }
     val root = new File(directory)
     val base = root.getAbsolutePath.nn.length - directory.length
     recur(root).map(_.getAbsolutePath.nn.substring(base).nn).toSet -- exclude.map(file => s"$directory/$file")
-  }
 
-  def fromFolder(directory: String)(exclude: String*): Set[String] = {
+  def fromFolder(directory: String)(exclude: String*): Set[String] =
     val root = new File(directory)
     val base = root.getAbsolutePath.nn.length - directory.length
     files(root).filter(!_.isDirectory).map(_.getAbsolutePath.nn.substring(base).nn).toSet -- exclude.map(file => s"$directory/$file")
-  }
 
   // Only include certain listed programs.
   def toFolder(directory: String)(include: String*): Set[String] = include.map(file => s"$directory/$file").toSet
@@ -122,4 +118,3 @@ object SchemeBenchmarkPrograms {
   // ALL ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   lazy val allBenchmarks: Set[String] = SmartUnion.sunion(concurrentBenchmarks, sequentialBenchmarks)
-}

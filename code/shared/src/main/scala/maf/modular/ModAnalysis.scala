@@ -33,10 +33,9 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
   var visited: Set[Component] = Set()
   def spawn(cmp: Component, from: Component): Unit = spawn(cmp)
   def spawn(cmp: Component): Unit =
-    if (!visited(cmp)) { // TODO[easy]: a mutable set could do visited.add(...) in a single call
+    if !visited(cmp) then // TODO[easy]: a mutable set could do visited.add(...) in a single call
       visited += cmp
       addToWorkList(cmp)
-    }
 
   /** Keeps track of the components depending on a given "effect" (~ read dependencies). */
   var deps: Map[Dependency, Set[Component]] = Map[Dependency, Set[Component]]().withDefaultValue(Set.empty)
@@ -80,11 +79,10 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
     def analyzeWithTimeout(timeout: Timeout.T): Unit
 
     /** Pushes the local changes to the global analysis state. */
-    def commit(): Unit = {
+    def commit(): Unit =
       R.foreach(inter.register(component, _))
-      W.foreach(dep => if (doWrite(dep)) inter.trigger(dep))
+      W.foreach(dep => if doWrite(dep) then inter.trigger(dep))
       C.foreach(inter.spawn(_, component))
-    }
 
     /** Called upon a commit for every written dependency. Returns a boolean indicating whether the global analysis state was modified. */
     def doWrite(dep: Dependency): Boolean = false // `ModAnalysis` has no knowledge of dependencies it can commit.
@@ -108,13 +106,11 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
    * @param timeout
    *   allows this method to return before termination of the analysis if the given timeout is reached
    */
-  final def analyzeWithTimeout(timeout: Timeout.T): Unit = {
-    if (!initialized) {
+  final def analyzeWithTimeout(timeout: Timeout.T): Unit =
+    if !initialized then
       init()
       initialized = true
-    }
     run(timeout)
-  }
 
   /** Convenience method, akin to analyzeWithTimeout, but where the timeout is directly given in seconds */
   final def analyzeWithTimeoutInSeconds(seconds: Long): Unit =
@@ -129,24 +125,21 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
   // Exporting an analysis to a file.
 
   /** Serialises a modular analysis and writes it to a file. */
-  def exportAnalysis(file: String): Unit = {
+  def exportAnalysis(file: String): Unit =
     val out: ObjectOutputStream = new ObjectOutputStream(new FileOutputStream(file))
     out.writeObject(this)
     out.close()
-  }
 
   def init() =
     visited = visited + initialComponent
 
 }
 
-object ModAnalysis {
+object ModAnalysis:
 
   /** Reads a serialised modular analysis from a file and returns the deserialised object. */
-  def importAnalysis[A <: ModAnalysis[_]](file: String): A = {
+  def importAnalysis[A <: ModAnalysis[_]](file: String): A =
     val in: ObjectInputStream = new ObjectInputStream(new FileInputStream(file))
     val analysis: A = in.readObject().asInstanceOf[A]
     in.close()
     analysis
-  }
-}

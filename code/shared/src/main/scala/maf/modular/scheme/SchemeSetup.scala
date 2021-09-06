@@ -17,7 +17,7 @@ trait SchemeSetup
        with GlobalStore[SchemeExp]
        with ReturnValue[SchemeExp]
        with SchemeDomain
-       with AnalysisResults[SchemeExp] {
+       with AnalysisResults[SchemeExp]:
   // Provide a global store
   override var store: Map[Addr, Value] = Map.empty
   // collect result from variable and pointer addresses
@@ -36,8 +36,6 @@ trait SchemeSetup
   }
   final lazy val initialEnv: Environment[Addr] = Environment(initialBds.map(bnd => (bnd._1, bnd._2)))
   // Set up initial environment and install the primitives in the global store.
-  override def init() = {
+  override def init() =
     super.init()
     initialBds.foreach(bnd => store += bnd._2 -> bnd._3)
-  }
-}

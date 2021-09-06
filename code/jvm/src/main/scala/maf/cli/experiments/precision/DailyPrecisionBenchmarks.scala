@@ -17,7 +17,7 @@ object DailyPrecisionBenchmarks
       ConstantPropagation.C,
       ConstantPropagation.S,
       ConstantPropagation.Sym
-    ] {
+    ]:
   // analyses to compare
   def baseAnalysis(prg: SchemeExp): Analysis =
     SchemeAnalyses.contextInsensitiveAnalysis(prg)
@@ -34,11 +34,9 @@ object DailyPrecisionBenchmarks
   override def concreteTimeout() = Timeout.start(Duration(5, MINUTES))
 
   // entry point
-  def main(args: Array[String]) = {
+  def main(args: Array[String]) =
     benchmarks.foreach(runBenchmark)
     println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
     Writer.setDefaultWriter(Writer.open("benchOutput/precision/daily-precision-benchmarks.csv"))
     Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
     Writer.closeDefaultWriter()
-  }
-}

@@ -1,16 +1,14 @@
 package maf.util.datastructures
 
-case class MultiSet[X](content: Map[X, Int], cardinality: Int) {
+case class MultiSet[X](content: Map[X, Int], cardinality: Int):
   def getMult(elm: X) = content.getOrElse(elm, 0)
-  def updateMult(elm: X)(update: Int => Int) = {
+  def updateMult(elm: X)(update: Int => Int) =
     val mult = getMult(elm)
     val updated = update(mult)
-    if (updated <= 0) {
+    if updated <= 0 then
       MultiSet(content - elm, cardinality - mult)
-    } else {
+    else
       MultiSet(content + (elm -> updated), cardinality - mult + updated)
-    }
-  }
   def contains(elm: X) = getMult(elm) > 0
   def +(elm: X) = updateMult(elm)(_ + 1)
   def -(elm: X) = updateMult(elm)(_ - 1)
@@ -33,8 +31,6 @@ case class MultiSet[X](content: Map[X, Int], cardinality: Int) {
       val m = acc.getOrElse(k, MultiSet.empty)
       acc + (k -> MultiSet(m.content + (elm -> cnt), m.cardinality + cnt))
     }
-}
-object MultiSet {
+object MultiSet:
   def empty[X] = MultiSet[X](Map.empty, 0)
   def apply[X](map: Map[X, Int]): MultiSet[X] = MultiSet(map, map.values.sum)
-}

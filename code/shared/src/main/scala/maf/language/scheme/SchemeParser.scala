@@ -4,7 +4,7 @@ import maf.core.Position._
 import maf.language.sexp._
 import maf.language.scheme.primitives.SchemePrelude
 
-object SchemeParser {
+object SchemeParser:
 
   /** Compiles a s-expression into a scheme expression */
   def compile(exp: SExp): SchemeExp = SchemeCompiler.compile(exp)
@@ -20,4 +20,3 @@ object SchemeParser {
 
   /** Parse a program (including adding a prelude and undefining it) */
   def parseProgram(prg: String): SchemeExp = undefine(SchemePrelude.addPrelude(parse(prg)))
-}

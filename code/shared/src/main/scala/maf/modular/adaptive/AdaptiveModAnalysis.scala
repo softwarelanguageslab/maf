@@ -10,32 +10,29 @@ import maf.util.benchmarks.Timeout
 
 abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, val rate: Int = 1000)
     extends ModAnalysis(program)
-       with SequentialWorklistAlgorithm[Expr] {
+       with SequentialWorklistAlgorithm[Expr]:
 
   // after every `rate` steps, the adaptive analysis gets an opportunity to reflect on (introspection) and possible change (intercession) the analysis behaviour
   // the method `inspect` needs to be implemented to decide when and how this is carried out
   protected def inspect(): Unit
 
   protected var stepCount = 0
-  override def step(timeout: Timeout.T): Unit = {
+  override def step(timeout: Timeout.T): Unit =
     stepCount += 1
     super.step(timeout)
-    if (stepCount == rate) {
+    if stepCount == rate then
       stepCount = 0
       inspect()
-    }
-  }
 
   // the core of the adaptive analysis: one needs to implement how components are to be "adapted"
   // the idea is that the definition/results of `adaptComponent` can change during the analysis itself ...
   def adaptComponent(cmp: Component): Component
 
   // .. and that when this happens, one needs to call `updateAnalysis` to update all analysis data
-  def adaptAnalysis() = {
+  def adaptAnalysis() =
     workList = workList.map(adaptComponent)
     visited = adaptSet(adaptComponent)(visited)
     deps = adaptMap(adaptDep, adaptSet(adaptComponent))(deps)
-  }
   // the analysis' data structures need to be updated after adaptation
   // the following method needs to be implemented by a subclass, since it depends on the representation of 'Dependency'
   def adaptDep(dep: Dependency): Dependency = dep
@@ -57,4 +54,3 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, val rate: 
       }
     }
 
-}

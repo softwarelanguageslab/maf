@@ -11,7 +11,7 @@ import maf.util.benchmarks.Timeout
 
 import scala.concurrent.Await
 
-object ActorConfig {
+object ActorConfig:
   val config = ConfigFactory.parseString("""
 akka {
   actor {
@@ -22,14 +22,13 @@ akka {
   }
 }
   """)
-}
 
 trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Expr] { inter =>
 
   def workers: Int
 
   // We use a Master-Worker pattern, where the Master coordinates the distribution of intra-analyses, and the management of the global analysis state
-  object Master {
+  object Master:
     sealed trait MasterMessage
     case class Start(timeout: Timeout.T, respondTo: ActorRef[Boolean]) extends MasterMessage
     case class Result(intra: ParallelIntra) extends MasterMessage
@@ -38,7 +37,7 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
       Behaviours.receive((context, msg) =>
         msg match {
           case Start(timeout, replyTo) =>
-            for (cmp <- cmps)
+            for cmp <- cmps do
               workers ! Worker.DoWork(intraAnalysis(cmp), timeout, context.self)
             running(workers, cmps, timeout, replyTo)
           case _ => throw new Exception(s"Unexpected message $msg")
@@ -50,10 +49,10 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
         timeout: Timeout.T,
         replyTo: ActorRef[Boolean]
       ): Behaviour[MasterMessage] =
-      if (queued.isEmpty) {
+      if queued.isEmpty then
         replyTo ! true
         Behaviours.stopped
-      } else {
+      else
         Behaviours.receive((context, msg) =>
           msg match {
             case Result(intra) =>
@@ -61,14 +60,14 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
               // add items to the worklist
               var updatedQueued = queued
               toDistribute.foreach { cmp =>
-                if (!updatedQueued(cmp)) {
+                if !updatedQueued(cmp) then {
                   updatedQueued += cmp
                   workers ! Worker.DoWork(intraAnalysis(cmp), timeout, context.self)
                 }
               }
               toDistribute = Nil
               // check if the current component needs to be analyzed again
-              if (intra.isDone) {
+              if intra.isDone then {
                 running(workers, updatedQueued - intra.component, timeout, replyTo)
               } else {
                 workers ! Worker.DoWork(intraAnalysis(intra.component), timeout, context.self)
@@ -79,17 +78,16 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
             case _ => throw new Exception(s"Unexpected message $msg")
           }
         )
-      }
     def pause(
         workers: ActorRef[Worker.WorkerMessage],
         waitingFor: Set[Component],
         cmps: Set[Component],
         replyTo: ActorRef[Boolean]
       ): Behaviour[MasterMessage] =
-      if (waitingFor.isEmpty) {
+      if waitingFor.isEmpty then
         replyTo ! false
         ready(workers, cmps)
-      } else {
+      else
         Behaviours.receiveMessage {
           case TimedOut(cmp) =>
             pause(workers, waitingFor - cmp, cmps + cmp, replyTo)
@@ -98,14 +96,12 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
             val updatedCmps = cmps ++ toDistribute
             val updatedWaitingFor = waitingFor - intra.component
             toDistribute = Nil
-            if (intra.isDone) {
+            if intra.isDone then
               pause(workers, updatedWaitingFor, updatedCmps, replyTo)
-            } else {
+            else
               pause(workers, updatedWaitingFor, updatedCmps + intra.component, replyTo)
-            }
           case msg => throw new Exception(s"Unexpected message $msg")
         }
-      }
     def apply(): Behaviour[MasterMessage] = Behaviours.setup { context =>
       val workerPool = Routers
         .pool(poolSize = inter.workers)(Worker())
@@ -114,10 +110,9 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
       val workers = context.spawn(workerPool, "worker-pool", DispatcherSelector.sameAsParent())
       ready(workers, Set(initialComponent))
     }
-  }
 
   // We use a Master-Worker pattern, where Workers perform the intra-analyses
-  object Worker {
+  object Worker:
     sealed trait WorkerMessage
     case class DoWork(
         intra: ParallelIntra,
@@ -127,15 +122,13 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
     def apply(): Behaviour[WorkerMessage] = Behaviours.setup { context =>
       Behaviours.receiveMessage { case DoWork(intra, timeout, master) =>
         intra.analyzeWithTimeout(timeout)
-        if (timeout.reached) {
+        if timeout.reached then
           master ! Master.TimedOut(intra.component)
-        } else {
+        else
           master ! Master.Result(intra)
-        }
         Behaviours.same
       }
     }
-  }
 
   lazy val actorSystem = ActorSystem(Master(), "analysis-actor-system", ActorConfig.config.nn)
 
@@ -148,17 +141,15 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
     toDistribute = cmp :: toDistribute
 
   import AskPattern._
-  def analyze(timeout: Timeout.T): Unit = {
+  def analyze(timeout: Timeout.T): Unit =
     val infDuration = scala.concurrent.duration.Duration(10, TimeUnit.DAYS) // TODO: Akka doesn't seem to support infinite timeouts?
     implicit val infTimeout = akka.util.Timeout(infDuration)
     implicit val scheduler = actorSystem
     val future = actorSystem.ask[Boolean](replyTo => Master.Start(timeout, replyTo))
-    if (Await.result(future, infDuration)) {
+    if Await.result(future, infDuration) then
       done = true
       actorSystem.terminate()
       Await.result(actorSystem.whenTerminated, infDuration)
-    }
-  }
 
   def analyzeAndShutDown(timeout: Timeout.T): Unit =
     try analyze(timeout)
@@ -171,12 +162,11 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
   trait ParallelIntra extends IntraAnalysis { intra =>
     val depVersion = inter.depVersion
     override def doWrite(dep: Dependency): Boolean =
-      if (super.doWrite(dep)) {
+      if super.doWrite(dep) then
         inter.depVersion += dep -> (inter.depVersion(dep) + 1)
         true
-      } else {
+      else
         false
-      }
     def isDone: Boolean = R.forall(dep => inter.depVersion(dep) == intra.depVersion(dep))
   }
 }

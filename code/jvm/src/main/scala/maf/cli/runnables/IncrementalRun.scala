@@ -18,11 +18,11 @@ import maf.util.benchmarks.Timeout
 
 import scala.concurrent.duration._
 
-object IncrementalRun extends App {
+object IncrementalRun extends App:
 
   // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
   // Useful when reducing a program when debugging the analysis.
-  def interpretProgram(file: String): Unit = {
+  def interpretProgram(file: String): Unit =
     val prog = CSchemeParser.parseProgram(Reader.loadFile(file))
     val i = new SchemeInterpreter((_, _) => (), stack = true)
     print("*")
@@ -30,31 +30,28 @@ object IncrementalRun extends App {
     print("*")
     i.run(prog, Timeout.start(Duration(3, MINUTES)), New)
     println("*")
-  }
 
   def modconcAnalysis(
       bench: String,
       config: IncrementalConfiguration,
       timeout: () => Timeout.T
-    ): Unit = {
+    ): Unit =
     println(s"***** $bench *****")
     val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
     val a = new IncrementalModConcAnalysisCPLattice(text, config) with IncrementalLogging[SchemeExp] {
       override def intraAnalysis(
           cmp: Component
         ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra {
-        override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+        override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           println(s"Analyzing $cmp")
           super.analyzeWithTimeout(timeout)
-        }
       }
     }
     a.analyzeWithTimeout(timeout())
     print(a.finalResult)
     //a.updateAnalysis(timeout())
-  }
 
-  def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit = {
+  def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit =
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
       new IncrementalSchemeModFAnalysisTypeLattice(text, configuration) with IncrementalLogging[SchemeExp] {
         override def focus(a: Addr): Boolean = a.toString.toLowerCase().nn.contains("ret")
@@ -98,7 +95,6 @@ object IncrementalRun extends App {
     //  b.analyzeWithTimeout(timeout())
     // println(b.visited)
     println("Done")
-  }
 
   val modConcbenchmarks: List[String] = List()
   val modFbenchmarks: List[String] = List("test/DEBUG1.scm")
@@ -106,4 +102,3 @@ object IncrementalRun extends App {
 
   modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
   modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
-}

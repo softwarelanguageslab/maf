@@ -8,11 +8,11 @@ import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
-object VerifyAssertions {
+object VerifyAssertions:
 
   def main(args: Array[String]): Unit = test(args(0))
 
-  def test(program: String): Unit = {
+  def test(program: String): Unit =
     val txt = Reader.loadFile(program)
     val prg = SchemeParser.parseProgram(txt)
     val analysis = new ModAnalysis(prg)
@@ -31,5 +31,3 @@ object VerifyAssertions {
     val failed = analysis.assertionsFailed
     println(s"There are ${failed.size} violations")
     failed.foreach(v => println(s"Violation of ${v._2} in component ${v._1}"))
-  }
-}

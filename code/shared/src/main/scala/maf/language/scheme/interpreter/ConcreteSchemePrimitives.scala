@@ -5,13 +5,13 @@ import maf.core.Position.Position
 import maf.language.scheme._
 import maf.lattice.{MathOps, NumOps}
 
-trait ConcreteSchemePrimitives {
+trait ConcreteSchemePrimitives:
   this: BaseSchemeInterpreter[_] =>
 
   import NumOps._
   import ConcreteValues._
 
-  object Primitives {
+  object Primitives:
     //def primitiveMap: Map[String, Prim] = allPrimitives.map(p => (p.name, p)).toMap
     def allPrimitives: Map[String, Prim] = List(
       Times, /* [vv] *: Arithmetic */
@@ -190,31 +190,27 @@ trait ConcreteSchemePrimitives {
       Release
     ).map(prim => (prim.name, prim)).toMap
 
-    abstract class SingleArgumentPrimWithExp(val name: String) extends Prim {
+    abstract class SingleArgumentPrimWithExp(val name: String) extends Prim:
       def fun(fexp: SchemeFuncall): PartialFunction[Value, Value]
 
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
         case (_, x) :: Nil =>
           val f = fun(fexp)
-          if (f.isDefinedAt(x)) {
+          if f.isDefinedAt(x) then
             f(x)
-          } else {
+          else
             stackedException(s"$name (${fexp.idn.pos}): invalid argument type $x")
-          }
         case _ => stackedException(s"$name ($fexp.idn.pos): invalid arguments $args")
-      }
-    }
 
-    abstract class SingleArgumentPrim(name: String) extends SingleArgumentPrimWithExp(name) {
+    abstract class SingleArgumentPrim(name: String) extends SingleArgumentPrimWithExp(name):
       def fun: PartialFunction[Value, Value]
 
       def fun(fexp: SchemeFuncall): PartialFunction[Value, Value] = fun
-    }
 
     ////////////////
     // Arithmetic //
     ////////////////
-    object Plus extends SimplePrim {
+    object Plus extends SimplePrim:
       val name = "+"
       val default: Value = Value.Integer(0)
 
@@ -225,9 +221,8 @@ trait ConcreteSchemePrimitives {
         case (Value.Real(n1), Value.Real(n2))       => Value.Real(n1 + n2)
         case (x, y)                                 => stackedException(s"+ ($position): invalid argument types ($x and $y)")
       })
-    }
 
-    object Times extends SimplePrim {
+    object Times extends SimplePrim:
       val name = "*"
       val default: Value = Value.Integer(1)
 
@@ -238,84 +233,68 @@ trait ConcreteSchemePrimitives {
         case (Value.Real(n1), Value.Real(n2))       => Value.Real(n1 * n2)
         case (x, y)                                 => stackedException(s"* ($position): invalid argument types ($x and $y)")
       })
-    }
 
-    object Minus extends SimplePrim {
+    object Minus extends SimplePrim:
       val name = "-"
 
-      def call(args: List[Value], position: Position) = args match {
+      def call(args: List[Value], position: Position) = args match
         case Nil                     => stackedException("-: wrong number of arguments")
         case Value.Integer(x) :: Nil => Value.Integer(-x)
         case Value.Real(x) :: Nil    => Value.Real(-x)
         case Value.Integer(x) :: rest =>
-          Plus.call(rest, position) match {
+          Plus.call(rest, position) match
             case Value.Integer(y) => Value.Integer(x - y)
             case Value.Real(y)    => Value.Real(x - y)
             case v                => throw new UnexpectedValueTypeException[Value](v)
-          }
         case Value.Real(x) :: rest =>
-          Plus.call(rest, position) match {
+          Plus.call(rest, position) match
             case Value.Integer(y) => Value.Real(x - y)
             case Value.Real(y)    => Value.Real(x - y)
             case v                => throw new UnexpectedValueTypeException[Value](v)
-          }
         case _ => stackedException(s"- ($position): invalid arguments $args")
-      }
-    }
 
-    object Div extends SimplePrim {
+    object Div extends SimplePrim:
       val name = "/"
 
-      def call(args: List[Value], position: Position) = args match {
+      def call(args: List[Value], position: Position) = args match
         case Nil                                            => stackedException("/: wrong number of arguments")
         case Value.Integer(i) :: Nil if i.equals(BigInt(1)) => Value.Integer(BigInt(1))
         case Value.Integer(x) :: Nil                        => Value.Real(1.0 / x)
         case Value.Real(x) :: Nil                           => Value.Real(1.0 / x)
         case Value.Integer(x) :: rest =>
-          Times.call(rest, position) match {
+          Times.call(rest, position) match
             case Value.Integer(y) =>
-              if (x % y == 0) {
+              if x % y == 0 then
                 Value.Integer(x / y)
-              } else {
+              else
                 Value.Real(x.toDouble / y)
-              }
             case Value.Real(y) => Value.Real(x.doubleValue / y)
             case v             => throw new UnexpectedValueTypeException[Value](v)
-          }
         case Value.Real(x) :: rest =>
-          Times.call(rest, position) match {
+          Times.call(rest, position) match
             case Value.Integer(y) => Value.Real(x / y)
             case Value.Real(y)    => Value.Real(x / y)
             case v                => throw new UnexpectedValueTypeException[Value](v)
-          }
         case _ => stackedException(s"/ ($position): invalid arguments $args")
-      }
-    }
 
-    object Modulo extends SimplePrim {
+    object Modulo extends SimplePrim:
       val name = "modulo"
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Value.Integer(x) :: Value.Integer(y) :: Nil if y != 0 =>
           Value.Integer(maf.lattice.MathOps.modulo(x, y))
         case _ :: _ :: Nil => stackedException(s"$name ($position): illegal computation: modulo zero")
         case _             => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object Abs extends SingleArgumentPrim("abs") {
-      def fun = {
+    object Abs extends SingleArgumentPrim("abs"):
+      def fun =
         case Value.Integer(x) => Value.Integer(x.abs)
         case Value.Real(x)    => Value.Real(scala.math.abs(x))
-      }
-    }
 
-    abstract class DoublePrim(name: String, f: Double => Double) extends SingleArgumentPrim(name) {
-      def fun = {
+    abstract class DoublePrim(name: String, f: Double => Double) extends SingleArgumentPrim(name):
+      def fun =
         case Value.Real(x)    => Value.Real(f(x))
         case Value.Integer(x) => Value.Real(f(x.toDouble))
-      }
-    }
 
     object Sin extends DoublePrim("sin", scala.math.sin)
 
@@ -331,26 +310,23 @@ trait ConcreteSchemePrimitives {
 
     object Log extends DoublePrim("log", scala.math.log)
 
-    object Sqrt extends SingleArgumentPrim("sqrt") {
-      def fun = {
+    object Sqrt extends SingleArgumentPrim("sqrt"):
+      def fun =
         case Value.Integer(x) if x < 0 => stackedException(s"sqrt: negative argument $x")
         case Value.Real(x) if x < 0    => stackedException(s"sqrt: negative argument $x")
         case Value.Integer(x) =>
           val r = scala.math.sqrt(x.toDouble)
-          if (r == r.floor) {
+          if r == r.floor then
             Value.Integer(r.toInt)
-          } else {
+          else
             Value.Real(r)
-          }
         case Value.Real(x) => Value.Real(scala.math.sqrt(x))
-      }
-    }
 
-    object Expt extends SimplePrim {
+    object Expt extends SimplePrim:
       val name = "expt"
 
       // TODO: expt should also preserve exactness if possible
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Value.Integer(x) :: Value.Integer(y) :: Nil =>
           Value.Integer(scala.math.pow(x.toDouble, y.toDouble).toInt)
         case Value.Integer(x) :: Value.Real(y) :: Nil =>
@@ -360,87 +336,65 @@ trait ConcreteSchemePrimitives {
         case Value.Real(x) :: Value.Real(y) :: Nil =>
           Value.Real(scala.math.pow(x, y))
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object Ceiling extends SingleArgumentPrim("ceiling") {
-      def fun = {
+    object Ceiling extends SingleArgumentPrim("ceiling"):
+      def fun =
         case x: Value.Integer => x
         case Value.Real(x)    => Value.Real(x.ceil)
-      }
-    }
 
-    object Floor extends SingleArgumentPrim("floor") {
-      def fun = {
+    object Floor extends SingleArgumentPrim("floor"):
+      def fun =
         case x: Value.Integer => x
         case Value.Real(x)    => Value.Real(x.floor)
-      }
-    }
 
-    object Quotient extends SimplePrim {
+    object Quotient extends SimplePrim:
       val name = "quotient"
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x / y)
         case _                                           => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object Remainder extends SimplePrim {
+    object Remainder extends SimplePrim:
       val name = "remainder"
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x % y)
         case _                                           => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object Round extends SingleArgumentPrim("round") {
-      def fun = {
+    object Round extends SingleArgumentPrim("round"):
+      def fun =
         case x: Value.Integer => x
         case Value.Real(x)    => Value.Real(maf.lattice.MathOps.round(x))
-      }
-    }
 
-    object Evenp extends SingleArgumentPrim("even?") {
-      def fun = {
+    object Evenp extends SingleArgumentPrim("even?"):
+      def fun =
         case Value.Integer(x) if x % 2 == 0 => Value.Bool(true)
         case _: Value.Integer               => Value.Bool(false)
-      }
-    }
 
-    object Oddp extends SingleArgumentPrim("odd?") {
-      def fun = {
+    object Oddp extends SingleArgumentPrim("odd?"):
+      def fun =
         case Value.Integer(x) if x % 2 == 1 => Value.Bool(true)
         case _: Value.Integer               => Value.Bool(false)
-      }
-    }
 
-    object Negativep extends SingleArgumentPrim("negative?") {
-      def fun = {
+    object Negativep extends SingleArgumentPrim("negative?"):
+      def fun =
         case Value.Integer(x) if x < 0 => Value.Bool(true)
         case _: Value.Integer          => Value.Bool(false)
-      }
-    }
 
-    object Positivep extends SingleArgumentPrim("positive?") {
-      def fun = {
+    object Positivep extends SingleArgumentPrim("positive?"):
+      def fun =
         case Value.Integer(x) if x > 0 => Value.Bool(true)
         case _: Value.Integer          => Value.Bool(false)
-      }
-    }
 
-    object Zerop extends SingleArgumentPrim("zero?") {
-      def fun = {
+    object Zerop extends SingleArgumentPrim("zero?"):
+      def fun =
         case Value.Integer(i) if i.equals(BigInt(0)) => Value.Bool(true)
         case _: Value.Integer                        => Value.Bool(false)
-      }
-    }
 
-    object Max extends SimplePrim {
+    object Max extends SimplePrim:
       val name = "max"
 
-      def max(maximum: Value, rest: List[Value]): Value = rest match {
+      def max(maximum: Value, rest: List[Value]): Value = rest match
         case Nil => maximum
         case x :: rest =>
           max(
@@ -448,14 +402,14 @@ trait ConcreteSchemePrimitives {
               case Value.Integer(n1) =>
                 maximum match {
                   case Value.Integer(n2) =>
-                    if (n1 > n2) {
+                    if n1 > n2 then {
                       Value.Integer(n1)
                     } else {
                       maximum
                     }
                   case Value.Real(n2) =>
                     val r = n1.toDouble
-                    if (r > n2) {
+                    if r > n2 then {
                       Value.Real(r)
                     } else {
                       maximum
@@ -466,13 +420,13 @@ trait ConcreteSchemePrimitives {
                 maximum match {
                   case Value.Integer(n2) =>
                     val r = n2.toDouble
-                    if (n1 > r) {
+                    if n1 > r then {
                       Value.Real(n1)
                     } else {
                       maximum
                     }
                   case Value.Real(n2) =>
-                    if (n1 > n2) {
+                    if n1 > n2 then {
                       Value.Real(n1)
                     } else {
                       Value.Real(n2)
@@ -483,22 +437,19 @@ trait ConcreteSchemePrimitives {
             },
             rest
           )
-      }
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Nil => stackedException(s"max ($position): wrong number of arguments")
         case Value.Integer(first) :: rest =>
           max(Value.Integer(first), rest)
         case Value.Real(first) :: rest =>
           max(Value.Real(first), rest)
         case _ => stackedException(s"max ($position): invalid arguments $args")
-      }
-    }
 
-    object Min extends SimplePrim {
+    object Min extends SimplePrim:
       val name = "min"
 
-      def min(minimum: Value, rest: List[Value]): Value = rest match {
+      def min(minimum: Value, rest: List[Value]): Value = rest match
         case Nil => minimum
         case x :: rest =>
           min(
@@ -506,14 +457,14 @@ trait ConcreteSchemePrimitives {
               case Value.Integer(n1) =>
                 minimum match {
                   case Value.Integer(n2) =>
-                    if (n1 < n2) {
+                    if n1 < n2 then {
                       Value.Integer(n1)
                     } else {
                       minimum
                     }
                   case Value.Real(n2) =>
                     val r = n1.toDouble
-                    if (r < n2) {
+                    if r < n2 then {
                       Value.Real(r)
                     } else {
                       minimum
@@ -524,13 +475,13 @@ trait ConcreteSchemePrimitives {
                 minimum match {
                   case Value.Integer(n2) =>
                     val r = n2.toDouble
-                    if (n1 < r) {
+                    if n1 < r then {
                       Value.Real(n1)
                     } else {
                       minimum
                     }
                   case Value.Real(n2) =>
-                    if (n1 < n2) {
+                    if n1 < n2 then {
                       Value.Real(n1)
                     } else {
                       Value.Real(n2)
@@ -541,255 +492,209 @@ trait ConcreteSchemePrimitives {
             },
             rest
           )
-      }
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Nil => stackedException(s"min ($position): wrong number of arguments")
         case Value.Integer(first) :: rest =>
           min(Value.Integer(first), rest)
         case Value.Real(first) :: rest =>
           min(Value.Real(first), rest)
         case _ => stackedException(s"min ($position): invalid arguments $args")
-      }
-    }
 
-    object Gcd extends SimplePrim {
+    object Gcd extends SimplePrim:
       val name = "gcd"
 
-      def gcd(a: BigInt, b: BigInt): BigInt = if (b == 0) {
+      def gcd(a: BigInt, b: BigInt): BigInt = if b == 0 then
         a
-      } else {
+      else
         gcd(b, a % b)
-      }
 
-      def call(args: List[Value], position: Position): Value.Integer = args match {
+      def call(args: List[Value], position: Position): Value.Integer = args match
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(gcd(x, y))
         case _                                           => stackedException(s"gcd ($position): invalid arguments $args")
-      }
-    }
 
-    object LessThan extends SimplePrim {
+    object LessThan extends SimplePrim:
       val name = "<"
 
-      def call(args: List[Value], position: Position): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x < y)
         case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x < y)
         case Value.Real(x) :: Value.Integer(y) :: Nil    => Value.Bool(x < y)
         case Value.Real(x) :: Value.Real(y) :: Nil       => Value.Bool(x < y)
         case _                                           => stackedException(s"< ($position): invalid arguments $args")
-      }
-    }
 
-    object LessOrEqual extends SimplePrim {
+    object LessOrEqual extends SimplePrim:
       val name = "<="
 
-      def call(args: List[Value], position: Position): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x <= y)
         case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x <= y)
         case Value.Real(x) :: Value.Integer(y) :: Nil    => Value.Bool(x <= y)
         case Value.Real(x) :: Value.Real(y) :: Nil       => Value.Bool(x <= y)
         case _                                           => stackedException(s"<= ($position): invalid arguments $args")
-      }
-    }
 
-    object GreaterThan extends SimplePrim {
+    object GreaterThan extends SimplePrim:
       val name = ">"
 
-      def call(args: List[Value], position: Position): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x > y)
         case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x > y)
         case Value.Real(x) :: Value.Integer(y) :: Nil    => Value.Bool(x > y)
         case Value.Real(x) :: Value.Real(y) :: Nil       => Value.Bool(x > y)
         case _                                           => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object GreaterOrEqual extends SimplePrim {
+    object GreaterOrEqual extends SimplePrim:
       val name = ">="
 
-      def call(args: List[Value], position: Position) = args match {
+      def call(args: List[Value], position: Position) = args match
         case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x >= y)
         case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x >= y)
         case Value.Real(x) :: Value.Integer(y) :: Nil    => Value.Bool(x >= y)
         case Value.Real(x) :: Value.Real(y) :: Nil       => Value.Bool(x >= y)
         case _                                           => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object NumEq extends SimplePrim {
+    object NumEq extends SimplePrim:
       val name = "="
 
       @scala.annotation.tailrec
-      def numEqInt(first: BigInt, l: List[Value]): Value = l match {
+      def numEqInt(first: BigInt, l: List[Value]): Value = l match
         case Nil                                    => Value.Bool(true)
         case Value.Integer(x) :: rest if x == first => numEqInt(first, rest)
         case (_: Value.Integer) :: _                => Value.Bool(false)
         case Value.Real(x) :: rest if x == first    => numEqInt(first, rest)
         case (_: Value.Real) :: _                   => Value.Bool(false)
         case _                                      => stackedException(s"=: invalid type of arguments $l")
-      }
 
       @scala.annotation.tailrec
-      def numEqReal(first: Double, l: List[Value]): Value = l match {
+      def numEqReal(first: Double, l: List[Value]): Value = l match
         case Nil                                    => Value.Bool(true)
         case Value.Integer(x) :: rest if x == first => numEqReal(first, rest)
         case (_: Value.Integer) :: _                => Value.Bool(false)
         case Value.Real(x) :: rest if x == first    => numEqReal(first, rest)
         case (_: Value.Real) :: _                   => Value.Bool(false)
         case _                                      => stackedException(s"=: invalid type of arguments $l")
-      }
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Nil                      => Value.Bool(true)
         case Value.Integer(x) :: rest => numEqInt(x, rest)
         case Value.Real(x) :: rest    => numEqReal(x, rest)
         case _                        => stackedException(s"$name ($position): invalid type of arguments $args")
-      }
-    }
 
     //////////////
     // Booleans //
     //////////////
-    object Not extends SingleArgumentPrim("not") {
-      def fun = {
+    object Not extends SingleArgumentPrim("not"):
+      def fun =
         case Value.Bool(b) => Value.Bool(!b)
         case _             => Value.Bool(false) /* any non-bool value is considered true */
-      }
-    }
 
     /////////////////
     // Conversions //
     /////////////////
-    object ExactToInexact extends SingleArgumentPrim("exact->inexact") {
-      def fun = {
+    object ExactToInexact extends SingleArgumentPrim("exact->inexact"):
+      def fun =
         case Value.Integer(x) => Value.Real(x.toDouble)
         case x: Value.Real    => x
-      }
-    }
 
-    object InexactToExact extends SingleArgumentPrim("inexact->exact") {
-      def fun = {
+    object InexactToExact extends SingleArgumentPrim("inexact->exact"):
+      def fun =
         case x: Value.Integer => x
         case Value.Real(x)    => Value.Integer(x.toInt) /* TODO: fractions */
-      }
-    }
 
-    object NumberToString extends SingleArgumentPrimWithExp("number->string") {
-      def fun(fexp: SchemeFuncall) = {
+    object NumberToString extends SingleArgumentPrimWithExp("number->string"):
+      def fun(fexp: SchemeFuncall) =
         case Value.Integer(x) => allocateStr(fexp, s"$x")
         case Value.Real(x)    => allocateStr(fexp, s"$x")
-      }
-    }
 
-    object SymbolToString extends SingleArgumentPrimWithExp("symbol->string") {
+    object SymbolToString extends SingleArgumentPrimWithExp("symbol->string"):
       def fun(fexp: SchemeFuncall) = { case Value.Symbol(x) =>
         allocateStr(fexp, x)
       }
-    }
 
-    object StringToSymbol extends SingleArgumentPrim("string->symbol") {
+    object StringToSymbol extends SingleArgumentPrim("string->symbol"):
       def fun = { case Value.Pointer(addr) =>
         Value.Symbol(getString(addr))
       }
-    }
 
-    object CharToInteger extends SingleArgumentPrim("char->integer") {
+    object CharToInteger extends SingleArgumentPrim("char->integer"):
       def fun = { case Value.Character(c) =>
         Value.Integer(c.toInt)
       }
-    }
 
-    object CharToString extends SingleArgumentPrimWithExp("char->string") {
+    object CharToString extends SingleArgumentPrimWithExp("char->string"):
       def fun(fexp: SchemeFuncall) = { case Value.Character(c) =>
         allocateStr(fexp, c.toString)
       }
-    }
 
-    object IntegerToChar extends SingleArgumentPrim("integer->char") {
+    object IntegerToChar extends SingleArgumentPrim("integer->char"):
       def fun = { case Value.Integer(n) =>
         Value.Character(n.toChar)
       }
-    }
 
     ////////
     // IO //
     ////////
-    object `input-port?` extends SingleArgumentPrim("input-port?") {
-      def fun = {
+    object `input-port?` extends SingleArgumentPrim("input-port?"):
+      def fun =
         case _: Value.InputPort => Value.Bool(true)
         case _                  => Value.Bool(false)
-      }
-    }
 
-    object `output-port?` extends SingleArgumentPrim("output-port?") {
-      def fun = {
+    object `output-port?` extends SingleArgumentPrim("output-port?"):
+      def fun =
         case _: Value.OutputPort => Value.Bool(true)
         case _                   => Value.Bool(false)
-      }
-    }
 
-    object `eof-object?` extends SingleArgumentPrim("eof-object?") {
-      def fun = {
+    object `eof-object?` extends SingleArgumentPrim("eof-object?"):
+      def fun =
         case Value.EOF => Value.Bool(true)
         case _         => Value.Bool(false)
-      }
-    }
 
-    object `open-input-file` extends SingleArgumentPrim("open-input-file") {
+    object `open-input-file` extends SingleArgumentPrim("open-input-file"):
       def fun = { case Value.Pointer(addr) =>
         val str = getString(addr)
         Value.InputPort(io.open(str))
       }
-    }
 
-    object `open-output-file` extends SingleArgumentPrim("open-output-file") {
+    object `open-output-file` extends SingleArgumentPrim("open-output-file"):
       def fun = { case Value.Pointer(addr) =>
         val str = getString(addr)
         Value.OutputPort(io.open(str))
       }
-    }
 
-    object `open-input-string` extends SingleArgumentPrim("open-input-string") {
+    object `open-input-string` extends SingleArgumentPrim("open-input-string"):
       def fun = { case Value.Pointer(addr) =>
         val str = getString(addr)
         Value.InputPort(io.fromString(str))
       }
-    }
 
-    object `close-input-port` extends SingleArgumentPrim("close-input-port") {
+    object `close-input-port` extends SingleArgumentPrim("close-input-port"):
       def fun = { case Value.InputPort(handle) =>
         io.close(handle)
         Value.Undefined(Identity.none)
       }
-    }
 
-    object `close-output-port` extends SingleArgumentPrim("close-output-port") {
+    object `close-output-port` extends SingleArgumentPrim("close-output-port"):
       def fun = { case Value.OutputPort(handle) =>
         io.close(handle)
         Value.Undefined(Identity.none)
       }
-    }
 
-    object `current-input-port` extends SimplePrim {
+    object `current-input-port` extends SimplePrim:
       val name = "current-input-port"
 
-      def call(args: List[Value], position: Position) = args match {
+      def call(args: List[Value], position: Position) = args match
         case Nil => Value.InputPort(io.console)
         case _   => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
-      }
-    }
 
-    object `current-output-port` extends SimplePrim {
+    object `current-output-port` extends SimplePrim:
       val name = "current-output-port"
 
-      def call(args: List[Value], position: Position) = args match {
+      def call(args: List[Value], position: Position) = args match
         case Nil => Value.OutputPort(io.console)
         case _   => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
-      }
-    }
 
-    class DisplayLike(val name: String) extends SimplePrim {
-      def call(args: List[Value], position: Position) = args match {
+    class DisplayLike(val name: String) extends SimplePrim:
+      def call(args: List[Value], position: Position) = args match
         case v :: Nil =>
           io.writeString(v.toString, io.console)
           Value.Undefined(Identity.none)
@@ -797,17 +702,15 @@ trait ConcreteSchemePrimitives {
           io.writeString(v.toString, port)
           Value.Undefined(Identity.none)
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
     object `display` extends DisplayLike("display")
 
     object `write` extends DisplayLike("write")
 
-    object `write-char` extends SimplePrim {
+    object `write-char` extends SimplePrim:
       val name = "write-char"
 
-      def call(args: List[Value], position: Position) = args match {
+      def call(args: List[Value], position: Position) = args match
         case Value.Character(c) :: Nil =>
           io.writeChar(c, io.console)
           Value.Undefined(Identity.none)
@@ -815,13 +718,11 @@ trait ConcreteSchemePrimitives {
           io.writeChar(c, port)
           Value.Undefined(Identity.none)
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object `newline` extends SimplePrim {
+    object `newline` extends SimplePrim:
       val name = "newline"
 
-      def call(args: List[Value], position: Position) = args match {
+      def call(args: List[Value], position: Position) = args match
         case Nil =>
           io.writeString("\n", io.console);
           Value.Undefined(Identity.none)
@@ -829,149 +730,115 @@ trait ConcreteSchemePrimitives {
           io.writeString("\n", port)
           Value.Undefined(Identity.none)
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
-      }
-    }
 
-    object `read` extends Prim {
+    object `read` extends Prim:
       val name = "read"
 
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
         case Nil =>
           io.read(io.console).map(sexp => evalSExp(sexp, fexp)).getOrElse(Value.EOF)
         case (_, Value.InputPort(port)) :: Nil =>
           io.read(port).map(sexp => evalSExp(sexp, fexp)).getOrElse(Value.EOF)
         case _ => stackedException(s"$name (${fexp.idn.pos}): wrong number of arguments, 0 or 1 expected, got ${args.length}")
-      }
-    }
 
-    object `read-char` extends SimplePrim {
+    object `read-char` extends SimplePrim:
       val name = "read-char"
 
-      def call(args: List[Value], position: Position) = args match {
+      def call(args: List[Value], position: Position) = args match
         case Nil =>
           io.readChar(io.console)
         case Value.InputPort(port) :: Nil =>
           io.readChar(port)
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 or 1 expected, got ${args.length}")
-      }
-    }
 
-    object `peek-char` extends SimplePrim {
+    object `peek-char` extends SimplePrim:
       val name = "peek-char"
 
-      def call(args: List[Value], position: Position) = args match {
+      def call(args: List[Value], position: Position) = args match
         case Nil =>
           io.peekChar(io.console)
         case Value.InputPort(port) :: Nil =>
           io.peekChar(port)
         case _ => stackedException(s"$name ($position): wrong number of arguments, 0 or 1 expected, got ${args.length}")
-      }
-    }
 
-    object Error extends SimplePrim {
+    object Error extends SimplePrim:
       val name = "error"
 
       def call(args: List[Value], position: Position) = stackedException(s"user-raised error ($position): $args")
-    }
 
     /////////////////
     // Type checks //
     /////////////////
-    object Booleanp extends SingleArgumentPrim("boolean?") {
-      def fun = {
+    object Booleanp extends SingleArgumentPrim("boolean?"):
+      def fun =
         case _: Value.Bool => Value.Bool(true)
         case _             => Value.Bool(false)
-      }
-    }
 
-    object Charp extends SingleArgumentPrim("char?") {
-      def fun = {
+    object Charp extends SingleArgumentPrim("char?"):
+      def fun =
         case _: Value.Character => Value.Bool(true)
         case _                  => Value.Bool(false)
-      }
-    }
 
-    object Nullp extends SingleArgumentPrim("null?") {
-      def fun = {
+    object Nullp extends SingleArgumentPrim("null?"):
+      def fun =
         case Value.Nil => Value.Bool(true)
         case _         => Value.Bool(false)
-      }
-    }
 
-    object Pairp extends SingleArgumentPrim("pair?") {
-      def fun = {
+    object Pairp extends SingleArgumentPrim("pair?"):
+      def fun =
         case Value.Pointer(addr) =>
-          lookupStore(addr) match {
+          lookupStore(addr) match
             case _: Value.Cons => Value.Bool(true)
             case _             => Value.Bool(false)
-          }
         case _ => Value.Bool(false)
-      }
-    }
 
-    object Symbolp extends SingleArgumentPrim("symbol?") {
-      def fun = {
+    object Symbolp extends SingleArgumentPrim("symbol?"):
+      def fun =
         case _: Value.Symbol => Value.Bool(true)
         case _               => Value.Bool(false)
-      }
-    }
 
-    object Stringp extends SingleArgumentPrim("string?") {
-      def fun = {
+    object Stringp extends SingleArgumentPrim("string?"):
+      def fun =
         case Value.Pointer(addr) =>
-          lookupStore(addr) match {
+          lookupStore(addr) match
             case Value.Str(_) => Value.Bool(true)
             case _            => Value.Bool(false)
-          }
         case _ => Value.Bool(false)
-      }
-    }
 
-    object Integerp extends SingleArgumentPrim("integer?") {
-      def fun = {
+    object Integerp extends SingleArgumentPrim("integer?"):
+      def fun =
         case _: Value.Integer => Value.Bool(true)
         case _                => Value.Bool(false)
-      }
-    }
 
-    object Realp extends SingleArgumentPrim("real?") {
-      def fun = {
+    object Realp extends SingleArgumentPrim("real?"):
+      def fun =
         case _: Value.Real    => Value.Bool(true)
         case _: Value.Integer => Value.Bool(true)
         case _                => Value.Bool(false)
-      }
-    }
 
-    object Numberp extends SingleArgumentPrim("number?") {
-      def fun = {
+    object Numberp extends SingleArgumentPrim("number?"):
+      def fun =
         case _: Value.Integer => Value.Bool(true)
         case _: Value.Real    => Value.Bool(true)
         case _                => Value.Bool(false)
-      }
-    }
 
-    object Vectorp extends SingleArgumentPrim("vector?") {
-      def fun = {
+    object Vectorp extends SingleArgumentPrim("vector?"):
+      def fun =
         case Value.Pointer(a) =>
-          lookupStore(a) match {
+          lookupStore(a) match
             case _: Value.Vector => Value.Bool(true)
             case _               => Value.Bool(false)
-          }
         case _ => Value.Bool(false)
-      }
-    }
 
-    object Procp extends SingleArgumentPrim("procedure?") {
-      def fun = {
+    object Procp extends SingleArgumentPrim("procedure?"):
+      def fun =
         case _: Value.Clo => Value.Bool(true)
         case _            => Value.Bool(false)
-      }
-    }
 
     /////////////
     // Strings //
     /////////////
-    object StringAppend extends Prim {
+    object StringAppend extends Prim:
       val name = "string-append"
 
       def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value =
@@ -986,112 +853,93 @@ trait ConcreteSchemePrimitives {
             }
           )
         )
-    }
 
-    object MakeString extends Prim {
+    object MakeString extends Prim:
       val name = "make-string"
 
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
         case (_, Value.Integer(length)) :: Nil                            => allocateStr(fexp, "\u0000" * bigIntToInt(length))
         case (_, Value.Integer(length)) :: (_, Value.Character(c)) :: Nil => allocateStr(fexp, c.toString * bigIntToInt(length))
         case _                                                            => stackedException(s"$name (${fexp.idn.pos}): invalid arguments $args")
-      }
-    }
 
-    object StringLength extends SingleArgumentPrim("string-length") {
+    object StringLength extends SingleArgumentPrim("string-length"):
       def fun = { case Value.Pointer(addr) =>
         val str = getString(addr)
         Value.Integer(str.length)
       }
-    }
 
-    object StringRef extends SimplePrim {
+    object StringRef extends SimplePrim:
       val name = "string-ref"
 
-      def call(args: List[Value], position: Position): Value.Character = args match {
+      def call(args: List[Value], position: Position): Value.Character = args match
         case Value.Pointer(addr) :: Value.Integer(n) :: Nil =>
           val str = getString(addr)
-          if (0 <= n && n < str.size) {
+          if 0 <= n && n < str.size then
             Value.Character(str(bigIntToInt(n)))
-          } else {
+          else
             stackedException(s"$name ($position): index out of range")
-          }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object StringSet extends SimplePrim {
+    object StringSet extends SimplePrim:
       val name = "string-set!"
 
-      def call(args: List[Value], position: Position): Value.Undefined = args match {
+      def call(args: List[Value], position: Position): Value.Undefined = args match
         case Value.Pointer(addr) :: Value.Integer(idx) :: Value.Character(chr) :: Nil =>
           val str = getString(addr)
-          if (0 <= idx && idx < str.size) {
+          if 0 <= idx && idx < str.size then
             val updatedStr = str.updated(idx.toInt, chr)
             extendStore(addr, Value.Str(updatedStr))
             Value.Undefined(Identity.none)
-          } else {
+          else
             stackedException(s"$name ($position): index out of range")
-          }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object StringLt extends SimplePrim {
+    object StringLt extends SimplePrim:
       val name = "string<?"
 
-      def call(args: List[Value], position: Position): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match
         case Value.Pointer(a1) :: Value.Pointer(a2) :: Nil =>
           val str1 = getString(a1)
           val str2 = getString(a2)
           Value.Bool(str1 < str2)
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object StringToNumber extends SingleArgumentPrim("string->number") {
+    object StringToNumber extends SingleArgumentPrim("string->number"):
       def fun = { case Value.Pointer(addr) =>
         val str = getString(addr)
-        if (str.toIntOption.nonEmpty) {
+        if str.toIntOption.nonEmpty then
           Value.Integer(str.toIntOption.get)
-        } else {
+        else
           stackedException(s"$name: $str can not be converted into a number")
-        }
       }
-    }
 
-    object Substring extends Prim {
+    object Substring extends Prim:
       val name = "substring"
 
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]) = args match {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]) = args match
         case (_, Value.Pointer(a)) :: (_, Value.Integer(from)) :: (_, Value.Integer(to)) :: Nil if from <= to =>
           val str = getString(a)
-          if (0 <= from && to <= str.size) {
+          if 0 <= from && to <= str.size then
             allocateStr(fexp, str.substring(bigIntToInt(from), bigIntToInt(to)).nn)
-          } else {
+          else
             stackedException(s"$name (${fexp.idn.pos}): indices $from and $to are out of range")
-          }
         case _ => stackedException(s"$name (${fexp.idn.pos}): invalid arguments $args")
-      }
-    }
 
     ///////////////
     // Equality //
     //////////////
 
-    object Eq extends SimplePrim {
+    object Eq extends SimplePrim:
       val name = "eq?"
 
-      def call(args: List[Value], position: Position): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match
         case x :: y :: Nil => Value.Bool(x == y)
         case _             => stackedException(s"$name ($position): wrong number of arguments ${args.length}")
-      }
-    }
 
     /////////////
     // Vectors //
     /////////////
-    object Vector extends Prim {
+    object Vector extends Prim:
       val name = "vector"
 
       def newVector(
@@ -1099,231 +947,186 @@ trait ConcreteSchemePrimitives {
           siz: BigInt,
           elms: Map[BigInt, Value],
           ini: Value
-        ): Value = {
+        ): Value =
         val ptr = newAddr(AddrInfo.PtrAddr(fexp))
         val vct = Value.Vector(siz, elms, ini)
         extendStore(ptr, vct)
         Value.Pointer(ptr)
-      }
 
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value =
         val elms = args.map(_._2).zipWithIndex.map({ case (e, i) => (BigInt(i), e) }).toMap
         newVector(fexp, args.size, elms, Value.Undefined(fexp.idn))
-      }
-    }
 
-    object MakeVector extends Prim {
+    object MakeVector extends Prim:
       val name = "make-vector"
 
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args.map(_._2) match {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args.map(_._2) match
         case Value.Integer(size) :: Nil =>
           Vector.newVector(fexp, size, Map(), Value.Undefined(fexp.idn))
         case Value.Integer(size) :: init :: Nil =>
           Vector.newVector(fexp, size, Map(), init)
         case _ => stackedException(s"$name (${fexp.idn.pos}): invalid arguments $args")
-      }
-    }
 
-    object VectorLength extends SingleArgumentPrim("vector-length") {
+    object VectorLength extends SingleArgumentPrim("vector-length"):
       def fun = { case Value.Pointer(a) =>
-        lookupStore(a) match {
+        lookupStore(a) match
           case Value.Vector(siz, _, _) => Value.Integer(siz)
           case v                       => throw new UnexpectedValueTypeException[Value](v)
-        }
       }
-    }
 
-    object VectorRef extends SimplePrim {
+    object VectorRef extends SimplePrim:
       val name = "vector-ref"
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Value.Pointer(a) :: Value.Integer(idx) :: Nil =>
-          lookupStore(a) match {
+          lookupStore(a) match
             case Value.Vector(siz, els, ini) if idx >= 0 && idx < siz => els.getOrElse(idx, ini)
             case Value.Vector(siz, _, _) => stackedException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
             case v                       => throw new Exception(s"Vector expected; found $v")
-          }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object VectorSet extends SimplePrim {
+    object VectorSet extends SimplePrim:
       val name = "vector-set!"
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Value.Pointer(a) :: Value.Integer(idx) :: v :: Nil =>
-          lookupStore(a) match {
+          lookupStore(a) match
             case Value.Vector(siz, els, ini) if idx >= 0 && idx < siz =>
               val updatedVct = Value.Vector(siz, els + (idx -> v), ini)
               extendStore(a, updatedVct)
               Value.Undefined(Identity.none)
             case Value.Vector(siz, _, _) => stackedException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
             case v                       => throw new Exception(s"Vector expected; found $v")
-          }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
     //////////
     // Cons //
     //////////
 
-    object Car extends SingleArgumentPrim("car") {
+    object Car extends SingleArgumentPrim("car"):
       def fun = { case Value.Pointer(addr) =>
-        lookupStore(addr) match {
+        lookupStore(addr) match
           case Value.Cons(car, _) => car
           case v                  => throw new UnexpectedValueTypeException[Value](v)
-        }
       }
-    }
 
-    object Cdr extends SingleArgumentPrim("cdr") {
+    object Cdr extends SingleArgumentPrim("cdr"):
       def fun = { case Value.Pointer(addr) =>
-        lookupStore(addr) match {
+        lookupStore(addr) match
           case Value.Cons(_, cdr) => cdr
           case v                  => throw new UnexpectedValueTypeException[Value](v)
-        }
       }
-    }
 
-    object Cons extends Prim {
+    object Cons extends Prim:
       val name = "cons"
 
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
         case (_, car) :: (_, cdr) :: Nil =>
           allocateCons(fexp, car, cdr)
         case _ => stackedException(s"cons: wrong number of arguments $args")
-      }
-    }
 
-    object SetCar extends SimplePrim {
+    object SetCar extends SimplePrim:
       val name = "set-car!"
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Value.Pointer(addr) :: v :: Nil =>
-          lookupStore(addr) match {
+          lookupStore(addr) match
             case Value.Cons(_, cdr) =>
               extendStore(addr, Value.Cons(v, cdr))
               Value.Undefined(Identity.none)
             case v => throw new UnexpectedValueTypeException[Value](v)
-          }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object SetCdr extends SimplePrim {
+    object SetCdr extends SimplePrim:
       val name = "set-cdr!"
 
-      def call(args: List[Value], position: Position): Value = args match {
+      def call(args: List[Value], position: Position): Value = args match
         case Value.Pointer(addr) :: v :: Nil =>
-          lookupStore(addr) match {
+          lookupStore(addr) match
             case Value.Cons(car, _) =>
               extendStore(addr, Value.Cons(car, v))
               Value.Undefined(Identity.none)
             case v => throw new UnexpectedValueTypeException[Value](v)
-          }
         case _ => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
     ///////////
     // Lists //
     ///////////
-    object ListPrim extends Prim {
+    object ListPrim extends Prim:
       val name = "list"
 
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
         case Nil => Value.Nil
         case (exp, head) :: rest =>
           allocateCons(exp, head, call(fexp, rest))
-      }
-    }
 
     ///////////
     // Other //
     ///////////
-    object Random extends SingleArgumentPrim("random") {
-      def fun = {
+    object Random extends SingleArgumentPrim("random"):
+      def fun =
         case Value.Integer(x) => Value.Integer(MathOps.random(x))
         case Value.Real(x)    => Value.Real(scala.math.random() * x)
-      }
-    }
 
-    object CharEq extends SimplePrim {
+    object CharEq extends SimplePrim:
       val name = "char=?"
 
-      def call(args: List[Value], position: Position): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match
         case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1 == c2)
         case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object CharCIEq extends SimplePrim {
+    object CharCIEq extends SimplePrim:
       val name = "char-ci=?"
 
-      def call(args: List[Value], position: Position): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match
         case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1.toLower == c2.toLower)
         case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object CharLt extends SimplePrim {
+    object CharLt extends SimplePrim:
       val name = "char<?"
 
-      def call(args: List[Value], position: Position): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match
         case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1 < c2)
         case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
-    object CharCILt extends SimplePrim {
+    object CharCILt extends SimplePrim:
       val name = "char-ci<?"
 
-      def call(args: List[Value], position: Position): Value.Bool = args match {
+      def call(args: List[Value], position: Position): Value.Bool = args match
         case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1.toLower < c2.toLower)
         case _                                                 => stackedException(s"$name ($position): invalid arguments $args")
-      }
-    }
 
     ///////////
     // Locks //
     ///////////
 
-    object NewLock extends Prim {
+    object NewLock extends Prim:
       val name = "new-lock"
 
-      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match {
+      def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
         case Nil =>
           val addr = newAddr(AddrInfo.PtrAddr(fexp))
           val lock = Value.Lock(new java.util.concurrent.locks.ReentrantLock())
           extendStore(addr, lock)
           Value.Pointer(addr)
         case _ => stackedException(s"new-lock: invalid arguments $args")
-      }
-    }
 
-    case object Acquire extends SingleArgumentPrim("acquire") {
+    case object Acquire extends SingleArgumentPrim("acquire"):
       def fun = { case Value.Pointer(ptr) =>
-        lookupStore(ptr) match {
+        lookupStore(ptr) match
           case Value.Lock(lck) =>
             lck.lock()
             Value.Undefined(Identity.none)
           case v => throw new UnexpectedValueTypeException[Value](v)
-        }
       }
-    }
 
-    case object Release extends SingleArgumentPrim("release") {
+    case object Release extends SingleArgumentPrim("release"):
       def fun = { case Value.Pointer(ptr) =>
-        lookupStore(ptr) match {
+        lookupStore(ptr) match
           case Value.Lock(lck) =>
             lck.unlock()
             Value.Undefined(Identity.none)
           case v => throw new UnexpectedValueTypeException[Value](v)
-        }
       }
-    }
 
-  }
 
-}

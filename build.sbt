@@ -35,6 +35,8 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
       "-deprecation", // Emit warning and location for usages of deprecated APIs.
       //"-encoding",
       "-explain",
+      "-rewrite",
+      "-new-syntax",
       "-Yexplicit-nulls",
       //"-explaintypes", // Explain type errors in more detail.
       "-feature", // Emit warning and location for usages of features that should be imported explicitly.

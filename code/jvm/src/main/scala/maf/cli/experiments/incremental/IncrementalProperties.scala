@@ -15,7 +15,7 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String] {
+trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String]:
 
   type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E] with CountIntraAnalyses[E]
 
@@ -36,25 +36,23 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
       analysis: Analysis,
       block: Timeout.T => Unit,
       name: String = ""
-    ): Boolean = {
-    val cName = if (name == "") analysis.configuration.toString else name
+    ): Boolean =
+    val cName = if name == "" then analysis.configuration.toString else name
     print(s"$cName ")
     val timeOut = timeout()
     block(timeOut)
-    if (timeOut.reached) { // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
+    if timeOut.reached then // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
       print("timed out.")
       propertiesS.foreach(p => results = results.add(file, columnName(p, cName), infS))
       return false
-    }
     results = results
       .add(file, columnName(co, cName), s"${analysis.visited.size}")
       .add(file, columnName(an, cName), s"${analysis.intraAnalysisCount}")
       .add(file, columnName(ad, cName), s"${analysis.store.size}")
       .add(file, columnName(dp, cName), s"${analysis.deps.values.map(_.size).sum}")
     true
-  }
 
-  def onBenchmark(file: String): Unit = {
+  def onBenchmark(file: String): Unit =
     print(s"Testing $file ")
     val program = parse(file)
 
@@ -66,7 +64,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     a2.version = New
 
     // Run the initial analysis.
-    if (!runAnalysis(file, a1, timeOut => a1.analyzeWithTimeout(timeOut), initS)) return
+    if !runAnalysis(file, a1, timeOut => a1.analyzeWithTimeout(timeOut), initS) then return
 
     a1.resetIntraAnalysisCount()
 
@@ -79,84 +77,72 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
 
     // Run a full reanalysis
     runAnalysis(file, a2, timeOut => a2.analyzeWithTimeout(timeOut), reanS)
-  }
 
   def interestingAddress[A <: Address](a: A): Boolean
 
   def createOutput(): String = results.prettyString()
-}
 
 /** Counts the number of intra-component analyses run by the analysis. */
-trait CountIntraAnalyses[Expr <: Expression] extends IncrementalModAnalysis[Expr] {
+trait CountIntraAnalyses[Expr <: Expression] extends IncrementalModAnalysis[Expr]:
   var intraAnalysisCount: Int = 0
 
   // Method of the sequential worklist algorithm.
-  override def step(timeout: Timeout.T): Unit = {
+  override def step(timeout: Timeout.T): Unit =
     intraAnalysisCount = intraAnalysisCount + 1
     super.step(timeout)
-  }
 
   def resetIntraAnalysisCount(): Unit = intraAnalysisCount = 0
-}
 
 /* ************************** */
 /* ***** Instantiations ***** */
 /* ************************** */
 
-trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp] {
-  override def interestingAddress[A <: Address](a: A): Boolean = a match {
+trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp]:
+  override def interestingAddress[A <: Address](a: A): Boolean = a match
     case PrmAddr(_) => false
     case _          => true
-  }
 
   override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 
   val configurations: List[IncrementalConfiguration] = List(allOptimisations)
-}
 
-object IncrementalSchemeModFProperties extends IncrementalSchemeProperties {
+object IncrementalSchemeModFProperties extends IncrementalSchemeProperties:
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
     with CountIntraAnalyses[SchemeExp]
 
   val outputFile: String = s"properties/modf-type.txt"
-}
 
-object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties {
+object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties:
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
     with CountIntraAnalyses[SchemeExp]
 
   val outputFile: String = s"properties/modf-CP.txt"
-}
 
-object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties {
+object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties:
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
     with CountIntraAnalyses[SchemeExp]
 
   val outputFile: String = s"properties/modconc-type.txt"
-}
 
-object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties {
+object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties:
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
     with CountIntraAnalyses[SchemeExp]
 
   val outputFile: String = s"properties/modconc-CP.txt"
-}
 
-object IncrementalSchemeModXProperties {
-  def main(args: Array[String]): Unit = {
+object IncrementalSchemeModXProperties:
+  def main(args: Array[String]): Unit =
     IncrementalSchemeModFProperties.main(args)
     //IncrementalSchemeModFCPProperties.main(args)
     //IncrementalSchemeModConcProperties.main(args)
     //IncrementalSchemeModConcCPProperties.main(args)
-  }
-}

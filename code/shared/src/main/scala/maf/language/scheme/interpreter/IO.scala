@@ -4,36 +4,31 @@ import maf.language.sexp.{SExp, SExpParser}
 
 import scala.util.parsing.input.CharSequenceReader
 
-trait Handle {
+trait Handle:
   // The name used by this handle in the abstract interpreter. Used to convert values.
   val abstractName: String
-}
 
-object Handle {
+object Handle:
 
   // !! These are *not* case classes because we want different handles if we open the same file multiple times
 
-  class FileHandle(val filename: String) extends Handle {
+  class FileHandle(val filename: String) extends Handle:
     val abstractName: String = "__file__" + filename
 
     override def toString(): String = s"file:$filename"
-  }
 
-  class StringHandle(val content: String) extends Handle {
+  class StringHandle(val content: String) extends Handle:
     val abstractName: String = content
 
     override def toString(): String = s"string:$content"
-  }
 
-  object ConsoleHandle extends Handle {
+  object ConsoleHandle extends Handle:
     val abstractName = "__console__"
 
     override def toString(): String = "console"
-  }
 
-}
 
-trait IO {
+trait IO:
   def fromString(string: String): Handle
 
   def open(filename: String): Handle
@@ -51,9 +46,8 @@ trait IO {
   def writeChar(c: Char, f: Handle): Unit
 
   def writeString(s: String, f: Handle): Unit
-}
 
-class EmptyIO extends IO {
+class EmptyIO extends IO:
   def fromString(string: String): Handle = new Handle.StringHandle(string)
 
   def open(filename: String): Handle = new Handle.FileHandle(filename)
@@ -71,9 +65,8 @@ class EmptyIO extends IO {
   def writeChar(c: Char, h: Handle): Unit = ()
 
   def writeString(s: String, h: Handle): Unit = ()
-}
 
-class FileIO(val files: Map[String, String]) extends IO {
+class FileIO(val files: Map[String, String]) extends IO:
   var positions: Map[Handle, Int] = Map.empty // Accesses to `positions` need synchronization on `this`.
 
   def fromString(string: String): Handle = synchronized {
@@ -83,76 +76,67 @@ class FileIO(val files: Map[String, String]) extends IO {
   }
 
   def open(filename: String): Handle = synchronized {
-    if (files.contains(filename)) {
+    if files.contains(filename) then
       val handle = new Handle.FileHandle(filename)
       positions = positions + (handle -> 0)
       handle
-    } else {
+    else
       throw new Exception(s"Cannot open virtual file $filename")
-    }
   }
 
   def close(h: Handle): Unit = synchronized {
-    h match {
+    h match
       case Handle.ConsoleHandle   => ()
       case h: Handle.FileHandle   => positions += h -> files(h.filename).size
       case h: Handle.StringHandle => positions += h -> h.content.size
-    }
   }
 
   val console = Handle.ConsoleHandle
 
   // Read: no need for synchronisation as long as files is immutable.
-  def read(h: Handle): Option[SExp] = h match {
+  def read(h: Handle): Option[SExp] = h match
     case Handle.ConsoleHandle   => None
     case h: Handle.FileHandle   => readUsingString(files(h.filename), h)
     case h: Handle.StringHandle => readUsingString(h.content, h)
-  }
 
   private def readUsingString(str: String, hdl: Handle): Option[SExp] = synchronized {
     val pos = positions(hdl)
-    if (pos >= str.size) {
+    if pos >= str.size then
       None
-    } else {
+    else
       val reader = new CharSequenceReader(str, pos)
       val (sexp, offset) = SExpParser.parseIn(reader)
       positions += hdl -> offset
       Some(sexp)
-    }
   }
 
   def readChar(h: Handle): ConcreteValues.Value = synchronized {
-    peekChar(h) match {
+    peekChar(h) match
       case ConcreteValues.Value.EOF => ConcreteValues.Value.EOF
       case c =>
         positions = positions + (h -> (positions(h) + 1))
         c
-    }
   }
 
   def peekChar(h: Handle): ConcreteValues.Value = synchronized {
-    h match {
+    h match
       case Handle.ConsoleHandle =>
         /* Console is never opened with this IO class */
         ConcreteValues.Value.EOF
       case h: Handle.FileHandle =>
         val pos = positions(h)
-        if (pos >= files(h.filename).size) {
+        if pos >= files(h.filename).size then
           ConcreteValues.Value.EOF
-        } else {
+        else
           ConcreteValues.Value.Character(files(h.filename).charAt(pos))
-        }
       case h: Handle.StringHandle =>
         val pos = positions(h)
-        if (pos >= h.content.size) {
+        if pos >= h.content.size then
           ConcreteValues.Value.EOF
-        } else {
+        else
           ConcreteValues.Value.Character(h.content.charAt(pos))
-        }
-    }
   }
 
   def writeChar(c: Char, h: Handle): Unit = ()
 
   def writeString(s: String, h: Handle): Unit = ()
-}

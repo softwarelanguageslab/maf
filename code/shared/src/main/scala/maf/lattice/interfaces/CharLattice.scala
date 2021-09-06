@@ -3,7 +3,7 @@ package maf.lattice.interfaces
 import maf.core.Lattice
 
 /** A lattice for characters */
-trait CharLattice[C] extends Lattice[C] {
+trait CharLattice[C] extends Lattice[C]:
   def inject(c: Char): C
   def downCase(c: C): C
   def upCase(c: C): C
@@ -18,8 +18,6 @@ trait CharLattice[C] extends Lattice[C] {
 
   def charEqCI[B: BoolLattice](c1: C, c2: C): B
   def charLtCI[B: BoolLattice](c1: C, c2: C): B
-}
 
-object CharLattice {
+object CharLattice:
   def apply[C: CharLattice]: CharLattice[C] = implicitly
-}

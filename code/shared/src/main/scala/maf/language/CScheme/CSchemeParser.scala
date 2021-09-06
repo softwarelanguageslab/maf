@@ -5,7 +5,7 @@ import maf.language.scheme._
 import maf.language.sexp._
 import maf.language.scheme.primitives.SchemePrelude
 
-object CSchemeParser {
+object CSchemeParser:
 
   /** Compiles a s-expression into a CScheme expression. */
   def compile(exp: SExp): SchemeExp = CSchemeCompiler.compile(exp)
@@ -25,4 +25,3 @@ object CSchemeParser {
       file: String,
       tag: PTag = noTag
     ): SchemeExp = SchemeBody(SExpParser.parse(s, tag).flatMap(e => SchemeLoader.load(file, e)).map(compile))
-}

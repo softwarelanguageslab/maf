@@ -1,8 +1,8 @@
 package maf.language.ContractScheme
 import maf.language.scheme._
 
-case object ContractSchemeLexicalAddresser extends BaseSchemeLexicalAddresser {
-  override def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = exp match {
+case object ContractSchemeLexicalAddresser extends BaseSchemeLexicalAddresser:
+  override def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = exp match
     case ContractSchemeDepContract(domains, rangeMaker, idn) =>
       ContractSchemeDepContract(
         domains.map(d => translate(d, lenv)),
@@ -21,6 +21,4 @@ case object ContractSchemeLexicalAddresser extends BaseSchemeLexicalAddresser {
       )
 
     case _ => super.translate(exp, lenv)
-  }
 
-}

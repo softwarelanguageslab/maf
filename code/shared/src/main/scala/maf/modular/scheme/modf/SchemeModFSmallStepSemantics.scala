@@ -6,10 +6,10 @@ import maf.language.scheme._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
-trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
+trait SmallStepModFSemantics extends BaseSchemeModFSemantics:
   // defining the intra-analysis
   override def intraAnalysis(cmp: Component): SmallStepIntra
-  trait SmallStepIntra extends IntraAnalysis with SchemeModFSemanticsIntra {
+  trait SmallStepIntra extends IntraAnalysis with SchemeModFSemanticsIntra:
     // the intermediate states in the intra-analysis
     sealed trait State
     case class EvalState(
@@ -68,17 +68,17 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         extends Frame
 
     // the main analyze method
-    def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+    def analyzeWithTimeout(timeout: Timeout.T): Unit =
       // determine the initial state
       val initialState = EvalState(fnBody, fnEnv, Nil)
       // standard worklist algorithm
       var work: WorkList[State] = LIFOWorkList[State](initialState)
       var visited = Set[State]()
       var result = lattice.bottom
-      while (work.nonEmpty) {
+      while work.nonEmpty do
         val state = work.head
         work = work.tail
-        state match {
+        state match
           case KontState(vlu, Nil) =>
             result = lattice.join(result, vlu)
           case _ if !visited.contains(state) =>
@@ -86,12 +86,9 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
             work = work.addAll(successors)
             visited += state
           case _ => () // already visited this state
-        }
-      }
       writeResult(result)
-    }
     // stepping a state
-    private def step(state: State): Set[State] = state match {
+    private def step(state: State): Set[State] = state match
       case EvalState(exp, env, cnt) =>
         eval(exp, env, cnt)
       case KontState(vlu, _) if lattice.isBottom(vlu) =>
@@ -102,13 +99,12 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
       case CallState(fexp, fval, args, cnt) =>
         val result = applyFun(fexp, fval, args, fexp.idn.pos)
         Set(KontState(result, cnt))
-    }
     // eval
     private def eval(
         exp: SchemeExp,
         env: Env,
         cnt: Kont
-      ): Set[State] = exp match {
+      ): Set[State] = exp match
       case SchemeValue(value, _) =>
         val result = evalLiteralValue(value, exp)
         Set(KontState(result, cnt))
@@ -142,54 +138,49 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         evalAssert(exp, env, cnt)
       case _ =>
         throw new Exception(s"Unsupported Scheme expression: $exp")
-    }
     private def evalSequence(
         exps: List[SchemeExp],
         env: Env,
         cnt: Kont
       ): Set[State] =
-      if (exps.tail.isEmpty) {
+      if exps.tail.isEmpty then
         Set(EvalState(exps.head, env, cnt))
-      } else {
+      else
         val frm = SeqFrame(exps.tail, env)
         Set(EvalState(exps.head, env, frm :: cnt))
-      }
     private def evalLet(
         bindings: List[(Identifier, SchemeExp)],
         done: List[(Identifier, Value)],
         body: List[SchemeExp],
         env: Env,
         cnt: Kont
-      ): Set[State] = bindings match {
+      ): Set[State] = bindings match
       case Nil =>
         val extEnv = bind(done, env)
         evalSequence(body, extEnv, cnt)
       case (id, vexp) :: rest =>
         val frm = LetFrame(id, rest, done, body, env)
         Set(EvalState(vexp, env, frm :: cnt))
-    }
     private def evalLetStar(
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
         env: Env,
         cnt: Kont
-      ): Set[State] = bindings match {
+      ): Set[State] = bindings match
       case Nil => evalSequence(body, env, cnt)
       case (id, vexp) :: rest =>
         val frm = LetStarFrame(id, rest, body, env)
         Set(EvalState(vexp, env, frm :: cnt))
-    }
     private def evalLetrec(
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
         env: Env,
         cnt: Kont
-      ): Set[State] = bindings match {
+      ): Set[State] = bindings match
       case Nil => evalSequence(body, env, cnt)
       case (id, vexp) :: rest =>
         val frm = LetrecFrame(id, rest, body, env)
         Set(EvalState(vexp, env, frm :: cnt))
-    }
     private def evalArgs(
         fexp: SchemeFuncall,
         fval: Value,
@@ -197,12 +188,11 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         ags: List[(SchemeExp, Value)],
         env: Env,
         cnt: Kont
-      ): Set[State] = toEval match {
+      ): Set[State] = toEval match
       case Nil => Set(CallState(fexp, fval, ags.reverse, cnt))
       case exp :: rest =>
         val frm = ArgsFrame(fexp, fval, exp, rest, ags, env)
         Set(EvalState(exp, env, frm :: cnt))
-    }
     private def evalAssert(
         exp: SchemeExp,
         env: Env,
@@ -214,7 +204,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
         frm: Frame,
         vlu: Value,
         cnt: Kont
-      ): Set[State] = frm match {
+      ): Set[State] = frm match
       case SeqFrame(exps, env) =>
         evalSequence(exps, env, cnt)
       case SetFrame(id, env) =>
@@ -234,6 +224,3 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemantics {
       case ArgsFrame(fexp, fval, curExp, toEval, args, env) =>
         val newArgs = (curExp, vlu) :: args
         evalArgs(fexp, fval, toEval, newArgs, env, cnt)
-    }
-  }
-}

@@ -7,7 +7,7 @@ import maf.language.sexp
 import maf.language.scheme._
 import maf.language.scheme.primitives._
 
-trait SchemeSemantics {
+trait SchemeSemantics:
   this: SchemeDomain with SchemeModFLocalSensitivity =>
 
   import Monad._
@@ -24,11 +24,11 @@ trait SchemeSemantics {
   type Idn = Identity
   type Pos = Position
 
-  trait AnalysisM[M[_]] extends SchemePrimM[M, Adr, Val] {
+  trait AnalysisM[M[_]] extends SchemePrimM[M, Adr, Val]:
     def getEnv: M[Env]
     def withEnv[X](f: Env => Env)(blk: M[X]): M[X]
     def lookupEnv(nam: String): M[Adr] =
-      for { env <- getEnv } yield env(nam)
+      for  env <- getEnv  yield env(nam)
     def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
       withEnv(_.extend(nam, adr))(blk)
     def withExtendedEnv[X](bds: Iterable[(String, Adr)])(blk: M[X]): M[X] =
@@ -36,23 +36,21 @@ trait SchemeSemantics {
     def getCtx: M[Ctx]
     def withCtx[X](ctx: Ctx => Ctx)(blk: M[X]): M[X]
     def allocVar(idn: Identifier): M[Adr] =
-      for { ctx <- getCtx } yield VarAddr(idn, ctx)
+      for  ctx <- getCtx  yield VarAddr(idn, ctx)
     def allocPtr(exp: SchemeExp): M[Adr] =
-      for { ctx <- getCtx } yield PtrAddr(exp, ctx)
+      for  ctx <- getCtx  yield PtrAddr(exp, ctx)
     def call(lam: Lam): M[Val]
     // Scala is too stupid to figure this out...
     implicit final private val self: AnalysisM[M] = this
-  }
 
-  object AnalysisM {
+  object AnalysisM:
     def apply[M[_]: AnalysisM]: AnalysisM[M] = implicitly
-  }
 
   type A[_]
   implicit val analysisM: AnalysisM[A]
   import analysisM._
 
-  def eval(exp: SchemeExp): A[Val] = exp match {
+  def eval(exp: SchemeExp): A[Val] = exp match
     case vlu: SchemeValue           => evalLiteralValue(vlu)
     case lam: SchemeLambdaExp       => evalLambda(lam)
     case SchemeVar(id)              => evalVariable(id.name)
@@ -64,12 +62,11 @@ trait SchemeSemantics {
     case cll: SchemeFuncall         => evalCall(cll)
     case SchemeAssert(exp, _)       => evalAssert(exp)
     case _                          => throw new Exception(s"Unsupported Scheme expression: $exp")
-  }
 
   private def evalLambda(lam: Lam): A[Val] =
-    for { env <- getEnv } yield lattice.closure((lam, env.restrictTo(lam.fv)))
+    for  env <- getEnv  yield lattice.closure((lam, env.restrictTo(lam.fv)))
 
-  private def evalLiteralValue(exp: SchemeValue): A[Val] = exp.value match {
+  private def evalLiteralValue(exp: SchemeValue): A[Val] = exp.value match
     case sexp.Value.String(s)    => storeVal(exp, lattice.string(s))
     case sexp.Value.Integer(n)   => unit(lattice.number(n))
     case sexp.Value.Real(r)      => unit(lattice.real(r))
@@ -77,41 +74,39 @@ trait SchemeSemantics {
     case sexp.Value.Character(c) => unit(lattice.char(c))
     case sexp.Value.Symbol(s)    => unit(lattice.symbol(s))
     case sexp.Value.Nil          => unit(lattice.nil)
-  }
 
   private def evalVariable(nam: String): A[Val] =
-    for {
+    for
       adr <- lookupEnv(nam)
       vlu <- lookupSto(adr)
-    } yield vlu
+    yield vlu
 
   private def evalSequence(eps: Iterable[Exp]): A[Val] =
     eps.foldLeftM(lattice.void)((_, exp) => eval(exp))
 
   private def evalIf(prd: Exp, csq: Exp, alt: Exp): A[Val] =
-    for {
+    for
       cnd <- eval(prd)
       res <- cond(cnd, eval(csq), eval(alt))
-    } yield res
+    yield res
 
-  private def evalLet(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] = {
+  private def evalLet(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
     val (vrs, rhs) = bds.unzip
-    for {
+    for
       vls <- rhs.mapM(arg => eval(arg))
       ads <- vrs.mapM(allocVar)
       res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
-        for {
+        for
           _ <- extendSto(ads.zip(vls))
           vlu <- evalSequence(bdy)
-        } yield vlu
+        yield vlu
       }
-    } yield res
-  }
+    yield res
 
-  private def evalLetStar(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] = bds match {
+  private def evalLetStar(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] = bds match
     case Nil => evalSequence(bdy)
     case (vrb, rhs) :: rst =>
-      for {
+      for
         vlu <- eval(rhs)
         adr <- allocVar(vrb)
         res <- withExtendedEnv(vrb.name, adr) {
@@ -119,39 +114,36 @@ trait SchemeSemantics {
             evalLetStar(rst, bdy)
           }
         }
-      } yield res
-  }
+      yield res
 
-  private def evalLetrec(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] = {
+  private def evalLetrec(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
     val (vrs, rhs) = bds.unzip
-    for {
+    for
       ads <- vrs.mapM(allocVar)
       res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
-        for {
+        for
           _ <- ads.zip(rhs).mapM_ { case (adr, rhs) =>
             eval(rhs).flatMap(vlu => extendSto(adr, vlu))
           }
           vlu <- evalSequence(bdy)
-        } yield vlu
+        yield vlu
       }
-    } yield res
-  }
+    yield res
 
   // by default, asserts are ignored
   protected def evalAssert(exp: Exp): A[Val] = AnalysisM[A].unit(lattice.void)
 
-  private def cond(cnd: Val, csq: A[Val], alt: A[Val]): A[Val] = {
+  private def cond(cnd: Val, csq: A[Val], alt: A[Val]): A[Val] =
     val tru = guard(lattice.isTrue(cnd)).flatMap(_ => csq)
     val fls = guard(lattice.isFalse(cnd)).flatMap(_ => alt)
     mjoin(tru, fls)
-  }
 
   private def evalCall(cll: SchemeFuncall): A[Val] =
-    for {
+    for
       fun <- eval(cll.f)
       ags <- cll.args.mapM(arg => eval(arg))
       res <- applyFun(cll, fun, ags)
-    } yield res
+    yield res
 
   private def applyFun(cll: Cll, fun: Val, ags: List[Val]): A[Val] =
     mjoin(applyPrimitives(cll, fun, ags), applyClosures(cll, fun, ags))
@@ -164,16 +156,15 @@ trait SchemeSemantics {
   private def applyPrimitive(cll: Cll, prm: Prim, ags: List[Val]): A[Val] =
     prm.call(cll, ags)
 
-  private def applyClosures(cll: Cll, fun: Val, ags: List[Val]): A[Val] = {
+  private def applyClosures(cll: Cll, fun: Val, ags: List[Val]): A[Val] =
     val agc = ags.length
     lattice.getClosures(fun).foldMapM { (lam, lex) =>
-      for {
+      for
         _ <- guard(lam.check(agc))
         fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))
         res <- applyClosure(cll, lam, ags, fvs)
-      } yield res
+      yield res
     }
-  }
 
   protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
     withCtx(newContext(cll, lam, ags, _)) {
@@ -187,21 +178,20 @@ trait SchemeSemantics {
     }
 
   private def argBindings(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[List[(String, Adr, Val)]] =
-    for {
+    for
       // fixed args
       fxa <- lam.args.zip(ags).mapM((idf, vlu) => allocVar(idf).map((idf.name, _, vlu)))
       // vararg (optional)
-      vra <- lam.varArgId match {
+      vra <- lam.varArgId match
         case None => unit(Nil)
         case Some(varArg) =>
           val len = lam.args.length
           val (_, vag) = ags.splitAt(len)
           val (_, vex) = cll.args.splitAt(len)
-          for {
+          for
             lst <- allocLst(vex.zip(vag))
             adr <- allocVar(varArg)
-          } yield List((varArg.name, adr, lst))
-      }
+          yield List((varArg.name, adr, lst))
       // free variables
       frv <- fvs.mapM((adr, vlu) =>
         adr match {
@@ -209,23 +199,21 @@ trait SchemeSemantics {
           case PrmAddr(nam)    => unit((nam, adr, vlu))
         }
       )
-    } yield fxa ++ vra ++ frv
+    yield fxa ++ vra ++ frv
 
   private def storeVal(exp: Exp, vlu: Val): A[Val] =
-    for {
+    for
       adr <- allocPtr(exp)
       _ <- extendSto(adr, vlu)
-    } yield lattice.pointer(adr)
+    yield lattice.pointer(adr)
 
   private def allocPai(pai: Exp, car: Val, cdr: Val): A[Val] =
     storeVal(pai, lattice.cons(car, cdr))
 
-  protected def allocLst(els: List[(Exp, Val)]): A[Val] = els match {
+  protected def allocLst(els: List[(Exp, Val)]): A[Val] = els match
     case Nil => unit(lattice.nil)
     case (exp, vlu) :: rst =>
-      for {
+      for
         rst <- allocLst(rst)
         pai <- allocPai(exp, vlu, rst)
-      } yield pai
-  }
-}
+      yield pai

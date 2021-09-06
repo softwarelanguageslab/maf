@@ -10,7 +10,7 @@ import maf.util.benchmarks._
 import scala.concurrent.duration._
 
 abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]
-    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb] {
+    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]:
 
   // the precision comparison is parameterized by:
   // - the base analysis (= lowest precision) to compare to
@@ -36,7 +36,7 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
    * @param program
    *   the Scheme expression of the benchmark program
    */
-  protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit = {
+  protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit =
     // run the base analysis first
     val baseResult = runAnalysis(baseAnalysis, "base analysis", program, path).get // no timeout set for the base analysis!
     // run the other analyses on the benchmark
@@ -49,8 +49,6 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
     val concreteResult = runInterpreter(program, path, concreteTimeout(), concreteRuns())
     val refined = concreteResult.map(store => compareOrdered(baseResult, store).size)
     results = results.add(path, "concrete", refined)
-  }
-}
 
 object AnalysisComparison1
     extends AnalysisComparison[
@@ -60,7 +58,7 @@ object AnalysisComparison1
       ConstantPropagation.C,
       ConstantPropagation.S,
       ConstantPropagation.Sym
-    ] {
+    ]:
   def baseAnalysis(prg: SchemeExp): Analysis =
     SchemeAnalyses.contextInsensitiveAnalysis(prg)
   def otherAnalyses() =
@@ -77,7 +75,7 @@ object AnalysisComparison1
     )
   )
 
-  def check(path: Benchmark) = {
+  def check(path: Benchmark) =
     val txt = Reader.loadFile(path)
     val prg = SchemeParser.parseProgram(txt)
     val con = runInterpreter(prg, path).get
@@ -86,17 +84,13 @@ object AnalysisComparison1
     allKeys.foreach { k =>
       val absVal = abs.getOrElse(k, "⊥")
       val concVal = con.getOrElse(k, "⊥")
-      if (absVal != concVal) {
+      if absVal != concVal then
         println(s"$k -> $absVal ; $concVal ")
-      }
     }
-  }
 
-  def runBenchmarks(benchmarks: Set[Benchmark]) = {
+  def runBenchmarks(benchmarks: Set[Benchmark]) =
     benchmarks.foreach(runBenchmark)
     println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
     Writer.setDefaultWriter(Writer.open("benchOutput/precision/adaptive-precision-benchmarks.csv"))
     Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
     Writer.closeDefaultWriter()
-  }
-}

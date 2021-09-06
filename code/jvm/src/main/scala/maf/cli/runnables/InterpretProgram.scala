@@ -7,7 +7,7 @@ import maf.language.scheme.primitives.SchemePrelude
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
-object InterpretProgram extends App {
+object InterpretProgram extends App:
   val text = Reader.loadFile("test/R5RS/various/my-test.scm")
   val interpreter = new SchemeInterpreter((_, _) => (), stack = true)
   val res = interpreter.run(
@@ -16,4 +16,3 @@ object InterpretProgram extends App {
     New
   )
   println(res)
-}

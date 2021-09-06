@@ -1,9 +1,9 @@
 package maf.util.graph
 
 /** A graph that preserves no information */
-class NoGraph[N <: GraphElement, E <: GraphElement] {
+class NoGraph[N <: GraphElement, E <: GraphElement]:
   case class G()
-  object G {
+  object G:
     implicit val typeclass: Graph[G, N, E] = new Graph[G, N, E] {
       def empty = G()
       def addNode(g: G, node: N) = g
@@ -25,5 +25,3 @@ class NoGraph[N <: GraphElement, E <: GraphElement] {
       def edges(g: G) = 0
       def findNodes(g: G, p: N => Boolean) = Set.empty
     }
-  }
-}

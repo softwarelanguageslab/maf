@@ -3,7 +3,7 @@ package maf.cli.experiments.incremental
 import maf.modular.incremental.IncrementalConfiguration
 import maf.util.benchmarks.Table
 
-trait TableOutput[R] {
+trait TableOutput[R]:
 
   var results: Table[R]
   val error: R
@@ -24,4 +24,3 @@ trait TableOutput[R] {
   def reportError(file: String): Unit = columns.foreach(c => results = results.add(file, c, error))
 
   lazy val columns: List[String] = analysesS.flatMap(a => propertiesS.map(columnName(_, a)))
-}

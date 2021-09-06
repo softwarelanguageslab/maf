@@ -9,16 +9,15 @@ import maf.modular.scheme.modf.EvalM.*
 import maf.modular.scheme.modf.*
 
 /** Implements big-step semantics for an incremental Scheme analysis. * */
-trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics {
+trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics:
 
-  override protected def cond(prd: Value, csq: => EvalM[Value], alt: => EvalM[Value]): EvalM[Value] = {
+  override protected def cond(prd: Value, csq: => EvalM[Value], alt: => EvalM[Value]): EvalM[Value] =
     val csqValue = guard(lattice.isTrue(prd)).flatMap(_ => csq)
     val altValue = guard(lattice.isFalse(prd)).flatMap(_ => alt)
     merge(csqValue, altValue).map(v => lattice.addAddresses(v, getAddresses(prd)))
-  }
 
-  trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis {
-    override protected def eval(exp: SchemeExp): EvalM[Value] = exp match {
+  trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis:
+    override protected def eval(exp: SchemeExp): EvalM[Value] = exp match
       case SchemeCodeChange(e, _, _) if version == Old =>
         registerComponent(e, component)
         eval(e) // This could also be a super call if we assume no nesting of change expressions (which could be expected).
@@ -28,7 +27,6 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
       case _ =>
         registerComponent(exp, component)
         super.eval(exp)
-    }
     /*
     override protected def evalAndLoop(exps: List[SchemeExp]): EvalM[Value] = exps match {
       case exp :: Nil => eval(exp)
@@ -58,5 +56,3 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
     }
 
      */
-  }
-}

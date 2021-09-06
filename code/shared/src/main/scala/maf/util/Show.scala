@@ -2,11 +2,10 @@ package maf.util
 
 import maf.core._
 
-trait Show[V] extends Serializable {
+trait Show[V] extends Serializable:
   def show(v: V): String
-}
 
-object Show {
+object Show:
   def apply[V: Show]: Show[V] = implicitly
 
   implicit val stringShow: Show[String] = new Show[String] {
@@ -14,11 +13,10 @@ object Show {
   }
   implicit val boolShow: Show[Boolean] = new Show[Boolean] {
     def show(b: Boolean): String =
-      if (b) {
+      if b then
         "#t"
-      } else {
+      else
         "#f"
-      }
   }
   implicit val intShow: Show[BigInt] = new Show[BigInt] {
     def show(i: BigInt): String = s"$i"
@@ -33,13 +31,10 @@ object Show {
   val symShow: Show[String] = new Show[String] {
     def show(s: String): String = s"'$s"
   }
-}
 
-trait StoreShow[V, A <: Address] {
+trait StoreShow[V, A <: Address]:
   def show(v: V, store: Store[A, V]): String
-}
 
-object StoreShow {
+object StoreShow:
   def apply[V, A <: Address](implicit e: StoreShow[V, A]): StoreShow[V, A] = e
   def fromShow[V: Show, A <: Address]: StoreShow[V, A] = (v: V, _) => Show[V].show(v)
-}

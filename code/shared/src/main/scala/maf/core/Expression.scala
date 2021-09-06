@@ -3,7 +3,7 @@ package maf.core
 import maf.util.SmartHash
 
 /** An expression */
-trait Expression extends SmartHash {
+trait Expression extends SmartHash:
 
   /** The identity of the expression. Can be used to get information about the position of the expression in its source file. */
   def idn: Identity
@@ -36,14 +36,12 @@ trait Expression extends SmartHash {
 
   /** A hash code that ignores positional information of the expression within the source code. */
   lazy val hash: Int = (label, subexpressions.map(_.hash)).hashCode()
-}
 
-object Expression {
+object Expression:
   def eql(e1: Expression, e2: Expression): Boolean = e1.eql(e2)
-}
 
 /** An identifier. It has a name and a position */
-case class Identifier(name: String, idn: Identity) extends Expression with SmartHash {
+case class Identifier(name: String, idn: Identity) extends Expression with SmartHash:
   def fullString: String = s"$name@$idn"
   override def toString: String = name
   def fv: Set[String] = Set(name)
@@ -51,4 +49,3 @@ case class Identifier(name: String, idn: Identity) extends Expression with Smart
   val label: Label = Label.SYM
   def subexpressions: List[Expression] = List()
   override lazy val hash: Int = (label, name).hashCode()
-}

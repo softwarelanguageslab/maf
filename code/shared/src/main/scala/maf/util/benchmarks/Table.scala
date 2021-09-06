@@ -1,6 +1,6 @@
 package maf.util.benchmarks
 
-object Table {
+object Table:
 
   /**
    * Create a new empty table
@@ -8,9 +8,8 @@ object Table {
    *   a new empty table
    */
   def empty[V]: Table[V] = Table(Map[(String, String), V](), None)
-}
 
-case class Table[V](data: Map[(String, String), V], default: Option[V]) {
+case class Table[V](data: Map[(String, String), V], default: Option[V]):
 
   /**
    * Get an element from the table.
@@ -95,13 +94,12 @@ case class Table[V](data: Map[(String, String), V], default: Option[V]) {
       columns: List[String],
       rowName: String,
       format: V => String
-    ): List[List[String]] = {
+    ): List[List[String]] =
     val firstRow = rowName :: columns
     val otherRows = rows.foldRight(List[List[String]]()) { (row, restRows) =>
       (row :: columns.map(col => format(this(row, col)))) :: restRows
     }
     firstRow :: otherRows
-  }
 
   /**
    * Generate LaTeX code to produce the table
@@ -121,14 +119,13 @@ case class Table[V](data: Map[(String, String), V], default: Option[V]) {
       columns: List[String] = allColumns.toList.sorted,
       rowName: String = "",
       format: V => String = _.toString()
-    ): String = {
+    ): String =
     val headerStr = s"\\begin{table}\n\\center\n\\begin{tabular}{l${"c" * columns.length}}\n\\toprule\n"
     val content = extract(rows, columns, rowName, v => format(v).replace("_", "\\_").nn)
       .map(_.mkString(" & "))
       .mkString("", "\\\\\n", "\\\\\n")
     val footerStr = "\\bottomrule\n\\end{tabular}\n\\end{table}"
     headerStr ++ content ++ footerStr
-  }
 
   /**
    * Generate a CSV representation of the given table
@@ -171,12 +168,10 @@ case class Table[V](data: Map[(String, String), V], default: Option[V]) {
       columns: List[String] = allColumns.toList.sorted,
       rowName: String = "",
       format: V => String = _.toString()
-    ): String = {
+    ): String =
     val addPadding = (elm: String, len: Int) => elm + (" " * (len - elm.length))
     val content = extract(rows, columns, rowName, format)
     val colLens = content.transpose.map(_.maxBy(_.size).size)
     val rowsStr = content.map(_.zip(colLens).map(addPadding.tupled).mkString("| ", " | ", " |"))
     val seperator = colLens.map("-" * _).mkString("+-", "-+-", "-+")
     ((seperator :: rowsStr.head :: seperator :: rowsStr.tail) :+ seperator).mkString("\n")
-  }
-}

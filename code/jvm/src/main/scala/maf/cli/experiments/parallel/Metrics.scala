@@ -10,22 +10,20 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.worklist._
 
-trait Metric {
+trait Metric:
   def name: String
   def forProgram(program: SchemeExp): Metric.SequenceBasedMetric
-}
 
-object Metric {
-  case class SequenceBasedMetric(vs: List[Int]) {
+object Metric:
+  case class SequenceBasedMetric(vs: List[Int]):
     def mean = Statistics.mean(vs.map(_.toDouble)).toInt
     def median = Statistics.median(vs.map(_.toDouble)).toInt
     def stddev = Statistics.stddev(vs.map(_.toDouble)).toInt
     def max = vs.max.toInt
     def add(v: Int): SequenceBasedMetric = SequenceBasedMetric(v :: vs)
     override def toString = s"$mean [$median±$stddev] <= $max"
-  }
 
-  object ExpressionDepth extends Metric {
+  object ExpressionDepth extends Metric:
     type M = SequenceBasedMetric
     def name = "exp-depth"
     def computeDepths(exp: Expression, depths: Map[Identity, Int] = Map.empty): Map[Identity, Int] =
@@ -34,13 +32,12 @@ object Metric {
         .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
     def forProgram(program: SchemeExp): M =
       SequenceBasedMetric(computeDepths(program).values.toList)
-  }
 
-  class CallDepth(val kCFA: Int) extends Metric {
+  class CallDepth(val kCFA: Int) extends Metric:
     def name = s"call-depth"
     type M = SequenceBasedMetric
 
-    def forProgram(program: SchemeExp): M = {
+    def forProgram(program: SchemeExp): M =
       val analysis = new ModAnalysis(program)
         with SchemeModFSemantics
         with StandardSchemeModFComponents
@@ -53,14 +50,12 @@ object Metric {
       }
       analysis.analyze()
       SequenceBasedMetric(analysis.depth.values.toList)
-    }
-  }
 
-  class LeastVisited(kCFA: Int) extends Metric {
+  class LeastVisited(kCFA: Int) extends Metric:
     def name = s"least-visited"
     type M = SequenceBasedMetric
 
-    def forProgram(program: SchemeExp): M = {
+    def forProgram(program: SchemeExp): M =
       val analysis = new ModAnalysis(program)
         with SchemeModFSemantics
         with StandardSchemeModFComponents
@@ -73,13 +68,11 @@ object Metric {
       }
       analysis.analyze()
       SequenceBasedMetric(analysis.count.values.toList)
-    }
-  }
-  class MostVisited(kCFA: Int) extends Metric {
+  class MostVisited(kCFA: Int) extends Metric:
     def name = s"most-visited"
     type M = SequenceBasedMetric
 
-    def forProgram(program: SchemeExp): M = {
+    def forProgram(program: SchemeExp): M =
       val analysis = new ModAnalysis(program)
         with SchemeModFSemantics
         with StandardSchemeModFComponents
@@ -92,14 +85,12 @@ object Metric {
       }
       analysis.analyze()
       SequenceBasedMetric(analysis.count.values.toList)
-    }
-  }
 
-  class NumberOfDependencies(kCFA: Int) extends Metric {
+  class NumberOfDependencies(kCFA: Int) extends Metric:
     type M = SequenceBasedMetric
     def name = s"deps"
 
-    def forProgram(program: SchemeExp): M = {
+    def forProgram(program: SchemeExp): M =
       val analysis = new ModAnalysis(program)
         with SchemeModFSemantics
         with StandardSchemeModFComponents
@@ -112,14 +103,12 @@ object Metric {
       }
       analysis.analyze()
       SequenceBasedMetric(analysis.depCount.values.toList)
-    }
-  }
 
-  class EnvironmentSize(kCFA: Int) extends Metric {
+  class EnvironmentSize(kCFA: Int) extends Metric:
     type M = SequenceBasedMetric
     def name = s"env-size"
 
-    def forProgram(program: SchemeExp): M = {
+    def forProgram(program: SchemeExp): M =
       val analysis = new ModAnalysis(program)
         with SchemeModFSemantics
         with StandardSchemeModFComponents
@@ -132,36 +121,31 @@ object Metric {
       }
       analysis.analyze()
       SequenceBasedMetric(analysis.visited.map(analysis.environmentSize).toList)
-    }
-  }
-}
 
-trait Metrics {
+trait Metrics:
   def benchmarks: Iterable[String]
 
   def metrics: List[Metric]
 
   var results = Table.empty[Metric.SequenceBasedMetric].withDefaultValue(Metric.SequenceBasedMetric(List()))
 
-  def metricForFile(file: String, metric: Metric): Metric.SequenceBasedMetric = {
+  def metricForFile(file: String, metric: Metric): Metric.SequenceBasedMetric =
     val program = CSchemeParser.parseProgram(Reader.loadFile(file))
     metric.forProgram(program)
-  }
 
   def metricsForFile(file: String): Unit =
     metrics.foreach { metric =>
-      try {
+      try
         println(s"***** Computing metric ${metric.name} on $file *****")
         val result = metricForFile(file, metric)
         println(result)
         results = results.add(file, metric.name, result)
-      } catch {
+      catch
         case e: Exception =>
           println(s"Encountered an exception: ${e.getMessage}")
         case e: VirtualMachineError =>
           System.gc()
           println(s"VM Error: ${e.getMessage}")
-      }
     }
 
   def printResults() =
@@ -170,21 +154,18 @@ trait Metrics {
       path: String,
       format: Metric.SequenceBasedMetric => String,
       timestamped: Boolean = true
-    ) = {
-    val hdl = if (timestamped) Writer.openTimeStamped(path) else Writer.open(path)
+    ) =
+    val hdl = if timestamped then Writer.openTimeStamped(path) else Writer.open(path)
     val csv = results.toCSVString(format = format)
     Writer.write(hdl, csv)
     Writer.close(hdl)
-  }
 
-  def run(path: String = "benchOutput/metrics/output.csv") = {
+  def run(path: String = "benchOutput/metrics/output.csv") =
     benchmarks.foreach(metricsForFile)
     printResults()
     exportCSV(path, format = _.toString())
-  }
-}
 
-trait ParallelMetrics extends Metrics {
+trait ParallelMetrics extends Metrics:
   def k: Int
   def metrics = List(
     Metric.ExpressionDepth,
@@ -197,7 +178,7 @@ trait ParallelMetrics extends Metrics {
   def formatMean(m: Metric.SequenceBasedMetric): String = m.mean.toString()
   def formatStddev(m: Metric.SequenceBasedMetric): String = m.stddev.toString()
   def formatMax(m: Metric.SequenceBasedMetric): String = m.max.toString()
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     run()
     exportCSV("data/modf-context-insensitive-metrics-mean.csv", formatMean _, timestamped = false)
     exportCSV("data/modf-context-insensitive-metrics-stddev.csv", formatStddev _, timestamped = false)
@@ -213,15 +194,11 @@ trait ParallelMetrics extends Metrics {
       // TODO: find a way to have an understandable formatting for the metrics
       println(s"\\prog{$shortName} & $expDepth & $callDepth & $leastVisited & $mostVisited & $deps & $envSize \\\\")
     }
-  }
-}
 
-object ParallelMetrics0CFA extends ParallelMetrics {
+object ParallelMetrics0CFA extends ParallelMetrics:
   def k = 0
   def benchmarks = ParallelModFBenchmarks.all
-}
 
-object ParallelMetrics2CFA extends ParallelMetrics {
+object ParallelMetrics2CFA extends ParallelMetrics:
   def k = 2
   def benchmarks = ParallelModFBenchmarks.for2CFA
-}

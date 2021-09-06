@@ -4,10 +4,10 @@ import maf.language.change.CodeVersion._
 import maf.language.scheme._
 
 /** Filters the change expressions out of a program and returns the requested version. */
-object ProgramVersionExtracter {
+object ProgramVersionExtracter:
 
   // TODO: make tailrecursive.
-  private def getVersion(e: SchemeExp)(implicit version: Version): SchemeExp = e match {
+  private def getVersion(e: SchemeExp)(implicit version: Version): SchemeExp = e match
     case SchemeLambda(name, args, body, idn)               => SchemeLambda(name, args, body.map(getVersion), idn)
     case SchemeVarArgLambda(name, args, vararg, body, idn) => SchemeVarArgLambda(name, args, vararg, body.map(getVersion), idn)
     case SchemeFuncall(f, args, idn)                       => SchemeFuncall(getVersion(f), args.map(getVersion), idn)
@@ -28,8 +28,6 @@ object ProgramVersionExtracter {
     case CSchemeFork(body, idn) => CSchemeFork(getVersion(body), idn)
 
     case exp => exp
-  }
 
   def getInitial(program: SchemeExp): SchemeExp = getVersion(program)(Old)
   def getUpdated(program: SchemeExp): SchemeExp = getVersion(program)(New)
-}

@@ -8,10 +8,9 @@ import maf.modular.AbstractDomain
  * @tparam Expr
  *   The type of expressions of the language under analysis.
  */
-trait IncrementalAbstractDomain[Expr <: Expression] extends AbstractDomain[Expr] {
+trait IncrementalAbstractDomain[Expr <: Expression] extends AbstractDomain[Expr]:
   implicit override lazy val lattice: IncrementalLattice[Value, Address]
   def addAddress(v: Value, source: Address): Value = addAddresses(v, Set(source))
   def addAddresses(v: Value, sources: Set[Address]): Value
   def getAddresses(v: Value): Set[Address]
   def removeAddresses(v: Value): Value
-}

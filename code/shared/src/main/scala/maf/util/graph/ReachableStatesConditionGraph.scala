@@ -1,18 +1,17 @@
 package maf.util.graph
 
 case class ReachableStatesConditionGraph[N <: GraphElement, E <: GraphElement](
-    condition: N => Boolean) {
+    condition: N => Boolean):
   case class G(states: Set[N])
 
-  object G {
+  object G:
     implicit val typeclass: Graph[G, N, E] = new Graph[G, N, E] {
       def empty = new G(Set.empty)
       def addNode(g: G, node: N) =
-        if (condition(node)) {
+        if condition(node) then
           G(g.states + node)
-        } else {
+        else
           g
-        }
       def addEdge(
           g: G,
           node1: N,
@@ -30,5 +29,3 @@ case class ReachableStatesConditionGraph[N <: GraphElement, E <: GraphElement](
       def edges(g: G) = 0
       def findNodes(g: G, p: N => Boolean) = g.states.filter(p)
     }
-  }
-}

@@ -3,7 +3,7 @@ package maf.core
 import maf.util.SmartHash
 
 /** An address */
-trait Address extends SmartHash {
+trait Address extends SmartHash:
 
   /**
    * Should the address be included when printing an environment or store? This allows to reduce the size of the printed environment/store. Address
@@ -16,4 +16,3 @@ trait Address extends SmartHash {
    * sensible program location (e.g., pre-allocated addresses for primitives)
    */
   def idn: Identity
-}

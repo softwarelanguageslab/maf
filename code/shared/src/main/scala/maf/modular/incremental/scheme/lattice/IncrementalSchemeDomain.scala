@@ -6,11 +6,10 @@ import maf.language.scheme.primitives._
 import maf.lattice._
 import maf.modular.scheme._
 
-trait IncrementalSchemeDomain extends IncrementalAbstractDomain[SchemeExp] with SchemeDomain {
+trait IncrementalSchemeDomain extends IncrementalAbstractDomain[SchemeExp] with SchemeDomain:
   implicit override lazy val lattice: IncrementalSchemeLattice[Value, Address]
-}
 
-trait IncrementalModularSchemeDomain extends IncrementalSchemeDomain {
+trait IncrementalModularSchemeDomain extends IncrementalSchemeDomain:
   val modularLatticeWrapper: IncrementalModularSchemeLatticeWrapper
   type Value = modularLatticeWrapper.modularLattice.AL // Use the annotated lattice.
   override lazy val lattice = modularLatticeWrapper.modularLattice.incrementalSchemeLattice
@@ -19,9 +18,8 @@ trait IncrementalModularSchemeDomain extends IncrementalSchemeDomain {
     lattice.addAddresses(v, sources)
   def getAddresses(v: modularLatticeWrapper.modularLattice.AL): Set[Address] = lattice.getAddresses(v)
   def removeAddresses(v: modularLatticeWrapper.modularLattice.AL): modularLatticeWrapper.modularLattice.AL = lattice.removeAddresses(v)
-}
 
-trait IncrementalModularSchemeLatticeWrapper {
+trait IncrementalModularSchemeLatticeWrapper:
   type S
   type B
   type I
@@ -32,9 +30,8 @@ trait IncrementalModularSchemeLatticeWrapper {
   val modularLattice: IncrementalModularSchemeLattice[Address, S, B, I, R, C, Sym]
   // Primitive functions of Scheme.
   val primitives: SchemePrimitives[modularLattice.AL, Address]
-}
 
-object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrapper {
+object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrapper:
   type S = Type.S
   type B = ConstantPropagation.B
   type I = Type.I
@@ -43,13 +40,11 @@ object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrappe
   type Sym = Type.Sym
   val modularLattice = new IncrementalModularSchemeLattice
   val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
-}
 
-trait IncrementalSchemeTypeDomain extends IncrementalModularSchemeDomain {
+trait IncrementalSchemeTypeDomain extends IncrementalModularSchemeDomain:
   val modularLatticeWrapper = IncrementalSchemeTypeDomain
-}
 
-object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeLatticeWrapper {
+object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeLatticeWrapper:
   type S = ConstantPropagation.S
   type B = ConstantPropagation.B
   type I = ConstantPropagation.I
@@ -58,8 +53,6 @@ object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSche
   type Sym = ConstantPropagation.Sym
   val modularLattice = new IncrementalModularSchemeLattice
   val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
-}
 
-trait IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeDomain {
+trait IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeDomain:
   val modularLatticeWrapper = IncrementalSchemeConstantPropagationDomain
-}

@@ -20,13 +20,12 @@ object PrecisionComparison
       ConstantPropagation.C,
       ConstantPropagation.S,
       ConstantPropagation.Sym
-    ] {
-  val benchmarks = {
+    ]:
+  val benchmarks =
     SchemeBenchmarkPrograms.gabriel ++
       List(
         "test/R5RS/mceval.scm"
       )
-  }
 
   var path: String = "<none>"
 
@@ -48,7 +47,7 @@ object PrecisionComparison
 
   def main(args: Array[String]) = runBenchmarks() // check("test/primtest.scm")
 
-  def check(benchmark: Benchmark) = {
+  def check(benchmark: Benchmark) =
     val txt = Reader.loadFile(benchmark)
     val prg = SchemeParser.parseProgram(txt)
     val con = runInterpreter(prg, path).get
@@ -57,9 +56,8 @@ object PrecisionComparison
     allKeys.foreach { k =>
       println(s"$k -> ${abs.getOrElse(k, "⊥")} ; ${con.getOrElse(k, "⊥")} ")
     }
-  }
 
-  def runBenchmarks() = {
+  def runBenchmarks() =
     benchmarks.foreach { b =>
       System.gc()
       path = b
@@ -69,5 +67,3 @@ object PrecisionComparison
     val columns = List("Improved", "concrete")
     println(results.withDefaultValue(None).prettyString(columns = columns, format = _.map(_.toString()).getOrElse("TIMEOUT")))
     // println(results.withDefaultValue(None).toLatexString(columns = columns, format = _.map(_.toString()).getOrElse("--")))
-  }
-}

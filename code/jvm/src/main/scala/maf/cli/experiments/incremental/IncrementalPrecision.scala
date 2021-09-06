@@ -14,7 +14,7 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String] {
+trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String]:
 
   type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
@@ -28,18 +28,17 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
   var results: Table[String] = Table.empty.withDefaultValue(" ")
   val error: String = errS
 
-  def runAnalysis(name: String, block: Timeout.T => Unit): Boolean = {
+  def runAnalysis(name: String, block: Timeout.T => Unit): Boolean =
     print(name)
     val timeOut = timeout()
     block(timeOut)
     timeOut.reached // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
-  }
 
   def compareAnalyses(
       file: String,
       inc: Analysis,
       rean: Analysis
-    ): Unit = {
+    ): Unit =
     val cName = inc.configuration.toString
     // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
     val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
@@ -53,8 +52,8 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     allAddr.foreach({ a =>
       val incr = iStore(a)
       val rean = rStore(a)
-      if (incr == rean) e += 1 // Both results are the same => equally precise.
-      else if (inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]))
+      if incr == rean then e += 1 // Both results are the same => equally precise.
+      else if inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]) then
         l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
       else {
         System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
@@ -66,9 +65,8 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
       .add(file, columnName(eqS, cName), Formatter.withPercent(e, t))
       .add(file, columnName(lpS, cName), Formatter.withPercent(l, t))
       .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
-  }
 
-  def onBenchmark(file: String): Unit = {
+  def onBenchmark(file: String): Unit =
     print(s"Testing $file ")
     val program = parse(file)
     // Initial analysis: analyse + update.
@@ -79,62 +77,54 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     a2.version = New
 
     // Run the initial analysis and full reanalysis. They both need to finish.
-    if (runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) || runAnalysis("rean ", timeOut => a2.analyzeWithTimeout(timeOut))) {
+    if runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) || runAnalysis("rean ", timeOut => a2.analyzeWithTimeout(timeOut)) then
       print("timed out.")
       columns.foreach(c => results = results.add(file, c, infS))
       return
-    }
 
     configurations.foreach { config =>
       val copy = a1.deepCopy()
       copy.configuration = config
 
-      if (!runAnalysis(config.toString, timeOut => a1.updateAnalysis(timeOut))) compareAnalyses(file, a1, a2)
-      else {
+      if !runAnalysis(config.toString, timeOut => a1.updateAnalysis(timeOut)) then compareAnalyses(file, a1, a2)
+      else
         propertiesS.foreach(o => results = results.add(file, columnName(o, config.toString), infS))
         print(" timed out - ")
-      }
     }
-  }
 
   // Note, we could also compare to the initial analysis. This would give us an idea on how many addresses were refined (column "More precise").
 
   def interestingAddress[A <: Address](a: A): Boolean
   def createOutput(): String = results.prettyString(columns = columns)
-}
 
 /* ************************** */
 /* ***** Instantiations ***** */
 /* ************************** */
 
-trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp] {
-  override def interestingAddress[A <: Address](a: A): Boolean = a match {
+trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
+  override def interestingAddress[A <: Address](a: A): Boolean = a match
     case PrmAddr(_) => false
     case _          => true
-  }
 
   override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 
   val configurations: List[IncrementalConfiguration] = List(allOptimisations)
-}
 
-object IncrementalSchemeModFTypePrecision extends IncrementalSchemePrecision {
+object IncrementalSchemeModFTypePrecision extends IncrementalSchemePrecision:
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
 
   val outputFile: String = "precision/modf-type.txt"
-}
 
-object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision {
+object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision:
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
 
   val outputFile: String = "precision/modf-CP.txt"
-}
 
 /*
 object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecision {
@@ -146,21 +136,19 @@ object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecisi
 }
  */
 
-object IncrementalSchemeModConcTypePrecision extends IncrementalSchemePrecision {
+object IncrementalSchemeModConcTypePrecision extends IncrementalSchemePrecision:
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
 
   val outputFile: String = "precision/modconc-type.txt"
-}
 
-object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision {
+object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision:
   override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
   override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
 
   val outputFile: String = "precision/modconc-CP.txt"
-}
 
 /*
 object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrecision {
@@ -172,13 +160,11 @@ object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrec
 }
  */
 
-object IncrementalSchemeModXPrecision {
-  def main(args: Array[String]): Unit = {
+object IncrementalSchemeModXPrecision:
+  def main(args: Array[String]): Unit =
     IncrementalSchemeModFTypePrecision.main(args)
     //IncrementalSchemeModFCPPrecision.main(args)
     //IncrementalSchemeModFCPPrecisionStoreOpt.main(args)
     //IncrementalSchemeModConcPrecision.main(args)
     //IncrementalSchemeModConcCPPrecision.main(args)
     //IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
-  }
-}

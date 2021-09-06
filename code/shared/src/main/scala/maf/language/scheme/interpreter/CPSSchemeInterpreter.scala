@@ -14,7 +14,7 @@ class CPSSchemeInterpreter(
     val io: IO = new EmptyIO(),
     val stack: Boolean = false)
     extends BaseSchemeInterpreter[Value]
-       with ConcreteSchemePrimitives {
+       with ConcreteSchemePrimitives:
 
   type TID = Int
 
@@ -25,68 +25,59 @@ class CPSSchemeInterpreter(
   var steps: TID = _
   var tid = 0
 
-  def scheduleNext(): Unit = {
+  def scheduleNext(): Unit =
     steps = scala.util.Random.nextInt(10)
     val (s, w) = work.dequeue
     state = s
     work = w
-  }
 
-  def allocTID(): TID = {
+  def allocTID(): TID =
     tid = tid + 1
     tid
-  }
 
   override def run(
       program: SchemeExp,
       timeout: Timeout.T,
       version: Version
-    ): Value = {
+    ): Value =
     work = Queue()
     waiting = Map().withDefaultValue(Left(Set()))
     setStore(initialSto)
     work = work.enqueue(Step(program, initialEnv, EndC()))
     scheduleNext()
-    try {
-      while (!timeout.reached) {
+    try
+      while !timeout.reached do
         // Let every thread perform some steps.
-        if (steps == 0) {
+        if steps == 0 then
           work = work.enqueue(state)
           scheduleNext()
-        }
         steps = steps - 1
-        state = state match {
+        state = state match
           case Step(exp, env, cc) => eval(exp, env, version, cc)
           case Kont(v, EndC())    => return v
           case Kont(v, TrdC(tid)) =>
             val blocked = waiting(tid)
             waiting = waiting + (tid -> Right(v))
-            blocked match {
+            blocked match
               case Left(continuations) => work = work.enqueueAll(continuations.map(Kont(v, _)))
               case Right(_)            => throw new Exception(s"Thread with $tid already finished.")
-            }
             scheduleNext()
             state
           case Kont(v, cc) => apply(v, cc)
-        }
-      }
       throw new TimeoutException()
-    } catch {
+    catch
       // Use the continuations to print the stack trace.
       case StackedException(message) =>
         var cc = state.cc
         var msg: String = s"$message\n Callstack:"
-        if (stack) {
-          while ({
+        if stack then
+          while
             msg = msg + s"\n * ${cc.toString}"
             cc = cc.asInstanceOf[InternalContinuation].cc
             cc != EndC() && cc != TrdC()
-          }) ()
+          do ()
           msg += "\n **********"
-        }
         throw new Exception(msg)
-    }
-  }
 
   case class StackedException(msg: String) extends Exception
 
@@ -98,9 +89,8 @@ class CPSSchemeInterpreter(
 
   sealed trait Continuation
 
-  trait InternalContinuation extends Continuation {
+  trait InternalContinuation extends Continuation:
     val cc: Continuation
-  }
 
   // format: off
   case class ArgC(exps: List[SchemeExp], env: Env, f: Value, argv: List[Value], call: SchemeFuncall, cc: Continuation) extends InternalContinuation
@@ -132,9 +122,8 @@ class CPSSchemeInterpreter(
   /* ***** STATES ***** */
   /* ****************** */
 
-  sealed trait State {
+  sealed trait State:
     val cc: Continuation
-  }
 
   case class Step(
       exp: SchemeExp,
@@ -153,7 +142,7 @@ class CPSSchemeInterpreter(
       env: Env,
       version: Version,
       cc: Continuation
-    ): State = exp match {
+    ): State = exp match
     case SchemeAssert(_, _)                            => Kont(Value.Void, cc) // Currently ignored.
     case SchemeBegin(Nil, _)                           => Kont(Value.Void, cc) // Allow empty begin (same than other interpreter).
     case SchemeBegin(first :: Nil, _)                  => Step(first, env, cc)
@@ -173,10 +162,9 @@ class CPSSchemeInterpreter(
     case SchemeLetStar(Nil, body, pos)             => Step(SchemeBegin(body, pos), env, cc)
     case let @ SchemeLetStar((i, e) :: rest, _, _) => Step(e, env, LtsC(i, rest, env, let, cc))
     case SchemeSet(variable, value, _) =>
-      env.get(variable.name) match {
+      env.get(variable.name) match
         case Some(addr) => Step(value, env, SetC(addr, cc))
         case None       => stackedException(s"Unbound variable $variable at position ${variable.idn}.")
-      }
     case SchemeSetLex(_, _, _, _) => stackedException("Unsupported: lexical addresses.")
     case SchemeValue(value, _)    => Kont(evalLiteral(value, exp), cc)
     case SchemeVar(id) =>
@@ -190,9 +178,8 @@ class CPSSchemeInterpreter(
     case CSchemeJoin(tExp, _) => Step(tExp, env, JoiC(cc))
 
     case _ => stackedException(s"Unsupported expression type: ${exp.label}.")
-  }
 
-  def apply(v: Value, cc: Continuation): State = cc match {
+  def apply(v: Value, cc: Continuation): State = cc match
     case ArgC(Nil, _, f, argv, call, cc)                 => continueBody(f, v :: argv, call, cc)
     case ArgC(first :: rest, env, f, argv, call, cc)     => Step(first, env, ArgC(rest, env, f, v :: argv, call, cc))
     case BegC(first :: Nil, env, cc)                     => Step(first, env, cc)
@@ -201,31 +188,27 @@ class CPSSchemeInterpreter(
     case IffC(_, alt, env, cc) if v == Value.Bool(false) => Step(alt, env, cc)
     case IffC(cons, _, env, cc)                          => Step(cons, env, cc)
     case JoiC(cc) =>
-      v match {
+      v match
         case Value.CThread(tid) =>
-          waiting(tid) match {
+          waiting(tid) match
             case Left(continuations) =>
               waiting = waiting + (tid -> Left(continuations + cc))
               scheduleNext()
               state
             case Right(v) => Kont(v, cc)
-          }
         case v => stackedException(s"Cannot join non-thread value: $v.")
-      }
     case LetC(Nil, env, bvals, let, cc) => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
     case LetC((_, e) :: rest, env, bvals, let, cc) => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
     case LtrC(i1, bnd, env, let, cc) =>
       extendStore(env(i1.name), v) // Overwrite the previous binding.
-      bnd match {
+      bnd match
         case Nil             => Step(SchemeBegin(let.body, let.idn), env, cc)
         case (i2, e) :: rest => Step(e, env, LtrC(i2, rest, env, let, cc))
-      }
     case LtsC(i, Nil, env, let, cc)              => Step(SchemeBegin(let.body, let.idn), extendEnv(env, (i, v)), cc)
     case LtsC(i1, (i2, e) :: rest, env, let, cc) => val extEnv = extendEnv(env, (i1, v)); Step(e, extEnv, LtsC(i2, rest, extEnv, let, cc))
     case PaiC(car, e, cc)                        => Kont(allocateCons(e, car, v), cc)
     case RetC(addr, cc)                          => extendStore(addr, v); Kont(v, cc)
     case SetC(addr, cc)                          => extendStore(addr, v); Kont(Value.Void, cc)
-  }
 
   // Evaluate the arguments of a function.
   def continueArgs(
@@ -234,28 +217,25 @@ class CPSSchemeInterpreter(
       env: Env,
       call: SchemeFuncall,
       cc: Continuation
-    ): State = {
+    ): State =
     // First, check the arity.
-    f match {
+    f match
       case Value.Clo(lambda @ SchemeLambda(_, argNames, _, _), _) =>
-        if (args.length != argNames.length)
+        if args.length != argNames.length then
           stackedException(
             s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${lambda.lambdaName}, while exactly ${argNames.length} are expected."
           )
       case Value.Clo(lambda @ SchemeVarArgLambda(_, argNames, _, _, _), _) =>
-        if (args.length < argNames.length)
+        if args.length < argNames.length then
           stackedException(
             s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${lambda.lambdaName}, while at least ${argNames.length} are expected."
           )
       case Value.Primitive(_) => // Arity is checked upon primitive call.
       case v                  => stackedException(s"Invalid function call at position ${call.idn}: ${v} is not a closure or a primitive.")
-    }
     // If the arity is ok, evaluate the arguments.
-    args match {
+    args match
       case Nil           => continueBody(f, Nil, call, cc)
       case first :: rest => Step(first, env, ArgC(rest, env, f, Nil, call, cc))
-    }
-  }
 
   // Evaluate the body of a function.
   def continueBody(
@@ -263,9 +243,9 @@ class CPSSchemeInterpreter(
       argvsRev: List[Value],
       call: SchemeFuncall,
       cc: Continuation
-    ): State = {
+    ): State =
     val argvs = argvsRev.reverse
-    f match {
+    f match
       case Value.Clo(SchemeLambda(_, argNames, body, _), env2) =>
         Step(SchemeBody(body), extendEnv(argNames, argvs, env2), cc)
       case Value.Clo(SchemeVarArgLambda(_, argNames, vararg, body, _), env2) =>
@@ -275,8 +255,6 @@ class CPSSchemeInterpreter(
         Step(SchemeBody(body), envExt, cc)
       case Value.Primitive(p) => Kont(Primitives.allPrimitives(p).call(call, call.args.zip(argvs)), cc)
       case _                  => throw new Exception("Expected a function or primitive to apply")
-    }
-  }
 
   def extendEnv(
       ids: List[Identifier],
@@ -284,9 +262,7 @@ class CPSSchemeInterpreter(
       env: Env
     ): Env = ids.zip(values).foldLeft(env)(extendEnv)
 
-  def extendEnv(env: Env, idv: (Identifier, Value)): Env = {
+  def extendEnv(env: Env, idv: (Identifier, Value)): Env =
     val addr = newAddr(AddrInfo.VarAddr(idv._1))
     extendStore(addr, idv._2)
     env + (idv._1.name -> addr)
-  }
-}

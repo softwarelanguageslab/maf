@@ -8,7 +8,7 @@ import maf.language.scheme.lattices.SchemeLattice
 
 import Monad._
 
-trait StoreM[M[_], A <: Address, V] extends Monad[M] {
+trait StoreM[M[_], A <: Address, V] extends Monad[M]:
   def addrEq: M[MaybeEq[A]]
   def lookupSto(a: A): M[V]
   def extendSto(a: A, v: V): M[Unit]
@@ -17,14 +17,12 @@ trait StoreM[M[_], A <: Address, V] extends Monad[M] {
   def updateSto(a: A, v: V): M[Unit]
   // let Scala know to use the instance itself as an implicit
   implicit final private val self: StoreM[M, A, V] = this
-}
 
-trait SchemeAllocM[M[_], A] extends Monad[M] {
+trait SchemeAllocM[M[_], A] extends Monad[M]:
   def allocVar(idn: Identifier): M[A]
   def allocPtr(exp: SchemeExp): M[A]
-}
 
-trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with MonadError[M, Error] with SchemeAllocM[M, A] with StoreM[M, A, V] {
+trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with MonadError[M, Error] with SchemeAllocM[M, A] with StoreM[M, A, V]:
   // for convenience
   def allocVal(exp: SchemeExp, vlu: V): M[A] =
     flatMap(allocPtr(exp))(adr => map(extendSto(adr, vlu))(_ => adr))
@@ -33,9 +31,8 @@ trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with
   // exotic -- not so important if not implemented yet
   def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] = throw new Exception("Not supported")
   def currentThread: M[TID] = throw new Exception("Not supported")
-}
 
-trait SchemePrimitive[V, A <: Address] extends Primitive {
+trait SchemePrimitive[V, A <: Address] extends Primitive:
   // Every primitive in Scheme has a unique name
   def name: String
   // They can be called given the calling expression and arguments using any compatible SchemePrimM monad
@@ -54,11 +51,10 @@ trait SchemePrimitive[V, A <: Address] extends Primitive {
       scheme: SchemeInterpreterBridge[V, A]
     ): MayFail[(V, store.This), Error] =
     call(fexp, args)(MFInstance(scheme)).run(store)
-}
 
 // To support the "old" interface (i.e., for usage in callMF)
 
-trait SchemeInterpreterBridge[V, A <: Address] {
+trait SchemeInterpreterBridge[V, A <: Address]:
   type Closure = (SchemeLambdaExp, Environment[A])
   def pointer(exp: SchemeExp): A
   def callcc(
@@ -66,14 +62,12 @@ trait SchemeInterpreterBridge[V, A <: Address] {
       pos: Position
     ): V
   def currentThread: TID
-}
 
-trait MF[X, A <: Address, V] {
+trait MF[X, A <: Address, V]:
   def run(sto: Store[A, V]): MayFail[(X, sto.This), Error]
-}
 
 // TODO: this can be done much more concisely in Scala 3
-case class MFInstance[A <: Address, V](bri: SchemeInterpreterBridge[V, A]) extends SchemePrimM[({ type λ[X] = MF[X, A, V] })#λ, A, V] {
+case class MFInstance[A <: Address, V](bri: SchemeInterpreterBridge[V, A]) extends SchemePrimM[({ type λ[X] = MF[X, A, V] })#λ, A, V]:
   def unit[X](x: X): MF[X, A, V] = new MF[X, A, V] {
     def run(sto: Store[A, V]) = MayFail.success((x, sto: sto.This))
   }
@@ -118,7 +112,6 @@ case class MFInstance[A <: Address, V](bri: SchemeInterpreterBridge[V, A]) exten
     unit(bri.callcc(clo, pos))
   override def currentThread: MF[TID, A, V] =
     unit(bri.currentThread)
-}
 
 // Primitive-specific errors
 
@@ -135,9 +128,8 @@ case class PrimitiveVariadicArityError(
 case class PrimitiveNotApplicable[V](name: String, args: List[V]) extends Error
 case class UserError(message: String) extends Error
 
-abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A]) extends Serializable {
+abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A]) extends Serializable:
   def allPrimitives: Map[String, SchemePrimitive[V, A]]
   def apply(name: String): SchemePrimitive[V, A] = allPrimitives(name)
   def ofList(prims: List[SchemePrimitive[V, A]]): Map[String, SchemePrimitive[V, A]] =
     prims.map(prim => (prim.name, prim)).toMap
-}

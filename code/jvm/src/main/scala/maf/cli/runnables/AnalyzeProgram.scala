@@ -15,8 +15,8 @@ import scala.concurrent.duration._
 // null values are used here due to Java interop
 import scala.language.unsafeNulls
 
-object AnalyzeProgram extends App {
-  def one(bench: String, timeout: () => Timeout.T): Unit = {
+object AnalyzeProgram extends App:
+  def one(bench: String, timeout: () => Timeout.T): Unit =
     val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
     /* val a = new ModAnalysis(text) with KKallocModConc with SchemeConstantPropagationDomain
     with LIFOWorklistAlgorithm[SchemeExp] {
@@ -40,14 +40,13 @@ object AnalyzeProgram extends App {
     val a = nonIncAnalysis(text)
     a.analyzeWithTimeout(timeout())
     a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) }).foreach(println)
-  }
 
   val bench: List[String] = List(
     "test/DEBUG2.scm"
   )
 
   // Used by webviz.
-  def newStandardAnalysis(text: String) = {
+  def newStandardAnalysis(text: String) =
     val program = SchemeParser.parseProgram(text)
     new SimpleSchemeModFAnalysis(program)
       with SchemeModFNoSensitivity
@@ -57,10 +56,9 @@ object AnalyzeProgram extends App {
       override def intraAnalysis(cmp: SchemeModFComponent) =
         new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
     }
-  }
 
   // Non-inc counterpart to IncrementalRun
-  def nonIncAnalysis(program: SchemeExp) = {
+  def nonIncAnalysis(program: SchemeExp) =
     new ModAnalysis[SchemeExp](getUpdated(program)) // Select the program version here.
     with StandardSchemeModFComponents with SchemeModFCallSiteSensitivity with SchemeModFSemantics with LIFOWorklistAlgorithm[SchemeExp]
     with BigStepModFSemantics with SchemeConstantPropagationDomain with GlobalStore[SchemeExp] with AnalysisLogging[SchemeExp] {
@@ -69,7 +67,6 @@ object AnalyzeProgram extends App {
           cmp: Component
         ) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra with AnalysisLoggingIntra
     }
-  }
 
   bench.foreach({ b =>
     try {
@@ -87,4 +84,3 @@ object AnalyzeProgram extends App {
     }
   })
 
-}

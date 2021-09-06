@@ -4,7 +4,7 @@ import maf.core._
 import maf.language.scheme._
 import maf.language.CScheme._
 
-object SchemePrelude {
+object SchemePrelude:
 
   val primDefs = Map(
     "@sensitivity:1CS" -> "(define @sensitivity:1CS #f)",
@@ -362,17 +362,14 @@ object SchemePrelude {
   val primNames: Set[String] = primDefs.keySet
 
   /** Transively adds all required definitions to the prelude, in addition to those mentioned in `incl`. */
-  def addPrelude(prg: List[SchemeExp], incl: Set[String] = Set.empty): List[SchemeExp] = {
+  def addPrelude(prg: List[SchemeExp], incl: Set[String] = Set.empty): List[SchemeExp] =
     var prelude: List[SchemeExp] = List()
     var work: Set[String] = SchemeBody.fv(prg) ++ incl
     var added: Set[String] = Set.empty
-    while (work.nonEmpty) {
+    while work.nonEmpty do
       val free = work.filter(primDefs.contains).filterNot(added)
       val defs = free.map(primDefsParsed)
       prelude = defs.toList ::: prelude
       work = defs.flatMap(_.fv)
       added ++= free
-    }
     prelude ::: prg
-  }
-}

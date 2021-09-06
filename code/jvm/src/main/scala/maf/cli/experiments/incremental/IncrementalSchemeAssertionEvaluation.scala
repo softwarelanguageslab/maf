@@ -13,7 +13,7 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] with TableOutput[String] {
+trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] with TableOutput[String]:
 
   final val veriS: String = "veri" // Verified assertions.
   final val failS: String = "fail" // Failed assertions.
@@ -33,25 +33,23 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
       file: String,
       phase: String,
       block: Timeout.T => Analysis
-    ): Boolean = {
+    ): Boolean =
     print(phase)
     val timeOut = timeout()
     val a = block(timeOut)
     val t = timeOut.reached
-    if (t) {
+    if t then
       print(" timed out - ")
       results = results.add(file, columnName(veriS, phase), infS)
       results = results.add(file, columnName(failS, phase), infS)
-    } else {
+    else
       print(" ")
       results = results.add(file, columnName(veriS, phase), a.assertionsVerified.size.toString)
       results = results.add(file, columnName(failS, phase), a.assertionsFailed.size.toString)
-    }
     t
 
-  }
 
-  def onBenchmark(file: String): Unit = {
+  def onBenchmark(file: String): Unit =
     print(s"Analysing $file: ")
     val program = parse(file)
 
@@ -59,7 +57,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     val a2 = analysis(program, noOptimisations) // This configuration does not matter.
     a2.version = New
 
-    if (
+    if
       runAnalysis(file,
                   "init",
                   timeOut => {
@@ -67,10 +65,9 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
                     a1
                   }
       )
-    ) {
+    then
       println()
       return
-    }
 
     configurations.foreach { config =>
       val copy = a1.deepCopy()
@@ -91,7 +88,6 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
                   a2
                 }
     )
-  }
 
   def createOutput(): String = results.prettyString() /*{
     // Mark rows that are different between the incremental versions or that differ from the reanalysis.
@@ -109,23 +105,19 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     }
     results.prettyString(columns = columns ++ Set("diff inc", "diff rean"))
   }*/
-}
 
-trait IncrementalSchemeModFAssertionEvaluation extends IncrementalSchemeAssertionEvaluation {
+trait IncrementalSchemeModFAssertionEvaluation extends IncrementalSchemeAssertionEvaluation:
   def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential
 
   override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
   val configurations: List[IncrementalConfiguration] = List()
-}
 
-object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation {
+object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation:
   override def analysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e, config)
 
   override val outputFile: String = s"assertions/modf-CP.txt"
-}
 
-object IncrementalSchemeBigStepTypeAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation {
+object IncrementalSchemeBigStepTypeAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation:
   override def analysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAssertionAnalysisTypeLattice(e, config)
 
   override val outputFile: String = s"assertions/modf-Type.txt"
-}

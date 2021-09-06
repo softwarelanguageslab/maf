@@ -25,7 +25,7 @@ sealed trait Environment[A <: Address] extends SmartHash { outer =>
 }
 
 /** Mapping from variable name to addresses */
-case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Environment[A] {
+case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Environment[A]:
   type This = BasicEnvironment[A]
   def restrictTo(keys: Set[String]): BasicEnvironment[A] = this.copy(content = content.view.filterKeys(keys).toMap)
   def lookup(name: String): Option[A] = content.get(name)
@@ -37,13 +37,12 @@ case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Envir
 
   /** Better printing. */
   override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
-}
 
 case class WrappedEnv[A <: Address, D](
     env: Environment[A],
     depth: Int,
     data: D)
-    extends Environment[A] {
+    extends Environment[A]:
   type This = WrappedEnv[A, D]
   def restrictTo(keys: Set[String]): WrappedEnv[A, D] = this.copy(env = env.restrictTo(keys))
   def lookup(name: String): Option[A] = env.lookup(name)
@@ -52,14 +51,12 @@ case class WrappedEnv[A <: Address, D](
   def mapAddrs(f: A => A): WrappedEnv[A, D] = this.copy(env = env.mapAddrs(f))
   def addrs = env.addrs
   def size: Int = env.size
-}
 
-object Environment {
+object Environment:
   def empty[A <: Address]: Environment[A] = BasicEnvironment(Map.empty)
   def apply[A <: Address](bds: Iterable[(String, A)]): Environment[A] = BasicEnvironment(bds.toMap)
-}
 
-case class NestedEnv[A <: Address, E <: Address](content: Map[String, A], rst: Option[E]) extends Environment[A] {
+case class NestedEnv[A <: Address, E <: Address](content: Map[String, A], rst: Option[E]) extends Environment[A]:
   type This = NestedEnv[A, E]
 
   /** Restrict the environment to only certain keys */
@@ -74,9 +71,7 @@ case class NestedEnv[A <: Address, E <: Address](content: Map[String, A], rst: O
 
   /** Mapping over the environment */
   def mapAddrs(f: A => A): This = this.copy(content = content.view.mapValues(f).toMap)
-  def addrs = rst match {
+  def addrs = rst match
     case Some(addr) => content.values.toSet + addr
     case None       => content.values.toSet
-  }
   def size: Int = content.size
-}

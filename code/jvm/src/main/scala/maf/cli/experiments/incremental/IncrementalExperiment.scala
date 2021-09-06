@@ -5,7 +5,7 @@ import maf.modular.incremental._
 import maf.util.Writer._
 import maf.util.benchmarks.Timeout
 
-trait IncrementalExperiment[E <: Expression] {
+trait IncrementalExperiment[E <: Expression]:
   // A list of programs on which the benchmark should be executed.
   def benchmarks(): Set[String]
 
@@ -44,7 +44,7 @@ trait IncrementalExperiment[E <: Expression] {
   def measure(bench: Option[Set[String]] = None): Unit =
     bench.getOrElse(benchmarks()).foreach { file =>
       try onBenchmark(file)
-      catch {
+      catch
         case e: Exception if catchErrors =>
           writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
           e.getStackTrace.nn.take(5).foreach(ste => writeErrln(ste.toString))
@@ -52,14 +52,13 @@ trait IncrementalExperiment[E <: Expression] {
         case e: VirtualMachineError =>
           writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
           reportError(file)
-      }
       println()
     }
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     setDefaultWriter(openTimeStamped(outputDir + outputFile))
     enableReporting()
-    if (args.isEmpty)
+    if args.isEmpty then
       measure()
     else
       measure(Some(args.toSet))
@@ -67,5 +66,3 @@ trait IncrementalExperiment[E <: Expression] {
     writeln(out)
     closeDefaultWriter()
     disableReporting()
-  }
-}

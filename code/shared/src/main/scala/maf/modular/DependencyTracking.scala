@@ -8,11 +8,9 @@ trait DependencyTracking[Expr <: Expression] extends ModAnalysis[Expr] { inter =
   var dependencies: Map[Component, Set[Component]] = Map().withDefaultValue(Set.empty)
   // update some rudimentary analysis results
   override def intraAnalysis(component: Component): DependencyTrackingIntra
-  trait DependencyTrackingIntra extends IntraAnalysis {
+  trait DependencyTrackingIntra extends IntraAnalysis:
     val visited: Set[Component] = inter.visited
-    override def commit(): Unit = {
+    override def commit(): Unit =
       super.commit()
       dependencies += component -> (dependencies(component) ++ C) // update the bookkeeping
-    }
-  }
 }

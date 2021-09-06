@@ -13,7 +13,7 @@ import maf.util.graph.Tarjan
  * @tparam Expr
  *   The type of the expressions under analysis.
  */
-trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with GlobalStore[Expr] with IncrementalAbstractDomain[Expr] {
+trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[Expr] with GlobalStore[Expr] with IncrementalAbstractDomain[Expr]:
   inter =>
 
   type SCA = Set[Addr]
@@ -72,7 +72,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @return
    *   The join of all values "incoming" in this SCA.
    */
-  def incomingSCAValue(sca: SCA): Value = {
+  def incomingSCAValue(sca: SCA): Value =
     /*
     cachedWrites.foldLeft(lattice.bottom) { case (value, (component, addresses)) =>
       addresses.intersect(sca).foldLeft(value) { case (value, addr) =>
@@ -87,14 +87,12 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       // All addresses of the SCA written by `component`...
       addresses.intersect(sca).foreach { addr =>
         // ...that were not influenced by an address in the SCA...
-        if (addressDependencies(component)(addr).union(sca).isEmpty) {
+        if addressDependencies(component)(addr).union(sca).isEmpty then
           // ...contribute to the incoming value.
           value = lattice.join(value, provenance(addr)(component))
-        }
       }
     }
     value
-  }
 
   /* ****************************** */
   /* ***** Write invalidation ***** */
@@ -108,31 +106,28 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @param addr
    *   The address corresponding to the deleted write dependency.
    */
-  def deleteProvenance(cmp: Component, addr: Addr): Unit = {
+  def deleteProvenance(cmp: Component, addr: Addr): Unit =
     // Delete the provenance information corresponding to this component.
     provenance = provenance + (addr -> (provenance(addr) - cmp))
     // Compute the new value for the address and update it in the store.
     val value: Value = provenanceValue(addr)
-    if (configuration.checkAsserts) assert(lattice.subsumes(inter.store(addr), value)) // The new value can never be greater than the old value.
-    if (value != inter.store(addr)) {
+    if configuration.checkAsserts then assert(lattice.subsumes(inter.store(addr), value)) // The new value can never be greater than the old value.
+    if value != inter.store(addr) then
       trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
       // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
-      if (provenance(addr).isEmpty)
+      if provenance(addr).isEmpty then
         deleteAddress(addr)
       else inter.store = inter.store + (addr -> value)
-    }
-  }
 
   /**
    * Deletes an address from the store. To be used when they are no longer written by any component.
    * @note
    *   Also removes possible dependencies on this address, as well as the address's provenance!
    */
-  def deleteAddress(addr: Addr): Unit = {
+  def deleteAddress(addr: Addr): Unit =
     store -= addr // Delete the address in the actual store.
     provenance -= addr // Remove provenance information corresponding to the address (to ensure the right dependencies are triggered should the address be recreated and obtain the same value).
     deps -= AddrDependency(addr) // Given that the address is no longer in existence, dependencies on this address can be removed.
-  }
 
   /* ********************************** */
   /* ***** Component invalidation ***** */
@@ -147,15 +142,13 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @param cmp
    *   The component that is deleted.
    */
-  override def deleteComponent(cmp: Component): Unit = {
-    if (configuration.writeInvalidation) {
+  override def deleteComponent(cmp: Component): Unit =
+    if configuration.writeInvalidation then
       cachedWrites(cmp).foreach(deleteProvenance(cmp, _))
       cachedWrites = cachedWrites - cmp
-    }
-    if (configuration.cyclicValueInvalidation)
+    if configuration.cyclicValueInvalidation then
       addressDependencies = addressDependencies - cmp
     super.deleteComponent(cmp)
-  }
 
   /* *************************************************** */
   /* ***** Incremental value update and refinement ***** */
@@ -173,29 +166,28 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
    * @return
    *   Returns a boolean indicating whether the address was updated, indicating whether the corresponding dependency should be triggered.
    */
-  def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = {
+  def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean =
     val old = provenance(addr)(cmp)
-    if (old == nw) return false // Nothing changed.
+    if old == nw then return false // Nothing changed.
     // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
     updateProvenance(cmp, addr, nw)
     val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
     // If `old ⊑ nw` we can just use join, which is probably more efficient.
-    val newJoin = if (lattice.subsumes(nw, old)) lattice.join(oldJoin, nw) else provenanceValue(addr)
-    if (configuration.checkAsserts)
+    val newJoin = if lattice.subsumes(nw, old) then lattice.join(oldJoin, nw) else provenanceValue(addr)
+    if configuration.checkAsserts then
       assert(newJoin == provenanceValue(addr), s"$addr\n${lattice.compare(newJoin, provenanceValue(addr), "New join", "Provenance value")}")
-    if (oldJoin == newJoin) return false // Even with this component writing a different value to addr, the store does not change.
+    if oldJoin == newJoin then return false // Even with this component writing a different value to addr, the store does not change.
     inter.store = inter.store + (addr -> newJoin)
     true
-  }
 
   /* ************************************************************************* */
   /* ***** Incremental update: actually perform the incremental analysis ***** */
   /* ************************************************************************* */
 
-  override def updateAnalysis(timeout: Timeout.T): Unit = {
+  override def updateAnalysis(timeout: Timeout.T): Unit =
     // If cycle invalidation is enabled, compute which addresses are interdependent.
     // TODO: how about changes to the SCCs during the reanalysis? New addresses can become part of a SCC or SCCs can become merged (or split)
-    if (configuration.cyclicValueInvalidation) {
+    if configuration.cyclicValueInvalidation then
       SCAs = computeSCAs()
       //incomingValues = incomingValues + SCAs.map(s => (s, incomingSCAValue(s)))
       val addrs = SCAs.flatten
@@ -205,17 +197,15 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         provenance -= addr
       }
       cachedWrites = cachedWrites.map({ case (k, v) => (k, v -- addrs) }).withDefaultValue(Set())
-    }
     super.updateAnalysis(timeout)
     // Clear the data as it is no longer needed. (This is not really required but reduces the memory footprint of the result.)
-    if (configuration.cyclicValueInvalidation) SCAs = Set()
-  }
+    if configuration.cyclicValueInvalidation then SCAs = Set()
 
   /* ************************************ */
   /* ***** Intra-component analysis ***** */
   /* ************************************ */
 
-  trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra {
+  trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra:
     intra =>
 
     /**
@@ -230,38 +220,34 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     /* ------------------------------------ */
 
     /** Called upon the (re-)analysis of a component. Here, used to clear out data structures of the incremental global store. */
-    abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
-      if (configuration.cyclicValueInvalidation)
+    abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+      if configuration.cyclicValueInvalidation then
         addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
       super.analyzeWithTimeout(timeout)
-    }
 
     /* ---------------------------------- */
     /* ----- Basic store operations ----- */
     /* ---------------------------------- */
 
-    override def readAddr(addr: Addr): Value = {
+    override def readAddr(addr: Addr): Value =
       val value = super.readAddr(addr)
-      if (configuration.cyclicValueInvalidation) lattice.addAddress(value, addr)
+      if configuration.cyclicValueInvalidation then lattice.addAddress(value, addr)
       else value
-    }
 
-    override def writeAddr(addr: Addr, v: Value): Boolean = {
+    override def writeAddr(addr: Addr, v: Value): Boolean =
       var value = v
       // Update the value flow information and reset the reads information.
-      if (configuration.cyclicValueInvalidation) {
+      if configuration.cyclicValueInvalidation then
         // Get the annotations and remove them so they are not written to the store.
         val dependentAddresses = getAddresses(value)
         value = removeAddresses(value)
         // Store the dependencies.
         val newDependencies = addressDependencies(component)(addr) ++ dependentAddresses
         addressDependencies = addressDependencies + (component -> (addressDependencies(component) + (addr -> newDependencies)))
-      }
       // Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
       intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
       // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
       super.writeAddr(addr, value)
-    }
 
     /* ------------------------------ */
     /* ----- Write invalidation ----- */
@@ -277,34 +263,31 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     def registerProvenances(): Unit = intraProvenance.foreach({ case (addr, value) => updateAddrInc(component, addr, value) })
 
     /** Refines values in the store that are no longer written to by a component. */
-    def refineWrites(): Unit = {
+    def refineWrites(): Unit =
       // Writes performed during this intra-component analysis. Important: this only works when the entire component is reanalysed!
       val recentWrites = intraProvenance.keySet
-      if (version == New) {
+      if version == New then
         // The addresses previously written to by this component, but that are no longer written by this component.
         val deltaW = cachedWrites(component) -- recentWrites
         deltaW.foreach(deleteProvenance(component, _))
-      }
       cachedWrites = cachedWrites + (component -> recentWrites)
-    }
 
     /* ------------------------------------- */
     /* ----- Cyclic write invalidation ----- */
     /* ------------------------------------- */
 
     /** Refines all values in this SCA to the value "incoming". */
-    def refineSCA(sca: SCA, incoming: Value): Unit = {
+    def refineSCA(sca: SCA, incoming: Value): Unit =
       // Should be done for every address in the SCA because an SCC/SCA may contain "inner cycles".
       sca.foreach { addr =>
         inter.store += addr -> incoming
         intra.store += addr -> incoming
-        provenance += (addr -> provenance(addr).map(kv => if (cachedReadDeps(kv._1).contains(AddrDependency(addr))) (kv._1, incoming) else kv))
+        provenance += (addr -> provenance(addr).map(kv => if cachedReadDeps(kv._1).contains(AddrDependency(addr)) then (kv._1, incoming) else kv))
         updateAddrInc(component, // Call updateAddrInc to ensure triggers happen.
                       addr,
                       incoming
         )
       }
-    }
 
     /* ------------------ */
     /* ----- Commit ----- */
@@ -317,27 +300,25 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
      *   This function should be overridden to avoid the functionality of GlobalStore to be used. Otherwise this function could be merged into
      *   refineWrites.
      */
-    override def doWrite(dep: Dependency): Boolean = dep match {
+    override def doWrite(dep: Dependency): Boolean = dep match
       case AddrDependency(addr) if configuration.writeInvalidation =>
         // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
         // Also, this would not work, as updateAddr only performs monotonic updates.
         updateAddrInc(component, addr, intraProvenance(addr))
       case _ => super.doWrite(dep)
-    }
 
     /** First performs the commit. Then uses information inferred during the analysis of the component to refine the store if possible. */
-    override def commit(): Unit = {
+    override def commit(): Unit =
       // First do the super commit, which will cause the actual global store to be updated.
       // WI: Takes care of addresses that are written and caused a store update (see `doWrite`).
       super.commit()
-      if (configuration.writeInvalidation) {
+      if configuration.writeInvalidation then
         // Refines the store by removing addresses that are no longer written or by using the provenance information to refine the values in the store.
         // WI: Takes care of addresses that are no longer written by this component.
         refineWrites()
         // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
         // WI: Takes care of addresses that are written and did not cause a store update.
         registerProvenances()
-      }
       /*
       if (configuration.cyclicValueInvalidation && version == New) {
         // Compute the new SCAs and the corresponding incoming values.
@@ -371,6 +352,3 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         SCAs = newSCAs.map(_._1)
       }
        */
-    }
-  }
-}

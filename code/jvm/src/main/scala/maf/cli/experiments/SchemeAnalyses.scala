@@ -10,8 +10,8 @@ import maf.modular.scheme.modflocal._
 import maf.modular.scheme.modconc._
 import maf.modular.worklist._
 
-object SchemeAnalysesBoundedDomain {
-  object NoSensitivity {
+object SchemeAnalysesBoundedDomain:
+  object NoSensitivity:
     def boundAnalysis(
         bnd: Int
       )(
@@ -19,8 +19,7 @@ object SchemeAnalysesBoundedDomain {
       ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain(bnd) with LIFOWorklistAlgorithm[SchemeExp] {
       override def toString = "no-sensitivity"
     }
-  }
-  object CallSiteSensitivity {
+  object CallSiteSensitivity:
     def boundAnalysis(
         bnd: Int
       )(
@@ -29,8 +28,7 @@ object SchemeAnalysesBoundedDomain {
       val bound = bnd
       override def toString = "call-site-sensitivity"
     }
-  }
-  object TwoCallSiteSensitivity {
+  object TwoCallSiteSensitivity:
     def boundAnalysis(
         bnd: Int
       )(
@@ -38,10 +36,8 @@ object SchemeAnalysesBoundedDomain {
       ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFCallSiteSensitivity with SchemeBoundedDomain(bnd) with LIFOWorklistAlgorithm[SchemeExp] {
       override def toString = "call-site-sensitivity"
     }
-  }
-}
 
-object SchemeAnalyses {
+object SchemeAnalyses:
 
   // Incremental analyses in maf.modular.incremental.scheme.SchemeAnalyses
 
@@ -144,4 +140,3 @@ object SchemeAnalyses {
       with SchemeModFLocalCallSiteSensitivity(k)
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-}

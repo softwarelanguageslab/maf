@@ -1,7 +1,7 @@
 package maf.core.worklist
 
 /** Generic interface for a work list. */
-trait WorkList[X] {
+trait WorkList[X]:
 
   /** Returns the first element of the work list. */
   def head: X
@@ -50,9 +50,7 @@ trait WorkList[X] {
 
   /** Returns a string representation of the worklist. */
   override def toString: String = toList.mkString("{", ", ", "}")
-}
 
 // Default implementation used in worklistMonoid.
-object WorkList {
+object WorkList:
   def empty[X]: WorkList[X] = LIFOWorkList.empty
-}

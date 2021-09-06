@@ -11,7 +11,7 @@ import maf.modular.scheme._
 import maf.util._
 import maf.util.benchmarks.Timeout
 
-abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice] {
+abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
 
   type Benchmark = String
   type Analysis = ModAnalysis[SchemeExp] with AnalysisResults[SchemeExp] with ModularSchemeDomain {
@@ -27,18 +27,17 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
   case class PtrAddr(exp: Expression) extends BaseAddr { def idn = exp.idn; override def toString = s"<pointer $exp>" }
   case class PrmAddr(nam: String) extends BaseAddr { def idn: Identity = Identity.none; override def toString = s"<primitive $nam>" }
 
-  private def convertAddr(addr: Address): BaseAddr = addr match {
+  private def convertAddr(addr: Address): BaseAddr = addr match
     case maf.modular.scheme.VarAddr(vrb, _) => VarAddr(vrb)
     case maf.modular.scheme.PtrAddr(exp, _) => PtrAddr(exp)
     case maf.modular.scheme.PrmAddr(nam)    => PrmAddr(nam)
-  }
 
   val baseDomain = new ModularSchemeLattice[BaseAddr, Str, Bln, Num, Rea, Chr, Smb]
   val baseLattice = baseDomain.schemeLattice
   type BaseValue = baseDomain.L
 
   val emptyEnv = Environment[BaseAddr](Iterable.empty)
-  private def convertV(analysis: Analysis)(value: analysis.modularLatticeWrapper.modularLattice.Value): baseDomain.Value = value match {
+  private def convertV(analysis: Analysis)(value: analysis.modularLatticeWrapper.modularLattice.Value): baseDomain.Value = value match
     case analysis.modularLatticeWrapper.modularLattice.Nil          => baseDomain.Nil
     case analysis.modularLatticeWrapper.modularLattice.Bool(b)      => baseDomain.Bool(b)
     case analysis.modularLatticeWrapper.modularLattice.Int(i)       => baseDomain.Int(i)
@@ -55,19 +54,16 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case analysis.modularLatticeWrapper.modularLattice.Lock(tids)   => baseDomain.Lock(tids)
     case analysis.modularLatticeWrapper.modularLattice.Thread(tids) => baseDomain.Thread(tids)
     case v                                                          => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
-  }
 
-  private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match {
+  private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match
     case analysis.modularLatticeWrapper.modularLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
-  }
 
-  private def convertConcreteAddr(addr: ConcreteValues.Addr): BaseAddr = addr._2 match {
+  private def convertConcreteAddr(addr: ConcreteValues.Addr): BaseAddr = addr._2 match
     case ConcreteValues.AddrInfo.VarAddr(v) => VarAddr(v)
     case ConcreteValues.AddrInfo.PtrAddr(p) => PtrAddr(p)
     case ConcreteValues.AddrInfo.PrmAddr(p) => PrmAddr(p)
-  }
 
-  private def convertConcreteValue(value: ConcreteValues.Value): BaseValue = value match {
+  private def convertConcreteValue(value: ConcreteValues.Value): BaseValue = value match
     case ConcreteValues.Value.Nil          => baseLattice.nil
     case ConcreteValues.Value.Void         => baseLattice.void
     case ConcreteValues.Value.Undefined(_) => baseLattice.bottom
@@ -82,9 +78,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     case ConcreteValues.Value.Cons(a, d)   => baseLattice.cons(convertConcreteValue(a), convertConcreteValue(d))
     case ConcreteValues.Value.Pointer(a)   => baseLattice.pointer(convertConcreteAddr(a))
     case ConcreteValues.Value.Vector(siz, els, _) =>
-      def convertNumber(n: BigInt): Num = baseLattice.number(n) match {
+      def convertNumber(n: BigInt): Num = baseLattice.number(n) match
         case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
-      }
 
       val cSiz = convertNumber(siz)
       val cEls = els.foldLeft(Map[Num, BaseValue]()) { case (acc, (idx, vlu)) =>
@@ -96,7 +91,6 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       }
       baseDomain.Element(baseDomain.Vec(cSiz, cEls))
     case v => throw new Exception(s"Unsupported value for concrete conversion: $v")
-  }
 
   // compares the results of concrete and/or abstract interpreters using a `ResultMap`
   // a ResultMap which is a mapping from identities to a (context-insensitve) value
@@ -115,22 +109,20 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
    *   - the set of program locations where abstract values are less precise in r2
    *   - the set of program locations where abstract values are not comparable between r1 and r2
    */
-  protected def compare(b1: ResultMap, b2: ResultMap): (Set[Identity], Set[Identity], Set[Identity], Set[Identity]) = {
+  protected def compare(b1: ResultMap, b2: ResultMap): (Set[Identity], Set[Identity], Set[Identity], Set[Identity]) =
     val allKeys = b1.keySet ++ b2.keySet
     allKeys.foldLeft((Set.empty[Identity], Set.empty[Identity], Set.empty[Identity], Set.empty[Identity])) { (acc, pos) =>
       val value1 = b1.getOrElse(pos, baseLattice.bottom)
       val value2 = b2.getOrElse(pos, baseLattice.bottom)
-      if (value1 == value2) {
+      if value1 == value2 then
         (acc._1 + pos, acc._2, acc._3, acc._4)
-      } else if (baseLattice.subsumes(value1, value2)) {
+      else if baseLattice.subsumes(value1, value2) then
         (acc._1, acc._2 + pos, acc._3, acc._4)
-      } else if (baseLattice.subsumes(value2, value1)) {
+      else if baseLattice.subsumes(value2, value1) then
         (acc._1, acc._2, acc._3 + pos, acc._4)
-      } else { // neither value is more precise than the other
+      else // neither value is more precise than the other
         (acc._1, acc._2, acc._3, acc._4 + pos)
-      }
     }
-  }
 
   /**
    * Compare two ResultMaps, assuming one is more precise than the other
@@ -141,8 +133,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
    * @return
    *   the set of addresses that have been refined in b2 w.r.t. b1
    */
-  protected def compareOrdered(r1: ResultMap, r2: ResultMap): Set[Identity] = {
-    def errorMessage(pos: Identity): String = {
+  protected def compareOrdered(r1: ResultMap, r2: ResultMap): Set[Identity] =
+    def errorMessage(pos: Identity): String =
       val value1 = r1.getOrElse(pos, baseLattice.bottom)
       val value2 = r2.getOrElse(pos, baseLattice.bottom)
       s"""
@@ -150,7 +142,6 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         | where v1 = $value1
         |       v2 = $value2 
       """.stripMargin
-    }
     val (_, morePrecise, lessPrecise, unrelated) = compare(r1, r2)
     assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
     assert(unrelated.isEmpty, errorMessage(unrelated.head))
@@ -160,7 +151,6 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       println(s"$pos -> $v1 > $v2")
     }
     morePrecise
-  }
 
   /**
    * Given an analysis (that terminated), extract its ResultMap
@@ -200,16 +190,15 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       path: Benchmark,
       timeout: Timeout.T = Timeout.none
     ): Option[ResultMap] =
-    try {
+    try
       val anl = analysis(program)
       println(s"... analysing $path using $name ...")
       anl.analyzeWithTimeout(timeout)
-      if (anl.finished) {
+      if anl.finished then
         Some(extract(anl))
-      } else {
+      else
         None
-      }
-    } catch {
+    catch
       case e: Exception =>
         println(s"Analyzer failed with exception $e")
         None
@@ -217,7 +206,6 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         System.gc()
         println(s"Analyzer failed with error $e")
         None
-    }
 
   /**
    * Run the concrete interpreter on a given program
@@ -240,20 +228,19 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
       path: Benchmark,
       timeout: Timeout.T = Timeout.none,
       times: Int = 1
-    ): Option[ResultMap] = {
+    ): Option[ResultMap] =
     print(s"Running concrete interpreter on $path ($times times)")
     var idnResults: ResultMap = Map.empty.withDefaultValue(baseLattice.bottom)
     def addResult(idn: Identity, vlu: ConcreteValues.Value) =
       idnResults += idn -> (baseLattice.join(idnResults(idn), convertConcreteValue(vlu)))
-    try {
-      for (_ <- 1 to times) {
+    try
+      for _ <- 1 to times do
         print(".")
         val interpreter = new SchemeInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
         interpreter.run(program, timeout)
-      }
       println()
       Some(idnResults)
-    } catch {
+    catch
       case e: Exception =>
         println(s"Concrete interpreter failed with $e")
         None
@@ -261,8 +248,6 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         System.gc()
         println(s"Concrete interpreter failed with $e")
         None
-    }
-  }
 
   /**
    * Specify what needs to be done for a given benchmark program
@@ -278,9 +263,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
    * @param benchmark
    *   the benchmark program to run
    */
-  def runBenchmark(benchmark: Benchmark) = {
+  def runBenchmark(benchmark: Benchmark) =
     val txt = Reader.loadFile(benchmark)
     val prg = SchemeParser.parseProgram(txt)
     forBenchmark(benchmark, prg)
-  }
-}

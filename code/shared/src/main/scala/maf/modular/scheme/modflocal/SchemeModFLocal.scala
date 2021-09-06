@@ -10,7 +10,7 @@ import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 
-abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics {
+abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
   inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
   // more shorthands
@@ -26,10 +26,9 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   lazy val initialEnv: Env = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
   lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))(shouldCount)
 
-  private def shouldCount(adr: Adr): Boolean = adr match {
+  private def shouldCount(adr: Adr): Boolean = adr match
     case _: PtrAddr[_] => true
     case _             => false
-  }
 
   private lazy val initialBds: Iterable[(String, Adr, Val)] =
     primitives.allPrimitives.view
@@ -49,24 +48,21 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   // COMPONENTS
   //
 
-  sealed trait Component extends Serializable {
+  sealed trait Component extends Serializable:
     def exp: Exp
     def env: Env
     val sto: Sto
     val ctx: Ctx
-  }
-  case object MainComponent extends Component {
+  case object MainComponent extends Component:
     val exp = initialExp
     val env = initialEnv
     val sto = initialSto
     val ctx = initialCtx
     override def toString = "main"
-  }
-  case class CallComponent(clo: Clo, ctx: Ctx, sto: Sto) extends Component {
+  case class CallComponent(clo: Clo, ctx: Ctx, sto: Sto) extends Component:
     val (lam, env) = clo
     def exp = SchemeBody(lam.body)
     override def toString = s"${lam.lambdaName} [$ctx] [$sto]"
-  }
 
   def initialComponent: Component = MainComponent
   def expr(cmp: Component): Exp = cmp.exp
@@ -101,7 +97,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
   type A[X] = (res: Res, ctx: Ctx, env: Env, sto: Sto) => (Set[(X, sto.DeltaStore)], Set[Cmp], Set[Dep], Set[Dep])
 
-  given analysisM: AnalysisM[A] with {
+  given analysisM: AnalysisM[A] with
     // MONAD
     def unit[X](x: X) =
       (_, _, _, sto) => (Set((x, sto.deltaStore)), Set(), Set(), Set())
@@ -156,7 +152,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         val rss = res.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, sto.DeltaStore)]]
         (rss, Set(cmp), Set(ResultDependency(cmp)), Set())
       }
-  }
 
   //
   // THE INTRA-ANALYSIS
@@ -165,29 +160,24 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
   def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) { intra =>
     var results = inter.results
 
-    def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+    def analyzeWithTimeout(timeout: Timeout.T): Unit =
       val (res, cps, rds, wds) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto)
       val rgc = res.map { case (x, d) => (x, d.collect(lattice.refs(x) ++ d.updates)) }
       val old = results.get(cmp)
-      if (rgc != old) {
+      if rgc != old then
         results = results + (cmp -> rgc)
         trigger(ResultDependency(cmp))
-      }
       cps.foreach(spawn)
       rds.foreach(register)
       assert(wds.isEmpty)
-    }
-    override def doWrite(dep: Dependency): Boolean = dep match {
+    override def doWrite(dep: Dependency): Boolean = dep match
       case ResultDependency(cmp) =>
         val old = inter.results.getOrElse(cmp, Set.empty)
         val cur = intra.results.getOrElse(cmp, Set.empty)
-        if (old != cur) {
+        if old != cur then
           inter.results += cmp -> cur
           true
-        } else {
+        else
           false
-        }
       case _ => super.doWrite(dep)
-    }
   }
-}

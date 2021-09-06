@@ -10,7 +10,7 @@ import maf.util.Writer
 import scala.concurrent.duration._
 
 abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]
-    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb] {
+    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]:
 
   // the precision comparison is parameterized by:
   // - the analyses to compare in terms of precision
@@ -33,7 +33,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
    * @param program
    *   the Scheme expression of the benchmark program
    */
-  protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit = {
+  protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit =
     // run the concrete interpreter analysis first
     val concreteResult = runInterpreter(program, path, Timeout.none, runs).get // no timeout set for the concrete interpreter
     // run the other analyses on the benchmark
@@ -42,8 +42,6 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
       val lessPrecise = otherResult.map(analysisResult => compareOrdered(analysisResult, concreteResult).size)
       results = results.add(path, name, lessPrecise)
     }
-  }
-}
 
 object AnalysisComparisonAlt1
     extends AnalysisComparisonAlt[
@@ -53,8 +51,8 @@ object AnalysisComparisonAlt1
       ConstantPropagation.C,
       ConstantPropagation.S,
       ConstantPropagation.Sym
-    ] {
-  def analyses = {
+    ]:
+  def analyses =
     // run some adaptive analyses
     List(
       (SchemeAnalyses.kCFAAnalysis(_, 0), "CI/FI"),
@@ -62,7 +60,6 @@ object AnalysisComparisonAlt1
       (SchemeAnalyses.kCFAAnalysis(_, 1), "CS/FI"),
       (SchemeAnalyses.modflocalAnalysis(_, 1), "CS/FS")
     )
-  }
   def main(args: Array[String]) = runBenchmarks(
     Set(
       //"test/R5RS/gambit/array1.scm",
@@ -84,11 +81,9 @@ object AnalysisComparisonAlt1
     )
   )
 
-  def runBenchmarks(benchmarks: Set[Benchmark]) = {
+  def runBenchmarks(benchmarks: Set[Benchmark]) =
     benchmarks.foreach(runBenchmark)
     println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
     Writer.setDefaultWriter(Writer.open("benchOutput/precision/adaptive-precision-benchmarks-alt.csv"))
     Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
     Writer.closeDefaultWriter()
-  }
-}

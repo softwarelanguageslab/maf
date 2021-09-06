@@ -13,7 +13,7 @@ import maf.util.benchmarks.{Table, Timeout}
  * @tparam Expr
  *   The type of the expressions under analysis.
  */
-trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr] {
+trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr]:
   inter =>
 
   val logger: NumberedLog = Logger.numbered()
@@ -44,33 +44,30 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       |""".stripMargin
   logger.logU(legend())
 
-  private def insertTable(messageOrComponent: Either[String, Component]): Unit = {
+  private def insertTable(messageOrComponent: Either[String, Component]): Unit =
     val stepString = step.toString
     step = step + 1
-    messageOrComponent match {
+    messageOrComponent match
       case Left(msg) =>
         table = table.add(stepString, "Phase", msg)
       case Right(cmp) =>
         val addrs = store.keySet
         table = table.add(stepString, "Phase", cmp.toString)
         addrs.foreach(addr =>
-          if (focus(addr)) {
+          if focus(addr) then {
             val v = store.getOrElse(addr, lattice.bottom)
             val p = provenance(addr).map({ case (c, v) => s"$v ($c)" }).mkString("; ")
             table = table.add(stepString, s"σ($addr)", v.toString).add(stepString, s"P($addr)", p)
           }
         )
         addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach { case (addr, valueSources) =>
-          if (focus(addr)) {
+          if focus(addr) then
             table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
-          }
         }
         botRead.foreach(addr => table = table.add(stepString, "Bot", addr.toString))
         botRead = None
-    }
-  }
 
-  private def tableToString(): String = {
+  private def tableToString(): String =
     val storeCols = table.allColumns.filter(_.startsWith("σ")).toList.sorted
     val provCols = table.allColumns.filter(_.startsWith("P(")).toList.sorted
     val depCols = table.allColumns.filter(_.startsWith("~>")).toList.sorted
@@ -78,7 +75,6 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
                        rows = (0 until step).toList.map(_.toString),
                        columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot")
     )
-  }
 
   // Collect some numbers
   private var intraC: Long = 0
@@ -108,20 +104,18 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
   // Avoids logging the store twice from `updateAnalysis`.
   var logEnd = true
 
-  override def run(timeout: Timeout.T): Unit = {
+  override def run(timeout: Timeout.T): Unit =
     super.run(timeout)
-    if (logEnd) {
+    if logEnd then
       logger.logU("\n\n" + tableToString())
       logger.logU("\n" + storeString())
-    }
-  }
 
   // Starting the incremental analysis.
-  override def updateAnalysis(timeout: Timeout.T): Unit = {
+  override def updateAnalysis(timeout: Timeout.T): Unit =
     logger.resetNumbering()
     logger.logU("\nUpdating analysis\n")
     insertTable(Left("Updating analysis"))
-    try {
+    try
       logEnd = false
       super.updateAnalysis(timeout)
       logEnd = true
@@ -133,36 +127,30 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       logger.logU("\n\n" + getSummary())
       logger.logU("\n\n" + tableToString())
       logger.logU("\n" + storeString())
-    } catch {
+    catch
       case t: Throwable =>
         logger.logException(t)
         logger.logU("\n\n" + getSummary())
         logger.logU("\n\n" + tableToString())
         logger.logU("\n" + storeString())
         throw t
-    }
-  }
 
-  override def deregister(target: Component, dep: Dependency): Unit = {
+  override def deregister(target: Component, dep: Dependency): Unit =
     logger.log(s"DI   $target <-\\- $dep")
     super.deregister(target, dep)
-  }
 
-  override def deleteComponent(cmp: Component): Unit = {
+  override def deleteComponent(cmp: Component): Unit =
     logger.log(s"CI   $cmp")
     deletedC = cmp :: deletedC
     super.deleteComponent(cmp)
-  }
 
-  override def deleteAddress(addr: Addr): Unit = {
+  override def deleteAddress(addr: Addr): Unit =
     deletedA = addr :: deletedA
     super.deleteAddress(addr)
-  }
 
-  override def trigger(dep: Dependency): Unit = {
+  override def trigger(dep: Dependency): Unit =
     logger.log(s"TRIG $dep [adding: ${deps(dep)}]")
     super.trigger(dep)
-  }
 
   //override def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit = {
   //  logger.log(s"PROV $addr: $value")
@@ -173,53 +161,45 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       cmp: Component,
       addr: Addr,
       nw: Value
-    ): Boolean = {
+    ): Boolean =
     val b = super.updateAddrInc(cmp, addr, nw)
     logger.log(s"IUPD $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)")
     b
-  }
 
-  trait IncrementalLoggingIntra extends IncrementalGlobalStoreIntraAnalysis {
+  trait IncrementalLoggingIntra extends IncrementalGlobalStoreIntraAnalysis:
     intra =>
 
     // Analysis of a component.
-    abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit = {
+    abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
       logger.logU("") // Adds a newline to the log.
-      if (version == Old) intraC += 1 else intraCU += 1
+      if version == Old then intraC += 1 else intraCU += 1
       repeats = repeats + (component -> (repeats(component) + 1))
       logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
-      if (configuration.cyclicValueInvalidation) logger.log(s"RSAD Resetting addressDependencies for $component.")
+      if configuration.cyclicValueInvalidation then logger.log(s"RSAD Resetting addressDependencies for $component.")
       super.analyzeWithTimeout(timeout)
-    }
 
     // Reading an address.
-    override def readAddr(addr: Addr): Value = {
+    override def readAddr(addr: Addr): Value =
       val v = super.readAddr(addr)
-      if (v == lattice.bottom) botRead = Some(addr) else botRead = None
+      if v == lattice.bottom then botRead = Some(addr) else botRead = None
       logger.log(s"READ $addr => $v")
       v
-    }
 
     // Writing an address.
-    override def writeAddr(addr: Addr, value: Value): Boolean = {
-      if (configuration.cyclicValueInvalidation) lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> $addr"))
+    override def writeAddr(addr: Addr, value: Value): Boolean =
+      if configuration.cyclicValueInvalidation then lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> $addr"))
       val b = super.writeAddr(addr, value)
-      logger.log(s"WRIT $value => $addr (${if (b) "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
+      logger.log(s"WRIT $value => $addr (${if b then "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
       b
-    }
 
     // Registering of provenances.
-    override def registerProvenances(): Unit = {
+    override def registerProvenances(): Unit =
       intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV $addr: $value") })
       super.registerProvenances()
-    }
 
-    override def commit(): Unit = {
+    override def commit(): Unit =
       logger.log("COMI")
       super.commit()
       insertTable(Right(component))
-    }
 
-  }
 
-}

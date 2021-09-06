@@ -8,7 +8,7 @@ import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
 import maf.language.scheme.primitives._
 
 /** The abstract domain used for Scheme analyses. */
-trait SchemeDomain extends AbstractDomain[SchemeExp] {
+trait SchemeDomain extends AbstractDomain[SchemeExp]:
 
   /** Type of primitive functions. */
   type Prim = SchemePrimitive[Value, Address]
@@ -18,18 +18,16 @@ trait SchemeDomain extends AbstractDomain[SchemeExp] {
 
   /** Implementation of abstract values. */
   implicit lazy val lattice: SchemeLattice[Value, Address]
-}
 
-trait ModularSchemeDomain extends SchemeDomain {
+trait ModularSchemeDomain extends SchemeDomain:
   val modularLatticeWrapper: ModularSchemeLatticeWrapper
   // extracts value and lattice definition from this wrapper
   type Value = modularLatticeWrapper.modularLattice.L
   type ValueElement = modularLatticeWrapper.modularLattice.Value
   final lazy val lattice = modularLatticeWrapper.modularLattice.schemeLattice
   final lazy val primitives = modularLatticeWrapper.primitives
-}
 
-trait ModularSchemeLatticeWrapper {
+trait ModularSchemeLatticeWrapper:
   // consists of several types
   type S
   type B
@@ -40,14 +38,13 @@ trait ModularSchemeLatticeWrapper {
   // holds a modular lattice
   val modularLattice: ModularSchemeLattice[Address, S, B, I, R, C, Sym]
   val primitives: SchemePrimitives[modularLattice.L, Address]
-}
 
 //
 // TYPE DOMAIN
 //
 
 /* A type lattice for ModF */
-object SchemeTypeDomain extends ModularSchemeLatticeWrapper {
+object SchemeTypeDomain extends ModularSchemeLatticeWrapper:
   // use type domains everywhere, except for booleans
   type S = Type.S
   type B = ConstantPropagation.B
@@ -58,17 +55,15 @@ object SchemeTypeDomain extends ModularSchemeLatticeWrapper {
   // make the scheme lattice
   final val modularLattice = new ModularSchemeLattice
   final val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
-}
 
-trait SchemeTypeDomain extends ModularSchemeDomain {
+trait SchemeTypeDomain extends ModularSchemeDomain:
   val modularLatticeWrapper = SchemeTypeDomain
-}
 
 //
 // CONSTANT PROPAGATION DOMAIN
 //
 
-object SchemeConstantPropagationDomain extends ModularSchemeLatticeWrapper {
+object SchemeConstantPropagationDomain extends ModularSchemeLatticeWrapper:
   // use constant propagation domains everywhere, except for booleans
   type S = ConstantPropagation.S
   type B = ConstantPropagation.B
@@ -79,18 +74,16 @@ object SchemeConstantPropagationDomain extends ModularSchemeLatticeWrapper {
   // make the scheme lattice
   final val modularLattice = new ModularSchemeLattice
   final val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
-}
 
-trait SchemeConstantPropagationDomain extends ModularSchemeDomain {
+trait SchemeConstantPropagationDomain extends ModularSchemeDomain:
   val modularLatticeWrapper = SchemeConstantPropagationDomain
-}
 
 //
 // POWERSET DOMAIN
 //
 
 /* A powerset lattice for ModF */
-object SchemePowersetDomain extends ModularSchemeLatticeWrapper {
+object SchemePowersetDomain extends ModularSchemeLatticeWrapper:
   // use powerset domains everywhere
   type S = Concrete.S
   type B = Concrete.B
@@ -101,16 +94,14 @@ object SchemePowersetDomain extends ModularSchemeLatticeWrapper {
   // make the scheme lattice
   final val modularLattice = new ModularSchemeLattice
   final val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
-}
 
-trait SchemePowersetDomain extends ModularSchemeDomain {
+trait SchemePowersetDomain extends ModularSchemeDomain:
   val modularLatticeWrapper = SchemePowersetDomain
-}
 
 //
 // BOUNDED SET DOMAIN
 //
-class SchemeBoundedDomainWrapper(val bound: Int) extends ModularSchemeLatticeWrapper {
+class SchemeBoundedDomainWrapper(val bound: Int) extends ModularSchemeLatticeWrapper:
   object Bounded extends BoundedLattice(bound)
   type S = Bounded.S
   type B = Bounded.B
@@ -120,8 +111,6 @@ class SchemeBoundedDomainWrapper(val bound: Int) extends ModularSchemeLatticeWra
   type Sym = Bounded.Sym
   final val modularLattice = new ModularSchemeLattice
   final val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
-}
 
-trait SchemeBoundedDomain(bound: Int) extends ModularSchemeDomain {
+trait SchemeBoundedDomain(bound: Int) extends ModularSchemeDomain:
   val modularLatticeWrapper = new SchemeBoundedDomainWrapper(bound)
-}

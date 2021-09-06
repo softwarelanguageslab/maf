@@ -18,7 +18,7 @@ import maf.util.datastructures.SmartUnion.sunion
  * @note
  *   No successive changes to the program are supported by the implementation. However, this "issue" can easily be resolved.
  */
-trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] {
+trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr]:
 
   /**
    * The incremental configuration for this analysis. This configuration keeps track of the optimisations that are used.
@@ -46,10 +46,9 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   def registerComponent(expr: Expr, component: Component): Unit = mapping = mapping + (expr -> (mapping(expr) + component))
 
   /** Queries the given expression for `change` expressions and returns the expressions (within the given one) that were affected by the change. */
-  def findUpdatedExpressions(expr: Expr): Set[Expr] = expr match {
+  def findUpdatedExpressions(expr: Expr): Set[Expr] = expr match
     case e: ChangeExp[Expr] => Set(e.old) // Assumption: change expressions are not nested.
     case e                  => e.subexpressions.asInstanceOf[List[Expr]].flatMap(findUpdatedExpressions).toSet
-  }
 
   /* *********************************** */
   /* ***** Dependency invalidation ***** */
@@ -87,30 +86,28 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
    *   extend its functionality to remove the added state related to the deleted component (e.g., to remove the return value from the store).
    */
   def deleteComponent(cmp: Component): Unit =
-    if (visited(cmp)) { // Only do this if we have not yet encountered (deleted) the component. Note that this is not needed to prevent looping.
-      for (dep <- cachedReadDeps(cmp)) deregister(cmp, dep) // Remove all dependencies related to this component.
+    if visited(cmp) then // Only do this if we have not yet encountered (deleted) the component. Note that this is not needed to prevent looping.
+      for dep <- cachedReadDeps(cmp) do deregister(cmp, dep) // Remove all dependencies related to this component.
       visited = visited - cmp // Remove the component from the visited set.
       // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
       // This should improve both performance and precision.
       workList = workList - cmp
-      for (to <- cachedSpawns(cmp)) unspawn(to) // Transitively check for components that have to be deleted.
+      for to <- cachedSpawns(cmp) do unspawn(to) // Transitively check for components that have to be deleted.
 
       // Delete the caches.
       cachedReadDeps -= cmp
       cachedSpawns -= cmp
       countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations (?) as the counter for cmp will be the default value of 0.
-    }
 
   /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
   def unspawn(cmp: Component): Unit =
-    if (visited(cmp)) { // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
+    if visited(cmp) then // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
       // (Counts can go below zero if an already reclaimed component is encountered here, which is possible due to the foreach in deleteDisconnectedComponents.)
       // Update the spawn count information.
       countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
-      if (countedSpawns(cmp) == 0) deleteComponent(cmp)
+      if countedSpawns(cmp) == 0 then deleteComponent(cmp)
       // TODO employ a technique that does not require tracing?
       else deletionFlag = true // Delete the component if it is no longer spawned by any other component.
-    }
 
   /* ************************************************************ */
   /* ***** Find and delete unreachable cycles of components ***** */
@@ -123,19 +120,16 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   var deletionFlag: Boolean = false
 
   /** Computes the set of reachable components (tracing from the Main component). */
-  def reachableComponents(): Set[Component] = {
+  def reachableComponents(): Set[Component] =
     var reachable: Set[Component] = Set()
     var work: Set[Component] = Set(initialComponent)
-    while (work.nonEmpty) {
+    while work.nonEmpty do
       val head = work.head
       work = work.tail
-      if (!reachable(head)) {
+      if !reachable(head) then
         reachable += head
         work = sunion(work, cachedSpawns(head)) // Perform a "smart union".
-      }
-    }
     reachable
-  }
 
   /** Computes the set of unreachable components. */
   def unreachableComponents(): Set[Component] = visited -- reachableComponents()
@@ -144,78 +138,68 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
   def deleteDisconnectedComponents(): Unit =
     // Only perform the next steps if there was a component that was unspawned but not collected.
     // In the other case, there can be no unreachable components left.
-    if (deletionFlag) {
+    if deletionFlag then
       unreachableComponents().foreach(deleteComponent) // Make sure the components are actually deleted.
       deletionFlag = false
-    }
 
   /* ************************************************************************* */
   /* ***** Incremental update: actually perform the incremental analysis ***** */
   /* ************************************************************************* */
 
   /** Perform an incremental analysis of the updated program, starting from the previously obtained results. */
-  def updateAnalysis(timeout: Timeout.T): Unit = {
+  def updateAnalysis(timeout: Timeout.T): Unit =
     version = New // Make sure the new program version is analysed upon reanalysis (i.e., 'apply' the changes).
     val affected = findUpdatedExpressions(program).flatMap(mapping)
     affected.foreach(addToWorkList)
     analyzeWithTimeout(timeout)
-  }
 
   /* ************************************ */
   /* ***** Intra-component analysis ***** */
   /* ************************************ */
 
-  trait IncrementalIntraAnalysis extends IntraAnalysis {
+  trait IncrementalIntraAnalysis extends IntraAnalysis:
 
     /* ----------------------------------- */
     /* ----- Dependency invalidation ----- */
     /* ----------------------------------- */
 
     /** Removes outdated dependencies of a component, by only keeping the dependencies that were used during the latest analysis of the component. */
-    def refineDependencies(): Unit = {
-      if (version == New) { // Check for efficiency but can be omitted.
+    def refineDependencies(): Unit =
+      if version == New then // Check for efficiency but can be omitted.
         // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
         val deltaR = cachedReadDeps(component) -- R
         deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
-      }
-    }
 
     /* ---------------------------------- */
     /* ----- Component invalidation ----- */
     /* ---------------------------------- */
 
     /** Removes outdated components, and components that become transitively outdated, by keeping track of spawning dependencies. */
-    def refineComponents(): Unit = {
+    def refineComponents(): Unit =
       // Subtract component to avoid circular circularities due to self-recursion (this is a circularity that can easily be spotted and hence immediately omitted).
       val Cdiff = C - component
 
       // For each component not previously spawned by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
       (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
 
-      if (version == New) { // Check performed for efficiency but can be omitted.
+      if version == New then // Check performed for efficiency but can be omitted.
         // The components previously spawned (except probably for the component itself), but that are no longer spawned.
         val deltaC = cachedSpawns(component) -- Cdiff
         deltaC.foreach(unspawn)
-      }
       cachedSpawns += (component -> Cdiff) // Update the cache.
-      if (version == New) deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
-    }
+      if version == New then deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
 
     /* ------------------ */
     /* ----- Commit ----- */
     /* ------------------ */
 
     /** First removes outdated read dependencies and components before performing the actual commit. */
-    override def commit(): Unit = {
-      if (configuration.dependencyInvalidation) refineDependencies() // First, remove excess dependencies if this is a reanalysis.
-      if (configuration.componentInvalidation) refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
-      if (configuration.componentInvalidation || configuration.dependencyInvalidation) {
+    override def commit(): Unit =
+      if configuration.dependencyInvalidation then refineDependencies() // First, remove excess dependencies if this is a reanalysis.
+      if configuration.componentInvalidation then refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
+      if configuration.componentInvalidation || configuration.dependencyInvalidation then
         // Update the cache. The cache also needs to be updated when the program is initially analysed.
         // This is also needed for CI, as otherwise components can come "back to life" as dependencies corresponding to deleted components cannot be removed (easily).
         // Note that this has to be done _after_ dependency invalidation!
         cachedReadDeps += (component -> R)
-      }
       super.commit() // Then commit and trigger dependencies.
-    }
-  }
-}

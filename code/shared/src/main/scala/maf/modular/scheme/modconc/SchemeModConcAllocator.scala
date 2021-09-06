@@ -5,7 +5,7 @@ import maf.modular.scheme._
 import maf.language.scheme._
 import maf.modular.scheme.modf._
 
-trait StandardSchemeModConcAllocator extends SchemeModConcSemantics {
+trait StandardSchemeModConcAllocator extends SchemeModConcSemantics:
   type AllocationContext = SchemeModFComponent
   def allocVar(
       id: Identifier,
@@ -17,4 +17,3 @@ trait StandardSchemeModConcAllocator extends SchemeModConcSemantics {
       modfCmp: SchemeModFComponent,
       cmp: Component
     ) = PtrAddr(exp, modfCmp)
-}

@@ -19,7 +19,7 @@ class IncrementalModularSchemeLattice[
     R: RealLattice,
     C: CharLattice,
     Sym: SymbolLattice]
-    extends ModularSchemeLattice[A, S, B, I, R, C, Sym] {
+    extends ModularSchemeLattice[A, S, B, I, R, C, Sym]:
 
   type Sources = Set[A]
 
@@ -30,32 +30,28 @@ class IncrementalModularSchemeLattice[
    * @param sources
    *   The addresses in the store where the value originated.
    */
-  case class AnnotatedElements(values: List[Value], sources: Sources) extends SmartHash {
+  case class AnnotatedElements(values: List[Value], sources: Sources) extends SmartHash:
     override def toString: String = toL().toString
-    def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X = {
+    def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X =
       values.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
-    }
 
     /** Convert to a non-annotated value, for use with the non-annotated lattice implementation. */
     def toL(): L = Elements(values)
     def joinedSources(other: AnnotatedElements): Sources = sources.union(other.sources) //TODO use a set monoid for this?
-  }
   type AL = AnnotatedElements
-  object AnnotatedElement extends Serializable {
+  object AnnotatedElement extends Serializable:
     def apply(v: Value): AL = AnnotatedElements(List(v), Set())
     def apply(v: Value, sources: Sources): AL = AnnotatedElements(List(v), sources)
-  }
 
   import maf.util.MonoidInstances._
 
   /** Provides the monoid implementation for annotated elements AL. */
   implicit val alMonoid: Monoid[AL] = new Monoid[AL] {
-    private def insert(vs: List[Value], v: Value): List[Value] = vs match {
+    private def insert(vs: List[Value], v: Value): List[Value] = vs match
       case scala.Nil                     => List(v)
       case v0 :: _ if v.ord < v0.ord     => v :: vs
       case v0 :: rest if v.ord == v0.ord => Value.join(v, v0) :: rest
       case v0 :: rest                    => v0 :: insert(rest, v)
-    }
     def append(xs: AL, ys: => AL): AL = AnnotatedElements(ys.values.foldLeft(xs.values)(insert), xs.sources.union(ys.sources))
     def zero: AL = AnnotatedElements(scala.Nil, Set())
   }
@@ -73,16 +69,15 @@ class IncrementalModularSchemeLattice[
     def isFalse(x: AL): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
 
     /** Apply an operation: apply the operation on the values and join the annotations. */
-    def op(op: SchemeOp)(args: List[AL]): MayFail[AL, Error] = {
+    def op(op: SchemeOp)(args: List[AL]): MayFail[AL, Error] =
       val sources = args.flatMap(_.sources).toSet // Combine all sources (= join).
       // Redirect to the non-annotated lattice and annotate afterwards. This allows more reuse of code.
       schemeLattice.op(op)(args.map(_.toL())).map(annotate(_, sources))
-    }
-    def join(x: AL, y: => AL): AL = {
+    def join(x: AL, y: => AL): AL =
       val ys =
         y // Breaks laziness: we want y to be evaluated exactly once. If not, y will be evaluates twice (once to get the value and once to get the sources).
       AnnotatedElements(schemeLattice.join(x.toL(), ys.toL()).vs, x.sources.union(ys.sources))
-    } // Monoid[AL].append(x, y)
+    // Monoid[AL].append(x, y)
     def subsumes(x: AL, y: => AL): Boolean = schemeLattice.subsumes(x.toL(), y.toL())
     def top: AL = throw LatticeTopUndefined
 
@@ -141,11 +136,11 @@ class IncrementalModularSchemeLattice[
         y: AL,
         xname: String = "x",
         yname: String = "y"
-      ): String = {
+      ): String =
       var table = Table.empty.withDefaultValue("")
-      def insertList(name: String, values: List[Value]): Unit = {
+      def insertList(name: String, values: List[Value]): Unit =
         values.foreach { v =>
-          if (v.ord == 9) { // Pointers.
+          if v.ord == 9 then // Pointers.
             val ptrs = v
               .asInstanceOf[Pointer]
               .ptrs
@@ -157,19 +152,15 @@ class IncrementalModularSchemeLattice[
               .sorted
               .mkString("Pointer(", ", ", ")")
             table = table.add(v.typeName, name, ptrs)
-          } else table = table.add(v.typeName, name, v.toString)
+          else table = table.add(v.typeName, name, v.toString)
         }
-      }
       insertList(xname, x.values)
       insertList(yname, y.values)
       (x.values.diff(y.values) ++ y.values.diff(x.values)).map(_.typeName).foreach { typeName =>
         table = table.add(typeName, "diff", "!")
       }
       table.prettyString(columns = List("diff", xname, yname))
-    }
   }
 
-  object AL {
+  object AL:
     implicit val lattice: IncrementalSchemeLattice[AL, A] = incrementalSchemeLattice
-  }
-}

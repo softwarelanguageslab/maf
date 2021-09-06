@@ -17,7 +17,7 @@ trait ScVModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
 
   }
 
-  def summary: ScvAnalysisSummary[Value] = {
+  def summary: ScvAnalysisSummary[Value] =
     var returnValues = Map[Any, Value]()
     var blames = Map[Any, Set[Blame]]()
 
@@ -28,7 +28,6 @@ trait ScVModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
     }
 
     ScvAnalysisSummary(returnValues, blames)
-  }
 
   def getReturnValue(component: Component): Option[Value] =
     summary.getReturnValue(component)
@@ -37,7 +36,6 @@ trait ScVModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
 /** This class summerizes the results of the analysis of a whole program annotated with contracts */
 case class ScvAnalysisSummary[Value](
     returnValues: Map[Any, Value],
-    blames: Map[Any, Set[Blame]]) {
+    blames: Map[Any, Set[Blame]]):
 
   def getReturnValue(component: Any): Option[Value] = returnValues.get(component)
-}

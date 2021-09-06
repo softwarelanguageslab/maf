@@ -1,6 +1,6 @@
 package maf.bench.scheme
 
-object IncrementalSchemeBenchmarkPrograms {
+object IncrementalSchemeBenchmarkPrograms:
   lazy val threads: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/cscheme/threads")(
     "puzzle.scm", // Needs call-with-current-continuation.
     ".DS_Store"
@@ -35,4 +35,3 @@ object IncrementalSchemeBenchmarkPrograms {
     "sudoku.scm",
     "mcarlo2.scm"
   )
-}

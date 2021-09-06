@@ -8,7 +8,7 @@ import maf.language.scheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.util._
 
-class TypeSchemeLattice[A <: Address] {
+class TypeSchemeLattice[A <: Address]:
 
   case class L(
       str: Boolean = false,
@@ -26,11 +26,10 @@ class TypeSchemeLattice[A <: Address] {
       arr: Boolean = false,
       grd: Boolean = false,
       flt: Boolean = false)
-      extends SmartHash {
+      extends SmartHash:
     def isBottom: Boolean =
       !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt
-  }
-  object Inject {
+  object Inject:
     val bottom: L = L()
     val str: L = L(str = true)
     val bool: L = L(bool = true)
@@ -47,10 +46,9 @@ class TypeSchemeLattice[A <: Address] {
     def arr: L = L(arr = true)
     def grd: L = L(grd = true)
     def flt: L = L(flt = true)
-  }
 
   def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
-    if (b) { MayFail.success(v) }
+    if b then { MayFail.success(v) }
     else { MayFail.failure(OperatorNotApplicable(name, args)) }
 
   val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] {
@@ -59,12 +57,12 @@ class TypeSchemeLattice[A <: Address] {
     def isFalse(x: L): Boolean = x.bool
     def refs(x: L): Set[Address] =
       x.ptrs ++ refs(x.consCells._1) ++ refs(x.consCells._2) ++ x.clos.flatMap(_._2.addrs)
-    def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] = {
+    def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] =
       import SchemeOp._
       op.checkArity(args)
-      if (args.exists(_.isBottom)) { MayFail.success(bottom) }
-      else {
-        op match {
+      if args.exists(_.isBottom) then { MayFail.success(bottom) }
+      else
+        op match
           case Car        => MayFail.success(args(0).consCells._1)
           case Cdr        => MayFail.success(args(0).consCells._2)
           case MakeVector => throw new Exception("NYI: vectors in type lattice")
@@ -142,9 +140,6 @@ class TypeSchemeLattice[A <: Address] {
           case Substring =>
             // Str -> Int -> Int -> Str
             check(args(0).str && args(1).num && args(2).num, Inject.str)(op.name, args)
-        }
-      }
-    }
     def join(x: L, y: => L): L =
       L(
         str = x.str || y.str,
@@ -164,21 +159,21 @@ class TypeSchemeLattice[A <: Address] {
         flt = x.flt || y.flt
       )
     def subsumes(x: L, y: => L): Boolean =
-      (if (x.str) y.str else true) &&
-        (if (x.bool) y.bool else true) &&
-        (if (x.num) y.num else true) &&
-        (if (x.char) y.char else true) &&
-        (if (x.sym) y.sym else true) &&
-        (if (x.nil) y.nil else true) &&
-        (if (x.inputPort) y.inputPort else true) &&
-        (if (x.outputPort) y.outputPort else true) &&
+      (if x.str then y.str else true) &&
+        (if x.bool then y.bool else true) &&
+        (if x.num then y.num else true) &&
+        (if x.char then y.char else true) &&
+        (if x.sym then y.sym else true) &&
+        (if x.nil then y.nil else true) &&
+        (if x.inputPort then y.inputPort else true) &&
+        (if x.outputPort then y.outputPort else true) &&
         y.prims.subsetOf(x.prims) &&
         y.clos.subsetOf(y.clos) &&
         subsumes(x.consCells._1, y.consCells._1) &&
         subsumes(x.consCells._1, y.consCells._2) &&
-        (if (x.arr) y.arr else true) &&
-        (if (x.grd) y.grd else true) &&
-        (if (x.flt) y.flt else true)
+        (if x.arr then y.arr else true) &&
+        (if x.grd then y.grd else true) &&
+        (if x.flt then y.flt else true)
 
     def top: L = ???
     def getClosures(x: L): Set[Closure] = x.clos
@@ -223,11 +218,10 @@ class TypeSchemeLattice[A <: Address] {
     def eq(x: L, y: L)(cmp: MaybeEq[A]): L = Inject.bool
   }
 
-  object L {
+  object L:
     implicit val lattice: SchemeLattice[L, A] = schemeLattice
-  }
 
-  object Primitives extends SchemeLatticePrimitives[L, A] {
+  object Primitives extends SchemeLatticePrimitives[L, A]:
     override def allPrimitives = super.allPrimitives ++ ofList(
       List(
         `abs`,
@@ -264,10 +258,9 @@ class TypeSchemeLattice[A <: Address] {
     )
 
     // shorthand (after instantiating V and A)
-    class SimplePrim(val name: String, ret: L) extends SchemePrimitive[L, A] {
+    class SimplePrim(val name: String, ret: L) extends SchemePrimitive[L, A]:
       def call[M[_]: PrimM](fexp: SchemeExp, args: List[L]): M[L] =
         PrimM[M].unit(ret)
-    }
     object `abs` extends SimplePrim("abs", Inject.num)
     object `display` extends SimplePrim("display", Inject.str) // undefined behavior in R5RS
     object `equal?` extends SimplePrim("equal?", Inject.bool)
@@ -286,5 +279,3 @@ class TypeSchemeLattice[A <: Address] {
     object `<=` extends SimplePrim("<=", Inject.bool)
     object `>` extends SimplePrim(">", Inject.bool)
     object `>=` extends SimplePrim(">=", Inject.bool)
-  }
-}

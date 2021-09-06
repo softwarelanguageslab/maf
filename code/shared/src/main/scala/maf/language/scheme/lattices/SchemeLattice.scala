@@ -7,7 +7,7 @@ import maf.language.ContractScheme.ContractValues._
 import maf.language.scheme._
 
 /** A lattice for Scheme should support the following operations */
-trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L, Address] {
+trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L, Address]:
 
   // TODO: make this a type parameter for type safety!
   type K = Any
@@ -22,20 +22,18 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
   def op(op: SchemeOp)(args: List[L]): MayFail[L, Error]
 
   /** Conjunction */
-  def and(x: L, y: => L): L = (isTrue(x), isFalse(x)) match {
+  def and(x: L, y: => L): L = (isTrue(x), isFalse(x)) match
     case (true, false)  => y /* x is true: return y */
     case (false, true)  => bool(false) /* x is false: return false */
     case (false, false) => bottom /* x is not true nor false, it is therefore bottom */
     case (true, true)   => join(y, bool(false)) /* either x is true, and we have y, or x is false, and we have false */
-  }
 
   /** Disjunction */
-  def or(x: L, y: => L): L = (isTrue(x), isFalse(x)) match {
+  def or(x: L, y: => L): L = (isTrue(x), isFalse(x)) match
     case (true, false)  => x /* x is true, return x */
     case (false, true)  => y /* x is false, return y */
     case (false, false) => bottom /* x is not true nor false, it is therefore bottom */
     case (true, true)   => join(x, y) /* either x is true, and we have x, or x is false, and we have y */
-  }
 
   /** The representation of a closure */
   type Env = Environment[A]
@@ -169,10 +167,10 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
   def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L
 
-  object Injector {
+  object Injector:
     implicit def inject(c: Closure): L = closure(c)
     implicit def inject(car: L, cdr: L): L = cons(car, cdr)
-    implicit def inject(a: Any): L = a match {
+    implicit def inject(a: Any): L = a match
       case i: Int     => number(i)
       case r: Double  => real(r)
       case s: String  => string(s)
@@ -183,12 +181,8 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
       //case a: A       => pointer(a)
       case Nil => nil
       case v   => throw new Exception(s"Attempting to inject unknown value $v.")
-    }
-  }
-}
 
-object SchemeLattice {
+object SchemeLattice:
   def apply[L, A <: Address](
       implicit lat: SchemeLattice[L, A]
     ): SchemeLattice[L, A] = lat
-}

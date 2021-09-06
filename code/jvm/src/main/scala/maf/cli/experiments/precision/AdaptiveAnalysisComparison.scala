@@ -16,7 +16,7 @@ abstract class AdaptiveAnalysisComparison[
     Chr: CharLattice,
     Str: StringLattice,
     Smb: SymbolLattice]
-    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb] {
+    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]:
 
   // the precision comparison is parameterized by:
   // - a timeout and number of concrete runs
@@ -36,12 +36,11 @@ abstract class AdaptiveAnalysisComparison[
       concreteResult: ResultMap
     ): Unit =
     analyses.foreach { case (analysis, name) =>
-      runAnalysis(analysis, name, program, path, Timeout.start(timeout)) match {
+      runAnalysis(analysis, name, program, path, Timeout.start(timeout)) match
         case None => return // don't run the other analyses anymore
         case Some(store) =>
           val lessPrecise = compareOrdered(store, concreteResult).size
           results = results.add(path, name, Some(lessPrecise))
-      }
     }
 
   /**
@@ -54,15 +53,13 @@ abstract class AdaptiveAnalysisComparison[
    * @param program
    *   the Scheme expression of the benchmark program
    */
-  protected def forBenchmark(path: Benchmark, program: SchemeExp) = {
+  protected def forBenchmark(path: Benchmark, program: SchemeExp) =
     // run the concrete interpreter analysis first
     val concreteResult = runInterpreter(program, path, Timeout.none, concreteRuns).get // no timeout set for the concrete interpreter
     // find the most precise non-adaptive analysis
     compareUntilTimeout(baseAnalyses, path, program, concreteResult)
     // find the most precise adaptive analysis
     compareUntilTimeout(adaptiveAnalyses, path, program, concreteResult)
-  }
-}
 
 object AdaptiveAnalysisComparison1
     extends AdaptiveAnalysisComparison[
@@ -72,7 +69,7 @@ object AdaptiveAnalysisComparison1
       ConstantPropagation.C,
       ConstantPropagation.S,
       ConstantPropagation.Sym
-    ] {
+    ]:
   // some regular k-cfa analyses
   val baseAnalyses = (0 to 10).toList.map { k =>
     (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
@@ -88,11 +85,9 @@ object AdaptiveAnalysisComparison1
     )
   )
 
-  def runBenchmarks(benchmarks: Set[Benchmark]) = {
+  def runBenchmarks(benchmarks: Set[Benchmark]) =
     benchmarks.foreach(runBenchmark)
     println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
     Writer.setDefaultWriter(Writer.open("benchOutput/precision/adaptive-precision-benchmarks.csv"))
     Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
     Writer.closeDefaultWriter()
-  }
-}
