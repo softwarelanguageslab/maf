@@ -21,7 +21,6 @@ trait AdaptiveSchemeModF extends SchemeModFSoundnessTests { outer =>
       with FIFOWorklistAlgorithm[SchemeExp]
 }
 
-class AdaptiveSchemeModFSoundnessTests extends AdaptiveSchemeModF with AllSequentialBenchmarks {
-  def budget = 10
-  override def isSlow(b: Benchmark) = true
-}
+class AdaptiveSchemeModFSoundnessTests extends AdaptiveSchemeModF with AllSequentialBenchmarks:
+    def budget = 10
+    override def isSlow(b: Benchmark) = true
