@@ -137,3 +137,5 @@ object SetMonad:
         def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y] =
             m.flatMap(f)
             m.flatMap(f)
+
+    def fail[A]: Set[A] = Set()
