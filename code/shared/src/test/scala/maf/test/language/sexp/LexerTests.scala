@@ -10,7 +10,7 @@ class SExpLexerTests extends AnyPropSpec with TableDrivenPropertyChecks {
   def checkExpected(parser: lexical.Parser[lexical.SExpToken])(input: String, expected: String) =
     parser(new scala.util.parsing.input.CharArrayReader(input.toCharArray.nn)) match {
       case lexical.Success(res, next) =>
-        if (!next.atEnd) { println(s"Parsed $res from $input, incorrect") }
+        if !next.atEnd then { println(s"Parsed $res from $input, incorrect") }
         assert(next.atEnd); assert(res.chars == expected)
       case res => throw new Exception(s"Parse failure: $res")
     }

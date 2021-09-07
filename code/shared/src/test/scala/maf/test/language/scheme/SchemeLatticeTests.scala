@@ -64,7 +64,7 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
         } */
       /* Binary operators preverse bottom */
       p.property("∀ binop, a: binop(⊥,a) = ⊥ = binop(a,⊥)") = forAll((binop: SchemeOp.SchemeOp2, a: L) =>
-        if (binop == SchemeOp.MakeVector) {
+        if binop == SchemeOp.MakeVector then {
           /* MakeVector is a strange beast as it accepts bottom as a second argument to create an uninitialized vector */
           true
         } else {
@@ -88,21 +88,21 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
       p.property("∀ b1, b2: b1 && b2 = and(inject(b1), inject(b2))") = forAll { (b1: Boolean, b2: Boolean) =>
           val v1 = inject(b1)
           val v2 = inject(b2)
-          if (b1 && b2) isTrue(and(v1, v2)) else isFalse(and(v1, v2))
+          if b1 && b2 then isTrue(and(v1, v2)) else isFalse(and(v1, v2))
       }
 
       /* or is correct */
       p.property("∀ b1, b2: b1 || b2 = or(inject(b1), inject(b2))") = forAll { (b1: Boolean, b2: Boolean) =>
           val v1 = inject(b1)
           val v2 = inject(b2)
-          if (b1 || b2) isTrue(or(v1, v2)) else isFalse(or(v1, v2))
+          if b1 || b2 then isTrue(or(v1, v2)) else isFalse(or(v1, v2))
       }
 
       /* lt is correct */
       p.property("∀ n1, n2: n1 < n2 = lt(inject(n1), inject(n2))") = forAll { (n1: Int, n2: Int) =>
           val v1 = inject(n1)
           val v2 = inject(n2)
-          if (n1 < n2)
+          if n1 < n2 then
             isTrue(convert(op(SchemeOp.Lt)(List(v1, v2))))
           else
             isFalse(convert(op(SchemeOp.Lt)(List(v1, v2))))
@@ -112,7 +112,7 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
       p.property("∀ n1, n2: n1 == n2 = eq(inject(n1), inject(n2))") = forAll { (n1: Int, n2: Int) =>
           val v1 = inject(n1)
           val v2 = inject(n2)
-          if (n1 == n2)
+          if n1 == n2 then
             isTrue(convert(op(SchemeOp.NumEq)(List(v1, v2))))
           else
             isFalse(convert(op(SchemeOp.NumEq)(List(v1, v2))))

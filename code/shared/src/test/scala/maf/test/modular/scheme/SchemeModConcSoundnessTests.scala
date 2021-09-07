@@ -13,7 +13,7 @@ import maf.test._
 trait SchemeModConcSoundnessTests extends SchemeSoundnessTests {
   override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModConcTest
   override def concreteRuns(b: Benchmark) =
-    if (SchemeBenchmarkPrograms.threads.contains(b)) {
+    if SchemeBenchmarkPrograms.threads.contains(b) then {
       // run concurrent benchmarks more than once in the concrete to get
       3
     } else {

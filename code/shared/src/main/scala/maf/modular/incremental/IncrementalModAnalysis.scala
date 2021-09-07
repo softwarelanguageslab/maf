@@ -212,3 +212,5 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
                 // Note that this has to be done _after_ dependency invalidation!
                 cachedReadDeps += (component -> R)
             super.commit() // Then commit and trigger dependencies.
+            
+    end IncrementalIntraAnalysis

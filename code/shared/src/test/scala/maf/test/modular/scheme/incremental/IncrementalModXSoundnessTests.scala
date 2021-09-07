@@ -61,7 +61,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     try
-      for (_ <- 1 to times) {
+      for _ <- 1 to times do {
         val interpreter = new SchemeInterpreter((i, v) => idnResults += (i -> (idnResults(i) + v)),
                                                 io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
         )
@@ -116,7 +116,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests {
 
       val cResultsNew = evalConcreteWithVersion(program, benchmark, New)
 
-      for (c <- configurations) {
+      for c <- configurations do {
         //try {
         // Check soundness on the updated version of the program.
         info(s"Checking results of $c")
