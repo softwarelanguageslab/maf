@@ -111,12 +111,12 @@ object MonadStateT:
         def get: SM[S] = MonadStateT((s: S) => Monad[M].unit((s, s)))
         def put(snew: S): SM[Unit] = MonadStateT((s: S) => Monad[M].unit(((), snew)))
 
-        def withState[X](f: S => S)(m: SM[X]): SM[X] = 
-          for 
-             oldState <- get
-             _ <- put(f(oldState))
-             result <- m 
-             _ <- put(oldState)
+        def withState[X](f: S => S)(m: SM[X]): SM[X] =
+          for
+              oldState <- get
+              _ <- put(f(oldState))
+              result <- m
+              _ <- put(oldState)
           yield result
 
     implicit def stateInstance[S, M[_]: Monad]: StateInstance[S, M] = new StateInstance {}
