@@ -4,11 +4,27 @@ import maf.core._
 import maf.language.scheme._
 import maf.util.benchmarks.Timeout
 
-object EvalM:
-    /* EvalM allows for big-step computations in "monadic" style */
-    case class EvalM[+X](run: Environment[Address] => Option[X]):
-        def flatMap[Y](f: X => EvalM[Y]): EvalM[Y] = EvalM(env => run(env).flatMap(res => f(res).run(env)))
-        def map[Y](f: X => Y): EvalM[Y] = EvalM(env => run(env).map(f))
+/* Generic trait for big-step computations in a "monadic" style */
+trait TEvalM[M[_]] extends Monad[M]:
+    def mzero[X]: M[X]
+    /* Guards the execution on the given Boolean variable */
+    def guard(cnd: Boolean): M[Unit]
+    def getEnv: M[Environment[Address]]
+    // TODO: withExtendedEnv would make more sense
+    def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => M[X]): M[X]
+    def inject[X: Lattice](x: X): M[X] = if Lattice[X].isBottom(x) then mzero else unit(x)
+    def merge[X: Lattice](x: M[X], y: M[X]): M[X]
+    def merge[X: Lattice](xs: Iterable[M[X]]): M[X] =
+      xs.foldLeft[M[X]](mzero)((acc, x) => merge(acc, x))
+
+/* EvalM allows for big-step computations in "monadic" style */
+case class EvalM[+X](run: Environment[Address] => Option[X]):
+    def flatMap[Y](f: X => EvalM[Y]): EvalM[Y] = EvalM(env => run(env).flatMap(res => f(res).run(env)))
+    def map[Y](f: X => Y): EvalM[Y] = EvalM(env => run(env).map(f))
+
+object EvalM extends TEvalM[EvalM]:
+    def map[X, Y](m: EvalM[X])(f: X => Y): EvalM[Y] = m.map(f)
+    def flatMap[X, Y](m: EvalM[X])(f: X => EvalM[Y]): EvalM[Y] = m.flatMap(f)
     def unit[X](x: X): EvalM[X] = EvalM(_ => Some(x))
     def mzero[X]: EvalM[X] = EvalM(_ => None)
     def guard(cnd: Boolean): EvalM[Unit] = if cnd then EvalM(_ => Some(())) else mzero
@@ -31,19 +47,18 @@ object EvalM:
     // TODO: withExtendedEnv would make more sense
     def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
       EvalM(env => ev.run(f(env)))
-    def inject[X: Lattice](x: X): EvalM[X] = if Lattice[X].isBottom(x) then mzero else unit(x)
     def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] = EvalM { env =>
       (x.run(env), y.run(env)) match
           case (None, yres)             => yres
           case (xres, None)             => xres
           case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
     }
-    def merge[X: Lattice](xs: Iterable[EvalM[X]]): EvalM[X] =
-      xs.foldLeft[EvalM[X]](mzero)((acc, x) => merge(acc, x))
 
-trait BigStepModFSemantics extends BaseSchemeModFSemantics:
-
-    import EvalM._
+trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
+    import maf.core.Monad.{MonadIterableOps, MonadSyntaxOps}
+    type EvalM[_]
+    implicit val evalM: TEvalM[EvalM]
+    import evalM._
 
     // helper
     protected def cond(
@@ -56,11 +71,8 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics:
         merge(csqValue, altValue)
 
     // defining the intra-analysis
-    override def intraAnalysis(cmp: Component): BigStepModFIntra
-    trait BigStepModFIntra extends IntraAnalysis with SchemeModFSemanticsIntra:
-        // analysis entry point
-        def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-          eval(fnBody).run(fnEnv).foreach(res => writeResult(res))
+    override def intraAnalysis(cmp: Component): BigStepModFIntraT
+    trait BigStepModFIntraT extends IntraAnalysis with SchemeModFSemanticsIntra:
         // simple big-step eval
         protected def eval(exp: SchemeExp): EvalM[Value] = exp match
             case SchemeValue(value, _)              => unit(evalLiteralValue(value, exp))
@@ -138,3 +150,15 @@ trait BigStepModFSemantics extends BaseSchemeModFSemantics:
               returned = applyFun(exp, funVal, args.zip(argVals), fun.idn.pos)
               result <- inject(returned)
           yield result
+
+trait BigStepModFSemantics extends BigStepModFSemanticsT {
+  type EvalM[X] = maf.modular.scheme.modf.EvalM[X]
+  implicit val evalM = maf.modular.scheme.modf.EvalM
+  override def intraAnalysis(component: Component): BigStepModFIntra
+
+  trait BigStepModFIntra extends BigStepModFIntraT {
+    // analysis entry point
+    def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
+      eval(fnBody).run(fnEnv).foreach(res => writeResult(res))
+  }
+}
