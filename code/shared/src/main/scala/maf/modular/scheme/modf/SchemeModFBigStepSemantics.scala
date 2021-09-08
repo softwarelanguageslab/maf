@@ -87,7 +87,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
             case call @ SchemeFuncall(fun, args, _) => evalCall(call, fun, args)
             case SchemeAssert(exp, _)               => evalAssert(exp)
             case _                                  => throw new Exception(s"Unsupported Scheme expression: $exp")
-        private def evalVariable(id: Identifier): EvalM[Value] =
+        protected def evalVariable(id: Identifier): EvalM[Value] =
           getEnv.flatMap(env => inject(lookup(id, env)))
         private def evalClosure(lam: SchemeLambdaExp): EvalM[Value] =
           for env <- getEnv yield newClosure(lam, env)
