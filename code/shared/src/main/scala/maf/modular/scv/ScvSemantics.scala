@@ -5,7 +5,7 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.language.scheme._
 import maf.modular.scheme.{SchemeDomain}
 import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
-import maf.core.{Environment, Lattice, Monad, MonadStateT, SetMonad, Store, BasicStore, BasicStoreOps}
+import maf.core.{Environment, Lattice, Monad, MonadStateT, SetMonad, BasicStore}
 import maf.util.benchmarks.Timeout
 
 /** This trait encodes the semantics of the ContractScheme language */
@@ -47,13 +47,13 @@ trait ScvSemantics extends ModAnalysis[SchemeExp] with ScvModAnalysis with Schem
       // STOREM
       def addrEq = ??? // TODO
       def extendSto(a: Addr, v: Val): M[Unit] = 
-        withState(state => state.copy(store = BasicStoreOps.extend(state.store, a, v))) { unit(()) }
+        withState(state => state.copy(store = state.store.extend(a, v))) { unit(()) }
 
       def lookupSto(a: Addr): M[Val] = 
-        get.map(st => BasicStoreOps.lookup(st.store, a)).flatMap(_.map(unit).getOrElse(lift(SetMonad.fail)))
+        get.map(st => st.store.lookup(a)).flatMap(_.map(unit).getOrElse(lift(SetMonad.fail)))
         
       def updateSto(a: Addr, v: Val): M[Unit] = 
-        withState(state => state.copy(store = BasicStoreOps.update(state.store, a, v))) { unit(()) }
+        withState(state => state.copy(store = state.store.update(a, v))) { unit(()) }
 
       // ANALYSISM
       def call(lam: Lam): M[Val] = ???
