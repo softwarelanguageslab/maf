@@ -37,7 +37,7 @@ trait StoreOps[S <: Store, A, V](using Lattice[V]):
 case class BasicStore[A, V](content: Map[A, V]) extends Store:
     type Delta = BasicStore[A, V]
 
-given [A, V](using lat: Lattice[V]): StoreOps[BasicStore[A, V], A, V] with
+given BasicStoreOps[A, V](using lat: Lattice[V]): StoreOps[BasicStore[A, V], A, V] with
     type S = BasicStore[A, V]
     // delta
     opaque type Delta[_] = BasicStore[A, V]

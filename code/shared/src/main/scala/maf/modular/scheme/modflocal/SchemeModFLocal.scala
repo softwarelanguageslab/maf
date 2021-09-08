@@ -115,7 +115,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
               rs1.foldLeft((Set[(Y, lcl0.Delta)](), cs1)) { case (acc, (x, d0)) =>
                 val lcl1 = sto.integrate(lcl0, d0)
                 val (rs2, cs2) = f(x)(res, ctx, env, lcl1)
-                val rs3 = rs2.map((x, d1) => (x, sto.compose(lcl1, d1)(lcl0, d0): lcl0.Delta))
+                val rs3 = rs2.map[(Y, lcl0.Delta)]((x, d1) => (x, sto.compose(lcl1, d1)(lcl0, d0)))
                 (acc._1 ++ rs3, acc._2 ++ cs2)
               }
         // MONADJOIN
