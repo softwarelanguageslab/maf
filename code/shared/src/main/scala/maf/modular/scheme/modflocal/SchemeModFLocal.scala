@@ -25,7 +25,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     lazy val initialExp: Exp = program
     lazy val initialEnv: Env = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
-    lazy val initialSto: Sto = CountingStoreOps[Adr,Val].from(initialBds.map(p => (p._2, p._3)))
+    lazy val initialSto: Sto = CountingStoreOps[Adr, Val].from(initialBds.map(p => (p._2, p._3)))
 
     private def shouldCount(adr: Adr): Boolean = adr match
         case _: PtrAddr[_] => true
@@ -85,7 +85,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def withRestrictedStore[X](rs: Set[Adr])(blk: A[X])(using sto: StoreOps[Sto, Adr, Val]): A[X] =
       (res, ctx, env, lcl) => {
         val (rss, cps) = blk(res, ctx, env, lcl) //TODO: sto.collect(rs)
-        (rss.map((x, d) => (x, d)), cps)        //TODO: sto.replay(lcl, d)
+        (rss.map((x, d) => (x, d)), cps) //TODO: sto.replay(lcl, d)
       }
 
     override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
@@ -98,7 +98,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     //
 
     type A[X] = (res: Res, ctx: Ctx, env: Env, lcl: Sto) => (Set[(X, lcl.Delta)], Set[Cmp])
-    lazy val sto = CountingStoreOps[Adr, Val]  
+    lazy val sto = CountingStoreOps[Adr, Val]
 
     given analysisM: AnalysisM[A] with
         // MONAD
@@ -162,12 +162,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     //
 
     def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) { intra =>
-
       var results = inter.results
 
       def analyzeWithTimeout(timeout: Timeout.T): Unit =
           val (res, cps) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto)
-          val rgc = res.map { case (x, d) => (x, d) }// d.collect(lattice.refs(x) ++ d.updates)) }
+          val rgc = res.map { case (x, d) => (x, d) } // d.collect(lattice.refs(x) ++ d.updates)) }
           val old = results.get(cmp)
           if rgc != old then
               results = results + (cmp -> rgc)

@@ -48,8 +48,9 @@ trait SchemePrimitive[V, A <: Address] extends Primitive:
     def callMF(
         fexp: SchemeExp,
         args: List[V]
-    )(using bridge: SchemeInterpreterBridge[V, A]): MayFail[V, Error] =
-        call[MF](fexp, args)
+      )(using bridge: SchemeInterpreterBridge[V, A]
+      ): MayFail[V, Error] =
+      call[MF](fexp, args)
 
 // To support the "old" interface (i.e., for usage in callMF)
 
@@ -63,12 +64,12 @@ trait SchemeInterpreterBridge[V, A <: Address]:
     def readSto(a: A): V
     def writeSto(a: A, v: V): Unit
     def currentThread: TID
-    def addrEq: MaybeEq[A] = 
-        new MaybeEq[A] {
-            def apply[B: BoolLattice](a1: A, a2: A) =
-            if a1 == a2 then BoolLattice[B].top // we don't know (could be different concrete addresses abstracted to the same abstract address)
-            else BoolLattice[B].inject(false)   // definitely not the same address
-        }
+    def addrEq: MaybeEq[A] =
+      new MaybeEq[A] {
+        def apply[B: BoolLattice](a1: A, a2: A) =
+          if a1 == a2 then BoolLattice[B].top // we don't know (could be different concrete addresses abstracted to the same abstract address)
+          else BoolLattice[B].inject(false) // definitely not the same address
+      }
 
 type MF[X] = MayFail[X, Error]
 given MFInstance[A <: Address, V](using bri: SchemeInterpreterBridge[V, A]): SchemePrimM[MF, A, V] with
@@ -86,7 +87,6 @@ given MFInstance[A <: Address, V](using bri: SchemeInterpreterBridge[V, A]): Sch
     def mjoin[X: Lattice](x: MF[X], y: MF[X]): MF[X] = x.join(y, Lattice[X].join)
     override def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): MF[V] = MayFail.success(bri.callcc(clo, pos))
     override def currentThread: MF[TID] = MayFail.success(bri.currentThread)
-
 
 // Primitive-specific errors
 case class PrimitiveArityError(
