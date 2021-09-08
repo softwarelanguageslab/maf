@@ -29,10 +29,3 @@ object Show:
     val symShow: Show[String] = new Show[String] {
       def show(s: String): String = s"'$s"
     }
-
-trait StoreShow[V, A <: Address]:
-    def show(v: V, store: Store): String
-
-object StoreShow:
-    def apply[V, A <: Address](implicit e: StoreShow[V, A]): StoreShow[V, A] = e
-    def fromShow[V: Show, A <: Address]: StoreShow[V, A] = (v: V, _) => Show[V].show(v)

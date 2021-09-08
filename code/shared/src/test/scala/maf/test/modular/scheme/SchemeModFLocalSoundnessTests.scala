@@ -22,8 +22,7 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
         with SchemeModFLocalNoSensitivity
         with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
-    override def isSlow(b: Benchmark): Boolean = true
-/*
+    override def isSlow(b: Benchmark): Boolean =
       Set(
         "test/R5RS/various/SICP-compiler.scm", // TIMES OUT
         "test/R5RS/various/mceval.scm", // TIMES OUT
@@ -35,7 +34,6 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
         "test/R5RS/various/infinite-2.scm",
         "test/R5RS/various/infinite-3.scm",
       ).contains(b)
- */
 
 class SchemeModFLocalCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (call-site sensitive)"
