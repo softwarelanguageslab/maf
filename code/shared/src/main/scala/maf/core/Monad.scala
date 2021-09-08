@@ -83,6 +83,11 @@ object MonadJoin:
 /// MonadStateT
 ///
 
+trait StateOps[S, M[_]] extends Monad[M]:
+    def get: M[S]
+    def put(snew: S): M[Unit]
+    def withState[X](f: S => S)(m: M[X]): M[X]
+
 class MonadStateT[S, M[_]: Monad, A](val run: S => M[(A, S)])
 
 object MonadStateT:
@@ -90,7 +95,7 @@ object MonadStateT:
     def apply[S, M[_]: Monad, A](run: S => M[(A, S)]): MonadStateT[S, M, A] =
       new MonadStateT(run)
 
-    trait StateInstance[S, M[_]: Monad] extends Monad[[A] =>> MonadStateT[S, M, A]]:
+    given stateInstance[S, M[_]: Monad]: StateOps[S, [A] =>> MonadStateT[S, M, A]] with
         private type SM[A] = MonadStateT[S, M, A]
         def unit[X](x: X): SM[X] =
           MonadStateT((s: S) => Monad[M].unit((x, s)))
@@ -118,8 +123,6 @@ object MonadStateT:
               result <- m
               _ <- put(oldState)
           yield result
-
-    implicit def stateInstance[S, M[_]: Monad]: StateInstance[S, M] = new StateInstance {}
 
     def lift[S, M[_]: Monad, X](v: M[X]): MonadStateT[S, M, X] = MonadStateT((s: S) => Monad[M].map(v)((_, s)))
 
