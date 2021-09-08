@@ -22,7 +22,7 @@ class SchemeModFLocalInsensitiveSoundnessTests extends SchemeModFLocalSoundnessT
         with SchemeModFLocalNoSensitivity
         with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
-    override def isSlow(b: Benchmark): Boolean = 
+    override def isSlow(b: Benchmark): Boolean =
       Set(
         "test/R5RS/various/SICP-compiler.scm", // TIMES OUT
         "test/R5RS/various/mceval.scm", // TIMES OUT

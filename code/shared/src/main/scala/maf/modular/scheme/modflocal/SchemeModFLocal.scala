@@ -78,12 +78,12 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def updateV(sto: Sto, adr: Adr, vlu: Val): sto.Delta = sto.update(adr, vlu)
 
     def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
-        def apply[B: BoolLattice](a1: Adr, a2: Adr): B = 
-            if a1 == a2 then
-                sto.content.get(a1) match 
-                    case Some((_, CountOne)) => BoolLattice[B].inject(true)
-                    case _ => BoolLattice[B].top
-            else BoolLattice[B].inject(false)
+      def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
+        if a1 == a2 then
+            sto.content.get(a1) match
+                case Some((_, CountOne)) => BoolLattice[B].inject(true)
+                case _                   => BoolLattice[B].top
+        else BoolLattice[B].inject(false)
     }
 
     //
@@ -92,29 +92,29 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     object StoreGC extends AbstractGarbageCollector[Sto, Adr]:
         def fresh(cur: Sto) = LocalStore.empty
-        def move(addr: Adr, from: Sto, to: Sto) = 
-            from.content.get(addr) match
-                case None => (to, Set.empty)
-                case Some(s@(v,_)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
+        def move(addr: Adr, from: Sto, to: Sto) =
+          from.content.get(addr) match
+              case None             => (to, Set.empty)
+              case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
 
     object DeltaGC extends AbstractGarbageCollector[Sto#Delta, Adr]:
         def fresh(cur: Sto#Delta) = cur.copy(delta = Map.empty)
-        def move(addr: Adr, from: Sto#Delta, to: Sto#Delta): (Sto#Delta, Set[Adr]) = 
-            from.delta.get(addr).orElse(from.parent.content.get(addr)) match
-                case None => (to, Set.empty)
-                case Some((v, _)) if !from.delta.contains(addr) => (to, lattice.refs(v))
-                case Some(s@(v,_)) => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
+        def move(addr: Adr, from: Sto#Delta, to: Sto#Delta): (Sto#Delta, Set[Adr]) =
+          from.delta.get(addr).orElse(from.parent.content.get(addr)) match
+              case None                                       => (to, Set.empty)
+              case Some((v, _)) if !from.delta.contains(addr) => (to, lattice.refs(v))
+              case Some(s @ (v, _))                           => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
 
     def withRestrictedStore[X](rs: Set[Adr])(blk: A[X]): A[X] =
-        (res, ctx, env, sto) =>
-            val gcs = StoreGC.collect(sto, rs)
-            val (rss, cps) = blk(res, ctx, env, gcs)
-            (rss.map((x, d) => (x, sto.replay(gcs, d))), cps)
+      (res, ctx, env, sto) =>
+          val gcs = StoreGC.collect(sto, rs)
+          val (rss, cps) = blk(res, ctx, env, gcs)
+          (rss.map((x, d) => (x, sto.replay(gcs, d))), cps)
 
     override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
-        withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
-            super.applyClosure(cll, lam, ags, fvs)
-        }
+      withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
+        super.applyClosure(cll, lam, ags, fvs)
+      }
 
     //
     // ANALYSISM MONAD
@@ -132,14 +132,14 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             (rss.map((x, d) => (f(x), d)), cps)
           }
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
-            (res, ctx, env, sto0) =>
-                val (rs1, cs1) = m(res, ctx, env, sto0)
-                rs1.foldLeft((Set.empty[(Y, sto0.Delta)], cs1)) { case (acc, (x, d0)) =>
-                    val sto1 = sto0.integrate(d0)
-                    val (rs2, cs2) = f(x)(res, ctx, env, sto1)
-                    val rs3 = rs2.map((x, d1) => (x, sto0.compose(d1, d0)))
-                    (acc._1 ++ rs3, acc._2 ++ cs2)
-                }
+          (res, ctx, env, sto0) =>
+              val (rs1, cs1) = m(res, ctx, env, sto0)
+              rs1.foldLeft((Set.empty[(Y, sto0.Delta)], cs1)) { case (acc, (x, d0)) =>
+                val sto1 = sto0.integrate(d0)
+                val (rs2, cs2) = f(x)(res, ctx, env, sto1)
+                val rs3 = rs2.map((x, d1) => (x, sto0.compose(d1, d0)))
+                (acc._1 ++ rs3, acc._2 ++ cs2)
+              }
         // MONADJOIN
         def mbottom[X] =
           (_, _, _, _) => (Set.empty, Set.empty)
