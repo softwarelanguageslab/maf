@@ -7,7 +7,7 @@ import maf.modular.scheme.SchemeDomain
 import maf.language.ContractScheme.ContractValues._
 
 /** Main trait for the soft-contract verification analysis. */
-trait ScVModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain { outer =>
+trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain { outer =>
 
   override def intraAnalysis(component: Component): IntraScvAnalysis
 

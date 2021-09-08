@@ -57,20 +57,6 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
     override def doWrite(dep: Dependency): Boolean = dep match
         case AddrDependency(addr) => inter.writeAddr(addr, intra.store(addr))
         case _                    => super.doWrite(dep)
-
-    // An adapter for the "old" store interface
-    // TODO[maybe]: while this should be sound, it might be more precise to not immediately write every value update to the global store ...
-    case object StoreAdapter extends Store[Addr, Value]:
-        type This = StoreAdapter.type
-        def lookup(a: Addr): Option[Value] = Some(readAddr(a))
-        def extend(a: Addr, v: Value): This =
-            writeAddr(a, v); this
-        def join(self: This) = this
-        // doesn't really support delta stores
-        type DeltaStore = StoreAdapter.type
-        def deltaStore = this
-        def integrate(delta: DeltaStore) = this
-
   }
 
   /** Returns a string representation of the store. */

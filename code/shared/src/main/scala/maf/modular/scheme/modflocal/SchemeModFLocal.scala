@@ -3,6 +3,7 @@ package maf.modular.scheme.modflocal
 import maf.modular._
 import maf.modular.scheme._
 import maf.core._
+import maf.core.CountingStoreOps
 import maf.language.scheme._
 import maf.language.scheme.primitives._
 import maf.util.benchmarks.Timeout
@@ -16,7 +17,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // more shorthands
     type Cmp = Component
     type Dep = Dependency
-    type Sto = LocalStore[Adr, Val]
+    type Sto = CountingStore[Adr, Val]
 
     //
     // INITIALISATION
@@ -24,11 +25,13 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     lazy val initialExp: Exp = program
     lazy val initialEnv: Env = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
-    lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))(shouldCount)
+    lazy val initialSto: Sto = CountingStoreOps[Adr, Val].from(initialBds.map(p => (p._2, p._3)))
 
     private def shouldCount(adr: Adr): Boolean = adr match
         case _: PtrAddr[_] => true
         case _             => false
+
+    given p: (Adr => Boolean) = shouldCount
 
     private lazy val initialBds: Iterable[(String, Adr, Val)] =
       primitives.allPrimitives.view
@@ -41,8 +44,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // CALLBACKS (can be overriden)
     //
 
-    def extendV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore = sto.deltaStore.extend(adr, vlu)
-    def updateV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore = sto.deltaStore.update(adr, vlu)
+    def extendV(lcl: Sto, adr: Adr, vlu: Val)(using sto: StoreOps[Sto, Adr, Val]): lcl.Delta = sto.extend(lcl, adr, vlu)
+    def updateV(lcl: Sto, adr: Adr, vlu: Val)(using sto: StoreOps[Sto, Adr, Val]): lcl.Delta = sto.update(lcl, adr, vlu)
 
     //
     // COMPONENTS
@@ -59,8 +62,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         val sto = initialSto
         val ctx = initialCtx
         override def toString = "main"
-    case class CallComponent(clo: Clo, ctx: Ctx, sto: Sto) extends Component:
-        val (lam, env) = clo
+    case class CallComponent(lam: Lam, env: Env, ctx: Ctx, sto: Sto) extends Component:
         def exp = SchemeBody(lam.body)
         override def toString = s"${lam.lambdaName} [$ctx] [$sto]"
 
@@ -80,10 +82,10 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // GC'ing
     //
 
-    def withRestrictedStore[X](rs: Set[Adr])(blk: A[X]): A[X] =
-      (res, ctx, env, sto) => {
-        val (rss, cps, rds, wds) = blk(res, ctx, env, sto.collect(rs))
-        (rss.map { case (x, d) => (x, sto.replay(d)) }, cps, rds, wds)
+    def withRestrictedStore[X](rs: Set[Adr])(blk: A[X])(using sto: StoreOps[Sto, Adr, Val]): A[X] =
+      (res, ctx, env, lcl) => {
+        val (rss, cps) = blk(res, ctx, env, lcl) //TODO: sto.collect(rs)
+        (rss.map((x, d) => (x, d)), cps) //TODO: sto.replay(lcl, d)
       }
 
     override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
@@ -95,62 +97,64 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // ANALYSISM MONAD
     //
 
-    type A[X] = (res: Res, ctx: Ctx, env: Env, sto: Sto) => (Set[(X, sto.DeltaStore)], Set[Cmp], Set[Dep], Set[Dep])
+    type A[X] = (res: Res, ctx: Ctx, env: Env, lcl: Sto) => (Set[(X, lcl.Delta)], Set[Cmp])
+    lazy val sto = CountingStoreOps[Adr, Val]
 
     given analysisM: AnalysisM[A] with
         // MONAD
         def unit[X](x: X) =
-          (_, _, _, sto) => (Set((x, sto.deltaStore)), Set(), Set(), Set())
+          (_, _, _, lcl) => (Set((x, sto.delta(lcl))), Set())
         def map[X, Y](m: A[X])(f: X => Y) =
-          (res, ctx, env, sto) => {
-            val (rss, cps, rds, wds) = m(res, ctx, env, sto)
-            (rss.map(res => (f(res._1), res._2)), cps, rds, wds)
+          (res, ctx, env, lcl) => {
+            val (rss, cps) = m(res, ctx, env, lcl)
+            (rss.map((x, d) => (f(x), d)), cps)
           }
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
-          (res, ctx, env, sto) =>
-              val (rs1, cs1, rd1, wd1) = m(res, ctx, env, sto)
-              rs1.foldLeft((Set[(Y, sto.DeltaStore)](), cs1, rd1, wd1)) { case (acc, (x, d0)) =>
-                val (rs2, cs2, rd2, wd2) = f(x)(res, ctx, env, sto.integrate(d0))
-                val rs3 = rs2.map { case (x, d1) => (x, sto.compose(d1, d0)) }
-                (acc._1 ++ rs3, acc._2 ++ cs2, acc._3 ++ rd2, acc._4 ++ wd2)
+          (res, ctx, env, lcl0) =>
+              val (rs1, cs1) = m(res, ctx, env, lcl0)
+              rs1.foldLeft((Set[(Y, lcl0.Delta)](), cs1)) { case (acc, (x, d0)) =>
+                val lcl1 = sto.integrate(lcl0, d0)
+                val (rs2, cs2) = f(x)(res, ctx, env, lcl1)
+                val rs3 = rs2.map[(Y, lcl0.Delta)]((x, d1) => (x, sto.compose(lcl1, d1)(lcl0, d0)))
+                (acc._1 ++ rs3, acc._2 ++ cs2)
               }
         // MONADJOIN
         def mbottom[X] =
-          (_, _, _, _) => (Set(), Set(), Set(), Set())
+          (_, _, _, _) => (Set.empty, Set.empty)
         def mjoin[X: Lattice](x: A[X], y: A[X]) =
-          (res, ctx, env, sto) => {
-            val (rs1, cs1, rd1, wd1) = x(res, ctx, env, sto)
-            val (rs2, cs2, rd2, wd2) = y(res, ctx, env, sto)
-            (rs1 ++ rs2, cs1 ++ cs2, rd1 ++ rd2, wd1 ++ wd2)
+          (res, ctx, env, lcl) => {
+            val (rs1, cs1) = x(res, ctx, env, lcl)
+            val (rs2, cs2) = y(res, ctx, env, lcl)
+            (rs1 ++ rs2, cs1 ++ cs2)
           }
         // MONADERROR
         def fail[X](err: Error) =
           mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-          (_, _, _, sto) => (Set((sto.addrEq, sto.deltaStore)), Set(), Set(), Set())
+          (_, _, _, lcl) => (Set((sto.addrEq(lcl), sto.delta(lcl))), Set())
         def extendSto(adr: Adr, vlu: Val) =
-          (_, _, env, sto) => (Set(((), extendV(sto, adr, vlu))), Set(), Set(), Set())
+          (_, _, env, lcl) => (Set(((), extendV(lcl, adr, vlu))), Set())
         def updateSto(adr: Adr, vlu: Val) =
-          (_, _, env, sto) => (Set(((), updateV(sto, adr, vlu))), Set(), Set(), Set())
+          (_, _, env, lcl) => (Set(((), updateV(lcl, adr, vlu))), Set())
         def lookupSto(adr: Adr) =
-          (_, _, _, sto) => (Set((sto(adr), sto.deltaStore)), Set(), Set(), Set())
+          (_, _, _, lcl) => (Set((lcl(adr), sto.delta(lcl))), Set())
         // CTX STUFF
         def getCtx =
-          (_, ctx, _, sto) => (Set((ctx, sto.deltaStore)), Set(), Set(), Set())
+          (_, ctx, _, lcl) => (Set((ctx, sto.delta(lcl))), Set())
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
-          (res, ctx, env, sto) => blk(res, f(ctx), env, sto)
+          (res, ctx, env, lcl) => blk(res, f(ctx), env, lcl)
         // ENV STUFF
         def getEnv =
-          (_, _, env, sto) => (Set((env, sto.deltaStore)), Set(), Set(), Set())
+          (_, _, env, lcl) => (Set((env, sto.delta(lcl))), Set())
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
-          (res, ctx, env, sto) => blk(res, ctx, f(env), sto)
+          (res, ctx, env, lcl) => blk(res, ctx, f(env), lcl)
         // CALL STUFF
         def call(lam: Lam): A[Val] =
-          (res, ctx, env, sto) => {
-            val cmp = CallComponent((lam, env), ctx, sto)
-            val rss = res.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, sto.DeltaStore)]]
-            (rss, Set(cmp), Set(ResultDependency(cmp)), Set())
+          (res, ctx, env, lcl) => {
+            val cmp = CallComponent(lam, env, ctx, lcl)
+            val rss = res.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, lcl.Delta)]]
+            (rss, Set(cmp))
           }
 
     //
@@ -161,15 +165,14 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       var results = inter.results
 
       def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          val (res, cps, rds, wds) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto)
-          val rgc = res.map { case (x, d) => (x, d.collect(lattice.refs(x) ++ d.updates)) }
+          val (res, cps) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto)
+          val rgc = res.map { case (x, d) => (x, d) } // d.collect(lattice.refs(x) ++ d.updates)) }
           val old = results.get(cmp)
           if rgc != old then
               results = results + (cmp -> rgc)
               trigger(ResultDependency(cmp))
           cps.foreach(spawn)
-          rds.foreach(register)
-          assert(wds.isEmpty)
+          cps.foreach(cmp => register(ResultDependency(cmp)))
       override def doWrite(dep: Dependency): Boolean = dep match
           case ResultDependency(cmp) =>
             val old = inter.results.getOrElse(cmp, Set.empty)

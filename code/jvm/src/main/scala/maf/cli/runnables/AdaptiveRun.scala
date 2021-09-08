@@ -23,7 +23,7 @@ import maf.language.CScheme.CSchemeLexicalAddresser
 
 object AdaptiveRun:
 
-    def main(args: Array[String]): Unit = testTransform()
+    def main(args: Array[String]): Unit = testModFLocal()
 
     def testConcrete() =
         val txt = """
@@ -39,35 +39,36 @@ object AdaptiveRun:
         }
 
     def testTransform(): Unit =
-        val prg = """
-      (define (f n) (+ n 1))
-      (set! f (lambda (y) (- y 1)))
-      (map f '(1 2 3))
-    """
-        val parsed = CSchemeParser.parse(prg)
+        val txt = Reader.loadFile("test/R5RS/various/grid.scm")
+        val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
-        transf.foreach(println)
+        val prg = CSchemeParser.undefine(transf)
+        println(prg)
 
     def testModFLocal(): Unit =
         val txt = Reader.loadFile("test/R5RS/various/grid.scm")
-        val prg = CSchemeParser.parseProgram(txt)
+        val parsed = CSchemeParser.parse(txt)
+        val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+        val transf = SchemeMutableVarBoxer.transform(prelud)
+        val prg = CSchemeParser.undefine(transf)
         val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
         def printStore(sto: anl.Sto) =
           sto.content.view
             .filterKeys(!_.isInstanceOf[PrmAddr])
             .toMap
-            .foreach { case (a, s) =>
-              println(s"$a -> ${sto.value(s)}")
+            .foreach { case (a, (v, _)) =>
+              println(s"$a -> $v")
             }
         anl.analyzeWithTimeoutInSeconds(10)
         anl.visited
           .collect { case cll: anl.CallComponent => cll }
-          .foreach { case cmp @ anl.CallComponent((lam, _), _, sto) =>
+          .foreach { case cmp @ anl.CallComponent(lam, _, _, sto) =>
+            val res = anl.results.getOrElse(cmp, Set.empty).asInstanceOf[Set[?]]
             println()
             println(s"COMPONENT ${lam.lambdaName} WHERE")
             printStore(sto)
-            println(s"==> ${anl.results(cmp)}")
+            println(s"==> $res")
             println()
           }
 

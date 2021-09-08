@@ -31,7 +31,7 @@ object Show:
     }
 
 trait StoreShow[V, A <: Address]:
-    def show(v: V, store: Store[A, V]): String
+    def show(v: V, store: Store): String
 
 object StoreShow:
     def apply[V, A <: Address](implicit e: StoreShow[V, A]): StoreShow[V, A] = e
