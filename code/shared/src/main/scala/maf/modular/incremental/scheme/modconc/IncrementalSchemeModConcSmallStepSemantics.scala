@@ -8,11 +8,7 @@ import maf.modular.scheme.ssmodconc._
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics:
 
     trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis:
-        override protected def evaluate(
-            exp: Exp,
-            env: Env,
-            stack: Stack
-          ): Set[State] = exp match
+        override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match
             case SchemeCodeChange(e, _, _) if version == Old =>
               registerComponent(e, component)
               Set(Eval(e, env, stack))

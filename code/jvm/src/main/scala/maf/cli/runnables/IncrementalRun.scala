@@ -77,7 +77,7 @@ object IncrementalRun extends App:
           with IncrementalSchemeTypeDomain
           with IncrementalGlobalStore[SchemeExp]
           with IncrementalLogging[SchemeExp] {
-          override def focus(a: Addr): Boolean = a.toString.contains("ret")
+          override def focus(a: Addr): Boolean = !a.toString.contains("PrmAddr") // a.toString.contains("ret")
           var configuration: IncrementalConfiguration = wi_cy
           override def intraAnalysis(
               cmp: Component
