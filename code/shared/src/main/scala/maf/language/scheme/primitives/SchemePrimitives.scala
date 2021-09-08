@@ -5,6 +5,7 @@ import maf.core.Position._
 import maf.language.scheme._
 import maf.language.CScheme._
 import maf.language.scheme.lattices.SchemeLattice
+import maf.lattice.interfaces.BoolLattice
 
 import Monad._
 
@@ -44,14 +45,11 @@ trait SchemePrimitive[V, A <: Address] extends Primitive:
     //
     // Legacy interface
     //
-    def callMF[S <: Store](
+    def callMF(
         fexp: SchemeExp,
-        args: List[V],
-        store: S,
-        scheme: SchemeInterpreterBridge[V, A]
-      )(using sto: StoreOps[S, A, V]): MayFail[(V, S), Error] =
-        val fn = call[MF[S,A,V]](fexp, args)
-        fn(scheme, store).map((res, dlt) => (res, sto.integrate(store, dlt)))
+        args: List[V]
+    )(using bridge: SchemeInterpreterBridge[V, A]): MayFail[V, Error] =
+        call[MF](fexp, args)
 
 // To support the "old" interface (i.e., for usage in callMF)
 
@@ -62,53 +60,35 @@ trait SchemeInterpreterBridge[V, A <: Address]:
         clo: Closure,
         pos: Position
       ): V
+    def readSto(a: A): V
+    def writeSto(a: A, v: V): Unit
     def currentThread: TID
-
-type MF[S <: Store, A <: Address, V] = [X] =>> (bri: SchemeInterpreterBridge[V, A], sto: S) => MayFail[(X, sto.Delta), Error]
-
-given [S <: Store, A <: Address, V](using storeOps: StoreOps[S, A, V]): SchemePrimM[MF[S,A,V], A, V] with
-    // shorthands
-    type M[X] = MF[S, A, V][X]
-    type B = SchemeInterpreterBridge[V, A]
-    // monad operations
-    def unit[X](x: X): M[X] = 
-        (bri: B, sto: S) => MayFail.success((x, storeOps.delta(sto)))
-    def map[X, Y](m: M[X])(f: X => Y): M[Y] = 
-        (bri: B, sto: S) => m(bri, sto).map((x, d) => (f(x), d))
-    def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y] = 
-        (bri: B, sto0: S) => m(bri, sto0).flatMap { (x, d0) =>
-            val sto1 = storeOps.integrate(sto0, d0)
-            f(x)(bri, sto1).map { (y, d1) => 
-                (y, storeOps.compose(sto1, d1)(sto0, d0))
-            }
+    def addrEq: MaybeEq[A] = 
+        new MaybeEq[A] {
+            def apply[B: BoolLattice](a1: A, a2: A) =
+            if a1 == a2 then BoolLattice[B].top // we don't know (could be different concrete addresses abstracted to the same abstract address)
+            else BoolLattice[B].inject(false)   // definitely not the same address
         }
-    def fail[X](err: Error): M[X] = 
-        (bri: B, sto: S) => MayFail.failure(err)
-    def allocVar(idn: Identifier): M[A] = 
-        throw new Exception("Shouldn't be used here")
-    def allocPtr(exp: SchemeExp): M[A] = 
-        (bri: B, sto: S) => MayFail.success((bri.pointer(exp), storeOps.delta(sto)))
-    def addrEq: M[MaybeEq[A]] = 
-        (bri: B, sto: S) => MayFail.success((storeOps.addrEq(sto), storeOps.delta(sto)))
-    def lookupSto(a: A): M[V] =
-        (bri: B, sto: S) => MayFail.success((sto(a), storeOps.delta(sto)))
-    def extendSto(a: A, v: V): M[Unit] = 
-        (bri: B, sto: S) => MayFail.success(((), storeOps.extend(sto, a, v)))
-    def updateSto(a: A, v: V): M[Unit] = 
-        (bri: B, sto: S) => MayFail.success(((), storeOps.update(sto, a, v)))
-    def mbottom[X]: M[X] = 
-        (bri: B, sto: S) => MayFailError(Set.empty)
-    def mjoin[X: Lattice](x: M[X], y: M[X]): M[X] =
-        (bri: B, sto: S) => x(bri, sto).join(y(bri, sto), { case ((x1, d1), (x2, d2)) =>
-            (Lattice[X].join(x1, x2), storeOps.join(sto, d1, d2))
-        })
-    // exotic
-    override def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] =
-        (bri: B, sto: S) => MayFail.success((bri.callcc(clo, pos), storeOps.delta(sto)))
-    override def currentThread: M[TID] =
-        (bri: B, sto: S) => MayFail.success((bri.currentThread, storeOps.delta(sto)))
-// Primitive-specific errors
 
+type MF[X] = MayFail[X, Error]
+given MFInstance[A <: Address, V](using bri: SchemeInterpreterBridge[V, A]): SchemePrimM[MF, A, V] with
+    def unit[X](x: X): MF[X] = MayFail.success(x)
+    def map[X, Y](m: MF[X])(f: X => Y): MF[Y] = m.map(f)
+    def flatMap[X, Y](m: MF[X])(f: X => MF[Y]): MF[Y] = m.flatMap(f)
+    def fail[X](err: Error): MF[X] = MayFail.failure(err)
+    def allocVar(idn: Identifier): MF[A] = throw new Exception("Shouldn't be used here")
+    def allocPtr(exp: SchemeExp): MF[A] = MayFail.success(bri.pointer(exp))
+    def addrEq: MF[MaybeEq[A]] = MayFail.success(bri.addrEq)
+    def lookupSto(a: A): MF[V] = MayFail.success(bri.readSto(a))
+    def extendSto(a: A, v: V) = MayFail.success(bri.writeSto(a, v))
+    def updateSto(a: A, v: V) = MayFail.success(bri.writeSto(a, v))
+    def mbottom[X]: MF[X] = MayFailError(Set.empty)
+    def mjoin[X: Lattice](x: MF[X], y: MF[X]): MF[X] = x.join(y, Lattice[X].join)
+    override def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): MF[V] = MayFail.success(bri.callcc(clo, pos))
+    override def currentThread: MF[TID] = MayFail.success(bri.currentThread)
+
+
+// Primitive-specific errors
 case class PrimitiveArityError(
     name: String,
     expected: Int,

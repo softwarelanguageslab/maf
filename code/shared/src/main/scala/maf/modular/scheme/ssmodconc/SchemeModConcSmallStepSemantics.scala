@@ -436,10 +436,10 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
                 .getPrimitives(fval)
                 .map(prm =>
                   Kont(
-                    primitives(prm).callMF(fexp, args.map(_._2), StoreAdapter, interpreterBridge) match {
-                      case MayFailSuccess((vlu, _)) => vlu
-                      case MayFailBoth((vlu, _), _) => vlu
-                      case MayFailError(_)          => lattice.bottom
+                    primitives(prm).callMF(fexp, args.map(_._2)) match {
+                      case MayFailSuccess(vlu)  => vlu
+                      case MayFailBoth(vlu, _)  => vlu
+                      case MayFailError(_)      => lattice.bottom
                     },
                     stack
                   )
@@ -486,14 +486,15 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
             case Nil                => lattice.nil
             case (exp, vlu) :: rest => allocateCons(exp)(vlu, allocateList(rest))
 
-        protected val interpreterBridge: SchemeInterpreterBridge[Value, Addr] = new SchemeInterpreterBridge[Value, Addr] {
+        given SchemeInterpreterBridge[Value, Addr] with
           def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
+          def readSto(adr: Addr): Value = readAddr(adr)
+          def writeSto(adr: Addr, vlu: Value) = writeAddr(adr, vlu)
           def callcc(
               clo: Closure,
               pos: Position
             ): Value = throw new Exception("call/cc not supported here")
           def currentThread = component
-        }
 
         def allocateKAddr(e: Exp, cc: KA): KAddr
 

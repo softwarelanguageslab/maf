@@ -130,14 +130,7 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiv
               values = threads.map(tid => inject(readThreadResult(tid.asInstanceOf[inter.Component]))(lattice))
               res <- merge(values)(lattice)
           yield res
-        override val interpreterBridge = new SchemeInterpreterBridge[Value, Addr] {
-          def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
-          def callcc(
-              clo: Closure,
-              pos: Position
-            ): Value = modf.callcc(clo, pos)
-          def currentThread = intra.component
-        }
+        override def currentThread = intra.component
         override def commit() =
             super.commit()
             T.foreach(intra.spawn)

@@ -9,6 +9,7 @@ import maf.modular._
 import maf.modular.components.ContextSensitiveComponents
 import maf.modular.scheme._
 import maf.modular.scheme.modf.SchemeModFComponent._
+import maf.language.CScheme.TID
 import maf.util._
 
 /** Base definitions for a Scheme MODF analysis. */
@@ -188,14 +189,17 @@ trait BaseSchemeModFSemantics
         ): Unit =
         pars.zip(args).foreach { case (par, arg) => bindArg(component, par, arg) }
 
-      protected val interpreterBridge: SchemeInterpreterBridge[Value, Addr] = new SchemeInterpreterBridge[Value, Addr] {
+      protected def currentThread: TID = 
+        throw new Exception("Concurrency not available in ModF")
+      given SchemeInterpreterBridge[Value, Addr] with
         def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
+        def readSto(adr: Addr): Value = readAddr(adr)
+        def writeSto(adr: Addr, vlu: Value) = writeAddr(adr, vlu)
         def callcc(
             clo: (SchemeLambdaExp, Environment[Address]),
             fpos: Position
           ): Value = modf.callcc(clo, fpos)
-        def currentThread = throw new Exception("Concurrency not available in ModF")
-      }
+        def currentThread = modf.currentThread
       // TODO[minor]: use foldMap instead of foldLeft
       protected def applyPrimitives(
           fexp: SchemeFuncall,
@@ -207,10 +211,10 @@ trait BaseSchemeModFSemantics
           .foldLeft(lattice.bottom)((acc, prm) =>
             lattice.join(
               acc,
-              primitives(prm).callMF(fexp, args.map(_._2), StoreAdapter, interpreterBridge) match {
-                case MayFailSuccess((vlu, _)) => vlu
-                case MayFailBoth((vlu, _), _) => vlu
-                case MayFailError(_)          => lattice.bottom
+              primitives(prm).callMF(fexp, args.map(_._2)) match {
+                case MayFailSuccess(vlu)  => vlu
+                case MayFailBoth(vlu, _)  => vlu
+                case MayFailError(_)      => lattice.bottom
               }
             )
           )
