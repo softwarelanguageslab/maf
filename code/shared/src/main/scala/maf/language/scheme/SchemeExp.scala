@@ -7,7 +7,9 @@ import maf.language.scheme.ContractSchemeExp
 import Label.*
 
 /** Abstract syntax of Scheme programs */
-sealed trait SchemeExp extends Expression
+sealed trait SchemeExp extends Expression:
+    def prettyString(indent: Int = 0): String = toString()
+    def nextIndent(current: Int): Int = current + 3
 
 /*
     case SchemeLambda(name, args, body, idn) =>
@@ -74,6 +76,8 @@ case class SchemeLambda(
         val b = body.mkString(" ")
         s"(lambda ($a) $b)"
     def varArgId: Option[Identifier] = None
+    override def prettyString(indent: Int): String =
+      s"(lambda (${args.mkString(" ")})\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
 case class SchemeVarArgLambda(
     name: Option[String],
@@ -89,6 +93,11 @@ case class SchemeVarArgLambda(
         val b = body.mkString(" ")
         s"(lambda $a $b)"
     def varArgId: Option[Identifier] = Some(vararg)
+    override def prettyString(indent: Int): String =
+        val a =
+          if args.isEmpty then vararg.toString
+          else s"(${args.mkString(" ")} . $vararg)"
+        s"(lambda $a\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
 /** A function call: (f args...) */
 case class SchemeFuncall(
@@ -118,6 +127,8 @@ case class SchemeIf(
     override val height: Int = 1 + cond.height.max(cons.height).max(alt.height)
     val label: Label = IFF
     def subexpressions: List[Expression] = List(cond, cons, alt)
+    override def prettyString(indent: Int): String =
+      s"(if $cond\n${" " * nextIndent(indent)}${cons.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent)}${alt.prettyString(nextIndent(indent))})"
 
 /** A let-like expression. */
 sealed trait SchemeLettishExp extends SchemeExp:
@@ -128,6 +139,15 @@ sealed trait SchemeLettishExp extends SchemeExp:
     def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
     override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLettishExp].body.length
     override def eql(other: Expression): Boolean = super.eql(other) && body.length == other.asInstanceOf[SchemeLettishExp].body.length
+    def letName: String
+    override def prettyString(indent: Int): String =
+        val id = letName
+        val shiftB = indent + id.toString.length + 3
+        val bi = bindings.map({ case (name, exp) => s"($name ${exp.prettyString(shiftB + name.toString.length + 1)})" })
+        val first = bi.head
+        val rest = bi.tail.map(s => (" " * shiftB) + s).mkString("\n")
+        val bo = body.map(_.prettyString(nextIndent(indent))).mkString("\n")
+        s"($id (${first}${if bi.tail.isEmpty then "" else s"\n${rest}"})\n${" " * nextIndent(indent)}$bo)"
 
 /** Let-bindings: (let ((v1 e1) ...) body...) */
 case class SchemeLet(
@@ -142,6 +162,7 @@ case class SchemeLet(
     def fv: Set[String] =
       bindings.map(_._2).flatMap(_.fv).toSet ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
     val label: Label = LET
+    def letName: String = "let"
 
 /** Let*-bindings: (let* ((v1 e1) ...) body...) */
 case class SchemeLetStar(
@@ -162,6 +183,7 @@ case class SchemeLetStar(
         )
         ._2 ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
     val label: Label = LTS
+    def letName: String = "let*"
 
 /** Letrec-bindings: (letrec ((v1 e1) ...) body...) */
 case class SchemeLetrec(
@@ -178,6 +200,7 @@ case class SchemeLetrec(
         .map(_._1.name)
         .toSet
     val label: Label = LTR
+    def letName: String = "letrec"
 
 /** Named-let: (let name ((v1 e1) ...) body...) */
 object SchemeNamedLet:
@@ -195,6 +218,9 @@ sealed trait SchemeSetExp extends SchemeExp:
     override val height: Int = 1 + value.height
     val label: Label = SET
     def subexpressions: List[Expression] = List(variable, value)
+    override def prettyString(indent: Int): String =
+        val ind = indent + variable.toString.length + 4
+        s"(set! $variable ${value.prettyString(ind)}"
 
 case class SchemeSet(
     variable: Identifier,
@@ -220,6 +246,8 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
     override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
     val label: Label = BEG
     def subexpressions: List[Expression] = exps
+    override def prettyString(indent: Int): String =
+      s"(begin\n${exps.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
 /** Used to create a begin if there are multiple statements, and a single exp if there is only one */
 object SchemeBody:
@@ -341,6 +369,7 @@ case class SchemeDefineVariable(
     override val height: Int = 1 + value.height
     val label: Label = DFV
     def subexpressions: List[Expression] = List(name, value)
+    override def prettyString(indent: Int): String = s"(define $name ${value.prettyString(nextIndent(indent))})"
 
 /** Function definition of the form (define (f arg ...) body) */
 object SchemeDefineFunction:
@@ -464,12 +493,8 @@ object SchemeSetRef:
       SchemeFuncall(SchemeVar(Identifier("__toplevel_set-cdr!", idn)), List(ref, exp), idn)
 
 /** A code change in a Scheme program. */
-case class SchemeCodeChange(
-    old: SchemeExp,
-    nw: SchemeExp,
-    idn: Identity)
-    extends ChangeExp[SchemeExp]
-    with SchemeExp
+case class SchemeCodeChange(old: SchemeExp, nw: SchemeExp, idn: Identity) extends ChangeExp[SchemeExp] with SchemeExp:
+    override def toString: String = s"(<change> $old $nw)"
 
 trait CSchemeExp extends SchemeExp
 
@@ -479,6 +504,7 @@ case class CSchemeFork(body: SchemeExp, idn: Identity) extends CSchemeExp:
     def label: Label = FRK
     def subexpressions: List[Expression] = List(body)
     override val height: Int = body.height + 1
+    override def toString: String = s"(fork $body)"
 
 /** Join a thread, given an expression that should evaluate to a TID. */
 case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp:
@@ -486,6 +512,7 @@ case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp:
     def label: Label = JOI
     def subexpressions: List[Expression] = List(tExp)
     override val height: Int = tExp.height + 1
+    override def toString: String = s"(join $tExp)"
 
 trait ContractSchemeExp extends SchemeExp
 

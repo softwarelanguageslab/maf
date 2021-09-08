@@ -87,7 +87,7 @@ object IncrementalRun extends App:
         println(s"***** $bench *****")
         //  interpretProgram(bench)
         val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-        println(text)
+        println(text.prettyString())
         val a = base(text)
         a.logger.logU("BASE + INC")
         a.analyzeWithTimeout(timeout())
@@ -104,7 +104,7 @@ object IncrementalRun extends App:
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
-    val modFbenchmarks: List[String] = List("test/DEBUG3.scm")
+    val modFbenchmarks: List[String] = List("test/changes/scheme/machine-simulator.scm")
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
