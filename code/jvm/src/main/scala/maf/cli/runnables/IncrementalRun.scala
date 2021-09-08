@@ -77,7 +77,7 @@ object IncrementalRun extends App:
           with IncrementalSchemeTypeDomain
           with IncrementalGlobalStore[SchemeExp]
           with IncrementalLogging[SchemeExp] {
-          override def focus(a: Addr): Boolean = a.toString.contains("ret")
+          override def focus(a: Addr): Boolean = !a.toString.contains("PrmAddr") // a.toString.contains("ret")
           var configuration: IncrementalConfiguration = wi_cy
           override def intraAnalysis(
               cmp: Component
@@ -87,22 +87,24 @@ object IncrementalRun extends App:
         println(s"***** $bench *****")
         //  interpretProgram(bench)
         val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+        println(text.prettyString())
         val a = base(text)
         a.logger.logU("BASE + INC")
         a.analyzeWithTimeout(timeout())
         //println(a.visited)
         a.updateAnalysis(timeout())
         //println(a.visited)
-        //val b = base(text)
-        //b.version = New
-        //b.logger.logU("REAN")
-        //b.analyzeWithTimeout(timeout())
+        Thread.sleep(1000)
+        val b = base(text)
+        b.version = New
+        b.logger.logU("REAN")
+        b.analyzeWithTimeout(timeout())
         // println(b.visited)
         println("Done")
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
-    val modFbenchmarks: List[String] = List("test/changes/scheme/satFine.scm")
+    val modFbenchmarks: List[String] = List("test/changes/scheme/peval.scm")
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
