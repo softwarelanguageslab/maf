@@ -57,8 +57,8 @@ object AdaptiveRun:
           sto.content.view
             .filterKeys(!_.isInstanceOf[PrmAddr])
             .toMap
-            .foreach { case (a, s) =>
-              println(s"$a -> ${sto.value(s)}")
+            .foreach { case (a, (v, _)) =>
+              println(s"$a -> $v")
             }
         anl.analyzeWithTimeoutInSeconds(10)
         anl.visited

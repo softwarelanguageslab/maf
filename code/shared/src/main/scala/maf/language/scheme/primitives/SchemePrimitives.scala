@@ -44,13 +44,14 @@ trait SchemePrimitive[V, A <: Address] extends Primitive:
     //
     // Legacy interface
     //
-    def callMF(
+    def callMF[S <: Store](
         fexp: SchemeExp,
         args: List[V],
-        store: Store[A, V],
+        store: S,
         scheme: SchemeInterpreterBridge[V, A]
-      ): MayFail[(V, store.This), Error] =
-      call(fexp, args)(MFInstance(scheme)).run(store)
+      )(using sto: StoreOps[S, A, V]): MayFail[(V, S), Error] =
+        val fn = call[MF[S,A,V]](fexp, args)
+        fn(scheme, store).map((res, dlt) => (res, sto.integrate(store, dlt)))
 
 // To support the "old" interface (i.e., for usage in callMF)
 
@@ -63,56 +64,49 @@ trait SchemeInterpreterBridge[V, A <: Address]:
       ): V
     def currentThread: TID
 
-trait MF[X, A <: Address, V]:
-    def run(sto: Store[A, V]): MayFail[(X, sto.This), Error]
+type MF[S <: Store, A <: Address, V] = [X] =>> (bri: SchemeInterpreterBridge[V, A], sto: S) => MayFail[(X, sto.Delta), Error]
 
-// TODO: this can be done much more concisely in Scala 3
-case class MFInstance[A <: Address, V](bri: SchemeInterpreterBridge[V, A]) extends SchemePrimM[({ type λ[X] = MF[X, A, V] })#λ, A, V]:
-    def unit[X](x: X): MF[X, A, V] = new MF[X, A, V] {
-      def run(sto: Store[A, V]) = MayFail.success((x, sto: sto.This))
-    }
-    def map[X, Y](m: MF[X, A, V])(f: X => Y): MF[Y, A, V] = new MF[Y, A, V] {
-      def run(sto: Store[A, V]) = m.run(sto).map { case (res, sto1) => (f(res), sto1) }
-    }
-    def flatMap[X, Y](m: MF[X, A, V])(f: X => MF[Y, A, V]): MF[Y, A, V] = new MF[Y, A, V] {
-      def run(sto: Store[A, V]) = m.run(sto).flatMap { case (x, sto1) => f(x).run(sto1) }
-    }
-    def fail[X](err: Error): MF[X, A, V] = new MF[X, A, V] {
-      def run(sto: Store[A, V]) = MayFail.failure[(X, sto.This), Error](err)
-    }
-    def allocVar(idn: Identifier): MF[A, A, V] = throw new Exception("NYI")
-    def allocPtr(exp: SchemeExp): MF[A, A, V] = unit(bri.pointer(exp))
-    def addrEq: MF[MaybeEq[A], A, V] = new MF[MaybeEq[A], A, V] {
-      def run(sto: Store[A, V]) = MayFail.success((sto.addrEq, sto: sto.This))
-    }
-    def lookupSto(a: A): MF[V, A, V] = new MF[V, A, V] {
-      def run(sto: Store[A, V]) = sto.lookupMF(a).map((_, sto: sto.This))
-    }
-    def extendSto(a: A, v: V): MF[Unit, A, V] = new MF[Unit, A, V] {
-      def run(sto: Store[A, V]) = MayFail.success(((), sto.extend(a, v)))
-    }
-    def updateSto(a: A, v: V): MF[Unit, A, V] = new MF[Unit, A, V] {
-      def run(sto: Store[A, V]) = MayFail.success(((), sto.update(a, v)))
-    }
-    def mbottom[X]: MF[X, A, V] = new MF[X, A, V] {
-      def run(sto: Store[A, V]) = MayFailError[(X, sto.This), Error](Set.empty)
-    }
-    def mjoin[X: Lattice](x: MF[X, A, V], y: MF[X, A, V]): MF[X, A, V] = new MF[X, A, V] {
-      def run(sto: Store[A, V]) =
-        x.run(sto.deltaStore)
-          .join(y.run(sto.deltaStore),
-                (xres, yres) => {
-                  (Lattice[X].join(xres._1, yres._1), xres._2.join(yres._2))
-                }
-          )
-          .map { case (v, delta) => (v, sto.integrate(delta)) }
-    }
+given [S <: Store, A <: Address, V](using storeOps: StoreOps[S, A, V]): SchemePrimM[MF[S,A,V], A, V] with
+    // shorthands
+    type M[X] = MF[S, A, V][X]
+    type B = SchemeInterpreterBridge[V, A]
+    // monad operations
+    def unit[X](x: X): M[X] = 
+        (bri: B, sto: S) => MayFail.success((x, storeOps.delta(sto)))
+    def map[X, Y](m: M[X])(f: X => Y): M[Y] = 
+        (bri: B, sto: S) => m(bri, sto).map((x, d) => (f(x), d))
+    def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y] = 
+        (bri: B, sto0: S) => m(bri, sto0).flatMap { (x, d0) =>
+            val sto1 = storeOps.integrate(sto0, d0)
+            f(x)(bri, sto1).map { (y, d1) => 
+                (y, storeOps.compose(sto1, d1)(sto0, d0))
+            }
+        }
+    def fail[X](err: Error): M[X] = 
+        (bri: B, sto: S) => MayFail.failure(err)
+    def allocVar(idn: Identifier): M[A] = 
+        throw new Exception("Shouldn't be used here")
+    def allocPtr(exp: SchemeExp): M[A] = 
+        (bri: B, sto: S) => MayFail.success((bri.pointer(exp), storeOps.delta(sto)))
+    def addrEq: M[MaybeEq[A]] = 
+        (bri: B, sto: S) => MayFail.success((storeOps.addrEq(sto), storeOps.delta(sto)))
+    def lookupSto(a: A): M[V] =
+        (bri: B, sto: S) => MayFail.success((sto(a), storeOps.delta(sto)))
+    def extendSto(a: A, v: V): M[Unit] = 
+        (bri: B, sto: S) => MayFail.success(((), storeOps.extend(sto, a, v)))
+    def updateSto(a: A, v: V): M[Unit] = 
+        (bri: B, sto: S) => MayFail.success(((), storeOps.update(sto, a, v)))
+    def mbottom[X]: M[X] = 
+        (bri: B, sto: S) => MayFailError(Set.empty)
+    def mjoin[X: Lattice](x: M[X], y: M[X]): M[X] =
+        (bri: B, sto: S) => x(bri, sto).join(y(bri, sto), { case ((x1, d1), (x2, d2)) =>
+            (Lattice[X].join(x1, x2), storeOps.join(sto, d1, d2))
+        })
     // exotic
-    override def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): MF[V, A, V] =
-      unit(bri.callcc(clo, pos))
-    override def currentThread: MF[TID, A, V] =
-      unit(bri.currentThread)
-
+    override def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] =
+        (bri: B, sto: S) => MayFail.success((bri.callcc(clo, pos), storeOps.delta(sto)))
+    override def currentThread: M[TID] =
+        (bri: B, sto: S) => MayFail.success((bri.currentThread, storeOps.delta(sto)))
 // Primitive-specific errors
 
 case class PrimitiveArityError(

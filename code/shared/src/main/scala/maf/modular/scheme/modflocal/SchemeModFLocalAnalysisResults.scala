@@ -1,5 +1,6 @@
 package maf.modular.scheme.modflocal
 
+import maf.core._
 import maf.modular._
 import maf.modular.scheme._
 import maf.language.scheme._
@@ -9,16 +10,16 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
 
     var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
 
-    override def extendV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore =
+    override def extendV(lcl: Sto, adr: Adr, vlu: Val)(using sto: StoreOps[Sto, Adr, Val]): lcl.Delta =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
               resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
-        super.extendV(sto, adr, vlu)
+        super.extendV(lcl, adr, vlu)
 
-    override def updateV(sto: Sto, adr: Adr, vlu: Val): sto.DeltaStore =
+    override def updateV(lcl: Sto, adr: Adr, vlu: Val)(using sto: StoreOps[Sto, Adr, Val]): lcl.Delta =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
               resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
-        super.updateV(sto, adr, vlu)
+        super.updateV(lcl, adr, vlu)
