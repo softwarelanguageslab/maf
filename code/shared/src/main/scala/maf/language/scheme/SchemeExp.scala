@@ -146,8 +146,8 @@ sealed trait SchemeLettishExp extends SchemeExp:
         val bi = bindings.map({ case (name, exp) => s"($name ${exp.prettyString(shiftB + name.toString.length + 1)})" })
         val first = bi.head
         val rest = bi.tail.map(s => (" " * shiftB) + s).mkString("\n")
-        val bo = body.map(_.prettyString(nextIndent(indent))).mkString("\n")
-        s"($id (${first}${if bi.tail.isEmpty then "" else s"\n${rest}"})\n${" " * nextIndent(indent)}$bo)"
+        val bo = body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")
+        s"($id (${first}${if bi.tail.isEmpty then "" else s"\n${rest}"})\n$bo)"
 
 /** Let-bindings: (let ((v1 e1) ...) body...) */
 case class SchemeLet(
