@@ -155,7 +155,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
     /**
      * To be called upon a commit, with the join of the values written by the component to the given address. Possibly updates the store and
-     * provenance information, and triggers dependencies if the store is updated.
+     * provenance information. Returns a boolean in indicating whether the store has been updated.
      * @param cmp
      *   The component that is committed.
      * @param addr
@@ -246,7 +246,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             // Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
             intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
             // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
-            super.writeAddr(addr, value)
+            // Same than super.writeAddr(addr, value) except that we do not need to trigger when WI is enabled (all written addresses will be scrutinized later upon commit by doWriteIncremental).
+            updateAddr(intra.store, addr, value).map { updated =>
+                intra.store = updated
+                if !configuration.writeInvalidation then trigger(AddrDependency(addr))
+            }.isDefined
 
         /* ------------------------------ */
         /* ----- Write invalidation ----- */
@@ -258,8 +262,13 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
          *
          * @note
          *   Will also call updateAddrInc for addresses that were already updated by doWrite (but this is ok as the same value is used).
+         * @note
+         *   Incrementally updates the global store by using the contributions made to each address. Replaces doWrite, but also acts on addresses that
+         *   were written but for which the store did not change. This is needed to handle strictly anti-monotonic changes.
          */
-        def registerProvenances(): Unit = intraProvenance.foreach({ case (addr, value) => updateAddrInc(component, addr, value) })
+        def doWriteIncremental(): Unit = intraProvenance.foreach({ case (addr, value) =>
+          if updateAddrInc(component, addr, value) then inter.trigger(AddrDependency(addr))
+        })
 
         /** Refines values in the store that are no longer written to by a component. */
         def refineWrites(): Unit =
@@ -303,7 +312,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             case AddrDependency(addr) if configuration.writeInvalidation =>
               // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
               // Also, this would not work, as updateAddr only performs monotonic updates.
-              updateAddrInc(component, addr, intraProvenance(addr))
+              //updateAddrInc(component, addr, intraProvenance(addr)) // Not needed anymore, replaced by `doWriteIncremental`.
+              false // Should not be called anymore (we disabled triggering in writeAddr).
             case _ => super.doWrite(dep)
 
         /** First performs the commit. Then uses information inferred during the analysis of the component to refine the store if possible. */
@@ -317,37 +327,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 refineWrites()
                 // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
                 // WI: Takes care of addresses that are written and did not cause a store update.
-                registerProvenances()
-/*
-      if (configuration.cyclicValueInvalidation && version == New) {
-        // Compute the new SCAs and the corresponding incoming values.
-        val newSCAs = computeSCAs().map(sca => (sca, incomingSCAValue(sca)))
-        // Check which SCAs need to be cleaned and triggered.
-        // * SCA remained equal but has lower incoming => refine.
-        // * SCAs merged: incoming values are joined => Do nothing (this is automagic).
-        // * New SCA: new incoming value needs to be computed => Do nothing (this is automagic as well).
-        // * SCA split: new incoming values need to be computed => Check if the incoming values are lower than before and recompute if needed.
-        // * SCA split and merged simultaneously: ?
-        /*
-        SCAs.foreach { sca =>
-          val splits = newSCAs.filter(_._1.intersect(sca).nonEmpty)
-          val oldIncoming = incomingValues(sca)
-          if (splits.size == 1 && !lattice.subsumes(splits.head._2, oldIncoming)) { // The old SCA corresponds to exactly one new SCA, and the incoming value is refined.
-            refineSCA(splits.head._1, splits.head._2)
-          } else if (splits.size > 1) { // The addresses of the old SCA are scattered across new SCAs.
-            splits.foreach(s => if (!lattice.subsumes(s._2, oldIncoming)) refineSCA(s._1, s._2))
-          }
-        }
- */
-        // If SCAs are merged, check whether the new incoming value still subsumes the join of the old incoming values. If not: refine.
-        val merges = newSCAs.map(s => (s, SCAs.filter(_.intersect(s._1).nonEmpty))) //.filter(_._2.size > 1)
-        val mergeIncomingOld = merges.map(s => (s._1, s._2.map(incomingValues).fold(lattice.bottom)(lattice.join(_, _))))
-        mergeIncomingOld.foreach { case ((sca, incoming), incomingOld) =>
-          if (!lattice.subsumes(incoming, incomingOld))
-            refineSCA(sca, incoming)
-        }
-        // Store the new SCAs with their new incoming values.
-        incomingValues = incomingValues ++ newSCAs
-        SCAs = newSCAs.map(_._1)
-      }
- */
+                doWriteIncremental()
+
+    end IncrementalGlobalStoreIntraAnalysis

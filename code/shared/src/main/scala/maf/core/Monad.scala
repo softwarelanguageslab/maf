@@ -78,3 +78,64 @@ object MonadJoin:
         def withFilter(p: X => Boolean): M[X] = MonadJoin[M].withFilter(self)(p)
     implicit class MonadJoinIterableSyntax[X](xs: Iterable[X]):
         def foldMapM[M[_]: MonadJoin, Y: Lattice](f: X => M[Y]): M[Y] = MonadJoin[M].mfoldMap(xs)(f)
+
+///
+/// MonadStateT
+///
+
+class MonadStateT[S, M[_]: Monad, A](val run: S => M[(A, S)])
+
+object MonadStateT:
+    import maf.core.Monad.MonadSyntaxOps
+    def apply[S, M[_]: Monad, A](run: S => M[(A, S)]): MonadStateT[S, M, A] =
+      new MonadStateT(run)
+
+    trait StateInstance[S, M[_]: Monad] extends Monad[[A] =>> MonadStateT[S, M, A]]:
+        private type SM[A] = MonadStateT[S, M, A]
+        def unit[X](x: X): SM[X] =
+          MonadStateT((s: S) => Monad[M].unit((x, s)))
+        def map[X, Y](m: SM[X])(f: X => Y): SM[Y] =
+          MonadStateT((s: S) =>
+            Monad[M].map(m.run(s)) { case (v, snew) =>
+              (f(v), snew)
+            }
+          )
+
+        def flatMap[X, Y](m: SM[X])(f: X => SM[Y]): SM[Y] =
+          MonadStateT((s: S) =>
+            Monad[M].flatMap(m.run(s)) { case (v, snew) =>
+              f(v).run(snew)
+            }
+          )
+
+        def get: SM[S] = MonadStateT((s: S) => Monad[M].unit((s, s)))
+        def put(snew: S): SM[Unit] = MonadStateT((s: S) => Monad[M].unit(((), snew)))
+
+        def withState[X](f: S => S)(m: SM[X]): SM[X] =
+          for
+              oldState <- get
+              _ <- put(f(oldState))
+              result <- m
+              _ <- put(oldState)
+          yield result
+
+    implicit def stateInstance[S, M[_]: Monad]: StateInstance[S, M] = new StateInstance {}
+
+    def lift[S, M[_]: Monad, X](v: M[X]): MonadStateT[S, M, X] = MonadStateT((s: S) => Monad[M].map(v)((_, s)))
+
+///
+/// SetMonad
+///
+
+/** This simply provides a functional interface for the existing Scala Set monad */
+object SetMonad:
+    implicit def iterableMonadInstance: Monad[[A] =>> Set[A]] = new Monad:
+        type M[A] = Set[A]
+        def unit[X](x: X): M[X] = Set(x)
+        def map[X, Y](m: M[X])(f: X => Y): M[Y] =
+          m.map(f)
+        def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y] =
+            m.flatMap(f)
+            m.flatMap(f)
+
+    def fail[A]: Set[A] = Set()

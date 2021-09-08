@@ -26,7 +26,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
       .map(updated => inter.store = updated)
       .isDefined
 
-  private def updateAddr(
+  protected def updateAddr(
       store: Map[Addr, Value],
       addr: Addr,
       value: Value

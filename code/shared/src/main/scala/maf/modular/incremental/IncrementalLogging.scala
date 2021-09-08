@@ -1,11 +1,11 @@
 package maf.modular.incremental
 
 import maf.core.Expression
-import maf.language.change.CodeVersion._
-import maf.modular.Dependency
+import maf.language.change.CodeVersion.*
+import maf.modular.*
 import maf.util.Logger
-import maf.util.Logger._
-import maf.util.benchmarks.{Table, Timeout}
+import maf.util.Logger.*
+import maf.util.benchmarks.*
 
 /**
  * Provides facilities for logging an incremental analysis that uses the incremental global store.
@@ -158,11 +158,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     //  super.updateProvenance(cmp, addr, value)
     //}
 
-    override def updateAddrInc(
-        cmp: Component,
-        addr: Addr,
-        nw: Value
-      ): Boolean =
+    override def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean =
         val b = super.updateAddrInc(cmp, addr, nw)
         logger.log(s"IUPD $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)")
         b
@@ -193,12 +189,14 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             logger.log(s"WRIT $value => $addr (${if b then "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
             b
 
-        // Registering of provenances.
-        override def registerProvenances(): Unit =
+        // Incremental store update.
+        override def doWriteIncremental(): Unit =
             intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV $addr: $value") })
-            super.registerProvenances()
+            super.doWriteIncremental()
 
         override def commit(): Unit =
             logger.log("COMI")
             super.commit()
             insertTable(Right(component))
+
+    end IncrementalLoggingIntra
