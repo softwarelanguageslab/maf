@@ -2,8 +2,8 @@ package maf.modular.worklist
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.typed.scaladsl.{AskPattern, Routers, Behaviors => Behaviours}
-import akka.actor.typed.{ActorRef, ActorSystem, DispatcherSelector, Behavior => Behaviour}
+import akka.actor.typed.scaladsl.{AskPattern, Behaviors => Behaviours, Routers}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior => Behaviour, DispatcherSelector}
 import com.typesafe.config.ConfigFactory
 import maf.core._
 import maf.modular.{Dependency, ModAnalysis}

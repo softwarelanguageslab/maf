@@ -118,8 +118,7 @@ class CPSSchemeInterpreter(
 
     case class PaiC(car: Value, e: SchemeExp, cc: Continuation) extends InternalContinuation
 
-    case class RetC(addr: Addr, cc: Continuation)
-        extends InternalContinuation // Allows to write the return value of a function call to the store. This breaks tail recursion...
+    case class RetC(addr: Addr, cc: Continuation) extends InternalContinuation // Allows to write the return value of a function call to the store. This breaks tail recursion...
     case class SetC(addr: Addr, cc: Continuation) extends InternalContinuation
 
     case class TrdC(tid: Int = -1) extends Continuation // End of a thread.

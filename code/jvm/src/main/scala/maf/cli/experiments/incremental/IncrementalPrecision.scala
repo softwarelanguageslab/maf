@@ -53,8 +53,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             val incr = iStore(a)
             val rean = rStore(a)
             if incr == rean then e += 1 // Both results are the same => equally precise.
-            else if inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]) then
-                l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
+            else if inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]) then l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
             else {
               System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
               System.err.nn.flush()

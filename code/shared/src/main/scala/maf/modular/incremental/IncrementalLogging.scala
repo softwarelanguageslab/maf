@@ -62,8 +62,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
               )
               addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach {
                 case (addr, valueSources) =>
-                  if focus(addr) then
-                      table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
+                  if focus(addr) then table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
               }
               botRead.foreach(addr => table = table.add(stepString, "Bot", addr.toString))
               botRead = None
