@@ -238,8 +238,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             // Update the value flow information and reset the reads information.
             if configuration.cyclicValueInvalidation then
                 // Get the annotations and remove them so they are not written to the store.
-                val dependentAddresses = getAddresses(value)
-                value = removeAddresses(value)
+                val dependentAddresses = lattice.getAddresses(value)
+                value = lattice.removeAddresses(value)
                 // Store the dependencies.
                 val newDependencies = addressDependencies(component)(addr) ++ dependentAddresses
                 addressDependencies = addressDependencies + (component -> (addressDependencies(component) + (addr -> newDependencies)))

@@ -14,10 +14,6 @@ trait IncrementalModularSchemeDomain extends IncrementalSchemeDomain:
     type Value = modularLatticeWrapper.modularLattice.AL // Use the annotated lattice.
     override lazy val lattice = modularLatticeWrapper.modularLattice.incrementalSchemeLattice
     override lazy val primitives = modularLatticeWrapper.primitives
-    def addAddresses(v: modularLatticeWrapper.modularLattice.AL, sources: Set[Address]): modularLatticeWrapper.modularLattice.AL =
-      lattice.addAddresses(v, sources)
-    def getAddresses(v: modularLatticeWrapper.modularLattice.AL): Set[Address] = lattice.getAddresses(v)
-    def removeAddresses(v: modularLatticeWrapper.modularLattice.AL): modularLatticeWrapper.modularLattice.AL = lattice.removeAddresses(v)
 
 trait IncrementalModularSchemeLatticeWrapper:
     type S
