@@ -49,6 +49,6 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   def lookupCache(addr: Addr): ScvEvalM[Option[Symbolic]] =
     scvMonadInstance.get.map(_.store.get(addr))
 
-  def flatten[X](ms: ScvEvalM[TaggedSet[Symbolic, X]]): ScvEvalM[(Option[Symbolic], X)] = 
+  def flatten[X](ms: ScvEvalM[TaggedSet[Symbolic, X]]): ScvEvalM[(Option[Symbolic], X)] =
     ms.flatMap(ts => MonadStateT.lift(extract(ts)))
 }

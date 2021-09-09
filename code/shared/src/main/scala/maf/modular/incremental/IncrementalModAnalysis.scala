@@ -36,8 +36,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     var version: Version = Old
 
     /** Keeps track of which components depend on an expression. */
-    var mapping: Map[Expr, Set[Component]] =
-      Map().withDefaultValue(Set()) // TODO: when a new program version causes changes, the sets may need to shrink again (~ cached dependencies etc).
+    var mapping: Map[Expr, Set[Component]] = Map().withDefaultValue(Set()) // TODO: when a new program version causes changes, the sets may need to shrink again (~ cached dependencies etc).
 
     /**
      * Register that a component is depending on a given expression in the program. This is needed e.g. for process-modular analyses, where affected
@@ -101,10 +100,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
     /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
     def unspawn(cmp: Component): Unit =
-      if visited(
-            cmp
-          )
-      then // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
+      if visited(cmp) then // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
           // (Counts can go below zero if an already reclaimed component is encountered here, which is possible due to the foreach in deleteDisconnectedComponents.)
           // Update the spawn count information.
           countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
@@ -173,9 +169,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
           if version == New then // Check for efficiency but can be omitted.
               // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
               val deltaR = cachedReadDeps(component) -- R
-              deltaR.foreach(
-                deregister(component, _)
-              ) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
+              deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
 
         /* ---------------------------------- */
         /* ----- Component invalidation ----- */
@@ -194,8 +188,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
                 val deltaC = cachedSpawns(component) -- Cdiff
                 deltaC.foreach(unspawn)
             cachedSpawns += (component -> Cdiff) // Update the cache.
-            if version == New then
-                deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
+            if version == New then deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
 
         /* ------------------ */
         /* ----- Commit ----- */
@@ -204,13 +197,12 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
         /** First removes outdated read dependencies and components before performing the actual commit. */
         override def commit(): Unit =
             if configuration.dependencyInvalidation then refineDependencies() // First, remove excess dependencies if this is a reanalysis.
-            if configuration.componentInvalidation then
-                refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
+            if configuration.componentInvalidation then refineComponents() // Second, remove components that are no longer reachable (if this is a reanalysis).
             if configuration.componentInvalidation || configuration.dependencyInvalidation then
                 // Update the cache. The cache also needs to be updated when the program is initially analysed.
                 // This is also needed for CI, as otherwise components can come "back to life" as dependencies corresponding to deleted components cannot be removed (easily).
                 // Note that this has to be done _after_ dependency invalidation!
                 cachedReadDeps += (component -> R)
             super.commit() // Then commit and trigger dependencies.
-            
+
     end IncrementalIntraAnalysis

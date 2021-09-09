@@ -123,9 +123,7 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
     def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit =
         // Check components.
         assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit at least the same components than the full reanalysis.")
-        assert(a.visited.diff(i.visited).isEmpty,
-               "The visited set of the incremental update does not subsume the visited set of the full reanalysis."
-        ) // If the size is equal, this checks also the converse assertion.
+        assert(a.visited.diff(i.visited).isEmpty, "The visited set of the incremental update does not subsume the visited set of the full reanalysis.") // If the size is equal, this checks also the converse assertion.
 
         // Check dependencies.
         val depsI = i.deps.toSet[(Dependency, Set[i.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })
@@ -196,9 +194,7 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
     def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit =
         // Check components.
         assert(i.visited.size >= a.visited.size, "The incremental analysis did not visit at least the same components than the full reanalysis.")
-        assert(a.visited.diff(i.visited).isEmpty,
-               "The visited set of the incremental update does not subsume the visited set of the full reanalysis."
-        ) // If the size is equal, this checks also the converse assertion.
+        assert(a.visited.diff(i.visited).isEmpty, "The visited set of the incremental update does not subsume the visited set of the full reanalysis.") // If the size is equal, this checks also the converse assertion.
 
         // Check dependencies.
         val depsI = i.deps.toSet[(Dependency, Set[i.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c)) })

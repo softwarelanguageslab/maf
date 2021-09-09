@@ -383,9 +383,7 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
             case JoinFrame =>
               lattice
                 .getThreads(vl)
-                .map(tid =>
-                  Kont(readResult(tid.asInstanceOf[Component]), stack)
-                ) //TODO: parameterize ModularLattice with type of TID to avoid asInstanceOf here
+                .map(tid => Kont(readResult(tid.asInstanceOf[Component]), stack)) //TODO: parameterize ModularLattice with type of TID to avoid asInstanceOf here
 
         private def conditional(
             value: Value,
@@ -437,9 +435,9 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
                 .map(prm =>
                   Kont(
                     primitives(prm).callMF(fexp, args.map(_._2)) match {
-                      case MayFailSuccess(vlu)  => vlu
-                      case MayFailBoth(vlu, _)  => vlu
-                      case MayFailError(_)      => lattice.bottom
+                      case MayFailSuccess(vlu) => vlu
+                      case MayFailBoth(vlu, _) => vlu
+                      case MayFailError(_)     => lattice.bottom
                     },
                     stack
                   )
@@ -487,14 +485,14 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
             case (exp, vlu) :: rest => allocateCons(exp)(vlu, allocateList(rest))
 
         given SchemeInterpreterBridge[Value, Addr] with
-          def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
-          def readSto(adr: Addr): Value = readAddr(adr)
-          def writeSto(adr: Addr, vlu: Value) = writeAddr(adr, vlu)
-          def callcc(
-              clo: Closure,
-              pos: Position
-            ): Value = throw new Exception("call/cc not supported here")
-          def currentThread = component
+            def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
+            def readSto(adr: Addr): Value = readAddr(adr)
+            def writeSto(adr: Addr, vlu: Value) = writeAddr(adr, vlu)
+            def callcc(
+                clo: Closure,
+                pos: Position
+              ): Value = throw new Exception("call/cc not supported here")
+            def currentThread = component
 
         def allocateKAddr(e: Exp, cc: KA): KAddr
 

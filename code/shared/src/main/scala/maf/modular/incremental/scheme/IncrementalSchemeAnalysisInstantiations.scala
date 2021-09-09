@@ -47,9 +47,8 @@ object IncrementalSchemeAnalysisInstantiations:
         with IncrementalSchemeTypeDomain
         with IncrementalGlobalStore[SchemeExp]:
 
-        override def intraAnalysis(
-            cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
+        override def intraAnalysis(cmp: Component) =
+          new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
 
     /**
      * Builds an incremental ModConc Analysis for the given Scheme program with the following properties: <ul> <li>Allocated continuation addresses
@@ -61,17 +60,13 @@ object IncrementalSchemeAnalysisInstantiations:
      * @param prg
      *   The program to construct the analysis for.
      */
-    class IncrementalModConcAnalysisCPLattice(
-        prg: SchemeExp,
-        var configuration: IncrementalConfiguration,
-        val k: Int = 1)
+    class IncrementalModConcAnalysisCPLattice(prg: SchemeExp, var configuration: IncrementalConfiguration, val k: Int = 1)
         extends BaseModConcAnalysisIncremental(prg)
         with IncrementalSchemeConstantPropagationDomain
         with IncrementalGlobalStore[SchemeExp]:
 
-        override def intraAnalysis(
-            cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
+        override def intraAnalysis(cmp: Component) =
+          new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
 
     /* **************** */
     /* ***** ModF ***** */
@@ -98,17 +93,15 @@ object IncrementalSchemeAnalysisInstantiations:
         extends BaseModFAnalysisIncremental(prg)
         with IncrementalSchemeTypeDomain
         with IncrementalGlobalStore[SchemeExp]:
-        override def intraAnalysis(
-            cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+        override def intraAnalysis(cmp: Component) =
+          new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
 
     // Same as the one above, but with assertions.
     class IncrementalSchemeModFAssertionAnalysisTypeLattice(prg: SchemeExp, configuration: IncrementalConfiguration)
         extends IncrementalSchemeModFAnalysisTypeLattice(prg, configuration)
         with SchemeAssertSemantics:
-        override def intraAnalysis(
-            cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra
+        override def intraAnalysis(cmp: Component) =
+          new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra
 
     /**
      * Builds an incremental ModF Analysis for the given Scheme program with the following properties: <ul> <li>Uses standard scheme ModF components
@@ -123,14 +116,12 @@ object IncrementalSchemeAnalysisInstantiations:
         extends BaseModFAnalysisIncremental(prg)
         with IncrementalSchemeConstantPropagationDomain
         with IncrementalGlobalStore[SchemeExp]:
-        override def intraAnalysis(
-            cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+        override def intraAnalysis(cmp: Component) =
+          new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
 
     // Same as the one above, but with assertions.
     class IncrementalSchemeModFAssertionAnalysisCPLattice(prg: SchemeExp, configuration: IncrementalConfiguration)
         extends IncrementalSchemeModFAnalysisCPLattice(prg, configuration)
         with SchemeAssertSemantics:
-        override def intraAnalysis(
-            cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra
+        override def intraAnalysis(cmp: Component) =
+          new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra

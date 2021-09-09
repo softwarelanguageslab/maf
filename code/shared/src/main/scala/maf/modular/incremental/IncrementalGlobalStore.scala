@@ -29,11 +29,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
     /** Computes the value that should reside at a given address according to the provenance information. */
+    // TODO: Maybe use the technique of AVL tries to get this logarithmic instead of linear? (Trick applied by IncA in another context, Szabó et al. 2018.)
     def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
 
     /** Updates the provenance information for a specific component and address. */
-    def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit =
-      provenance = provenance + (addr -> (provenance(addr) + (cmp -> value)))
+    def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit = provenance = provenance + (addr -> (provenance(addr) + (cmp -> value)))
 
     /* ******************************************** */
     /* ***** Managing cyclic value provenance ***** */
@@ -73,15 +73,17 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
      *   The join of all values "incoming" in this SCA.
      */
     def incomingSCAValue(sca: SCA): Value =
-        /*
-    cachedWrites.foldLeft(lattice.bottom) { case (value, (component, addresses)) =>
-      addresses.intersect(sca).foldLeft(value) { case (value, addr) =>
-        if (addressDependencies(component)(addr).union(sca).isEmpty)
-          lattice.join(value, provenance(addr)(component))
-        else value
+      cachedWrites.foldLeft(lattice.bottom) { case (value, (component, addresses)) =>
+        // All addresses of the SCA written by `component`...
+        addresses.intersect(sca).foldLeft(value) { case (value, addr) =>
+          // ...that were not influenced by an address in the SCA...
+          if addressDependencies(component)(addr).union(sca).isEmpty then
+              // ...contribute to the incoming value.
+              lattice.join(value, provenance(addr)(component))
+          else value
+        }
       }
-    }
-         */
+    /*
         var value = lattice.bottom
         cachedWrites.foreach { case (component, addresses) =>
           // All addresses of the SCA written by `component`...
@@ -93,6 +95,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
           }
         }
         value
+     */
+    end incomingSCAValue
 
     /* ****************************** */
     /* ***** Write invalidation ***** */
@@ -111,8 +115,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         provenance = provenance + (addr -> (provenance(addr) - cmp))
         // Compute the new value for the address and update it in the store.
         val value: Value = provenanceValue(addr)
-        if configuration.checkAsserts then
-            assert(lattice.subsumes(inter.store(addr), value)) // The new value can never be greater than the old value.
+        if configuration.checkAsserts then assert(lattice.subsumes(inter.store(addr), value)) // The new value can never be greater than the old value.
         if value != inter.store(addr) then
             trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
             // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
@@ -196,9 +199,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 provenance -= addr
             }
             cachedWrites = cachedWrites.map({ case (k, v) => (k, v -- addrs) }).withDefaultValue(Set())
+            SCAs = Set() // Clear the data as it is no longer needed. (This is not really required but reduces the memory footprint of the result.)
         super.updateAnalysis(timeout)
-        // Clear the data as it is no longer needed. (This is not really required but reduces the memory footprint of the result.)
-        if configuration.cyclicValueInvalidation then SCAs = Set()
 
     /* ************************************ */
     /* ***** Intra-component analysis ***** */
@@ -220,8 +222,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
         /** Called upon the (re-)analysis of a component. Here, used to clear out data structures of the incremental global store. */
         abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            if configuration.cyclicValueInvalidation then
-                addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
+            if configuration.cyclicValueInvalidation then addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
             super.analyzeWithTimeout(timeout)
 
         /* ---------------------------------- */
@@ -249,7 +250,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             // Same than super.writeAddr(addr, value) except that we do not need to trigger when WI is enabled (all written addresses will be scrutinized later upon commit by doWriteIncremental).
             updateAddr(intra.store, addr, value).map { updated =>
                 intra.store = updated
-                if !configuration.writeInvalidation then trigger(AddrDependency(addr))
+                if !configuration.writeInvalidation then trigger(AddrDependency(addr)) // TODO (maybe): just override `trigger`?
             }.isDefined
 
         /* ------------------------------ */
@@ -291,29 +292,17 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
               inter.store += addr -> incoming
               intra.store += addr -> incoming
               provenance += (addr -> provenance(addr).map(kv => if cachedReadDeps(kv._1).contains(AddrDependency(addr)) then (kv._1, incoming) else kv))
-              updateAddrInc(component, // Call updateAddrInc to ensure triggers happen.
-                            addr,
-                            incoming
-              )
+              // Call updateAddrInc to ensure triggers happen. TODO updateAddrInc doesn't trigger => Is this the correct way of triggering?
+              if updateAddrInc(component, addr, incoming) then trigger(AddrDependency(addr))
           }
 
         /* ------------------ */
         /* ----- Commit ----- */
         /* ------------------ */
 
-        /**
-         * Called for every written address. Returns true if the dependency needs to be triggered.
-         *
-         * @note
-         *   This function should be overridden to avoid the functionality of GlobalStore to be used. Otherwise this function could be merged into
-         *   refineWrites.
-         */
+        /** Called for every written address. Returns true if the dependency needs to be triggered. */
         override def doWrite(dep: Dependency): Boolean = dep match
-            case AddrDependency(addr) if configuration.writeInvalidation =>
-              // There is no need to use the updateAddr function, as the store is updated by updateAddrInc.
-              // Also, this would not work, as updateAddr only performs monotonic updates.
-              //updateAddrInc(component, addr, intraProvenance(addr)) // Not needed anymore, replaced by `doWriteIncremental`.
-              false // Should not be called anymore (we disabled triggering in writeAddr).
+            case AddrDependency(addr) if configuration.writeInvalidation => false // Upon a commit, doWriteIncremental will take care of this. It uses updateAddrInc instead of updateAddr is used, and performs triggers accordingly.
             case _ => super.doWrite(dep)
 
         /** First performs the commit. Then uses information inferred during the analysis of the component to refine the store if possible. */

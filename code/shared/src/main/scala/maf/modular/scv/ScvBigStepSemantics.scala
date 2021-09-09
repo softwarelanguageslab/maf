@@ -12,7 +12,7 @@ import maf.core.Identifier
 /** This trait encodes the semantics of the ContractScheme language */
 trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
   import maf.core.Monad.MonadSyntaxOps
-  import maf.core.MonadStateT.{unlift, lift}
+  import maf.core.MonadStateT.{lift, unlift}
   import evalM._
 
   override def intraAnalysis(component: Component): IntraScvSemantics
@@ -28,8 +28,8 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
   /** Tags the given value with the given Scheme expression */
   protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] = unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(e), result)))
 
-  /** Extracts the tag along with the value from a computation returning such a tagged value */ 
-  def extract(computation: EvalM[Value]): EvalM[(Option[Symbolic], Value)] = 
+  /** Extracts the tag along with the value from a computation returning such a tagged value */
+  def extract(computation: EvalM[Value]): EvalM[(Option[Symbolic], Value)] =
     flatten(unlift(computation))
 
   /**
@@ -62,12 +62,11 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
 
       private def symCond(prdValWithSym: (Option[Symbolic], Value), csq: SchemeExp, alt: SchemeExp): EvalM[Value] = ???
 
-      protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] = 
+      protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
         // the if expression is evaluated in a different way, because we use symbolic information to extend the path condition and rule out unfeasible paths
-        for 
-          prdValWithSym <- flatten(unlift(eval(prd)))
-          ifVal <- symCond(prdValWithSym, csq, alt)
+        for
+            prdValWithSym <- flatten(unlift(eval(prd)))
+            ifVal <- symCond(prdValWithSym, csq, alt)
         yield ifVal
 
-          
 }
