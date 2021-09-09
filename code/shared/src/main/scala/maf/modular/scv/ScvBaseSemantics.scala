@@ -16,9 +16,13 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   import MonadStateT._
   import Monad.MonadSyntaxOps
 
-  case class State(env: Environment[Address], store: StoreCache, lstore: BasicStore[Addr, Value])
+  case class State(env: Environment[Address], store: StoreCache, lstore: BasicStore[Addr, Value], pc: List[Symbolic], freshVar: Int):
+      def extendPc(addition: Symbolic) = this.copy(pc = addition :: pc)
+
   object State:
-      def empty: State = State(env = BasicEnvironment(Map()), store = Map(), new BasicStore(content = Map()))
+      def empty: State = State(env = BasicEnvironment(Map()), store = Map(), new BasicStore(content = Map()), pc = List(), freshVar = 0)
+
+  case class PostValue(symbolic: Option[Symbolic], value: Value)
 
   override type EvalM[X] = ScvEvalM[X]
   type Symbolic = SchemeExp
@@ -46,9 +50,39 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   // Other useful operations on the ScvEvalM monad
   // ///////////////////////////////////////////////
 
-  def lookupCache(addr: Addr): ScvEvalM[Option[Symbolic]] =
+  /** Lookup the given address in the store cache and return the associated symbolic information */
+  protected def lookupCache(addr: Addr): ScvEvalM[Option[Symbolic]] =
     scvMonadInstance.get.map(_.store.get(addr))
 
-  def flatten[X](ms: ScvEvalM[TaggedSet[Symbolic, X]]): ScvEvalM[(Option[Symbolic], X)] = 
-    ms.flatMap(ts => MonadStateT.lift(extract(ts)))
+  protected def flatten[X](ms: ScvEvalM[TaggedSet[Symbolic, X]]): ScvEvalM[(Option[Symbolic], X)] =
+    ms.flatMap(ts => MonadStateT.lift(TaggedSet.extract(ts)))
+
+  /** Returns a computation that, when composed with other computions results in no computation at all ie. void >>= m == void */
+  protected def void[X]: ScvEvalM[X] = MonadStateT.lift(TaggedSet.empty)
+
+  /** Extracts the tag along with the value from a computation returning such a tagged value */
+  protected def extract(computation: EvalM[Value]): EvalM[PostValue] =
+    flatten(unlift(computation)).map(v => PostValue(v._1, v._2))
+
+  /**
+   * Extend the path condition in the current state, and propogate it.
+   *
+   * @param symb
+   *   the symbolic expression to add to the path condition (as a conjunction)
+   */
+  protected def extendPc(symb: Symbolic): EvalM[Unit] =
+    for
+        st <- scvMonadInstance.get
+        _ <- scvMonadInstance.put(st.extendPc(symb))
+    yield ()
+
+  /** Generates a fresh symbolic variable */
+  protected def fresh: EvalM[Symbolic] =
+    for
+        st <- scvMonadInstance.get
+        _ <- scvMonadInstance.put(st.copy(freshVar = st.freshVar + 1))
+    yield SchemeVar(Identifier(s"#x${st.freshVar}", Identity.none))
+
+  /** Executes both computations non-determinstically */
+  protected def nondet[X](tru: EvalM[X], fls: EvalM[X]): EvalM[X] = ???
 }
