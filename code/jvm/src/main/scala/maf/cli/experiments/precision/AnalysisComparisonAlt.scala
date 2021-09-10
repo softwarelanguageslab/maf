@@ -67,11 +67,11 @@ object AnalysisComparisonAlt1
       )
     )
 
-    override def parseProgram(txt: String): SchemeExp = 
-      val parsed = SchemeParser.parse(txt)
-      val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
-      val transf = SchemeMutableVarBoxer.transform(prelud)
-      SchemeParser.undefine(transf)
+    override def parseProgram(txt: String): SchemeExp =
+        val parsed = SchemeParser.parse(txt)
+        val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+        val transf = SchemeMutableVarBoxer.transform(prelud)
+        SchemeParser.undefine(transf)
 
     def runBenchmarks(benchmarks: Set[Benchmark]) =
         benchmarks.foreach(runBenchmark)
