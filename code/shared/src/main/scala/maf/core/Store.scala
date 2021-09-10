@@ -77,11 +77,11 @@ case class LocalStore[A, V](content: Map[A, (V, AbstractCount)])(using lat: Latt
     def integrate(d: Delta): LocalStore[A, V] =
         LocalStore(content ++ d.delta)
     def join(d1: Delta, d2: Delta): Delta =
-        Delta(d1.delta.foldLeft(d2.delta) { case (acc, (adr, (vlu, cnt))) =>
+        Delta(d2.delta.foldLeft(d1.delta) { case (acc, (adr, (vlu, cnt))) =>
             acc.get(adr) match
                 case None => acc + (adr -> (vlu, cnt))
                 case Some((accV, accC)) => acc + (adr -> (lat.join(accV, vlu), accC.join(cnt))) 
-        }, Set.empty)
+        }, d1.updates ++ d2.updates)
     def replay(gcs: LocalStore[A,V], d: gcs.Delta): Delta =
         Delta(d.delta.foldLeft(Map.empty) { case (acc, (adr, s @ (v, c))) =>
             if gcs.content.contains(adr) then 
