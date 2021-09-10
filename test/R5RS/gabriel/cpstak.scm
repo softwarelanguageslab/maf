@@ -19,5 +19,6 @@
                                      y
                                      (lambda (v3)
                                        @sensitivity:FA
-                                       (tak v1 v2 v3 k)))))))))))
-  (tak 20 10 5 (lambda (a) @sensitivity:FA a)))
+                                       (tak v1 v2 v3 k))))))))))
+          (res (tak 20 10 5 (lambda (a) @sensitivity:FA a))))
+  res)

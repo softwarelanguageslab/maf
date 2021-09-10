@@ -142,11 +142,6 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         val (_, morePrecise, lessPrecise, unrelated) = compare(r1, r2)
         assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
         assert(unrelated.isEmpty, errorMessage(unrelated.head))
-        morePrecise.foreach { pos =>
-            val v1 = r1.getOrElse(pos, baseLattice.bottom)
-            val v2 = r2.getOrElse(pos, baseLattice.bottom)
-            println(s"$pos -> $v1 > $v2")
-        }
         morePrecise
 
     /**
@@ -253,6 +248,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      */
     protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit
 
+    protected def parseProgram(txt: String): SchemeExp = SchemeParser.parseProgram(txt)
+
     /**
      * Run a benchmark
      * @param benchmark
@@ -260,5 +257,5 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      */
     def runBenchmark(benchmark: Benchmark) =
         val txt = Reader.loadFile(benchmark)
-        val prg = SchemeParser.parseProgram(txt)
+        val prg = parseProgram(txt)
         forBenchmark(benchmark, prg)

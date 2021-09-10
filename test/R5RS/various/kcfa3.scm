@@ -1,6 +1,6 @@
 ;; Taken from https://github.com/jensnicolay/abstractmemo
 ;; Expected result: #f
-((lambda (f1)
+(let ((res ((lambda (f1)
    (letrec ((a (f1 #t)))
      (f1 #f)))
  (lambda (x1)
@@ -14,4 +14,5 @@
        (lambda (x3)
          ((lambda (z)
             (z x1 x2 x3))
-          (lambda (y1 y2 y3) y1))))))))
+          (lambda (y1 y2 y3) y1))))))))))
+  res)

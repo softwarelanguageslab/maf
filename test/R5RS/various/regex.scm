@@ -74,6 +74,7 @@
       (regex-match (d/dc pattern (car data)) (cdr data))))
 (define (check-expect check expect)
   (equal? check expect))
-(check-expect (regex-match '(seq foo (rep bar))
+(define res (check-expect (regex-match '(seq foo (rep bar))
                            '(foo bar))
-              #t)
+              #t))
+res

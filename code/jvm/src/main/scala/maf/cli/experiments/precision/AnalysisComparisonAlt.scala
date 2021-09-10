@@ -6,6 +6,7 @@ import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util.benchmarks._
 import maf.util.Writer
+import maf.language.scheme.primitives.SchemePrelude
 
 import scala.concurrent.duration._
 
@@ -55,35 +56,26 @@ object AnalysisComparisonAlt1
     def analyses =
       // run some adaptive analyses
       List(
-        (SchemeAnalyses.kCFAAnalysis(_, 0), "CI/FI"),
-        (SchemeAnalyses.modflocalAnalysis(_, 0), "CI/FS"),
-        (SchemeAnalyses.kCFAAnalysis(_, 1), "CS/FI"),
-        (SchemeAnalyses.modflocalAnalysis(_, 1), "CS/FS")
+        (SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
+        (SchemeAnalyses.modflocalAnalysis(_, 1), "1-CFA DSS"),
+        (SchemeAnalyses.kCFAAnalysis(_, 0), "0-CFA MODF"),
+        (SchemeAnalyses.kCFAAnalysis(_, 1), "1-CFA MODF"),
       )
     def main(args: Array[String]) = runBenchmarks(
       Set(
-        //"test/R5RS/gambit/array1.scm",
-        //"test/R5RS/gambit/browse.scm",
-        //"test/R5RS/gambit/compiler.scm",
-        //"test/R5RS/gambit/earley.scm",
-        //"test/R5RS/gambit/graphs.scm",
-        //"test/R5RS/gambit/matrix.scm",
-        "test/R5RS/gambit/mazefun.scm",
-        //"test/R5RS/gambit/nboyer.scm",
-        //"test/R5RS/gambit/nqueens.scm",
-        //"test/R5RS/gambit/paraffins.scm",
-        //"test/R5RS/gambit/primes.scm",
-        //"test/R5RS/gambit/scheme.scm",
-        //"test/R5RS/gambit/sumloop.scm",
-        //"test/R5RS/gabriel/puzzle.scm",
-        //"test/R5RS/gabriel/takl.scm",
-        //"test/R5RS/gabriel/cpstak.scm",
+        "test/R5RS/gambit/deriv.scm"
       )
     )
+
+    override def parseProgram(txt: String): SchemeExp = 
+      val parsed = SchemeParser.parse(txt)
+      val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+      val transf = SchemeMutableVarBoxer.transform(prelud)
+      SchemeParser.undefine(transf)
 
     def runBenchmarks(benchmarks: Set[Benchmark]) =
         benchmarks.foreach(runBenchmark)
         println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
-        Writer.setDefaultWriter(Writer.open("benchOutput/precision/adaptive-precision-benchmarks-alt.csv"))
+        Writer.setDefaultWriter(Writer.open("benchOutput/precision/precision-benchmarks.csv"))
         Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
         Writer.closeDefaultWriter()

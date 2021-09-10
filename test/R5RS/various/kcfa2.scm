@@ -1,4 +1,4 @@
-((lambda (f1)
+(let ((res ((lambda (f1)
    (letrec ((a (f1 #t)))
      (f1 #f)))
  (lambda (x1)
@@ -6,4 +6,5 @@
       (letrec ((b (f2 #t))
                (c (f2 #f)))
         (f2 #t)))
-    (lambda (x2) ((lambda (z) (z x1 x2)) (lambda (y1 y2) y1))))))
+    (lambda (x2) ((lambda (z) (z x1 x2)) (lambda (y1 y2) y1))))))))
+  res)
