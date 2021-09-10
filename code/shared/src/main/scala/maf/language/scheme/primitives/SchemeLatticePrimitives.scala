@@ -64,6 +64,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             `asin`,
             `atan`,
             `boolean?`,
+            `true?`,
+            `false?`,
             `call/cc`,
             `car`,
             `cdr`,
@@ -202,6 +204,8 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         case object `asin` extends SchemePrimOp1("asin", SchemeOp.ASin)
         case object `atan` extends SchemePrimOp1("atan", SchemeOp.ATan)
         case object `boolean?` extends SchemePrimOp1("boolean?", SchemeOp.IsBoolean)
+        case object `true?` extends SchemePrimOp1("true?", SchemeOp.IsTrue)
+        case object `false?` extends SchemePrimOp1("false?", SchemeOp.IsFalse)
         case object `ceiling` extends SchemePrimOp1("ceiling", SchemeOp.Ceiling)
         case object `char->integer` extends SchemePrimOp1("char->integer", SchemeOp.CharacterToInteger)
         case object `char-ci<?` extends SchemePrimOp2("char-ci<?", SchemeOp.CharacterLtCI)

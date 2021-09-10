@@ -277,7 +277,18 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 case IsBoolean =>
                   MayFail.success(args(0) match {
                     case _: Bool => True
-                    case _       => False
+
+                    case _ => False
+                  })
+                case IsTrue =>
+                  MayFail.success(args(0) match {
+                    case Bool(b) if BoolLattice[B].isFalse(b) && !BoolLattice[B].isTrue(b) => False
+                    case _                                                                 => True
+                  })
+                case IsFalse =>
+                  MayFail.success(args(0) match {
+                    case Bool(b) if BoolLattice[B].isFalse(b) && !BoolLattice[B].isTrue(b) => True
+                    case _                                                                 => False
                   })
                 case IsVector =>
                   MayFail.success(args(0) match {

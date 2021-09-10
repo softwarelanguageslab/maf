@@ -17,6 +17,8 @@ object SchemeOp:
     case object Cdr extends SchemeOp1("cdr")
     case object IsNull extends SchemeOp1("null?")
     case object IsBoolean extends SchemeOp1("bool?")
+    case object IsTrue extends SchemeOp1("true?")
+    case object IsFalse extends SchemeOp1("false?")
     case object IsCons extends SchemeOp1("cons?")
     case object IsPointer extends SchemeOp1("pointer?")
     case object IsChar extends SchemeOp1("char?")
@@ -66,6 +68,8 @@ object SchemeOp:
       Cdr,
       IsNull,
       IsBoolean,
+      IsTrue,
+      IsFalse,
       IsCons,
       IsPointer,
       IsChar,

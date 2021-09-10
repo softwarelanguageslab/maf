@@ -69,7 +69,7 @@ class TypeSchemeLattice[A <: Address]:
                   case VectorRef  => throw new Exception("NYI: vectors in type lattice")
                   case VectorSet  => throw new Exception("NYI: vectors in type lattice")
                   case IsNull | IsCons | IsPointer | IsChar | IsSymbol | IsInteger | IsString | IsReal | IsBoolean | IsVector | IsThread | IsLock |
-                      IsProcedure | IsInputPort | IsOutputPort | Not =>
+                      IsProcedure | IsInputPort | IsOutputPort | Not | IsTrue | IsFalse =>
                     // Any -> Bool
                     MayFail.success(Inject.bool)
                   case Ceiling | Floor | Round | Log | Random | Sin | ASin | Cos | ACos | Tan | ATan | Sqrt | ExactToInexact | InexactToExact =>
