@@ -105,11 +105,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
               case Some((v, _)) if !from.delta.contains(addr) => (to, lattice.refs(v))
               case Some(s @ (v, _))                           => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
 
-    def withRestrictedStore[X](rs: Set[Adr])(blk: A[X]): A[X] =
+    def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
       (res, ctx, env, sto) =>
           val gcs = StoreGC.collect(sto, rs)
           val (rss, cps) = blk(res, ctx, env, gcs)
-          (rss.map((x, d) => (x, sto.replay(gcs, d))), cps)
+          (rss.map((v, d) => (v, sto.replay(gcs, DeltaGC.collect(d, lattice.refs(v) ++ d.updates).asInstanceOf[gcs.Delta]))), cps)
 
     override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
