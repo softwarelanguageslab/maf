@@ -24,7 +24,7 @@ trait PerformanceEvaluation:
 
     // Configuring the analysis runs
     def analysisRuns = 20 // number of analysis runs
-    def analysisTime = Timeout.start(Duration(60, MINUTES)) // maximum time to spend *on a single analysis run*
+    def analysisTime = Timeout.start(Duration(5, MINUTES)) // maximum time to spend *on a single analysis run*
 
     // The list of benchmarks used for the evaluation
     type Benchmark = String
@@ -44,10 +44,12 @@ trait PerformanceEvaluation:
         case TimedOut           => "TIMEOUT"
         case NoData             => "_"
 
+    def parseProgram(txt: String): SchemeExp = CSchemeParser.parseProgram(txt)
+
     // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
     def measureAnalysis(file: String, analysis: SchemeExp => Analysis): PerformanceResult =
         // Parse the program
-        val program = CSchemeParser.parseProgram(Reader.loadFile(file))
+        val program = parseProgram(Reader.loadFile(file))
         // Warm-up
         print(s"* WARM-UP ($maxWarmupRuns) - ")
         val warmupTimeout = maxWarmupTime
