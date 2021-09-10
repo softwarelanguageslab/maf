@@ -7,13 +7,16 @@ import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.TaggedSet
-import maf.core.Identifier
+import maf.core.{Identifier, Identity}
 
 /** This trait encodes the semantics of the ContractScheme language */
 trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
   import maf.core.Monad.MonadSyntaxOps
-  import maf.core.MonadStateT.{unlift, lift}
+  import maf.core.MonadStateT.{lift, unlift}
   import evalM._
+
+  private lazy val `true?` : Prim = ???
+  private lazy val `false?` : Prim = ???
 
   override def intraAnalysis(component: Component): IntraScvSemantics
 
@@ -22,15 +25,8 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
     case e: SchemeExp => e
   }
 
-  /** Generates a fresh symbolic variable */
-  protected def fresh: EvalM[Symbolic] = ???
-
   /** Tags the given value with the given Scheme expression */
   protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] = unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(e), result)))
-
-  /** Extracts the tag along with the value from a computation returning such a tagged value */ 
-  def extract(computation: EvalM[Value]): EvalM[(Option[Symbolic], Value)] = 
-    flatten(unlift(computation))
 
   /**
    * Looks up the symbolic representation of the given variable, and returns it if it exists. Otherwise, returns a fresh symbolic representation for
@@ -44,6 +40,13 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
         ) // exception should not happen because of lexical address pass
         value <- lookupCache(addr).flatMap(v => v.map(unit).getOrElse(fresh))
     yield value
+
+  /** Applies the given primitive and returns its resulting value */
+  protected def applyPrimitive(prim: Prim, args: List[Value]): Value = ???
+
+  extension (p: Prim)
+    def symApply(args: Symbolic*): Symbolic =
+      SchemeFuncall(SchemeVar(Identifier(p.name, Identity.none)), args.toList, Identity.none)
 
   trait IntraScvSemantics extends IntraScvAnalysis with BigStepModFIntraT:
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
@@ -60,14 +63,26 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
         // the symbolic representation of a variable is the stored symbolic representation or a fresh symbolic variable
         lookupCache(id).flatMap(sym => super.evalVariable(id).flatMap(tag(sym)))
 
-      private def symCond(prdValWithSym: (Option[Symbolic], Value), csq: SchemeExp, alt: SchemeExp): EvalM[Value] = ???
+      /** Executes the monadic action `m` if the given condition is feasible */
+      private def ifFeasible[X](prim: Prim, cnd: PostValue)(m: EvalM[X]): EvalM[X] =
+        cnd.symbolic match
+            case _ if !lattice.isTrue(applyPrimitive(prim, List(cnd.value))) =>
+              void // if it is not possible according to the lattice, we do not execute "m"
+            case Some(symbolic) if !sat.feasible(symbolic) => void // if the path condition is unfeasible we also do not execute "m"
+            case Some(symbolic) =>
+              extendPc(prim.symApply(symbolic)) >>> m
+            case _ => m // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"
 
-      protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] = 
+      private def symCond(prdValWithSym: PostValue, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
+          val truVal = ifFeasible(`true?`, prdValWithSym)(eval(csq))
+          val flsVal = ifFeasible(`false?`, prdValWithSym)(eval(alt))
+          nondet(truVal, flsVal)
+
+      protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
         // the if expression is evaluated in a different way, because we use symbolic information to extend the path condition and rule out unfeasible paths
-        for 
-          prdValWithSym <- flatten(unlift(eval(prd)))
-          ifVal <- symCond(prdValWithSym, csq, alt)
+        for
+            prdValWithSym <- extract(eval(prd))
+            ifVal <- symCond(prdValWithSym, csq, alt)
         yield ifVal
 
-          
 }

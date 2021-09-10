@@ -125,17 +125,16 @@ object MonadStateT:
           yield result
 
     def lift[S, M[_]: Monad, X](v: M[X]): MonadStateT[S, M, X] = MonadStateT((s: S) => Monad[M].map(v)((_, s)))
-    def unlift[S, M[_]: Monad, X](ms: MonadStateT[S, M, X]): MonadStateT[S, M, M[X]] = 
-      MonadStateT((s: S) =>  {
-          val res = ms.run(s) 
-          val innerRes = Monad[M].map(res) { 
-            case (v, snew) => v
-          }
-          Monad[M].flatMap(res) {
-            case (v, snew) => Monad[M].unit((innerRes, snew))
-          }
+    def unlift[S, M[_]: Monad, X](ms: MonadStateT[S, M, X]): MonadStateT[S, M, M[X]] =
+      MonadStateT((s: S) => {
+        val res = ms.run(s)
+        val innerRes = Monad[M].map(res) { case (v, snew) =>
+          v
+        }
+        Monad[M].flatMap(res) { case (v, snew) =>
+          Monad[M].unit((innerRes, snew))
+        }
       })
-
 
 ///
 /// SetMonad

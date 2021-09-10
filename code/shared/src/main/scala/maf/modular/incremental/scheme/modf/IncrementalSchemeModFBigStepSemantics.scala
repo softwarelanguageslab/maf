@@ -14,7 +14,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
     override protected def cond(prd: Value, csq: => EvalM[Value], alt: => EvalM[Value]): EvalM[Value] =
         val csqValue = guard(lattice.isTrue(prd)).flatMap(_ => csq)
         val altValue = guard(lattice.isFalse(prd)).flatMap(_ => alt)
-        merge(csqValue, altValue).map(v => lattice.addAddresses(v, getAddresses(prd)))
+        merge(csqValue, altValue).map(v => lattice.addAddresses(v, lattice.getAddresses(prd)))
 
     trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis:
         override protected def eval(exp: SchemeExp): EvalM[Value] = exp match

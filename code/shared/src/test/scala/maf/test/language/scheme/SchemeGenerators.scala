@@ -134,9 +134,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
             cdr <- SchemeValueLatticeGenerator.any
         yield modularLattice.Cons(car, cdr)
         lazy val anyVecV: Gen[V] = for
-            siz <- intGen.any.suchThat(i =>
-              blnLat.isTrue(intLat.lt(intLat.inject(-1), i))
-            ) //Gen.oneOf(Gen.posNum[Int].map(intLat.inject), Gen.const(intLat.top))
+            siz <- intGen.any.suchThat(i => blnLat.isTrue(intLat.lt(intLat.inject(-1), i))) //Gen.oneOf(Gen.posNum[Int].map(intLat.inject), Gen.const(intLat.top))
             con <- vectorContent(siz)
         yield modularLattice.Vec(siz, con)
         // any value
