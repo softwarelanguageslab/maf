@@ -1,6 +1,7 @@
 package maf.modular.scv
 
 import maf.language.scheme._
+import maf.language.sexp.Value
 import maf.modular.ModAnalysis
 import maf.modular.scheme.SchemeDomain
 import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
@@ -8,8 +9,6 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.TaggedSet
 import maf.core.{Identifier, Identity}
-import maf.modular.scv.ScvBaseSemantics.BaseIntraAnalysis
-import scala.Enumeration.Value
 
 /** This trait encodes the semantics of the ContractScheme language */
 trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
@@ -30,7 +29,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
     for
         env <- getEnv
         addr <- unit(
-          env.lookup(id.name).getOrElse(throw Exception("variable not found"))
+          env.lookup(id.name).getOrElse(throw Exception(s"variable ${id.name} not found"))
         ) // exception should not happen because of lexical address pass
         value <- lookupCache(addr).flatMap(v => v.map(unit).getOrElse(fresh))
     yield value
@@ -39,13 +38,16 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
     def symApply(args: Symbolic*): Symbolic =
       SchemeFuncall(SchemeVar(Identifier(p.name, Identity.none)), args.toList, Identity.none)
 
-  trait IntraScvSemantics extends IntraScvAnalysis with BaseIntraAnalysis:
+  class IntraScvSemantics(cmp: Component) extends IntraAnalysis(cmp) with IntraScvAnalysis with BaseIntraAnalysis:
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-        eval(program).run(State.empty)
+          println(s"analyzing $cmp with ${argValues(cmp)}")
+          val results = eval(expr(cmp)).runValue(State.empty.copy(env = fnEnv))
+          writeResult(results.merge, cmp)
+          println(s"analyzed component ${cmp} with result ${results}")
 
       /** Applies the given primitive and returns its resulting value */
       protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
-        prim.call(SchemeValue(Value.nil, Identity.none), args)
+        prim.call(SchemeValue(Value.Nil, Identity.none), args)
 
       override def eval(exp: SchemeExp): EvalM[Value] = exp match
           // literal Scheme values have a trivial symbolic representation -> their original expression

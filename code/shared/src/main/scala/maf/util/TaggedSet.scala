@@ -1,6 +1,6 @@
 package maf.util
 
-import maf.core.Monad
+import maf.core.{Lattice, Monad}
 
 /**
  * A tagged set behaves just like a set, but each value in the set carries an additional optional tag
@@ -10,7 +10,12 @@ import maf.core.Monad
  * @tparam T
  *   the type of the tagged value
  */
-case class TaggedSet[T, X](vs: Set[(Option[T], X)])
+case class TaggedSet[T, X](vs: Set[(Option[T], X)]):
+    def ++(other: TaggedSet[T, X]): TaggedSet[T, X] =
+      TaggedSet(vs ++ other.vs)
+
+    def merge(using Lattice[X]): X =
+      vs.map(_._2).foldLeft(Lattice[X].bottom)((acc, el) => Lattice[X].join(acc, el))
 
 object TaggedSet:
     /** A monad instance for the tagged set that is fixed in the type of the tag */

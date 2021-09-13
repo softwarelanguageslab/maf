@@ -89,7 +89,8 @@ trait StateOps[S, M[_]] extends Monad[M]:
     def withState[X](f: S => S)(m: M[X]): M[X]
     def impure[X](f: => X): M[X]
 
-class MonadStateT[S, M[_]: Monad, A](val run: S => M[(A, S)])
+class MonadStateT[S, M[_]: Monad, A](val run: S => M[(A, S)]):
+    def runValue(init: S) = Monad[M].map(run(init))(_._1)
 
 object MonadStateT:
     import maf.core.Monad.MonadSyntaxOps

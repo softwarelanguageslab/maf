@@ -8,10 +8,10 @@ import maf.language.ContractScheme.ContractValues._
 import maf.core.Identifier
 
 // TODO: put this into its file?
-abstract class IsSat[V]
+abstract class IsSat[+V]
 
 /** Returned by the solver if there exists a solution for some formula */
-case class Sat[V](solution: Map[Identifier, V]) extends IsSat[V]
+case class Sat[+V](solution: Map[Identifier, V]) extends IsSat[V]
 
 /** Returned by the solver if the formula has no solution */
 case object Unsat extends IsSat[Nothing]

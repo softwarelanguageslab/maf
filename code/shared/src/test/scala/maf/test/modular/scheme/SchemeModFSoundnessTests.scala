@@ -3,6 +3,7 @@ package maf.test.modular.scheme
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.language.scheme._
 import maf.modular._
+import maf.modular.scv._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.worklist._
@@ -40,6 +41,21 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests:
       override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
+trait ScvModF extends SchemeModFSoundnessTests:
+    def name = "soft-contract verification soudness"
+    def analysis(program: SchemeExp) =
+      new ModAnalysis(program)
+        with ScvBigStepSemantics
+        with SchemeConstantPropagationDomain
+        with StandardSchemeModFComponents
+        with LIFOWorklistAlgorithm[SchemeExp]
+        with SchemeModFSemantics
+        with SchemeModFNoSensitivity:
+          override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
+          // we always return "unknown" here because the Z3 solver is not available in the `shared` module
+          override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():
+              def sat(e: SchemeExp): IsSat[Value] = Unknown
+
 // concrete test suites to run ...
 
 class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with AllSequentialBenchmarks:
@@ -50,3 +66,7 @@ class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllSequ
 
 class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with AllSequentialBenchmarks:
     override def isSlow(b: Benchmark) = true
+
+// At the moment we check whether our extensions do not conflict with the soundness of regular Scheme programs (without contracts)
+// class ScvModFTests extends ScvModF with AllSequentialBenchmarks:
+//     override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)

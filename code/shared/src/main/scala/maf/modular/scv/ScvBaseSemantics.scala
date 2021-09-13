@@ -86,7 +86,8 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
     yield SchemeVar(Identifier(s"#x${st.freshVar}", Identity.none))
 
   /** Executes both computations non-determinstically */
-  protected def nondet[X](tru: EvalM[X], fls: EvalM[X]): EvalM[X] = ???
+  protected def nondet[X](tru: EvalM[X], fls: EvalM[X]): EvalM[X] =
+    MonadStateT((state) => tru.run(state) ++ fls.run(state))
 
   /** Executes the given computation with the current store */
   protected def usingStore[X](m: (BasicStore[Address, Value], StoreCache) => EvalM[X]): EvalM[X] =
