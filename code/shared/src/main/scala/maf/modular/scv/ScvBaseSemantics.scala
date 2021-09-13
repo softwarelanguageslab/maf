@@ -101,6 +101,8 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] =
     scvMonadInstance.unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(e), result)))
 
+  override def intraAnalysis(cmp: Component): BaseIntraAnalysis
+
   trait BaseIntraAnalysis extends BigStepModFIntraT:
       given SchemePrimM[EvalM, Address, Value] with
           export scvMonadInstance._

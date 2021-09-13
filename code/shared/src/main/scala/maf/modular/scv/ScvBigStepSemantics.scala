@@ -8,6 +8,8 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.TaggedSet
 import maf.core.{Identifier, Identity}
+import maf.modular.scv.ScvBaseSemantics.BaseIntraAnalysis
+import scala.Enumeration.Value
 
 /** This trait encodes the semantics of the ContractScheme language */
 trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
@@ -33,16 +35,17 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
         value <- lookupCache(addr).flatMap(v => v.map(unit).getOrElse(fresh))
     yield value
 
-  /** Applies the given primitive and returns its resulting value */
-  protected def applyPrimitive(prim: Prim, args: List[Value]): Value = ???
-
   extension (p: Prim)
     def symApply(args: Symbolic*): Symbolic =
       SchemeFuncall(SchemeVar(Identifier(p.name, Identity.none)), args.toList, Identity.none)
 
-  trait IntraScvSemantics extends IntraScvAnalysis with BigStepModFIntraT:
+  trait IntraScvSemantics extends IntraScvAnalysis with BaseIntraAnalysis:
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
         eval(program).run(State.empty)
+
+      /** Applies the given primitive and returns its resulting value */
+      protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
+        prim.call(SchemeValue(Value.nil, Identity.none), args)
 
       override def eval(exp: SchemeExp): EvalM[Value] = exp match
           // literal Scheme values have a trivial symbolic representation -> their original expression
@@ -57,13 +60,17 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
 
       /** Executes the monadic action `m` if the given condition is feasible */
       private def ifFeasible[X](prim: Prim, cnd: PostValue)(m: EvalM[X]): EvalM[X] =
-        cnd.symbolic match
-            case _ if !lattice.isTrue(applyPrimitive(prim, List(cnd.value))) =>
-              void // if it is not possible according to the lattice, we do not execute "m"
-            case Some(symbolic) if !sat.feasible(symbolic) => void // if the path condition is unfeasible we also do not execute "m"
-            case Some(symbolic) =>
-              extendPc(prim.symApply(symbolic)) >>> m
-            case _ => m // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"
+        for
+            primResult <- applyPrimitive(prim, List(cnd.value))
+            result <-
+              cnd.symbolic match
+                  case _ if !lattice.isTrue(primResult) =>
+                    void // if it is not possible according to the lattice, we do not execute "m"
+                  case Some(symbolic) if !sat.feasible(symbolic) => void // if the path condition is unfeasible we also do not execute "m"
+                  case Some(symbolic) =>
+                    extendPc(prim.symApply(symbolic)) >>> m
+                  case _ => m // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"
+        yield result
 
       private def symCond(prdValWithSym: PostValue, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
           val truVal = ifFeasible(`true?`, prdValWithSym)(eval(csq))
