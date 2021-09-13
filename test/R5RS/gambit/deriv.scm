@@ -31,8 +31,9 @@
         (else
          (error "No derivation method available"))))
 
-(equal? (deriv '(+ (* 3 x x) (* a x x) (* b x) 5))
-        '(+ (* (* 3 x x) (+ (/ 0 3) (/ 1 x) (/ 1 x)))
-            (* (* a x x) (+ (/ 0 a) (/ 1 x) (/ 1 x)))
-            (* (* b x) (+ (/ 0 b) (/ 1 x)))
-            0))
+(define res (equal? (deriv '(+ (* 3 x x) (* a x x) (* b x) 5))
+                    '(+ (* (* 3 x x) (+ (/ 0 3) (/ 1 x) (/ 1 x)))
+                        (* (* a x x) (+ (/ 0 a) (/ 1 x) (/ 1 x)))
+                        (* (* b x) (+ (/ 0 b) (/ 1 x)))
+                        0)))
+res

@@ -4,5 +4,6 @@
 (define (id y)
   (do-something)
   y)
-((id (lambda (a) a)) #t)
-((id (lambda (b) b)) #f)
+(define r1 ((id (lambda (a) a)) #t))
+(define r2 ((id (lambda (b) b)) #f))
+r1 

@@ -5,5 +5,6 @@
                  (id a)
                  (letrec ((r ((blur id) #t))
                           (s ((blur id) #f)))
-                   (not ((blur lp) s (- n 1))))))))
-      (lp #f 2))
+                   (not ((blur lp) s (- n 1)))))))
+          (res (lp #f 2)))
+  res)

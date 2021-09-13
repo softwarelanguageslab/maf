@@ -139,7 +139,7 @@ object SchemeAnalyses:
       new SchemeModFLocal(prg)
         with SchemeConstantPropagationDomain
         with SchemeModFLocalCallSiteSensitivity(k)
-        with FIFOWorklistAlgorithm[SchemeExp]
+        with LIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
 
     def scvModAnalysis(prg: SchemeExp) =
