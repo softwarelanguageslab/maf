@@ -5,6 +5,8 @@ import maf.modular.scheme.SchemeDomain
 import maf.language.scheme._
 import maf.util.TaggedSet
 import maf.core._
+import maf.language.scheme.primitives.SchemePrimM
+import maf.lattice.interfaces.BoolLattice
 
 /**
  * Provides the base Scheme semantics for soft contract verification.
@@ -85,4 +87,63 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
 
   /** Executes both computations non-determinstically */
   protected def nondet[X](tru: EvalM[X], fls: EvalM[X]): EvalM[X] = ???
+
+  /** Executes the given computation with the current store */
+  protected def usingStore[X](m: (BasicStore[Address, Value], StoreCache) => EvalM[X]): EvalM[X] =
+    scvMonadInstance.get.map(st => (st.lstore, st.store)).flatMap(p => m(p._1, p._2))
+
+  /** Converts a Scheme expression to a compatible Symbolic representation */
+  protected def symbolic(e: SchemeExp | Symbolic): Symbolic = e match {
+    case e: SchemeExp => e
+  }
+
+  /** Tags the given value with the given Scheme expression */
+  protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] =
+    scvMonadInstance.unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(e), result)))
+
+  trait BaseIntraAnalysis extends BigStepModFIntraT:
+      given SchemePrimM[EvalM, Address, Value] with
+          export scvMonadInstance._
+          def fail[X](err: Error): EvalM[X] = void // TODO: register error
+          def mbottom[X]: EvalM[X] = void
+          def mjoin[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] = evalM.merge(x, y)
+          def allocVar(idn: Identifier): EvalM[Address] =
+            throw new Exception("not supported")
+
+          def allocPtr(exp: SchemeExp): EvalM[Address] = scvMonadInstance.unit(interpreterBridge.pointer(exp))
+
+          /**
+           * Two addresses are potentially equal when their `equals` implementation says so. However, they can point to multiple concrete addresses
+           * (since they are abstract), so the result is top, otherwise it is defintely not the same address
+           */
+          def addrEq: EvalM[MaybeEq[Address]] = scvMonadInstance.unit(
+            new MaybeEq[Address]:
+                def apply[B: BoolLattice](a1: Address, a2: Address): B =
+                  if a1 == a2 then BoolLattice[B].top else BoolLattice[B].inject(false)
+          )
+
+          /** Extending the store means that we need to extend both the local and global store */
+          def extendSto(a: Address, v: Value): EvalM[Unit] =
+            for
+                st <- scvMonadInstance.get
+                _ <- scvMonadInstance.put(st.copy(lstore = st.lstore.extend(a, v)))
+                _ <- scvMonadInstance.impure(writeAddr(a, v))
+            yield ()
+
+          /**
+           * Store lookup will return the value from the local store (if available) and otherwise the value from the global store.
+           *
+           * The value fro the local store can be more precise than the value in the local store, since the local store is flow sensitive while the
+           * global one is not. However, since the local store in this analysis is not threaded through the entire analysis, in the fixed point the
+           * local store does not result in a flow sensitive analysis, but instead in a flow insentive one.
+           */
+          def lookupSto(a: Address): EvalM[Value] = usingStore { (store, cache) =>
+              val value = store.lookup(a).getOrElse(readAddr(a))
+              // also return the symbolic representation if one is available
+              cache.get(a) match
+                  case Some(symbolic) => tag(symbolic)(value)
+                  case _              => scvMonadInstance.unit(value)
+          }
+
+          def updateSto(a: Address, v: Value): EvalM[Unit] = extendSto(a, v)
 }

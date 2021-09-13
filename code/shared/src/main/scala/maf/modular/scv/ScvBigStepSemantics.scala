@@ -15,18 +15,10 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
   import maf.core.MonadStateT.{lift, unlift}
   import evalM._
 
-  private lazy val `true?` : Prim = ???
-  private lazy val `false?` : Prim = ???
+  private lazy val `true?` : Prim = primitives.allPrimitives("true?")
+  private lazy val `false?` : Prim = primitives.allPrimitives("false?")
 
   override def intraAnalysis(component: Component): IntraScvSemantics
-
-  /** Converts a Scheme expression to a compatible Symbolic representation */
-  protected def symbolic(e: SchemeExp | Symbolic): Symbolic = e match {
-    case e: SchemeExp => e
-  }
-
-  /** Tags the given value with the given Scheme expression */
-  protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] = unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(e), result)))
 
   /**
    * Looks up the symbolic representation of the given variable, and returns it if it exists. Otherwise, returns a fresh symbolic representation for

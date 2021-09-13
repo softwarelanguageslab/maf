@@ -87,6 +87,7 @@ trait StateOps[S, M[_]] extends Monad[M]:
     def get: M[S]
     def put(snew: S): M[Unit]
     def withState[X](f: S => S)(m: M[X]): M[X]
+    def impure[X](f: => X): M[X]
 
 class MonadStateT[S, M[_]: Monad, A](val run: S => M[(A, S)])
 
@@ -115,6 +116,7 @@ object MonadStateT:
 
         def get: SM[S] = MonadStateT((s: S) => Monad[M].unit((s, s)))
         def put(snew: S): SM[Unit] = MonadStateT((s: S) => Monad[M].unit(((), snew)))
+        def impure[X](f: => X): SM[X] = MonadStateT((s: S) => Monad[M].unit((f, s)))
 
         def withState[X](f: S => S)(m: SM[X]): SM[X] =
           for

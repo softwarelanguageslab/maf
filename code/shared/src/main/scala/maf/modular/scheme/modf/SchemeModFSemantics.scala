@@ -191,7 +191,7 @@ trait BaseSchemeModFSemantics
 
       protected def currentThread: TID =
         throw new Exception("Concurrency not available in ModF")
-      given SchemeInterpreterBridge[Value, Addr] with
+      given interpreterBridge: SchemeInterpreterBridge[Value, Addr] with
           def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
           def readSto(adr: Addr): Value = readAddr(adr)
           def writeSto(adr: Addr, vlu: Value) = writeAddr(adr, vlu)
