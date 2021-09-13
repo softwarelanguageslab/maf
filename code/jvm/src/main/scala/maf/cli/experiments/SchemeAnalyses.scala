@@ -9,6 +9,7 @@ import maf.modular.scheme.modf._
 import maf.modular.scheme.modflocal._
 import maf.modular.scheme.modconc._
 import maf.modular.worklist._
+import maf.modular.scv._
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -140,3 +141,16 @@ object SchemeAnalyses:
         with SchemeModFLocalCallSiteSensitivity(k)
         with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
+
+    def scvModAnalysis(prg: SchemeExp) =
+      new ModAnalysis(prg)
+        with ScvBigStepSemantics
+        with SchemeConstantPropagationDomain
+        with StandardSchemeModFComponents
+        with LIFOWorklistAlgorithm[SchemeExp]
+        with SchemeModFSemantics
+        with SchemeModFNoSensitivity:
+          override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
+          // TODO: use Z3 as solver instead of always returning "unknown"
+          override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():
+              def sat(e: SchemeExp): IsSat[Value] = Unknown
