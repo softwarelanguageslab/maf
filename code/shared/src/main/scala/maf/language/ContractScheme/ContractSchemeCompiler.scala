@@ -45,7 +45,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
         // (flat expr)
         case Ident("flat") :::: expr :::: snil =>
           for compiledExpr <- tailcall(_compile(expr))
-          yield ContractSchemeFlatContract(compiledExpr, expr.idn)
+          yield ContractSchemeFlatContract(compiledExpr, exp.idn)
 
         case Ident("flat") :::: _ => throw new Exception(s"Parse error, flat expects exactly one argument at ${exp.idn}")
 

@@ -20,8 +20,8 @@ object ContractValues:
      * @tparam L
      *   the type of abstract value contained within the contract value
      */
-    case class Grd[L](domain: List[L], rangeMaker: L):
-        def map[AL](f: L => AL): Grd[AL] = Grd(domain.map(f), f(rangeMaker))
+    case class Grd[L](domain: List[L], rangeMaker: L, domainIdns: List[Identity], rangeMakerIdn: Identity):
+        def map[AL](f: L => AL): Grd[AL] = Grd(domain.map(f), f(rangeMaker), domainIdns, rangeMakerIdn)
 
     /**
      * A monitor on a dependent contract (mon (~> domain rangeMaker)/lcontract procedure/lserver)
@@ -40,8 +40,12 @@ object ContractValues:
     /**
      * A value that represents a flat contract, such that we can distribute blames correctly when a value of this type is applied.
      *
+     * @param contract
+     *   the wrapped contract
+     * @param contractIdn
+     *   the location in the source code where the flat contract orginated from
      * @tparam L
      *   the type of abstract value contained within the contract value
      */
-    case class Flat[L](contract: L):
-        def map[AL](f: L => AL): Flat[AL] = Flat(f(contract))
+    case class Flat[L](contract: L, contractIdn: Identity):
+        def map[AL](f: L => AL): Flat[AL] = Flat(f(contract), contractIdn)

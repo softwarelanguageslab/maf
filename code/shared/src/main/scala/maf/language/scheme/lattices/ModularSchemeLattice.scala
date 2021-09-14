@@ -136,7 +136,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     case class Flats(flats: Set[Flat[L]]) extends Value:
         def ord = 21
         def typeName = "FLT"
-        override def toString: String = s"<arr: ${flats.map(_.toString).mkString(",")}>"
+        override def toString: String = s"<flat: ${flats.map(_.toString).mkString(",")}>"
 
     /** The injected true value */
     val True: Bool = Bool(BoolLattice[B].inject(true))

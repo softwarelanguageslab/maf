@@ -40,3 +40,6 @@ object TaggedSet:
     /** Replace the tag in the given tagged set with the given tag */
     def tag[T, X](tag: T, v: X): TaggedSet[T, X] =
       TaggedSet(Set((Some(tag), v)))
+
+    def flatten[T, X](sets: Set[TaggedSet[T, X]]): TaggedSet[T, X] =
+      sets.foldLeft(TaggedSet.empty)((acc, el) => TaggedSet(acc.vs ++ el.vs))
