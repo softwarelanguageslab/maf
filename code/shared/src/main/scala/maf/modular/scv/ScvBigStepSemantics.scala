@@ -40,10 +40,8 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
 
   class IntraScvSemantics(cmp: Component) extends IntraAnalysis(cmp) with IntraScvAnalysis with BaseIntraAnalysis:
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          println(s"analyzing $cmp with ${argValues(cmp)}")
           val results = eval(expr(cmp)).runValue(State.empty.copy(env = fnEnv))
           writeResult(results.merge, cmp)
-          println(s"analyzed component ${cmp} with result ${results}")
 
       /** Applies the given primitive and returns its resulting value */
       protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
@@ -68,7 +66,8 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
               cnd.symbolic match
                   case _ if !lattice.isTrue(primResult) =>
                     void // if it is not possible according to the lattice, we do not execute "m"
-                  case Some(symbolic) if !sat.feasible(symbolic) => void // if the path condition is unfeasible we also do not execute "m"
+                  case Some(symbolic) if !sat.feasible(symbolic) =>
+                    void // if the path condition is unfeasible we also do not execute "m"
                   case Some(symbolic) =>
                     extendPc(prim.symApply(symbolic)) >>> m
                   case _ => m // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"

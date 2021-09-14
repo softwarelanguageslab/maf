@@ -182,6 +182,7 @@ trait BaseSchemeModFSemantics
           arg: Value
         ): Unit =
         writeAddr(allocVar(par, component), arg)
+
       private def bindArgs(
           component: Component,
           pars: List[Identifier],

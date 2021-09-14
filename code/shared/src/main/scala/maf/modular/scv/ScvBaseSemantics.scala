@@ -43,10 +43,14 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
         if bln then unit(()) else mzero
       def mzero[X]: EvalM[X] = MonadStateT.lift(TaggedSet.empty)
       def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] =
-        for
-            xv <- x
-            yv <- y
-        yield Lattice[X].join(xv, yv)
+        throw new Exception("Merging not supported in ScvEvalM")
+  /* MonadStateT((state) => {
+          val xRes = x.run(state)
+          val yRes = y.run(state)
+          val xs = xRes.vs.map(_._2._1)
+          val ys = xRes.vs.map(_._2._1)
+          val newValue = (xs ++ ys).foldLeft(Lattice[X].bottom)((acc, el) => Lattice[X].join(acc, el))
+        }) */
 
   //////////////////////////////////////////////////
   // Other useful operations on the ScvEvalM monad
