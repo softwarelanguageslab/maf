@@ -153,4 +153,4 @@ object SchemeAnalyses:
           override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
           // TODO: use Z3 as solver instead of always returning "unknown"
           override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():
-              def sat(e: SchemeExp): IsSat[Value] = Unknown
+              def sat(e: List[SchemeExp]): IsSat[Value] = Unknown

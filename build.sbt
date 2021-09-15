@@ -82,7 +82,10 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
   )
   .jvmSettings(
     /** General */
-    Compile / mainClass := Some("maf.cli.Main")
+    Compile / mainClass := Some("maf.cli.Main"),
+    Compile / unmanagedJars += {
+         baseDirectory.value / "lib" / "com.microsoft.z3.jar"
+    }
   )
   .jvmConfigure(_.enablePlugins(JmhPlugin))
   .jsSettings(
