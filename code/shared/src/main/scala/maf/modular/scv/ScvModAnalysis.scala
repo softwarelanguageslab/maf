@@ -20,7 +20,8 @@ case object Unsat extends IsSat[Nothing]
 case object Unknown extends IsSat[Nothing]
 
 trait ScvSatSolver[V] {
-  def sat(e: SchemeExp): IsSat[V]
+  def sat(e: List[SchemeExp]): IsSat[V]
+  def sat(e: SchemeExp): IsSat[V] = sat(List(e))
   def feasible(e: SchemeExp): Boolean = sat(e) match
       case Sat(_) | Unknown => true
       case _                => false
