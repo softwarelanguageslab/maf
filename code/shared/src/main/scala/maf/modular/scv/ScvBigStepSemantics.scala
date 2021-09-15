@@ -51,10 +51,10 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
 
       override def eval(exp: SchemeExp): EvalM[Value] = exp match
           // literal Scheme values have a trivial symbolic representation -> their original expression
-          case SchemeValue(value, _)       => super.eval(exp).flatMap(tag(exp))
-          case SchemeVar(nam)              => evalVariable(nam)
-          case SchemeIf(prd, csq, alt, _)  => evalIf(prd, csq, alt)
-          case SchemeFuncall(f, args, idn) => callFun(f, args, idn)
+          case SchemeValue(value, _)      => super.eval(exp).flatMap(tag(exp))
+          case SchemeVar(nam)             => evalVariable(nam)
+          case SchemeIf(prd, csq, alt, _) => evalIf(prd, csq, alt)
+          case f @ SchemeFuncall(_, _, _) => callFun(f)
 
           // contract specific evaluation rules
           case ContractSchemeMon(contract, expression, idn) =>
@@ -131,25 +131,22 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
         // TODO: check that the value is indeed a function value, otherwise this should result in a blame (also check which blame)
         unit(lattice.arr(ContractValues.Arr(monIdn, expression.idn, contract, value.value)))
 
-      private def callFun(f: SchemeExp, args: List[SchemeExp], idn: Identity): EvalM[Value] =
-          val arrs: EvalM[Value] = eval(f).flatMap(v => {
-            nondets[Value](
-              lattice
-                .getArrs(v)
-                .map(arr => {
-                  for
-                      argsV <- args.mapM(arg => extract(eval(arg)))
-                      values <- argsV.zip(arr.contract.domain).zip(args).mapM { case ((arg, domain), expr) =>
-                        applyMon(PostValue.noSymbolic(domain), arg, expr, idn)
-                      }
-                      result <- unit(applyFun(SchemeFuncall(f, args, idn), arr.e, args.zip(argsV.map(_.value)), idn.pos))
-                  // TODO: also do applyMon on the result of the function call, this is only necessary because we want to extend our symbolic state based on the context range contract
-                  yield result
-                })
-            )
-          })
+      private def applyArr(fc: SchemeFuncall, fv: PostValue): EvalM[Value] = nondets {
+        lattice.getArrs(fv.value).map { arr =>
+          for
+              argsV <- fc.args.mapM(arg => extract(eval(arg)))
+              values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
+                applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn)
+              }
+              result <- unit(applyFun(fc, arr.e, fc.args.zip(argsV.map(_.value)), fc.idn.pos))
+          // TODO: also do applyMon on the result of the function call, this is only necessary because we want to extend our symbolic state based on the context range contract
+          yield result
+        }
+      }
 
-          val regular: EvalM[Value] = super.eval(SchemeFuncall(f, args, idn))
+      private def callFun(f: SchemeFuncall): EvalM[Value] =
+          val arrs = extract(eval(f)).flatMap(fv => applyArr(f, fv))
+          val regular: EvalM[Value] = super.eval(f)
           nondet(arrs, regular)
 
       protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
