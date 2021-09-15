@@ -713,7 +713,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case Cons(car, cdr)                => schemeLattice.refs(car) ++ schemeLattice.refs(cdr)
             case Vec(_, els)                   => els.flatMap(elm => schemeLattice.refs(elm._2)).toSet
             case Clo(cls)                      => cls.flatMap(clo => clo._2.addrs)
-            case Arrs(arrs)                    => arrs.flatMap(arr => schemeLattice.refs(arr.contract) ++ schemeLattice.refs(arr.e))
+            case Arrs(arrs)                    => arrs.flatMap(arr => schemeLattice.refs(schemeLattice.grd(arr.contract)) ++ schemeLattice.refs(arr.e))
             case Grds(grds)                    => grds.flatMap(grd => grd.domain.flatMap(schemeLattice.refs(_)) ++ schemeLattice.refs(grd.rangeMaker))
             case Flats(flts)                   => flts.flatMap(flt => schemeLattice.refs(flt.contract))
 

@@ -26,6 +26,10 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
 
   case class PostValue(symbolic: Option[Symbolic], value: Value)
 
+  object PostValue {
+    def noSymbolic(value: Value): PostValue = PostValue(None, value)
+  }
+
   override type EvalM[X] = ScvEvalM[X]
   type Symbolic = SchemeExp
   type SymbolicSet[X] = TaggedSet[Symbolic, X]
@@ -62,6 +66,9 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
 
   protected def flatten[X](ms: ScvEvalM[TaggedSet[Symbolic, X]]): ScvEvalM[(Option[Symbolic], X)] =
     ms.flatMap(ts => MonadStateT.lift(TaggedSet.extract(ts)))
+
+  protected def flattenSet[X](ms: ScvEvalM[Set[X]]): ScvEvalM[X] =
+    ms.flatMap(xs => MonadStateT.lift(TaggedSet(xs.map((None, _)))))
 
   /** Returns a computation that, when composed with other computions results in no computation at all ie. void >>= m == void */
   protected def void[X]: ScvEvalM[X] = MonadStateT.lift(TaggedSet.empty)

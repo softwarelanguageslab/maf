@@ -3,6 +3,7 @@ package maf.language.ContractScheme
 /** Soft-contract verification concrete internal values */
 
 import maf.core.Identity
+import maf.language.scheme._
 
 object ContractValues:
 
@@ -32,10 +33,10 @@ object ContractValues:
     case class Arr[L](
         lcontract: Identity,
         lserver: Identity,
-        contract: L,
+        contract: Grd[L],
         e: L,
         topLevel: Boolean = false):
-        def map[AL](f: L => AL): Arr[AL] = Arr(lcontract, lserver, f(contract), f(e), topLevel)
+        def map[AL](f: L => AL): Arr[AL] = Arr(lcontract, lserver, contract.map(f), f(e), topLevel)
 
     /**
      * A value that represents a flat contract, such that we can distribute blames correctly when a value of this type is applied.
@@ -47,5 +48,5 @@ object ContractValues:
      * @tparam L
      *   the type of abstract value contained within the contract value
      */
-    case class Flat[L](contract: L, contractIdn: Identity):
-        def map[AL](f: L => AL): Flat[AL] = Flat(f(contract), contractIdn)
+    case class Flat[L](contract: L, fexp: SchemeExp, contractIdn: Identity):
+        def map[AL](f: L => AL): Flat[AL] = Flat(f(contract), fexp, contractIdn)

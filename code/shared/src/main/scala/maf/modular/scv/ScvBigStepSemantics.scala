@@ -9,7 +9,7 @@ import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.TaggedSet
-import maf.core.{Identifier, Identity}
+import maf.core.{Identifier, Identity, Position}
 
 /** This trait encodes the semantics of the ContractScheme language */
 trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
@@ -51,20 +51,21 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
 
       override def eval(exp: SchemeExp): EvalM[Value] = exp match
           // literal Scheme values have a trivial symbolic representation -> their original expression
-          case SchemeValue(value, _)      => super.eval(exp).flatMap(tag(exp))
-          case SchemeVar(nam)             => evalVariable(nam)
-          case SchemeIf(prd, csq, alt, _) => evalIf(prd, csq, alt)
+          case SchemeValue(value, _)       => super.eval(exp).flatMap(tag(exp))
+          case SchemeVar(nam)              => evalVariable(nam)
+          case SchemeIf(prd, csq, alt, _)  => evalIf(prd, csq, alt)
+          case SchemeFuncall(f, args, idn) => callFun(f, args, idn)
 
           // contract specific evaluation rules
           case ContractSchemeMon(contract, expression, idn) =>
             for
                 contractVal <- extract(eval(contract))
                 expressionVal <- extract(eval(expression))
-                result <- applyMon(contractVal, expressionVal, idn)
+                result <- applyMon(contractVal, expressionVal, expression, idn)
             yield result
 
           case ContractSchemeFlatContract(expression, idn) =>
-            eval(expression).flatMap(value => unit(lattice.flat(ContractValues.Flat(value, idn))))
+            eval(expression).flatMap(value => unit(lattice.flat(ContractValues.Flat(value, expression, idn))))
 
           case ContractSchemeDepContract(domains, rangeMaker, idn) =>
             for
@@ -99,21 +100,57 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
           val flsVal = ifFeasible(`false?`, prdValWithSym)(eval(alt))
           nondet(truVal, flsVal)
 
-      protected def applyMon(contract: PostValue, expression: PostValue, monIdn: Identity): EvalM[Value] =
+      protected def applyMon(
+          contract: PostValue,
+          expression: PostValue,
+          expr: SchemeExp,
+          monIdn: Identity
+        ): EvalM[Value] =
           // We have three distinct possibilities for a "mon" expression:
           // 1. `contract` is a flat contract, or a function that can be treated as such, the result of mon is the value of `expression`
           // 2. `contract` is a dependent contract, in which case `expression` must be a function, the result of `mon` is a guarded function
           // 3. `contract` does not satisfy any of the above conditions, resutling in an error
-          val flats = lattice.getFlats(contract.value).map(c => monFlat(c, expression, monIdn))
-          val guards = lattice.getGrds(contract.value).map(c => monArr(c, expression, monIdn))
+          val flats = lattice.getFlats(contract.value).map(c => monFlat(c, expression, expr, monIdn))
+          val guards = lattice.getGrds(contract.value).map(c => monArr(c, expression, expr, monIdn))
 
           nondets(flats ++ guards)
 
-      protected def monFlat(contract: ContractValues.Flat[Value], expression: PostValue, monIdn: Identity): EvalM[Value] =
-        ???
+      protected def monFlat(contract: ContractValues.Flat[Value], value: PostValue, expr: SchemeExp, monIdn: Identity): EvalM[Value] =
+          val call = SchemeFuncall(contract.fexp, List(expr), monIdn)
+          // TODO: find better position information
+          val result = applyFun(call, contract.contract, List((expr, value.value)), Position(-1, 0))
+          val tru = ifFeasible(`true?`, PostValue.noSymbolic(result)) { unit(value.value) } // TODO: check whether symbolic info is available
+          val fls = ifFeasible(`false?`, PostValue.noSymbolic(result)) {
+            writeBlame(ContractValues.Blame(expr.idn, monIdn))
+            void[Value]
+          }
 
-      protected def monArr(contract: ContractValues.Grd[Value], expression: PostValue, monIdn: Identity): EvalM[Value] =
-        ???
+          nondet(tru, fls)
+
+      protected def monArr(contract: ContractValues.Grd[Value], value: PostValue, expression: SchemeExp, monIdn: Identity): EvalM[Value] =
+        // TODO: check that the value is indeed a function value, otherwise this should result in a blame (also check which blame)
+        unit(lattice.arr(ContractValues.Arr(monIdn, expression.idn, contract, value.value)))
+
+      private def callFun(f: SchemeExp, args: List[SchemeExp], idn: Identity): EvalM[Value] =
+          val arrs: EvalM[Value] = eval(f).flatMap(v => {
+            nondets[Value](
+              lattice
+                .getArrs(v)
+                .map(arr => {
+                  for
+                      argsV <- args.mapM(arg => extract(eval(arg)))
+                      values <- argsV.zip(arr.contract.domain).zip(args).mapM { case ((arg, domain), expr) =>
+                        applyMon(PostValue.noSymbolic(domain), arg, expr, idn)
+                      }
+                      result <- unit(applyFun(SchemeFuncall(f, args, idn), arr.e, args.zip(argsV.map(_.value)), idn.pos))
+                  // TODO: also do applyMon on the result of the function call, this is only necessary because we want to extend our symbolic state based on the context range contract
+                  yield result
+                })
+            )
+          })
+
+          val regular: EvalM[Value] = super.eval(SchemeFuncall(f, args, idn))
+          nondet(arrs, regular)
 
       protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
         // the if expression is evaluated in a different way, because we use symbolic information to extend the path condition and rule out unfeasible paths
