@@ -89,6 +89,9 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
         _ <- scvMonadInstance.put(st.extendPc(symb))
     yield ()
 
+  protected def getPc: EvalM[List[Symbolic]] =
+    scvMonadInstance.get.map(_.pc)
+
   /** Generates a fresh symbolic variable */
   protected def fresh: EvalM[Symbolic] =
     for

@@ -84,11 +84,17 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
       private def ifFeasible[X](prim: Prim, cnd: PostValue)(m: EvalM[X]): EvalM[X] =
         for
             primResult <- applyPrimitive(prim, List(cnd.value))
+            _ <- cnd.symbolic match
+                case None => unit(())
+                case Some(symbolic) =>
+                  extendPc(SchemeFuncall(SchemeVar(Identifier(prim.name, Identity.none)), List(symbolic), Identity.none))
+
+            pc <- getPc
             result <-
               cnd.symbolic match
                   case _ if !lattice.isTrue(primResult) =>
                     void // if it is not possible according to the lattice, we do not execute "m"
-                  case Some(symbolic) if !sat.feasible(symbolic) =>
+                  case Some(symbolic) if !sat.feasible(pc) =>
                     void // if the path condition is unfeasible we also do not execute "m"
                   case Some(symbolic) =>
                     extendPc(prim.symApply(symbolic)) >>> m
@@ -145,7 +151,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
       }
 
       private def callFun(f: SchemeFuncall): EvalM[Value] =
-          val arrs = extract(eval(f)).flatMap(fv => applyArr(f, fv))
+          val arrs = extract(super.eval(f)).flatMap(fv => applyArr(f, fv))
           val regular: EvalM[Value] = super.eval(f)
           nondet(arrs, regular)
 

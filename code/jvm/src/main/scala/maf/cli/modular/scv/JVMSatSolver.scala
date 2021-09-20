@@ -5,6 +5,7 @@ import maf.core.Address
 import maf.language.scheme._
 import maf.language.sexp.Value
 import maf.language.scheme.lattices.SchemeLattice
+import maf.core.Identifier
 import com.microsoft.z3._
 
 extension (solver: Solver)
@@ -35,6 +36,9 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
         case Value.Character(c)    => throw new Exception("Not supported") // TODO
         case Value.Nil             => s"(VNil)"
 
+    private def translateIdentifier(idn: Identifier): String =
+      primMap.get(idn.name).getOrElse(idn.name)
+
     /** A SMTLIB2 program that will be prepended to the actual constraints generated b our analyses */
     private val prelude: String = """
      | ;; represent the Scheme/Racket types as Z3 types 
@@ -47,14 +51,14 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
      |        (VString  (unwrap-string  String))
      |        (VError))))
      |
-     |  (define-fun boolean?/v ((b V))
+     |  (define-fun boolean?/v ((b V)) V
      |     (VBool (is-VBool b)))
      |
-     |  (define-fun null?/v ((n V))
+     |  (define-fun null?/v ((n V)) V
      |     (VBool (is-VNil n)))
      |
-     |  (define-fun string?/v ((s V))
-     |     (VBool (is-VString n)))
+     |  (define-fun string?/v ((s V)) V
+     |     (VBool (is-VString s)))
      |
      |  (define-fun integer?/v ((n V)) V
      |     (VBool (is-VInteger n)))
@@ -67,19 +71,23 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
      |
      |  (define-fun true?/v ((n V)) Bool
      |     (ite (is-VBool n) (unwrap-bool n) false))
-     |  (define-fun false?/v ((b V)) BOol
-     |     (ite (is-VBool b) (unwrap-bool b) false))
+     |  (define-fun false?/v ((b V)) Bool
+     |     (ite (is-VBool b) (not (unwrap-bool b)) false))
     """.stripMargin
 
     /** Translate the given SchemeExp to a series of constraints */
-    def translate(e: SchemeExp): String = ???
+    def translate(e: SchemeExp): String = e match
+        case SchemeVar(identifier)     => translateIdentifier(identifier)
+        case SchemeValue(value, _)     => injectValue(value)
+        case SchemeFuncall(f, args, _) => s"(${translate(f)} ${args.map(translate).mkString(" ")})"
+        case _                         => throw new Exception("Unsupported constraint")
 
     /** Returns either Sat, Unsat or Unknown depending on the answer of Z3 */
     def sat(e: List[SchemeExp]): IsSat[V] =
         import scala.language.unsafeNulls
         val ctx = Context()
         val solver = ctx.mkSolver()
-        val translated = e.map(translate).mkString("\n")
+        val translated = e.map(translate).map(assertion => s"(assert $assertion)").mkString("\n")
         val program = prelude ++ translated
 
         val assertions: Array[BoolExpr] = ctx.parseSMTLIB2String(program, null, null, null, null)
@@ -88,4 +96,5 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
           case Status.SATISFIABLE => Sat(Map())
           case Status.UNKNOWN     => Unknown
           case _                  => Unsat
+          case _: Null            => Unknown
         }
