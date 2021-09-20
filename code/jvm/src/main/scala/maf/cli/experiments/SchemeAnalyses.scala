@@ -10,6 +10,9 @@ import maf.modular.scheme.modflocal._
 import maf.modular.scheme.modconc._
 import maf.modular.worklist._
 import maf.modular.scv._
+import maf.cli.modular.scv.JVMSatSolver
+import maf.language.scheme.lattices.SchemeLattice
+import maf.core.Address
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -152,5 +155,6 @@ object SchemeAnalyses:
         with SchemeModFNoSensitivity:
           override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
           // TODO: use Z3 as solver instead of always returning "unknown"
-          override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():
-              def sat(e: List[SchemeExp]): IsSat[Value] = Unknown
+          override val sat: ScvSatSolver[Value] =
+              given SchemeLattice[Value, Address] = lattice
+              new JVMSatSolver
