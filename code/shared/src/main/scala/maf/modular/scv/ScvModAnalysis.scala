@@ -25,7 +25,7 @@ trait ScvSatSolver[V] {
   def feasible(e: List[SchemeExp]): Boolean = sat(e) match
       case Sat(_) | Unknown => true
       case _                => false
-  def fessible(e: SchemeExp) = feasible(List(e))
+  def feasible(e: SchemeExp): Boolean = feasible(List(e))
 }
 
 /** Main trait for the soft-contract verification analysis. */
