@@ -41,6 +41,16 @@ object Monad:
           if xs.isEmpty then Monad[M].unit(nil)
           else xs.tail.foldRightM(nil)(f) >>= { f(xs.head, _) }
 
+    def sequence[M[_]: Monad, X](ms: List[M[X]]): M[List[X]] =
+        import maf.core.Monad.MonadSyntaxOps
+        ms match
+            case m :: rest =>
+              for
+                  v <- m
+                  vs <- sequence(rest)
+              yield v :: vs
+            case Nil => Monad[M].unit(List())
+
 //
 // MonadError
 //
@@ -155,3 +165,15 @@ object SetMonad:
             m.flatMap(f)
 
     def fail[A]: Set[A] = Set()
+
+///
+/// Option Monad
+///
+
+object OptionMonad:
+    given Monad[Option] = new Monad:
+        def unit[X](x: X): Option[X] = Some(x)
+        def map[X, Y](m: Option[X])(f: X => Y): Option[Y] =
+          m.map(f)
+        def flatMap[X, Y](m: Option[X])(f: X => Option[Y]): Option[Y] =
+          m.flatMap(f)
