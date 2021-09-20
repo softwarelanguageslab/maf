@@ -9,7 +9,7 @@ import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.TaggedSet
-import maf.core.{Identifier, Identity, Position}
+import maf.core.{Identifier, Identity, Monad, Position}
 
 /** This trait encodes the semantics of the ContractScheme language */
 trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
@@ -42,8 +42,12 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
 
   class IntraScvSemantics(cmp: Component) extends IntraAnalysis(cmp) with IntraScvAnalysis with BaseIntraAnalysis:
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          val results = eval(expr(cmp)).runValue(State.empty.copy(env = fnEnv))
+          val results = eval(expr(cmp)).runValue(State.empty.copy(env = fnEnv, store = initialStoreCache))
           writeResult(results.merge, cmp)
+
+      /** Computes an initial store cache based on the set of available Scheme primitives */
+      protected lazy val initialStoreCache: StoreCache =
+        primitives.allPrimitives.keys.map(name => fnEnv(name) -> SchemeVar(Identifier(name, Identity.none))).toMap
 
       /** Applies the given primitive and returns its resulting value */
       protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
@@ -65,7 +69,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
             yield result
 
           case ContractSchemeFlatContract(expression, idn) =>
-            eval(expression).flatMap(value => unit(lattice.flat(ContractValues.Flat(value, expression, idn))))
+            extract(eval(expression)).flatMap(pv => unit(lattice.flat(ContractValues.Flat(pv.value, expression, pv.symbolic, idn))))
 
           case ContractSchemeDepContract(domains, rangeMaker, idn) =>
             for
@@ -121,12 +125,21 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
 
           nondets(flats ++ guards)
 
+      protected def symCall(fn: Option[Symbolic], args: List[Option[Symbolic]]): Option[Symbolic] =
+          import maf.core.OptionMonad.{given}
+          for
+              fnSym <- fn
+              argsSym <- Monad.sequence(args)
+          yield SchemeFuncall(fnSym, argsSym, Identity.none)
+
       protected def monFlat(contract: ContractValues.Flat[Value], value: PostValue, expr: SchemeExp, monIdn: Identity): EvalM[Value] =
           val call = SchemeFuncall(contract.fexp, List(expr), monIdn)
           // TODO: find better position information
           val result = applyFun(call, contract.contract, List((expr, value.value)), Position(-1, 0))
-          val tru = ifFeasible(`true?`, PostValue.noSymbolic(result)) { unit(value.value) } // TODO: check whether symbolic info is available
-          val fls = ifFeasible(`false?`, PostValue.noSymbolic(result)) {
+          val resultSymbolic = symCall(contract.sym, List(value.symbolic))
+          val pv = PostValue(resultSymbolic, result)
+          val tru = ifFeasible(`true?`, pv) { unit(value.value).flatMap(value.symbolic.map(tag).getOrElse(unit)) }
+          val fls = ifFeasible(`false?`, pv) {
             writeBlame(ContractValues.Blame(expr.idn, monIdn))
             void[Value]
           }

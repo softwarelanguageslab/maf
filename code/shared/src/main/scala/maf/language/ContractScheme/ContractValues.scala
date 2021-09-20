@@ -43,10 +43,14 @@ object ContractValues:
      *
      * @param contract
      *   the wrapped contract
+     * @param fexp
+     *   the original expression AST node from (flat expr)
      * @param contractIdn
      *   the location in the source code where the flat contract orginated from
+     * @param sym
+     *   the symbolic representation of the flat contract (at definition time) if available
      * @tparam L
      *   the type of abstract value contained within the contract value
      */
-    case class Flat[L](contract: L, fexp: SchemeExp, contractIdn: Identity):
-        def map[AL](f: L => AL): Flat[AL] = Flat(f(contract), fexp, contractIdn)
+    case class Flat[L](contract: L, fexp: SchemeExp, sym: Option[SchemeExp], contractIdn: Identity):
+        def map[AL](f: L => AL): Flat[AL] = Flat(f(contract), fexp, sym, contractIdn)
