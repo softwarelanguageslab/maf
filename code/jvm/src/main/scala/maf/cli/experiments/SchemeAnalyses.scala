@@ -149,7 +149,7 @@ object SchemeAnalyses:
       new ModAnalysis(prg)
         with ScvBigStepSemantics
         with SchemeConstantPropagationDomain
-        with StandardSchemeModFComponents
+        with maf.modular.scv.StandardScvModFComponents
         with LIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFSemantics
         with SchemeModFNoSensitivity:

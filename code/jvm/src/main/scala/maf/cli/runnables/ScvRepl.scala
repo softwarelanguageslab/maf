@@ -13,7 +13,7 @@ object ScvRepl extends App:
         val exp = ContractSchemeParser.parse(program.nn)
         val analysis = SchemeAnalyses.scvModAnalysis(exp)
         analysis.analyze()
-        analysis.returnValue(SchemeModFComponent.Main)
+        analysis.returnValue(analysis.initialComponent)
 
     def repl(): Unit =
         print(">")
