@@ -13,10 +13,12 @@ import maf.core.{Identifier, Identity, Monad, Position}
 
 /** This trait encodes the semantics of the ContractScheme language */
 trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
+  import maf.util.FunctionUtils.*
   import maf.core.Monad.MonadSyntaxOps
   import maf.core.Monad.MonadIterableOps
   import maf.core.MonadStateT.{lift, unlift}
   import evalM._
+  import scvMonadInstance.impure
 
   private lazy val `true?` : Prim = primitives.allPrimitives("true?")
   private lazy val `false?` : Prim = primitives.allPrimitives("false?")
@@ -47,7 +49,9 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
 
       /** Computes an initial store cache based on the set of available Scheme primitives */
       protected lazy val initialStoreCache: StoreCache =
-        primitives.allPrimitives.keys.map(name => fnEnv(name) -> SchemeVar(Identifier(name, Identity.none))).toMap
+        primitives.allPrimitives.keys
+          .map(name => baseEnv.lookup(name).get -> SchemeVar(Identifier(name, Identity.none)))
+          .toMap
 
       /** Applies the given primitive and returns its resulting value */
       protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
@@ -153,7 +157,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
       private def applyArr(fc: SchemeFuncall, fv: PostValue): EvalM[Value] = nondets {
         lattice.getArrs(fv.value).map { arr =>
           for
-              argsV <- fc.args.mapM(arg => extract(eval(arg)))
+              argsV <- fc.args.mapM(eval andThen extract)
               values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
                 applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn)
               }
@@ -164,9 +168,13 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
       }
 
       private def callFun(f: SchemeFuncall): EvalM[Value] =
-          val arrs = extract(super.eval(f)).flatMap(fv => applyArr(f, fv))
-          val regular: EvalM[Value] = super.eval(f)
-          nondet(arrs, regular)
+        for
+            fv <- extract(eval(f.f))
+            result <- nondet(
+              applyArr(f, fv),
+              super.eval(f)
+            )
+        yield result
 
       protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
         // the if expression is evaluated in a different way, because we use symbolic information to extend the path condition and rule out unfeasible paths

@@ -38,7 +38,7 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
 
   final lazy val scvMonadInstance: StateOps[State, ScvEvalM] = MonadStateT.stateInstance[State, SymbolicSet]
   implicit val evalM = new TEvalM:
-      import scvMonadInstance.{get, put, withState}
+      import scvMonadInstance.{get, impure, put, withState}
       export scvMonadInstance._
       def getEnv: EvalM[Environment[Address]] = get.map(_.env)
       def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
