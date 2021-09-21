@@ -47,7 +47,7 @@ trait ScvModF extends SchemeModFSoundnessTests:
       new ModAnalysis(program)
         with ScvBigStepSemantics
         with SchemeConstantPropagationDomain
-        with StandardSchemeModFComponents
+        with StandardScvModFComponents
         with LIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFSemantics
         with SchemeModFNoSensitivity:
