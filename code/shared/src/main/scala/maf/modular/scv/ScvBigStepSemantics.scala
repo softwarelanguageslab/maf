@@ -44,8 +44,18 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
 
   class IntraScvSemantics(cmp: Component) extends IntraAnalysis(cmp) with IntraScvAnalysis with BaseIntraAnalysis:
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          val results = eval(expr(cmp)).runValue(State.empty.copy(env = fnEnv, store = initialStoreCache))
-          writeResult(results.merge, cmp)
+          val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
+          val results = for
+              value <- extract(eval(expr(cmp)))
+              _ <- usingContract(cmp) {
+                case Some(contract) =>
+                  // TODO: check the monIdn parameter
+                  applyMon(PostValue.noSymbolic(contract), value, expr(cmp), expr(cmp).idn).flatMap(_ => unit(()))
+                case None => unit(())
+              }
+          yield value
+
+          writeResult(results.runValue(initialState).map(_.value).merge, cmp)
 
       /** Computes an initial store cache based on the set of available Scheme primitives */
       protected lazy val initialStoreCache: StoreCache =
@@ -79,7 +89,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
             for
                 evaluatedDomains <- domains.mapM(eval)
                 evaluatedRangeMaker <- eval(rangeMaker)
-            yield lattice.grd(ContractValues.Grd(evaluatedDomains, evaluatedRangeMaker, domains.map(_.idn), rangeMaker.idn))
+            yield lattice.grd(ContractValues.Grd(evaluatedDomains, evaluatedRangeMaker, domains.map(_.idn), rangeMaker))
 
           // catch-all, dispatching to the default Scheme semantics
           case _ => super.eval(exp)
@@ -161,8 +171,16 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
               values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
                 applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn)
               }
+              // apply the range maker function
+              rangeContract <- unit(
+                applyFun(
+                  SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
+                  arr.contract.rangeMaker,
+                  fc.args.zip(argsV.map(_.value)),
+                  arr.contract.rangeMakerExpr.idn.pos
+                )
+              )
               result <- unit(applyFun(fc, arr.e, fc.args.zip(argsV.map(_.value)), fc.idn.pos))
-          // TODO: also do applyMon on the result of the function call, this is only necessary because we want to extend our symbolic state based on the context range contract
           yield result
         }
       }

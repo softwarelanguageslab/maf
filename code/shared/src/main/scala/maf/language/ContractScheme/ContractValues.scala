@@ -21,8 +21,8 @@ object ContractValues:
      * @tparam L
      *   the type of abstract value contained within the contract value
      */
-    case class Grd[L](domain: List[L], rangeMaker: L, domainIdns: List[Identity], rangeMakerIdn: Identity):
-        def map[AL](f: L => AL): Grd[AL] = Grd(domain.map(f), f(rangeMaker), domainIdns, rangeMakerIdn)
+    case class Grd[L](domain: List[L], rangeMaker: L, domainIdns: List[Identity], rangeMakerExpr: SchemeExp):
+        def map[AL](f: L => AL): Grd[AL] = Grd(domain.map(f), f(rangeMaker), domainIdns, rangeMakerExpr)
 
     /**
      * A monitor on a dependent contract (mon (~> domain rangeMaker)/lcontract procedure/lserver)

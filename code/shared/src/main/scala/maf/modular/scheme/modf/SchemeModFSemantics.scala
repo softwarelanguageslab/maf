@@ -116,9 +116,10 @@ trait BaseSchemeModFSemantics
           fexp: SchemeFuncall,
           fval: Value,
           args: List[(SchemeExp, Value)],
-          cll: Position
+          cll: Position,
+          newComponentAlt: (Call[ComponentContext] => Component) = newComponent
         ): Value =
-          val fromClosures = applyClosures(fval, args, cll)
+          val fromClosures = applyClosures(fval, args, cll, newComponentAlt)
           val fromPrimitives = applyPrimitives(fexp, fval, args)
           applyContinuations(fval, args)
           lattice.join(fromClosures, fromPrimitives)
@@ -133,7 +134,8 @@ trait BaseSchemeModFSemantics
       protected def applyClosures(
           fun: Value,
           args: List[(SchemeExp, Value)],
-          cll: Position
+          cll: Position,
+          newComponentAlt: (Call[ComponentContext] => Component) = newComponent
         ): Value =
           val arity = args.length
           val closures = lattice.getClosures(fun)
@@ -145,7 +147,7 @@ trait BaseSchemeModFSemantics
                   val argVals = args.map(_._2)
                   val context = allocCtx(clo, argVals, cll, component)
                   val targetCall = Call(clo, context)
-                  val targetCmp = newComponent(targetCall)
+                  val targetCmp = newComponentAlt(targetCall)
                   bindArgs(targetCmp, prs, argVals)
                   call(targetCmp)
                 case (SchemeVarArgLambda(_, prs, vararg, _, _), _) if prs.length <= arity =>
@@ -154,7 +156,7 @@ trait BaseSchemeModFSemantics
                   val varArgVal = allocateList(varArgs)
                   val context = allocCtx(clo, fixedArgVals :+ varArgVal, cll, component)
                   val targetCall = Call(clo, context)
-                  val targetCmp = newComponent(targetCall)
+                  val targetCmp = newComponentAlt(targetCall)
                   bindArgs(targetCmp, prs, fixedArgVals)
                   bindArg(targetCmp, vararg, varArgVal)
                   call(targetCmp)

@@ -36,6 +36,17 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   type ScvEvalM[X] = MonadStateT[State, SymbolicSet, X]
   type StoreCache = Map[Addr, Symbolic]
 
+  //////////////////////////////////////////////////////
+  // Components
+  //////////////////////////////////////////////////////
+
+  /** Executes the given function using the contract embedded in the component (if any is available) */
+  protected def usingContract[X](cmp: Component)(f: Option[Value] => X): X
+
+  /////////////////////////////////////////////////////
+  // Monads
+  /////////////////////////////////////////////////////
+
   final lazy val scvMonadInstance: StateOps[State, ScvEvalM] = MonadStateT.stateInstance[State, SymbolicSet]
   implicit val evalM = new TEvalM:
       import scvMonadInstance.{get, impure, put, withState}
@@ -118,6 +129,10 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   /** Tags the given value with the given Scheme expression */
   protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] =
     scvMonadInstance.unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(e), result)))
+
+  protected def optional[X](m: Option[EvalM[X]]): EvalM[Unit] = m match
+      case Some(am) => am.flatMap(_ => scvMonadInstance.unit(()))
+      case None     => scvMonadInstance.unit(())
 
   override def intraAnalysis(cmp: Component): BaseIntraAnalysis
 
