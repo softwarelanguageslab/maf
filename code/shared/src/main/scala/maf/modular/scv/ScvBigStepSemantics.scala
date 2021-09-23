@@ -108,11 +108,12 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
                   extendPc(SchemeFuncall(SchemeVar(Identifier(prim.name, Identity.none)), List(symbolic), Identity.none))
 
             pc <- getPc
+            vars <- getVars
             result <-
               cnd.symbolic match
                   case _ if !lattice.isTrue(primResult) =>
                     void // if it is not possible according to the lattice, we do not execute "m"
-                  case Some(symbolic) if !sat.feasible(pc) =>
+                  case Some(symbolic) if !sat.feasible(pc, vars) =>
                     void // if the path condition is unfeasible we also do not execute "m"
                   case Some(symbolic) =>
                     extendPc(prim.symApply(symbolic)) >>> m

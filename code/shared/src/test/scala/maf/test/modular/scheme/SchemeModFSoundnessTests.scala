@@ -54,7 +54,7 @@ trait ScvModF extends SchemeModFSoundnessTests:
           override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
           // we always return "unknown" here because the Z3 solver is not available in the `shared` module
           override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():
-              def sat(e: List[SchemeExp]): IsSat[Value] = Unknown
+              def sat(e: List[SchemeExp], vars: List[String]): IsSat[Value] = Unknown
 
 // concrete test suites to run ...
 

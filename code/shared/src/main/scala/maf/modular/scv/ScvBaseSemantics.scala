@@ -18,11 +18,17 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   import MonadStateT._
   import Monad.MonadSyntaxOps
 
-  case class State(env: Environment[Address], store: StoreCache, lstore: BasicStore[Addr, Value], pc: List[Symbolic], freshVar: Int):
+  case class State(
+      env: Environment[Address],
+      store: StoreCache,
+      lstore: BasicStore[Addr, Value],
+      pc: List[Symbolic],
+      freshVar: Int,
+      vars: List[String]):
       def extendPc(addition: Symbolic) = this.copy(pc = addition :: pc)
 
   object State:
-      def empty: State = State(env = BasicEnvironment(Map()), store = Map(), new BasicStore(content = Map()), pc = List(), freshVar = 0)
+      def empty: State = State(env = BasicEnvironment(Map()), store = Map(), new BasicStore(content = Map()), pc = List(), freshVar = 0, List())
 
   case class PostValue(symbolic: Option[Symbolic], value: Value)
 
@@ -103,12 +109,15 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   protected def getPc: EvalM[List[Symbolic]] =
     scvMonadInstance.get.map(_.pc)
 
+  protected def getVars: EvalM[List[String]] =
+    scvMonadInstance.get.map(_.vars)
+
   /** Generates a fresh symbolic variable */
   protected def fresh: EvalM[Symbolic] =
     for
         st <- scvMonadInstance.get
-        _ <- scvMonadInstance.put(st.copy(freshVar = st.freshVar + 1))
-    yield SchemeVar(Identifier(s"#x${st.freshVar}", Identity.none))
+        _ <- scvMonadInstance.put(st.copy(freshVar = st.freshVar + 1, vars = s"x${st.freshVar}" :: st.vars))
+    yield SchemeVar(Identifier(s"x${st.freshVar}", Identity.none))
 
   /** Executes both computations non-determinstically */
   protected def nondet[X](tru: EvalM[X], fls: EvalM[X]): EvalM[X] =
