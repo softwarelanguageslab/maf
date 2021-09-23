@@ -6,6 +6,7 @@ import maf.modular.ReturnAddr
 import maf.modular.scheme.SchemeDomain
 import maf.language.ContractScheme.ContractValues._
 import maf.core.Identifier
+import maf.modular.scheme.modf.SchemeModFComponent
 
 // TODO: put this into its file?
 abstract class IsSat[+V]
@@ -33,6 +34,9 @@ trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
   protected val sat: ScvSatSolver[Value]
 
   override def intraAnalysis(component: Component): IntraScvAnalysis
+
+  /** Executes the given function using the contract embedded in the component (if any is available) */
+  protected def usingContract[X](cmp: Component)(f: Option[Value] => X): X
 
   trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra { inner =>
     def writeBlame(blame: Blame): Unit =

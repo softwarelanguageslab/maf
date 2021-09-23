@@ -37,6 +37,9 @@ trait StandardScvModFComponents extends maf.modular.scv.ScvBaseSemantics:
     def newComponent(call: Call[ComponentContext]): Component =
       SimpleWrapper(call)
 
+    def newComponentWithContract(contract: Value)(cmp: Call[ComponentContext]): Component =
+      ContractCall(cmp, contract)
+
     def view(cmp: Component): SchemeModFComponent = cmp.view
 
     def usingContract[X](cmp: Component)(f: Option[Value] => X): X = cmp match

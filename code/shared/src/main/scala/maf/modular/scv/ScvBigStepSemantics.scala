@@ -177,10 +177,10 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
                   SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
                   arr.contract.rangeMaker,
                   fc.args.zip(argsV.map(_.value)),
-                  arr.contract.rangeMakerExpr.idn.pos
+                  arr.contract.rangeMakerExpr.idn.pos,
                 )
               )
-              result <- unit(applyFun(fc, arr.e, fc.args.zip(argsV.map(_.value)), fc.idn.pos))
+              result <- unit(applyFun(fc, arr.e, fc.args.zip(argsV.map(_.value)), fc.idn.pos, newComponentWithContract(rangeContract)))
           yield result
         }
       }

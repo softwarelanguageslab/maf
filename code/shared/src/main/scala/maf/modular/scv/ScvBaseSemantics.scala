@@ -36,12 +36,12 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   type ScvEvalM[X] = MonadStateT[State, SymbolicSet, X]
   type StoreCache = Map[Addr, Symbolic]
 
-  //////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
   // Components
-  //////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////
 
-  /** Executes the given function using the contract embedded in the component (if any is available) */
-  protected def usingContract[X](cmp: Component)(f: Option[Value] => X): X
+  /** Create a component that wraps the given contract */
+  protected def newComponentWithContract(contract: Value)(cmp: SchemeModFComponent.Call[ComponentContext]): Component
 
   /////////////////////////////////////////////////////
   // Monads
