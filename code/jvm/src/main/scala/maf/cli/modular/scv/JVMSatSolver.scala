@@ -6,11 +6,11 @@ import maf.language.scheme._
 import maf.language.sexp.Value
 import maf.language.scheme.lattices.SchemeLattice
 import maf.core.Identifier
-import com.microsoft.z3._
-
-extension (solver: Solver)
-  def assert_(exprs: Array[BoolExpr]): Unit =
-    for expr <- exprs do solver.add(expr)
+import smtlib.parser.Parser
+import smtlib.trees.Commands._
+import smtlib.Interpreter
+import smtlib.trees.CommandsResponses._
+import smtlib.interpreters.Z3Interpreter
 
 class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
     /** A mapping between the name of Scheme primitives and their Z3 counter-parts */
@@ -82,20 +82,23 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
         case SchemeFuncall(f, args, _) => s"(${translate(f)} ${args.map(translate).mkString(" ")})"
         case _                         => throw new Exception("Unsupported constraint")
 
+    def parseStringToScript(s: String): Script =
+      Parser.fromString(s).parseScript
+
+    def isSat(script: Script)(using interpreter: Interpreter): IsSat[V] =
+        script.commands.foreach(interpreter.eval)
+        interpreter.eval(CheckSat()) match
+            case CheckSatStatus(SatStatus)   => Sat(Map())
+            case CheckSatStatus(UnsatStatus) => Unsat
+            case _                           => Unknown
+
     /** Returns either Sat, Unsat or Unknown depending on the answer of Z3 */
     def sat(e: List[SchemeExp], vars: List[String]): IsSat[V] =
         import scala.language.unsafeNulls
-        val ctx = Context()
-        val solver = ctx.mkSolver()
         val translated = e.map(translate).map(assertion => s"(assert $assertion)").mkString("\n")
         val varsDeclarations = vars.map(v => s"(declare-const $v V)").mkString("\n")
         val program = prelude ++ varsDeclarations ++ translated
 
-        val assertions: Array[BoolExpr] = ctx.parseSMTLIB2String(program, null, null, null, null)
-        solver.assert_(assertions)
-        solver.check() match {
-          case Status.SATISFIABLE => Sat(Map())
-          case Status.UNKNOWN     => Unknown
-          case _                  => Unsat
-          case _: Null            => Unknown
-        }
+        given interpreter: Interpreter = Z3Interpreter.buildDefault
+        val script: Script = parseStringToScript(program)
+        isSat(script)
