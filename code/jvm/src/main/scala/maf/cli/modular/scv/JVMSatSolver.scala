@@ -83,12 +83,13 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
         case _                         => throw new Exception("Unsupported constraint")
 
     /** Returns either Sat, Unsat or Unknown depending on the answer of Z3 */
-    def sat(e: List[SchemeExp]): IsSat[V] =
+    def sat(e: List[SchemeExp], vars: List[String]): IsSat[V] =
         import scala.language.unsafeNulls
         val ctx = Context()
         val solver = ctx.mkSolver()
         val translated = e.map(translate).map(assertion => s"(assert $assertion)").mkString("\n")
-        val program = prelude ++ translated
+        val varsDeclarations = vars.map(v => s"(declare-const $v V)").mkString("\n")
+        val program = prelude ++ varsDeclarations ++ translated
 
         val assertions: Array[BoolExpr] = ctx.parseSMTLIB2String(program, null, null, null, null)
         solver.assert_(assertions)
