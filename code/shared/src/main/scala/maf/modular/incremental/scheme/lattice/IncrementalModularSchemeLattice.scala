@@ -123,6 +123,7 @@ class IncrementalModularSchemeLattice[
       def grd(grd: Grd[AL]): AL = AnnotatedElement(Value.grd(grd.map(_.toL())))
       def arr(arr: Arr[AL]): AL = AnnotatedElement(Value.arr(arr.map(_.toL())))
       def flat(flt: Flat[AL]): AL = AnnotatedElement(Value.flt(flt.map(_.toL())))
+      def opq(opq: Opq): AL = AnnotatedElement(Value.opq(opq))
       def nil: AL = AnnotatedElement(Value.nil)
       def void: AL = AnnotatedElement(Value.void)
       def eql[B2: BoolLattice](x: AL, y: AL): B2 = schemeLattice.eql(x.toL(), y.toL())(BoolLattice[B2])

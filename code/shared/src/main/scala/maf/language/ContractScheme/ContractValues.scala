@@ -54,3 +54,12 @@ object ContractValues:
      */
     case class Flat[L](contract: L, fexp: SchemeExp, sym: Option[SchemeExp], contractIdn: Identity):
         def map[AL](f: L => AL): Flat[AL] = Flat(f(contract), fexp, sym, contractIdn)
+
+    /**
+     * A representation for an apaque value, opaque values are used as substitutes for any value and have the same semantics as a "top" value in a
+     * lattice.
+     *
+     * The value is used instead of top because (1) it makes it explicit that it is coming from SCV and is not a result of some over-approximation (2)
+     * allows for a "top" value to exist in any abstract domain, which is not possible in for example a (non-bounded) constant propagation lattice
+     */
+    case class Opq()

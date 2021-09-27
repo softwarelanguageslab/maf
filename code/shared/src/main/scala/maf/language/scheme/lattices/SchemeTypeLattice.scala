@@ -25,10 +25,11 @@ class TypeSchemeLattice[A <: Address]:
         consCells: (L, L) = (Inject.bottom, Inject.bottom),
         arr: Boolean = false,
         grd: Boolean = false,
-        flt: Boolean = false)
+        flt: Boolean = false,
+        opq: Boolean = false)
         extends SmartHash:
         def isBottom: Boolean =
-          !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt
+          !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt && !opq
     object Inject:
         val bottom: L = L()
         val str: L = L(str = true)
@@ -46,6 +47,7 @@ class TypeSchemeLattice[A <: Address]:
         def arr: L = L(arr = true)
         def grd: L = L(grd = true)
         def flt: L = L(flt = true)
+        def opq: L = L(opq = true)
 
     def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
       if b then { MayFail.success(v) }
@@ -212,6 +214,7 @@ class TypeSchemeLattice[A <: Address]:
       def arr(arr: Arr[L]): L = Inject.arr
       def grd(grd: Grd[L]): L = Inject.grd
       def flat(flt: Flat[L]): L = Inject.flt
+      def opq(opq: Opq): L = Inject.opq
       def void: L = ???
       def acquire(lock: L, caller: TID): MayFail[L, Error] = ???
       def release(lock: L, caller: TID): MayFail[L, Error] = ???

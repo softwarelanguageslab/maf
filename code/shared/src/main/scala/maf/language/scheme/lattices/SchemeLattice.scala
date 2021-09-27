@@ -163,6 +163,9 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
     /** Injection of a flat value in the abstract domain */
     def flat(flt: Flat[L]): L
 
+    /** Injection of an opaque value in the abstract domain */
+    def opq(o: Opq): L
+
     def void: L
 
     def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L

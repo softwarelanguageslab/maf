@@ -138,6 +138,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def typeName = "FLT"
         override def toString: String = s"<flat: ${flats.map(_.toString).mkString(",")}>"
 
+    case class Opqs(opqs: Set[Opq]) extends Value:
+        def ord = 22
+        def typeName = "OPQ"
+        override def toString: String = s"<opq>"
+
     /** The injected true value */
     val True: Bool = Bool(BoolLattice[B].inject(true))
 
@@ -184,6 +189,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Arrs(l1), Arrs(l2))             => Arrs(sunion(l1, l2))
             case (Grds(l1), Grds(l2))             => Grds(sunion(l1, l2))
             case (Flats(l1), Flats(l2))           => Flats(sunion(l1, l2))
+            case (Opqs(o1), Opqs(o2))             => Opqs(o1 ++ o2)
             case _                                => throw new Exception(s"Illegal join of $x and $y")
 
         def subsumes(x: Value, y: => Value): Boolean =
@@ -578,6 +584,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def grd(grd: Grd[L]): Value = Grds(Set(grd))
         def arr(arr: Arr[L]): Value = Arrs(Set(arr))
         def flt(flt: Flat[L]): Value = Flats(Set(flt))
+        def opq(opq: Opq): Value = Opqs(Set(opq))
 
         def getClosures(x: Value): Set[schemeLattice.Closure] = x match
             case Clo(closures) => closures
@@ -713,9 +720,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case Cons(car, cdr)                => schemeLattice.refs(car) ++ schemeLattice.refs(cdr)
             case Vec(_, els)                   => els.flatMap(elm => schemeLattice.refs(elm._2)).toSet
             case Clo(cls)                      => cls.flatMap(clo => clo._2.addrs)
-            case Arrs(arrs)                    => arrs.flatMap(arr => schemeLattice.refs(schemeLattice.grd(arr.contract)) ++ schemeLattice.refs(arr.e))
-            case Grds(grds)                    => grds.flatMap(grd => grd.domain.flatMap(schemeLattice.refs(_)) ++ schemeLattice.refs(grd.rangeMaker))
-            case Flats(flts)                   => flts.flatMap(flt => schemeLattice.refs(flt.contract))
+            case Arrs(arrs)  => arrs.flatMap(arr => schemeLattice.refs(schemeLattice.grd(arr.contract)) ++ schemeLattice.refs(arr.e))
+            case Grds(grds)  => grds.flatMap(grd => grd.domain.flatMap(schemeLattice.refs(_)) ++ schemeLattice.refs(grd.rangeMaker))
+            case Flats(flts) => flts.flatMap(flt => schemeLattice.refs(flt.contract))
 
         // TODO: this should be the eql method instead?
         def eq(x: Value, y: Value)(comparePtr: MaybeEq[A]): Value = (x, y) match
@@ -729,7 +736,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             // TODO: eq of closures could be improved, but is not really permitted by R5RS anyway ...
             case (Clo(c1), Clo(c2))       => if c1.intersect(c2).isEmpty then Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
             case (Blames(b1), Blames(b2)) => if b1.intersect(b2).isEmpty then Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
-            // TODO: implement eq for contract values
+            // TODO: implement eq for contract values and opq values
             case (_: Cons, _: Cons) => throw new Exception("should not happen")
             case (_: Vec, _: Vec)   => throw new Exception("should not happen")
             case (_: Str, _: Str)   => throw new Exception("should not happen")
@@ -791,6 +798,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 /* Treated as a special case because args(1) can be bottom (this would be a valid use of MakeVector) */
                 args(0).foldMapL(arg0 => Value.vector(arg0, args(1)).map(v => Element(v)))
               case _ => fold(args, List())
+
       def join(x: L, y: => L): L = Monoid[L].append(x, y)
       def subsumes(x: L, y: => L): Boolean =
         y.foldMapL(y =>
@@ -838,6 +846,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       def grd(grd: Grd[L]): L = Element(Value.grd(grd))
       def arr(arr: Arr[L]): L = Element(Value.arr(arr))
       def flat(flt: Flat[L]): L = Element(Value.flt(flt))
+      def opq(opq: Opq): L = Element(Value.opq(opq))
       def nil: L = Element(Value.nil)
       def void: L = Element(Value.void)
       def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement

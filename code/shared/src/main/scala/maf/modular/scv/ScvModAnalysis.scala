@@ -31,6 +31,8 @@ trait ScvSatSolver[V] {
 
 /** Main trait for the soft-contract verification analysis. */
 trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain { outer =>
+  protected val DEBUG: Boolean = true
+
   protected val sat: ScvSatSolver[Value]
 
   override def intraAnalysis(component: Component): IntraScvAnalysis

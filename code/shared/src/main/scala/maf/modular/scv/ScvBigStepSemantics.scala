@@ -72,6 +72,15 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
           case SchemeValue(value, _)      => super.eval(exp).flatMap(tag(exp))
           case SchemeVar(nam)             => evalVariable(nam)
           case SchemeIf(prd, csq, alt, _) => evalIf(prd, csq, alt)
+
+          // only enabled for testing, results in a nil value associated with a fresh symbol
+          case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) if DEBUG =>
+            for
+                symbolic <- fresh
+                value <- tag(symbolic)(lattice.opq(ContractValues.Opq()))
+            yield value
+
+          // function calls have different behaviour in SCV as they can be guarded by contract
           case f @ SchemeFuncall(_, _, _) => callFun(f)
 
           // contract specific evaluation rules
