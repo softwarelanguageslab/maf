@@ -86,7 +86,8 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     Compile / unmanagedJars += {
          baseDirectory.value / "lib" / "com.microsoft.z3.jar"
     },
-    //libraryDependencies += ("com.regblanc" % "scala-smtlib_2.12" % "0.2.2"),
+    resolvers += "bramvdbogaerde" at "https://raw.githubusercontent.com/bramvdbogaerde/maven-repo/master",
+    libraryDependencies += ("space.vdb" %% "scala-smtlib" % "0.2.3-SNAPSHOT").cross(CrossVersion.for3Use2_13),
   )
   .jvmConfigure(_.enablePlugins(JmhPlugin))
   .jsSettings(
