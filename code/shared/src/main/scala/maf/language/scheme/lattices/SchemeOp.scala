@@ -9,42 +9,56 @@ sealed trait SchemeOp:
           throw new Exception(s"SchemeOp ${name} expects ${arity} arguments but got ${args.size}")
 
 object SchemeOp:
+    /** SchemeOpCat specifies a hierarchy of categories (implemented as blank traits used as markers) over the operations. */
+    sealed trait SchemeOpCat
+
+    /** Operations that return booleans to represent a predicate on a particular value */
+    sealed trait PredicateOp extends SchemeOpCat
+
+    /** Operations that check whether a value is of a particular type */
+    sealed trait TypeOp extends PredicateOp
+
+    /** Operations on booleans */
+    sealed trait BoolOp extends SchemeOpCat
+
+    /** Operations on reals, also work on integers */
+    sealed trait RealOp extends SchemeOpCat
 
     sealed trait SchemeOp1(val name: String) extends SchemeOp:
         val arity = 1
 
     case object Car extends SchemeOp1("car")
     case object Cdr extends SchemeOp1("cdr")
-    case object IsNull extends SchemeOp1("null?")
-    case object IsBoolean extends SchemeOp1("bool?")
-    case object IsTrue extends SchemeOp1("true?")
-    case object IsFalse extends SchemeOp1("false?")
-    case object IsCons extends SchemeOp1("cons?")
-    case object IsPointer extends SchemeOp1("pointer?")
-    case object IsChar extends SchemeOp1("char?")
-    case object IsSymbol extends SchemeOp1("symbol?")
-    case object IsString extends SchemeOp1("string?")
-    case object IsInteger extends SchemeOp1("integer?")
-    case object IsReal extends SchemeOp1("real?")
-    case object IsVector extends SchemeOp1("vector?")
-    case object IsThread extends SchemeOp1("thread?")
-    case object IsLock extends SchemeOp1("lock?")
-    case object IsProcedure extends SchemeOp1("proc?")
-    case object IsInputPort extends SchemeOp1("input-port?")
-    case object IsOutputPort extends SchemeOp1("output-port?")
-    case object Not extends SchemeOp1("not")
-    case object Ceiling extends SchemeOp1("ceiling")
-    case object Floor extends SchemeOp1("floor")
-    case object Round extends SchemeOp1("round")
+    case object IsNull extends SchemeOp1("null?") with PredicateOp
+    case object IsBoolean extends SchemeOp1("bool?") with TypeOp
+    case object IsTrue extends SchemeOp1("true?") with PredicateOp
+    case object IsFalse extends SchemeOp1("false?") with PredicateOp
+    case object IsCons extends SchemeOp1("cons?") with TypeOp
+    case object IsPointer extends SchemeOp1("pointer?") with TypeOp
+    case object IsChar extends SchemeOp1("char?") with TypeOp
+    case object IsSymbol extends SchemeOp1("symbol?") with TypeOp
+    case object IsString extends SchemeOp1("string?") with TypeOp
+    case object IsInteger extends SchemeOp1("integer?") with TypeOp
+    case object IsReal extends SchemeOp1("real?") with TypeOp
+    case object IsVector extends SchemeOp1("vector?") with TypeOp
+    case object IsThread extends SchemeOp1("thread?") with TypeOp
+    case object IsLock extends SchemeOp1("lock?") with TypeOp
+    case object IsProcedure extends SchemeOp1("proc?") with TypeOp
+    case object IsInputPort extends SchemeOp1("input-port?") with TypeOp
+    case object IsOutputPort extends SchemeOp1("output-port?") with TypeOp
+    case object Not extends SchemeOp1("not") with BoolOp
+    case object Ceiling extends SchemeOp1("ceiling") with RealOp
+    case object Floor extends SchemeOp1("floor") with RealOp
+    case object Round extends SchemeOp1("round") with RealOp
     case object Random extends SchemeOp1("random")
-    case object Sqrt extends SchemeOp1("sqrt")
-    case object Sin extends SchemeOp1("sin")
-    case object ASin extends SchemeOp1("asin")
-    case object Cos extends SchemeOp1("cos")
-    case object ACos extends SchemeOp1("acos")
-    case object Tan extends SchemeOp1("tan")
-    case object ATan extends SchemeOp1("atan")
-    case object Log extends SchemeOp1("log")
+    case object Sqrt extends SchemeOp1("sqrt") with RealOp
+    case object Sin extends SchemeOp1("sin") with RealOp
+    case object ASin extends SchemeOp1("asin") with RealOp
+    case object Cos extends SchemeOp1("cos") with RealOp
+    case object ACos extends SchemeOp1("acos") with RealOp
+    case object Tan extends SchemeOp1("tan") with RealOp
+    case object ATan extends SchemeOp1("atan") with RealOp
+    case object Log extends SchemeOp1("log") with RealOp
     case object VectorLength extends SchemeOp1("vector-len")
     case object StringLength extends SchemeOp1("string-len")
     case object NumberToString extends SchemeOp1("number->string")

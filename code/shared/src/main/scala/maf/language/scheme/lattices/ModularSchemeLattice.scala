@@ -230,6 +230,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def isFalse(x: Value): Boolean = x match
             case Bool(b) => BoolLattice[B].isFalse(b)
             case _       => false
+        def isOpq(x: Value): Boolean = x match
+            case Opqs(_) => true
+            case _       => false
+
         def op(op: SchemeOp)(args: List[Value]): MayFail[Value, Error] =
             import SchemeOp._
             op.checkArity(args)
@@ -239,11 +243,16 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 case MakeVector => throw new Exception("ModularSchemeLattice: make-vector SchemeOp not supported on Value")
                 case VectorRef  => throw new Exception("ModularSchemeLattice: vector-ref SchemeOp not supported on Value")
                 case VectorSet  => throw new Exception("ModularSchemeLattice: vector-set SchemeOp not supported on Value")
+
                 case IsNull =>
                   MayFail.success(args(0) match {
                     case Nil => True
                     case _   => False
                   })
+
+                case _: TypeOp if isOpq(args(0)) =>
+                  MayFail.success(Bool(BoolLattice[B].top))
+
                 case IsCons =>
                   MayFail.success(args(0) match {
                     case _: Cons => True
