@@ -85,7 +85,8 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     Compile / mainClass := Some("maf.cli.Main"),
     Compile / unmanagedJars += {
          baseDirectory.value / "lib" / "com.microsoft.z3.jar"
-    }
+    },
+    //libraryDependencies += ("com.regblanc" % "scala-smtlib_2.12" % "0.2.2"),
   )
   .jvmConfigure(_.enablePlugins(JmhPlugin))
   .jsSettings(
