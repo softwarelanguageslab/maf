@@ -1,10 +1,11 @@
 package maf.modular.incremental
 
 import maf.core.Expression
-import maf.language.change.CodeVersion._
-import maf.modular._
+import maf.language.change.CodeVersion.*
+import maf.modular.*
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
 import maf.util.benchmarks.Timeout
+import maf.util.datastructures.SmartUnion
 import maf.util.graph.Tarjan
 
 /**
@@ -242,7 +243,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 val dependentAddresses = lattice.getAddresses(value)
                 value = lattice.removeAddresses(value)
                 // Store the dependencies.
-                val newDependencies = addressDependencies(component)(addr) ++ dependentAddresses
+                val newDependencies = SmartUnion.sunion(addressDependencies(component)(addr), dependentAddresses)
                 addressDependencies = addressDependencies + (component -> (addressDependencies(component) + (addr -> newDependencies)))
             // Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
             intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
