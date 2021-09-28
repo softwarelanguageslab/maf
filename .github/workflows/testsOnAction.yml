@@ -31,7 +31,7 @@ jobs:
         with:
           java-version: openjdk@1.15
       - name: Setup Z3 
-        uses: pavpanchekha/setup-z3@1.2.2
+        uses: pavpanchekha/setup-z3@0.2.2
         with: 
           version: 4.8.12
           distribution: glibc-2.31
