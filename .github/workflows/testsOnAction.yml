@@ -34,6 +34,7 @@ jobs:
         uses: pavpanchekha/setup-z3@1.2.2
         with: 
           version: 4.8.12
+          distribution: glibc-2.31
       # Compile the code.
       - name: Compile MAF
         run: sbt compile
