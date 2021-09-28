@@ -61,7 +61,7 @@ case class LocalStore[A, V](content: Map[A, (V, AbstractCount)])(using lat: Latt
           if (oldV == newV) then Delta(Map.empty, Set(adr))
           else Delta(Map(adr -> (newV, CountInf)), Set(adr))
     def extend(adr: A, vlu: V) = content.get(adr) match
-        case None if lat.isBottom(vlu) => Delta(Map.empty, Set.empty)
+        case None if lat.isBottom(vlu) => emptyDelta
         case None                      => Delta(Map(adr -> (vlu, countFor(adr))), Set.empty)
         case Some(old @ (oldV, oldC)) =>
           val updated = (lat.join(oldV, vlu), oldC.inc)
