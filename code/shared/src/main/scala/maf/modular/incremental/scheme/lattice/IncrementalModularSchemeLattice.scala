@@ -1,14 +1,14 @@
 package maf.modular.incremental.scheme.lattice
 
-import maf.core._
+import maf.core.*
 import maf.language.CScheme.TID
-import maf.language.ContractScheme.ContractValues._
-import maf.language.scheme.lattices._
-import maf.lattice.interfaces._
+import maf.language.ContractScheme.ContractValues.*
+import maf.language.scheme.lattices.*
+import maf.lattice.interfaces.*
 import maf.modular.scheme.PtrAddr
 import maf.util.MonoidInstances.setMonoid
 import maf.util.benchmarks.Table
-import maf.util._
+import maf.util.*
 
 /** A modular Scheme lattice that also provides operations on address-annotated values. */
 class IncrementalModularSchemeLattice[

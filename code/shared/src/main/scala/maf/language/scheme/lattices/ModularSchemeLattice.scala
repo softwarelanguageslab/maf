@@ -189,7 +189,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Arrs(l1), Arrs(l2))             => Arrs(sunion(l1, l2))
             case (Grds(l1), Grds(l2))             => Grds(sunion(l1, l2))
             case (Flats(l1), Flats(l2))           => Flats(sunion(l1, l2))
-            case (Opqs(o1), Opqs(o2))             => Opqs(o1 ++ o2)
+            case (Opqs(o1), Opqs(o2))             => Opqs(sunion(o1, o2))
             case _                                => throw new Exception(s"Illegal join of $x and $y")
 
         def subsumes(x: Value, y: => Value): Boolean =
@@ -726,7 +726,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case OutputPort(id)                                                                               => refs(id)
             case Thread(_) | Lock(_) | Kont(_) => ??? // TODO: don't know enough about these types to compute refs
             case Pointer(ptrs)                 => ptrs.toSet[Address]
-            case Cons(car, cdr)                => schemeLattice.refs(car) ++ schemeLattice.refs(cdr)
+            case Cons(car, cdr)                => sunion(schemeLattice.refs(car), schemeLattice.refs(cdr))
             case Vec(_, els)                   => els.flatMap(elm => schemeLattice.refs(elm._2)).toSet
             case Clo(cls)                      => cls.flatMap(clo => clo._2.addrs)
             case Arrs(arrs)  => arrs.flatMap(arr => schemeLattice.refs(schemeLattice.grd(arr.contract)) ++ schemeLattice.refs(arr.e))
