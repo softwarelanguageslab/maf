@@ -24,7 +24,7 @@ object ScvComponent:
      * A wrapper that indicates that the component needs to check whether the range conract is satisfied after the evaluation of the body of the
      * component
      */
-    case class ContractCall[T, L](cmp: T, rangeMaker: L) extends ScvComponent[T, L]:
+    case class ContractCall[T, L](cmp: T, domains: List[L], rangeMaker: L) extends ScvComponent[T, L]:
         def view: T = cmp
 
 trait StandardScvModFComponents extends maf.modular.scv.ScvBaseSemantics:
@@ -37,11 +37,11 @@ trait StandardScvModFComponents extends maf.modular.scv.ScvBaseSemantics:
     def newComponent(call: Call[ComponentContext]): Component =
       SimpleWrapper(call)
 
-    def newComponentWithContract(contract: Value)(cmp: Call[ComponentContext]): Component =
-      ContractCall(cmp, contract)
+    def newComponentWithContract(contract: Value, domains: List[Value])(cmp: Call[ComponentContext]): Component =
+      ContractCall(cmp, domains, contract)
 
     def view(cmp: Component): SchemeModFComponent = cmp.view
 
-    def usingContract[X](cmp: Component)(f: Option[Value] => X): X = cmp match
-        case ContractCall(_, contract) => f(Some(contract))
-        case _                         => f(None)
+    def usingContract[X](cmp: Component)(f: Option[(List[Value], Value)] => X): X = cmp match
+        case ContractCall(_, domains, contract) => f(Some(domains, contract))
+        case _                                  => f(None)

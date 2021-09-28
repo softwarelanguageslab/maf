@@ -38,7 +38,7 @@ trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
   override def intraAnalysis(component: Component): IntraScvAnalysis
 
   /** Executes the given function using the contract embedded in the component (if any is available) */
-  protected def usingContract[X](cmp: Component)(f: Option[Value] => X): X
+  protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value)] => X): X
 
   trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra { inner =>
     def writeBlame(blame: Blame): Unit =

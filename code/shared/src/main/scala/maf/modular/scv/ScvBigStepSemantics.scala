@@ -10,6 +10,7 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.TaggedSet
 import maf.core.{Identifier, Identity, Monad, Position}
+import maf.modular.scv.ScvComponent.ContractCall
 
 /** This trait encodes the semantics of the ContractScheme language */
 trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
@@ -46,9 +47,12 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
           val results = for
+              // _ <- usingContract(cmp) {
+              //   case Some(domains, _) =>
+              // }
               value <- extract(eval(expr(cmp)))
               _ <- usingContract(cmp) {
-                case Some(contract) =>
+                case Some(_, contract) =>
                   // TODO: check the monIdn parameter
                   applyMon(PostValue.noSymbolic(contract), value, expr(cmp), expr(cmp).idn).flatMap(_ => unit(()))
                 case None => unit(())
@@ -189,7 +193,15 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
                   arr.contract.rangeMakerExpr.idn.pos,
                 )
               )
-              result <- unit(applyFun(fc, arr.e, fc.args.zip(argsV.map(_.value)), fc.idn.pos, newComponentWithContract(rangeContract)))
+              result <- unit(
+                applyFun(
+                  fc, // syntactic function node
+                  arr.e, // the function to apply
+                  fc.args.zip(argsV.map(_.value)), // the arguments
+                  fc.idn.pos, // the position of the function in the source code
+                  newComponentWithContract(rangeContract, arr.contract.domain)
+                )
+              )
           yield result
         }
       }
