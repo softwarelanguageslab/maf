@@ -30,6 +30,10 @@ jobs:
         uses: olafurpg/setup-scala@v10
         with:
           java-version: openjdk@1.15
+      - name: Setup Z3 
+        uses: pavpanchekha/setup-z3
+        with: 
+          version: 4.8.12
       # Compile the code.
       - name: Compile MAF
         run: sbt compile
