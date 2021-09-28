@@ -139,6 +139,14 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] =
     scvMonadInstance.unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(e), result)))
 
+  /** Write a symbolic representation to the store cache */
+  protected def writeSymbolic(addr: Addr)(e: Symbolic): EvalM[Symbolic] =
+    for
+        st <- scvMonadInstance.get
+        cache <- scvMonadInstance.unit(st.store)
+        _ <- scvMonadInstance.put(st.copy(store = cache.updated(addr, e)))
+    yield e
+
   protected def optional[X](m: Option[EvalM[X]]): EvalM[Unit] = m match
       case Some(am) => am.flatMap(_ => scvMonadInstance.unit(()))
       case None     => scvMonadInstance.unit(())

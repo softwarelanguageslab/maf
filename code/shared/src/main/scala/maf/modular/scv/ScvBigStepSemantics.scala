@@ -35,7 +35,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
         addr <- unit(
           env.lookup(id.name).getOrElse(throw Exception(s"variable ${id.name} not found"))
         ) // exception should not happen because of lexical address pass
-        value <- lookupCache(addr).flatMap(v => v.map(unit).getOrElse(fresh))
+        value <- lookupCache(addr).flatMap(v => v.map(unit).getOrElse(fresh.flatMap(writeSymbolic(addr))))
     yield value
 
   extension (p: Prim)
@@ -197,10 +197,12 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
       private def callFun(f: SchemeFuncall): EvalM[Value] =
         for
             fv <- extract(eval(f.f))
+            argsV <- f.args.mapM(eval andThen extract)
+
             result <- nondet(
               applyArr(f, fv),
-              super.eval(f)
-            )
+              unit(applyFun(f, fv.value, f.args.zip(argsV.map(_.value)), f.idn.pos))
+            ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))
         yield result
 
       protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =

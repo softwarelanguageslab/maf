@@ -13,5 +13,7 @@ object ContractBenchmarkPrograms:
         "ex-14.rkt",
       )
 
+    lazy val manualSafe: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/scv/manual/safe")()
+
     lazy val allBenchmarks: Set[String] =
-      nguyenSafeOcty
+      nguyenSafeOcty ++ manualSafe
