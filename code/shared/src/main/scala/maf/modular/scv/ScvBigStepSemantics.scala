@@ -164,8 +164,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
           val pv = PostValue(resultSymbolic, result)
           val tru = ifFeasible(`true?`, pv) { unit(value.value).flatMap(value.symbolic.map(tag).getOrElse(unit)) }
           val fls = ifFeasible(`false?`, pv) {
-            writeBlame(ContractValues.Blame(expr.idn, monIdn))
-            void[Value]
+            impure { writeBlame(ContractValues.Blame(expr.idn, monIdn)) }.flatMap(_ => void[Value])
           }
 
           nondet(tru, fls)
