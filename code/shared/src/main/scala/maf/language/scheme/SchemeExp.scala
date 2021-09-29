@@ -556,3 +556,18 @@ case class ContractSchemeDefineContract(
     def label: Label = DFC
     def subexpressions: List[Expression] = List(contract, expression)
     override def toString: String = s"(define/contract ($name ${params.mkString(" ")}) $expression)"
+
+/**
+ * (check contract value)
+ *
+ * Checks a contract on a value. Returns #f if it fails, otherwise #t. Only works on flat contracts.
+ */
+case class ContractSchemeCheck(
+    contract: SchemeExp,
+    valueExpression: SchemeExp,
+    idn: Identity)
+    extends ContractSchemeExp:
+    def fv: Set[String] = contract.fv ++ valueExpression.fv
+    def label: Label = CHK
+    def subexpressions: List[Expression] = List(contract, valueExpression)
+    override def toString: String = s"(check $contract $valueExpression)"

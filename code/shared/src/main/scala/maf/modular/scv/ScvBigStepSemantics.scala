@@ -50,12 +50,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
               _ <- usingContract(cmp) {
                 case Some(domains, _, args, idn) =>
                   for
-                      postArgs <- argValuesList(cmp).mapM { case (addr, arg) =>
-                        for
-                            symbolic <- fresh
-                            _ <- writeSymbolic(addr)(symbolic)
-                        yield PostValue(Some(symbolic), arg)
-                      }
+                      postArgs <- argValuesList(cmp).mapM { case (addr, arg) => fresh.flatMap(writeSymbolic(addr)).map(s => PostValue(Some(s), arg)) }
                       _ <- Monad.sequence(
                         domains
                           .zip(postArgs)
@@ -122,6 +117,9 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
                 evaluatedRangeMaker <- eval(rangeMaker)
             yield lattice.grd(ContractValues.Grd(evaluatedDomains, evaluatedRangeMaker, domains.map(_.idn), rangeMaker))
 
+          case contractExp @ ContractSchemeCheck(_, _, _) =>
+            evalCheck(contractExp)
+
           // catch-all, dispatching to the default Scheme semantics
           case _ => super.eval(exp)
 
@@ -155,6 +153,22 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
           val truVal = ifFeasible(`true?`, prdValWithSym)(eval(csq))
           val flsVal = ifFeasible(`false?`, prdValWithSym)(eval(alt))
           nondet(truVal, flsVal)
+
+      protected def evalCheck(checkExpr: ContractSchemeCheck): EvalM[Value] =
+        for
+            contract <- eval(checkExpr.contract)
+            value <- eval(checkExpr.valueExpression)
+            result <- nondets[Value](lattice.getFlats(contract).map { flat =>
+              unit(
+                applyFun(
+                  SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
+                  flat.contract,
+                  List((checkExpr.valueExpression, value)),
+                  checkExpr.idn.pos
+                )
+              )
+            })
+        yield result
 
       protected def applyMon(
           contract: PostValue,
