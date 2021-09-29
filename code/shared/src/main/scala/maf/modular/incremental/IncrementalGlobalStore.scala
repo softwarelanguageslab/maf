@@ -19,12 +19,14 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
     type SCA = Set[Addr]
 
+    //var implicitFlows: List[Set[Addr]] = Nil
+
     /* ****************************************** */
     /* ***** Provenance tracking for values ***** */
     /* ****************************************** */
 
     /** Keeps track of the provenance of values. For every address, couples every component with the value it has written to the address. */
-    var provenance: Map[Addr, Map[Component, Value]] = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom))
+    var provenance: Map[Addr, Map[Component, Value]] = _
 
     /** Caches the addresses written by every component. Used to find addresses that are no longer written by a component. */
     var cachedWrites: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
@@ -60,7 +62,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
     /** Keeps track of all "incoming" values to an SCA. */
     // TODO (maybe): merge with SCAs.
-    var incomingValues: Map[SCA, Value] = Map().withDefaultValue(lattice.bottom)
+    var incomingValues: Map[SCA, Value] = _
 
     /**
      * Computes the join of all values "incoming" in this SCA. The join suffices, as the addresses in the SCA are inter-dependent (i.e., the analysis
@@ -240,7 +242,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             // Update the value flow information and reset the reads information.
             if configuration.cyclicValueInvalidation then
                 // Get the annotations and remove them so they are not written to the store.
-                val dependentAddresses = lattice.getAddresses(value)
+                val dependentAddresses = lattice.getAddresses(value) //, implicitFlows.flatten.toSet)
                 value = lattice.removeAddresses(value)
                 // Store the dependencies.
                 val newDependencies = SmartUnion.sunion(addressDependencies(component)(addr), dependentAddresses)
@@ -320,3 +322,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 doWriteIncremental()
 
     end IncrementalGlobalStoreIntraAnalysis
+
+    override def init(): Unit =
+        super.init()
+        provenance = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom)) // Use of lattice must be delayed until after initialisation.
+        incomingValues = Map().withDefaultValue(lattice.bottom)

@@ -112,7 +112,7 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
     val configurations: List[IncrementalConfiguration] = List(allOptimisations)
 
 object IncrementalSchemeModFTypePrecision extends IncrementalSchemePrecision:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+    override def benchmarks(): Set[String] = Set("test/DEBUG1.scm") // IncrementalSchemeBenchmarkPrograms.sequential
 
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
 

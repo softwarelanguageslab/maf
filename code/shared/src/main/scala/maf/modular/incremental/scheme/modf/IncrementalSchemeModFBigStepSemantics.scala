@@ -9,11 +9,13 @@ import maf.modular.scheme.modf.EvalM.*
 import maf.modular.scheme.modf.*
 
 /** Implements big-step semantics for an incremental Scheme analysis. * */
-trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics:
+trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics with IncrementalGlobalStore[SchemeExp]:
 
     override protected def cond(prd: Value, csq: => EvalM[Value], alt: => EvalM[Value]): EvalM[Value] =
+        //implicitFlows = lattice.getAddresses(prd) :: implicitFlows
         val csqValue = guard(lattice.isTrue(prd)).flatMap(_ => csq)
         val altValue = guard(lattice.isFalse(prd)).flatMap(_ => alt)
+        //implicitFlows = implicitFlows.tail
         merge(csqValue, altValue).map(v => lattice.addAddresses(v, lattice.getAddresses(prd)))
 
     trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis:

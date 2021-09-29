@@ -84,7 +84,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     /** General */
     Compile / mainClass := Some("maf.cli.Main"),
     Compile / unmanagedJars += {
-         baseDirectory.value / "lib" / "com.microsoft.z3.jar"
+      baseDirectory.value / "lib" / "com.microsoft.z3.jar"
     },
     resolvers += "bramvdbogaerde" at "https://raw.githubusercontent.com/bramvdbogaerde/maven-repo/master",
     libraryDependencies += ("space.vdb" %% "scala-smtlib" % "0.2.3-SNAPSHOT").cross(CrossVersion.for3Use2_13),

@@ -12,8 +12,8 @@ trait IncrementalSchemeDomain extends IncrementalAbstractDomain[SchemeExp] with 
 trait IncrementalModularSchemeDomain extends IncrementalSchemeDomain:
     val modularLatticeWrapper: IncrementalModularSchemeLatticeWrapper
     type Value = modularLatticeWrapper.modularLattice.AL // Use the annotated lattice.
-    override lazy val lattice = modularLatticeWrapper.modularLattice.incrementalSchemeLattice
-    override lazy val primitives = modularLatticeWrapper.primitives
+    final override lazy val lattice = modularLatticeWrapper.modularLattice.incrementalSchemeLattice
+    final override lazy val primitives = modularLatticeWrapper.primitives
 
 trait IncrementalModularSchemeLatticeWrapper:
     type S
@@ -34,11 +34,11 @@ object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrappe
     type R = Type.R
     type C = Type.C
     type Sym = Type.Sym
-    val modularLattice = new IncrementalModularSchemeLattice
-    val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
+    final val modularLattice = new IncrementalModularSchemeLattice
+    final val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
 
 trait IncrementalSchemeTypeDomain extends IncrementalModularSchemeDomain:
-    val modularLatticeWrapper = IncrementalSchemeTypeDomain
+    final val modularLatticeWrapper = IncrementalSchemeTypeDomain
 
 object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeLatticeWrapper:
     type S = ConstantPropagation.S
@@ -47,8 +47,8 @@ object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSche
     type R = ConstantPropagation.R
     type C = ConstantPropagation.C
     type Sym = ConstantPropagation.Sym
-    val modularLattice = new IncrementalModularSchemeLattice
-    val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
+    final val modularLattice = new IncrementalModularSchemeLattice
+    final val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
 
 trait IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeDomain:
-    val modularLatticeWrapper = IncrementalSchemeConstantPropagationDomain
+    final val modularLatticeWrapper = IncrementalSchemeConstantPropagationDomain
