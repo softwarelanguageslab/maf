@@ -71,7 +71,7 @@ trait BaseSchemeModFSemantics
           allArgAddrs.map(bnd => (bnd._1, store.getOrElse(bnd._2, lattice.bottom)))
 
     /* convience accessor for getting the argument values in the order of their definition */
-    def argValuesList(cmp: Component): List[Value] = view(cmp) match
+    def argValuesList(cmp: Component): List[(Addr, Value)] = view(cmp) match
         case Main => List()
         case Call((lam, _), _) =>
           val argAddrs = lam.args.map(id => allocVar(id, cmp))
@@ -79,7 +79,7 @@ trait BaseSchemeModFSemantics
               case None         => argAddrs
               case Some(varArg) => argAddrs ++ List(allocVar(varArg, cmp))
 
-          allArgAddrs.map(addr => store.getOrElse(addr, lattice.bottom))
+          allArgAddrs.map(addr => (addr, store.getOrElse(addr, lattice.bottom)))
 
     //XXXXXXXXXXXXXXXXXXXXXXXXXX//
     // INTRA-COMPONENT ANALYSIS //

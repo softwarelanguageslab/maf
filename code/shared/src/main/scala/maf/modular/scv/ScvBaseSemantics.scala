@@ -46,8 +46,26 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   // Components
   /////////////////////////////////////////////////////
 
-  /** Create a component that wraps the given contract */
-  protected def newComponentWithContract(contract: Value, domains: List[Value])(cmp: SchemeModFComponent.Call[ComponentContext]): Component
+  /**
+   * Create a component that wraps the given contract
+   *
+   * @param contract
+   *   the range contract that needs to be checked after analyzing the component
+   * @param domains
+   *   a list of contracts on the arguments (if the component is a function) of the component
+   * @param args
+   *   the syntactic arguments associated with the function call
+   * @param idn
+   *   the source location of the function application
+   */
+  protected def newComponentWithContract(
+      contract: Value,
+      domains: List[Value],
+      args: List[SchemeExp],
+      idn: Identity
+    )(
+      cmp: SchemeModFComponent.Call[ComponentContext]
+    ): Component
 
   /////////////////////////////////////////////////////
   // Monads
