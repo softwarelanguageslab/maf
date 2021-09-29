@@ -41,6 +41,7 @@ trait ScvSafetyTests extends SchemeBenchmarkTests:
         val an = analysis(parse(content))
         an.analyze()
         assert(an.summary.blames.size == 0)
+        assert(an.returnValue(an.initialComponent) != an.lattice.bottom)
       }
 
 class SimpleSafetyTests extends ScvSafetyTests with ContractSafetyTestsBenchmarks
