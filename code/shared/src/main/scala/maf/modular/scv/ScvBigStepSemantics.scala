@@ -47,12 +47,25 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
           val results = for
-              // _ <- usingContract(cmp) {
-              //   case Some(domains, _) =>
-              // }
+              _ <- usingContract(cmp) {
+                case Some(domains, _, args, idn) =>
+                  for
+                      postArgs <- argValuesList(cmp).mapM { case (addr, arg) => fresh.flatMap(writeSymbolic(addr)).map(s => PostValue(Some(s), arg)) }
+                      _ <- Monad.sequence(
+                        domains
+                          .zip(postArgs)
+                          .zip(args)
+                          .map { case ((domain, arg), exp) =>
+                            applyMon(PostValue.noSymbolic(domain), arg, exp, idn, assumed = true)
+                          }
+                      )
+                  yield ()
+
+                case None => unit(())
+              }
               value <- extract(eval(expr(cmp)))
               _ <- usingContract(cmp) {
-                case Some(_, contract) =>
+                case Some(_, contract, _, _) =>
                   // TODO: check the monIdn parameter
                   applyMon(PostValue.noSymbolic(contract), value, expr(cmp), expr(cmp).idn).flatMap(_ => unit(()))
                 case None => unit(())
@@ -104,6 +117,9 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
                 evaluatedRangeMaker <- eval(rangeMaker)
             yield lattice.grd(ContractValues.Grd(evaluatedDomains, evaluatedRangeMaker, domains.map(_.idn), rangeMaker))
 
+          case contractExp @ ContractSchemeCheck(_, _, _) =>
+            evalCheck(contractExp)
+
           // catch-all, dispatching to the default Scheme semantics
           case _ => super.eval(exp)
 
@@ -138,17 +154,34 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
           val flsVal = ifFeasible(`false?`, prdValWithSym)(eval(alt))
           nondet(truVal, flsVal)
 
+      protected def evalCheck(checkExpr: ContractSchemeCheck): EvalM[Value] =
+        for
+            contract <- eval(checkExpr.contract)
+            value <- eval(checkExpr.valueExpression)
+            result <- nondets[Value](lattice.getFlats(contract).map { flat =>
+              unit(
+                applyFun(
+                  SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
+                  flat.contract,
+                  List((checkExpr.valueExpression, value)),
+                  checkExpr.idn.pos
+                )
+              )
+            })
+        yield result
+
       protected def applyMon(
           contract: PostValue,
           expression: PostValue,
           expr: SchemeExp,
-          monIdn: Identity
+          monIdn: Identity,
+          assumed: Boolean = false
         ): EvalM[Value] =
           // We have three distinct possibilities for a "mon" expression:
           // 1. `contract` is a flat contract, or a function that can be treated as such, the result of mon is the value of `expression`
           // 2. `contract` is a dependent contract, in which case `expression` must be a function, the result of `mon` is a guarded function
           // 3. `contract` does not satisfy any of the above conditions, resutling in an error
-          val flats = lattice.getFlats(contract.value).map(c => monFlat(c, expression, expr, monIdn))
+          val flats = lattice.getFlats(contract.value).map(c => monFlat(c, expression, expr, monIdn, assumed))
           val guards = lattice.getGrds(contract.value).map(c => monArr(c, expression, expr, monIdn))
 
           nondets(flats ++ guards)
@@ -160,16 +193,25 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
               argsSym <- Monad.sequence(args)
           yield SchemeFuncall(fnSym, argsSym, Identity.none)
 
-      protected def monFlat(contract: ContractValues.Flat[Value], value: PostValue, expr: SchemeExp, monIdn: Identity): EvalM[Value] =
+      protected def monFlat(
+          contract: ContractValues.Flat[Value],
+          value: PostValue,
+          expr: SchemeExp,
+          monIdn: Identity,
+          assumed: Boolean = false
+        ): EvalM[Value] =
           val call = SchemeFuncall(contract.fexp, List(expr), monIdn)
           // TODO: find better position information
           val result = applyFun(call, contract.contract, List((expr, value.value)), Position(-1, 0))
           val resultSymbolic = symCall(contract.sym, List(value.symbolic))
           val pv = PostValue(resultSymbolic, result)
           val tru = ifFeasible(`true?`, pv) { unit(value.value).flatMap(value.symbolic.map(tag).getOrElse(unit)) }
-          val fls = ifFeasible(`false?`, pv) {
-            impure { writeBlame(ContractValues.Blame(expr.idn, monIdn)) }.flatMap(_ => void[Value])
-          }
+          val fls =
+            if (!assumed) then
+                ifFeasible(`false?`, pv) {
+                  impure { writeBlame(ContractValues.Blame(expr.idn, monIdn)) }.flatMap(_ => void[Value])
+                }
+            else void
 
           nondet(tru, fls)
 
@@ -199,7 +241,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
                   arr.e, // the function to apply
                   fc.args.zip(argsV.map(_.value)), // the arguments
                   fc.idn.pos, // the position of the function in the source code
-                  newComponentWithContract(rangeContract, arr.contract.domain)
+                  newComponentWithContract(rangeContract, arr.contract.domain, fc.args, fc.idn)
                 )
               )
           yield result

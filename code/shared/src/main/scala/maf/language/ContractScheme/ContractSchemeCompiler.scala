@@ -64,16 +64,18 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
               compiledParams <- done(compile_params(params))
               compiledContract <- tailcall(_compile(contract))
               compiledExpressions <- compile_sequence(expressions)
-          yield ContractSchemeDefineContract(
+          yield SchemeDefineVariable(
             Identifier(f, idn),
-            compiledParams,
-            compiledContract,
-            SchemeBegin(
-              compiledExpressions,
-              Identity.none
-            ),
+            ContractSchemeMon(compiledContract, SchemeLambda(Some(f), compiledParams, compiledExpressions, exp.idn), exp.idn),
             exp.idn
           )
+
+        // (check contract valueExpression)
+        case Ident("check") :::: contract :::: expression :::: snil =>
+          for
+              compiledContract <- tailcall(_compile(contract))
+              compiledExpr <- tailcall(_compile(expression))
+          yield ContractSchemeCheck(compiledContract, compiledExpr, exp.idn)
 
         case Ident("define/contract") :::: _ => throw new Exception(s"Parse error, invalid usage of define/contract at ${exp.idn}")
 

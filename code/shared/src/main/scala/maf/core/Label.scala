@@ -34,3 +34,4 @@ enum Label:
     case DPC // Dependent contract
     case FLC // Flat contract
     case MON // Monitor
+    case CHK // Check expression
