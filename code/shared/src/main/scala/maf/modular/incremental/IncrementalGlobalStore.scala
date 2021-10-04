@@ -242,7 +242,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             // Update the value flow information and reset the reads information.
             if configuration.cyclicValueInvalidation then
                 // Get the annotations and remove them so they are not written to the store.
-                val dependentAddresses = lattice.getAddresses(value) //, implicitFlows.flatten.toSet)
+                val dependentAddresses = lattice.getAddresses(value) // SmartUnion.sunion(lattice.getAddresses(value), implicitFlows.flatten.toSet)
                 value = lattice.removeAddresses(value)
                 // Store the dependencies.
                 val newDependencies = SmartUnion.sunion(addressDependencies(component)(addr), dependentAddresses)
@@ -323,6 +323,12 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
     end IncrementalGlobalStoreIntraAnalysis
 
+    /**
+     * Used to initialise the analysis, so it can be used.
+     * @note
+     *   Scala 3 disallows non-final lazy vals to be part of a type path. As lattice is part of such type paths (e.g., lattice.L), we cannot use this
+     *   value during value/class initialisation (stable type paths are required).
+     */
     override def init(): Unit =
         super.init()
         provenance = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom)) // Use of lattice must be delayed until after initialisation.
