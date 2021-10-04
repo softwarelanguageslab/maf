@@ -1,5 +1,7 @@
 package maf.core
 
+import maf.core.IdentityMonad.Id
+
 //
 // Monad
 //
@@ -176,3 +178,15 @@ object OptionMonad:
           m.map(f)
         def flatMap[X, Y](m: Option[X])(f: X => Option[Y]): Option[Y] =
           m.flatMap(f)
+
+///
+/// Identity Monad
+///
+
+object IdentityMonad:
+    type Id[X] = X
+
+trait IdentityMonad[*] extends Monad[Id]:
+    def unit[X](x: X): Id[X] = x
+    def map[X, Y](m: Id[X])(f: X => Y): Id[Y] = f(m)
+    def flatMap[X, Y](m: Id[X])(f: X => Id[Y]): Id[Y] = f(m)
