@@ -47,32 +47,41 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
           val results = for
-              _ <- usingContract(cmp) {
-                case Some(domains, _, args, idn) =>
-                  for
-                      postArgs <- argValuesList(cmp).mapM { case (addr, arg) => fresh.flatMap(writeSymbolic(addr)).map(s => PostValue(Some(s), arg)) }
-                      _ <- Monad.sequence(
-                        domains
-                          .zip(postArgs)
-                          .zip(args)
-                          .map { case ((domain, arg), exp) =>
-                            applyMon(PostValue.noSymbolic(domain), arg, exp, idn, assumed = true)
-                          }
-                      )
-                  yield ()
-
-                case None => unit(())
-              }
+              _ <- injectPre
               value <- extract(eval(expr(cmp)))
-              _ <- usingContract(cmp) {
-                case Some(_, contract, _, _) =>
-                  // TODO: check the monIdn parameter
-                  applyMon(PostValue.noSymbolic(contract), value, expr(cmp), expr(cmp).idn).flatMap(_ => unit(()))
-                case None => unit(())
-              }
+              _ <- checkPost(value)
           yield value
 
           writeResult(results.runValue(initialState).map(_.value).merge, cmp)
+
+      /** Check the post contract on the value resulting from the analysis of the current component */
+      private def checkPost(value: PostValue): EvalM[Unit] =
+        usingContract(cmp) {
+          case Some(_, contract, _, _) =>
+            // TODO: check the monIdn parameter
+            applyMon(PostValue.noSymbolic(contract), value, expr(cmp), expr(cmp).idn).flatMap(_ => unit(()))
+          case None => unit(())
+        }
+
+      /** Injects the pre-condition contracts (if any are available) in the analysis of the current component */
+      private def injectPre: EvalM[Unit] =
+        usingContract(cmp) {
+          case Some(domains, _, args, idn) =>
+            for
+                postArgs <- argValuesList(cmp).mapM { case (addr, arg) => fresh.flatMap(writeSymbolic(addr)).map(s => PostValue(Some(s), arg)) }
+
+                _ <- Monad.sequence(
+                  domains
+                    .zip(postArgs)
+                    .zip(args)
+                    .map { case ((domain, arg), exp) =>
+                      applyMon(PostValue.noSymbolic(domain), arg, exp, idn, assumed = true)
+                    }
+                )
+            yield ()
+
+          case None => unit(())
+        }
 
       /** Computes an initial store cache based on the set of available Scheme primitives */
       protected lazy val initialStoreCache: StoreCache =
