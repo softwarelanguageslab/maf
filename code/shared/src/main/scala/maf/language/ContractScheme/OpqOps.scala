@@ -1,6 +1,7 @@
 package maf.language.ContractScheme
 
-import maf.language.ContractScheme.OpqOps.Unsupported
+import maf.language.scheme.lattices.SchemeLattice
+import maf.core.Address
 
 /**
  * This object defines the signatures for the native Scheme functions. The reason for this is that it can automatically resolve operations involving
@@ -139,3 +140,6 @@ object OpqOps:
       "random" -> (Real),
       "error" -> Unsupported,
     )
+
+    /* Computations with OPQ values */
+    def compute[V: [X] =>> SchemeLattice[X, Address]](primName: String, args: List[V]): V = ???
