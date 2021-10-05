@@ -85,6 +85,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
         Some(times)
 
     // A single program run with the analysis.
+    // TODO: Do not measure analysis initialisation or creation?
     def onBenchmark(file: String): Unit =
         println(s"\nTesting $file")
         val program = parse(file)
@@ -184,7 +185,9 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
         }
 
-    def createOutput(): String = results.prettyString(columns = (List(initS, reanS) ++ configurations.map(_.toString)).map(columnName(timeS, _)))
+    def createOutput(): String =
+      results.prettyString(columns = (List(initS, reanS) ++ configurations.map(_.toString)).map(columnName(timeS, _))) ++ "\n\n" ++ results
+        .toCSVString(columns = (List(initS, reanS) ++ configurations.map(_.toString)).map(columnName(timeS, _)))
 
 /* ************************** */
 /* ***** Instantiations ***** */
@@ -192,8 +195,8 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
 trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-    val configurations: List[IncrementalConfiguration] = List(ci_di_wi)
+    override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+    val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModFPerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
@@ -217,7 +220,7 @@ object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformanc
 
 object IncrementalSchemeModXPerformance:
     def main(args: Array[String]): Unit =
-      IncrementalSchemeModFPerformance.main(args)
-//IncrementalSchemeModFCPPerformance.main(args)
-//IncrementalSchemeModConcPerformance.main(args)
-//IncrementalSchemeModConcCPPerformance.main(args)
+        IncrementalSchemeModFPerformance.main(args)
+        IncrementalSchemeModFCPPerformance.main(args)
+        IncrementalSchemeModConcPerformance.main(args)
+        IncrementalSchemeModConcCPPerformance.main(args)
