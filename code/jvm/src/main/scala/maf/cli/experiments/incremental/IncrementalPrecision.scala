@@ -85,7 +85,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             val copy = a1.deepCopy()
             copy.configuration = config
 
-            if !runAnalysis(config.toString, timeOut => a1.updateAnalysis(timeOut)) then compareAnalyses(file, a1, a2)
+            if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then compareAnalyses(file, copy, a2)
             else
                 propertiesS.foreach(o => results = results.add(file, columnName(o, config.toString), infS))
                 print(" timed out - ")

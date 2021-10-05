@@ -85,6 +85,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
         Some(times)
 
     // A single program run with the analysis.
+    // TODO: Do not measure analysis initialisation or creation?
     def onBenchmark(file: String): Unit =
         println(s"\nTesting $file")
         val program = parse(file)
