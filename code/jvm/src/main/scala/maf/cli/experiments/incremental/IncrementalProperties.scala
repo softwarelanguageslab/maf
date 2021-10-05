@@ -80,7 +80,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
 
     def interestingAddress[A <: Address](a: A): Boolean
 
-    def createOutput(): String = results.prettyString()
+    def createOutput(): String = results.prettyString() ++ "\n\n" ++ results.toCSVString()
 
 /** Counts the number of intra-component analyses run by the analysis. */
 trait CountIntraAnalyses[Expr <: Expression] extends IncrementalModAnalysis[Expr]:
@@ -106,7 +106,7 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp]:
 
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 
-    val configurations: List[IncrementalConfiguration] = List(allOptimisations)
+    val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
@@ -142,7 +142,7 @@ object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties:
 
 object IncrementalSchemeModXProperties:
     def main(args: Array[String]): Unit =
-      IncrementalSchemeModFProperties.main(args)
-//IncrementalSchemeModFCPProperties.main(args)
-//IncrementalSchemeModConcProperties.main(args)
-//IncrementalSchemeModConcCPProperties.main(args)
+        IncrementalSchemeModFProperties.main(args)
+        IncrementalSchemeModFCPProperties.main(args)
+        IncrementalSchemeModConcProperties.main(args)
+        IncrementalSchemeModConcCPProperties.main(args)

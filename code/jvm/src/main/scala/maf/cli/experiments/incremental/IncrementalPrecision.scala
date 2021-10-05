@@ -94,7 +94,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     // Note, we could also compare to the initial analysis. This would give us an idea on how many addresses were refined (column "More precise").
 
     def interestingAddress[A <: Address](a: A): Boolean
-    def createOutput(): String = results.prettyString(columns = columns)
+    def createOutput(): String = results.prettyString(columns = columns) ++ "\n\n" ++ results.toCSVString(columns = columns)
 
 /* ************************** */
 /* ***** Instantiations ***** */
@@ -109,7 +109,7 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
 
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 
-    val configurations: List[IncrementalConfiguration] = List(allOptimisations)
+    val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModFTypePrecision extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
@@ -125,16 +125,6 @@ object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision:
 
     val outputFile: String = "precision/modf-CP.txt"
 
-/*
-object IncrementalSchemeModFCPPrecisionStoreOpt extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
-
-  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
-
-  val outputFile: String = "precision/modf-CP-StoreOpt.txt"
-}
- */
-
 object IncrementalSchemeModConcTypePrecision extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
 
@@ -149,21 +139,9 @@ object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision:
 
     val outputFile: String = "precision/modconc-CP.txt"
 
-/*
-object IncrementalSchemeModConcCPPrecisionStoreOpt extends IncrementalSchemePrecision {
-  override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
-
-  override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
-
-  val outputFile: String = "precision/modconc-CP-StoreOpt.txt"
-}
- */
-
 object IncrementalSchemeModXPrecision:
     def main(args: Array[String]): Unit =
-      IncrementalSchemeModFTypePrecision.main(args)
-//IncrementalSchemeModFCPPrecision.main(args)
-//IncrementalSchemeModFCPPrecisionStoreOpt.main(args)
-//IncrementalSchemeModConcPrecision.main(args)
-//IncrementalSchemeModConcCPPrecision.main(args)
-//IncrementalSchemeModConcCPPrecisionStoreOpt.main(args)
+        IncrementalSchemeModFTypePrecision.main(args)
+        IncrementalSchemeModFCPPrecision.main(args)
+        IncrementalSchemeModConcTypePrecision.main(args)
+        IncrementalSchemeModConcCPPrecision.main(args)

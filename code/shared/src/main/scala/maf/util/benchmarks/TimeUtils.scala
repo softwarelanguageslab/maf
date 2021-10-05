@@ -36,7 +36,7 @@ object Timer:
 
 object Clock:
 
-    val stdFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
+    val stdFormat: SimpleDateFormat = new SimpleDateFormat("'on' yyyy-MM-dd 'at' HH'h'mm'm'ss's'")
 
     def now(): Date = Calendar.getInstance().nn.getTime.nn
     def nowStr(): String = stdFormat.format(now()).nn
