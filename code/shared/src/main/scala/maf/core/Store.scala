@@ -66,6 +66,12 @@ case class LocalStore[A, V](content: Map[A, (V, AbstractCount)])(using lat: Latt
         case Some(old @ (oldV, oldC)) =>
           val updated = (lat.join(oldV, vlu), oldC.inc)
           if old == updated then emptyDelta else Delta(Map(adr -> updated), Set.empty)
+    def joinAt(adr: A, vlu: V, cnt: AbstractCount): Option[LocalStore[A,V]] =
+        content.get(adr) match
+            case None => Some(LocalStore(content + (adr -> (vlu, cnt))))
+            case Some(old@(oldV,oldC)) =>
+                val upd = (lat.join(oldV, vlu), oldC.join(cnt))
+                if upd == old then None else Some(LocalStore(content + (adr -> upd)))
     private def countFor(a: A): AbstractCount =
       if shouldCount(a) then CountOne else CountInf
     // delta store ops

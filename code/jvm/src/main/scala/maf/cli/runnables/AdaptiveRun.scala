@@ -47,7 +47,7 @@ object AdaptiveRun:
         println(prg)
 
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/gambit/tak.scm")
+        val txt = Reader.loadFile("test/R5RS/various/my-test.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -60,11 +60,11 @@ object AdaptiveRun:
             .foreach { case (a, (v, _)) =>
               println(s"$a -> $v")
             }
-        anl.analyzeWithTimeoutInSeconds(30)
+        anl.analyzeWithTimeoutInSeconds(10)
         anl.visited
           .collect { case cll: anl.CallComponent => cll }
           .foreach { case cmp @ anl.CallComponent(lam, _, _, sto) =>
-            val res = anl.results.getOrElse(cmp, Set.empty).asInstanceOf[Set[?]]
+            val res = anl.results.getOrElse(cmp, (Set.empty, "EMPTY_DELTA")).asInstanceOf[Any]
             println()
             println(s"COMPONENT ${lam.lambdaName} WHERE")
             printStore(sto)
@@ -72,6 +72,7 @@ object AdaptiveRun:
             println()
           }
         println(anl.finished)
+        println(anl.visited.size)
 
     def testModConc(): Unit =
         val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")
