@@ -46,13 +46,15 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
   class IntraScvSemantics(cmp: Component) extends IntraAnalysis(cmp) with IntraScvAnalysis with BaseIntraAnalysis with GlobalMapStoreIntra:
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
-          val results = for
+          val resultsM = for
               _ <- injectPre
               value <- extract(eval(expr(cmp)))
               _ <- checkPost(value)
           yield value
 
-          writeResult(results.runValue(initialState).map(_.value).merge, cmp)
+          val results = resultsM.runValue(initialState)
+          writeMapAddrForce(cmp, results.vs.flatMap(_._2.symbolic).toList)
+          writeResult(results.map(_.value).merge, cmp)
 
       /** Check the post contract on the value resulting from the analysis of the current component */
       private def checkPost(value: PostValue): EvalM[Unit] =
