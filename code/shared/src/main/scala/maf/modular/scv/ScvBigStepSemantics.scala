@@ -13,7 +13,7 @@ import maf.core.{Identifier, Identity, Monad, Position}
 import maf.modular.scv.ScvComponent.ContractCall
 
 /** This trait encodes the semantics of the ContractScheme language */
-trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
+trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvSymbolicStore.GlobalSymbolicStore { outer =>
   import maf.util.FunctionUtils.*
   import maf.core.Monad.MonadSyntaxOps
   import maf.core.Monad.MonadIterableOps
@@ -43,7 +43,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
     def symApply(args: Symbolic*): Symbolic =
       SchemeFuncall(SchemeVar(Identifier(p.name, Identity.none)), args.toList, Identity.none)
 
-  class IntraScvSemantics(cmp: Component) extends IntraAnalysis(cmp) with IntraScvAnalysis with BaseIntraAnalysis:
+  class IntraScvSemantics(cmp: Component) extends IntraAnalysis(cmp) with IntraScvAnalysis with BaseIntraAnalysis with GlobalMapStoreIntra:
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
           val results = for
