@@ -229,6 +229,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case _       => true
         def isFalse(x: Value): Boolean = x match
             case Bool(b) => BoolLattice[B].isFalse(b)
+            case Opqs(_) => true
             case _       => false
         def isOpq(x: Value): Boolean = x match
             case Opqs(_) => true

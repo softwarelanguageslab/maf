@@ -53,6 +53,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
           yield value
 
           val results = resultsM.runValue(initialState)
+          println(results)
           writeMapAddrForce(cmp, results.vs.flatMap(_._2.symbolic).toList)
           writeResult(results.map(_.value).merge, cmp)
 
