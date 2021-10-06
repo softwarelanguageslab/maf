@@ -787,6 +787,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       def show(x: L): String = x.toString /* TODO[easy]: implement better */
       def isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
       def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
+      def isOpq(x: L): Boolean = x.foldMapL(Value.isOpq(_))(boolOrMonoid)
+
       def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] =
           def fold(argsToProcess: List[L], argsvRev: List[Value]): MayFail[L, Error] = argsToProcess match
               case arg :: args =>
