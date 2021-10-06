@@ -185,15 +185,18 @@ object OpqOps:
     /** Returns true if the given argument matches the given type */
     def matches[V: Lat](value: V, tpy: Tpy): Boolean =
         val operation = typePredicates(tpy)
-        Lat[V].op(operation)(List(value)).map(Lat[V].isTrue).getOrElse(false) ||
-        Lat[V].isOpq(value)
+        operation match
+            case SchemeOp.IsAny => true
+            case _ =>
+              Lat[V].op(operation)(List(value)).map(Lat[V].isTrue).getOrElse(false) ||
+                Lat[V].isOpq(value)
 
     /** Returns true if the arguments match (both in number *and* type) */
     def checkArgs[V: Lat](values: List[V], tpys: List[Tpy]): Boolean = (values, tpys) match
         case (v :: vs, List(VarArg(tpy))) =>
           (v :: vs).forall(v => matches(v, tpy))
-        case (List(), List(Optional(tpy)))  => true
-        case (List(v), List(Optional(tpy))) => matches(v, tpy)
+        case (List(), List(Optional(_)) | List()) => true
+        case (List(v), List(Optional(tpy)))       => matches(v, tpy)
         case (v :: vs, tpy :: tpys) =>
           matches(v, tpy) && checkArgs(vs, tpys)
         case _ => throw new Exception(s"Unsupported comparison of $values witgh $tpys")
