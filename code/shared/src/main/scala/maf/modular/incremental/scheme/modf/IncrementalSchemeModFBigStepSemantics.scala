@@ -18,8 +18,6 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
     case class IEvalM[+X](run: (Environment[Addr], List[Set[Addr]]) => Option[X]):
         def map[Y](f: X => Y): IEvalM[Y] = IEvalM((env, addr) => run(env, addr).map(f))
         def flatMap[Y](f: X => IEvalM[Y]): IEvalM[Y] = IEvalM((env, addr) => run(env, addr).flatMap(res => f(res).run(env, addr))) // TODO Are these the right addresses?
-        def push(a: Set[Addr]): IEvalM[X] = IEvalM((env, addr) => run(env, a :: addr))
-        def pop(): IEvalM[X] = IEvalM((env, addr) => run(env, addr.tail))
 
     object IEvalM extends TEvalM[IEvalM]:
         def map[X, Y](m: IEvalM[X])(f: X => Y): IEvalM[Y] = m.map(f)
@@ -27,8 +25,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
         def unit[X](x: X): IEvalM[X] = IEvalM((_, _) => Some(x))
         def mzero[X]: IEvalM[X] = IEvalM((_, _) => None)
         def guard(cnd: Boolean): IEvalM[Unit] = if cnd then IEvalM((_, _) => Some(())) else mzero
-        def push[X](m: IEvalM[X], a: Set[Addr]): IEvalM[X] = m.push(a)
-        def pop[X](m: IEvalM[X]): IEvalM[X] = m.pop()
+        def withAddr[X](a: Set[Addr])(ev: => IEvalM[X]): IEvalM[X] = IEvalM((env, addr) => ev.run(env, a :: addr))
         def getAddr[X](m: IEvalM[X]): IEvalM[_] = IEvalM((env, addr) => Some(addr))
         def getEnv: IEvalM[Environment[Address]] = IEvalM((env, addr) => Some(env))
         // TODO: withExtendedEnv would make more sense
@@ -58,7 +55,8 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
     end IEvalM
 
     type EvalM[X] = IEvalM[X]
-    override val evalM = IEvalM
+    override val evalM: IEvalM.type = IEvalM
+    import evalM._
 
     trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntraT with IncrementalIntraAnalysis:
         override protected def eval(exp: SchemeExp): EvalM[Value] = exp match
@@ -71,6 +69,18 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             case _ =>
               registerComponent(exp, component)
               super.eval(exp)
+        /*
+        override protected def evalIf(
+            prd: SchemeExp,
+            csq: SchemeExp,
+            alt: SchemeExp
+          ): EvalM[Value] =
+          for
+              prdVal <- eval(prd)
+              adr = lattice.getAddresses(prdVal).flatten
+              resVal <- cond(prdVal, withAddr(eval(csq), adr), withAddr(eval(alt), adr))
+          yield resVal
+         */
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           eval(fnBody).run(fnEnv, List()).foreach(res => writeResult(res))
 
