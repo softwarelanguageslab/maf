@@ -54,7 +54,7 @@ object IncrementalVisualisationSetup extends VisualisationSetup:
       }
 
 class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfiguration)
-    extends IncrementalSchemeModFAssertionAnalysisCPLattice(program, configuration)
+    extends IncrementalSchemeModFAnalysisCPLattice(program, configuration)
     with VisualisableIncrementalModAnalysis[SchemeExp]:
 
     type Module = Option[SchemeLambdaExp]
@@ -85,7 +85,7 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
       ) = new IntraAnalysis(cmp)
       with IncrementalSchemeModFBigStepIntra
       with IncrementalGlobalStoreIntraAnalysis
-      with AssertionModFIntra
+      // with AssertionModFIntra
       with VisualisableIntraAnalysis {
 
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =

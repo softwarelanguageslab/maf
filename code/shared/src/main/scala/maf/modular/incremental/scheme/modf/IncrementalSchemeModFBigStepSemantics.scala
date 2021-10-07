@@ -7,11 +7,13 @@ import maf.language.scheme.*
 import maf.modular.incremental.IncrementalGlobalStore
 import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
+import maf.modular.scheme.modf
 import maf.modular.scheme.modf.EvalM.*
 import maf.modular.scheme.modf.*
+import maf.util.benchmarks.Timeout
 
 /** Implements big-step semantics for an incremental Scheme analysis. * */
-trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics with IncrementalGlobalStore[SchemeExp]:
+trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with IncrementalSchemeSemantics with IncrementalGlobalStore[SchemeExp]:
 
     case class IEvalM[+X](run: (Environment[Addr], List[Set[Addr]]) => Option[X]):
         def map[Y](f: X => Y): IEvalM[Y] = IEvalM((env, addr) => run(env, addr).map(f))
@@ -55,7 +57,10 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
                 case x :: xs => f(x).flatMap(_ => xs.mapM_(f))
     end IEvalM
 
-    trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis:
+    type EvalM[X] = IEvalM[X]
+    override val evalM = IEvalM
+
+    trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntraT with IncrementalIntraAnalysis:
         override protected def eval(exp: SchemeExp): EvalM[Value] = exp match
             case SchemeCodeChange(e, _, _) if version == Old =>
               registerComponent(e, component)
@@ -66,3 +71,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
             case _ =>
               registerComponent(exp, component)
               super.eval(exp)
+        override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+          eval(fnBody).run(fnEnv, List()).foreach(res => writeResult(res))
+
+    override def intraAnalysis(cmp: Component): IncrementalSchemeModFBigStepIntra

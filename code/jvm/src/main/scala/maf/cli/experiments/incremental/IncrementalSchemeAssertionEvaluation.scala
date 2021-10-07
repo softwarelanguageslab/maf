@@ -2,16 +2,17 @@ package maf.cli.experiments.incremental
 
 import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import maf.language.CScheme.CSchemeParser
-import maf.language.change.CodeVersion._
+import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
-import maf.modular.incremental.IncrementalConfiguration._
-import maf.modular.incremental._
-import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
+import maf.modular.incremental.IncrementalConfiguration.*
+import maf.modular.incremental.*
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
+import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.modf.SchemeAssertSemantics
 import maf.util.Reader
-import maf.util.benchmarks._
+import maf.util.benchmarks.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] with TableOutput[String]:
 
@@ -23,7 +24,10 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     var results: Table[String] = Table.empty.withDefaultValue(" ")
     val error: String = errS
 
-    type Analysis = IncrementalModAnalysis[SchemeExp] with IncrementalGlobalStore[SchemeExp] with SchemeAssertSemantics
+    type Analysis = IncrementalModAnalysis[SchemeExp]
+      with IncrementalGlobalStore[SchemeExp]
+      with IncrementalSchemeModFBigStepSemantics
+      with SchemeAssertSemantics
 
     def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
 
@@ -110,6 +114,7 @@ trait IncrementalSchemeModFAssertionEvaluation extends IncrementalSchemeAssertio
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
     val configurations: List[IncrementalConfiguration] = List()
 
+/*
 object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e, config)
 
@@ -119,3 +124,4 @@ object IncrementalSchemeBigStepTypeAssertionEvaluation extends IncrementalScheme
     override def analysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAssertionAnalysisTypeLattice(e, config)
 
     override val outputFile: String = s"assertions/modf-Type.txt"
+ */
