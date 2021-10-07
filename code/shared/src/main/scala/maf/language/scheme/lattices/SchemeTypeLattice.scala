@@ -57,6 +57,8 @@ class TypeSchemeLattice[A <: Address]:
       def show(x: L): String = s"$x"
       def isTrue(x: L): Boolean = true // only "false" is not true, but we only have Bool represented
       def isFalse(x: L): Boolean = x.bool
+      def isOpq(x: L): Boolean = x.opq
+
       def refs(x: L): Set[Address] =
         x.ptrs ++ refs(x.consCells._1) ++ refs(x.consCells._2) ++ x.clos.flatMap(_._2.addrs)
       def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] =

@@ -8,7 +8,7 @@ import maf.modular.scheme.SchemeDomain
 import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
-import maf.util.TaggedSet
+import maf.util.{MonoidInstances, TaggedSet}
 import maf.core.{Identifier, Identity, Monad, Position}
 import maf.modular.scv.ScvComponent.ContractCall
 
@@ -53,6 +53,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
           yield value
 
           val results = resultsM.runValue(initialState)
+          println(results)
           writeMapAddrForce(cmp, results.vs.flatMap(_._2.symbolic).toList)
           writeResult(results.map(_.value).merge, cmp)
 
@@ -90,6 +91,17 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
         primitives.allPrimitives.keys
           .map(name => baseEnv.lookup(name).get -> SchemeVar(Identifier(name, Identity.none)))
           .toMap
+
+      /** Adds support for opaque values in primitives */
+      override protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)]): Value =
+          import MonoidInstances.*
+          import maf.util.MonoidImplicits.*
+          val values = args.map(_._2)
+          lattice.join(
+            super.applyPrimitives(fexp, fval, args),
+            if OpqOps.eligible(values) then lattice.getPrimitives(fval).foldMap(prim => OpqOps.compute(prim, values))
+            else lattice.bottom
+          )
 
       /** Applies the given primitive and returns its resulting value */
       protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =

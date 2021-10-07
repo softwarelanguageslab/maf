@@ -45,7 +45,7 @@ sealed trait MayFail[A, E] extends Serializable:
         case MayFailError(errs)   => errs.map(fe)
         case MayFailBoth(a, errs) => Set(fa(a)) ++ errs.map(fe)
 
-    def getOrElse(alt: A): A = this match
+    def getOrElse(alt: => A): A = this match
         case MayFailSuccess(a) => a
         case MayFailError(_)   => alt
         case MayFailBoth(a, _) => a
