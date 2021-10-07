@@ -69,7 +69,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             case _ =>
               registerComponent(exp, component)
               super.eval(exp)
-        /*
+
         override protected def evalIf(
             prd: SchemeExp,
             csq: SchemeExp,
@@ -77,10 +77,10 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
           ): EvalM[Value] =
           for
               prdVal <- eval(prd)
-              adr = lattice.getAddresses(prdVal).flatten
-              resVal <- cond(prdVal, withAddr(eval(csq), adr), withAddr(eval(alt), adr))
+              adr = lattice.getAddresses(prdVal)
+              resVal <- cond(prdVal, withAddr(adr)(eval(csq)), withAddr(adr)(eval(alt)))
           yield resVal
-         */
+
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           eval(fnBody).run(fnEnv, List()).foreach(res => writeResult(res))
 
