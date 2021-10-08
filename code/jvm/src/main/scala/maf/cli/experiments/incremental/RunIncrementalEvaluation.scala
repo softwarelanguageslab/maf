@@ -4,4 +4,4 @@ object RunIncrementalEvaluation:
     def main(args: Array[String]): Unit =
         IncrementalSchemeModXPrecision.main(args)
         IncrementalSchemeModXProperties.main(args)
-// IncrementalSchemeModXPerformance.main(args) // Run this last to have the other results sooner.
+        IncrementalSchemeModXPerformance.main(args) // Run this last to have the other results sooner.

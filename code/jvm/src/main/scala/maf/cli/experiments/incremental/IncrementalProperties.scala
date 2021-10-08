@@ -106,7 +106,7 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp]:
 
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
 
-    val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
+    val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
