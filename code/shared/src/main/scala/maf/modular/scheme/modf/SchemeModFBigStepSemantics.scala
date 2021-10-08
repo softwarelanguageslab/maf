@@ -101,7 +101,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
               env <- getEnv
               _ = assign(id, env, rhs)
           yield lattice.void
-        private def evalIf(
+        protected def evalIf(
             prd: SchemeExp,
             csq: SchemeExp,
             alt: SchemeExp

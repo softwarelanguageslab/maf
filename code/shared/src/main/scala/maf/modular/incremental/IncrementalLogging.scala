@@ -19,8 +19,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     val logger: NumberedLog = Logger.numbered()
     var table: Table[String] = Table.empty.withDefaultValue("")
     var step: Int = 0 // The current intra-component analysis.
-    var botRead: Option[Addr] =
-      None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
+    var botRead: Option[Addr] = None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
     var repeats: Map[Component, Integer] = Map.empty.withDefaultValue(0) // Keep track of how many times every component has been analysed.
 
     def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
@@ -76,6 +75,15 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
                            columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot")
         )
 
+    private def addressDependenciesToString(): String =
+        // Map[W, Set[R]]
+        val deps = addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) })
+        val depString = deps
+          .foldLeft(Table.empty.withDefaultValue(""))({ case (table, dep) => table.add(dep._1.toString, "Value sources", dep._2.mkString("; ")) })
+          .prettyString()
+        val scaString = computeSCAs().map(_.mkString("{", ", ", "}")).mkString("\n")
+        depString + "\nSCAs:\n" + (if (scaString.isEmpty) then "none" else scaString)
+
     // Collect some numbers
     private var intraC: Long = 0
     private var intraCU: Long = 0
@@ -109,6 +117,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         if logEnd then
             logger.logU("\n\n" + tableToString())
             logger.logU("\n" + storeString())
+            logger.logU("\n" + addressDependenciesToString())
 
     // Starting the incremental analysis.
     override def updateAnalysis(timeout: Timeout.T): Unit =
@@ -127,12 +136,14 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             logger.logU("\n\n" + getSummary())
             logger.logU("\n\n" + tableToString())
             logger.logU("\n" + storeString())
+            logger.logU("\n" + addressDependenciesToString())
         catch
             case t: Throwable =>
               logger.logException(t)
               logger.logU("\n\n" + getSummary())
               logger.logU("\n\n" + tableToString())
               logger.logU("\n" + storeString())
+              logger.logU("\n" + addressDependenciesToString())
               throw t
 
     override def deregister(target: Component, dep: Dependency): Unit =
@@ -151,11 +162,6 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     override def trigger(dep: Dependency): Unit =
         logger.log(s"TRIG $dep [adding: ${deps(dep)}]")
         super.trigger(dep)
-
-    //override def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit = {
-    //  logger.log(s"PROV $addr: $value")
-    //  super.updateProvenance(cmp, addr, value)
-    //}
 
     override def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean =
         val b = super.updateAddrInc(cmp, addr, nw)
