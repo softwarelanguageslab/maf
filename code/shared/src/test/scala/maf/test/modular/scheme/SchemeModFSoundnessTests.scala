@@ -48,10 +48,10 @@ trait ScvModF extends SchemeModFSoundnessTests:
         new ModAnalysis(program)
           with ScvBigStepSemantics
           with SchemeConstantPropagationDomain
-          with StandardScvModFComponents
+          with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
           with SchemeModFSemantics
-          with SchemeModFNoSensitivity:
+          with ScvOneContextSensitivity:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             // we always return "unknown" here because the Z3 solver is not available in the `shared` module
             override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():

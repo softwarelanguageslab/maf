@@ -1,7 +1,9 @@
 package maf.modular.scheme.modf
 
 import maf.core._
+import maf.core.Position._
 import maf.language.scheme._
+import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.benchmarks.Timeout
 
 /* Generic trait for big-step computations in a "monadic" style */

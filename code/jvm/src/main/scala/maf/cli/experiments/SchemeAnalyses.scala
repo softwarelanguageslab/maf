@@ -150,10 +150,10 @@ object SchemeAnalyses:
         new ModAnalysis(prg)
           with ScvBigStepSemantics
           with SchemeConstantPropagationDomain
-          with maf.modular.scv.StandardScvModFComponents
+          with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
           with SchemeModFSemantics
-          with SchemeModFNoSensitivity:
+          with ScvOneContextSensitivity:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             // TODO: use Z3 as solver instead of always returning "unknown"
             override val sat: ScvSatSolver[Value] =

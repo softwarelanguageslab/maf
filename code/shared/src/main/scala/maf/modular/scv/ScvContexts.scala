@@ -29,7 +29,7 @@ case class KPathCondition[L](pc: List[List[SchemeExp]]) extends ScvContext[L]
 
 case class NoContext[L]() extends ScvContext[L]
 
-trait ScvContextSensitivty extends SchemeModFSensitivity:
+trait ScvContextSensitivity extends SchemeModFSensitivity:
     type ComponentContext = ScvContext[Value]
 
     def contractContext(cmp: Component): Option[ContractCallContext[Value]] = context(cmp).flatMap {
@@ -51,3 +51,12 @@ trait ScvContextSensitivty extends SchemeModFSensitivity:
         call: Position,
         caller: Component
       ): ComponentContext = NoContext() // contexts will be created by overriding them in the semantics
+
+trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
+    protected def k: Int
+    protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value, List[SchemeExp], Identity)] => X): X = contractContext(cmp) match
+        case Some(context) => f(Some(context.domains, context.rangeContract, context.args, context.idn))
+        case _             => f(None)
+
+trait ScvOneContextSensitivity extends ScvKContextSensitivity:
+    protected val k: Int = 1

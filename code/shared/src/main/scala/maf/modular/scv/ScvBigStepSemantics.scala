@@ -10,10 +10,9 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.{MonoidInstances, TaggedSet}
 import maf.core.{Identifier, Identity, Monad, Position}
-import maf.modular.scv.ScvComponent.ContractCall
 
 /** This trait encodes the semantics of the ContractScheme language */
-trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvSymbolicStore.GlobalSymbolicStore { outer =>
+trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvSymbolicStore.GlobalSymbolicStore with ScvContextSensitivity { outer =>
   import maf.util.FunctionUtils.*
   import maf.core.Monad.MonadSyntaxOps
   import maf.core.Monad.MonadIterableOps
@@ -53,7 +52,6 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
           yield value
 
           val results = resultsM.runValue(initialState)
-          println(results)
           writeMapAddrForce(cmp, results.vs.flatMap(_._2.symbolic).toList)
           writeResult(results.map(_.value).merge, cmp)
 
@@ -264,7 +262,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
                   arr.e, // the function to apply
                   fc.args.zip(argsV.map(_.value)), // the arguments
                   fc.idn.pos, // the position of the function in the source code
-                  newComponentWithContract(rangeContract, arr.contract.domain, fc.args, fc.idn)
+                  Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
                 )
               )
           yield result

@@ -24,10 +24,10 @@ trait ScvSafetyTests extends SchemeBenchmarkTests:
         new ModAnalysis(program)
           with ScvBigStepSemantics
           with SchemeConstantPropagationDomain
-          with StandardScvModFComponents
+          with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
           with SchemeModFSemantics
-          with SchemeModFNoSensitivity:
+          with ScvOneContextSensitivity:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Addr] = lattice

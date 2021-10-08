@@ -95,7 +95,6 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
     /** Returns either Sat, Unsat or Unknown depending on the answer of Z3 */
     def sat(e: List[SchemeExp], vars: List[String]): IsSat[V] =
         import scala.language.unsafeNulls
-        println(s"Collected constraints $e")
         val translated = e.map(translate).map(assertion => s"(assert $assertion)").mkString("\n")
         val varsDeclarations = vars.map(v => s"(declare-const $v V)").mkString("\n")
         val program = prelude ++ varsDeclarations ++ translated

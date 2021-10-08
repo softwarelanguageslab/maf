@@ -128,9 +128,9 @@ trait BaseSchemeModFSemantics
           fval: Value,
           args: List[(SchemeExp, Value)],
           cll: Position,
-          newComponentAlt: (Call[ComponentContext] => Component) = newComponent
+          ctx: Option[(() => ComponentContext)] = None,
         ): Value =
-          val fromClosures = applyClosures(fval, args, cll, newComponentAlt)
+          val fromClosures = applyClosures(fval, args, cll, ctx)
           val fromPrimitives = applyPrimitives(fexp, fval, args)
           applyContinuations(fval, args)
           lattice.join(fromClosures, fromPrimitives)
@@ -146,7 +146,7 @@ trait BaseSchemeModFSemantics
           fun: Value,
           args: List[(SchemeExp, Value)],
           cll: Position,
-          newComponentAlt: (Call[ComponentContext] => Component) = newComponent
+          ctx: Option[(() => ComponentContext)] = None,
         ): Value =
           val arity = args.length
           val closures = lattice.getClosures(fun)
@@ -156,18 +156,18 @@ trait BaseSchemeModFSemantics
               clo match {
                 case (SchemeLambda(_, prs, _, _), _) if prs.length == arity =>
                   val argVals = args.map(_._2)
-                  val context = allocCtx(clo, argVals, cll, component)
+                  val context = ctx.map(_.apply()) getOrElse (allocCtx(clo, argVals, cll, component))
                   val targetCall = Call(clo, context)
-                  val targetCmp = newComponentAlt(targetCall)
+                  val targetCmp = newComponent(targetCall)
                   bindArgs(targetCmp, prs, argVals)
                   call(targetCmp)
                 case (SchemeVarArgLambda(_, prs, vararg, _, _), _) if prs.length <= arity =>
                   val (fixedArgs, varArgs) = args.splitAt(prs.length)
                   val fixedArgVals = fixedArgs.map(_._2)
                   val varArgVal = allocateList(varArgs)
-                  val context = allocCtx(clo, fixedArgVals :+ varArgVal, cll, component)
+                  val context = ctx.map(_.apply()) getOrElse allocCtx(clo, fixedArgVals :+ varArgVal, cll, component)
                   val targetCall = Call(clo, context)
-                  val targetCmp = newComponentAlt(targetCall)
+                  val targetCmp = newComponent(targetCall)
                   bindArgs(targetCmp, prs, fixedArgVals)
                   bindArg(targetCmp, vararg, varArgVal)
                   call(targetCmp)

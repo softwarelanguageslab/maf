@@ -7,6 +7,7 @@ import maf.modular.scheme.SchemeDomain
 import maf.language.ContractScheme.ContractValues._
 import maf.core.{Identifier, Identity}
 import maf.modular.scheme.modf.SchemeModFComponent
+import maf.modular.scheme.modf.BaseSchemeModFSemantics
 
 // TODO: put this into its file?
 abstract class IsSat[+V]
@@ -30,7 +31,12 @@ trait ScvSatSolver[V] {
 }
 
 /** Main trait for the soft-contract verification analysis. */
-trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain { outer =>
+trait ScvModAnalysis
+    extends ModAnalysis[SchemeExp]
+    with GlobalStore[SchemeExp]
+    with ReturnValue[SchemeExp]
+    with SchemeDomain
+    with BaseSchemeModFSemantics { outer =>
   protected val DEBUG: Boolean = true
 
   protected val sat: ScvSatSolver[Value]
@@ -40,7 +46,7 @@ trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
   /** Executes the given function using the contract embedded in the component (if any is available) */
   protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value, List[SchemeExp], Identity)] => X): X
 
-  trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra { inner =>
+  trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra with SchemeModFSemanticsIntra { inner =>
     def writeBlame(blame: Blame): Unit =
       writeAddr(ScvExceptionAddr(component, expr(component).idn), lattice.blame(blame))
 
