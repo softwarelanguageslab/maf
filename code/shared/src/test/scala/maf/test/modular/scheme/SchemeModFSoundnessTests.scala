@@ -44,17 +44,18 @@ trait ParallelSchemeModF extends SchemeModFSoundnessTests:
 trait ScvModF extends SchemeModFSoundnessTests:
     def name = "soft-contract verification soudness"
     def analysis(program: SchemeExp) =
-      new ModAnalysis(program)
-        with ScvBigStepSemantics
-        with SchemeConstantPropagationDomain
-        with StandardScvModFComponents
-        with LIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFSemantics
-        with SchemeModFNoSensitivity:
-          override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
-          // we always return "unknown" here because the Z3 solver is not available in the `shared` module
-          override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():
-              def sat(e: List[SchemeExp], vars: List[String]): IsSat[Value] = Unknown
+        import maf.modular.scv.ScvSymbolicStore.given
+        new ModAnalysis(program)
+          with ScvBigStepSemantics
+          with SchemeConstantPropagationDomain
+          with StandardSchemeModFComponents
+          with LIFOWorklistAlgorithm[SchemeExp]
+          with SchemeModFSemantics
+          with ScvOneContextSensitivity:
+            override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
+            // we always return "unknown" here because the Z3 solver is not available in the `shared` module
+            override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():
+                def sat(e: List[SchemeExp], vars: List[String]): IsSat[Value] = Unknown
 
 // concrete test suites to run ...
 

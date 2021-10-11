@@ -1,9 +1,9 @@
 package maf.modular.scheme.modf
 
 import maf.language.scheme._
-import maf.modular.scheme.modf.EvalM._
 
 trait SchemeAssertSemantics extends BigStepModFSemantics:
+    import evalM.*
     var assertionsFailed: Set[(Component, SchemeExp)] = Set.empty
 
     protected def assertViolated(component: Component, exp: SchemeExp): Unit =

@@ -14,6 +14,7 @@ object ScvRepl extends App:
         val analysis = SchemeAnalyses.scvModAnalysis(exp)
         analysis.analyze()
         println(analysis.summary.blames)
+        println(analysis.mapStoreString())
         analysis.returnValue(analysis.initialComponent)
 
     def repl(): Unit =

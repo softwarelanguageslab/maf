@@ -31,6 +31,7 @@ object SchemeOp:
     case object Cdr extends SchemeOp1("cdr")
     case object IsNull extends SchemeOp1("null?") with PredicateOp
     case object IsBoolean extends SchemeOp1("bool?") with TypeOp
+    case object IsAny extends SchemeOp1("any?")
     case object IsTrue extends SchemeOp1("true?") with PredicateOp
     case object IsFalse extends SchemeOp1("false?") with PredicateOp
     case object IsCons extends SchemeOp1("cons?") with TypeOp

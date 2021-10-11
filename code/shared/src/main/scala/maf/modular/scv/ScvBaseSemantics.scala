@@ -43,29 +43,17 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   type StoreCache = Map[Addr, Symbolic]
 
   /////////////////////////////////////////////////////
-  // Components
+  // Operations using contexts
   /////////////////////////////////////////////////////
 
   /**
-   * Create a component that wraps the given contract
+   * Based on the current state of the scvMonadInstance build a context for newly created components
    *
-   * @param contract
-   *   the range contract that needs to be checked after analyzing the component
-   * @param domains
-   *   a list of contracts on the arguments (if the component is a function) of the component
-   * @param args
-   *   the syntactic arguments associated with the function call
-   * @param idn
-   *   the source location of the function application
+   * @param default
+   *   the context to return in case that no context is required based on the state of the scvMonadInstance
    */
-  protected def newComponentWithContract(
-      contract: Value,
-      domains: List[Value],
-      args: List[SchemeExp],
-      idn: Identity
-    )(
-      cmp: SchemeModFComponent.Call[ComponentContext]
-    ): Component
+  protected def buildCtx(default: ComponentContext): EvalM[ComponentContext] =
+    scvMonadInstance.unit(default)
 
   /////////////////////////////////////////////////////
   // Monads

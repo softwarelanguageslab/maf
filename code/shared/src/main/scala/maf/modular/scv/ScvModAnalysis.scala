@@ -7,6 +7,7 @@ import maf.modular.scheme.SchemeDomain
 import maf.language.ContractScheme.ContractValues._
 import maf.core.{Identifier, Identity}
 import maf.modular.scheme.modf.SchemeModFComponent
+import maf.modular.scheme.modf.BaseSchemeModFSemantics
 
 // TODO: put this into its file?
 abstract class IsSat[+V]
@@ -30,7 +31,12 @@ trait ScvSatSolver[V] {
 }
 
 /** Main trait for the soft-contract verification analysis. */
-trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain { outer =>
+trait ScvModAnalysis
+    extends ModAnalysis[SchemeExp]
+    with GlobalStore[SchemeExp]
+    with ReturnValue[SchemeExp]
+    with SchemeDomain
+    with BaseSchemeModFSemantics { outer =>
   protected val DEBUG: Boolean = true
 
   protected val sat: ScvSatSolver[Value]
@@ -40,7 +46,17 @@ trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
   /** Executes the given function using the contract embedded in the component (if any is available) */
   protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value, List[SchemeExp], Identity)] => X): X
 
-  trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra { inner =>
+  /**
+   * Return the path condition from the component's context (if any)
+   *
+   * @param cmp
+   *   the component we would like to read the context from
+   * @return
+   *   a pair consisting of a list that represents the path condition, and the number of variables currently in the path condition (if any)
+   */
+  protected def pathConditionFromContext(cmp: Component): (List[SchemeExp], Int)
+
+  trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra with SchemeModFSemanticsIntra { inner =>
     def writeBlame(blame: Blame): Unit =
       writeAddr(ScvExceptionAddr(component, expr(component).idn), lattice.blame(blame))
 

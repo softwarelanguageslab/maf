@@ -8,12 +8,11 @@ import maf.modular.scheme.SchemeDomain
 import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
-import maf.util.TaggedSet
+import maf.util.{MonoidInstances, TaggedSet}
 import maf.core.{Identifier, Identity, Monad, Position}
-import maf.modular.scv.ScvComponent.ContractCall
 
 /** This trait encodes the semantics of the ContractScheme language */
-trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =>
+trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvSymbolicStore.GlobalSymbolicStore with ScvContextSensitivity { outer =>
   import maf.util.FunctionUtils.*
   import maf.core.Monad.MonadSyntaxOps
   import maf.core.Monad.MonadIterableOps
@@ -43,16 +42,18 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
     def symApply(args: Symbolic*): Symbolic =
       SchemeFuncall(SchemeVar(Identifier(p.name, Identity.none)), args.toList, Identity.none)
 
-  class IntraScvSemantics(cmp: Component) extends IntraAnalysis(cmp) with IntraScvAnalysis with BaseIntraAnalysis:
+  class IntraScvSemantics(cmp: Component) extends IntraAnalysis(cmp) with IntraScvAnalysis with BaseIntraAnalysis with GlobalMapStoreIntra:
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
-          val results = for
+          val resultsM = for
               _ <- injectPre
               value <- extract(eval(expr(cmp)))
               _ <- checkPost(value)
           yield value
 
-          writeResult(results.runValue(initialState).map(_.value).merge, cmp)
+          val results = resultsM.runValue(initialState)
+          writeMapAddrForce(cmp, results.vs.flatMap(_._2.symbolic).toList)
+          writeResult(results.map(_.value).merge, cmp)
 
       /** Check the post contract on the value resulting from the analysis of the current component */
       private def checkPost(value: PostValue): EvalM[Unit] =
@@ -88,6 +89,17 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
         primitives.allPrimitives.keys
           .map(name => baseEnv.lookup(name).get -> SchemeVar(Identifier(name, Identity.none)))
           .toMap
+
+      /** Adds support for opaque values in primitives */
+      override protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)]): Value =
+          import MonoidInstances.*
+          import maf.util.MonoidImplicits.*
+          val values = args.map(_._2)
+          lattice.join(
+            super.applyPrimitives(fexp, fval, args),
+            if OpqOps.eligible(values) then lattice.getPrimitives(fval).foldMap(prim => OpqOps.compute(prim, values))
+            else lattice.bottom
+          )
 
       /** Applies the given primitive and returns its resulting value */
       protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
@@ -250,7 +262,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
                   arr.e, // the function to apply
                   fc.args.zip(argsV.map(_.value)), // the arguments
                   fc.idn.pos, // the position of the function in the source code
-                  newComponentWithContract(rangeContract, arr.contract.domain, fc.args, fc.idn)
+                  Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
                 )
               )
           yield result
@@ -268,7 +280,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics { outer =
             ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))
         yield result
 
-      protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
+      override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
         // the if expression is evaluated in a different way, because we use symbolic information to extend the path condition and rule out unfeasible paths
         for
             prdValWithSym <- extract(eval(prd))

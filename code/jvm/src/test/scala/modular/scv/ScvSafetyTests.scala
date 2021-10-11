@@ -20,17 +20,18 @@ import maf.util._
  */
 trait ScvSafetyTests extends SchemeBenchmarkTests:
     protected def analysis(program: SchemeExp) =
-      new ModAnalysis(program)
-        with ScvBigStepSemantics
-        with SchemeConstantPropagationDomain
-        with StandardScvModFComponents
-        with LIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFSemantics
-        with SchemeModFNoSensitivity:
-          override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
-          override val sat: ScvSatSolver[Value] =
-              given SchemeLattice[Value, Addr] = lattice
-              new JVMSatSolver()
+        import maf.modular.scv.ScvSymbolicStore.given
+        new ModAnalysis(program)
+          with ScvBigStepSemantics
+          with SchemeConstantPropagationDomain
+          with StandardSchemeModFComponents
+          with LIFOWorklistAlgorithm[SchemeExp]
+          with SchemeModFSemantics
+          with ScvOneContextSensitivity:
+            override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
+            override val sat: ScvSatSolver[Value] =
+                given SchemeLattice[Value, Addr] = lattice
+                new JVMSatSolver()
 
     protected def parse(program: String): SchemeExp =
       ContractSchemeParser.parse(program.nn)

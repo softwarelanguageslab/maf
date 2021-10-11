@@ -10,7 +10,6 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.components.ContextSensitiveComponents
 import maf.util.benchmarks.Timeout
-import maf.modular.scheme.modf.EvalM._
 import maf.modular.worklist.{LIFOWorklistAlgorithm, RandomWorklistAlgorithm}
 
 trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiveComponents[SchemeExp] with SchemeSetup:
@@ -86,6 +85,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiv
         with BaseSchemeModFSemantics
         with BigStepModFSemantics
         with StandardSchemeModFComponents { modf =>
+      import evalM.*
+
       // SCHEME ENVIRONMENT SETUP
       lazy val baseEnv = env(intra.component)
       // SCHEME LATTICE SETUP

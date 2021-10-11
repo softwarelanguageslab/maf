@@ -14,6 +14,9 @@ case class TaggedSet[T, X](vs: Set[(Option[T], X)]):
     def ++(other: TaggedSet[T, X]): TaggedSet[T, X] =
       TaggedSet(vs ++ other.vs)
 
+    /** Returns the set of tags embedded in the tagged set (unordered), the connection with the tagged values is therefore lost. */
+    def tags: Set[T] = vs.flatMap(_._1)
+
     def merge(using Lattice[X]): X =
       vs.map(_._2).foldLeft(Lattice[X].bottom)((acc, el) => Lattice[X].join(acc, el))
 
