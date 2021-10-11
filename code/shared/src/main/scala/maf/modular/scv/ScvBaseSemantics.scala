@@ -52,7 +52,7 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
    * @param default
    *   the context to return in case that no context is required based on the state of the scvMonadInstance
    */
-  protected def buildCtx(default: ComponentContext): EvalM[ComponentContext] =
+  protected def buildCtx(cmp: Component)(default: ComponentContext): EvalM[ComponentContext] =
     scvMonadInstance.unit(default)
 
   /////////////////////////////////////////////////////

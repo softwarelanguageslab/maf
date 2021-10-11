@@ -53,6 +53,9 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
       ): ComponentContext = NoContext() // contexts will be created by overriding them in the semantics
 
 trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
+    import evalM.*
+    import maf.core.Monad.MonadSyntaxOps
+
     protected def k: Int
     protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value, List[SchemeExp], Identity)] => X): X = contractContext(cmp) match
         case Some(context) => f(Some(context.domains, context.rangeContract, context.args, context.idn))
@@ -61,6 +64,17 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
     override def pathConditionFromContext(cmp: Component): (List[SchemeExp], Int) = context(cmp) match
         case Some(KPathCondition(pc, numVars)) => (pc.flatten, numVars)
         case _                                 => (List(), 0)
+
+    override def buildCtx(cmp: Component)(default: ComponentContext): EvalM[ComponentContext] =
+      for
+          pc <- getPc
+          vars <- getVars.map(_.size)
+      yield context(cmp) match
+          case Some(KPathCondition(oldPc, oldNumVars)) =>
+            // if the current context contains a KPathCondition component, merge them
+            KPathCondition((pc :: oldPc).take(k), vars + oldNumVars)
+          case _ =>
+            KPathCondition(List(pc), vars)
 
 trait ScvOneContextSensitivity extends ScvKContextSensitivity:
     protected val k: Int = 1

@@ -31,12 +31,8 @@ trait ScvSatSolver[V] {
 }
 
 /** Main trait for the soft-contract verification analysis. */
-trait ScvModAnalysis
-    extends ModAnalysis[SchemeExp]
-    with GlobalStore[SchemeExp]
-    with ReturnValue[SchemeExp]
-    with SchemeDomain
-    with BaseSchemeModFSemantics { outer =>
+trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain with ScvBaseSemantics {
+  outer =>
   protected val DEBUG: Boolean = true
 
   protected val sat: ScvSatSolver[Value]
@@ -56,7 +52,7 @@ trait ScvModAnalysis
    */
   protected def pathConditionFromContext(cmp: Component): (List[SchemeExp], Int)
 
-  trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra with SchemeModFSemanticsIntra { inner =>
+  trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra with BaseIntraAnalysis { inner =>
     def writeBlame(blame: Blame): Unit =
       writeAddr(ScvExceptionAddr(component, expr(component).idn), lattice.blame(blame))
 
