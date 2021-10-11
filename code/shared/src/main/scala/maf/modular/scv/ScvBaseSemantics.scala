@@ -43,6 +43,19 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   type StoreCache = Map[Addr, Symbolic]
 
   /////////////////////////////////////////////////////
+  // Operations using contexts
+  /////////////////////////////////////////////////////
+
+  /**
+   * Based on the current state of the scvMonadInstance build a context for newly created components
+   *
+   * @param default
+   *   the context to return in case that no context is required based on the state of the scvMonadInstance
+   */
+  protected def buildCtx(default: ComponentContext): EvalM[ComponentContext] =
+    scvMonadInstance.unit(default)
+
+  /////////////////////////////////////////////////////
   // Monads
   /////////////////////////////////////////////////////
 

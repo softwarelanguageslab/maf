@@ -46,6 +46,16 @@ trait ScvModAnalysis
   /** Executes the given function using the contract embedded in the component (if any is available) */
   protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value, List[SchemeExp], Identity)] => X): X
 
+  /**
+   * Return the path condition from the component's context (if any)
+   *
+   * @param cmp
+   *   the component we would like to read the context from
+   * @return
+   *   a pair consisting of a list that represents the path condition, and the number of variables currently in the path condition (if any)
+   */
+  protected def pathConditionFromContext(cmp: Component): (List[SchemeExp], Int)
+
   trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra with SchemeModFSemanticsIntra { inner =>
     def writeBlame(blame: Blame): Unit =
       writeAddr(ScvExceptionAddr(component, expr(component).idn), lattice.blame(blame))
