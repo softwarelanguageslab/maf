@@ -8,7 +8,6 @@ import maf.modular.incremental.IncrementalGlobalStore
 import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
 import maf.modular.scheme.modf
-import maf.modular.scheme.modf.EvalM.*
 import maf.modular.scheme.modf.*
 import maf.util.benchmarks.Timeout
 

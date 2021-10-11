@@ -9,7 +9,6 @@ import maf.modular.incremental._
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeConstantPropagationDomain
 import maf.modular.incremental.scheme.modconc.IncrementalSchemeModConcSmallStepSemantics
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
-import maf.modular.scheme.modf.EvalM
 import maf.modular.scheme.modf._
 import maf.modular.scheme.ssmodconc._
 import maf.modular.worklist.LIFOWorklistAlgorithm
