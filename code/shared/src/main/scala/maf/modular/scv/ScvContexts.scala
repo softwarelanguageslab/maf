@@ -61,9 +61,12 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
         case Some(context) => f(Some(context.domains, context.rangeContract, context.args, context.idn))
         case _             => f(None)
 
-    override def pathConditionFromContext(cmp: Component): (List[SchemeExp], List[String]) = context(cmp) match
-        case Some(KPathCondition(pc, vars)) => (pc.flatten, vars)
-        case _                              => (List(), List())
+    override def fromContext(cmp: Component): FromContext = context(cmp) match
+        case Some(KPathCondition(pc, vs)) =>
+          new FromContext:
+              def pathCondition: List[SchemeExp] = pc.flatten
+              def vars: List[String] = vs
+        case _ => EmptyContext
 
     override def buildCtx(cmp: Component)(default: ComponentContext): EvalM[ComponentContext] =
       for

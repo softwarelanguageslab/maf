@@ -67,10 +67,10 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
 
       /** Injects information from the components context in the current analysis */
       private def injectCtx: EvalM[Unit] =
-          val (pc, vars) = pathConditionFromContext(cmp)
+          val context = fromContext(cmp)
           for
-              _ <- putPc(pc)
-              _ <- putVars(vars)
+              _ <- putPc(context.pathCondition)
+              _ <- putVars(context.vars)
           yield ()
 
       /** Injects the pre-condition contracts (if any are available) in the analysis of the current component */

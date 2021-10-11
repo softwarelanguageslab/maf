@@ -42,15 +42,16 @@ trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
   /** Executes the given function using the contract embedded in the component (if any is available) */
   protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value, List[SchemeExp], Identity)] => X): X
 
-  /**
-   * Return the path condition from the component's context (if any)
-   *
-   * @param cmp
-   *   the component we would like to read the context from
-   * @return
-   *   a pair consisting of a list that represents the path condition, and the number of variables currently in the path condition (if any)
-   */
-  protected def pathConditionFromContext(cmp: Component): (List[SchemeExp], List[String])
+  trait FromContext:
+      def pathCondition: List[SchemeExp]
+      def vars: List[String]
+
+  object EmptyContext extends FromContext:
+      def pathCondition: List[SchemeExp] = List()
+      def vars: List[String] = List()
+
+  /** Returns interesting information about the context of the current component */
+  protected def fromContext(cmp: Component): FromContext
 
   trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra with BaseIntraAnalysis { inner =>
     def writeBlame(blame: Blame): Unit =
