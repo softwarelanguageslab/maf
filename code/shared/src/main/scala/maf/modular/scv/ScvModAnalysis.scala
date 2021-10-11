@@ -50,7 +50,7 @@ trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] 
    * @return
    *   a pair consisting of a list that represents the path condition, and the number of variables currently in the path condition (if any)
    */
-  protected def pathConditionFromContext(cmp: Component): (List[SchemeExp], Int)
+  protected def pathConditionFromContext(cmp: Component): (List[SchemeExp], List[String])
 
   trait IntraScvAnalysis extends IntraAnalysis with GlobalStoreIntra with ReturnResultIntra with BaseIntraAnalysis { inner =>
     def writeBlame(blame: Blame): Unit =

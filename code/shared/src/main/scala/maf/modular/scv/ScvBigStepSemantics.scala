@@ -46,6 +46,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
       override def analyzeWithTimeout(timeout: Timeout.T): Unit =
           val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
           val resultsM = for
+              _ <- injectCtx
               _ <- injectPre
               value <- extract(eval(expr(cmp)))
               _ <- checkPost(value)
@@ -63,6 +64,14 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
             applyMon(PostValue.noSymbolic(contract), value, expr(cmp), expr(cmp).idn).flatMap(_ => unit(()))
           case None => unit(())
         }
+
+      /** Injects information from the components context in the current analysis */
+      private def injectCtx: EvalM[Unit] =
+          val (pc, vars) = pathConditionFromContext(cmp)
+          for
+              _ <- putPc(pc)
+              _ <- putVars(vars)
+          yield ()
 
       /** Injects the pre-condition contracts (if any are available) in the analysis of the current component */
       private def injectPre: EvalM[Unit] =

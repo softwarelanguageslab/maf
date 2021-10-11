@@ -25,7 +25,7 @@ sealed trait ScvContext[L]
 case class ContractCallContext[L](domains: List[L], rangeContract: L, args: List[SchemeExp], idn: Identity) extends ScvContext[L]
 
 /** Keeps track of the path conditions from the last k components */
-case class KPathCondition[L](pc: List[List[SchemeExp]], numOfVars: Int) extends ScvContext[L]
+case class KPathCondition[L](pc: List[List[SchemeExp]], vars: List[String]) extends ScvContext[L]
 
 case class NoContext[L]() extends ScvContext[L]
 
@@ -61,18 +61,18 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
         case Some(context) => f(Some(context.domains, context.rangeContract, context.args, context.idn))
         case _             => f(None)
 
-    override def pathConditionFromContext(cmp: Component): (List[SchemeExp], Int) = context(cmp) match
-        case Some(KPathCondition(pc, numVars)) => (pc.flatten, numVars)
-        case _                                 => (List(), 0)
+    override def pathConditionFromContext(cmp: Component): (List[SchemeExp], List[String]) = context(cmp) match
+        case Some(KPathCondition(pc, vars)) => (pc.flatten, vars)
+        case _                              => (List(), List())
 
     override def buildCtx(cmp: Component)(default: ComponentContext): EvalM[ComponentContext] =
       for
           pc <- getPc
-          vars <- getVars.map(_.size)
+          vars <- getVars
       yield context(cmp) match
-          case Some(KPathCondition(oldPc, oldNumVars)) =>
+          case Some(KPathCondition(oldPc, oldVars)) =>
             // if the current context contains a KPathCondition component, merge them
-            KPathCondition((pc :: oldPc).take(k), vars + oldNumVars)
+            KPathCondition((pc :: oldPc).take(k), vars ++ oldVars)
           case _ =>
             KPathCondition(List(pc), vars)
 
