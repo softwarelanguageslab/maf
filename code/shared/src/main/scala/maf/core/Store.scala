@@ -54,20 +54,12 @@ case class LocalStore[A, V](content: Map[A, (V, AbstractCount)])(using lat: Latt
     inline def apply(a: A): V = content(a)._1
     def update(adr: A, vlu: V): Delta[A,V] = content.get(adr) match
         case None => throw new Exception("Trying to update a non-existing address")
-        // strong update
-        case Some((oldV, CountOne)) if oldV == vlu => Delta(Map.empty, Set(adr))
-        case Some((_, CountOne))                   => Delta(Map((adr -> (vlu, CountOne))), Set(adr))
-        // weak update
-        case Some((oldV, CountInf)) =>
-          val newV = lat.join(oldV, vlu)
-          if (oldV == newV) then Delta(Map.empty, Set(adr))
-          else Delta(Map(adr -> (newV, CountInf)), Set(adr))
+        case Some((_, CountOne))    => Delta(Map((adr -> (vlu, CountOne))), Set(adr)) // strong update
+        case Some((oldV, CountInf)) => Delta(Map(adr -> (lat.join(oldV, vlu), CountInf)), Set(adr)) // weak update
     def extend(adr: A, vlu: V) = content.get(adr) match
-        case None if lat.isBottom(vlu) => Delta.empty
-        case None                      => Delta(Map(adr -> (vlu, countFor(adr))), Set.empty)
-        case Some(old @ (oldV, oldC)) =>
-          val updated = (lat.join(oldV, vlu), oldC.inc)
-          if old == updated then Delta.empty else Delta(Map(adr -> updated), Set.empty)
+        case None if lat.isBottom(vlu)  => Delta.empty
+        case None                       => Delta(Map(adr -> (vlu, countFor(adr))), Set.empty)
+        case Some(old @ (oldV, oldC))   => Delta(Map(adr -> (lat.join(oldV, vlu), oldC.inc)), Set.empty)
     def joinAt(adr: A, vlu: V, cnt: AbstractCount): Option[LocalStore[A,V]] =
         content.get(adr) match
             case None => Some(LocalStore(content + (adr -> (vlu, cnt))))

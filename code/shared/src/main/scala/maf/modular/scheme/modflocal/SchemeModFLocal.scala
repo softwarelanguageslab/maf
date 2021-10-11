@@ -288,6 +288,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                 stores += cmp -> sto
                 trigger(WidenedAddrDependency(cmp, adr))
           }
+          
       override def doWrite(dep: Dependency): Boolean = dep match
           case ResultDependency(cmp) =>
             val old = inter.results.getOrElse(cmp, Set.empty)
