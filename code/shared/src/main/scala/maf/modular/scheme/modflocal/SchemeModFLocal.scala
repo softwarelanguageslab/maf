@@ -48,13 +48,13 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     sealed trait Component extends Serializable:
         def exp: Exp
         def env: Env
-        val sto: Sto
         val ctx: Ctx
+        val sto: Sto
     case object MainComponent extends Component:
         val exp = initialExp
         val env = initialEnv
-        val sto = initialSto
         val ctx = initialCtx
+        val sto = emptySto
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, ctx: Ctx, sto: Sto) extends Component:
         def exp = SchemeBody(lam.body)
@@ -160,9 +160,19 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       case Local
       case Widened 
 
-    def policy(adr: Adr): AddrPolicy = AddrPolicy.Local
+    var fixedPolicies: Map[Adr, AddrPolicy] = Map.empty
+    def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
+    def policy(adr: Adr): AddrPolicy = 
+      fixedPolicies.get(adr) match
+        case Some(ply) => ply
+        case None => customPolicy(adr)
 
     var stores: Map[Cmp, Sto] = Map.empty
+
+    override def init() = 
+      super.init()
+      stores += MainComponent -> initialSto
+      initialBds.map(_._2).foreach(adr => fixedPolicies += adr -> AddrPolicy.Widened)
     
     case class WidenedAddrDependency(cmp: Cmp, adr: Adr) extends Dependency
 
