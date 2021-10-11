@@ -20,6 +20,7 @@ import maf.language.scheme.interpreter._
 import maf.language.scheme.SchemeMutableVarBoxer
 import maf.language.scheme.primitives.SchemePrelude
 import maf.language.CScheme.CSchemeLexicalAddresser
+import maf.core._
 
 object AdaptiveRun:
 
@@ -47,7 +48,7 @@ object AdaptiveRun:
         println(prg)
 
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/various/my-test.scm")
+        val txt = Reader.loadFile("test/R5RS/various/lambda-update.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -60,15 +61,24 @@ object AdaptiveRun:
             .foreach { case (a, (v, _)) =>
               println(s"$a -> $v")
             }
+        def printDelta(dlt: anl.Dlt) =
+          dlt.delta.view
+            .toMap
+            .foreach { case (a, (v, _)) =>
+              println(s"$a -> $v")
+            }
         anl.analyzeWithTimeoutInSeconds(10)
         anl.visited
           .collect { case cll: anl.CallComponent => cll }
           .foreach { case cmp @ anl.CallComponent(lam, _, _, sto) =>
-            val res = anl.results.getOrElse(cmp, (Set.empty, "EMPTY_DELTA")).asInstanceOf[Any]
+            val (res, dlt) = anl.results.getOrElse(cmp, (Set.empty, Delta.empty)).asInstanceOf[(Set[(anl.Val, anl.Dlt)], anl.Dlt)]
             println()
             println(s"COMPONENT ${lam.lambdaName} WHERE")
-            printStore(sto)
-            println(s"==> $res")
+            assert(sto == LocalStore.empty)
+            printStore(anl.stores.getOrElse(cmp, sto))
+            println(s"==> RESULTS: ${res.map((v,d) => { assert(d == Delta.empty) ; v })}")
+            println(s"==> DELTA (updated: ${dlt.updates.mkString("{",",","}")}):")
+            printDelta(dlt)
             println()
           }
         println(anl.finished)

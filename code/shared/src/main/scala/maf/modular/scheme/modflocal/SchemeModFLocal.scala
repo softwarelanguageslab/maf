@@ -54,7 +54,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         val exp = initialExp
         val env = initialEnv
         val ctx = initialCtx
-        val sto = initialSto
+        val sto = LocalStore.empty
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, ctx: Ctx, sto: Sto) extends Component:
         def exp = SchemeBody(lam.body)
@@ -140,7 +140,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def collectDelta(sto: Sto, stw: Sto, rss: Set[(Val, Dlt)], std: Dlt): (Set[(Val, Dlt)], Dlt)  =
       rss.foldLeft((Set.empty[(Val, Dlt)], Delta.empty)) {
         case ((accR, accW), (v, d)) =>
-          val ((gcd, _), (gdw, _)) = DeltaGC.collect(((d, sto), (std, stw)), lattice.refs(v) ++ d.updates)
+          val ((gcd, _), (gdw, _)) = DeltaGC.collect(((d, sto), (std, stw)), lattice.refs(v) ++ d.updates ++ std.updates)
           (accR + ((v, gcd)), stw.join(accW, gdw))
       }
 
@@ -159,7 +159,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       case Widened 
 
     var fixedPolicies: Map[Adr, AddrPolicy] = Map.empty
-    def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Local
+    def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
     def policy(adr: Adr): AddrPolicy = 
       fixedPolicies.get(adr) match
         case Some(ply) => ply
@@ -169,8 +169,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     override def init() = 
       super.init()
-      //stores += MainComponent -> initialSto
-      //initialBds.map(_._2).foreach(adr => fixedPolicies += adr -> AddrPolicy.Widened)
+      stores += MainComponent -> initialSto
+      initialBds.map(_._2).foreach(adr => fixedPolicies += adr -> AddrPolicy.Widened)
     
     case class WidenedAddrDependency(cmp: Cmp, adr: Adr) extends Dependency
 
