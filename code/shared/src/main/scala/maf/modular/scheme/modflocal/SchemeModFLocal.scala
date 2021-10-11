@@ -67,7 +67,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // RESULTS
     //
 
-    type Res = Map[Cmp, Any] // Res is actually (cmp: Cmp) => Set[(Val, cmp.sto.DeltaStore)]
+    type Res = Map[Cmp, (Set[(Val, Dlt)], Dlt)]
 
     var results: Res = Map.empty
     case class ResultDependency(cmp: Cmp) extends Dependency
@@ -291,8 +291,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           
       override def doWrite(dep: Dependency): Boolean = dep match
           case ResultDependency(cmp) =>
-            val old = inter.results.getOrElse(cmp, Set.empty)
-            val cur = intra.results.getOrElse(cmp, Set.empty)
+            val old = inter.results.getOrElse(cmp, (Set.empty, Delta.empty))
+            val cur = intra.results.getOrElse(cmp, (Set.empty, Delta.empty))
             if old != cur then
                 inter.results += cmp -> cur
                 true

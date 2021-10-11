@@ -48,7 +48,7 @@ object AdaptiveRun:
         println(prg)
 
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/various/lambda-update.scm")
+        val txt = Reader.loadFile("test/R5RS/various/widen.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -74,9 +74,11 @@ object AdaptiveRun:
             val (res, dlt) = anl.results.getOrElse(cmp, (Set.empty, Delta.empty)).asInstanceOf[(Set[(anl.Val, anl.Dlt)], anl.Dlt)]
             println()
             println(s"COMPONENT ${lam.lambdaName} WHERE")
-            assert(sto == LocalStore.empty)
-            printStore(anl.stores.getOrElse(cmp, sto))
-            println(s"==> RESULTS: ${res.map((v,d) => { assert(d == Delta.empty) ; v })}")
+            println("[LOCAL]")
+            printStore(sto)
+            println("[WIDENED]")
+            anl.stores.get(cmp).foreach(printStore)
+            println(s"==> RESULTS: $res")
             println(s"==> DELTA (updated: ${dlt.updates.mkString("{",",","}")}):")
             printDelta(dlt)
             println()
