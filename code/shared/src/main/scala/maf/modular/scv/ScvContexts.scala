@@ -106,7 +106,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
                     // if the current context contains a KPathCondition component, merge them
                     KPathCondition((pc :: oldPc).take(k), (vars :: oldVars).take(k), symbolic, rangeContract)
                   case _ =>
-                    KPathCondition(List(pc), List(vars), symbolic, rangeContract)
+                    KPathCondition(List(pc).take(k), List(vars).take(k), symbolic, rangeContract)
 
 trait ScvOneContextSensitivity extends ScvKContextSensitivity:
     protected val k: Int = 1
