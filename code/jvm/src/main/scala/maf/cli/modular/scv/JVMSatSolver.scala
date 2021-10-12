@@ -101,4 +101,6 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
 
         given interpreter: Interpreter = Z3Interpreter.buildDefault
         val script: Script = parseStringToScript(program)
-        isSat(script)
+        val answer = isSat(script)
+        interpreter.free
+        answer
