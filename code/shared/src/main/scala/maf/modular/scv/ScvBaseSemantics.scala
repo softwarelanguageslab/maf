@@ -49,11 +49,13 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   /**
    * Based on the current state of the scvMonadInstance build a context for newly created components
    *
-   * @param default
-   *   the context to return in case that no context is required based on the state of the scvMonadInstance
+   * @param symArgs
+   *   a list of arguments of the function call corresponding to the context of the component we are building
+   * @param rangeContract
+   *   an optional range contract
    */
-  protected def buildCtx(cmp: Component)(default: ComponentContext): EvalM[ComponentContext] =
-    scvMonadInstance.unit(default)
+  protected def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value]): EvalM[ContextBuilder] =
+    scvMonadInstance.unit(DefaultContextBuilder)
 
   /////////////////////////////////////////////////////
   // Monads

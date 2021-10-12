@@ -29,6 +29,24 @@ trait BaseSchemeModFSemantics
     // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
     def view(cmp: Component): SchemeModFComponent
 
+    // Represent `allocCtx` as a value, which can be passed
+    // to other functions
+    protected trait ContextBuilder:
+        def alloc(
+            clo: (SchemeLambdaExp, Environment[Address]),
+            args: List[Value],
+            call: Position,
+            caller: Component
+          ): ComponentContext
+
+    protected object DefaultContextBuilder extends ContextBuilder:
+        def alloc(
+            clo: (SchemeLambdaExp, Environment[Address]),
+            args: List[Value],
+            call: Position,
+            caller: Component
+          ): ComponentContext = allocCtx(clo, args, call, caller)
+
     lazy val mainBody = program
     def expr(cmp: Component): SchemeExp = body(cmp)
     def body(cmp: Component): SchemeExp = body(view(cmp))
@@ -128,7 +146,7 @@ trait BaseSchemeModFSemantics
           fval: Value,
           args: List[(SchemeExp, Value)],
           cll: Position,
-          ctx: Option[(() => ComponentContext)] = None,
+          ctx: ContextBuilder = DefaultContextBuilder,
         ): Value =
           val fromClosures = applyClosures(fval, args, cll, ctx)
           val fromPrimitives = applyPrimitives(fexp, fval, args)
@@ -146,7 +164,7 @@ trait BaseSchemeModFSemantics
           fun: Value,
           args: List[(SchemeExp, Value)],
           cll: Position,
-          ctx: Option[(() => ComponentContext)] = None,
+          ctx: ContextBuilder = DefaultContextBuilder,
         ): Value =
           val arity = args.length
           val closures = lattice.getClosures(fun)
@@ -156,7 +174,7 @@ trait BaseSchemeModFSemantics
               clo match {
                 case (SchemeLambda(_, prs, _, _), _) if prs.length == arity =>
                   val argVals = args.map(_._2)
-                  val context = ctx.map(_.apply()) getOrElse (allocCtx(clo, argVals, cll, component))
+                  val context = ctx.alloc(clo, argVals, cll, component)
                   val targetCall = Call(clo, context)
                   val targetCmp = newComponent(targetCall)
                   bindArgs(targetCmp, prs, argVals)
@@ -165,7 +183,8 @@ trait BaseSchemeModFSemantics
                   val (fixedArgs, varArgs) = args.splitAt(prs.length)
                   val fixedArgVals = fixedArgs.map(_._2)
                   val varArgVal = allocateList(varArgs)
-                  val context = ctx.map(_.apply()) getOrElse allocCtx(clo, fixedArgVals :+ varArgVal, cll, component)
+
+                  val context = ctx.alloc(clo, fixedArgVals :+ varArgVal, cll, component)
                   val targetCall = Call(clo, context)
                   val targetCmp = newComponent(targetCall)
                   bindArgs(targetCmp, prs, fixedArgVals)
