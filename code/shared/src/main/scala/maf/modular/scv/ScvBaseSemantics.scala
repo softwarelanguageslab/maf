@@ -52,7 +52,7 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
    * @param default
    *   the context to return in case that no context is required based on the state of the scvMonadInstance
    */
-  protected def buildCtx(default: ComponentContext): EvalM[ComponentContext] =
+  protected def buildCtx(cmp: Component)(default: ComponentContext): EvalM[ComponentContext] =
     scvMonadInstance.unit(default)
 
   /////////////////////////////////////////////////////
@@ -115,8 +115,22 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   protected def getPc: EvalM[List[Symbolic]] =
     scvMonadInstance.get.map(_.pc)
 
+  /** Replaces the current path condition with the one given as a parameter */
+  protected def putPc(pc: List[SchemeExp]): EvalM[Unit] =
+    for
+        st <- scvMonadInstance.get
+        _ <- scvMonadInstance.put(st.copy(pc = pc))
+    yield ()
+
   protected def getVars: EvalM[List[String]] =
     scvMonadInstance.get.map(_.vars)
+
+  /** Replaces the current set of variables that are in the path condition with the given list */
+  protected def putVars(vars: List[String]): EvalM[Unit] =
+    for
+        st <- scvMonadInstance.get
+        _ <- scvMonadInstance.put(st.copy(vars = vars, freshVar = vars.size + 1))
+    yield ()
 
   /** Generates a fresh symbolic variable */
   protected def fresh: EvalM[Symbolic] =

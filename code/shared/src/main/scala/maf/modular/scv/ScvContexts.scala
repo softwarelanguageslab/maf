@@ -25,7 +25,7 @@ sealed trait ScvContext[L]
 case class ContractCallContext[L](domains: List[L], rangeContract: L, args: List[SchemeExp], idn: Identity) extends ScvContext[L]
 
 /** Keeps track of the path conditions from the last k components */
-case class KPathCondition[L](pc: List[List[SchemeExp]], numOfVars: Int) extends ScvContext[L]
+case class KPathCondition[L](pc: List[List[SchemeExp]], vars: List[String]) extends ScvContext[L]
 
 case class NoContext[L]() extends ScvContext[L]
 
@@ -53,14 +53,31 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
       ): ComponentContext = NoContext() // contexts will be created by overriding them in the semantics
 
 trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
+    import evalM.*
+    import maf.core.Monad.MonadSyntaxOps
+
     protected def k: Int
     protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value, List[SchemeExp], Identity)] => X): X = contractContext(cmp) match
         case Some(context) => f(Some(context.domains, context.rangeContract, context.args, context.idn))
         case _             => f(None)
 
-    override def pathConditionFromContext(cmp: Component): (List[SchemeExp], Int) = context(cmp) match
-        case Some(KPathCondition(pc, numVars)) => (pc.flatten, numVars)
-        case _                                 => (List(), 0)
+    override def fromContext(cmp: Component): FromContext = context(cmp) match
+        case Some(KPathCondition(pc, vs)) =>
+          new FromContext:
+              def pathCondition: List[SchemeExp] = pc.flatten
+              def vars: List[String] = vs
+        case _ => EmptyContext
+
+    override def buildCtx(cmp: Component)(default: ComponentContext): EvalM[ComponentContext] =
+      for
+          pc <- getPc
+          vars <- getVars
+      yield context(cmp) match
+          case Some(KPathCondition(oldPc, oldVars)) =>
+            // if the current context contains a KPathCondition component, merge them
+            KPathCondition((pc :: oldPc).take(k), vars ++ oldVars)
+          case _ =>
+            KPathCondition(List(pc), vars)
 
 trait ScvOneContextSensitivity extends ScvKContextSensitivity:
     protected val k: Int = 1

@@ -37,7 +37,7 @@ jobs:
         id: slack
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
-          channel: maf
+          channel: maf-logs
           status: STARTED
           color: warning
         env:
@@ -76,7 +76,7 @@ jobs:
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf
+          channel: maf-logs
           status: FAILED
           color: danger
   # The test-lattice job executes the lattice tests.
@@ -103,7 +103,7 @@ jobs:
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf
+          channel: maf-logs
           status: FAILED
           color: danger
   # The test-R5RS job executes the R5RS tests.
@@ -130,7 +130,7 @@ jobs:
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf
+          channel: maf-logs
           status: FAILED
           color: danger
   # The test-parser job executes the parser tests.
@@ -156,7 +156,7 @@ jobs:
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf
+          channel: maf-logs
           status: FAILED
           color: danger
   # The test-interpreter job executes the interpreter tests.
@@ -182,7 +182,7 @@ jobs:
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf
+          channel: maf-logs
           status: FAILED
           color: danger
   # The test-soundness job executes the soundness tests.
@@ -213,7 +213,7 @@ jobs:
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf
+          channel: maf-logs
           status: FAILED
           color: danger
   # The test-soundness-incremental job executes the soundness tests for the incremental analyses.
@@ -251,7 +251,7 @@ jobs:
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf
+          channel: maf-logs
           status: FAILED
           color: danger
   # The test-incremental job executes tests for the incremental analyses that are not the standard soundness tests.
@@ -282,7 +282,7 @@ jobs:
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf
+          channel: maf-logs
           status: FAILED
           color: danger
   notify-success:
@@ -298,6 +298,6 @@ jobs:
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf
+          channel: maf-logs
           status: SUCCESS
           color: good
