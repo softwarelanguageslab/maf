@@ -45,36 +45,35 @@ case object CountInf extends AbstractCount:
     def join(other: AbstractCount) = this
     def +(cnt: => AbstractCount) = this
 
+case class Delta[A,V](delta: Map[A, (V, AbstractCount)], updates: Set[A])
+object Delta:
+  def empty[A,V]: Delta[A,V] = Delta(Map.empty, Set.empty) 
+
 case class LocalStore[A, V](content: Map[A, (V, AbstractCount)])(using lat: Lattice[V], shouldCount: A => Boolean):
     outer =>
-    case class Delta(delta: Map[A, (V, AbstractCount)], updates: Set[A]):
-        def parent = outer
     inline def apply(a: A): V = content(a)._1
-    def update(adr: A, vlu: V): Delta = content.get(adr) match
+    def update(adr: A, vlu: V): Delta[A,V] = content.get(adr) match
         case None => throw new Exception("Trying to update a non-existing address")
-        // strong update
-        case Some((oldV, CountOne)) if oldV == vlu => Delta(Map.empty, Set(adr))
-        case Some((_, CountOne))                   => Delta(Map((adr -> (vlu, CountOne))), Set(adr))
-        // weak update
-        case Some((oldV, CountInf)) =>
-          val newV = lat.join(oldV, vlu)
-          if (oldV == newV) then Delta(Map.empty, Set(adr))
-          else Delta(Map(adr -> (newV, CountInf)), Set(adr))
+        case Some((_, CountOne))    => Delta(Map((adr -> (vlu, CountOne))), Set(adr)) // strong update
+        case Some((oldV, CountInf)) => Delta(Map(adr -> (lat.join(oldV, vlu), CountInf)), Set(adr)) // weak update
     def extend(adr: A, vlu: V) = content.get(adr) match
-        case None if lat.isBottom(vlu) => emptyDelta
-        case None                      => Delta(Map(adr -> (vlu, countFor(adr))), Set.empty)
-        case Some(old @ (oldV, oldC)) =>
-          val updated = (lat.join(oldV, vlu), oldC.inc)
-          if old == updated then emptyDelta else Delta(Map(adr -> updated), Set.empty)
+        case None if lat.isBottom(vlu)  => Delta.empty
+        case None                       => Delta(Map(adr -> (vlu, countFor(adr))), Set.empty)
+        case Some(old @ (oldV, oldC))   => Delta(Map(adr -> (lat.join(oldV, vlu), oldC.inc)), Set.empty)
+    def joinAt(adr: A, vlu: V, cnt: AbstractCount): Option[LocalStore[A,V]] =
+        content.get(adr) match
+            case None => Some(LocalStore(content + (adr -> (vlu, cnt))))
+            case Some(old@(oldV,oldC)) =>
+                val upd = (lat.join(oldV, vlu), oldC.join(cnt))
+                if upd == old then None else Some(LocalStore(content + (adr -> upd)))
     private def countFor(a: A): AbstractCount =
       if shouldCount(a) then CountOne else CountInf
     // delta store ops
-    val emptyDelta: Delta = Delta(Map.empty, Set.empty)
-    def compose(d1: LocalStore[A, V]#Delta, d0: Delta): Delta =
+    def compose(d1: Delta[A,V], d0: Delta[A,V]): Delta[A,V] =
       Delta(d0.delta ++ d1.delta, d0.updates ++ d1.updates.filter(content.contains(_)))
-    def integrate(d: Delta): LocalStore[A, V] =
+    def integrate(d: Delta[A,V]): LocalStore[A, V] =
       LocalStore(content ++ d.delta)
-    def join(d1: Delta, d2: Delta): Delta =
+    def join(d1: Delta[A,V], d2: Delta[A,V]): Delta[A,V] =
       Delta(
         d2.delta.foldLeft(d1.delta) { case (acc, (adr, (vlu, cnt))) =>
           acc.get(adr) match
@@ -83,7 +82,7 @@ case class LocalStore[A, V](content: Map[A, (V, AbstractCount)])(using lat: Latt
         },
         d1.updates ++ d2.updates
       )
-    def replay(gcs: LocalStore[A, V], d: gcs.Delta): Delta =
+    def replay(gcs: LocalStore[A, V], d: Delta[A,V]): Delta[A,V] =
       Delta(
         d.delta.foldLeft(Map.empty) { case (acc, (adr, s @ (v, c))) =>
           if gcs.content.contains(adr) then acc + (adr -> s)
