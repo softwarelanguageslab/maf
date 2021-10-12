@@ -77,7 +77,7 @@ object AdaptiveRun:
             println("[LOCAL]")
             printStore(sto)
             println("[WIDENED]")
-            printStore(anl.getStore(anl.stores, cmp))
+            printStore(anl.getStore(anl.stores, cmp.exp, cmp.ctx))
             println(s"==> RESULTS: $res")
             println(s"==> DELTA (updated: ${dlt.updates.mkString("{",",","}")}):")
             printDelta(dlt)

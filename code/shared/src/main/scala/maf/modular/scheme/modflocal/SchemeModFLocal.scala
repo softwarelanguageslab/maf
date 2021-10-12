@@ -169,29 +169,29 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     type Sts = Map[(Exp, Ctx), Sto]
     var stores: Sts = Map.empty
 
-    def getStore(sts: Sts, cmp: Cmp): Sto =
-      sts.getOrElse((cmp.exp, cmp.ctx), LocalStore.empty)
-    def setStore(sts: Sts, cmp: Cmp, sto: Sto): Sts =
-      sts + ((cmp.exp, cmp.ctx) -> sto) 
+    def getStore(sts: Sts, exp: Exp, ctx: Ctx): Sto =
+      sts.getOrElse((exp, ctx), LocalStore.empty)
+    def setStore(sts: Sts, exp: Exp, ctx: Ctx, sto: Sto): Sts =
+      sts + ((exp, ctx) -> sto) 
 
     override def init() = 
       super.init()
-      stores = setStore(stores, MainComponent, initialSto)
+      stores = setStore(stores, MainComponent.exp, MainComponent.ctx, initialSto)
       initialBds.map(_._2).foreach(adr => fixedPolicies += adr -> AddrPolicy.Widened)
     
-    case class WidenedAddrDependency(cmp: Cmp, adr: Adr) extends Dependency
+    case class WidenedAddrDependency(exp: Exp, ctx: Ctx, adr: Adr) extends Dependency
 
     //
     // EFFECTS
     //
 
-    case class Eff(c: Set[Cmp], w: Set[(Cmp, Adr, Cnt, Val)]):
+    case class Eff(c: Set[Cmp], w: Set[(Exp, Ctx, Adr, Cnt, Val)]):
         def ++(other: Eff): Eff = Eff(c ++ other.c, w ++ other.w)
     object Eff:
         def empty = Eff(Set.empty, Set.empty)
         def call(cmp: Cmp) = Eff(Set(cmp), Set.empty)
-        def write(cmp: Cmp, adr: Adr, cnt: Cnt, vlu: Val) = Eff(Set.empty, Set((cmp, adr, cnt, vlu)))
-        def write(wrs: Iterable[(Cmp, Adr, Cnt, Val)]) = Eff(Set.empty, wrs.toSet)
+        def write(exp: Exp, ctx: Ctx, adr: Adr, cnt: Cnt, vlu: Val) = Eff(Set.empty, Set((exp, ctx, adr, cnt, vlu)))
+        def write(wrs: Iterable[(Exp, Ctx, Adr, Cnt, Val)]) = Eff(Set.empty, wrs.toSet)
 
     //
     // ANALYSISM MONAD
@@ -256,7 +256,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         def call(lam: Lam): A[Val] =
           (res, ctx, env, sto, stw) =>
             val cmp = CallComponent(lam, env, ctx, sto)
-            val eff = Eff.call(cmp) ++ Eff.write(stw.content.map({ case (adr, (vlu, cnt)) => (cmp, adr, cnt, vlu) }))
+            val eff = Eff.call(cmp) ++ Eff.write(stw.content.map({ case (adr, (vlu, cnt)) => (cmp.exp, ctx, adr, cnt, vlu) }))
             val (rss, dlw) = res.getOrElse(cmp, (Set.empty, Delta.empty)).asInstanceOf[(Set[(Val, Dlt)], Dlt)]
             (rss, dlw, eff)
 
@@ -271,7 +271,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       var stores = inter.stores
 
       def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          val stw = getStore(intra.stores, cmp)
+          val stw = getStore(intra.stores, cmp.exp, cmp.ctx)
           val (res, stw1, eff) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto, stw)
           val rgc = collectDelta(cmp.sto, stw, res, stw1)
           // update result of the analysed component
@@ -280,20 +280,20 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
               results = results + (cmp -> rgc)
               trigger(ResultDependency(cmp))
           // register dependencies on all values of the store
-          stw.content.keys.foreach(adr => register(WidenedAddrDependency(cmp, adr)))
+          stw.content.keys.foreach(adr => register(WidenedAddrDependency(cmp.exp, cmp.ctx, adr)))
           // process new components
           eff.c.foreach { cmp =>
             spawn(cmp)
             register(ResultDependency(cmp))  
           }
           // process writes to widened stores
-          eff.w.foreach { case (cmp, adr, cnt, vlu) =>
-            val prv = getStore(intra.stores, cmp)
+          eff.w.foreach { case (exp, ctx, adr, cnt, vlu) =>
+            val prv = getStore(intra.stores, exp, ctx)
             prv.joinAt(adr, vlu, cnt) match
               case None => ()
               case Some(sto) => 
-                intra.stores = setStore(intra.stores, cmp, sto)
-                trigger(WidenedAddrDependency(cmp, adr))
+                intra.stores = setStore(intra.stores, exp, ctx, sto)
+                trigger(WidenedAddrDependency(exp, ctx, adr))
           }
           
       override def doWrite(dep: Dependency): Boolean = dep match
@@ -304,14 +304,14 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                 inter.results += cmp -> cur
                 true
             else false
-          case WidenedAddrDependency(cmp, adr) =>
-            val oldS = getStore(inter.stores, cmp)
-            val newS = getStore(intra.stores, cmp) // we are certain to have a store here!
+          case WidenedAddrDependency(exp, ctx, adr) =>
+            val oldS = inter.stores.getOrElse((exp, ctx), LocalStore.empty)
+            val newS = intra.stores((exp, ctx)) // we are certain to have a store here!
             val (newV, newC) = newS.content(adr)
             oldS.joinAt(adr, newV, newC) match 
               case None => false
               case Some(sto) =>
-                inter.stores = setStore(inter.stores, cmp, sto)
+                inter.stores = setStore(inter.stores, exp, ctx, sto)
                 true 
           case _ => super.doWrite(dep)
     }
