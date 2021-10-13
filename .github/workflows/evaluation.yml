@@ -46,3 +46,10 @@ jobs:
         with:
           name: Performance evaluation results
           path: code/jvm/jmh-results-${{ github.sha }}.json
+      - name: Upload to Slack
+        uses: adrey/slack-file-upload-action@master
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          path: code/jvm/jmh-results-${{ github.sha }}.json
+          channel: maf-logs
+          initial_comment: "Results of last night's performance evaluation."
