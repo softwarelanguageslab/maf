@@ -5,8 +5,8 @@ name: Daily MAF evaluation
 on:
   schedule:
     - cron: '00 23 * * *' # Executes every night at 23:00.
-  push:
-    branches: [ master ]
+  #push:
+  #  branches: [ master ]
 
 jobs:
   # The compile job fetches the code and attempts to compile it.
