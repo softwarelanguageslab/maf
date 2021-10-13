@@ -27,6 +27,13 @@ jobs:
         with:
           name: Precision benchmarks results
           path: benchOutput/precision/daily-precision-benchmarks.csv
+      - name: Upload to Slack
+        uses: adrey/slack-file-upload-action@master
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          path: benchOutput/precision/daily-precision-benchmarks.csv
+          channel: maf-logs
+          initial_comment: "Results of last night's precision evaluation."
   performance-evaluation:
     name: Execute performance evaluation with JMH
     runs-on: ubuntu-latest
