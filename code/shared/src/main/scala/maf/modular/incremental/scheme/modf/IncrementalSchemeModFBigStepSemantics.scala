@@ -37,6 +37,11 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
               case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
 
         }
+        def assignVals[X](bds: List[(Identifier, X)], assign: (List[(Identifier, X)], Env) => Unit): EvalM[Unit] =
+          IEvalM { (env, addr) =>
+              val a: Set[Addr] = addr.flatten.toSet
+              Some(assign(bds.map(b => (b._1, lattice.addAddresses(b._2.asInstanceOf[Value], a).asInstanceOf[X])), env))
+          }
         implicit class MonadicOps[X](xs: Iterable[X]):
             def foldLeftM[Y](y: Y)(f: (Y, X) => IEvalM[Y]): IEvalM[Y] = xs match
                 case Nil     => unit(y)
