@@ -19,7 +19,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
     type SCA = Set[Addr]
 
-    //var implicitFlows: List[Set[Addr]] = Nil
+    var implicitFlows: List[Set[Addr]] = Nil
 
     /* ****************************************** */
     /* ***** Provenance tracking for values ***** */
@@ -242,7 +242,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             // Update the value flow information and reset the reads information.
             if configuration.cyclicValueInvalidation then
                 // Get the annotations and remove them so they are not written to the store.
-                val dependentAddresses = lattice.getAddresses(value) // SmartUnion.sunion(lattice.getAddresses(value), implicitFlows.flatten.toSet)
+                val dependentAddresses = /* lattice.getAddresses(value) */ SmartUnion.sunion(lattice.getAddresses(value), implicitFlows.flatten.toSet)
                 value = lattice.removeAddresses(value)
                 // Store the dependencies.
                 val newDependencies = SmartUnion.sunion(addressDependencies(component)(addr), dependentAddresses)

@@ -81,8 +81,9 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
           ): EvalM[Value] =
           for
               prdVal <- eval(prd)
-              adr = lattice.getAddresses(prdVal)
-              resVal <- cond(prdVal, withAddr(adr)(eval(csq)), withAddr(adr)(eval(alt)))
+              _ = { implicitFlows = lattice.getAddresses(prdVal) :: implicitFlows }
+              resVal <- cond(prdVal, eval(csq), eval(alt)) // cond(prdVal, withAddr(adr)(eval(csq)), withAddr(adr)(eval(alt)))
+              _ = { implicitFlows = implicitFlows.tail }
           yield resVal
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
