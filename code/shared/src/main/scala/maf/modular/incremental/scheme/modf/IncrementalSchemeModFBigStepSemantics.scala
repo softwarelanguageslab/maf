@@ -12,8 +12,8 @@ import maf.modular.scheme.modf.*
 import maf.util.benchmarks.Timeout
 
 /** Implements big-step semantics for an incremental Scheme analysis. * */
-trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with IncrementalSchemeSemantics with IncrementalGlobalStore[SchemeExp]:
-
+trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics with IncrementalGlobalStore[SchemeExp]:
+    /*
     case class IEvalM[+X](run: (Environment[Addr], List[Set[Addr]]) => Option[X]):
         def map[Y](f: X => Y): IEvalM[Y] = IEvalM((env, addr) => run(env, addr).map(f))
         def flatMap[Y](f: X => IEvalM[Y]): IEvalM[Y] = IEvalM((env, addr) => run(env, addr).flatMap(res => f(res).run(env, addr))) // TODO Are these the right addresses?
@@ -61,8 +61,8 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
     type EvalM[X] = IEvalM[X]
     override val evalM: IEvalM.type = IEvalM
     import evalM._
-
-    trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntraT with IncrementalIntraAnalysis:
+     */
+    trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis:
         override protected def eval(exp: SchemeExp): EvalM[Value] = exp match
             case SchemeCodeChange(e, _, _) if version == Old =>
               registerComponent(e, component)
@@ -82,11 +82,12 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
           for
               prdVal <- eval(prd)
               _ = { implicitFlows = lattice.getAddresses(prdVal) :: implicitFlows }
+              adr = implicitFlows.flatten.toSet
               resVal <- cond(prdVal, eval(csq), eval(alt)) // cond(prdVal, withAddr(adr)(eval(csq)), withAddr(adr)(eval(alt)))
               _ = { implicitFlows = implicitFlows.tail }
-          yield resVal
+          yield lattice.addAddresses(resVal, adr)
 
-        override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          eval(fnBody).run(fnEnv, List()).foreach(res => writeResult(res))
+    // override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+    //   eval(fnBody).run(fnEnv, List()).foreach(res => writeResult(res))
 
     override def intraAnalysis(cmp: Component): IncrementalSchemeModFBigStepIntra

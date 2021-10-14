@@ -2,6 +2,7 @@ package maf.modular.incremental
 
 import maf.core.Expression
 import maf.language.change.CodeVersion.*
+import maf.language.scheme.SchemeExp
 import maf.modular.*
 import maf.util.Logger
 import maf.util.Logger.*
@@ -84,6 +85,17 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         val scaString = computeSCAs().map(_.mkString("{", ", ", "}")).mkString("\n")
         depString + "\nSCAs:\n" + (if (scaString.isEmpty) then "none" else scaString)
 
+    private def programToString(): String =
+        val str = program.asInstanceOf[SchemeExp].prettyString()
+        "Desugared program:\n\n" + str
+
+    private def logData(end: Boolean): Unit =
+        if end then logger.logU("\n\n" + getSummary())
+        logger.logU("\n\n" + tableToString())
+        logger.logU("\n" + storeString())
+        logger.logU("\n" + addressDependenciesToString())
+        if end then logger.logU("\n\n" + programToString())
+
     // Collect some numbers
     private var intraC: Long = 0
     private var intraCU: Long = 0
@@ -114,10 +126,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
     override def run(timeout: Timeout.T): Unit =
         super.run(timeout)
-        if logEnd then
-            logger.logU("\n\n" + tableToString())
-            logger.logU("\n" + storeString())
-            logger.logU("\n" + addressDependenciesToString())
+        if logEnd then logData(false)
 
     // Starting the incremental analysis.
     override def updateAnalysis(timeout: Timeout.T): Unit =
@@ -133,17 +142,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             //    map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
             //  })
             //}
-            logger.logU("\n\n" + getSummary())
-            logger.logU("\n\n" + tableToString())
-            logger.logU("\n" + storeString())
-            logger.logU("\n" + addressDependenciesToString())
+            logData(true)
         catch
             case t: Throwable =>
               logger.logException(t)
-              logger.logU("\n\n" + getSummary())
-              logger.logU("\n\n" + tableToString())
-              logger.logU("\n" + storeString())
-              logger.logU("\n" + addressDependenciesToString())
+              logData(true)
               throw t
 
     override def deregister(target: Component, dep: Dependency): Unit =
