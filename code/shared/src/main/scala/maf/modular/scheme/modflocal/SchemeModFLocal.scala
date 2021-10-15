@@ -89,12 +89,15 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         case AddrPolicy.Local => sto(adr)
         case AddrPolicy.Widened => stw(adr)
 
-    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
+    def eqA(sto: Sto, stw: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
       def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
         if a1 == a2 then
-            sto.content.get(a1) match
-                case Some((_, CountOne)) => BoolLattice[B].inject(true)
-                case _                   => BoolLattice[B].top
+          val s = policy(a1) match
+            case AddrPolicy.Local => sto
+            case AddrPolicy.Widened => stw
+          s.content.get(a1) match
+            case Some((_, CountOne)) => BoolLattice[B].inject(true)
+            case _                   => BoolLattice[B].top
         else BoolLattice[B].inject(false)
     }
 
@@ -229,7 +232,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-          (_, _, _, sto, stw) => (Set((eqA(sto), Delta.empty)), Delta.empty, Eff.empty)
+          (_, _, _, sto, stw) => (Set((eqA(sto, stw), Delta.empty)), Delta.empty, Eff.empty)
         def extendSto(adr: Adr, vlu: Val) =
           (_, _, env, sto, stw) => 
             val (std, sdw) = extendV(sto, stw, adr, vlu)
@@ -274,7 +277,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           val (res, stw1, eff) = eval(cmp.exp)(results, cmp.ctx, cmp.env, cmp.sto, stw)
           val rgc = collectDelta(cmp.sto, stw, res, stw1)
           // update result of the analysed component
-          val old = results.get(cmp)
+          val old = results.getOrElse(cmp, (Set.empty, Delta.empty))
           if rgc != old then
               results = results + (cmp -> rgc)
               trigger(ResultDependency(cmp))
