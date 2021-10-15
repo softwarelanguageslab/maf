@@ -7,6 +7,8 @@ import maf.modular.scheme.ssmodconc._
 
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics:
 
+    if configuration.cyclicValueInvalidation then throw new Exception("CY not supported by Small-Step MC semantics (no implicit paths detected).")
+
     trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis:
         override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match
             case SchemeCodeChange(e, _, _) if version == Old =>
