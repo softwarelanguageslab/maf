@@ -92,6 +92,8 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
           case e: VirtualMachineError =>
             System.gc()
             cancel(s"Analysis of $benchmark encountered an error: $e")
+          case InvalidConfigurationException(msg, config) =>
+            cancel(s"Analysis of $benchmark cannot be run using $config.")
 
     // This is horrible code.
     override def onBenchmark(benchmark: Benchmark): Unit =
