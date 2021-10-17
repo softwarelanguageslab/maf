@@ -58,7 +58,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
         with IncrementalGlobalStore[SchemeExp] {
 
         val k = 0
-        var configuration: IncrementalConfiguration = allOptimisations
+        var configuration: IncrementalConfiguration = ci_di_wi // allOptimisations
 
         override def intraAnalysis(
             cmp: Component
