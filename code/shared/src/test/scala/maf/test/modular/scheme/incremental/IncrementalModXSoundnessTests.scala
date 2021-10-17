@@ -145,9 +145,10 @@ trait RemainingConfigurations extends IncrementalModXSoundnessTests:
 
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks:
+    override val configurations: List[IncrementalConfiguration] = List(ci_di_wi)
     def name = "Incremental ModConc Type"
 
-    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b, allOptimisations)
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b, ci_di_wi) // allOptimisations)
 
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
     override def isSlow(b: Benchmark): Boolean =
@@ -161,11 +162,13 @@ class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType:
     override def name = "Incremental ModConc CP"
-    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, allOptimisations)
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, ci_di_wi) // allOptimisations)
     override def isSlow(b: Benchmark): Boolean = true
 
-class IncrementalSmallStepModConcTypeRemainingConfigs extends IncrementalSmallStepModConcType with RemainingConfigurations
-class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStepModConcCP with RemainingConfigurations
+class IncrementalSmallStepModConcTypeRemainingConfigs extends IncrementalSmallStepModConcType with RemainingConfigurations:
+    override val configurations = allConfigurations.filterNot(_.componentInvalidation)
+class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStepModConcCP with RemainingConfigurations:
+    override val configurations = allConfigurations.filterNot(_.componentInvalidation)
 
 /** Implements soundness tests for an incremental ModF type analysis. */
 class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks:

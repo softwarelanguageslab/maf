@@ -1,13 +1,14 @@
 package maf.modular.incremental.scheme.modconc
 
-import maf.language.change.CodeVersion._
+import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeCodeChange
+import maf.modular.incremental.IncrementalConfiguration.InvalidConfigurationException
 import maf.modular.incremental.scheme.IncrementalSchemeSemantics
-import maf.modular.scheme.ssmodconc._
+import maf.modular.scheme.ssmodconc.*
 
 trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemantics with IncrementalSchemeSemantics:
 
-    if configuration.cyclicValueInvalidation then throw new Exception("CY not supported by Small-Step MC semantics (no implicit paths detected).")
+    if configuration.cyclicValueInvalidation then throw new InvalidConfigurationException("CY not supported by Small-Step MC semantics (no implicit paths detected).", configuration)
 
     trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis:
         override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match

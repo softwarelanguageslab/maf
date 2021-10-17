@@ -138,6 +138,9 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
         }
 
 class ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks:
+    
+    override lazy val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.componentInvalidation)
+    
     abstract class BaseModConcAnalysis(prg: SchemeExp)
         extends ModAnalysis[SchemeExp](prg)
         with KKallocModConc

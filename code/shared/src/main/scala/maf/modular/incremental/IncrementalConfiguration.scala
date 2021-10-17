@@ -107,3 +107,5 @@ object IncrementalConfiguration:
         // Four optimisations
         allOptimisations,
       )
+
+    case class InvalidConfigurationException(message: String, config: IncrementalConfiguration) extends Exception
