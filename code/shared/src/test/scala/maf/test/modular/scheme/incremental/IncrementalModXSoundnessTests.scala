@@ -92,8 +92,8 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
           case e: VirtualMachineError =>
             System.gc()
             cancel(s"Analysis of $benchmark encountered an error: $e")
-          case InvalidConfigurationException(msg, config) =>
-            cancel(s"Analysis of $benchmark cannot be run using $config.")
+          // case InvalidConfigurationException(msg, config) =>
+          //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
 
     // This is horrible code.
     override def onBenchmark(benchmark: Benchmark): Unit =
@@ -168,9 +168,9 @@ class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType:
     override def isSlow(b: Benchmark): Boolean = true
 
 class IncrementalSmallStepModConcTypeRemainingConfigs extends IncrementalSmallStepModConcType with RemainingConfigurations:
-    override val configurations = allConfigurations.filterNot(_.componentInvalidation)
+    override val configurations = allConfigurations.filterNot(_.cyclicValueInvalidation)
 class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStepModConcCP with RemainingConfigurations:
-    override val configurations = allConfigurations.filterNot(_.componentInvalidation)
+    override val configurations = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 /** Implements soundness tests for an incremental ModF type analysis. */
 class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks:
