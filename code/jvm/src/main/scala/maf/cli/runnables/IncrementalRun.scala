@@ -57,7 +57,9 @@ object IncrementalRun extends App:
 
     def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit =
         def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
-          new IncrementalSchemeModFAnalysisTypeLattice(text, configuration) with IncrementalLogging[SchemeExp] with IncrementalDataFlowVisualisation[SchemeExp] {
+          new IncrementalSchemeModFAnalysisTypeLattice(text, configuration)
+            with IncrementalLogging[SchemeExp]
+            with IncrementalDataFlowVisualisation[SchemeExp] {
             override def focus(a: Addr): Boolean = a.toString.toLowerCase().nn.contains("ret")
 
             override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
@@ -83,7 +85,11 @@ object IncrementalRun extends App:
           var configuration: IncrementalConfiguration = wi_cy
           override def intraAnalysis(
               cmp: Component
-            ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
+            ) = new IntraAnalysis(cmp)
+            with IncrementalSchemeModFBigStepIntra
+            with IncrementalGlobalStoreIntraAnalysis
+            with IncrementalLoggingIntra
+            with IncrementalVisualIntra
         }
 
         println(s"***** $bench *****")
@@ -107,7 +113,7 @@ object IncrementalRun extends App:
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
-    val modFbenchmarks: List[String] = List("test/changes/scheme/satCoarse.scm")
+    val modFbenchmarks: List[String] = List("test/changes/scheme/leval.scm")
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
