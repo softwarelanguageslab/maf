@@ -7,6 +7,7 @@ import maf.modular.*
 import maf.util.Logger
 import maf.util.Logger.*
 import maf.util.benchmarks.*
+import maf.util.graph.DotGraph
 
 /**
  * Provides facilities for logging an incremental analysis that uses the incremental global store.
@@ -95,7 +96,9 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         logger.logU("\n\n" + tableToString())
         logger.logU("\n" + storeString())
         logger.logU("\n" + addressDependenciesToString())
-        if end then logger.logU("\n\n" + programToString())
+        if end then
+            logger.logU("\n\n" + programToString())
+            flowInformationToDotGraph("logs/dataflows " + Clock.nowStr() + ".dot")
 
     // Collect some numbers
     private var intraC: Long = 0
@@ -211,3 +214,20 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             insertTable(Right(component))
 
     end IncrementalLoggingIntra
+
+    def flowInformationToDotGraph(fileName: String): Unit =
+        import maf.util.graph.*
+        case class GE(label: String, color: Color = Colors.White, metadata: GraphMetadata = GraphMetadataNone) extends GraphElement
+        println(addressDependencies.values.flatMap(_.keySet))
+        println(addressDependencies.values.flatMap(_.values))
+        val nodes: Map[Addr, GE] = (addressDependencies.values.flatMap(_.keySet) ++ addressDependencies.values.flatMap(_.values).flatten.toSet)
+          .map(addr => (addr, GE(addr.toString())))
+          .toMap
+        val edges: Set[(GE, GE)] = addressDependencies.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r), nodes(w))) }).toSet
+        val g = DotGraph[GE, GE]().G.typeclass
+        edges
+          .foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
+            case (graph, (source: GE, target: GE)) =>
+              g.addEdge(graph, source, GE("", Colors.Black), target)
+          }
+          .toFile(fileName)

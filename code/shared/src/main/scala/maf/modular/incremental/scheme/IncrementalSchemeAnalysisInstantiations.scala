@@ -119,11 +119,9 @@ object IncrementalSchemeAnalysisInstantiations:
         override def intraAnalysis(cmp: Component) =
           new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
 
-
     // Same as the one above, but with assertions.
     class IncrementalSchemeModFAssertionAnalysisCPLattice(prg: SchemeExp, configuration: IncrementalConfiguration)
         extends IncrementalSchemeModFAnalysisCPLattice(prg, configuration)
         with SchemeAssertSemantics:
         override def intraAnalysis(cmp: Component) =
           new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with AssertionModFIntra
-

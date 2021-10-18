@@ -70,8 +70,8 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
                   case e: VirtualMachineError =>
                     System.gc()
                     cancel(s"Analysis of $benchmark encountered an error: $e.")
-                  // case InvalidConfigurationException(msg, config)
-                  //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
+              // case InvalidConfigurationException(msg, config)
+              //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
             }
 
 class ModFComparisonTests extends IncrementalModXComparisonTests with SequentialIncrementalBenchmarks:
@@ -140,9 +140,9 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
         }
 
 class ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks:
-    
+
     override lazy val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
-    
+
     abstract class BaseModConcAnalysis(prg: SchemeExp)
         extends ModAnalysis[SchemeExp](prg)
         with KKallocModConc

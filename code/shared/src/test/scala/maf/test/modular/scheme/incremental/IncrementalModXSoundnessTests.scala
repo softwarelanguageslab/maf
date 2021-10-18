@@ -92,8 +92,8 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
           case e: VirtualMachineError =>
             System.gc()
             cancel(s"Analysis of $benchmark encountered an error: $e")
-          // case InvalidConfigurationException(msg, config) =>
-          //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
+    // case InvalidConfigurationException(msg, config) =>
+    //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
 
     // This is horrible code.
     override def onBenchmark(benchmark: Benchmark): Unit =
@@ -146,7 +146,11 @@ trait RemainingConfigurations extends IncrementalModXSoundnessTests:
     override def isSlow(b: Benchmark) = true
 
 trait noCY extends IncrementalModXSoundnessTests:
-    override protected def runAnalysisWithConfiguration(program: SchemeExp, benchmark: Benchmark, config: IncrementalConfiguration): IncrementalAnalysis =
+    override protected def runAnalysisWithConfiguration(
+        program: SchemeExp,
+        benchmark: Benchmark,
+        config: IncrementalConfiguration
+      ): IncrementalAnalysis =
       super.runAnalysisWithConfiguration(program, benchmark, config.copy(cyclicValueInvalidation = false))
 
 /** Implements soundness tests for an incremental ModConc analysis. */

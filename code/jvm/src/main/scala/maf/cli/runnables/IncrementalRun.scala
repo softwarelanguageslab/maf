@@ -104,7 +104,7 @@ object IncrementalRun extends App:
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
-    val modFbenchmarks: List[String] = List("test/DEBUG1.scm") // List("test/changes/scheme/peval.scm")
+    val modFbenchmarks: List[String] = List("test/changes/scheme/satCoarse.scm")
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))

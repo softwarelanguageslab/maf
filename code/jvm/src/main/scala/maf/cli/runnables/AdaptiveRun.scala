@@ -62,8 +62,7 @@ object AdaptiveRun:
               println(s"$a -> $v")
             }
         def printDelta(dlt: anl.Dlt) =
-          dlt.delta.view
-            .toMap
+          dlt.delta.view.toMap
             .foreach { case (a, (v, _)) =>
               println(s"$a -> $v")
             }
@@ -79,7 +78,7 @@ object AdaptiveRun:
             println("[WIDENED]")
             printStore(anl.getStore(anl.stores, cmp.exp, cmp.ctx))
             println(s"==> RESULTS: $res")
-            println(s"==> DELTA (updated: ${dlt.updates.mkString("{",",","}")}):")
+            println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
             printDelta(dlt)
             println()
           }

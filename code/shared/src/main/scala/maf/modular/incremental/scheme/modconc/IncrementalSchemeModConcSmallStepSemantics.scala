@@ -10,7 +10,10 @@ trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemanti
 
     override def init(): ComponentContext =
         if configuration.cyclicValueInvalidation then
-            throw new InvalidConfigurationException(s"$configuration not supported by Small-Step ModConc semantics (CY not supported - no implicit paths detected).", configuration)
+            throw new InvalidConfigurationException(
+              s"$configuration not supported by Small-Step ModConc semantics (CY not supported - no implicit paths detected).",
+              configuration
+            )
         super.init()
 
     trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis:
