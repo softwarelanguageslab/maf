@@ -74,7 +74,7 @@ object IncrementalRun extends App:
           with SchemeModFSemantics
           with LIFOWorklistAlgorithm[SchemeExp]
           with IncrementalSchemeModFBigStepSemantics
-          with IncrementalSchemeTypeDomain
+          with IncrementalSchemeTypeDomain // IncrementalSchemeConstantPropagationDomain
           with IncrementalGlobalStore[SchemeExp]
           with IncrementalLogging[SchemeExp] {
           override def focus(a: Addr): Boolean = !a.toString.contains("PrmAddr") // a.toString.contains("ret")
@@ -104,7 +104,7 @@ object IncrementalRun extends App:
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
-    val modFbenchmarks: List[String] = List("test/DEBUG3.scm") // List("test/changes/scheme/peval.scm")
+    val modFbenchmarks: List[String] = List("test/DEBUG1.scm") // List("test/changes/scheme/peval.scm")
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))

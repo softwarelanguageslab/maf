@@ -1,5 +1,3 @@
-; Does higher-order influence or create implicit paths?
-(define (phi x) (not x))
-(define (chi x) x)
-(or ((<change> phi chi) #t)
-    ((<change> phi chi) #f))
+(define (phi x2)
+  (<change> (abs x2) x2))
+(or (phi -1) (phi 1))
