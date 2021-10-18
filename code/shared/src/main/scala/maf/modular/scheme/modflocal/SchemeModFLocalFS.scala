@@ -111,7 +111,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
       (res, ctx, env, sto) =>
         val gcs = StoreGC.collect(sto, rs)
         val (vlu, dlt, eff) = blk(res, ctx, env, gcs)
-        val dgc = DeltaGC(sto).collect(dlt, vlu.map(lattice.refs).getOrElse(Set.empty))
+        val dgc = DeltaGC(sto).collect(dlt, vlu.map(lattice.refs).getOrElse(Set.empty) ++ dlt.updates)
         (vlu, sto.replay(gcs, dgc), eff)
 
     override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
@@ -224,7 +224,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
           val sto = getStore(intra.stores, cmp)
           val (res, dlt, eff) = eval(cmp.exp)(results, cmp.ctx, cmp.env, sto)
           res.foreach { vlu =>
-            val rgc = DeltaGC(sto).collect(dlt, lattice.refs(vlu))
+            val rgc = DeltaGC(sto).collect(dlt, lattice.refs(vlu) ++ dlt.updates)
             val old = results.getOrElse(cmp, (lattice.bottom, Delta.empty))
             if ((vlu, rgc) != old) then
               results = results + (cmp -> (vlu, rgc))
