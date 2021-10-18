@@ -9,5 +9,7 @@ object Colors:
     object Pink extends Color("#FFDDDD")
     object Red extends Color("#FF0000")
     object Blue extends Color("#DDFFFF")
+    object DarkBlue extends Color("#00008B")
     object White extends Color("#FFFFFF")
+    object Grey extends Color("#CCCCCC")
     object Black extends Color("#000000")

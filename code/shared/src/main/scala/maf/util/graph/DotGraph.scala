@@ -52,7 +52,8 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
             _edges.foreach({ case (n1, ns) =>
               ns.foreach({ case (annot, n2) =>
                 val annotstr = annot.label
-                writer.write(s"node_${ids(n1)} -> node_${ids(n2)} [label=<$annotstr>]\n")
+                val color = annot.color
+                writer.write(s"node_${ids(n1)} -> node_${ids(n2)} [label=<$annotstr>, color=<$color>]\n")
               })
             })
             writer.write("}")
