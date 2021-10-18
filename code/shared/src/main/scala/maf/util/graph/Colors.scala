@@ -13,3 +13,4 @@ object Colors:
     object White extends Color("#FFFFFF")
     object Grey extends Color("#CCCCCC")
     object Black extends Color("#000000")
+    lazy val allColors = List(Green, Yellow, Grass, Pink, Blue, Red, Grey, DarkBlue, Black, White)

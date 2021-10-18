@@ -59,6 +59,7 @@ object IncrementalRun extends App:
         def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
           new IncrementalSchemeModFAnalysisTypeLattice(text, configuration) with IncrementalLogging[SchemeExp] {
             override def focus(a: Addr): Boolean = a.toString.toLowerCase().nn.contains("ret")
+            override val dependencyGraph: Boolean = true
 
             override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
               with IncrementalSchemeModFBigStepIntra
@@ -78,6 +79,7 @@ object IncrementalRun extends App:
           with IncrementalGlobalStore[SchemeExp]
           with IncrementalLogging[SchemeExp] {
           override def focus(a: Addr): Boolean = !a.toString.contains("PrmAddr") // a.toString.contains("ret")
+          override val dependencyGraph: Boolean = true
           var configuration: IncrementalConfiguration = wi_cy
           override def intraAnalysis(
               cmp: Component

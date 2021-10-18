@@ -28,6 +28,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     var addressDependenciesLog: Map[Component, Map[Addr, Set[AdrDep]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
     def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
+    val dependencyGraph = false
 
     private def legend(): String =
       """***** LEGEND OF ABBREVIATIONS *****
@@ -101,7 +102,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         logger.logU("\n" + addressDependenciesToString())
         if end then
             logger.logU("\n\n" + programToString())
-            flowInformationToDotGraph("logs/dataflows " + Clock.nowStr() + ".dot")
+            if dependencyGraph then flowInformationToDotGraph("logs/dataflows " + Clock.nowStr() + ".dot")
 
     // Collect some numbers
     private var intraC: Long = 0
@@ -225,9 +226,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
     def flowInformationToDotGraph(fileName: String): Unit =
         import maf.util.graph.*
+        import maf.util.graph.Colors.*
         case class GE(label: String, color: Color = Colors.White, metadata: GraphMetadata = GraphMetadataNone) extends GraphElement
+        val nodeColors = computeSCAs().toList.zipWithIndex.flatMap({case (sca, index) => val color = allColors(index); sca.map(v => (v, color))}).toMap.withDefaultValue(Colors.White)
         val nodes: Map[Addr, GE] = (addressDependenciesLog.values.flatMap(_.keySet) ++ addressDependenciesLog.values.flatMap(_.values).flatten.map(_.a).toSet)
-          .map(addr => (addr, GE(addr.toString())))
+          .map(addr => (addr, GE(addr.toString(), nodeColors(addr))))
           .toMap
         val edges: Set[(GE, GE, AdrDep)] = addressDependenciesLog.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r.a), nodes(w), r)) }).toSet
         val g = DotGraph[GE, GE]().G.typeclass
@@ -243,5 +246,5 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
               g.addEdge(graph, source, GE("", color), target)
           }
           .toFile(fileName)
-        import scala.sys.process._
-        (s"bash | dot -Tpng ${fileName.replace(" ", "\\ ")} -o ${fileName.replace(" ", "\\ ").nn.drop(4)}.png").!
+        //import scala.sys.process._
+        //(s"bash | dot -Tpng ${fileName.replace(" ", "\\ ")} -o ${fileName.replace(" ", "\\ ").nn.drop(4)}.png").!
