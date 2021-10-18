@@ -57,15 +57,15 @@ object IncrementalRun extends App:
 
     def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit =
         def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
-          new IncrementalSchemeModFAnalysisTypeLattice(text, configuration) with IncrementalLogging[SchemeExp] {
+          new IncrementalSchemeModFAnalysisTypeLattice(text, configuration) with IncrementalLogging[SchemeExp] with IncrementalDataFlowVisualisation[SchemeExp] {
             override def focus(a: Addr): Boolean = a.toString.toLowerCase().nn.contains("ret")
-            override val dependencyGraph: Boolean = true
 
             override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
               with IncrementalSchemeModFBigStepIntra
               with IncrementalGlobalStoreIntraAnalysis
               //  with AssertionModFIntra
               with IncrementalLoggingIntra
+              with IncrementalVisualIntra
           }
 
         // Analysis from soundness tests.
@@ -77,13 +77,13 @@ object IncrementalRun extends App:
           with IncrementalSchemeModFBigStepSemantics
           with IncrementalSchemeTypeDomain // IncrementalSchemeConstantPropagationDomain
           with IncrementalGlobalStore[SchemeExp]
-          with IncrementalLogging[SchemeExp] {
+          with IncrementalLogging[SchemeExp]
+          with IncrementalDataFlowVisualisation[SchemeExp] {
           override def focus(a: Addr): Boolean = !a.toString.contains("PrmAddr") // a.toString.contains("ret")
-          override val dependencyGraph: Boolean = true
           var configuration: IncrementalConfiguration = wi_cy
           override def intraAnalysis(
               cmp: Component
-            ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
+            ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
         }
 
         println(s"***** $bench *****")
@@ -96,6 +96,7 @@ object IncrementalRun extends App:
         //println(a.visited)
         a.updateAnalysis(timeout())
         //println(a.visited)
+        a.flowInformationToDotGraph("logs/flows.dot")
         Thread.sleep(1000)
         val b = base(text)
         b.version = New

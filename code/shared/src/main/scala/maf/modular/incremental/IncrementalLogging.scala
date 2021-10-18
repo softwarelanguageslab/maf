@@ -24,11 +24,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     var botRead: Option[Addr] = None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
     var repeats: Map[Component, Integer] = Map.empty.withDefaultValue(0) // Keep track of how many times every component has been analysed.
 
-    case class AdrDep(a: Addr, directFlow: Boolean, indirectFlow: Boolean)
-    var addressDependenciesLog: Map[Component, Map[Addr, Set[AdrDep]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
-
     def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
-    val dependencyGraph = false
 
     private def legend(): String =
       """***** LEGEND OF ABBREVIATIONS *****
@@ -100,9 +96,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         logger.logU("\n\n" + tableToString())
         logger.logU("\n" + storeString())
         logger.logU("\n" + addressDependenciesToString())
-        if end then
-            logger.logU("\n\n" + programToString())
-            if dependencyGraph then flowInformationToDotGraph("logs/dataflows " + Clock.nowStr() + ".dot")
+        if end then logger.logU("\n\n" + programToString())
 
     // Collect some numbers
     private var intraC: Long = 0
@@ -202,12 +196,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         override def writeAddr(addr: Addr, value: Value): Boolean =
             if configuration.cyclicValueInvalidation then
                 lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> $addr"))
-                var flattenedFlows = implicitFlows.flatten.toSet
-                flattenedFlows.foreach(f => logger.log(s"ADP* $f ~> $addr"))
-                var set = lattice.getAddresses(value).map(a => AdrDep(a, true, flattenedFlows(a))).toSet
-                flattenedFlows = flattenedFlows.filter(adr => set.find(_.a == adr).isEmpty)
-                set = set ++ flattenedFlows.map(a => AdrDep(a, false, true))
-                addressDependenciesLog = addressDependenciesLog + (component -> (addressDependenciesLog(component) + (addr -> set)))
+                implicitFlows.flatten.foreach(f => logger.log(s"ADP* $f ~> $addr"))
             val b = super.writeAddr(addr, value)
             logger.log(s"WRIT $value => $addr (${if b then "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
             b
@@ -223,28 +212,3 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             insertTable(Right(component))
 
     end IncrementalLoggingIntra
-
-    def flowInformationToDotGraph(fileName: String): Unit =
-        import maf.util.graph.*
-        import maf.util.graph.Colors.*
-        case class GE(label: String, color: Color = Colors.White, metadata: GraphMetadata = GraphMetadataNone) extends GraphElement
-        val nodeColors = computeSCAs().toList.zipWithIndex.flatMap({case (sca, index) => val color = allColors(index); sca.map(v => (v, color))}).toMap.withDefaultValue(Colors.White)
-        val nodes: Map[Addr, GE] = (addressDependenciesLog.values.flatMap(_.keySet) ++ addressDependenciesLog.values.flatMap(_.values).flatten.map(_.a).toSet)
-          .map(addr => (addr, GE(addr.toString(), nodeColors(addr))))
-          .toMap
-        val edges: Set[(GE, GE, AdrDep)] = addressDependenciesLog.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r.a), nodes(w), r)) }).toSet
-        val g = DotGraph[GE, GE]().G.typeclass
-        edges
-          .foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
-            case (graph, (source: GE, target: GE, adrDep: AdrDep)) =>
-              val color = (adrDep.directFlow, adrDep.indirectFlow) match {
-                  case (true, true) => Colors.DarkBlue   // Direct and indirect flows
-                  case (true, false) => Colors.Black // Direct flows
-                  case (false, true) => Colors.Grey  // Indirect flows
-
-              }
-              g.addEdge(graph, source, GE("", color), target)
-          }
-          .toFile(fileName)
-        //import scala.sys.process._
-        //(s"bash | dot -Tpng ${fileName.replace(" ", "\\ ")} -o ${fileName.replace(" ", "\\ ").nn.drop(4)}.png").!
