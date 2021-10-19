@@ -71,7 +71,7 @@ object IncrementalRun extends App:
         def base(program: SchemeExp) = new ModAnalysis[SchemeExp](program)
           with StandardSchemeModFComponents
           with SchemeModFNoSensitivity
-          with SchemeModFSemantics
+          with SchemeModFSemanticsM
           with LIFOWorklistAlgorithm[SchemeExp]
           with IncrementalSchemeModFBigStepSemantics
           with IncrementalSchemeTypeDomain

@@ -78,7 +78,7 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
         extends ModAnalysis[SchemeExp](program)
         with StandardSchemeModFComponents
         with SchemeModFNoSensitivity
-        with SchemeModFSemantics
+        with SchemeModFSemanticsM
         with IncrementalSchemeConstantPropagationDomain // Use the incremental domain for both.
         with LIFOWorklistAlgorithm[SchemeExp]
 

@@ -76,7 +76,7 @@ object IncrementalSchemeAnalysisInstantiations:
         extends ModAnalysis[SchemeExp](prg)
         with StandardSchemeModFComponents
         with SchemeModFNoSensitivity
-        with SchemeModFSemantics
+        with SchemeModFSemanticsM
         with LIFOWorklistAlgorithm[SchemeExp]
         with IncrementalSchemeModFBigStepSemantics
 

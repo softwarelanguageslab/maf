@@ -11,15 +11,22 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.language.CScheme.TID
 import maf.util._
+import maf.core.IdentityMonad.given
+import maf.core.Monad.MonadIterableOps
+import maf.core.Monad.MonadSyntaxOps
 
-/** Base definitions for a Scheme MODF analysis. */
+/** Base definitions for a Scheme MODF analysis (monadic style). */
 // TODO: Most of this can be factored out to SchemeSemantics
-trait BaseSchemeModFSemantics
+trait BaseSchemeModFSemanticsM
     extends ModAnalysis[SchemeExp]
     with GlobalStore[SchemeExp]
     with ReturnValue[SchemeExp]
     with SchemeDomain
     with ContextSensitiveComponents[SchemeExp]:
+
+    /** Functions of these base definitions can be executed in the context of the given monad */
+    type M[_]
+    implicit lazy val baseEvalM: Monad[M]
 
     // the environment in which the ModF analysis is executed
     type Env = Environment[Addr]
@@ -32,20 +39,20 @@ trait BaseSchemeModFSemantics
     // Represent `allocCtx` as a value, which can be passed
     // to other functions
     protected trait ContextBuilder:
-        def alloc(
+        def allocM(
             clo: (SchemeLambdaExp, Environment[Address]),
             args: List[Value],
             call: Position,
             caller: Component
-          ): ComponentContext
+          ): M[ComponentContext]
 
     protected object DefaultContextBuilder extends ContextBuilder:
-        def alloc(
+        def allocM(
             clo: (SchemeLambdaExp, Environment[Address]),
             args: List[Value],
             call: Position,
             caller: Component
-          ): ComponentContext = allocCtx(clo, args, call, caller)
+          ): M[ComponentContext] = Monad[M].unit(allocCtx(clo, args, call, caller))
 
     lazy val mainBody = program
     def expr(cmp: Component): SchemeExp = body(cmp)
@@ -147,11 +154,14 @@ trait BaseSchemeModFSemantics
           args: List[(SchemeExp, Value)],
           cll: Position,
           ctx: ContextBuilder = DefaultContextBuilder,
-        ): Value =
-          val fromClosures = applyClosures(fval, args, cll, ctx)
-          val fromPrimitives = applyPrimitives(fexp, fval, args)
-          applyContinuations(fval, args)
-          lattice.join(fromClosures, fromPrimitives)
+        ): M[Value] =
+          import maf.core.Monad.MonadSyntaxOps
+          for
+              fromClosures <- applyClosuresM(fval, args, cll, ctx)
+              fromPrimitives <- applyPrimitives(fexp, fval, args)
+              _ = applyContinuations(fval, args)
+          yield lattice.join(fromClosures, fromPrimitives)
+
       private def applyContinuations(k: Value, args: List[(SchemeExp, Value)]) =
         args match
             case (_, vlu) :: Nil =>
@@ -160,38 +170,43 @@ trait BaseSchemeModFSemantics
             case _ => () // continuations are only called with a single argument
       // => ignore continuation calls with more than 1 argument
       // TODO[minor]: use foldMap instead of foldLeft
-      protected def applyClosures(
+      protected def applyClosuresM(
           fun: Value,
           args: List[(SchemeExp, Value)],
           cll: Position,
           ctx: ContextBuilder = DefaultContextBuilder,
-        ): Value =
+        ): M[Value] =
           val arity = args.length
           val closures = lattice.getClosures(fun)
-          closures.foldLeft(lattice.bottom)((acc, clo) =>
-            lattice.join(
-              acc,
-              clo match {
-                case (SchemeLambda(_, prs, _, _), _) if prs.length == arity =>
-                  val argVals = args.map(_._2)
-                  val context = ctx.alloc(clo, argVals, cll, component)
-                  val targetCall = Call(clo, context)
-                  val targetCmp = newComponent(targetCall)
-                  bindArgs(targetCmp, prs, argVals)
-                  call(targetCmp)
-                case (SchemeVarArgLambda(_, prs, vararg, _, _), _) if prs.length <= arity =>
-                  val (fixedArgs, varArgs) = args.splitAt(prs.length)
-                  val fixedArgVals = fixedArgs.map(_._2)
-                  val varArgVal = allocateList(varArgs)
+          closures.foldLeftM(lattice.bottom)((acc, clo) =>
+            for
+                result <-
+                  (clo match {
+                    case (SchemeLambda(_, prs, _, _), _) if prs.length == arity =>
+                      val argVals = args.map(_._2)
+                      for
+                          context <- ctx.allocM(clo, argVals, cll, component)
+                          targetCall = Call(clo, context)
+                          targetCmp = newComponent(targetCall)
+                          _ = bindArgs(targetCmp, prs, argVals)
+                      yield call(targetCmp)
+                    case (SchemeVarArgLambda(_, prs, vararg, _, _), _) if prs.length <= arity =>
+                      val (fixedArgs, varArgs) = args.splitAt(prs.length)
+                      val fixedArgVals = fixedArgs.map(_._2)
+                      val varArgVal = allocateList(varArgs)
 
-                  val context = ctx.alloc(clo, fixedArgVals :+ varArgVal, cll, component)
-                  val targetCall = Call(clo, context)
-                  val targetCmp = newComponent(targetCall)
-                  bindArgs(targetCmp, prs, fixedArgVals)
-                  bindArg(targetCmp, vararg, varArgVal)
-                  call(targetCmp)
-                case _ => lattice.bottom
-              }
+                      for
+                          context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
+                          targetCall = Call(clo, context)
+                          targetCmp = newComponent(targetCall)
+                          _ = bindArgs(targetCmp, prs, fixedArgVals)
+                          _ = bindArg(targetCmp, vararg, varArgVal)
+                      yield call(targetCmp)
+                    case _ => Monad[M].unit(lattice.bottom)
+                  })
+            yield lattice.join(
+              acc,
+              result
             )
           )
       protected def allocateList(elms: List[(SchemeExp, Value)]): Value = elms match
@@ -238,17 +253,19 @@ trait BaseSchemeModFSemantics
           fexp: SchemeFuncall,
           fval: Value,
           args: List[(SchemeExp, Value)]
-        ): Value =
+        ): M[Value] =
         lattice
           .getPrimitives(fval)
-          .foldLeft(lattice.bottom)((acc, prm) =>
-            lattice.join(
-              acc,
-              primitives(prm).callMF(fexp, args.map(_._2)) match {
-                case MayFailSuccess(vlu) => vlu
-                case MayFailBoth(vlu, _) => vlu
-                case MayFailError(_)     => lattice.bottom
-              }
+          .foldLeftM(lattice.bottom)((acc, prm) =>
+            Monad[M].unit(
+              lattice.join(
+                acc,
+                primitives(prm).callMF(fexp, args.map(_._2)) match {
+                  case MayFailSuccess(vlu) => vlu
+                  case MayFailBoth(vlu, _) => vlu
+                  case MayFailError(_)     => lattice.bottom
+                }
+              )
             )
           )
       // evaluation helpers
@@ -290,13 +307,30 @@ trait BaseSchemeModFSemantics
           Monoid[M].append(csqVal, altVal)
     }
 
-trait SchemeModFSemantics extends SchemeSetup with BaseSchemeModFSemantics with StandardSchemeModFAllocator:
+/* Legacy support for non-monadic base semantics */
+//trait BaseSchemeModFSemantics extends BaseSchemeModFSemanticsM:
+//    export maf.core.IdentityMonad.given
+//    import maf.core.IdentityMonad.Id
+//
+//    type M[X] = Id[X]
+//    implicit final val baseEvalM: Monad[M] = idMonad
+trait BaseSchemeModFSemantics extends BaseSchemeModFSemanticsM
+trait BaseSchemeModFSemanticsIdentity extends BaseSchemeModFSemantics:
+    export maf.core.IdentityMonad.given
+    import maf.core.IdentityMonad.Id
+
+    type M[X] = Id[X]
+    implicit lazy val baseEvalM: Monad[M] = idMonad
+
+trait SchemeModFSemanticsM extends SchemeSetup with BaseSchemeModFSemanticsM with StandardSchemeModFAllocator:
     def baseEnv = initialEnv
+
+trait SchemeModFSemantics extends BaseSchemeModFSemanticsIdentity
 
 // for convenience, since most Scheme analyses don't need this much parameterization
 abstract class SimpleSchemeModFAnalysis(prg: SchemeExp)
     extends ModAnalysis[SchemeExp](prg)
     with StandardSchemeModFComponents
-    with SchemeModFSemantics
+    with SchemeModFSemanticsM
     with BigStepModFSemantics:
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra

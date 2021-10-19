@@ -26,7 +26,7 @@ trait ScvSafetyTests extends SchemeBenchmarkTests:
           with SchemeConstantPropagationDomain
           with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFSemantics
+          with SchemeModFSemanticsM
           with ScvOneContextSensitivity:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             override val sat: ScvSatSolver[Value] =

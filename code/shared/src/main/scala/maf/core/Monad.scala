@@ -186,7 +186,7 @@ object OptionMonad:
 object IdentityMonad:
     type Id[X] = X
 
-trait IdentityMonad extends Monad[Id]:
-    def unit[X](x: X): Id[X] = x
-    def map[X, Y](m: Id[X])(f: X => Y): Id[Y] = f(m)
-    def flatMap[X, Y](m: Id[X])(f: X => Id[Y]): Id[Y] = f(m)
+    given idMonad: Monad[Id] = new Monad:
+        def unit[X](x: X): Id[X] = x
+        def map[X, Y](m: Id[X])(f: X => Y): Id[Y] = f(m)
+        def flatMap[X, Y](m: Id[X])(f: X => Id[Y]): Id[Y] = f(m)

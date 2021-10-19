@@ -16,7 +16,7 @@ object VerifyAssertions:
         val txt = Reader.loadFile(program)
         val prg = SchemeParser.parseProgram(txt)
         val analysis = new ModAnalysis(prg)
-          with SchemeModFSemantics
+          with SchemeModFSemanticsM
           with SchemeAssertSemantics
           with StandardSchemeModFComponents
           with SchemeTypeDomain

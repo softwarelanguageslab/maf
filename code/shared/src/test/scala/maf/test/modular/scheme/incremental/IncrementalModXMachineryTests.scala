@@ -38,7 +38,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
       new ModAnalysis[SchemeExp](e)
         with StandardSchemeModFComponents
         with SchemeModFCallSiteSensitivity
-        with SchemeModFSemantics
+        with SchemeModFSemanticsM
         with LIFOWorklistAlgorithm[SchemeExp]
         with IncrementalSchemeModFBigStepSemantics
         with IncrementalSchemeTypeDomain
@@ -123,7 +123,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
         val base: Analysis = new ModAnalysis[SchemeExp](CSchemeParser.parseProgram(program))
           with StandardSchemeModFComponents
           with SchemeModFNoSensitivity
-          with SchemeModFSemantics
+          with SchemeModFSemanticsM
           with LIFOWorklistAlgorithm[SchemeExp]
           with IncrementalSchemeModFBigStepSemantics
           with IncrementalSchemeConstantPropagationDomain
@@ -176,7 +176,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
         val base: Analysis = new ModAnalysis[SchemeExp](CSchemeParser.parseProgram(program))
           with StandardSchemeModFComponents
           with SchemeModFCallSiteSensitivity
-          with SchemeModFSemantics
+          with SchemeModFSemanticsM
           with FIFOWorklistAlgorithm[SchemeExp]
           with IncrementalSchemeModFBigStepSemantics
           with IncrementalSchemeConstantPropagationDomain
@@ -193,7 +193,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
         def getStandard(p: SchemeExp) = new ModAnalysis[SchemeExp](p)
           with StandardSchemeModFComponents
           with SchemeModFCallSiteSensitivity
-          with SchemeModFSemantics
+          with SchemeModFSemanticsM
           with FIFOWorklistAlgorithm[SchemeExp]
           with BigStepModFSemantics
           with SchemeConstantPropagationDomain
