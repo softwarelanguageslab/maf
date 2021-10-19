@@ -92,6 +92,8 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
           case e: VirtualMachineError =>
             System.gc()
             cancel(s"Analysis of $benchmark encountered an error: $e")
+    // case InvalidConfigurationException(msg, config) =>
+    //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
 
     // This is horrible code.
     override def onBenchmark(benchmark: Benchmark): Unit =
@@ -143,11 +145,20 @@ trait RemainingConfigurations extends IncrementalModXSoundnessTests:
       (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
     override def isSlow(b: Benchmark) = true
 
+trait noCY extends IncrementalModXSoundnessTests:
+    override protected def runAnalysisWithConfiguration(
+        program: SchemeExp,
+        benchmark: Benchmark,
+        config: IncrementalConfiguration
+      ): IncrementalAnalysis =
+      super.runAnalysisWithConfiguration(program, benchmark, config.copy(cyclicValueInvalidation = false))
+
 /** Implements soundness tests for an incremental ModConc analysis. */
-class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks:
+class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks with noCY:
+    override val configurations: List[IncrementalConfiguration] = List(ci_di_wi)
     def name = "Incremental ModConc Type"
 
-    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b, allOptimisations)
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b, ci_di_wi) // allOptimisations)
 
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
     override def isSlow(b: Benchmark): Boolean =
@@ -159,13 +170,15 @@ class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with
       )(b)
 
 /** Implements soundness tests for an incremental ModConc analysis. */
-class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType:
+class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with noCY:
     override def name = "Incremental ModConc CP"
-    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, allOptimisations)
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, ci_di_wi) // allOptimisations)
     override def isSlow(b: Benchmark): Boolean = true
 
-class IncrementalSmallStepModConcTypeRemainingConfigs extends IncrementalSmallStepModConcType with RemainingConfigurations
-class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStepModConcCP with RemainingConfigurations
+class IncrementalSmallStepModConcTypeRemainingConfigs extends IncrementalSmallStepModConcType with RemainingConfigurations:
+    override val configurations = allConfigurations.filterNot(_.cyclicValueInvalidation)
+class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStepModConcCP with RemainingConfigurations:
+    override val configurations = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 /** Implements soundness tests for an incremental ModF type analysis. */
 class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks:

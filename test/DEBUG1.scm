@@ -1,11 +1,3 @@
 (define (phi x2)
-  (<change>
-    (not x2)
-    x2))
-(define (try f)
-  (or (f #t) #t))
-(define (sat-solve-4 pred)
-  (try (lambda (n1)
-         (try (lambda (n2)
-                (pred n2))))))
-(sat-solve-4 phi)
+  (<change> (abs x2) x2))
+(or (phi -1) (phi 1))

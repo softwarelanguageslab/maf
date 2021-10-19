@@ -115,6 +115,8 @@ following publications:
 
 **MAF has been used for evaluating modular static analysis approaches in the following publications:**
 
+* _A Parallel Worklist Algorithm and Its Exploration Heuristics for Static Modular Analyses_. Journal of Systems and Software, Volume 181. 2021. 
+[pdf](http://soft.vub.ac.be/Publications/2021/vub-tr-soft-21-06.pdf), [doi](https://doi.org/10.1016/j.jss.2021.111042).
 * _A Parallel Worklist Algorithm for Modular Analyses_. SCAM
   2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-10.pdf). _See release: `SCAM 2020`_
 * _Incremental Flow Analysis through Computational Dependency Reification_. SCAM

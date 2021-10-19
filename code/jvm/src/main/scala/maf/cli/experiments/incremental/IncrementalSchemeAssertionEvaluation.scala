@@ -110,18 +110,13 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 
 trait IncrementalSchemeModFAssertionEvaluation extends IncrementalSchemeAssertionEvaluation:
     def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential
-
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-    val configurations: List[IncrementalConfiguration] = List()
+    val configurations: List[IncrementalConfiguration] = allConfigurations
 
-/*
 object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e, config)
-
     override val outputFile: String = s"assertions/modf-CP.txt"
 
 object IncrementalSchemeBigStepTypeAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAssertionAnalysisTypeLattice(e, config)
-
     override val outputFile: String = s"assertions/modf-Type.txt"
- */

@@ -76,18 +76,18 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // STORE STUFF
     //
 
-    def extendV(sto: Sto, stw: Sto, adr: Adr, vlu: Val): (Dlt, Dlt) = 
+    def extendV(sto: Sto, stw: Sto, adr: Adr, vlu: Val): (Dlt, Dlt) =
       policy(adr) match
-        case AddrPolicy.Local => (sto.extend(adr, vlu), Delta.empty)
-        case AddrPolicy.Widened => (Delta.empty, stw.extend(adr, vlu))
-    def updateV(sto: Sto, stw: Sto, adr: Adr, vlu: Val): (Dlt, Dlt) = 
-      policy(adr) match 
-        case AddrPolicy.Local => (sto.update(adr, vlu), Delta.empty)
-        case AddrPolicy.Widened => (Delta.empty, stw.update(adr, vlu))
-    def lookupV(sto: Sto, stw: Sto, adr: Adr): Val = 
-      policy(adr) match 
-        case AddrPolicy.Local => sto(adr)
-        case AddrPolicy.Widened => stw(adr)
+          case AddrPolicy.Local   => (sto.extend(adr, vlu), Delta.empty)
+          case AddrPolicy.Widened => (Delta.empty, stw.extend(adr, vlu))
+    def updateV(sto: Sto, stw: Sto, adr: Adr, vlu: Val): (Dlt, Dlt) =
+      policy(adr) match
+          case AddrPolicy.Local   => (sto.update(adr, vlu), Delta.empty)
+          case AddrPolicy.Widened => (Delta.empty, stw.update(adr, vlu))
+    def lookupV(sto: Sto, stw: Sto, adr: Adr): Val =
+      policy(adr) match
+          case AddrPolicy.Local   => sto(adr)
+          case AddrPolicy.Widened => stw(adr)
 
     def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
       def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
@@ -102,48 +102,46 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // GC'ing
     //
 
-    trait AGC[X] extends AbstractGarbageCollector[(X,X), Adr]:
-      def fresh1(cur: X): X
-      def fresh(cur: (X,X)): (X,X) = (fresh1(cur._1), fresh1(cur._2))
-      def move1(addr: Adr, from: X, to: X): (X, Set[Adr])
-      def move(addr: Adr, from: (X, X), to: (X, X)): ((X, X), Set[Adr]) =
-        policy(addr) match
-          case AddrPolicy.Local => 
-            val (lcl, rfs) = move1(addr, from._1, to._1)
-            ((lcl, to._2), rfs)
-          case AddrPolicy.Widened => 
-            val (stw, rfs) = move1(addr, from._2, to._2)
-            ((to._1, stw), rfs)
+    trait AGC[X] extends AbstractGarbageCollector[(X, X), Adr]:
+        def fresh1(cur: X): X
+        def fresh(cur: (X, X)): (X, X) = (fresh1(cur._1), fresh1(cur._2))
+        def move1(addr: Adr, from: X, to: X): (X, Set[Adr])
+        def move(addr: Adr, from: (X, X), to: (X, X)): ((X, X), Set[Adr]) =
+          policy(addr) match
+              case AddrPolicy.Local =>
+                val (lcl, rfs) = move1(addr, from._1, to._1)
+                ((lcl, to._2), rfs)
+              case AddrPolicy.Widened =>
+                val (stw, rfs) = move1(addr, from._2, to._2)
+                ((to._1, stw), rfs)
 
     object StoreGC extends AGC[Sto]:
-      def fresh1(cur: Sto) = LocalStore.empty
-      def move1(addr: Adr, from: Sto, to: Sto): (Sto, Set[Adr]) = 
-        from.content.get(addr) match
-            case None             => (to, Set.empty)
-            case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
+        def fresh1(cur: Sto) = LocalStore.empty
+        def move1(addr: Adr, from: Sto, to: Sto): (Sto, Set[Adr]) =
+          from.content.get(addr) match
+              case None             => (to, Set.empty)
+              case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
 
-    case object DeltaGC extends AGC[(Dlt,Sto)]:
-      def fresh1(cur: (Dlt, Sto)) = (cur._1.copy(delta = Map.empty), cur._2) //TODO: this always carries over the set of updated addrs
-      def move1(addr: Adr, from: (Dlt, Sto), to: (Dlt, Sto)): ((Dlt, Sto), Set[Adr]) =
-        from._1.delta.get(addr).orElse(from._2.content.get(addr)) match
-            case None                                           => (to, Set.empty)
-            case Some((v, _)) if !from._1.delta.contains(addr)  => (to, lattice.refs(v))
-            case Some(s @ (v, _))                               => ((to._1.copy(delta = to._1.delta + (addr -> s)), to._2), lattice.refs(v))
+    case object DeltaGC extends AGC[(Dlt, Sto)]:
+        def fresh1(cur: (Dlt, Sto)) = (cur._1.copy(delta = Map.empty), cur._2) //TODO: this always carries over the set of updated addrs
+        def move1(addr: Adr, from: (Dlt, Sto), to: (Dlt, Sto)): ((Dlt, Sto), Set[Adr]) =
+          from._1.delta.get(addr).orElse(from._2.content.get(addr)) match
+              case None                                          => (to, Set.empty)
+              case Some((v, _)) if !from._1.delta.contains(addr) => (to, lattice.refs(v))
+              case Some(s @ (v, _))                              => ((to._1.copy(delta = to._1.delta + (addr -> s)), to._2), lattice.refs(v))
 
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
       (res, ctx, env, sto, stw) =>
           val (gcs, gcw) = StoreGC.collect((sto, stw), rs)
           val (rs0, dw0, ef0) = blk(res, ctx, env, gcs, gcw)
           val (rs1, dw1) = collectDelta(gcs, gcw, rs0, dw0)
-          (rs1.map((v,d) => (v, sto.replay(gcs, d))), stw.replay(gcw, dw1), ef0)
+          (rs1.map((v, d) => (v, sto.replay(gcs, d))), stw.replay(gcw, dw1), ef0)
 
-    def collectDelta(sto: Sto, stw: Sto, rss: Set[(Val, Dlt)], std: Dlt): (Set[(Val, Dlt)], Dlt)  =
-      rss.foldLeft((Set.empty[(Val, Dlt)], Delta.empty)) {
-        case ((accR, accW), (v, d)) =>
-          val ((gcd, _), (gdw, _)) = DeltaGC.collect(((d, sto), (std, stw)), lattice.refs(v) ++ d.updates ++ std.updates)
-          (accR + ((v, gcd)), stw.join(accW, gdw))
+    def collectDelta(sto: Sto, stw: Sto, rss: Set[(Val, Dlt)], std: Dlt): (Set[(Val, Dlt)], Dlt) =
+      rss.foldLeft((Set.empty[(Val, Dlt)], Delta.empty)) { case ((accR, accW), (v, d)) =>
+        val ((gcd, _), (gdw, _)) = DeltaGC.collect(((d, sto), (std, stw)), lattice.refs(v) ++ d.updates ++ std.updates)
+        (accR + ((v, gcd)), stw.join(accW, gdw))
       }
-
 
     override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
@@ -155,15 +153,15 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     //
 
     enum AddrPolicy:
-      case Local
-      case Widened 
+        case Local
+        case Widened
 
     var fixedPolicies: Map[Adr, AddrPolicy] = Map.empty
     def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
-    def policy(adr: Adr): AddrPolicy = 
+    def policy(adr: Adr): AddrPolicy =
       fixedPolicies.get(adr) match
-        case Some(ply) => ply
-        case None => customPolicy(adr)
+          case Some(ply) => ply
+          case None      => customPolicy(adr)
 
     type Sts = Map[(Exp, Ctx), Sto]
     var stores: Sts = Map.empty
@@ -171,13 +169,13 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def getStore(sts: Sts, exp: Exp, ctx: Ctx): Sto =
       sts.getOrElse((exp, ctx), LocalStore.empty)
     def setStore(sts: Sts, exp: Exp, ctx: Ctx, sto: Sto): Sts =
-      sts + ((exp, ctx) -> sto) 
+      sts + ((exp, ctx) -> sto)
 
-    override def init() = 
-      super.init()
-      stores = setStore(stores, MainComponent.exp, MainComponent.ctx, initialSto)
-      initialBds.map(_._2).foreach(adr => fixedPolicies += adr -> AddrPolicy.Widened)
-    
+    override def init() =
+        super.init()
+        stores = setStore(stores, MainComponent.exp, MainComponent.ctx, initialSto)
+        initialBds.map(_._2).foreach(adr => fixedPolicies += adr -> AddrPolicy.Widened)
+
     case class WidenedAddrDependency(exp: Exp, ctx: Ctx, adr: Adr) extends Dependency
 
     //
@@ -204,8 +202,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           (_, _, _, sto, stw) => (Set((x, Delta.empty)), Delta.empty, Eff.empty)
         def map[X, Y](m: A[X])(f: X => Y) =
           (res, ctx, env, sto, stw) =>
-            val (rss, dlw, eff) = m(res, ctx, env, sto, stw)
-            (rss.map((x, d) => (f(x), d)), dlw, eff)
+              val (rss, dlw, eff) = m(res, ctx, env, sto, stw)
+              (rss.map((x, d) => (f(x), d)), dlw, eff)
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
           (res, ctx, env, sto0, stw0) =>
               val (rs1, dw1, ef1) = m(res, ctx, env, sto0, stw0)
@@ -221,9 +219,9 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           (_, _, _, _, stw) => (Set.empty, Delta.empty, Eff.empty)
         def mjoin[X: Lattice](x: A[X], y: A[X]) =
           (res, ctx, env, sto, stw) =>
-            val (rs1, dw1, ef1) = x(res, ctx, env, sto, stw)
-            val (rs2, dw2, ef2) = y(res, ctx, env, sto, stw)
-            (rs1 ++ rs2, stw.join(dw1, dw2), ef1 ++ ef2)
+              val (rs1, dw1, ef1) = x(res, ctx, env, sto, stw)
+              val (rs2, dw2, ef2) = y(res, ctx, env, sto, stw)
+              (rs1 ++ rs2, stw.join(dw1, dw2), ef1 ++ ef2)
         // MONADERROR
         def fail[X](err: Error) =
           mbottom // we are not interested in errors here (at least, not yet ...)
@@ -231,16 +229,15 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         def addrEq =
           (_, _, _, sto, stw) => (Set((eqA(sto), Delta.empty)), Delta.empty, Eff.empty)
         def extendSto(adr: Adr, vlu: Val) =
-          (_, _, env, sto, stw) => 
-            val (std, sdw) = extendV(sto, stw, adr, vlu)
-            (Set(((), std)), sdw, Eff.empty)
+          (_, _, env, sto, stw) =>
+              val (std, sdw) = extendV(sto, stw, adr, vlu)
+              (Set(((), std)), sdw, Eff.empty)
         def updateSto(adr: Adr, vlu: Val) =
-          (_, _, env, sto, stw) => 
-            val (std, sdw) = updateV(sto, stw, adr, vlu)
-            (Set(((), std)), sdw, Eff.empty)
+          (_, _, env, sto, stw) =>
+              val (std, sdw) = updateV(sto, stw, adr, vlu)
+              (Set(((), std)), sdw, Eff.empty)
         def lookupSto(adr: Adr) =
-          (_, _, _, sto, stw) => 
-            (Set((lookupV(sto, stw, adr), Delta.empty)), Delta.empty, Eff.empty)
+          (_, _, _, sto, stw) => (Set((lookupV(sto, stw, adr), Delta.empty)), Delta.empty, Eff.empty)
         // CTX STUFF
         def getCtx =
           (_, ctx, _, sto, stw) => (Set((ctx, Delta.empty)), Delta.empty, Eff.empty)
@@ -254,17 +251,16 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         // CALL STUFF
         def call(lam: Lam): A[Val] =
           (res, ctx, env, sto, stw) =>
-            val cmp = CallComponent(lam, env, ctx, sto)
-            val eff = Eff.call(cmp) ++ Eff.write(stw.content.map({ case (adr, (vlu, cnt)) => (cmp.exp, ctx, adr, cnt, vlu) }))
-            val (rss, dlw) = res.getOrElse(cmp, (Set.empty, Delta.empty)).asInstanceOf[(Set[(Val, Dlt)], Dlt)]
-            (rss, dlw, eff)
+              val cmp = CallComponent(lam, env, ctx, sto)
+              val eff = Eff.call(cmp) ++ Eff.write(stw.content.map({ case (adr, (vlu, cnt)) => (cmp.exp, ctx, adr, cnt, vlu) }))
+              val (rss, dlw) = res.getOrElse(cmp, (Set.empty, Delta.empty)).asInstanceOf[(Set[(Val, Dlt)], Dlt)]
+              (rss, dlw, eff)
 
     //
     // THE INTRA-ANALYSIS
     //
 
     def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) { intra =>
-      
       // local state
       var results = inter.results
       var stores = inter.stores
@@ -282,19 +278,19 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           stw.content.keys.foreach(adr => register(WidenedAddrDependency(cmp.exp, cmp.ctx, adr)))
           // process new components
           eff.c.foreach { cmp =>
-            spawn(cmp)
-            register(ResultDependency(cmp))  
+              spawn(cmp)
+              register(ResultDependency(cmp))
           }
           // process writes to widened stores
           eff.w.foreach { case (exp, ctx, adr, cnt, vlu) =>
             val prv = getStore(intra.stores, exp, ctx)
             prv.joinAt(adr, vlu, cnt) match
-              case None => ()
-              case Some(sto) => 
-                intra.stores = setStore(intra.stores, exp, ctx, sto)
-                trigger(WidenedAddrDependency(exp, ctx, adr))
+                case None => ()
+                case Some(sto) =>
+                  intra.stores = setStore(intra.stores, exp, ctx, sto)
+                  trigger(WidenedAddrDependency(exp, ctx, adr))
           }
-          
+
       override def doWrite(dep: Dependency): Boolean = dep match
           case ResultDependency(cmp) =>
             val old = inter.results.getOrElse(cmp, (Set.empty, Delta.empty))
@@ -307,11 +303,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             val oldS = inter.stores.getOrElse((exp, ctx), LocalStore.empty)
             val newS = intra.stores((exp, ctx)) // we are certain to have a store here!
             val (newV, newC) = newS.content(adr)
-            oldS.joinAt(adr, newV, newC) match 
-              case None => false
-              case Some(sto) =>
-                inter.stores = setStore(inter.stores, exp, ctx, sto)
-                true 
+            oldS.joinAt(adr, newV, newC) match
+                case None => false
+                case Some(sto) =>
+                  inter.stores = setStore(inter.stores, exp, ctx, sto)
+                  true
           case _ => super.doWrite(dep)
     }
 

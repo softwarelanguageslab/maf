@@ -101,44 +101,35 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp]:
     override def interestingAddress[A <: Address](a: A): Boolean = a match
         case PrmAddr(_) => false
         case _          => true
-
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
-
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
-
     val outputFile: String = s"properties/modf-type.txt"
 
 object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
-
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
-
     val outputFile: String = s"properties/modf-CP.txt"
 
 object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
-
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
-
     val outputFile: String = s"properties/modconc-type.txt"
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
-
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
-
     val outputFile: String = s"properties/modconc-CP.txt"
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXProperties:
     def main(args: Array[String]): Unit =

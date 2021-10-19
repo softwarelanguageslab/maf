@@ -104,40 +104,31 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
     override def interestingAddress[A <: Address](a: A): Boolean = a match
         case PrmAddr(_) => false
         case _          => true
-
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFTypePrecision extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
-
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
-
     val outputFile: String = "precision/modf-type.txt"
 
 object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
-
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
-
     val outputFile: String = "precision/modf-CP.txt"
 
 object IncrementalSchemeModConcTypePrecision extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
-
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
-
     val outputFile: String = "precision/modconc-type.txt"
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
-
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
-
     val outputFile: String = "precision/modconc-CP.txt"
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXPrecision:
     def main(args: Array[String]): Unit =

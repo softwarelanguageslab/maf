@@ -212,11 +212,13 @@ object IncrementalSchemeModConcPerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
     val outputFile: String = s"performance/modconc-type.txt"
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
     val outputFile: String = s"performance/modconc-CP.txt"
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXPerformance:
     def main(args: Array[String]): Unit =

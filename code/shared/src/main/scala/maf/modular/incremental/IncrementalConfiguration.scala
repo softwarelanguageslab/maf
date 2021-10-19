@@ -1,5 +1,7 @@
 package maf.modular.incremental
 
+import maf.modular.incremental.IncrementalConfiguration.InvalidConfigurationException
+
 /**
  * Utility class to select the optimisations of the incremental analysis that should be enabled. This can be specified using the boolean arguments to
  * the constructor of the class. Additionally, other analysis specifications can be specified as well. These can be defined using `var` fields (or as
@@ -23,7 +25,7 @@ case class IncrementalConfiguration(
     cyclicValueInvalidation: Boolean = true):
 
     if cyclicValueInvalidation && !writeInvalidation then
-        throw new Exception("Illegal configuration state: cyclic value invalidation requires write invalidation.")
+        throw new InvalidConfigurationException("Illegal configuration state: cyclic value invalidation requires write invalidation.", this)
 
     private def booleanToString(b: Boolean): String = if b then "enabled" else "disabled"
 
@@ -107,3 +109,5 @@ object IncrementalConfiguration:
         // Four optimisations
         allOptimisations,
       )
+
+    case class InvalidConfigurationException(message: String, config: IncrementalConfiguration) extends Exception(message)
