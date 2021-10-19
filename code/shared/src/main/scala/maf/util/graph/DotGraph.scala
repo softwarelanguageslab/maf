@@ -86,3 +86,13 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
 
 object DotGraph:
     def empty[N <: GraphElement, E <: GraphElement] = new DotGraph().G.typeclass.empty
+
+    // Returns a boolean indicating whether the conversion was successful.
+    def createPNG(dotFile: String, removeSource: Boolean = false): Boolean =
+        if !dotFile.endsWith(".dot") then return false
+        var source = dotFile.replace(" ", "\\ ").nn
+        var target = source.dropRight(3) ++ "png"
+        import sys.process.*
+        val result = s"dot -Tpng $source -o $target".! == 0
+        if removeSource then s"rm $source".!
+        result
