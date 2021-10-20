@@ -36,7 +36,8 @@ case class ContractCallContext[L](domains: List[L], rangeContract: L, args: List
  */
 // TODO: factor out rangeContract, because it is required for a sound implementation of scv, and cannot be disabled/enabled
 // for certain experiments.As such it is not part of a variable context.
-case class KPathCondition[L](ps: PathStore, sstore: SymbolicStore, rangeContract: Option[L]) extends ScvContext[L]
+case class KPathCondition[L](ps: PathStore, sstore: SymbolicStore, rangeContract: Option[L]) extends ScvContext[L]:
+    override def toString: String = s"KPatchCondition(rangeContract = $rangeContract, pc = ${ps.pc})"
 
 case class NoContext[L]() extends ScvContext[L]
 
@@ -118,7 +119,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
                   lowest = psGc.lowest
                   newPs = psGc.reindex(lowest)
                   newSstore = sstore.reindex(lowest)
-              yield KPathCondition[Value](newPs, newSstore, None)
+              yield KPathCondition[Value](newPs, newSstore, rangeContract)
 
 trait ScvOneContextSensitivity extends ScvKContextSensitivity:
     protected val k: Int = 1
