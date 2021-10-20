@@ -26,17 +26,17 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
               registerComponent(exp, component)
               super.eval(exp)
 
-        override protected def evalIf(
-            prd: SchemeExp,
-            csq: SchemeExp,
-            alt: SchemeExp
-          ): EvalM[Value] =
+        /** Evaluation of a conditional that handles implicit value flows. */
+        override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
           for
               prdVal <- eval(prd)
+              // Implicit flows go from the predicate to the branches of the conditional.
+              // When CY is disabled, no addresses will be present (and implicitFlows will be a list of empty sets).
               _ = { implicitFlows = lattice.getAddresses(prdVal) :: implicitFlows }
               adr = implicitFlows.flatten.toSet
               resVal <- cond(prdVal, eval(csq), eval(alt))
               _ = { implicitFlows = implicitFlows.tail }
+          // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
           yield lattice.addAddresses(resVal, adr)
 
     override def intraAnalysis(cmp: Component): IncrementalSchemeModFBigStepIntra
