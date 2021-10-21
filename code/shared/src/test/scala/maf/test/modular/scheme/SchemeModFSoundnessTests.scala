@@ -21,7 +21,7 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests:
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests:
     def name = "small-step semantics"
     def analysis(program: SchemeExp) = new ModAnalysis(program)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with SmallStepModFSemantics
       with StandardSchemeModFComponents
       with SchemeConstantPropagationDomain
@@ -50,7 +50,7 @@ trait ScvModF extends SchemeModFSoundnessTests:
           with SchemeConstantPropagationDomain
           with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFSemantics
+          with SchemeModFSemanticsM
           with ScvOneContextSensitivity:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             // we always return "unknown" here because the Z3 solver is not available in the `shared` module

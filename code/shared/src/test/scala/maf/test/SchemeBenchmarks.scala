@@ -36,3 +36,6 @@ trait ContractBenchmarks extends maf.test.SchemeBenchmarkTests:
 
 trait ContractSafetyTestsBenchmarks extends SchemeBenchmarkTests:
     override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, ContractBenchmarkPrograms.manualSafe)
+
+trait ContractSoundnessTestsBenchmarks extends SchemeBenchmarkTests:
+    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, ContractBenchmarkPrograms.manualUnsafe)

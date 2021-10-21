@@ -14,21 +14,22 @@ import maf.lattice.interfaces.BoolLattice
  * The actual contract semantics are implemented in traits extending from this base trait
  */
 trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
-  import TaggedSet._
-  import MonadStateT._
+  import TaggedSet.*
+  import MonadStateT.*
+  import Symbolic.Implicits.*
   import Monad.MonadSyntaxOps
 
   case class State(
       env: Environment[Address],
       store: StoreCache,
       lstore: BasicStore[Addr, Value],
-      pc: List[Symbolic],
+      ps: PathStore,
       freshVar: Int,
       vars: List[String]):
-      def extendPc(addition: Symbolic) = this.copy(pc = addition :: pc)
+      def extendPc(addition: Symbolic) = this.copy(ps = ps.extendPc(addition))
 
   object State:
-      def empty: State = State(env = BasicEnvironment(Map()), store = Map(), new BasicStore(content = Map()), pc = List(), freshVar = 0, List())
+      def empty: State = State(env = BasicEnvironment(Map()), store = Map(), new BasicStore(content = Map()), ps = PathStore(), freshVar = 0, List())
 
   case class PostValue(symbolic: Option[Symbolic], value: Value)
 
@@ -54,8 +55,8 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
    * @param rangeContract
    *   an optional range contract
    */
-  protected def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value]): EvalM[ContextBuilder] =
-    scvMonadInstance.unit(DefaultContextBuilder)
+  protected def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value]): ContextBuilder =
+    DefaultContextBuilder
 
   /////////////////////////////////////////////////////
   // Monads
@@ -116,14 +117,25 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
     yield ()
 
   protected def getPc: EvalM[List[Symbolic]] =
-    scvMonadInstance.get.map(_.pc)
+    scvMonadInstance.get.map(_.ps.pc)
 
   /** Replaces the current path condition with the one given as a parameter */
   protected def putPc(pc: List[SchemeExp]): EvalM[Unit] =
     for
         st <- scvMonadInstance.get
-        _ <- scvMonadInstance.put(st.copy(pc = pc))
+        _ <- scvMonadInstance.put(st.copy(ps = PathStore().extendPc(pc)))
     yield ()
+
+  /** Replaces the current path store with the given new path store */
+  protected def putPathStore(ps: PathStore): EvalM[Unit] =
+    for
+        st <- scvMonadInstance.get
+        _ <- scvMonadInstance.put(st.copy(ps = ps))
+    yield ()
+
+  /** Get a copy of the current path store */
+  protected def getPathStore: EvalM[PathStore] =
+    scvMonadInstance.get.map(_.ps)
 
   protected def getVars: EvalM[List[String]] =
     scvMonadInstance.get.map(_.vars)

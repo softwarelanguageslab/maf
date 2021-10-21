@@ -34,7 +34,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     scalacOptions ++= Seq(
       "-deprecation", // Emit warning and location for usages of deprecated APIs.
       //"-encoding",
-      "-explain",
+      // "-explain",
       "-new-syntax",
       "-Yexplicit-nulls",
       //"-explaintypes", // Explain type errors in more detail.

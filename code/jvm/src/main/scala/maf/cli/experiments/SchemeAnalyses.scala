@@ -90,7 +90,7 @@ object SchemeAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with CallDepthFirstWorklistAlgorithm[SchemeExp]
@@ -152,7 +152,7 @@ object SchemeAnalyses:
           with SchemeConstantPropagationDomain
           with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFSemantics
+          with SchemeModFSemanticsM
           with ScvOneContextSensitivity:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             // TODO: use Z3 as solver instead of always returning "unknown"

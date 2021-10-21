@@ -22,7 +22,10 @@ trait TEvalM[M[_]] extends Monad[M]:
 trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
     import maf.core.Monad.{MonadIterableOps, MonadSyntaxOps}
     type EvalM[_]
+    type M[X] = EvalM[X]
     implicit val evalM: TEvalM[EvalM]
+    implicit lazy val baseEvalM: Monad[M] = evalM
+
     import evalM._
 
     // helper
@@ -113,7 +116,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
           for
               funVal <- eval(fun)
               argVals <- args.mapM(eval)
-              returned = applyFun(exp, funVal, args.zip(argVals), fun.idn.pos)
+              returned <- applyFun(exp, funVal, args.zip(argVals), fun.idn.pos)
               result <- inject(returned)
           yield result
 

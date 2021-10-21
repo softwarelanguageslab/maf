@@ -21,7 +21,7 @@ import scala.concurrent.duration._
 
 /**
  * Compares the analysis result of an incremental analysis w.r.t. the results obtained by full program analyses. Requires equality for the analysis of
- * the incremental program version, and subsumption for the analysis of the updated program version.
+ * the initial program version, and subsumption for the analysis of the updated program version.
  */
 // TODO: Require equality when all optimisations are enabled.
 trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
@@ -70,6 +70,8 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
                   case e: VirtualMachineError =>
                     System.gc()
                     cancel(s"Analysis of $benchmark encountered an error: $e.")
+              // case InvalidConfigurationException(msg, config)
+              //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
             }
 
 class ModFComparisonTests extends IncrementalModXComparisonTests with SequentialIncrementalBenchmarks:
@@ -78,7 +80,7 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
         extends ModAnalysis[SchemeExp](program)
         with StandardSchemeModFComponents
         with SchemeModFNoSensitivity
-        with SchemeModFSemantics
+        with SchemeModFSemanticsM
         with IncrementalSchemeConstantPropagationDomain // Use the incremental domain for both.
         with LIFOWorklistAlgorithm[SchemeExp]
 
@@ -138,6 +140,9 @@ class ModFComparisonTests extends IncrementalModXComparisonTests with Sequential
         }
 
 class ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks:
+
+    override lazy val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
+
     abstract class BaseModConcAnalysis(prg: SchemeExp)
         extends ModAnalysis[SchemeExp](prg)
         with KKallocModConc
@@ -149,7 +154,7 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
         extends BaseModConcAnalysis(program)
         with IncrementalSchemeModConcSmallStepSemantics
         with IncrementalGlobalStore[SchemeExp]:
-        var configuration: IncrementalConfiguration = allOptimisations
+        var configuration: IncrementalConfiguration = noOptimisations // allOptimisations
 
         override def intraAnalysis(
             cmp: Component

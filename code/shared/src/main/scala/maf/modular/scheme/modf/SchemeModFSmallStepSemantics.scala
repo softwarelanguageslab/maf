@@ -6,7 +6,7 @@ import maf.language.scheme._
 import maf.util.MonoidImplicits._
 import maf.util.benchmarks.Timeout
 
-trait SmallStepModFSemantics extends BaseSchemeModFSemantics:
+trait SmallStepModFSemantics extends BaseSchemeModFSemanticsIdentity:
     // defining the intra-analysis
     override def intraAnalysis(cmp: Component): SmallStepIntra
     trait SmallStepIntra extends IntraAnalysis with SchemeModFSemanticsIntra:

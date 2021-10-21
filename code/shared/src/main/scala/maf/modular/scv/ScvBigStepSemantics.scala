@@ -69,6 +69,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
       private def injectCtx: EvalM[Unit] =
           val context = fromContext(cmp)
           for
+              // TODO: there is still something wrong here, if I disable this, things should start to fail but they don't...
               _ <- putPc(context.pathCondition)
               _ <- putVars(context.vars)
               _ <- Monad.sequence(context.symbolic.map {
@@ -108,15 +109,20 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
           .toMap
 
       /** Adds support for opaque values in primitives */
-      override protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)]): Value =
+      override protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)]): M[Value] =
           import MonoidInstances.*
           import maf.util.MonoidImplicits.*
           val values = args.map(_._2)
-          lattice.join(
-            super.applyPrimitives(fexp, fval, args),
-            if OpqOps.eligible(values) then lattice.getPrimitives(fval).foldMap(prim => OpqOps.compute(prim, values))
-            else lattice.bottom
-          )
+
+          super
+            .applyPrimitives(fexp, fval, args)
+            .map(result =>
+              lattice.join(
+                result,
+                if OpqOps.eligible(values) then lattice.getPrimitives(fval).foldMap(prim => OpqOps.compute(prim, values))
+                else lattice.bottom
+              )
+            )
 
       /** Applies the given primitive and returns its resulting value */
       protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
@@ -197,13 +203,11 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
             contract <- eval(checkExpr.contract)
             value <- eval(checkExpr.valueExpression)
             result <- nondets[Value](lattice.getFlats(contract).map { flat =>
-              unit(
-                applyFun(
-                  SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
-                  flat.contract,
-                  List((checkExpr.valueExpression, value)),
-                  checkExpr.idn.pos
-                )
+              applyFun(
+                SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
+                flat.contract,
+                List((checkExpr.valueExpression, value)),
+                checkExpr.idn.pos
               )
             })
         yield result
@@ -239,19 +243,20 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
           assumed: Boolean = false
         ): EvalM[Value] =
           val call = SchemeFuncall(contract.fexp, List(expr), monIdn)
-          // TODO: find better position information
-          val result = applyFun(call, contract.contract, List((expr, value.value)), Position(-1, 0))
           val resultSymbolic = symCall(contract.sym, List(value.symbolic))
-          val pv = PostValue(resultSymbolic, result)
-          val tru = ifFeasible(`true?`, pv) { unit(value.value).flatMap(value.symbolic.map(tag).getOrElse(unit)) }
-          val fls =
-            if (!assumed) then
-                ifFeasible(`false?`, pv) {
-                  impure { writeBlame(ContractValues.Blame(expr.idn, monIdn)) }.flatMap(_ => void[Value])
-                }
-            else void
-
-          nondet(tru, fls)
+          for
+              // TODO: find better position information
+              result <- applyFun(call, contract.contract, List((expr, value.value)), Position(-1, 0))
+              pv = PostValue(resultSymbolic, result)
+              tru = ifFeasible(`true?`, pv) { unit(value.value).flatMap(value.symbolic.map(tag).getOrElse(unit)) }
+              fls =
+                if (!assumed) then
+                    ifFeasible(`false?`, pv) {
+                      impure { writeBlame(ContractValues.Blame(expr.idn, monIdn)) }.flatMap(_ => void[Value])
+                    }
+                else void
+              result <- nondet(tru, fls)
+          yield result
 
       protected def monArr(contract: ContractValues.Grd[Value], value: PostValue, expression: SchemeExp, monIdn: Identity): EvalM[Value] =
         // TODO: check that the value is indeed a function value, otherwise this should result in a blame (also check which blame)
@@ -265,24 +270,20 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
                 applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn)
               }
               // apply the range maker function
-              rangeContract <- unit(
-                applyFun(
-                  SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
-                  arr.contract.rangeMaker,
-                  fc.args.zip(argsV.map(_.value)),
-                  arr.contract.rangeMakerExpr.idn.pos,
-                )
+              rangeContract <- applyFun(
+                SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
+                arr.contract.rangeMaker,
+                fc.args.zip(argsV.map(_.value)),
+                arr.contract.rangeMakerExpr.idn.pos,
               )
-              ctx <- buildCtx(argsV.map(_.symbolic), Some(rangeContract))
-              result <- unit(
-                applyFun(
-                  fc, // syntactic function node
-                  arr.e, // the function to apply
-                  fc.args.zip(argsV.map(_.value)), // the arguments
-                  fc.idn.pos, // the position of the function in the source code
-                  ctx
-                  //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
-                )
+              ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
+              result <- applyFun(
+                fc, // syntactic function node
+                arr.e, // the function to apply
+                fc.args.zip(argsV.map(_.value)), // the arguments
+                fc.idn.pos, // the position of the function in the source code
+                ctx
+                //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
               )
           yield result
         }
@@ -292,10 +293,11 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
         for
             fv <- extract(eval(f.f))
             argsV <- f.args.mapM(eval andThen extract)
+            ctx = buildCtx(argsV.map(_.symbolic), None)
 
             result <- nondet(
               applyArr(f, fv),
-              unit(applyFun(f, fv.value, f.args.zip(argsV.map(_.value)), f.idn.pos))
+              applyFun(f, fv.value, f.args.zip(argsV.map(_.value)), f.idn.pos, ctx)
             ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))
         yield result
 

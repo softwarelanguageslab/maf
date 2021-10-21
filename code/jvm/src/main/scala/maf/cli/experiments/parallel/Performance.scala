@@ -16,7 +16,7 @@ object ParallelModFAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with CallDepthFirstWorklistAlgorithm[SchemeExp]
@@ -34,7 +34,7 @@ object ParallelModFAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
@@ -53,7 +53,7 @@ object ParallelModFAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with MostVisitedFirstWorklistAlgorithm[SchemeExp]
@@ -72,7 +72,7 @@ object ParallelModFAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with MostVisitedFirstWorklistAlgorithm[SchemeExp]
@@ -91,7 +91,7 @@ object ParallelModFAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp]
@@ -110,7 +110,7 @@ object ParallelModFAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
@@ -129,7 +129,7 @@ object ParallelModFAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
@@ -148,7 +148,7 @@ object ParallelModFAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with BiggerEnvironmentFirstWorklistAlgorithm.ModF
@@ -167,7 +167,7 @@ object ParallelModFAnalyses:
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemantics
+      with SchemeModFSemanticsM
       with StandardSchemeModFComponents
       with BigStepModFSemantics
       with SmallerEnvironmentFirstWorklistAlgorithm.ModF

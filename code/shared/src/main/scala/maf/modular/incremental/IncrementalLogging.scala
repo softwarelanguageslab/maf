@@ -7,6 +7,7 @@ import maf.modular.*
 import maf.util.Logger
 import maf.util.Logger.*
 import maf.util.benchmarks.*
+import maf.util.graph.DotGraph
 
 /**
  * Provides facilities for logging an incremental analysis that uses the incremental global store.
@@ -28,10 +29,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     private def legend(): String =
       """***** LEGEND OF ABBREVIATIONS *****
       |ADEP  An address value dependency is registered. Includes the "source" address and the address where the value flows to.
+      |ADP*  Similar to ADEP, but the address dependency originates from an implicit value flow (e.g., due to a conditional).
       |ANLY  Analysis of a component, indicating the step of the analysis and the number of times the current component is now analysed.
-      |CI    Component invalidation: the given component is deleted.
+      |CINV  Component invalidation: the given component is deleted.
       |COMI  Indicates the component's analysis is committed.
-      |DI    Dependency invalidation: the component is no longer dependent on the dependency.
+      |DINV  Dependency invalidation: the component is no longer dependent on the dependency.
       |IUPD  Incremental update of the given address, indicating the value now residing in the store and the value actually written.
       |PROV  Registration of provenance, including the address and new provenance value, for values that did not cause store changes.
       |READ  Address read, includes the address and value retrieved from the store.
@@ -150,11 +152,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
               throw t
 
     override def deregister(target: Component, dep: Dependency): Unit =
-        logger.log(s"DI   $target <-\\- $dep")
+        logger.log(s"DINV $target <-\\- $dep")
         super.deregister(target, dep)
 
     override def deleteComponent(cmp: Component): Unit =
-        logger.log(s"CI   $cmp")
+        logger.log(s"CINV $cmp")
         deletedC = cmp :: deletedC
         super.deleteComponent(cmp)
 
@@ -192,7 +194,9 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
         // Writing an address.
         override def writeAddr(addr: Addr, value: Value): Boolean =
-            if configuration.cyclicValueInvalidation then lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> $addr"))
+            if configuration.cyclicValueInvalidation then
+                lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> $addr"))
+                implicitFlows.flatten.foreach(f => logger.log(s"ADP* $f ~> $addr"))
             val b = super.writeAddr(addr, value)
             logger.log(s"WRIT $value => $addr (${if b then "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
             b

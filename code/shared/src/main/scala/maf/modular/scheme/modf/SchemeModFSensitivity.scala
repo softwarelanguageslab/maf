@@ -5,7 +5,7 @@ import maf.core.Position._
 import maf.language.scheme._
 
 // TODO: make allocCtx an abstract method of this trait
-trait SchemeModFSensitivity extends BaseSchemeModFSemantics
+trait SchemeModFSensitivity extends BaseSchemeModFSemanticsM
 
 /* Simplest (and most imprecise): no context-sensitivity */
 case object NoContext extends Serializable:

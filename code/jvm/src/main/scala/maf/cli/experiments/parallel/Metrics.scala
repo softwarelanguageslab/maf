@@ -39,7 +39,7 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemantics
+              with SchemeModFSemanticsM
               with StandardSchemeModFComponents
               with BigStepModFSemantics
               with CallDepthFirstWorklistAlgorithm[SchemeExp]
@@ -57,7 +57,7 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemantics
+              with SchemeModFSemanticsM
               with StandardSchemeModFComponents
               with BigStepModFSemantics
               with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
@@ -74,7 +74,7 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemantics
+              with SchemeModFSemanticsM
               with StandardSchemeModFComponents
               with BigStepModFSemantics
               with MostVisitedFirstWorklistAlgorithm[SchemeExp]
@@ -92,7 +92,7 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemantics
+              with SchemeModFSemanticsM
               with StandardSchemeModFComponents
               with BigStepModFSemantics
               with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
@@ -110,7 +110,7 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemantics
+              with SchemeModFSemanticsM
               with StandardSchemeModFComponents
               with BigStepModFSemantics
               with BiggerEnvironmentFirstWorklistAlgorithm.ModF

@@ -60,7 +60,7 @@ object AnalyzeProgram extends App:
     // Non-inc counterpart to IncrementalRun
     def nonIncAnalysis(program: SchemeExp) =
       new ModAnalysis[SchemeExp](getUpdated(program)) // Select the program version here.
-      with StandardSchemeModFComponents with SchemeModFCallSiteSensitivity with SchemeModFSemantics with LIFOWorklistAlgorithm[SchemeExp]
+      with StandardSchemeModFComponents with SchemeModFCallSiteSensitivity with SchemeModFSemanticsM with LIFOWorklistAlgorithm[SchemeExp]
       with BigStepModFSemantics with SchemeConstantPropagationDomain with GlobalStore[SchemeExp] with AnalysisLogging[SchemeExp] {
         override def focus(a: Addr): Boolean = !a.toString.toLowerCase().nn.contains("prm")
         override def intraAnalysis(

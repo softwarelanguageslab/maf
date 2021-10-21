@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 
 trait SchemeR5RSTests extends AnyPropSpec:
 
-    type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemantics
+    type Analysis = ModAnalysis[SchemeExp] with SchemeModFSemanticsM
     type V
     type L = SchemeLattice[V, _ <: Address]
 
