@@ -57,13 +57,15 @@ object AnalysisComparisonAlt1
       // run some adaptive analyses
       List(
         (SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
-        (SchemeAnalyses.modflocalAnalysis(_, 1), "1-CFA DSS"),
+        (SchemeAnalyses.modflocalFSAnalysis(_, 0), "0-CFA DSS/FS"),
         (SchemeAnalyses.kCFAAnalysis(_, 0), "0-CFA MODF"),
-        (SchemeAnalyses.kCFAAnalysis(_, 1), "1-CFA MODF"),
       )
     def main(args: Array[String]) = runBenchmarks(
       Set(
-        "test/R5RS/gambit/deriv.scm"
+        "test/R5RS/scp1/flatten.scm",
+        //"test/R5RS/various/regex.scm",
+        //"test/R5RS/gambit/deriv.scm",
+        //"test/R5RS/gambit/tak.scm",
       )
     )
 

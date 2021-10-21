@@ -144,6 +144,12 @@ object SchemeAnalyses:
         with SchemeModFLocalCallSiteSensitivity(k)
         with LIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
+    def modflocalFSAnalysis(prg: SchemeExp, k: Int) =
+      new SchemeModFLocalFS(prg)
+        with SchemeConstantPropagationDomain
+        with SchemeModFLocalCallSiteSensitivity(k)
+        with LIFOWorklistAlgorithm[SchemeExp]
+        with SchemeModFLocalFSAnalysisResults
 
     def scvModAnalysis(prg: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given
