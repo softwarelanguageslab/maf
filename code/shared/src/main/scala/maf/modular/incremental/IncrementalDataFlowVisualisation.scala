@@ -39,10 +39,10 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
 
     /** Computes the color of an edge based on its specifications. */
     private def edgeColor(directFlow: Boolean, indirectFlow: Boolean): Option[Color] = (directFlow, indirectFlow) match {
-        case (true, true)  => Some(Colors.DarkBlue) // Both direct and indirect flows
-        case (true, false) => Some(Colors.Black)   // Direct flows
-        case (false, true) => Some(Colors.Grey)    // Indirect flows
-        case _             => Some(Colors.Red)     // No flow, should not happen...
+      case (true, true)  => Some(Colors.DarkBlue) // Both direct and indirect flows
+      case (true, false) => Some(Colors.Black) // Direct flows
+      case (false, true) => Some(Colors.Grey) // Indirect flows
+      case _             => Some(Colors.Red) // No flow, should not happen...
     }
 
     /** Creates a dotgraph from the existing flow information and writes this to a file with the given filename. */
@@ -67,7 +67,6 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         edges
           .foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
             case (graph, (source: GE, target: GE, adrDep: AdrDep)) =>
-                edgeColor(adrDep.directFlow, adrDep.indirectFlow).map(color =>
-                    g.addEdge(graph, source, GE("", color), target)).getOrElse(graph)
+              edgeColor(adrDep.directFlow, adrDep.indirectFlow).map(color => g.addEdge(graph, source, GE("", color), target)).getOrElse(graph)
           }
           .toFile(fileName)

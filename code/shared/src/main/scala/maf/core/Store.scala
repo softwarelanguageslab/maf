@@ -53,8 +53,8 @@ case class LocalStore[A, V](content: Map[A, (V, AbstractCount)])(using lat: Latt
     outer =>
     inline def apply(a: A): V = content(a)._1
     inline def lookup(a: A): Option[V] = content.get(a).map(_._1)
-    def update(adr: A, vlu: V): Delta[A,V] = content.get(adr) match
-        case None => throw new Exception("Trying to update a non-existing address")
+    def update(adr: A, vlu: V): Delta[A, V] = content.get(adr) match
+        case None                   => throw new Exception("Trying to update a non-existing address")
         case Some((_, CountOne))    => Delta(Map((adr -> (vlu, CountOne))), Set(adr)) // strong update
         case Some((oldV, CountInf)) => Delta(Map(adr -> (lat.join(oldV, vlu), CountInf)), Set(adr)) // weak update
     def extend(adr: A, vlu: V) = content.get(adr) match

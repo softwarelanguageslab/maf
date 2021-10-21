@@ -92,12 +92,12 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def eqA(sto: Sto, stw: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
       def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
         if a1 == a2 then
-          val s = policy(a1) match
-            case AddrPolicy.Local => sto
-            case AddrPolicy.Widened => stw
-          s.content.get(a1) match
-            case Some((_, CountOne)) => BoolLattice[B].inject(true)
-            case _                   => BoolLattice[B].top
+            val s = policy(a1) match
+                case AddrPolicy.Local   => sto
+                case AddrPolicy.Widened => stw
+            s.content.get(a1) match
+                case Some((_, CountOne)) => BoolLattice[B].inject(true)
+                case _                   => BoolLattice[B].top
         else BoolLattice[B].inject(false)
     }
 

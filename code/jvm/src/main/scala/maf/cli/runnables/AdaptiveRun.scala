@@ -53,7 +53,10 @@ object AdaptiveRun:
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        val anl = new SchemeModFLocalFS(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]
+        val anl = new SchemeModFLocalFS(prg)
+          with SchemeConstantPropagationDomain
+          with SchemeModFLocalNoSensitivity
+          with FIFOWorklistAlgorithm[SchemeExp]
         def printStore(sto: anl.Sto) =
           sto.content.view
             .filterKeys(!_.isInstanceOf[PrmAddr])

@@ -83,7 +83,8 @@ object IncrementalRun extends App:
           with IncrementalGlobalStore[SchemeExp]
           with IncrementalLogging[SchemeExp]
           with IncrementalDataFlowVisualisation[SchemeExp] {
-          override def focus(a: Addr): Boolean = !a.toString.contains("PrmAddr") && (a.toString.contains("ret") || a.toString.contains("x2") || a.toString.contains("__"))
+          override def focus(a: Addr): Boolean =
+            !a.toString.contains("PrmAddr") && (a.toString.contains("ret") || a.toString.contains("x2") || a.toString.contains("__"))
           var configuration: IncrementalConfiguration = wi_cy
           override def intraAnalysis(
               cmp: Component
@@ -124,4 +125,3 @@ object IncrementalRun extends App:
     createPNG("logs/flowsA2.dot", true)
     createPNG("logs/flowsB.dot", true)
     println("Done")
-
