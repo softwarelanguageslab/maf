@@ -191,7 +191,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
         def updateSto(adr: Adr, vlu: Val) =
           (_, _, env, sto) => (Some(()), updateV(sto, adr, vlu), Eff.empty)
         def lookupSto(adr: Adr) =
-          (_, _, _, sto) => (Some(sto(adr)), Delta.empty, Eff.empty)
+          (_, _, _, sto) => (sto.lookup(adr), Delta.empty, Eff.empty)
         // CTX STUFF
         def getCtx =
           (_, ctx, _, sto) => (Some(ctx), Delta.empty, Eff.empty)
