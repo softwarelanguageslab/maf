@@ -26,7 +26,10 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
               registerComponent(exp, component)
               super.eval(exp)
 
-        /** Evaluation of a conditional that handles implicit value flows. */
+        /**
+         * Evaluation of a conditional that handles implicit value flows.
+         * @note See [Liu et al. 2010].
+         * */
         override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
           for
               prdVal <- eval(prd)

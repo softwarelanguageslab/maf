@@ -1,18 +1,15 @@
 package maf.bench.scheme
 
 object IncrementalSchemeBenchmarkPrograms:
-    lazy val threads: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/cscheme/threads")(
-      "puzzle.scm", // Needs call-with-current-continuation.
-      ".DS_Store"
-    )
-    lazy val concurrent: Set[String] = threads
+
+    // Sequential -- ModF
+
     lazy val sequential: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme")(
       "qeval.scm", // define-syntax, force, delay
       "scheme.scm", // error in program
       "machine-simulator.scm", // map with three arguments
       ".DS_Store"
-    )
-    lazy val assertions: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/assertions")()
+    ) ++ cyclicValueReinforcement
 
     lazy val scam2020ModF: Set[String] = SchemeBenchmarkPrograms.toFolder("test/changes/scheme")(
       "leval.scm",
@@ -23,6 +20,19 @@ object IncrementalSchemeBenchmarkPrograms:
       "nboyer.scm",
       "peval.scm"
     )
+
+    lazy val assertions: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/assertions")()
+
+    // Small sample benchmarks that need CY.
+    lazy val cyclicValueReinforcement: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/reinforcingcycles")()
+
+    // Concurrent -- ModConc
+
+    lazy val threads: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/cscheme/threads")(
+        "puzzle.scm", // Needs call-with-current-continuation.
+        ".DS_Store"
+    )
+    lazy val concurrent: Set[String] = threads
 
     lazy val scam2020ModConc: Set[String] = SchemeBenchmarkPrograms.toFolder("test/changes/cscheme/threads")(
       "actors.scm",
