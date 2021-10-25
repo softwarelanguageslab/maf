@@ -87,20 +87,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
           else value
         }
       }
-    /*
-        var value = lattice.bottom
-        cachedWrites.foreach { case (component, addresses) =>
-          // All addresses of the SCA written by `component`...
-          addresses.intersect(sca).foreach { addr =>
-            // ...that were not influenced by an address in the SCA...
-            if addressDependencies(component)(addr).union(sca).isEmpty then
-                // ...contribute to the incoming value.
-                value = lattice.join(value, provenance(addr)(component))
-          }
-        }
-        value
-     */
-    end incomingSCAValue
 
     /* ****************************** */
     /* ***** Write invalidation ***** */
@@ -240,7 +226,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
         override def writeAddr(addr: Addr, v: Value): Boolean =
             var value = v
-            // Update the value flow information and reset the reads information.
+
+            // CY: Update the value flow information and reset the reads information.
             if configuration.cyclicValueInvalidation then
                 // Get the annotations and remove them so they are not written to the store. Add the implicit flows as well.
                 val dependentAddresses = SmartUnion.sunion(lattice.getAddresses(value), implicitFlows.flatten.toSet)
@@ -248,13 +235,15 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 // Store the dependencies.
                 val newDependencies = SmartUnion.sunion(addressDependencies(component)(addr), dependentAddresses)
                 addressDependencies = addressDependencies + (component -> (addressDependencies(component) + (addr -> newDependencies)))
-            // Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
+
+            // WI: Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
             intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
+
             // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
             // Same than super.writeAddr(addr, value) except that we do not need to trigger when WI is enabled (all written addresses will be scrutinized later upon commit by doWriteIncremental).
             updateAddr(intra.store, addr, value).map { updated =>
                 intra.store = updated
-                if !configuration.writeInvalidation then trigger(AddrDependency(addr)) // TODO (maybe): just override `trigger`?
+                if !configuration.writeInvalidation then trigger(AddrDependency(addr)) // TODO (maybe): just override `trigger`? Or just let this trigger...
             }.isDefined
 
         /* ------------------------------ */
