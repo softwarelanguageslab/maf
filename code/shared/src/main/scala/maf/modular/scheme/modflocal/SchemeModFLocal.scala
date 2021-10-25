@@ -10,7 +10,7 @@ import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 
-abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
+abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics with GlobalStore[SchemeExp]:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -77,18 +77,31 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // STORE STUFF
     //
 
-    def extendV(sto: Sto, adr: Adr, vlu: Val): Dlt =
+    enum AddrPolicy:
+      case Local
+      case Widened
+
+    var fixedPolicies: Map[Adr, AddrPolicy] = Map.empty
+    def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Local
+    def policy(adr: Adr): AddrPolicy =
+      fixedPolicies.get(adr) match
+          case Some(ply) => ply
+          case None      => customPolicy(adr)
+
+    var store: Map[Adr, Val] = Map.empty
+
+    def extendV(anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt =
       policy(adr) match
           case AddrPolicy.Local   => sto.extend(adr, vlu)
-          case AddrPolicy.Widened => ???
-    def updateV(sto: Sto, adr: Adr, vlu: Val): Dlt =
+          case AddrPolicy.Widened => anl.writeAddr(adr, vlu) ; Delta.empty 
+    def updateV(anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt =
       policy(adr) match
           case AddrPolicy.Local   => sto.update(adr, vlu)
-          case AddrPolicy.Widened => ???
-    def lookupV(sto: Sto, adr: Adr): Val =
+          case AddrPolicy.Widened => anl.writeAddr(adr, vlu) ; Delta.empty
+    def lookupV(anl: Anl, sto: Sto, adr: Adr): Val =
       policy(adr) match
           case AddrPolicy.Local   => sto(adr)
-          case AddrPolicy.Widened => ???
+          case AddrPolicy.Widened => anl.readAddr(adr)
 
     def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
       def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
@@ -102,38 +115,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         else BoolLattice[B].inject(false)
     }
 
-    //
-    // GC'ing
-    //
-
-    trait AGC[X] extends AbstractGarbageCollector[X, Adr]:
-      def moveLocal(addr: Adr, from: X, to: X): (X, Set[Adr])
-      def move(addr: Adr, from: X, to: X): (X, Set[Adr]) =
-        policy(addr) match
-          case AddrPolicy.Local => moveLocal(addr, from, to)
-          case AddrPolicy.Widened => ???
-
-    object StoreGC extends AGC[Sto]:
-        def fresh(cur: Sto) = LocalStore.empty
-        def moveLocal(addr: Adr, from: Sto, to: Sto): (Sto, Set[Adr]) =
-          from.content.get(addr) match
-            case None             => (to, Set.empty)
-            case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
-
-    case class DeltaGC(sto: Sto) extends AGC[Dlt]:
-        def fresh(cur: Dlt) = cur.copy(delta = Map.empty) //TODO: this always carries over the set of updated addrs
-        def moveLocal(addr: Adr, from: Dlt, to: Dlt): (Dlt, Set[Adr]) =
-          from.delta.get(addr) match
-            case None => sto.content.get(addr) match
-              case None => (to, Set.empty)
-              case Some((v, _)) => (to, lattice.refs(v))
-            case Some(s @ (v, _)) => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
-
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
       (anl, env, sto, ctx) =>
-        val gcs = StoreGC.collect(sto, rs)
+        val gcs = anl.StoreGC.collect(sto, rs)
         blk(anl, env, gcs, ctx).map { (v, d) =>
-          val gcd = DeltaGC(gcs).collect(d, lattice.refs(v) ++ d.updates)
+          val gcd = anl.DeltaGC(gcs).collect(d, lattice.refs(v) ++ d.updates)
           (v, sto.replay(gcs, gcd))
         }
 
@@ -141,21 +127,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
         super.applyClosure(cll, lam, ags, fvs)
       }
-
-    //
-    // STORE WIDENING
-    //
-
-    enum AddrPolicy:
-        case Local
-        case Widened
-
-    var fixedPolicies: Map[Adr, AddrPolicy] = Map.empty
-    def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Local
-    def policy(adr: Adr): AddrPolicy =
-      fixedPolicies.get(adr) match
-          case Some(ply) => ply
-          case None      => customPolicy(adr)
 
     //
     // ANALYSISM MONAD
@@ -191,11 +162,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         def addrEq =
           (_, _, sto, _) => Some((eqA(sto), Delta.empty))
         def extendSto(adr: Adr, vlu: Val) =
-          (_, _, sto, _) => Some(((), extendV(sto, adr, vlu)))
+          (anl, _, sto, _) => Some(((), extendV(anl, sto, adr, vlu)))
         def updateSto(adr: Adr, vlu: Val) =
-          (_, _, sto, _) => Some(((), updateV(sto, adr, vlu)))
+          (anl, _, sto, _) => Some(((), updateV(anl, sto, adr, vlu)))
         def lookupSto(adr: Adr) =
-          (_, _, sto, _) => Some((lookupV(sto, adr), Delta.empty))
+          (anl, _, sto, _) => Some((lookupV(anl, sto, adr), Delta.empty))
         // CTX STUFF
         def getCtx =
           (_, _, _, ctx) => Some((ctx, Delta.empty))
@@ -215,7 +186,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     //
 
     def intraAnalysis(cmp: Component) = new SchemeLocalIntraAnalysis(cmp)
-    class SchemeLocalIntraAnalysis(cmp: Cmp) extends IntraAnalysis(cmp) { intra =>
+    class SchemeLocalIntraAnalysis(cmp: Cmp) extends IntraAnalysis(cmp) with GlobalStoreIntra { intra =>
       
       // local state
       var results = inter.results
@@ -243,6 +214,29 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                 true
             else false
           case _ => super.doWrite(dep)
+
+      trait AGC[X] extends AbstractGarbageCollector[X, Adr]:
+        def moveLocal(addr: Adr, from: X, to: X): (X, Set[Adr])
+        def move(addr: Adr, from: X, to: X): (X, Set[Adr]) =
+          policy(addr) match
+            case AddrPolicy.Local => moveLocal(addr, from, to)
+            case AddrPolicy.Widened => (to, lattice.refs(readAddr(addr)))
+
+      object StoreGC extends AGC[Sto]:
+          def fresh(cur: Sto) = LocalStore.empty
+          def moveLocal(addr: Adr, from: Sto, to: Sto): (Sto, Set[Adr]) =
+            from.content.get(addr) match
+              case None             => (to, Set.empty)
+              case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
+
+      case class DeltaGC(sto: Sto) extends AGC[Dlt]:
+          def fresh(cur: Dlt) = cur.copy(delta = Map.empty) //TODO: this always carries over the set of updated addrs
+          def moveLocal(addr: Adr, from: Dlt, to: Dlt): (Dlt, Set[Adr]) =
+            from.delta.get(addr) match
+              case None => sto.content.get(addr) match
+                case None => (to, Set.empty)
+                case Some((v, _)) => (to, lattice.refs(v))
+              case Some(s @ (v, _)) => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
     }
 
 //TODO: widen resulting values
@@ -253,16 +247,16 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
 
     var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
 
-    override def extendV(sto: Sto, adr: Adr, vlu: Val) =
+    override def extendV(anl: Anl, sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
               resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
-        super.extendV(sto, adr, vlu)
+        super.extendV(anl, sto, adr, vlu)
 
-    override def updateV(sto: Sto, adr: Adr, vlu: Val) =
+    override def updateV(anl: Anl, sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
               resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
-        super.updateV(sto, adr, vlu)
+        super.updateV(anl, sto, adr, vlu)

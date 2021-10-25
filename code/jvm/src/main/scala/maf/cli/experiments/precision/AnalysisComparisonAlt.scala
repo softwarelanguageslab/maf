@@ -62,7 +62,7 @@ object AnalysisComparisonAlt1
       )
     def main(args: Array[String]) = runBenchmarks(
       Set(
-        "test/R5RS/scp1/flatten.scm",
+        "test/R5RS/various/lambda-update.scm",
         //"test/R5RS/various/regex.scm",
         //"test/R5RS/gambit/deriv.scm",
         //"test/R5RS/gambit/tak.scm",
