@@ -78,8 +78,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     //
 
     enum AddrPolicy:
-      case Local
-      case Widened
+        case Local
+        case Widened
 
     var fixedPolicies: Map[Adr, AddrPolicy] = Map.empty
     def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Local
@@ -93,11 +93,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def extendV(anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt =
       policy(adr) match
           case AddrPolicy.Local   => sto.extend(adr, vlu)
-          case AddrPolicy.Widened => anl.writeAddr(adr, vlu) ; Delta.empty 
+          case AddrPolicy.Widened => anl.writeAddr(adr, vlu); Delta.empty
     def updateV(anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt =
       policy(adr) match
           case AddrPolicy.Local   => sto.update(adr, vlu)
-          case AddrPolicy.Widened => anl.writeAddr(adr, vlu) ; Delta.empty
+          case AddrPolicy.Widened => anl.writeAddr(adr, vlu); Delta.empty
     def lookupV(anl: Anl, sto: Sto, adr: Adr): Val =
       policy(adr) match
           case AddrPolicy.Local   => sto(adr)
@@ -106,22 +106,22 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
       def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
         if a1 == a2 then
-          policy(a1) match
-            case AddrPolicy.Local => 
-              sto.content.get(a1) match
-                case Some((_, CountOne)) => BoolLattice[B].inject(true)
-                case _                   => BoolLattice[B].top
-            case AddrPolicy.Widened => BoolLattice[B].top
+            policy(a1) match
+                case AddrPolicy.Local =>
+                  sto.content.get(a1) match
+                      case Some((_, CountOne)) => BoolLattice[B].inject(true)
+                      case _                   => BoolLattice[B].top
+                case AddrPolicy.Widened => BoolLattice[B].top
         else BoolLattice[B].inject(false)
     }
 
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
       (anl, env, sto, ctx) =>
-        val gcs = anl.StoreGC.collect(sto, rs)
-        blk(anl, env, gcs, ctx).map { (v, d) =>
-          val gcd = anl.DeltaGC(gcs).collect(d, lattice.refs(v) ++ d.updates)
-          (v, sto.replay(gcs, gcd))
-        }
+          val gcs = anl.StoreGC.collect(sto, rs)
+          blk(anl, env, gcs, ctx).map { (v, d) =>
+              val gcd = anl.DeltaGC(gcs).collect(d, lattice.refs(v) ++ d.updates)
+              (v, sto.replay(gcs, gcd))
+          }
 
     override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
@@ -141,20 +141,20 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         def map[X, Y](m: A[X])(f: X => Y) =
           (anl, env, sto, ctx) => m(anl, env, sto, ctx).map((x, d) => (f(x), d))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
-          (anl, env, sto, ctx) => 
-            for 
-              (x0, d0) <- m(anl, env, sto, ctx)
-              (x1, d1) <- f(x0)(anl, env, sto.integrate(d0), ctx)
+          (anl, env, sto, ctx) =>
+            for
+                (x0, d0) <- m(anl, env, sto, ctx)
+                (x1, d1) <- f(x0)(anl, env, sto.integrate(d0), ctx)
             yield (x1, sto.compose(d1, d0))
         // MONADJOIN
-        def mbottom[X] = 
+        def mbottom[X] =
           (_, _, _, _) => None
         def mjoin[X: Lattice](x: A[X], y: A[X]) =
           (anl, env, sto, ctx) =>
             (x(anl, env, sto, ctx), y(anl, env, sto, ctx)) match
-              case (None, yres) => yres
-              case (xres, None) => xres
-              case (Some((x1, d1)), Some((x2, d2))) => Some((Lattice[X].join(x1,x2), sto.join(d1,d2)))
+                case (None, yres)                     => yres
+                case (xres, None)                     => xres
+                case (Some((x1, d1)), Some((x2, d2))) => Some((Lattice[X].join(x1, x2), sto.join(d1, d2)))
         // MONADERROR
         def fail[X](err: Error) =
           mbottom // we are not interested in errors here (at least, not yet ...)
@@ -187,22 +187,22 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     def intraAnalysis(cmp: Component) = new SchemeLocalIntraAnalysis(cmp)
     class SchemeLocalIntraAnalysis(cmp: Cmp) extends IntraAnalysis(cmp) with GlobalStoreIntra { intra =>
-      
+
       // local state
       var results = inter.results
 
-      def call(cmp: Cmp): Option[(Val, Dlt)] = 
-        spawn(cmp)
-        register(ResultDependency(cmp))
-        results.get(cmp)
+      def call(cmp: Cmp): Option[(Val, Dlt)] =
+          spawn(cmp)
+          register(ResultDependency(cmp))
+          results.get(cmp)
 
       def analyzeWithTimeout(timeout: Timeout.T): Unit =
         eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx).foreach { (v, d) =>
-          val rgc = (v, DeltaGC(cmp.sto).collect(d, lattice.refs(v) ++ d.updates))
-          val old = results.getOrElse(cmp, (lattice.bottom, Delta.empty))
-          if rgc != old then
-            results = results + (cmp -> rgc)
-            trigger(ResultDependency(cmp))
+            val rgc = (v, DeltaGC(cmp.sto).collect(d, lattice.refs(v) ++ d.updates))
+            val old = results.getOrElse(cmp, (lattice.bottom, Delta.empty))
+            if rgc != old then
+                results = results + (cmp -> rgc)
+                trigger(ResultDependency(cmp))
         }
 
       override def doWrite(dep: Dependency): Boolean = dep match
@@ -216,27 +216,28 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           case _ => super.doWrite(dep)
 
       trait AGC[X] extends AbstractGarbageCollector[X, Adr]:
-        def moveLocal(addr: Adr, from: X, to: X): (X, Set[Adr])
-        def move(addr: Adr, from: X, to: X): (X, Set[Adr]) =
-          policy(addr) match
-            case AddrPolicy.Local => moveLocal(addr, from, to)
-            case AddrPolicy.Widened => (to, lattice.refs(readAddr(addr)))
+          def moveLocal(addr: Adr, from: X, to: X): (X, Set[Adr])
+          def move(addr: Adr, from: X, to: X): (X, Set[Adr]) =
+            policy(addr) match
+                case AddrPolicy.Local   => moveLocal(addr, from, to)
+                case AddrPolicy.Widened => (to, lattice.refs(readAddr(addr)))
 
       object StoreGC extends AGC[Sto]:
           def fresh(cur: Sto) = LocalStore.empty
           def moveLocal(addr: Adr, from: Sto, to: Sto): (Sto, Set[Adr]) =
             from.content.get(addr) match
-              case None             => (to, Set.empty)
-              case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
+                case None             => (to, Set.empty)
+                case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
 
       case class DeltaGC(sto: Sto) extends AGC[Dlt]:
           def fresh(cur: Dlt) = cur.copy(delta = Map.empty) //TODO: this always carries over the set of updated addrs
           def moveLocal(addr: Adr, from: Dlt, to: Dlt): (Dlt, Set[Adr]) =
             from.delta.get(addr) match
-              case None => sto.content.get(addr) match
-                case None => (to, Set.empty)
-                case Some((v, _)) => (to, lattice.refs(v))
-              case Some(s @ (v, _)) => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
+                case None =>
+                  sto.content.get(addr) match
+                      case None         => (to, Set.empty)
+                      case Some((v, _)) => (to, lattice.refs(v))
+                case Some(s @ (v, _)) => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
     }
 
 //TODO: widen resulting values

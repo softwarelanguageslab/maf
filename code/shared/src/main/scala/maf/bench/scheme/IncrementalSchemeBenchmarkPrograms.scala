@@ -29,8 +29,8 @@ object IncrementalSchemeBenchmarkPrograms:
     // Concurrent -- ModConc
 
     lazy val threads: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/cscheme/threads")(
-        "puzzle.scm", // Needs call-with-current-continuation.
-        ".DS_Store"
+      "puzzle.scm", // Needs call-with-current-continuation.
+      ".DS_Store"
     )
     lazy val concurrent: Set[String] = threads
 
