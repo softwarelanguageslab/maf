@@ -199,6 +199,9 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra:
         intra =>
 
+        /** Map of addres dependencies W ~> Set[R]. */ // (Temporary cache, such as the sets C, R, W.
+        var AD: Map[Addr, Set[Addr]] = Map().withDefaultValue(Set())
+
         /**
          * Keep track of the values written by a component to an address. For every address, stores the join of all values written during this
          * intra-component address.
@@ -210,10 +213,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         /* ----- Intra-component analysis ----- */
         /* ------------------------------------ */
 
-        /** Called upon the (re-)analysis of a component. Here, used to clear out data structures of the incremental global store. */
-        abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            if configuration.cyclicValueInvalidation then addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
-            super.analyzeWithTimeout(timeout)
+        ///** Called upon the (re-)analysis of a component. Here, used to clear out data structures of the incremental global store. */
+        //abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+        //    if configuration.cyclicValueInvalidation then addressDependencies = addressDependencies - component // Avoid data becoming wrong/outdated after an incremental update.
+        //    super.analyzeWithTimeout(timeout)
 
         /* ---------------------------------- */
         /* ----- Basic store operations ----- */
@@ -233,11 +236,11 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 val dependentAddresses = SmartUnion.sunion(lattice.getAddresses(value), implicitFlows.flatten.toSet)
                 value = lattice.removeAddresses(value)
                 // Store the dependencies.
-                val newDependencies = SmartUnion.sunion(addressDependencies(component)(addr), dependentAddresses)
-                addressDependencies = addressDependencies + (component -> (addressDependencies(component) + (addr -> newDependencies)))
+                val newDependencies = SmartUnion.sunion(AD(addr), dependentAddresses)
+                AD += (addr -> newDependencies)
 
             // WI: Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
-            intraProvenance = intraProvenance + (addr -> lattice.join(intraProvenance(addr), value))
+            intraProvenance += (addr -> lattice.join(intraProvenance(addr), value))
 
             // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
             // Same than super.writeAddr(addr, value) except that we do not need to trigger when WI is enabled (all written addresses will be scrutinized later upon commit by doWriteIncremental).
@@ -272,7 +275,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 // The addresses previously written to by this component, but that are no longer written by this component.
                 val deltaW = cachedWrites(component) -- recentWrites
                 deltaW.foreach(deleteProvenance(component, _))
-            cachedWrites = cachedWrites + (component -> recentWrites)
+            cachedWrites += (component -> recentWrites)
 
         /* ------------------------------------- */
         /* ----- Cyclic write invalidation ----- */
@@ -310,6 +313,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 // Make sure all provenance values are correctly stored, even if no doWrite is triggered for the corresponding address.
                 // WI: Takes care of addresses that are written and did not cause a store update.
                 doWriteIncremental()
+                addressDependencies += (component -> AD)
 
     end IncrementalGlobalStoreIntraAnalysis
 
