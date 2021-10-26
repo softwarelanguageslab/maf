@@ -9,6 +9,7 @@ import maf.util.benchmarks.Timeout
 import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
+import akka.actor.ProviderSelection.Local
 
 abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics with GlobalStore[SchemeExp]:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
@@ -27,7 +28,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     lazy val initialExp: Exp = program
     lazy val initialEnv: Env = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
-    lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))
 
     private def shouldCount(adr: Adr): Boolean = adr match
         case _: PtrAddr[_] => true
@@ -55,7 +55,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         val exp = initialExp
         val env = initialEnv
         val ctx = initialCtx
-        val sto = initialSto
+        val sto = LocalStore.empty
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, ctx: Ctx, sto: Sto) extends Component:
         def exp = SchemeBody(lam.body)
@@ -87,6 +87,17 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       fixedPolicies.get(adr) match
           case Some(ply) => ply
           case None      => customPolicy(adr)
+
+    override def init() =
+      super.init()
+      // top-level vars & primitives can be kept in the global store without loss of precision
+      SchemeTopLevelVars.collect(initialExp).foreach { id =>
+        fixedPolicies += VarAddr(id, initialCtx) -> AddrPolicy.Widened
+      }
+      initialBds.foreach { (_, adr, vlu) => 
+        fixedPolicies += adr -> AddrPolicy.Widened
+        store += adr -> vlu
+      }
 
     var store: Map[Adr, Val] = Map.empty
 
