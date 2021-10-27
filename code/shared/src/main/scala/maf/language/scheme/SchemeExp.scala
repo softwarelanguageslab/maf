@@ -220,7 +220,7 @@ sealed trait SchemeSetExp extends SchemeExp:
     def subexpressions: List[Expression] = List(variable, value)
     override def prettyString(indent: Int): String =
         val ind = indent + variable.toString.length + 4
-        s"(set! $variable ${value.prettyString(ind)}"
+        s"(set! $variable ${value.prettyString(ind)})"
 
 case class SchemeSet(
     variable: Identifier,
@@ -495,6 +495,8 @@ object SchemeSetRef:
 /** A code change in a Scheme program. */
 case class SchemeCodeChange(old: SchemeExp, nw: SchemeExp, idn: Identity) extends ChangeExp[SchemeExp] with SchemeExp:
     override def toString: String = s"(<change> $old $nw)"
+    override def prettyString(indent: Int): String =
+        s"(<change>\n${" " * nextIndent(indent) ++ old.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent) ++ nw.prettyString(nextIndent(indent))})"
 
 trait CSchemeExp extends SchemeExp
 
