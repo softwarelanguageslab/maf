@@ -41,6 +41,11 @@ object ProgramChanger {
       if n < 0.925 then Keep
       else Rename
 
+  // Keep numbers
+  var removed: Int = 0
+  var added: Int = 0
+  var swaps: Int = 0
+
   private def changeBody(lst: List[SchemeExp], nested: Boolean): List[SchemeExp] =
     (lst, getStatementAction()) match {
       case (Nil, _) => Nil
@@ -48,18 +53,21 @@ object ProgramChanger {
       case (l @ (h :: Nil), None) => changeExpression(h, nested) :: Nil
       case (h :: t, None)         => changeExpression(h, nested) :: changeBody(t, nested)
 
-      case (h :: t, Remove) if nested => changeBody(t, nested)
-      case (h :: t, Remove)           => SchemeCodeChange(h, SchemeValue(Value.Nil, Identity.none), Identity.none) :: changeBody(t, nested)
+      case (h :: Nil, Remove)         => h :: Nil // Avoid empty bodies.
+      case (h :: t, Remove) if nested => removed += 1; changeBody(t, nested)
+      case (h :: t, Remove) => removed += 1; SchemeCodeChange(h, SchemeValue(Value.Nil, Identity.none), Identity.none) :: changeBody(t, nested)
 
-      case (l @ (h :: t), Add) if nested => changeExpression(h, nested) :: changeExpression(h, nested) :: changeBody(t, nested)
+      case (l @ (h :: t), Add) if nested => added += 1; changeExpression(h, nested) :: changeExpression(h, nested) :: changeBody(t, nested)
       case (l @ (h :: t), Add) =>
+        added += 1
         SchemeCodeChange(SchemeBegin(l, Identity.none),
                          SchemeBegin(changeExpression(h, true) :: l.map(changeExpression(_, true)), Identity.none),
                          Identity.none
         ) :: changeBody(t, nested)
 
-      case (l @ (h :: Nil), Swap) if nested => changeExpression(h, nested) :: changeExpression(h, nested) :: Nil
+      case (l @ (h :: Nil), Swap) if nested => swaps += 1; changeExpression(h, nested) :: changeExpression(h, nested) :: Nil
       case (l @ (h :: Nil), Swap) =>
+        swaps += 1
         SchemeCodeChange(SchemeBegin(l, Identity.none),
                          SchemeBegin(changeExpression(h, true) :: l.map(changeExpression(_, true)), Identity.none),
                          Identity.none
@@ -95,9 +103,13 @@ object ProgramChanger {
   }
 
   def changeBodyStatements(in: String, out: String): Unit =
+      removed = 0
+      added = 0
+      swaps = 0
       val parsed = CSchemeParser.parseProgram(Reader.loadFile(in))
       val newProgram = changeExpression(parsed, false).prettyString()
       val writer = Writer.open(out)
+      Writer.writeln(writer, s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps")
       Writer.write(writer, newProgram)
       Writer.close(writer)
 }
@@ -106,7 +118,7 @@ object Changer {
 
   def main(args: Array[String]): Unit =
       val inputFile = "test/R5RS/ad/selsort.scm"
-      def outputFile(n: Int = 0) = s"test/changes/scheme/generated/selsort-nested-$n.scm"
+      def outputFile(n: Int = 0) = s"test/changes/scheme/generated/selsort-$n.scm"
       val times = 10
       for (i <- 0 to 10) do ProgramChanger.changeBodyStatements(inputFile, outputFile(i))
 }
