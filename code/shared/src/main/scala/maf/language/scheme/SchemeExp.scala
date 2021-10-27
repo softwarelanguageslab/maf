@@ -461,7 +461,7 @@ object SchemeSplicedPair:
     def apply(splice: SchemeExp, cdr: SchemeExp, idn: Identity): SchemeExp =
       SchemeFuncall(SchemeVar(Identifier("__toplevel_append", idn)), List(splice, cdr), idn)
 
-/** A literal value (number, symbol, string, ...) */
+/** A   value (number, symbol, string, ...) */
 case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
     override def toString: String = value.toString
     def fv: Set[String] = Set()

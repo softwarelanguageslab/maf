@@ -21,7 +21,7 @@ object Value:
     case class Character(value: Char) extends Value:
         override def toString = s"#\\$value"
     case object Nil extends Value:
-        override def toString = "()"
+        override def toString = "'()"
 
 /**
  * Abstract grammar elements for S-expressions include some positional information. This serves two purposes: identify where the s-expression resides
