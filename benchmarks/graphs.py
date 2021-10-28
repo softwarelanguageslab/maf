@@ -16,7 +16,7 @@ def read_metrics(filename):
     return output
 
 
-alldirs = glob.glob("artifact/*") ++ glob.glob("code/jvm/jmh-results-*.json")
+alldirs = glob.glob("artifact/*") + glob.glob("code/jvm/jmh-results-*.json")
 dates = [ d.replace("artifact/", "").split("_")[0] for d in alldirs  ]
 metrics = [ read_metrics(glob.glob(d+"/*.json")[0]) for d in alldirs ]
 for date, group in zip(dates, metrics):
