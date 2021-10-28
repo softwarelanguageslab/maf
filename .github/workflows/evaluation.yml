@@ -72,7 +72,9 @@ jobs:
       - name: Install python dependencies
         uses: BSFishy/pip-action@v1
         with:
-          packages: pandas
+          packages: |
+            pandas
+            seaborn
       - name: Generate graph
         run: python ./benchmarks/graphs.py
       - name: Upload graph to Slack
