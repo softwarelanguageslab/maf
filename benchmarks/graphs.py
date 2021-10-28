@@ -4,7 +4,9 @@
 import pandas as pd
 import json
 import glob
+import os
 import os.path
+import datetime
 
 def read_metrics(filename):
     output = []
@@ -23,11 +25,11 @@ if current_results == []:
 print(current_results)
 os.system("mv '%s' artifact/" % current_results[0])
 
-alldirs = glob.glob("artifact/*")
+json_files = glob.glob("artifact/*")
 print(alldirs)
-dates = [ d.replace("artifact/", "").split("_")[0] for d in alldirs  ]
+dates = [ datetime.datetime.fromtimestamp(os.path.getmtime(f)) for f in json_files ]
 print(dates)
-metrics = [ read_metrics(glob.glob(d+"/*.json")[0]) for d in alldirs ]
+metrics = [ read_metrics(f) for f in json_files ]
 print(metrics)
 for date, group in zip(dates, metrics):
     for metric in group:
