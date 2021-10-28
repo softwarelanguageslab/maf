@@ -125,6 +125,6 @@ object Changer {
   def main(args: Array[String]): Unit =
       val inputFile = "test/R5RS/ad/selsort.scm"
       def outputFile(n: Int = 0) = s"test/changes/scheme/generated/selsort-$n.scm"
-      val times = 10
-      for (i <- 0 to 10) do if !ProgramChanger.changeBodyStatements(inputFile, outputFile(i)) then i -= 1 // Try again if nothing has changed.
+      var times = 10
+      while times > 0 do if ProgramChanger.changeBodyStatements(inputFile, outputFile(times)) then times -= 1 // Try again if nothing has changed.
 }
