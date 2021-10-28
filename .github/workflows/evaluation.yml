@@ -48,10 +48,19 @@ jobs:
           java-version: openjdk@1.15
       - name: Run performance benchmarks
         run: sbt "maf/jmh:run -rf json -rff jmh-results-${GITHUB_SHA}.json"
-      - name: Download previous benchmark results
-        uses: actions/download-artifact@v2
+      - name: Identify last successful run of performance evaluation
+        uses: nrwl/last-successful-commit-action@v1
+        id: last_successful_commit
         with:
+          branch: master
+          workflow_id: evaluation.yml
+          github_token ${{ secrets.GITHUB_TOKEN }}
+      - name: Download previous benchmark results
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: evaluation.yml
           name: Performance evaluation results
+          commit: ${{ steps.last_successful_commit.outputs.commit_hash }}
           path: artifact/
       - name: Upload the benchmark results
         uses: actions/upload-artifact@v2
