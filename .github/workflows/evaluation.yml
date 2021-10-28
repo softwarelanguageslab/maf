@@ -54,7 +54,7 @@ jobs:
         with:
           branch: master
           workflow_id: evaluation.yml
-          github_token ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Download previous benchmark results
         uses: dawidd6/action-download-artifact@v2
         with:
