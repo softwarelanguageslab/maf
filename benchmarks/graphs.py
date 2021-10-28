@@ -26,7 +26,7 @@ print(current_results)
 os.system("mv '%s' artifact/" % current_results[0])
 
 json_files = glob.glob("artifact/*")
-print(alldirs)
+print(json_files)
 dates = [ datetime.datetime.fromtimestamp(os.path.getmtime(f)) for f in json_files ]
 print(dates)
 metrics = [ read_metrics(f) for f in json_files ]
