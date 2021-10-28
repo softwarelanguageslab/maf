@@ -5,15 +5,15 @@ name: Daily MAF evaluation
 on:
   schedule:
     - cron: '00 23 * * *' # Executes every night at 23:00.
-  #push:
-  #  branches: [ master ]
+  push:
+    branches: [ actions ]
 
 jobs:
   # The compile job fetches the code and attempts to compile it.
   compile:
     name: Evaluate precision
     runs-on: ubuntu-latest
-    timeout-minutes: 480 # 8 hours
+    timeout-minutes: 1 # TODO: change back to: 480 # 8 hours
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
@@ -48,15 +48,28 @@ jobs:
           java-version: openjdk@1.15
       - name: Run performance benchmarks
         run: sbt "maf/jmh:run -rf json -rff jmh-results-${GITHUB_SHA}.json"
+      - name: Download previous benchmark results
+        uses: actions/download-artifact@v2
+        with:
+          name: Performance evaluation results
+          path: artifact/
       - name: Upload the benchmark results
         uses: actions/upload-artifact@v2
         with:
           name: Performance evaluation results
-          path: code/jvm/jmh-results-${{ github.sha }}.json
-      - name: Upload to Slack
+          path: |
+            artifact/*.json # previous runs
+            code/jvm/jmh-results-${{ github.sha }}.json # current run
+      - name: Install python dependencies
+        uses: BSFishy/pip-action@v1
+        with:
+          packages: pandas
+      - name: Generate graph
+        run: python ./benchmarks/graphs.py
+      - name: Upload graph to Slack
         uses: adrey/slack-file-upload-action@master
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
-          path: code/jvm/jmh-results-${{ github.sha }}.json
+          path: output.pdf
           channel: maf-logs
           initial_comment: "Results of last night's performance evaluation."
