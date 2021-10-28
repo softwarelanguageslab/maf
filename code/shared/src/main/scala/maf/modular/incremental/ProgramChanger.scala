@@ -16,7 +16,7 @@ object ProgramChanger {
   private val rand = new Random()
 
   private enum ExpressionAction:
-      case Add, Remove, Swap, None
+      case Add, Remove, Swap, NoChange
 
   import ExpressionAction.*
 
@@ -27,7 +27,7 @@ object ProgramChanger {
   // Swap: 5%
   private def getExpressionAction(): ExpressionAction =
       val n = rand.nextDouble()
-      if n < 0.85 then None
+      if n < 0.85 then NoChange
       else if n < 0.9 then Add
       else if n < 0.95 then Remove
       else Swap
@@ -65,8 +65,8 @@ object ProgramChanger {
       case (Nil, _) => Nil
 
       // No changes.
-      case (l @ (h :: Nil), None) => changeExpression(h, nested) :: Nil
-      case (h :: t, None)         => changeExpression(h, nested) :: changeBody(t, fullbody, nested)
+      case (l @ (h :: Nil), NoChange) => changeExpression(h, nested) :: Nil
+      case (h :: t, NoChange)         => changeExpression(h, nested) :: changeBody(t, fullbody, nested)
 
       // Remove an expression.
       case (h :: Nil, Remove)         => h :: Nil // Avoid empty bodies.
