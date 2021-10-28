@@ -21,15 +21,15 @@ object ProgramChanger {
   import ExpressionAction.*
 
   // Gets an ExpressionAction with a certain probability:
-  // None: 85%
-  // Add: 5%
-  // Remove: 5%
-  // Swap: 5%
+  // None: 75%
+  // Add: 7.5%
+  // Remove: 7.5%
+  // Swap: 10%
   private def getExpressionAction(): ExpressionAction =
       val n = rand.nextDouble()
-      if n < 0.85 then NoChange
-      else if n < 0.9 then Add
-      else if n < 0.95 then Remove
+      if n < 0.75 then NoChange
+      else if n < 0.825 then Add
+      else if n < 0.9 then Remove
       else Swap
 
   // Creates a display expression.
@@ -44,16 +44,6 @@ object ProgramChanger {
           val fvs = body.flatMap(_.fv)
           createDisplayExp(fvs(rand.nextInt(fvs.length)))
       else body(rand.nextInt(body.length))
-
-  // Swaps the first element of a list with a random element of the remainder of the list. A boolean indicates whether the last element should be eligible for swapping.
-  // Note that when lastEligible is set to false, the first element will be selected again when the list only contains two elements.
-  // Also returns the index of the swap, if there was a swap made.
-  private def swapFirst[E](lst: List[E], lastEligible: Boolean): (List[E], Option[Int]) =
-    if (!lastEligible && lst.length <= 2) || lst.length <= 1 then (lst, None)
-    else
-        val first = lst.head
-        val otherIndex = rand.nextInt(if lastEligible then lst.length - 1 else lst.length - 2) + 1 // -1 & +1 ensure that another element is chosen (requires the list to have 2 elements at least).
-        (lst.updated(0, lst(otherIndex)).updated(otherIndex, first), Some(otherIndex))
 
   // Keep numbers
   var removed: Int = 0
@@ -75,19 +65,17 @@ object ProgramChanger {
         removed += 1; SchemeCodeChange(h, SchemeValue(Value.Nil, Identity.none), Identity.none) :: changeBody(t, fullbody, nested)
 
       // Add an expression.
-      case (l @ (h :: t), Add) if nested =>
-        added += 1; changeExpression(getExpressionToAdd(fullbody), nested) :: changeExpression(h, nested) :: changeBody(t, fullbody, nested)
-      case (l @ (h :: t), Add) =>
+      case (l, Add) if nested => added += 1; changeExpression(getExpressionToAdd(fullbody), nested) :: changeBody(l, fullbody, nested)
+      case (l, Add) =>
         added += 1
-        SchemeCodeChange(
-          SchemeBegin(l, Identity.none),
-          SchemeBegin(changeExpression(getExpressionToAdd(fullbody), true) :: l.map(changeExpression(_, true)), Identity.none),
-          Identity.none
-        ) :: changeBody(t, fullbody, nested)
+        SchemeCodeChange(SchemeValue(Value.Nil, Identity.none), changeExpression(getExpressionToAdd(fullbody), true), Identity.none) :: changeBody(
+          l,
+          fullbody,
+          nested
+        )
 
       // Swap expressions.
-      case (l @ (h :: Nil), Swap)        => l // When there is only one statement, don't do anything (previously, it would equal add).
-      case (l @ (h1 :: h2 :: Nil), Swap) => changeExpression(h1, nested) :: changeExpression(h2, nested) :: Nil // Disallow swapping the last element.
+      case (l @ (h :: Nil), Swap)                => l // When there is only one statement, don't do anything (previously, it would equal add).
       case (l @ (h1 :: h2 :: t), Swap) if nested => changeExpression(h2, nested) :: changeBody(h1 :: t, fullbody, nested)
       // TODO: let h1 swap with any of h2 :: t as in the case above.
       case (l @ (h1 :: h2 :: t), Swap) =>
@@ -119,7 +107,7 @@ object ProgramChanger {
 
   }
 
-  def changeBodyStatements(in: String, out: String): Unit =
+  def changeBodyStatements(in: String, out: String): Boolean =
       removed = 0
       added = 0
       swaps = 0
@@ -129,6 +117,7 @@ object ProgramChanger {
       Writer.writeln(writer, s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps")
       Writer.write(writer, newProgram)
       Writer.close(writer)
+      removed + added + swaps != 0 // Returns true if something has changed.
 }
 
 object Changer {
@@ -137,5 +126,5 @@ object Changer {
       val inputFile = "test/R5RS/ad/selsort.scm"
       def outputFile(n: Int = 0) = s"test/changes/scheme/generated/selsort-$n.scm"
       val times = 10
-      for (i <- 0 to 10) do ProgramChanger.changeBodyStatements(inputFile, outputFile(i))
+      for (i <- 0 to 10) do if !ProgramChanger.changeBodyStatements(inputFile, outputFile(i)) then i -= 1 // Try again if nothing has changed.
 }
