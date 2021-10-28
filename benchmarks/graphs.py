@@ -24,8 +24,11 @@ print(current_results)
 os.system("mv '%s' artifact/" % current_results[0])
 
 alldirs = glob.glob("artifact/*")
+print(alldirs)
 dates = [ d.replace("artifact/", "").split("_")[0] for d in alldirs  ]
+print(dates)
 metrics = [ read_metrics(glob.glob(d+"/*.json")[0]) for d in alldirs ]
+print(metrics)
 for date, group in zip(dates, metrics):
     for metric in group:
         metric["date"] = date
