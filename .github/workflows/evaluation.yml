@@ -64,7 +64,7 @@ jobs:
         uses: BSFishy/pip-action@v1
         with:
           packages: pandas
-      - name: Generate graph
+      - name: Generate graph
         run: python ./benchmarks/graphs.py
       - name: Upload graph to Slack
         uses: adrey/slack-file-upload-action@master
