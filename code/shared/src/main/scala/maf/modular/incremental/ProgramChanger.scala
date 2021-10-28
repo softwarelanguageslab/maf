@@ -32,14 +32,28 @@ object ProgramChanger {
       else if n < 0.95 then Remove
       else Swap
 
+  // Creates a display expression.
+  private def createDisplayExp(exp: String): SchemeExp =
+    SchemeFuncall(SchemeVar(Identifier("display", Identity.none)), List(SchemeVar(Identifier(exp, Identity.none))), Identity.none)
+  private def createDisplayExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("display", Identity.none)), List(exp), Identity.none)
+
   // Gets a random expression of the body to add, or returns a print expression.
   private def getExpressionToAdd(body: List[SchemeExp]): SchemeExp =
       val n = rand.nextDouble()
       if n < 0.25 then // Add a random print statement.
           val fvs = body.flatMap(_.fv)
-          val fv = fvs(rand.nextInt(fvs.length))
-          SchemeFuncall(SchemeVar(Identifier("display", Identity.none)), List(SchemeVar(Identifier(fv, Identity.none))), Identity.none)
+          createDisplayExp(fvs(rand.nextInt(fvs.length)))
       else body(rand.nextInt(body.length))
+
+  // Swaps the first element of a list with a random element of the remainder of the list. A boolean indicates whether the last element should be eligible for swapping.
+  // Note that when lastEligible is set to false, the first element will be selected again when the list only contains two elements.
+  // Also returns the index of the swap, if there was a swap made.
+  private def swapFirst[E](lst: List[E], lastEligible: Boolean): (List[E], Option[Int]) =
+    if (!lastEligible && lst.length <= 2) || lst.length <= 1 then (lst, None)
+    else
+        val first = lst.head
+        val otherIndex = rand.nextInt(if lastEligible then lst.length - 1 else lst.length - 2) + 1 // -1 & +1 ensure that another element is chosen (requires the list to have 2 elements at least).
+        (lst.updated(0, lst(otherIndex)).updated(otherIndex, first), Some(otherIndex))
 
   // Keep numbers
   var removed: Int = 0
@@ -50,14 +64,17 @@ object ProgramChanger {
     (lst, getExpressionAction()) match {
       case (Nil, _) => Nil
 
+      // No changes.
       case (l @ (h :: Nil), None) => changeExpression(h, nested) :: Nil
       case (h :: t, None)         => changeExpression(h, nested) :: changeBody(t, fullbody, nested)
 
+      // Remove an expression.
       case (h :: Nil, Remove)         => h :: Nil // Avoid empty bodies.
       case (h :: t, Remove) if nested => removed += 1; changeBody(t, fullbody, nested)
       case (h :: t, Remove) =>
         removed += 1; SchemeCodeChange(h, SchemeValue(Value.Nil, Identity.none), Identity.none) :: changeBody(t, fullbody, nested)
 
+      // Add an expression.
       case (l @ (h :: t), Add) if nested =>
         added += 1; changeExpression(getExpressionToAdd(fullbody), nested) :: changeExpression(h, nested) :: changeBody(t, fullbody, nested)
       case (l @ (h :: t), Add) =>
@@ -68,15 +85,11 @@ object ProgramChanger {
           Identity.none
         ) :: changeBody(t, fullbody, nested)
 
-      case (l @ (h :: Nil), Swap) if nested => swaps += 1; changeExpression(h, nested) :: changeExpression(h, nested) :: Nil
-      case (l @ (h :: Nil), Swap) =>
-        swaps += 1
-        SchemeCodeChange(SchemeBegin(l, Identity.none),
-                         SchemeBegin(changeExpression(h, true) :: l.map(changeExpression(_, true)), Identity.none),
-                         Identity.none
-        ) :: Nil // When there is only one statement, swap equals add.
-
-      case (l @ (h1 :: h2 :: t), Swap) if nested => changeExpression(h2, nested) :: changeExpression(h1, nested) :: changeBody(t, fullbody, nested)
+      // Swap expressions.
+      case (l @ (h :: Nil), Swap)        => l // When there is only one statement, don't do anything (previously, it would equal add).
+      case (l @ (h1 :: h2 :: Nil), Swap) => changeExpression(h1, nested) :: changeExpression(h2, nested) :: Nil // Disallow swapping the last element.
+      case (l @ (h1 :: h2 :: t), Swap) if nested => changeExpression(h2, nested) :: changeBody(h1 :: t, fullbody, nested)
+      // TODO: let h1 swap with any of h2 :: t as in the case above.
       case (l @ (h1 :: h2 :: t), Swap) =>
         SchemeCodeChange(h1, changeExpression(h2, true), Identity.none) :: SchemeCodeChange(h2,
                                                                                             changeExpression(h1, true),
