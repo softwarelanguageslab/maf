@@ -21,15 +21,15 @@ object ProgramChanger {
   import ExpressionAction.*
 
   // Gets an ExpressionAction with a certain probability:
-  // None: 75%
+  // None: 70%
   // Add: 7.5%
-  // Remove: 7.5%
-  // Swap: 10%
+  // Remove: 10% but cannot always be executed.
+  // Swap: 12.5% but cannot always be executed.
   private def getExpressionAction(): ExpressionAction =
       val n = rand.nextDouble()
-      if n < 0.75 then NoChange
-      else if n < 0.825 then Add
-      else if n < 0.9 then Remove
+      if n < 0.7 then NoChange
+      else if n < 0.775 then Add
+      else if n < 0.875 then Remove
       else Swap
 
   // Creates a display expression.
@@ -43,7 +43,11 @@ object ProgramChanger {
       if n < 0.25 then // Add a random print statement.
           val fvs = body.flatMap(_.fv)
           createDisplayExp(fvs(rand.nextInt(fvs.length)))
-      else body(rand.nextInt(body.length))
+      else
+          // Add any subexpression.
+          val choices = body.flatMap(_.subexpressions)
+          val choice = choices(rand.nextInt(choices.length))
+          if choice.isInstanceOf[SchemeExp] then choice.asInstanceOf[SchemeExp] else SchemeVar(choice.asInstanceOf[Identifier])
 
   // Keep numbers
   var removed: Int = 0
@@ -76,9 +80,10 @@ object ProgramChanger {
 
       // Swap expressions.
       case (l @ (h :: Nil), Swap)                => l // When there is only one statement, don't do anything (previously, it would equal add).
-      case (l @ (h1 :: h2 :: t), Swap) if nested => changeExpression(h2, nested) :: changeBody(h1 :: t, fullbody, nested)
+      case (l @ (h1 :: h2 :: t), Swap) if nested => swaps += 1; changeExpression(h2, nested) :: changeBody(h1 :: t, fullbody, nested)
       // TODO: let h1 swap with any of h2 :: t as in the case above.
       case (l @ (h1 :: h2 :: t), Swap) =>
+        swaps += 1
         SchemeCodeChange(h1, changeExpression(h2, true), Identity.none) :: SchemeCodeChange(h2,
                                                                                             changeExpression(h1, true),
                                                                                             Identity.none
@@ -98,9 +103,9 @@ object ProgramChanger {
       SchemeLetStar(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
     case SchemeLetrec(bindings, body, idn) =>
       SchemeLetrec(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
-    case SchemeSet(variable, value, idn)        => SchemeSet(variable, changeExpression(value, nested), idn)
-    case SchemeBegin(exps, idn)                 => SchemeBegin(changeBody(exps, exps, nested), idn)
-    case SchemeDefineVariable(name, value, idn) => SchemeDefineVariable(name, changeExpression(value, nested), idn)
+    case SchemeSet(variable, value, idn) => SchemeSet(variable, changeExpression(value, nested), idn)
+    case SchemeBegin(exps, idn)          => SchemeBegin(changeBody(exps, exps, nested), idn)
+    //case SchemeDefineVariable(name, value, idn) => SchemeDefineVariable(name, changeExpression(value, nested), idn)
     //case SchemeVar(id) =>
     //case SchemeValue(value, idn) =>
     case exp => exp
@@ -111,7 +116,7 @@ object ProgramChanger {
       removed = 0
       added = 0
       swaps = 0
-      val parsed = CSchemeParser.parseProgram(Reader.loadFile(in))
+      val parsed = CSchemeParser.undefine(CSchemeParser.parse(Reader.loadFile(in)))
       val newProgram = changeExpression(parsed, false).prettyString()
       val writer = Writer.open(out)
       Writer.writeln(writer, s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps")
@@ -123,8 +128,8 @@ object ProgramChanger {
 object Changer {
 
   def main(args: Array[String]): Unit =
-      val inputFile = "test/R5RS/ad/selsort.scm"
-      def outputFile(n: Int = 0) = s"test/changes/scheme/generated/selsort-$n.scm"
+      val inputFile = "test/R5RS/ad/quick.scm"
+      def outputFile(n: Int = 0) = s"test/changes/scheme/generated/qs-$n.scm"
       var times = 10
       while times > 0 do if ProgramChanger.changeBodyStatements(inputFile, outputFile(times)) then times -= 1 // Try again if nothing has changed.
 }
