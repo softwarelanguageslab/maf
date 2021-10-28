@@ -21,7 +21,7 @@ if current_results == []:
     exit(1)
 
 print(current_results)
-os.system("mv '%s' artifact/")
+os.system("mv '%s' artifact/" % current_results[0])
 
 alldirs = glob.glob("artifact/*")
 dates = [ d.replace("artifact/", "").split("_")[0] for d in alldirs  ]
