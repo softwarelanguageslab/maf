@@ -49,7 +49,7 @@ jobs:
       - name: Run performance benchmarks
         run: sbt "maf/jmh:run -rf json -rff jmh-results-${GITHUB_SHA}.json"
       - name: Identify last successful run of performance evaluation
-        uses: nrwl/last-successful-commit-action@v1
+        uses: simondotm/last-successful-commit-action@v2
         id: last_successful_commit
         with:
           branch: master
