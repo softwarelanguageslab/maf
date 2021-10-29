@@ -34,5 +34,5 @@ import seaborn as sb
 import matplotlib.pyplot as plt
 
 sb.set(rc={'figure.figsize':(11.7,8.27)})
-sb.lineplot(x = "date", y = "time", hue = "name", data = df, markers = True)
+sb.lineplot(x = "date", y = "time", hue = "name", data = df, marker = "o")
 plt.savefig("output.pdf")
