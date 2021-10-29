@@ -17,14 +17,6 @@ def read_metrics(filename):
             output.append(dict(name = metric["benchmark"], time = metric["primaryMetric"]["score"]))
     return output
 
-current_results = glob.glob("code/jvm/jmh-results-*.json")
-if current_results == []:
-    print('No current performance results')
-    exit(1)
-
-print(current_results)
-os.system("mv '%s' artifact/" % current_results[0])
-
 json_files = glob.glob("artifact/*")
 print(json_files)
 dates = [ datetime.datetime.fromtimestamp(os.path.getmtime(f)) for f in json_files ]

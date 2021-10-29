@@ -62,13 +62,13 @@ jobs:
           name: Performance evaluation results
           commit: ${{ steps.last_successful_commit.outputs.commit_hash }}
           path: artifact/
+      - run: mv code/jvm-jmh-results-${{ github.sha }}.json artifact/
       - name: Upload the benchmark results
         uses: actions/upload-artifact@v2
         with:
           name: Performance evaluation results
           path: |
             artifact/*.json # previous runs
-            code/jvm/jmh-results-${{ github.sha }}.json # current run
       - name: Install python dependencies
         uses: BSFishy/pip-action@v1
         with:
