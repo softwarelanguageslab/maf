@@ -67,8 +67,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: Performance evaluation results
-          path: |
-            artifact/*.json # previous runs
+          path: artifact/*.json
       - name: Install python dependencies
         uses: BSFishy/pip-action@v1
         with:
