@@ -62,7 +62,7 @@ jobs:
           name: Performance evaluation results
           commit: ${{ steps.last_successful_commit.outputs.commit_hash }}
           path: artifact/
-      - run: mv code/jvm-jmh-results-${{ github.sha }}.json artifact/
+      - run: mv code/jvm/jmh-results-${{ github.sha }}.json artifact/
       - name: Upload the benchmark results
         uses: actions/upload-artifact@v2
         with:
