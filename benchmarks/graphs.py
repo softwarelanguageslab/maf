@@ -30,7 +30,6 @@ print(json_files)
 dates = [ datetime.datetime.fromtimestamp(os.path.getmtime(f)) for f in json_files ]
 print(dates)
 metrics = [ read_metrics(f) for f in json_files ]
-print(metrics)
 for date, group in zip(dates, metrics):
     for metric in group:
         metric["date"] = date
