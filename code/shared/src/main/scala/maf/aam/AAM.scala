@@ -22,8 +22,17 @@ trait AAMAnalysis:
     /** The type of the timestamp in the analysis */
     type Timestamp
 
+    /** The type of the store */
+    type Sto
+
     /** A set of seen states in the analysis */
     private var seen: Set[State] = Set()
+
+    /** Initial timestamp */
+    val initialTime: Timestamp
+
+    /** Tick the time forward */
+    def tick(timestamp: Timestamp, env: Env, sto: Sto, kont: Address): Timestamp
 
     /** Inject the expression into the analysis state */
     def inject(expr: Expr): State
@@ -36,7 +45,7 @@ trait AAMAnalysis:
       seen = Set()
 
     /** Allocate a fresh address in the store */
-    def alloc(state: State): Address
+    def alloc(identity: Identity, env: Env, sto: Sto, kont: Address, ctx: Timestamp): Address
 
     /** Analyze the given expression and return the set of (non-invalid) state */
     def analyze(expr: Expr): Set[State] =
