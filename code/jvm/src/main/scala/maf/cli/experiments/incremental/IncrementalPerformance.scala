@@ -33,9 +33,9 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
     // The maximal number of warm-up runs.
-    val maxWarmupRuns = 5
+    val maxWarmupRuns = 1
     // The number of actually measured runs.
-    val measuredRuns = 30
+    val measuredRuns = 3
 
     val timeS: String = "ms"
     val propertiesS: List[String] = List(timeS)
@@ -195,8 +195,8 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
 trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-    val configurations: List[IncrementalConfiguration] = allConfigurations
+    override def timeout(): Timeout.T = Timeout.start(Duration(30, SECONDS))
+    val configurations: List[IncrementalConfiguration] = List(allOptimisations) // allConfigurations
 
 object IncrementalSchemeModFPerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential

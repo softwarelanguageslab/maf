@@ -81,34 +81,35 @@ object IncrementalRun extends App:
           with IncrementalSchemeModFBigStepSemantics
           with IncrementalSchemeTypeDomain // IncrementalSchemeConstantPropagationDomain
           with IncrementalGlobalStore[SchemeExp]
-          // with IncrementalLogging[SchemeExp]
-          // with IncrementalDataFlowVisualisation[SchemeExp]
-          {
-          //override def focus(a: Addr): Boolean =
-          //!a.toString.contains("PrmAddr") && (a.toString.contains("ret") || a.toString.contains("x2") || a.toString.contains("__"))
+          with IncrementalLogging[SchemeExp]
+          with IncrementalDataFlowVisualisation[SchemeExp] {
+          override def focus(a: Addr): Boolean =
+            !a.toString.contains("PrmAddr") && (a.toString.contains("ret") || a.toString.contains("x2") || a.toString.contains("__"))
           var configuration: IncrementalConfiguration = wi_cy
           override def intraAnalysis(
               cmp: Component
-            ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
-          // with IncrementalLoggingIntra
-          // with IncrementalVisualIntra
+            ) = new IntraAnalysis(cmp)
+            with IncrementalSchemeModFBigStepIntra
+            with IncrementalGlobalStoreIntraAnalysis
+            with IncrementalLoggingIntra
+            with IncrementalVisualIntra
         }
 
         try {
           println(s"***** $bench *****")
           interpretProgram(bench)
           val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-          //  println(text.prettyString())
+          println(text.prettyString())
           val a = base(text)
-          //   a.logger.logU("BASE + INC")
+          a.logger.logU("BASE + INC")
           a.analyzeWithTimeout(timeout())
-          //  a.flowInformationToDotGraph("logs/flowsA1.dot")
+          a.flowInformationToDotGraph("logs/flowsA1.dot")
           a.updateAnalysis(timeout())
-          //  a.flowInformationToDotGraph("logs/flowsA2.dot")
+          a.flowInformationToDotGraph("logs/flowsA2.dot")
           Thread.sleep(1000)
           val b = base(text)
           b.version = New
-          //  b.logger.logU("REAN")
+          b.logger.logU("REAN")
           b.analyzeWithTimeout(timeout())
           // b.flowInformationToDotGraph("logs/flowsB.dot")
           // println("Done")
@@ -118,7 +119,7 @@ object IncrementalRun extends App:
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
-    val modFbenchmarks: List[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/generated")().toList //List("test/changes/scheme/generated/selsort-7.scm")
+    val modFbenchmarks: List[String] = List("test/changes/scheme/satRem.scm")
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))

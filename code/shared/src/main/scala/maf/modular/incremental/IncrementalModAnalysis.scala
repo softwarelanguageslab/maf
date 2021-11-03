@@ -151,12 +151,25 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
         val affected = findUpdatedExpressions(program).flatMap(mapping)
         affected.foreach(addToWorkList)
         analyzeWithTimeout(timeout)
+        println(unCompleted.mkString(" "))
+        unCompleted.foreach(addToWorkList)
+        noInvalidationIfUncompleted = false
+        analyzeWithTimeout(timeout)
+
+    var unCompleted: Set[Component] = Set() // Keep track of the components for which the analysis did not complete.
+    var noInvalidationIfUncompleted = true
 
     /* ************************************ */
     /* ***** Intra-component analysis ***** */
     /* ************************************ */
 
     trait IncrementalIntraAnalysis extends IntraAnalysis:
+
+        abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            unCompleted -= component
+            super.analyzeWithTimeout(timeout)
+
+        var bottomRead = false
 
         /* ----------------------------------- */
         /* ----- Dependency invalidation ----- */
@@ -166,7 +179,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
          * Removes outdated dependencies of a component, by only keeping the dependencies that were used during the latest analysis of the component.
          */
         def refineDependencies(): Unit =
-          if version == New then // Check for efficiency but can be omitted.
+          if version == New && !bottomRead then // Check for efficiency but can be omitted.
               // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
               val deltaR = cachedReadDeps(component) -- R
               deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
@@ -183,12 +196,12 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
             // For each component not previously spawned by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
             (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
 
-            if version == New then // Check performed for efficiency but can be omitted.
+            if version == New && !bottomRead then // Check performed for efficiency but can be omitted.
                 // The components previously spawned (except probably for the component itself), but that are no longer spawned.
                 val deltaC = cachedSpawns(component) -- Cdiff
                 deltaC.foreach(unspawn)
-            cachedSpawns += (component -> Cdiff) // Update the cache.
-            if version == New then deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
+            if !bottomRead then cachedSpawns += (component -> Cdiff) else cachedSpawns += (component -> (Cdiff.union(cachedSpawns(component)))) // Update the cache.
+            if version == New && !bottomRead then deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
 
         /* ------------------ */
         /* ----- Commit ----- */
@@ -202,7 +215,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
                 // Update the cache. The cache also needs to be updated when the program is initially analysed.
                 // This is also needed for CI, as otherwise components can come "back to life" as dependencies corresponding to deleted components cannot be removed (easily).
                 // Note that this has to be done _after_ dependency invalidation!
-                cachedReadDeps += (component -> R)
+                cachedReadDeps += (component -> (if bottomRead then R.union(cachedReadDeps(component)) else R))
             super.commit() // Then commit and trigger dependencies.
 
     end IncrementalIntraAnalysis
