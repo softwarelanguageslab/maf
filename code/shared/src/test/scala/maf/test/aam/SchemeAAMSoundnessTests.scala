@@ -10,6 +10,9 @@ import maf.aam.SchemeAAMAnalysisResults
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.test.VariousSequentialBenchmarks
 import maf.test.JSS2021Benchmarks
+import maf.util.benchmarks.Timeout
+
+import scala.concurrent.duration._
 
 trait SchemeAAMSoundnessTests extends maf.test.aam.AAMSoundnessTests:
     override def parseProgram(txt: String): SchemeExp =
@@ -18,7 +21,11 @@ trait SchemeAAMSoundnessTests extends maf.test.aam.AAMSoundnessTests:
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
-class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with JSS2021Benchmarks:
+class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with VariousSequentialBenchmarks:
     override val name: String = "Scheme AAM soundness tests"
+    override def benchmarks: Set[Benchmark] = Set(
+      "test/R5RS/various/fact.scm"
+    )
+    override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(10, SECONDS))
     override def analysis(b: SchemeExp): Analysis =
       new SchemeAAMSemantics(b) with AAMAnalysis with SchemeAAMAnalysisResults with SchemeAAMContextInsensitivity with SchemeConstantPropagationDomain
