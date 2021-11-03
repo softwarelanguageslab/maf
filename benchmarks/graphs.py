@@ -20,7 +20,7 @@ def read_metrics(filename):
 
 print("files in artifact: %s" % glob.glob("artifact/*.json"))
 
-json_files = glob.glob("artifact/jmh-result-*-*.json")
+json_files = glob.glob("artifact/jmh-results-*-*.json")
 print(json_files)
 dates = [ datetime.datetime.fromtimestamp(os.path.getmtime(f)) for f in json_files ]
 print(dates)
