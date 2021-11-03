@@ -46,8 +46,12 @@ jobs:
       - uses: olafurpg/setup-scala@v10
         with:
           java-version: openjdk@1.15
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
       - name: Run performance benchmarks
-        run: sbt "maf/jmh:run -rf json -rff jmh-results-${GITHUB_SHA}.json"
+        # 3 warmup runs (wi), 5 iterations afterwards (i), one fork (f), one thread (t)
+        run: sbt "maf/jmh:run -rf json -rff jmh-results-${GITHUB_SHA}-${ steps.date.outputs.date }.json -wi 3 -i 5 -f 1 -t 1"
       - name: Identify last successful run of performance evaluation
         uses: simondotm/last-successful-commit-action@v2
         id: last_successful_commit
@@ -62,7 +66,7 @@ jobs:
           name: Performance evaluation results
           commit: ${{ steps.last_successful_commit.outputs.commit_hash }}
           path: artifact/
-      - run: mv code/jvm/jmh-results-${{ github.sha }}.json artifact/
+      - run: mv code/jvm/jmh-results-*.json artifact/
       - name: Upload the benchmark results
         uses: actions/upload-artifact@v2
         with:
