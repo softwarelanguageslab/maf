@@ -21,7 +21,7 @@ object ProgramChanger {
       case Add, Remove, Swap, NoChange
 
   private enum IfAction:
-      case NegatePredicate, Retain
+      case NegatePredicate, SwapBranches, Retain
 
   import ExpressionAction.*
   import IfAction.*
@@ -31,6 +31,7 @@ object ProgramChanger {
   var added: Int = 0
   var swaps: Int = 0
   var negatedPredicate: Int = 0
+  var branchesSwapped: Int = 0
 
   // Gets an ExpressionAction with a certain probability:
   // None: 70%
@@ -54,20 +55,37 @@ object ProgramChanger {
   // Negate predicate: 10%
   private def getIfAction(): IfAction =
       val n = rand.nextDouble()
-      if n < 0.9 then Retain
+      if n < 0.85 then Retain
+      else if n < 0.925 then SwapBranches
       else NegatePredicate
 
   private def createNotExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("not", Identity.none)), List(exp), Identity.none)
 
-  private def getPredicate(cond: SchemeExp, nested: Boolean): SchemeExp =
+  private def changeIf(ifE: SchemeIf, nested: Boolean): SchemeExp =
     getIfAction() match {
-      case Retain => changeExpression(cond, nested)
+      case Retain => SchemeIf(changeExpression(ifE.cond, nested), changeExpression(ifE.cons, nested), changeExpression(ifE.alt, nested), ifE.idn)
+      case NegatePredicate if nested =>
+        negatedPredicate += 1
+        SchemeIf(createNotExp(changeExpression(ifE.cond, nested)), changeExpression(ifE.cons, nested), changeExpression(ifE.alt, nested), ifE.idn)
       case NegatePredicate =>
         negatedPredicate += 1
-        if nested then createNotExp(changeExpression(cond, nested))
-        else
-            val pred = changeExpression(cond, true)
-            SchemeCodeChange(pred, createNotExp(pred), Identity.none)
+        val pred = changeExpression(ifE.cond, true)
+        SchemeIf(SchemeCodeChange(pred, createNotExp(pred), Identity.none),
+                 changeExpression(ifE.cons, nested),
+                 changeExpression(ifE.alt, nested),
+                 ifE.idn
+        )
+      case SwapBranches if nested =>
+        branchesSwapped += 1
+        SchemeIf(changeExpression(ifE.cond, nested), changeExpression(ifE.alt, nested), changeExpression(ifE.cons, nested), ifE.idn)
+      case SwapBranches =>
+        branchesSwapped += 1
+        SchemeIf(
+          changeExpression(ifE.cond, nested),
+          SchemeCodeChange(ifE.cons, changeExpression(ifE.alt, true), Identity.none),
+          SchemeCodeChange(ifE.alt, changeExpression(ifE.cons, true), Identity.none),
+          ifE.idn
+        )
     }
 
   // Gets a random expression of the body to add, or returns a print expression.
@@ -121,8 +139,7 @@ object ProgramChanger {
     case SchemeLambda(name, args, body, idn)               => SchemeLambda(name, args, changeBody(body, body, nested), idn)
     case SchemeVarArgLambda(name, args, vararg, body, idn) => SchemeVarArgLambda(name, args, vararg, changeBody(body, body, nested), idn)
     case SchemeFuncall(f, args, idn)                       => SchemeFuncall(f, args.map(changeExpression(_, nested)), idn)
-    case SchemeIf(cond, cons, alt, idn) =>
-      SchemeIf(getPredicate(cond, nested), changeExpression(cons, nested), changeExpression(alt, nested), idn)
+    case ifE @ SchemeIf(cond, cons, alt, idn)              => changeIf(ifE, nested)
     case SchemeLet(bindings, body, idn) =>
       SchemeLet(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
     case SchemeLetStar(bindings, body, idn) =>
@@ -143,12 +160,16 @@ object ProgramChanger {
       added = 0
       swaps = 0
       negatedPredicate = 0
+      branchesSwapped = 0
       val parsed = CSchemeParser.undefine(CSchemeParser.parse(Reader.loadFile(in)))
       val newProgram = changeExpression(parsed, false).prettyString()
       // Don't write the program if nothing has changed or the generated expression was a duplicate.
       if (removed + added + swaps + negatedPredicate != 0) && previouslyGenerated.find(_ == newProgram).isEmpty then
           val writer = Writer.open(out)
-          Writer.writeln(writer, s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps\n; * negated predicates: $negatedPredicate")
+          Writer.writeln(
+            writer,
+            s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps\n; * negated predicates: $negatedPredicate\n; * swapped branches: $branchesSwapped"
+          )
           Writer.write(writer, newProgram)
           Writer.close(writer)
           Some(newProgram) // Returns true if something has changed.
