@@ -11,6 +11,7 @@ import maf.util.{Reader, Writer}
 import scala.util.Random
 
 /** Automatically add change expressions to programs. */
+// TODO: Avoid the same mutation to be generated multiple times? (i.e., filter duplicates)?
 object ProgramChanger {
 
   private val rand = new Random()
@@ -18,7 +19,17 @@ object ProgramChanger {
   private enum ExpressionAction:
       case Add, Remove, Swap, NoChange
 
+  private enum IfAction:
+      case NegatePredicate, Retain
+
   import ExpressionAction.*
+  import IfAction.*
+
+  // Keep numbers
+  var removed: Int = 0
+  var added: Int = 0
+  var swaps: Int = 0
+  var negatedPredicate: Int = 0
 
   // Gets an ExpressionAction with a certain probability:
   // None: 70%
@@ -37,6 +48,27 @@ object ProgramChanger {
     SchemeFuncall(SchemeVar(Identifier("display", Identity.none)), List(SchemeVar(Identifier(exp, Identity.none))), Identity.none)
   private def createDisplayExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("display", Identity.none)), List(exp), Identity.none)
 
+  // Gets an IfAction with a certain probability:
+  // None: 90%
+  // Negate predicate: 10%
+  private def getIfAction(): IfAction =
+      val n = rand.nextDouble()
+      if n < 0.9 then Retain
+      else NegatePredicate
+
+  private def createNotExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("not", Identity.none)), List(exp), Identity.none)
+
+  private def getPredicate(cond: SchemeExp, nested: Boolean): SchemeExp =
+    getIfAction() match {
+      case Retain => changeExpression(cond, nested)
+      case NegatePredicate =>
+        negatedPredicate += 1
+        if nested then createNotExp(changeExpression(cond, nested))
+        else
+            val pred = changeExpression(cond, true)
+            SchemeCodeChange(pred, createNotExp(pred), Identity.none)
+    }
+
   // Gets a random expression of the body to add, or returns a print expression.
   private def getExpressionToAdd(body: List[SchemeExp]): SchemeExp =
       val n = rand.nextDouble()
@@ -48,11 +80,6 @@ object ProgramChanger {
           val choices = body.flatMap(_.subexpressions)
           val choice = choices(rand.nextInt(choices.length))
           if choice.isInstanceOf[SchemeExp] then choice.asInstanceOf[SchemeExp] else SchemeVar(choice.asInstanceOf[Identifier])
-
-  // Keep numbers
-  var removed: Int = 0
-  var added: Int = 0
-  var swaps: Int = 0
 
   private def changeBody(lst: List[SchemeExp], fullbody: List[SchemeExp], nested: Boolean): List[SchemeExp] =
     (lst, getExpressionAction()) match {
@@ -96,7 +123,7 @@ object ProgramChanger {
     case SchemeVarArgLambda(name, args, vararg, body, idn) => SchemeVarArgLambda(name, args, vararg, changeBody(body, body, nested), idn)
     case SchemeFuncall(f, args, idn)                       => SchemeFuncall(f, args.map(changeExpression(_, nested)), idn)
     case SchemeIf(cond, cons, alt, idn) =>
-      SchemeIf(changeExpression(cond, nested), changeExpression(cons, nested), changeExpression(alt, nested), idn)
+      SchemeIf(getPredicate(cond, nested), changeExpression(cons, nested), changeExpression(alt, nested), idn)
     case SchemeLet(bindings, body, idn) =>
       SchemeLet(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
     case SchemeLetStar(bindings, body, idn) =>
@@ -112,17 +139,18 @@ object ProgramChanger {
 
   }
 
-  def changeBodyStatements(in: String, out: String): Boolean =
+  def changeBodyStatements(in: String, out: String): (Boolean, String) =
       removed = 0
       added = 0
       swaps = 0
+      negatedPredicate = 0
       val parsed = CSchemeParser.undefine(CSchemeParser.parse(Reader.loadFile(in)))
       val newProgram = changeExpression(parsed, false).prettyString()
       val writer = Writer.open(out)
-      Writer.writeln(writer, s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps")
+      Writer.writeln(writer, s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps\n; * negated predicates: $negatedPredicate")
       Writer.write(writer, newProgram)
       Writer.close(writer)
-      removed + added + swaps != 0 // Returns true if something has changed.
+      (removed + added + swaps + negatedPredicate != 0, newProgram) // Returns true if something has changed.
 }
 
 object Changer {
@@ -130,6 +158,15 @@ object Changer {
   def main(args: Array[String]): Unit =
       val inputFile = "test/R5RS/ad/quick.scm"
       def outputFile(n: Int = 0) = s"test/changes/scheme/generated/qs-$n.scm"
-      var times = 10
-      while times > 0 do if ProgramChanger.changeBodyStatements(inputFile, outputFile(times)) then times -= 1 // Try again if nothing has changed.
+      val amountToGenerate = 10
+      var times = amountToGenerate
+      var programs: List[String] = Nil
+      var tries = 0
+      while times > 0 do
+          val (changes, newProgram) = ProgramChanger.changeBodyStatements(inputFile, outputFile(times))
+          tries += 1
+          if changes && programs.find(_ == newProgram).isEmpty then // Only go to the "next" program if nothing has changed and the generated expression was not a duplicate.
+              times -= 1
+              programs = newProgram :: programs
+      println(s"Finished generating $amountToGenerate programs using $tries attempts.")
 }
