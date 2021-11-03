@@ -1,6 +1,7 @@
 package maf.modular.incremental
 
 import akka.io.Tcp.SO.KeepAlive
+import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.core.*
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.*
@@ -71,15 +72,13 @@ object ProgramChanger {
 
   // Gets a random expression of the body to add, or returns a print expression.
   private def getExpressionToAdd(body: List[SchemeExp]): SchemeExp =
+      val choices = body.flatMap(_.allSubexpressions) ++ body // Add body as these expressions are not part of the subexpressions.
+      val choice = choices(rand.nextInt(choices.length))
+      val result = if choice.isInstanceOf[SchemeExp] then choice.asInstanceOf[SchemeExp] else SchemeVar(choice.asInstanceOf[Identifier])
       val n = rand.nextDouble()
       if n < 0.25 then // Add a random print statement.
-          val fvs = body.flatMap(_.fv)
-          createDisplayExp(fvs(rand.nextInt(fvs.length)))
-      else
-          // Add any subexpression.
-          val choices = body.flatMap(_.subexpressions)
-          val choice = choices(rand.nextInt(choices.length))
-          if choice.isInstanceOf[SchemeExp] then choice.asInstanceOf[SchemeExp] else SchemeVar(choice.asInstanceOf[Identifier])
+          createDisplayExp(result)
+      else result
 
   private def changeBody(lst: List[SchemeExp], fullbody: List[SchemeExp], nested: Boolean): List[SchemeExp] =
     (lst, getExpressionAction()) match {
@@ -156,11 +155,12 @@ object ProgramChanger {
 object Changer {
 
   def main(args: Array[String]): Unit =
-      val inputFiles = if args.isEmpty then List("test/R5RS/ad/quick.scm") else args.toList
+      val inputFiles = SchemeBenchmarkPrograms.sequentialBenchmarks.toList // if args.isEmpty then List("test/R5RS/ad/quick.scm") else args.toList
       def outputFile(in: String, n: Int = 0) = "test/changes/scheme/generated/" ++ in.drop(5).dropRight(4).replace("/", "_").nn ++ s"-$n.scm"
-      val amountToGenerate = 10
+      val amountToGenerate = 5
       println(s"Files to process: ${inputFiles.length}")
       for inputFile <- inputFiles do
+          print(inputFile) // When an error is thrown, at least we will see which file caused problems.
           var times = amountToGenerate
           var programs: List[String] = Nil
           var tries = 0
@@ -170,6 +170,6 @@ object Changer {
               if changes && programs.find(_ == newProgram).isEmpty then // Only go to the "next" program if nothing has changed and the generated expression was not a duplicate.
                   times -= 1
                   programs = newProgram :: programs
-          println(s"$inputFile: generated $amountToGenerate programs using $tries attempts.")
+          println(s": generated $amountToGenerate programs using $tries attempts.")
       println("Finished.")
 }

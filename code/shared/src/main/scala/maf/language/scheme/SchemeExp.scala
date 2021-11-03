@@ -153,10 +153,10 @@ sealed trait SchemeLettishExp extends SchemeExp:
         val id = letName
         val shiftB = indent + id.toString.length + 3
         val bi = bindings.map({ case (name, exp) => s"($name ${exp.prettyString(shiftB + name.toString.length + 1)})" })
-        val first = bi.head
-        val rest = bi.tail.map(s => (" " * shiftB) + s).mkString("\n")
+        val first = bi.headOption.map(_.toString).getOrElse("") // Apparently bi can be empty.
+        val rest = if bi.isEmpty || bi.tail.isEmpty then "" else "\n" ++ bi.tail.map(s => (" " * shiftB) + s).mkString("\n")
         val bo = body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")
-        s"($id (${first}${if bi.tail.isEmpty then "" else s"\n${rest}"})\n$bo)"
+        s"($id (${first}${rest})\n$bo)"
 
 /** Let-bindings: (let ((v1 e1) ...) body...) */
 case class SchemeLet(
