@@ -138,18 +138,21 @@ object ProgramChanger {
 
   }
 
-  def changeBodyStatements(in: String, out: String): (Boolean, String) =
+  def changeBodyStatements(in: String, out: String, previouslyGenerated: List[String]): Option[String] =
       removed = 0
       added = 0
       swaps = 0
       negatedPredicate = 0
       val parsed = CSchemeParser.undefine(CSchemeParser.parse(Reader.loadFile(in)))
       val newProgram = changeExpression(parsed, false).prettyString()
-      val writer = Writer.open(out)
-      Writer.writeln(writer, s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps\n; * negated predicates: $negatedPredicate")
-      Writer.write(writer, newProgram)
-      Writer.close(writer)
-      (removed + added + swaps + negatedPredicate != 0, newProgram) // Returns true if something has changed.
+      // Don't write the program if nothing has changed or the generated expression was a duplicate.
+      if (removed + added + swaps + negatedPredicate != 0) && previouslyGenerated.find(_ == newProgram).isEmpty then
+          val writer = Writer.open(out)
+          Writer.writeln(writer, s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps\n; * negated predicates: $negatedPredicate")
+          Writer.write(writer, newProgram)
+          Writer.close(writer)
+          Some(newProgram) // Returns true if something has changed.
+      else None
 }
 
 object Changer {
@@ -165,11 +168,11 @@ object Changer {
           var programs: List[String] = Nil
           var tries = 0
           while times > 0 && tries < 5 * amountToGenerate do
-              val (changes, newProgram) = ProgramChanger.changeBodyStatements(inputFile, outputFile(inputFile, times))
               tries += 1
-              if changes && programs.find(_ == newProgram).isEmpty then // Only go to the "next" program if nothing has changed and the generated expression was not a duplicate.
+              ProgramChanger.changeBodyStatements(inputFile, outputFile(inputFile, times), programs).map { newProgram =>
                   times -= 1
                   programs = newProgram :: programs
+              }
           println(s": generated $amountToGenerate programs using $tries attempts.")
       println("Finished.")
 }
