@@ -114,6 +114,13 @@ case class SchemeFuncall(
     override val height: Int = 1 + args.foldLeft(0)((mx, a) => mx.max(a.height).max(f.height))
     val label: Label = FNC
     def subexpressions: List[Expression] = f :: args
+    override def prettyString(indent: Int): String =
+      if this.toString.length < 100 then this.toString
+      else
+          val fnString = f.prettyString(indent)
+          val argsString =
+            if args.isEmpty then "" else "\n" + args.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")
+          s"(${if fnString.split("\n").nn.length <= 3 then f.toString else fnString}$argsString)"
 
 /** An if statement: (if cond cons alt) If without alt clauses need to be encoded with an empty begin as alt clause */
 case class SchemeIf(
@@ -128,7 +135,9 @@ case class SchemeIf(
     val label: Label = IFF
     def subexpressions: List[Expression] = List(cond, cons, alt)
     override def prettyString(indent: Int): String =
-      s"(if $cond\n${" " * nextIndent(indent)}${cons.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent)}${alt.prettyString(nextIndent(indent))})"
+      if this.toString.size < 50 then this.toString
+      else
+          s"(if $cond\n${" " * nextIndent(indent)}${cons.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent)}${alt.prettyString(nextIndent(indent))})"
 
 /** A let-like expression. */
 sealed trait SchemeLettishExp extends SchemeExp:
@@ -496,7 +505,7 @@ object SchemeSetRef:
 case class SchemeCodeChange(old: SchemeExp, nw: SchemeExp, idn: Identity) extends ChangeExp[SchemeExp] with SchemeExp:
     override def toString: String = s"(<change> $old $nw)"
     override def prettyString(indent: Int): String =
-        s"(<change>\n${" " * nextIndent(indent) ++ old.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent) ++ nw.prettyString(nextIndent(indent))})"
+      s"(<change>\n${" " * nextIndent(indent) ++ old.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent) ++ nw.prettyString(nextIndent(indent))})"
 
 trait CSchemeExp extends SchemeExp
 
