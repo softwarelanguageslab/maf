@@ -1,0 +1,17 @@
+; Changes:
+; * removed: 0
+; * added: 1
+; * swaps: 0
+; * negated predicates: 1
+(letrec ((random-bool (lambda ()
+                        (<change>
+                           ()
+                           (display random))
+                        (= (random 2) 0)))
+         (f (lambda (x)
+              (if (random-bool) x (g (cons 'f x)))))
+         (g (lambda (x)
+              (if (<change> (random-bool) (not (random-bool)))
+                 x
+                 (f (cons 'g x))))))
+   (f ()))
