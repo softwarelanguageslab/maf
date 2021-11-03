@@ -1,6 +1,5 @@
 package maf.modular.incremental
 
-import akka.io.Tcp.SO.KeepAlive
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.core.*
 import maf.language.CScheme.CSchemeParser
@@ -12,19 +11,19 @@ import maf.util.{Reader, Writer}
 import scala.util.Random
 
 /** Automatically add change expressions to programs. */
-// TODO: Avoid the same mutation to be generated multiple times? (i.e., filter duplicates)?
 object ProgramChanger {
 
   private val rand = new Random()
 
   private enum ExpressionAction:
-      case Add, Remove, Swap, NoChange
+      case Add, Remove, Swap, IDCall, NoChange
 
   private enum IfAction:
       case NegatePredicate, SwapBranches, Retain
 
   import ExpressionAction.*
   import IfAction.*
+  import Identity.none as id0 // Make this shorter to reference.
 
   // Keep numbers
   var removed: Int = 0
@@ -32,23 +31,26 @@ object ProgramChanger {
   var swaps: Int = 0
   var negatedPredicate: Int = 0
   var branchesSwapped: Int = 0
+  var idCallsAdded: Int = 0
 
   // Gets an ExpressionAction with a certain probability:
   // None: 70%
-  // Add: 7.5%
-  // Remove: 10% but cannot always be executed.
-  // Swap: 12.5% but cannot always be executed.
+  // Add: 5%
+  // Remove: 7.5% but cannot always be executed.
+  // IDCall: 7.5%
+  // Swap: 10% but cannot always be executed.
   private def getExpressionAction(): ExpressionAction =
       val n = rand.nextDouble()
       if n < 0.7 then NoChange
-      else if n < 0.775 then Add
-      else if n < 0.875 then Remove
+      else if n < 0.75 then Add
+      else if n < 0.825 then Remove
+      else if n < 0.9 then IDCall
       else Swap
 
   // Creates a display expression.
   private def createDisplayExp(exp: String): SchemeExp =
-    SchemeFuncall(SchemeVar(Identifier("display", Identity.none)), List(SchemeVar(Identifier(exp, Identity.none))), Identity.none)
-  private def createDisplayExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("display", Identity.none)), List(exp), Identity.none)
+    SchemeFuncall(SchemeVar(Identifier("display", id0)), List(SchemeVar(Identifier(exp, id0))), id0)
+  private def createDisplayExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("display", id0)), List(exp), id0)
 
   // Gets an IfAction with a certain probability:
   // None: 90%
@@ -59,7 +61,9 @@ object ProgramChanger {
       else if n < 0.925 then SwapBranches
       else NegatePredicate
 
-  private def createNotExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("not", Identity.none)), List(exp), Identity.none)
+  private def createNotExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("not", id0)), List(exp), id0)
+  private def createIdFunCall(exp: SchemeExp) =
+    SchemeFuncall(SchemeLambda(None, List(Identifier("x", id0)), List(SchemeVar(Identifier("x", id0))), id0), List(exp), id0)
 
   private def changeIf(ifE: SchemeIf, nested: Boolean): SchemeExp =
     getIfAction() match {
@@ -70,11 +74,7 @@ object ProgramChanger {
       case NegatePredicate =>
         negatedPredicate += 1
         val pred = changeExpression(ifE.cond, true)
-        SchemeIf(SchemeCodeChange(pred, createNotExp(pred), Identity.none),
-                 changeExpression(ifE.cons, nested),
-                 changeExpression(ifE.alt, nested),
-                 ifE.idn
-        )
+        SchemeIf(SchemeCodeChange(pred, createNotExp(pred), id0), changeExpression(ifE.cons, nested), changeExpression(ifE.alt, nested), ifE.idn)
       case SwapBranches if nested =>
         branchesSwapped += 1
         SchemeIf(changeExpression(ifE.cond, nested), changeExpression(ifE.alt, nested), changeExpression(ifE.cons, nested), ifE.idn)
@@ -82,8 +82,8 @@ object ProgramChanger {
         branchesSwapped += 1
         SchemeIf(
           changeExpression(ifE.cond, nested),
-          SchemeCodeChange(ifE.cons, changeExpression(ifE.alt, true), Identity.none),
-          SchemeCodeChange(ifE.alt, changeExpression(ifE.cons, true), Identity.none),
+          SchemeCodeChange(ifE.cons, changeExpression(ifE.alt, true), id0),
+          SchemeCodeChange(ifE.alt, changeExpression(ifE.cons, true), id0),
           ifE.idn
         )
     }
@@ -107,31 +107,46 @@ object ProgramChanger {
       case (h :: t, NoChange)         => changeExpression(h, nested) :: changeBody(t, fullbody, nested)
 
       // Remove an expression.
-      case (h :: Nil, Remove)         => h :: Nil // Avoid empty bodies.
-      case (h :: t, Remove) if nested => removed += 1; changeBody(t, fullbody, nested)
+      case (h :: Nil, Remove) => h :: Nil // Avoid empty bodies.
+      case (h :: t, Remove) if nested =>
+        removed += 1
+        changeBody(t, fullbody, nested)
       case (h :: t, Remove) =>
-        removed += 1; SchemeCodeChange(h, SchemeValue(Value.Nil, Identity.none), Identity.none) :: changeBody(t, fullbody, nested)
+        removed += 1
+        SchemeCodeChange(h, SchemeValue(Value.Nil, id0), id0) :: changeBody(t, fullbody, nested)
 
       // Add an expression.
-      case (l, Add) if nested => added += 1; changeExpression(getExpressionToAdd(fullbody), nested) :: changeBody(l, fullbody, nested)
+      case (l, Add) if nested =>
+        added += 1
+        changeExpression(getExpressionToAdd(fullbody), nested) :: changeBody(l, fullbody, nested)
       case (l, Add) =>
         added += 1
-        SchemeCodeChange(SchemeValue(Value.Nil, Identity.none), changeExpression(getExpressionToAdd(fullbody), true), Identity.none) :: changeBody(
+        SchemeCodeChange(SchemeValue(Value.Nil, id0), changeExpression(getExpressionToAdd(fullbody), true), id0) :: changeBody(
           l,
           fullbody,
           nested
         )
 
       // Swap expressions.
-      case (l @ (h :: Nil), Swap)                => l // When there is only one statement, don't do anything (previously, it would equal add).
-      case (l @ (h1 :: h2 :: t), Swap) if nested => swaps += 1; changeExpression(h2, nested) :: changeBody(h1 :: t, fullbody, nested)
+      case (l @ (h :: Nil), Swap) => l // When there is only one statement, don't do anything (previously, it would equal add).
+      case (l @ (h1 :: h2 :: t), Swap) if nested =>
+        swaps += 1
+        changeExpression(h2, nested) :: changeBody(h1 :: t, fullbody, nested)
       // TODO: let h1 swap with any of h2 :: t as in the case above.
       case (l @ (h1 :: h2 :: t), Swap) =>
         swaps += 1
-        SchemeCodeChange(h1, changeExpression(h2, true), Identity.none) :: SchemeCodeChange(h2,
-                                                                                            changeExpression(h1, true),
-                                                                                            Identity.none
-        ) :: changeBody(t, fullbody, nested)
+        SchemeCodeChange(h1, changeExpression(h2, true), id0) :: SchemeCodeChange(h2, changeExpression(h1, true), id0) :: changeBody(t,
+                                                                                                                                     fullbody,
+                                                                                                                                     nested
+        )
+
+      // Add a call to the identity function.
+      case (h :: t, IDCall) if nested =>
+        idCallsAdded += 1
+        createIdFunCall(changeExpression(h, nested)) :: changeBody(t, fullbody, nested)
+      case (h :: t, IDCall) =>
+        idCallsAdded += 1
+        SchemeCodeChange(h, createIdFunCall(changeExpression(h, nested)), id0) :: changeBody(t, fullbody, nested)
     }
 
   // Nested indicated whether we are already in a changed expression (the "new" expression), and hence the changes can be made without introducing a change expression again.
@@ -161,6 +176,7 @@ object ProgramChanger {
       swaps = 0
       negatedPredicate = 0
       branchesSwapped = 0
+      idCallsAdded = 0
       val parsed = CSchemeParser.undefine(CSchemeParser.parse(Reader.loadFile(in)))
       val newProgram = changeExpression(parsed, false).prettyString()
       // Don't write the program if nothing has changed or the generated expression was a duplicate.
@@ -168,7 +184,7 @@ object ProgramChanger {
           val writer = Writer.open(out)
           Writer.writeln(
             writer,
-            s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps\n; * negated predicates: $negatedPredicate\n; * swapped branches: $branchesSwapped"
+            s"; Changes:\n; * removed: $removed\n; * added: $added\n; * swaps: $swaps\n; * negated predicates: $negatedPredicate\n; * swapped branches: $branchesSwapped\n; * calls to id fun: $idCallsAdded"
           )
           Writer.write(writer, newProgram)
           Writer.close(writer)
@@ -183,6 +199,7 @@ object Changer {
       def outputFile(in: String, n: Int = 0) = "test/changes/scheme/generated/" ++ in.drop(5).dropRight(4).replace("/", "_").nn ++ s"-$n.scm"
       val amountToGenerate = 5
       println(s"Files to process: ${inputFiles.length}")
+      var generated = 0
       for inputFile <- inputFiles do
           print(inputFile) // When an error is thrown, at least we will see which file caused problems.
           var times = amountToGenerate
@@ -192,8 +209,9 @@ object Changer {
               tries += 1
               ProgramChanger.changeBodyStatements(inputFile, outputFile(inputFile, times), programs).map { newProgram =>
                   times -= 1
+                  generated += 1
                   programs = newProgram :: programs
               }
           println(s": generated $amountToGenerate programs using $tries attempts.")
-      println("Finished.")
+      println(s"Finished processing. Generated $generated files.")
 }
