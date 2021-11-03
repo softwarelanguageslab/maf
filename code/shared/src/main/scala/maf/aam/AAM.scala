@@ -58,18 +58,18 @@ trait AAMAnalysis:
     def alloc(identity: Identity, env: Env, sto: Sto, kont: Address, ctx: Timestamp): Address
 
     /** Analyze the given expression and return the set of (non-invalid) state */
-    def analyze(expr: Expr): Set[State] =
+    def analyze(expr: Expr, timeout: Timeout.T = Timeout.none): Set[State] =
         val s0 = inject(expr)
         todo = step(s0)
 
-        while (!(todo -- seen).isEmpty) do
+        while (!(todo -- seen).isEmpty) && !timeout.reached do
             todo = (todo -- seen)
             println(s"todo size ${todo.size} and seen size ${seen.size}")
             seen = seen ++ todo
             todo = todo.flatMap(step)
-        // todo.foreach(printDebug)
+            todo.foreach(printDebug)
 
-        todo = Set()
+        todo = (todo -- seen)
         seen
 
     def analyzeWithTimeout(timeout: Timeout.T): Set[State]

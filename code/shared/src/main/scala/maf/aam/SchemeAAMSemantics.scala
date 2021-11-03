@@ -25,8 +25,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     type Ctx = Unit // TODO: fix
 
     override def analyzeWithTimeout(timeout: Timeout.T): Set[State] =
-      // TODO: do not ignore timeout
-      analyze(prog)
+      analyze(prog, timeout)
 
     /** An instantation of the <code>SchemeInterpreterBridge</code> trait to support the builtin MAF Scheme primitives */
     private class InterpreterBridge(env: Env, private var sto: Sto, kont: Address, t: Timestamp) extends SchemeInterpreterBridge[Val, Address]:
