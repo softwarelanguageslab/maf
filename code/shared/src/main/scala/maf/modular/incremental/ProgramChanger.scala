@@ -156,17 +156,20 @@ object ProgramChanger {
 object Changer {
 
   def main(args: Array[String]): Unit =
-      val inputFile = "test/R5RS/ad/quick.scm"
-      def outputFile(n: Int = 0) = s"test/changes/scheme/generated/qs-$n.scm"
+      val inputFiles = if args.isEmpty then List("test/R5RS/ad/quick.scm") else args.toList
+      def outputFile(in: String, n: Int = 0) = "test/changes/scheme/generated/" ++ in.drop(5).dropRight(4).replace("/", "_").nn ++ s"-$n.scm"
       val amountToGenerate = 10
-      var times = amountToGenerate
-      var programs: List[String] = Nil
-      var tries = 0
-      while times > 0 do
-          val (changes, newProgram) = ProgramChanger.changeBodyStatements(inputFile, outputFile(times))
-          tries += 1
-          if changes && programs.find(_ == newProgram).isEmpty then // Only go to the "next" program if nothing has changed and the generated expression was not a duplicate.
-              times -= 1
-              programs = newProgram :: programs
-      println(s"Finished generating $amountToGenerate programs using $tries attempts.")
+      println(s"Files to process: ${inputFiles.length}")
+      for inputFile <- inputFiles do
+          var times = amountToGenerate
+          var programs: List[String] = Nil
+          var tries = 0
+          while times > 0 && tries < 5 * amountToGenerate do
+              val (changes, newProgram) = ProgramChanger.changeBodyStatements(inputFile, outputFile(inputFile, times))
+              tries += 1
+              if changes && programs.find(_ == newProgram).isEmpty then // Only go to the "next" program if nothing has changed and the generated expression was not a duplicate.
+                  times -= 1
+                  programs = newProgram :: programs
+          println(s"$inputFile: generated $amountToGenerate programs using $tries attempts.")
+      println("Finished.")
 }
