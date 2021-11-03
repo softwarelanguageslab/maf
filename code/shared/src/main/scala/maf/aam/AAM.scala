@@ -1,9 +1,13 @@
 package maf.aam
 
 import maf.core.*
+import maf.util.benchmarks.Timeout
 
 /** Provides functionality for a full AAM style analysis */
 trait AAMAnalysis:
+    /** The type of the abstract values for the analysis */
+    type Val
+
     /** The type of the environment that should be used in the analysis */
     type Env
 
@@ -28,6 +32,9 @@ trait AAMAnalysis:
     /** A set of seen states in the analysis */
     private var seen: Set[State] = Set()
 
+    /** A set of states still to visit */
+    private var todo: Set[State] = Set()
+
     /** Initial timestamp */
     val initialTime: Timestamp
 
@@ -44,17 +51,27 @@ trait AAMAnalysis:
     def invalidate(): Unit =
       seen = Set()
 
+    /** Print a debug version of the given state */
+    def printDebug(s: State): Unit
+
     /** Allocate a fresh address in the store */
     def alloc(identity: Identity, env: Env, sto: Sto, kont: Address, ctx: Timestamp): Address
 
     /** Analyze the given expression and return the set of (non-invalid) state */
     def analyze(expr: Expr): Set[State] =
         val s0 = inject(expr)
-        var todo: Set[State] = Set() // states to (potentially) analyze
+        todo = step(s0)
 
         while (!(todo -- seen).isEmpty) do
             todo = (todo -- seen)
+            println(s"todo size ${todo.size} and seen size ${seen.size}")
             seen = seen ++ todo
             todo = todo.flatMap(step)
+        // todo.foreach(printDebug)
 
+        todo = Set()
         seen
+
+    def analyzeWithTimeout(timeout: Timeout.T): Set[State]
+
+    def finished: Boolean = todo.isEmpty
