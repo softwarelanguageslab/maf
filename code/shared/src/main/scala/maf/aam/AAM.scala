@@ -39,7 +39,7 @@ trait AAMAnalysis:
     val initialTime: Timestamp
 
     /** Tick the time forward */
-    def tick(timestamp: Timestamp, env: Env, sto: Sto, kont: Address): Timestamp
+    def tick(timestamp: Timestamp, e: Expr, env: Env, sto: Sto, kont: Kont): Timestamp
 
     /** Inject the expression into the analysis state */
     def inject(expr: Expr): State
@@ -52,22 +52,21 @@ trait AAMAnalysis:
       seen = Set()
 
     /** Print a debug version of the given state */
-    def printDebug(s: State): Unit
+    def printDebug(s: State, printStore: Boolean = false): Unit
 
     /** Allocate a fresh address in the store */
-    def alloc(identity: Identity, env: Env, sto: Sto, kont: Address, ctx: Timestamp): Address
+    def alloc(identity: Identity, env: Env, sto: Sto, kont: Kont, ctx: Timestamp): Address
 
     /** Analyze the given expression and return the set of (non-invalid) state */
     def analyze(expr: Expr, timeout: Timeout.T = Timeout.none): Set[State] =
         val s0 = inject(expr)
+        seen = Set(s0)
         todo = step(s0)
-
-        while (!(todo -- seen).isEmpty) && !timeout.reached do
-            todo = (todo -- seen)
+        while !todo.isEmpty && !timeout.reached && seen.size < 100 do
             println(s"todo size ${todo.size} and seen size ${seen.size}")
             seen = seen ++ todo
-            todo = todo.flatMap(step)
-            todo.foreach(printDebug)
+            todo = todo.flatMap(step) -- seen
+            todo.foreach(printDebug(_, false))
 
         todo = (todo -- seen)
         seen

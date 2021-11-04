@@ -2,6 +2,7 @@ package maf.aam
 
 import maf.modular.ModAnalysis
 
+import maf.util.*
 import maf.modular.scheme._
 import maf.core.Position._
 import maf.core._
@@ -90,6 +91,11 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         def idn: Identity = Identity.none
         def printable = true
         override def toString = s"KontAddr(${expr} ${timestamp})"
+
+    case class RetAddr(expr: SchemeExp, timestamp: Timestamp) extends Address:
+        def idn: Identity = Identity.none
+        def printable = true
+        override def toString = s"RetAddr(${expr} ${timestamp})"
 
     /** The location of the initial continuaton */
     case object Kont0Addr extends Address:
@@ -208,18 +214,26 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         case Ap(value: Value)
 
     /** A state of the Scheme AAM machine */
-    case class SchemeState(c: Control, e: Env, s: Sto, k: Address, t: Timestamp)
+    case class SchemeState(c: Control, e: Env, s: Sto, k: Kont, t: Timestamp)
 
     /** Inject the initial state for the given expression */
     def inject(expr: Expr): State =
         val initialEnv = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
         val initialStore = BasicStore(initialBds.map(p => (p._2, p._3)).toMap).extend(Kont0Addr, Storable.K(Set(HltFrame)))
-        val initialFrameAddr = Kont0Addr
-        SchemeState(Control.Ev(expr), initialEnv, initialStore, initialFrameAddr, initialTime)
+        SchemeState(Control.Ev(expr), initialEnv, initialStore, HltFrame, initialTime)
+
+    /** Returns a string representation of the store. */
+    def storeString(store: Sto, primitives: Boolean = false): String =
+        val strings = store.content.map({ case (a, v) => s"${StringUtil.toWidth(a.toString, 50)}: $v" })
+        val filtered = if primitives then strings else strings.filterNot(_.toLowerCase.nn.startsWith("prm"))
+        val size = filtered.size
+        val infoString = "σ" * 150 + s"\nThe store contains $size addresses (primitive addresses ${if primitives then "included" else "excluded"}).\n"
+        filtered.toList.sorted.mkString(infoString, "\n", "\n" + "σ" * 150)
 
     /** Print a debug version of the given state */
-    def printDebug(s: State): Unit =
-      println(s"control cmp ${s.c}, env ${s.e}, size of store ${s.s.asInstanceOf[BasicStore[Address, Val]].content.size}, kont addr ${s.k}")
+    def printDebug(s: State, printStore: Boolean = false): Unit =
+        println(s"control cmp ${s.c}, size of store ${s.s.asInstanceOf[BasicStore[Address, Val]].content.size}, kont addr ${s.k}")
+        if printStore then println(storeString(s.s, false))
 
     /** Step from one state to another */
     def step(s0: State): Set[State] =
@@ -234,21 +248,34 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
      * @return
      *   a pair of the updated store (since continuations are store allocated), and the address at which the continuation has been allocated
      */
-    def pushFrame(
+    protected def pushFrame(
         e: Expr,
         env: Env,
         sto: Sto,
-        kont: Address,
+        kont: Kont,
         frame: Kont,
         t: Timestamp
-      ): (Sto, Address, Timestamp) =
-        val timestamp = tick(t, env, sto, kont)
+      ): (Sto, Kont, Timestamp) =
+        val timestamp = tick(t, e, env, sto, kont)
         val addr = KontAddr(e, timestamp)
-        val sto1 = writeSto(sto, addr, Storable.K(Set(frame.link(kont))))
-        (sto1, addr, timestamp)
+        val sto1 = writeSto(sto, addr, Storable.K(Set(kont)))
+        (sto1, frame.link(addr), timestamp)
+
+    protected def pushRetFrame(
+        e: Expr,
+        env: Env,
+        sto: Sto,
+        kont: Kont,
+        frame: Kont,
+        t: Timestamp
+      ): (Sto, Kont, Timestamp) =
+        val timestamp = tick(t, e, env, sto, kont)
+        val addr = RetAddr(e, timestamp)
+        val sto1 = writeSto(sto, addr, Storable.K(Set(kont)))
+        (sto1, frame.link(addr), timestamp)
 
     /** Evaluate the given expression */
-    def eval(expr: Expr, env: Env, sto: Sto, kont: Address, t: Timestamp): Set[State] = expr match
+    def eval(expr: Expr, env: Env, sto: Sto, kont: Kont, t: Timestamp): Set[State] = expr match
         // (Ev(literal), env, sto, kont) ==> (Ap(inj(literal)), env, sto, kont)
         case lit: SchemeValue =>
           evalLiteralValue(lit, env, sto, kont, t)
@@ -300,7 +327,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
      * Evaluate a literal value, these are evaluated to equivalent representations in the abstract domain. A string literal is allocated in the store
      * at a value address
      */
-    private def evalLiteralValue(lit: SchemeValue, env: Env, sto: Sto, kont: Address, t: Timestamp): Set[State] =
+    private def evalLiteralValue(lit: SchemeValue, env: Env, sto: Sto, kont: Kont, t: Timestamp): Set[State] =
         val (res, sto1) = lit.value match
             case sexp.Value.String(s) =>
               val address = alloc(lit.idn, env, sto, kont, t)
@@ -317,7 +344,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
         Set(SchemeState(Control.Ap(res), env, sto1, kont, t))
 
-    private def evalVariable(id: Identifier, env: Env, sto: Sto, kont: Address, t: Timestamp): Set[State] =
+    private def evalVariable(id: Identifier, env: Env, sto: Sto, kont: Kont, t: Timestamp): Set[State] =
         val res: Value = env
           .lookup(id.name)
           .map(sto.lookup(_))
@@ -330,7 +357,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         Set(SchemeState(Control.Ap(res), env, sto, kont, t))
 
     /** Evaluate a non-empty sequence of expression */
-    private def evaluate_sequence(env: Env, sto: Sto, kont: Address, sequence: List[SchemeExp], t: Timestamp): Set[State] =
+    private def evaluate_sequence(env: Env, sto: Sto, kont: Kont, sequence: List[SchemeExp], t: Timestamp): Set[State] =
         assert(!sequence.isEmpty)
         val (sto1, frame, t1) = pushFrame(sequence.head, env, sto, kont, BegFrame(sequence.tail), t)
         Set(SchemeState(Control.Ev(sequence.head), env, sto1, frame, t1))
@@ -339,7 +366,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         evlBds: List[(Identifier, Value)],
         env: Env,
         sto: Sto,
-        kont: Address,
+        kont: Kont,
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
         t: Timestamp
@@ -359,7 +386,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
                 .zip(addresses)
                 .foldLeft(sto)((sto, current) => writeSto(sto, current._2, Storable.V(current._1)))
 
-            val (sto2, frame, t1) = pushFrame(body.head, env1, sto1, kont, RetFrame(env), t)
+            val (sto2, frame, t1) = pushRetFrame(body.head, env1, sto1, kont, RetFrame(env), t)
             evaluate_sequence(env, sto2, frame, body, t1)
 
           case binding :: bindings =>
@@ -369,7 +396,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     private def evaluateLetStar(
         env: Env,
         sto: Sto,
-        kont: Address,
+        kont: Kont,
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
         t: Timestamp
@@ -377,7 +404,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       bindings match
           case List() =>
             // evaluate the body, the environment is already correctly extended by bindings in the previous evaluation steps
-            val (sto1, frame, t1) = pushFrame(body.head, env, sto, kont, RetFrame(env), t)
+            val (sto1, frame, t1) = pushRetFrame(body.head, env, sto, kont, RetFrame(env), t)
             evaluate_sequence(env, sto1, frame, body, t1)
           case binding :: bindings =>
             val (sto1, frame, t1) = pushFrame(binding._2, env, sto, kont, LetStarFrame(binding._1, bindings, body), t)
@@ -388,7 +415,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         values: List[Value],
         env: Env,
         sto: Sto,
-        kont: Address,
+        kont: Kont,
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
         t: Timestamp,
@@ -410,7 +437,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         argv: List[Value],
         env: Env,
         sto: Sto,
-        kon: Address,
+        kon: Kont,
         t: Timestamp
       ): Set[State] =
         val closures = applyClo(fexp, func, argv, env, sto, kon, t)
@@ -423,31 +450,34 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         argv: List[Value],
         env: Env,
         sto: Sto,
-        kon: Address,
+        kon: Kont,
         t: Timestamp
       ): Set[State] =
       // TODO: introduce contexts to support things like k-cfa
       lattice.getClosures(func).flatMap {
         case (lam, lex: Env @unchecked) if lam.check(argv.size) =>
+          // push a frame to restore the environment upon return
+          val (sto0, frame, t0) = pushRetFrame(fexp, env, sto, kon, RetFrame(env), t)
+
           // split in fixed an variable number of arguments
           val (fx, vra) = argv.zip(fexp.args).splitAt(lam.args.length)
           val ctx = () // TODO
           // add the fixed arguments on addresses in the store
-          val sto1 = lam.args.zip(fx).foldLeft(sto) { case (sto, (par, (value, _))) =>
+          val sto1 = lam.args.zip(fx).foldLeft(sto0) { case (sto, (par, (value, _))) =>
             writeSto(sto, VarAddr(par.idn, ctx), Storable.V(value))
           }
           // add variable arguments as a list to a particular address in the store
           val sto2 = lam.varArgId match
               case Some(id) =>
-                val (vlu, sto1) = allocList(vra, env, sto, kon, t)
-                writeSto(sto1, VarAddr(id.idn, ctx), Storable.V(vlu))
+                val (vlu, newsto) = allocList(vra, env, sto1, kon, t0)
+                writeSto(newsto, VarAddr(id.idn, ctx), Storable.V(vlu))
               case _ => sto1
 
           // extend the environment with the correct bindigs
           val pars = (lam.args ++ lam.varArgId.map(List(_)).getOrElse(List()))
           val env1 = pars.foldLeft(env)((env, par) => env.extend(par.name, VarAddr(par.idn, ctx)))
           // and evaluate the body
-          evaluate_sequence(env1, sto2, kon, lam.body, t)
+          evaluate_sequence(env1, sto2, frame, lam.body, t0)
         case (lam, lex) =>
           println(s"Applied with invalid number of arguments ${argv.size}")
           Set()
@@ -460,7 +490,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         argv: List[Value],
         env: Env,
         sto: Sto,
-        kon: Address,
+        kon: Kont,
         t: Timestamp,
       ): Set[State] =
       lattice.getPrimitives(func).flatMap { name =>
@@ -484,7 +514,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         alt: Expr,
         env: Env,
         sto: Sto,
-        kont: Address,
+        kont: Kont,
         t: Timestamp
       ): Set[State] =
         import Control.*
@@ -492,7 +522,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         val altSt = if lattice.isFalse(value) then Set(SchemeState(Ev(alt), env, sto, kont, t)) else Set()
         csqSt ++ altSt
 
-    private def allocList(items: List[(Value, SchemeExp)], env: Env, sto: Sto, kont: Address, t: Timestamp): (Value, Sto) = items match
+    private def allocList(items: List[(Value, SchemeExp)], env: Env, sto: Sto, kont: Kont, t: Timestamp): (Value, Sto) = items match
         case Nil => (lattice.nil, sto)
         case (vlu, exp) :: rest =>
           val (tail, sto1) = allocList(rest, env, sto, kont, t)
@@ -504,72 +534,81 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         cdr: Value,
         env: Env,
         sto: Sto,
-        kont: Address,
+        kont: Kont,
         t: Timestamp
       ): (Value, Sto) =
         val addr = alloc(exp.idn, env, sto, kont, t) // TODO: check whether a seperate addr is needed for cons
         val sto1 = writeSto(sto, addr, Storable.V(lattice.cons(car, cdr)))
         (lattice.pointer(addr), sto1)
 
+    protected def continueWith(sto: Sto, kont: Address)(f: (Kont) => SchemeState): Set[State] =
+      readSto(sto, kont) match {
+        case Storable.K(ks) => ks.map(f)
+        case _              => Set()
+      }
+
+    protected def continueWiths(sto: Sto, kont: Address)(f: (Kont) => Set[SchemeState]): Set[State] =
+      readSto(sto, kont) match {
+        case Storable.K(ks) => ks.flatMap(f)
+        case _              => Set()
+      }
+
     /** Apply the given continuation with the given value */
-    def continue(value: Value, env: Env, sto: Sto, kont: Address, t: Timestamp): Set[State] = readSto(sto, kont) match
-        case Storable.K(k) =>
-          k.flatMap {
-            // (Ap(v), env, sto, assgn(x) :: k) ==> (Ap(nil), env, sto', k)
-            //    where sto' = sto [ env(x) -> v ]
-            case AssFrame(id, Some(next)) =>
-              val sto1 = writeSto(sto, env.lookup(id.name).get, Storable.V(value))
-              Set(SchemeState(Control.Ap(lattice.nil), env, sto1, next, t))
+    def continue(value: Value, env: Env, sto: Sto, kont: Kont, t: Timestamp): Set[State] = kont match
+        // (Ap(v), env, sto, assgn(x) :: k) ==> (Ap(nil), env, sto', k)
+        //    where sto' = sto [ env(x) -> v ]
+        case AssFrame(id, Some(next)) =>
+          val sto1 = writeSto(sto, env.lookup(id.name).get, Storable.V(value))
+          continueWith(sto, next)(SchemeState(Control.Ap(lattice.nil), env, sto1, _, t))
 
-            // (Ap(v), env, sto, beg(e1 e2 ... en) :: k) ==> (Ev(e1), env, sto, beg(e2 .. en) :: k)
-            case BegFrame(e1 :: exps, Some(kont)) =>
+        // (Ap(v), env, sto, beg(e1 e2 ... en) :: k) ==> (Ev(e1), env, sto, beg(e2 .. en) :: k)
+        case BegFrame(e1 :: exps, Some(addr)) =>
+          continueWith(sto, addr) { kont =>
               val (sto1, frame, t1) = pushFrame(e1, env, sto, kont, BegFrame(exps), t)
-              Set(SchemeState(Control.Ev(e1), env, sto1, frame, t1))
-
-            // (Ap(v), env, sto, beg() :: k) ==> (Ap(v), env, sto, k)
-            case BegFrame(List(), Some(kont)) =>
-              Set(SchemeState(Control.Ap(value), env, sto, kont, t))
-
-            // (Ap(true), env, sto, ite(csq, alt) :: k) ==> (Ev(csq), env, sto, k)
-            // (Ap(false), env, sto, ite(csq, alt) :: k) ==> (Ev(alt), env, sto, k)
-            case IteFrame(csq, alt, Some(kont)) =>
-              cond(value, csq, alt, env, sto, kont, t)
-
-            // (Ap(fv), env, sto, fun(f, a :: args) :: k) ==> (Ev(a), env, sto, FunArg(f, args, fv, List()) :: k)
-            case FunFrame(f, arg :: args, Some(kont)) =>
-              val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, value, List()), t)
-              Set(SchemeState(Control.Ev(arg), env, sto1, frame, t1))
-
-            // (Ap(fv), env, sto, fun(f, ()) :: k) ==> (Ev(a), env, sto, ret(env) :: k)
-            case FunFrame(f, List(), Some(kont)) =>
-              val (sto1, frame, t1) = pushFrame(f, env, sto, kont, RetFrame(env), t)
-              applyFun(f, value, List(), env, sto1, frame, t1)
-
-            case ArgFrame(f, arg :: args, fv, argsV, Some(kont)) =>
-              val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, fv, value :: argsV), t)
-              Set(SchemeState(Control.Ev(arg), env, sto1, frame, t1))
-
-            case ArgFrame(f, List(), fv, argsV, Some(kont)) =>
-              val (sto1, frame, t1) = pushFrame(f, env, sto, kont, RetFrame(env), t)
-              applyFun(f, fv, value :: argsV, env, sto1, frame, t1)
-
-            // (Ap(v), env, sto, ret(env') :: k) ==> (Ap(v), env', sto, k)
-            case RetFrame(env, Some(kont)) =>
-              Set(SchemeState(Control.Ap(value), env, sto, kont, t))
-
-            case LetFrame(evalBds, _ :: bindings, body, Some(kont)) =>
-              evaluateLet(evalBds, env, sto, kont, bindings, body, t)
-
-            case LetStarFrame(currentIdentifier, restBindings, body, Some(kont)) =>
-              val addr = alloc(currentIdentifier.idn, env, sto, kont, t)
-              val env1 = env.extend(currentIdentifier.name, addr)
-              val sto1 = writeSto(sto, addr, Storable.V(value))
-              evaluateLetStar(env1, sto1, kont, restBindings, body, t)
-
-            case LetrecFrame(addresses, values, bindings, body, Some(kont)) =>
-              evaluateLetrec(addresses, value :: values, env, sto, kont, bindings, body, t)
-
-            case HltFrame => Set()
+              SchemeState(Control.Ev(e1), env, sto1, frame, t1)
           }
 
-        case v => throw new Exception(s"address ${kont} is not a continuation, it is a $v")
+        // (Ap(v), env, sto, beg() :: k) ==> (Ap(v), env, sto, k)
+        case BegFrame(List(), Some(addr)) =>
+          continueWith(sto, addr) { kont =>
+            SchemeState(Control.Ap(value), env, sto, kont, t)
+          }
+
+        // (Ap(true), env, sto, ite(csq, alt) :: k) ==> (Ev(csq), env, sto, k)
+        // (Ap(false), env, sto, ite(csq, alt) :: k) ==> (Ev(alt), env, sto, k)
+        case IteFrame(csq, alt, Some(addr)) =>
+          continueWiths(sto, addr)(cond(value, csq, alt, env, sto, _, t))
+
+        // (Ap(fv), env, sto, fun(f, a :: args) :: k) ==> (Ev(a), env, sto, FunArg(f, args, fv, List()) :: k)
+        case FunFrame(f, arg :: args, Some(kont)) =>
+          val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, value, List()), t)
+          Set(SchemeState(Control.Ev(arg), env, sto1, frame, t1))
+
+        // (Ap(fv), env, sto, fun(f, ()) :: k) ==> (Ev(a), env, sto, ret(env) :: k)
+        case FunFrame(f, List(), Some(kont)) =>
+          applyFun(f, value, List(), env, sto, kont, t)
+
+        case ArgFrame(f, arg :: args, fv, argsV, Some(kont)) =>
+          val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, fv, value :: argsV), t)
+          Set(SchemeState(Control.Ev(arg), env, sto1, frame, t1))
+
+        case ArgFrame(f, List(), fv, argsV, Some(kont)) =>
+          applyFun(f, fv, (value :: argsV).reverse, env, sto, kont, t)
+
+        // (Ap(v), env, sto, ret(env') :: k) ==> (Ap(v), env', sto, k)
+        case RetFrame(env, Some(kont)) =>
+          Set(SchemeState(Control.Ap(value), env, sto, kont, t))
+
+        case LetFrame(evalBds, _ :: bindings, body, Some(kont)) =>
+          evaluateLet(evalBds, env, sto, kont, bindings, body, t)
+
+        case LetStarFrame(currentIdentifier, restBindings, body, Some(kont)) =>
+          val addr = alloc(currentIdentifier.idn, env, sto, kont, t)
+          val env1 = env.extend(currentIdentifier.name, addr)
+          val sto1 = writeSto(sto, addr, Storable.V(value))
+          evaluateLetStar(env1, sto1, kont, restBindings, body, t)
+
+        case LetrecFrame(addresses, values, bindings, body, Some(kont)) =>
+          evaluateLetrec(addresses, value :: values, env, sto, kont, bindings, body, t)
+
+        case HltFrame => Set()
