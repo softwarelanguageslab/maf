@@ -16,6 +16,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     // more shorthands
     type Cmp = Component
+    type Cll = CallComponent
     type Dep = Dependency
     type Sto = LocalStore[Adr, Val]
     type Dlt = Delta[Adr, Val]
@@ -38,9 +39,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     private lazy val initialBds: Iterable[(String, Adr, Val)] =
       primitives.allPrimitives.view
         .filterKeys(initialExp.fv)
-        .map { case (name, p) =>
-          (name, PrmAddr(name), lattice.primitive(p.name))
-        }
+        .map { case (name, p) => (name, PrmAddr(name), lattice.primitive(p.name)) }
 
     //
     // COMPONENTS
@@ -88,6 +87,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           case Some(ply) => ply
           case None      => customPolicy(adr)
 
+    var store: Map[Adr, Val] = Map.empty
+
     override def init() =
       super.init()
       // top-level vars & primitives can be kept in the global store without loss of precision
@@ -96,10 +97,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       }
       initialBds.foreach { (_, adr, vlu) => 
         fixedPolicies += adr -> AddrPolicy.Widened
-        store += adr -> vlu
+        writeAddr(adr, vlu)
       }
-
-    var store: Map[Adr, Val] = Map.empty
 
     def extendV(anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt =
       policy(adr) match
@@ -114,7 +113,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           case AddrPolicy.Local   => sto(adr)
           case AddrPolicy.Widened => anl.readAddr(adr)
 
-    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
+    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
       def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
         if a1 == a2 then
             policy(a1) match
@@ -124,7 +123,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                       case _                   => BoolLattice[B].top
                 case AddrPolicy.Widened => BoolLattice[B].top
         else BoolLattice[B].inject(false)
-    }
 
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
       (anl, env, sto, ctx) =>
@@ -134,9 +132,9 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
               (v, sto.replay(gcs, gcd))
           }
 
-    override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
+    override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
-        super.applyClosure(cll, lam, ags, fvs)
+        super.applyClosure(app, lam, ags, fvs)
       }
 
     //

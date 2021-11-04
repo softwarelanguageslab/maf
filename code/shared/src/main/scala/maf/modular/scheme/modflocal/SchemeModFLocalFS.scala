@@ -114,9 +114,9 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
           val dgc = DeltaGC(gcs).collect(dlt, vlu.map(lattice.refs).getOrElse(Set.empty) ++ dlt.updates)
           (vlu, sto.replay(gcs, dgc), eff)
 
-    override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
+    override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
-        super.applyClosure(cll, lam, ags, fvs)
+        super.applyClosure(app, lam, ags, fvs)
       }
 
     //
