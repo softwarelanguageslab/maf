@@ -48,7 +48,7 @@ object AdaptiveRun:
         println(prg)
 
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/various/regex.scm")
+        val txt = Reader.loadFile("test/R5RS/various/foo.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -57,6 +57,7 @@ object AdaptiveRun:
           with SchemeConstantPropagationDomain
           with SchemeModFLocalNoSensitivity
           with FIFOWorklistAlgorithm[SchemeExp]
+          with SchemeModFLocalAdaptiveWidening(3)
         def printStore(sto: anl.Sto) =
           sto.content.view
             //.filterKeys(!_.isInstanceOf[PrmAddr])
