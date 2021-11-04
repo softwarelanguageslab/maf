@@ -114,6 +114,13 @@ case class SchemeFuncall(
     override val height: Int = 1 + args.foldLeft(0)((mx, a) => mx.max(a.height).max(f.height))
     val label: Label = FNC
     def subexpressions: List[Expression] = f :: args
+    override def prettyString(indent: Int): String =
+      if this.toString.length < 100 then this.toString
+      else
+          val fnString = f.prettyString(indent)
+          val argsString =
+            if args.isEmpty then "" else "\n" + args.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")
+          s"(${if fnString.split("\n").nn.length <= 3 then f.toString else fnString}$argsString)"
 
 /** An if statement: (if cond cons alt) If without alt clauses need to be encoded with an empty begin as alt clause */
 case class SchemeIf(
@@ -128,7 +135,9 @@ case class SchemeIf(
     val label: Label = IFF
     def subexpressions: List[Expression] = List(cond, cons, alt)
     override def prettyString(indent: Int): String =
-      s"(if $cond\n${" " * nextIndent(indent)}${cons.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent)}${alt.prettyString(nextIndent(indent))})"
+      if this.toString.size < 50 then this.toString
+      else
+          s"(if $cond\n${" " * nextIndent(indent)}${cons.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent)}${alt.prettyString(nextIndent(indent))})"
 
 /** A let-like expression. */
 sealed trait SchemeLettishExp extends SchemeExp:
@@ -144,10 +153,10 @@ sealed trait SchemeLettishExp extends SchemeExp:
         val id = letName
         val shiftB = indent + id.toString.length + 3
         val bi = bindings.map({ case (name, exp) => s"($name ${exp.prettyString(shiftB + name.toString.length + 1)})" })
-        val first = bi.head
-        val rest = bi.tail.map(s => (" " * shiftB) + s).mkString("\n")
+        val first = bi.headOption.map(_.toString).getOrElse("") // Apparently bi can be empty.
+        val rest = if bi.isEmpty || bi.tail.isEmpty then "" else "\n" ++ bi.tail.map(s => (" " * shiftB) + s).mkString("\n")
         val bo = body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")
-        s"($id (${first}${if bi.tail.isEmpty then "" else s"\n${rest}"})\n$bo)"
+        s"($id (${first}${rest})\n$bo)"
 
 /** Let-bindings: (let ((v1 e1) ...) body...) */
 case class SchemeLet(
@@ -220,7 +229,7 @@ sealed trait SchemeSetExp extends SchemeExp:
     def subexpressions: List[Expression] = List(variable, value)
     override def prettyString(indent: Int): String =
         val ind = indent + variable.toString.length + 4
-        s"(set! $variable ${value.prettyString(ind)}"
+        s"(set! $variable ${value.prettyString(ind)})"
 
 case class SchemeSet(
     variable: Identifier,
@@ -461,7 +470,7 @@ object SchemeSplicedPair:
     def apply(splice: SchemeExp, cdr: SchemeExp, idn: Identity): SchemeExp =
       SchemeFuncall(SchemeVar(Identifier("__toplevel_append", idn)), List(splice, cdr), idn)
 
-/** A literal value (number, symbol, string, ...) */
+/** A   value (number, symbol, string, ...) */
 case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
     override def toString: String = value.toString
     def fv: Set[String] = Set()
@@ -495,6 +504,8 @@ object SchemeSetRef:
 /** A code change in a Scheme program. */
 case class SchemeCodeChange(old: SchemeExp, nw: SchemeExp, idn: Identity) extends ChangeExp[SchemeExp] with SchemeExp:
     override def toString: String = s"(<change> $old $nw)"
+    override def prettyString(indent: Int): String =
+      s"(<change>\n${" " * nextIndent(indent) ++ old.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent) ++ nw.prettyString(nextIndent(indent))})"
 
 trait CSchemeExp extends SchemeExp
 

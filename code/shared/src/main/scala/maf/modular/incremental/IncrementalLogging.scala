@@ -62,7 +62,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
                   table = table.add(stepString, s"σ($addr)", v.toString).add(stepString, s"P($addr)", p)
                 }
               )
-              addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach {
+              dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach {
                 case (addr, valueSources) =>
                   if focus(addr) then table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
               }
@@ -80,7 +80,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
     private def addressDependenciesToString(): String =
         // Map[W, Set[R]]
-        val deps = addressDependencies.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) })
+        val deps = dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) })
         val depString = deps
           .foldLeft(Table.empty.withDefaultValue(""))({ case (table, dep) => table.add(dep._1.toString, "Value sources", dep._2.mkString("; ")) })
           .prettyString()
