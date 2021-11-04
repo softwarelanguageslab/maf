@@ -10,7 +10,7 @@ import maf.modular.AddrDependency
 trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeModFLocal with SequentialWorklistAlgorithm[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
-    def debug(msg: => String) = println(s"[DEBUG] $msg")
+    def debug(msg: => String) = ()
 
     // THE WIDENED SET DETERMINES WHICH ADDRESSES ARE WIDENED
 
@@ -21,7 +21,7 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
     // BOOKKEEPING: keep track of all components per (lam, ctx)
     var cmps: Map[(Lam, Ctx), Set[Cll]] = Map.empty
 
-    def ratio: Double = (visited.size - 1) / cmps.size
+    def ratio: Double = (visited.size - 1) / Math.max(1, cmps.size)
 
     override def step(t: Timeout.T) =
         debug(s"Analysing ${workList.head}")
@@ -127,8 +127,3 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         }.withDefaultValue(Set.empty)
         toTrigger.foreach(cmp => trigger(ResultDependency(cmp)))
         cmps = cmps.map((nod, cls) => (nod, cls.map(widenCll)))
-
-        
-
-    
-
