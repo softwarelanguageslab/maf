@@ -108,10 +108,10 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       policy(adr) match
           case AddrPolicy.Local   => sto.update(adr, vlu)
           case AddrPolicy.Widened => anl.writeAddr(adr, vlu); Delta.empty
-    def lookupV(anl: Anl, sto: Sto, adr: Adr): Val =
+    def lookupV(anl: Anl, sto: Sto, adr: Adr): Option[Val] =
       policy(adr) match
-          case AddrPolicy.Local   => sto(adr)
-          case AddrPolicy.Widened => anl.readAddr(adr)
+          case AddrPolicy.Local   => sto.lookup(adr)
+          case AddrPolicy.Widened => Some(anl.readAddr(adr))
 
     def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
       def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
@@ -175,7 +175,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         def updateSto(adr: Adr, vlu: Val) =
           (anl, _, sto, _) => Some(((), updateV(anl, sto, adr, vlu)))
         def lookupSto(adr: Adr) =
-          (anl, _, sto, _) => Some((lookupV(anl, sto, adr), Delta.empty))
+          (anl, _, sto, _) => lookupV(anl, sto, adr).map(v => (v, Delta.empty))
         // CTX STUFF
         def getCtx =
           (_, _, _, ctx) => Some((ctx, Delta.empty))
