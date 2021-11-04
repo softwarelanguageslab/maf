@@ -29,7 +29,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       analyze(prog, timeout)
 
     /** An instantation of the <code>SchemeInterpreterBridge</code> trait to support the builtin MAF Scheme primitives */
-    private class InterpreterBridge(env: Env, private var sto: Sto, kont: Address, t: Timestamp) extends SchemeInterpreterBridge[Val, Address]:
+    private class InterpreterBridge(env: Env, private var sto: Sto, kont: Kont, t: Timestamp) extends SchemeInterpreterBridge[Val, Address]:
         def pointer(exp: SchemeExp): Address =
           alloc(exp.idn, env, sto, kont, t)
 
@@ -580,35 +580,51 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           continueWiths(sto, addr)(cond(value, csq, alt, env, sto, _, t))
 
         // (Ap(fv), env, sto, fun(f, a :: args) :: k) ==> (Ev(a), env, sto, FunArg(f, args, fv, List()) :: k)
-        case FunFrame(f, arg :: args, Some(kont)) =>
-          val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, value, List()), t)
-          Set(SchemeState(Control.Ev(arg), env, sto1, frame, t1))
+        case FunFrame(f, arg :: args, Some(addr)) =>
+          continueWith(sto, addr) { kont =>
+              val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, value, List()), t)
+              SchemeState(Control.Ev(arg), env, sto1, frame, t1)
+          }
 
         // (Ap(fv), env, sto, fun(f, ()) :: k) ==> (Ev(a), env, sto, ret(env) :: k)
-        case FunFrame(f, List(), Some(kont)) =>
-          applyFun(f, value, List(), env, sto, kont, t)
+        case FunFrame(f, List(), Some(addr)) =>
+          continueWiths(sto, addr) { kont =>
+            applyFun(f, value, List(), env, sto, kont, t)
+          }
 
-        case ArgFrame(f, arg :: args, fv, argsV, Some(kont)) =>
-          val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, fv, value :: argsV), t)
-          Set(SchemeState(Control.Ev(arg), env, sto1, frame, t1))
+        case ArgFrame(f, arg :: args, fv, argsV, Some(addr)) =>
+          continueWith(sto, addr) { kont =>
+              val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, fv, value :: argsV), t)
+              SchemeState(Control.Ev(arg), env, sto1, frame, t1)
+          }
 
-        case ArgFrame(f, List(), fv, argsV, Some(kont)) =>
-          applyFun(f, fv, (value :: argsV).reverse, env, sto, kont, t)
+        case ArgFrame(f, List(), fv, argsV, Some(addr)) =>
+          continueWiths(sto, addr) { kont =>
+            applyFun(f, fv, (value :: argsV).reverse, env, sto, kont, t)
+          }
 
         // (Ap(v), env, sto, ret(env') :: k) ==> (Ap(v), env', sto, k)
-        case RetFrame(env, Some(kont)) =>
-          Set(SchemeState(Control.Ap(value), env, sto, kont, t))
+        case RetFrame(env, Some(addr)) =>
+          continueWith(sto, addr) { kont =>
+            SchemeState(Control.Ap(value), env, sto, kont, t)
+          }
 
-        case LetFrame(evalBds, _ :: bindings, body, Some(kont)) =>
-          evaluateLet(evalBds, env, sto, kont, bindings, body, t)
+        case LetFrame(evalBds, _ :: bindings, body, Some(addr)) =>
+          continueWiths(sto, addr) { kont =>
+            evaluateLet(evalBds, env, sto, kont, bindings, body, t)
+          }
 
-        case LetStarFrame(currentIdentifier, restBindings, body, Some(kont)) =>
-          val addr = alloc(currentIdentifier.idn, env, sto, kont, t)
-          val env1 = env.extend(currentIdentifier.name, addr)
-          val sto1 = writeSto(sto, addr, Storable.V(value))
-          evaluateLetStar(env1, sto1, kont, restBindings, body, t)
+        case LetStarFrame(currentIdentifier, restBindings, body, Some(addr)) =>
+          continueWiths(sto, addr) { kont =>
+              val addr = alloc(currentIdentifier.idn, env, sto, kont, t)
+              val env1 = env.extend(currentIdentifier.name, addr)
+              val sto1 = writeSto(sto, addr, Storable.V(value))
+              evaluateLetStar(env1, sto1, kont, restBindings, body, t)
+          }
 
-        case LetrecFrame(addresses, values, bindings, body, Some(kont)) =>
-          evaluateLetrec(addresses, value :: values, env, sto, kont, bindings, body, t)
+        case LetrecFrame(addresses, values, bindings, body, Some(addr)) =>
+          continueWiths(sto, addr) { kont =>
+            evaluateLetrec(addresses, value :: values, env, sto, kont, bindings, body, t)
+          }
 
         case HltFrame => Set()
