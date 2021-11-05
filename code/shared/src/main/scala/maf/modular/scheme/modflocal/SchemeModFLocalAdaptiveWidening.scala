@@ -96,7 +96,7 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         var toTrigger: Set[Cmp] = Set.empty
         results = results.foldLeft(Map.empty: Res) { case (acc, (cmp, (vlu, dlt))) =>
           val updatedCmp = widenCmp(cmp)
-          val updatedDlt = wid.foldLeft(dlt) { (acc, adr) =>
+          val updatedDlt = wid.foldLeft(dlt.copy(updates = dlt.updates -- wid)) { (acc, adr) =>
             acc.delta.get(adr) match
                 case None => acc
                 case Some((vlu, _)) =>
