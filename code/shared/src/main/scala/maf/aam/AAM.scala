@@ -39,7 +39,7 @@ trait AAMAnalysis:
     val initialTime: Timestamp
 
     /** Tick the time forward */
-    def tick(timestamp: Timestamp, e: Expr, env: Env, sto: Sto, kont: Kont): Timestamp
+    def tick(timestamp: Timestamp, e: Expr, sto: Sto, kont: Kont): Timestamp
 
     /** Inject the expression into the analysis state */
     def inject(expr: Expr): State
@@ -65,7 +65,7 @@ trait AAMAnalysis:
         val s0 = inject(expr)
         seen = Set(s0)
         todo = step(s0)
-        while !todo.isEmpty && !timeout.reached && seen.size < 100 do
+        while !todo.isEmpty && !timeout.reached && seen.size < 400 do
             println(s"todo size ${todo.size} and seen size ${seen.size}")
             seen = seen ++ todo
             todo = todo.flatMap(step)
@@ -74,14 +74,10 @@ trait AAMAnalysis:
             if size0 != todo.size then println(s"diff $size0 and ${todo.size}")
             todo.foreach(printDebug(_, false))
 
-        for {
-          st <- todo
-          st2 <- todo
-        } do
-            printDebug(st)
-            printDebug(st2)
-            println(compareStates(st, st2))
-            println("========")
+            for {
+              st <- todo
+              st2 <- todo
+            } do () //compareStates(st, st2)
 
         todo = (todo -- seen)
         seen

@@ -26,6 +26,6 @@ class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with Vario
     override def benchmarks: Set[Benchmark] = Set(
       "test/R5RS/various/fact.scm"
     )
-    override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(10, SECONDS))
+    override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(20, SECONDS))
     override def analysis(b: SchemeExp): Analysis =
       new SchemeAAMSemantics(b) with AAMAnalysis with SchemeAAMAnalysisResults with SchemeAAMContextInsensitivity with SchemeConstantPropagationDomain
