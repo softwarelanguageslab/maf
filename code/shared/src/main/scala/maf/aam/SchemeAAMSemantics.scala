@@ -321,8 +321,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
         // (Ev((begin e1 e2 ... en)), env, sto, kont) ==> (Ev(e1), env, sto, beg(e2 ... en) :: kont)
         case SchemeBegin(exps, _) =>
-          val (sto1, frame, t1) = pushFrame(exps.head, env, sto, kont, BegFrame(exps.tail, env), t)
-          Set(SchemeState(Control.Ev(exps.head, env), sto1, frame, t1))
+          evaluate_sequence(env, sto, kont, exps, t)
 
         // (Ev((if prd csq alt)), env, sto, kont) ==> (Ev(prd), env, sto, ite(csq, alt) :: kont)
         case SchemeIf(prd, csq, alt, _) =>
