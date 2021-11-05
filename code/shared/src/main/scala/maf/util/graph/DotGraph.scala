@@ -84,6 +84,8 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
           def findNodes(g: G, p: N => Boolean) = ??? /* TODO[easy]: implement */
         }
 
+object SingleDotGraph extends DotGraph()
+
 object DotGraph:
     def empty[N <: GraphElement, E <: GraphElement] = new DotGraph().G.typeclass.empty
 

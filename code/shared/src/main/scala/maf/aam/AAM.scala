@@ -1,7 +1,12 @@
 package maf.aam
 
 import maf.core.*
+import maf.util.graph.*
+import maf.util.graph.Graph.GraphOps
 import maf.util.benchmarks.Timeout
+
+case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) extends GraphElement:
+    def metadata: GraphMetadata = GraphMetadataString(data)
 
 /** Provides functionality for a full AAM style analysis */
 trait AAMAnalysis:
@@ -60,28 +65,39 @@ trait AAMAnalysis:
     /** Allocate a fresh address in the store */
     def alloc(identity: Identity, env: Env, sto: Sto, kont: Kont, ctx: Timestamp): Address
 
+    def asGraphElement(state: State): GraphElementAAM
+
+    def loop[G](
+        work: List[State],
+        newWork: List[State],
+        graph: G,
+        timeout: Timeout.T
+      )(using Graph[G, GraphElementAAM, GraphElement]
+      ): (Set[State], G) =
+      if (work.isEmpty && newWork.isEmpty) || (timeout.reached) then (work.toSet ++ newWork.toSet, graph)
+      else if work.isEmpty then loop(newWork, List(), graph, timeout)
+      else if seen.contains(work.head) then loop(work.tail, newWork, graph, timeout)
+      else
+          seen = seen + work.head
+          val todos = step(work.head)
+          val (updatedGraph, newWork1) = todos.foldLeft((graph, newWork)) { case ((g, newWork), todo) =>
+            val todoGe = asGraphElement(todo)
+            val workGe = asGraphElement(work.head)
+            (if !seen.contains(todo) then g.addNode(todoGe) else g)
+              .addEdge(workGe, NoTransition(), todoGe)
+
+            (g, if !seen.contains(todo) then todo :: newWork else newWork)
+          }
+
+          loop(work.tail, newWork1, updatedGraph, timeout)
+
     /** Analyze the given expression and return the set of (non-invalid) state */
-    def analyze(expr: Expr, timeout: Timeout.T = Timeout.none): Set[State] =
+    def analyze[G](expr: Expr, graph: G, timeout: Timeout.T = Timeout.none)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G) =
         val s0 = inject(expr)
-        seen = Set(s0)
-        todo = step(s0)
-        while !todo.isEmpty && !timeout.reached && seen.size < 400 do
-            println(s"todo size ${todo.size} and seen size ${seen.size}")
-            seen = seen ++ todo
-            todo = todo.flatMap(step)
-            val size0 = todo.size
-            todo = todo -- seen
-            if size0 != todo.size then println(s"diff $size0 and ${todo.size}")
-            todo.foreach(printDebug(_, false))
+        val (todos, g) = loop(List(s0), List(), graph, timeout)
+        todo = todos
+        (seen, g)
 
-            for {
-              st <- todo
-              st2 <- todo
-            } do () //compareStates(st, st2)
-
-        todo = (todo -- seen)
-        seen
-
-    def analyzeWithTimeout(timeout: Timeout.T): Set[State]
+    def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G)
 
     def finished: Boolean = todo.isEmpty

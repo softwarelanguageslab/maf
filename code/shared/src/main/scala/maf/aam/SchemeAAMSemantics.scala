@@ -13,6 +13,7 @@ import maf.language.sexp
 import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
+import maf.util.graph.{Graph, GraphElement}
 
 /** An AAM style semantics for Scheme */
 abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with SchemeDomain:
@@ -25,8 +26,8 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     type Env = Environment[Address]
     type Ctx = Unit // TODO: fix
 
-    override def analyzeWithTimeout(timeout: Timeout.T): Set[State] =
-      analyze(prog, timeout)
+    override def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G) =
+      analyze(prog, graph, timeout)
 
     /** An instantation of the <code>SchemeInterpreterBridge</code> trait to support the builtin MAF Scheme primitives */
     private class InterpreterBridge(env: Env, private var sto: Sto, kont: Kont, t: Timestamp) extends SchemeInterpreterBridge[Val, Address]:
@@ -259,6 +260,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
             println("==================================================================================")
 
         true
+
+    /** Convert the given state to a node in a graph */
+    def asGraphElement(s: State): GraphElementAAM =
+      ???
 
     /** Step from one state to another */
     def step(s0: State): Set[State] =
