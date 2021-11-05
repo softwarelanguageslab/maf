@@ -115,6 +115,37 @@ object SchemeBenchmarkPrograms:
 
     def selectRandomPar(n: Int): Set[String] = Random.shuffle(concurrentBenchmarks).take(n)
 
+    // Publications ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    lazy val jss2021: Set[String] =
+      Set(
+        // "test/R5RS/WeiChenRompf2019/meta-circ.scm",
+        //"test/R5RS/WeiChenRompf2019/earley.sch",
+        //"test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
+        //"test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
+        //"test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
+        //"test/R5RS/WeiChenRompf2019/toplas98/boyer.scm",
+        //"test/R5RS/gambit/peval.scm",
+        //"test/R5RS/gambit/scheme.scm",
+        //"test/R5RS/gambit/sboyer.scm",
+        //"test/R5RS/gambit/nboyer.scm",
+        //"test/R5RS/gambit/matrix.scm",
+        "test/R5RS/various/count.scm",
+        //"test/R5RS/gambit/browse.scm",
+        //"test/R5RS/scp1-compressed/all.scm",
+        //"test/R5RS/ad/all.scm",
+        //"test/R5RS/various/SICP-compiler.scm",
+        //"test/R5RS/icp/icp_1c_ambeval.scm",
+        //"test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+        //"test/R5RS/icp/icp_1c_ontleed.scm",
+        //"test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+        //"test/R5RS/icp/icp_7_eceval.scm",
+        //"test/R5RS/icp/icp_8_compiler.scm",
+        //"test/R5RS/icp/icp_5_regsim.scm",
+        //"test/R5RS/icp/icp_3_leval.scm",
+        //"test/R5RS/icp/icp_2_aeval.scm",
+      )
+
     // ALL ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     lazy val allBenchmarks: Set[String] = SmartUnion.sunion(concurrentBenchmarks, sequentialBenchmarks)

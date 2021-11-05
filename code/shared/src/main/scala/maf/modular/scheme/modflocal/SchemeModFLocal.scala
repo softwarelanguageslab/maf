@@ -9,12 +9,14 @@ import maf.util.benchmarks.Timeout
 import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
+import akka.actor.ProviderSelection.Local
 
 abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics with GlobalStore[SchemeExp]:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
     // more shorthands
     type Cmp = Component
+    type Cll = CallComponent
     type Dep = Dependency
     type Sto = LocalStore[Adr, Val]
     type Dlt = Delta[Adr, Val]
@@ -27,7 +29,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     lazy val initialExp: Exp = program
     lazy val initialEnv: Env = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
-    lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))
 
     private def shouldCount(adr: Adr): Boolean = adr match
         case _: PtrAddr[_] => true
@@ -38,9 +39,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     private lazy val initialBds: Iterable[(String, Adr, Val)] =
       primitives.allPrimitives.view
         .filterKeys(initialExp.fv)
-        .map { case (name, p) =>
-          (name, PrmAddr(name), lattice.primitive(p.name))
-        }
+        .map { case (name, p) => (name, PrmAddr(name), lattice.primitive(p.name)) }
 
     //
     // COMPONENTS
@@ -55,7 +54,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         val exp = initialExp
         val env = initialEnv
         val ctx = initialCtx
-        val sto = initialSto
+        val sto = LocalStore.empty
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, ctx: Ctx, sto: Sto) extends Component:
         def exp = SchemeBody(lam.body)
@@ -90,6 +89,17 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     var store: Map[Adr, Val] = Map.empty
 
+    override def init() =
+      super.init()
+      // top-level vars & primitives can be kept in the global store without loss of precision
+      SchemeTopLevelVars.collect(initialExp).foreach { id =>
+        fixedPolicies += VarAddr(id, initialCtx) -> AddrPolicy.Widened
+      }
+      initialBds.foreach { (_, adr, vlu) => 
+        fixedPolicies += adr -> AddrPolicy.Widened
+        writeAddr(adr, vlu)
+      }
+
     def extendV(anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt =
       policy(adr) match
           case AddrPolicy.Local   => sto.extend(adr, vlu)
@@ -98,12 +108,12 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
       policy(adr) match
           case AddrPolicy.Local   => sto.update(adr, vlu)
           case AddrPolicy.Widened => anl.writeAddr(adr, vlu); Delta.empty
-    def lookupV(anl: Anl, sto: Sto, adr: Adr): Val =
+    def lookupV(anl: Anl, sto: Sto, adr: Adr): Option[Val] =
       policy(adr) match
-          case AddrPolicy.Local   => sto(adr)
-          case AddrPolicy.Widened => anl.readAddr(adr)
+          case AddrPolicy.Local   => sto.lookup(adr)
+          case AddrPolicy.Widened => Some(anl.readAddr(adr))
 
-    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
+    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
       def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
         if a1 == a2 then
             policy(a1) match
@@ -113,7 +123,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                       case _                   => BoolLattice[B].top
                 case AddrPolicy.Widened => BoolLattice[B].top
         else BoolLattice[B].inject(false)
-    }
 
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
       (anl, env, sto, ctx) =>
@@ -123,9 +132,9 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
               (v, sto.replay(gcs, gcd))
           }
 
-    override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
+    override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
-        super.applyClosure(cll, lam, ags, fvs)
+        super.applyClosure(app, lam, ags, fvs)
       }
 
     //
@@ -166,7 +175,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         def updateSto(adr: Adr, vlu: Val) =
           (anl, _, sto, _) => Some(((), updateV(anl, sto, adr, vlu)))
         def lookupSto(adr: Adr) =
-          (anl, _, sto, _) => Some((lookupV(anl, sto, adr), Delta.empty))
+          (anl, _, sto, _) => lookupV(anl, sto, adr).map(v => (v, Delta.empty))
         // CTX STUFF
         def getCtx =
           (_, _, _, ctx) => Some((ctx, Delta.empty))

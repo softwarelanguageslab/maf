@@ -21,6 +21,10 @@ trait AllConcurrentBenchmarks extends SchemeBenchmarkTests:
 trait AllBenchmarks extends SchemeBenchmarkTests:
     override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, SchemeBenchmarkPrograms.allBenchmarks)
 
+/** Benchmarks from the JSS 2021 paper titled: A parallel worklist algorithm and its exploration heuristics for static modular analyses */
+trait JSS2021Benchmarks extends SchemeBenchmarkTests:
+    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, SchemeBenchmarkPrograms.jss2021)
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 trait ConcurrentIncrementalBenchmarks extends SchemeBenchmarkTests:

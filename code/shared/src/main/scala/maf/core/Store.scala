@@ -45,7 +45,8 @@ case object CountInf extends AbstractCount:
     def join(other: AbstractCount) = this
     def +(cnt: => AbstractCount) = this
 
-case class Delta[A, V](delta: Map[A, (V, AbstractCount)], updates: Set[A])
+case class Delta[A, V](delta: Map[A, (V, AbstractCount)], updates: Set[A]):
+    def --(ads: Set[A]): Delta[A, V] = Delta(delta -- ads, updates -- ads)
 object Delta:
     def empty[A, V]: Delta[A, V] = Delta(Map.empty, Set.empty)
 
@@ -67,6 +68,8 @@ case class LocalStore[A, V](content: Map[A, (V, AbstractCount)])(using lat: Latt
           case Some(old @ (oldV, oldC)) =>
             val upd = (lat.join(oldV, vlu), oldC.join(cnt))
             if upd == old then None else Some(LocalStore(content + (adr -> upd)))
+    def -(adr: A): LocalStore[A, V] = LocalStore(content - adr)
+    def --(ads: Iterable[A]): LocalStore[A, V] = LocalStore(content -- ads)
     private def countFor(a: A): AbstractCount =
       if shouldCount(a) then CountOne else CountInf
     // delta store ops

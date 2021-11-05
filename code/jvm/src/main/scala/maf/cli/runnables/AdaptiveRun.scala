@@ -48,18 +48,19 @@ object AdaptiveRun:
         println(prg)
 
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/various/regex.scm")
+        val txt = Reader.loadFile("test/R5RS/various/foo.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        val anl = new SchemeModFLocalFS(prg)
+        val anl = new SchemeModFLocal(prg)
           with SchemeConstantPropagationDomain
           with SchemeModFLocalNoSensitivity
           with FIFOWorklistAlgorithm[SchemeExp]
+          with SchemeModFLocalAdaptiveWidening(3)
         def printStore(sto: anl.Sto) =
           sto.content.view
-            .filterKeys(!_.isInstanceOf[PrmAddr])
+            //.filterKeys(!_.isInstanceOf[PrmAddr])
             .toMap
             .foreach { case (a, (v, _)) =>
               println(s"$a -> $v")
@@ -72,11 +73,11 @@ object AdaptiveRun:
         anl.analyzeWithTimeoutInSeconds(10)
         anl.visited
           .collect { case cll: anl.CallComponent => cll }
-          .foreach { case cmp @ anl.CallComponent(lam, _, _) =>
+          .foreach { case cmp @ anl.CallComponent(lam, _, ctx, sto) =>
             val (res, dlt) = anl.results.getOrElse(cmp, (anl.lattice.bottom, Delta.empty)).asInstanceOf[(anl.Val, anl.Dlt)]
             println()
             println(s"COMPONENT ${lam.lambdaName} WHERE")
-            printStore(anl.getStore(anl.stores, cmp))
+            printStore(sto)
             println(s"==> RESULTS: $res")
             println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
             printDelta(dlt)
