@@ -23,14 +23,14 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
     def ratio: Double = (visited.size - 1) / Math.max(1, cmps.size)
 
     override def step(t: Timeout.T) =
-        debug(s"Analysing ${workList.head}")
         super.step(t)
         if ratio > k then
             val oldRatio = ratio
+            debug("ADAPTING")
             adaptAnalysis()
+            debug(s"--> ${widened.size} addresses have been widened in total.")
             val newRatio = ratio
             debug(s"Ratio: $oldRatio -> $newRatio")
-            debug(s"Widened: $widened")
 
     override def spawn(cmp: Cmp) =
         if (!visited(cmp)) then
@@ -66,8 +66,6 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         // helper functions
         def widenSto(sto: Sto): Sto =
           sto -- wid
-        def widenDlt(dlt: Dlt): Dlt =
-          dlt -- wid
         def widenCll(cll: Cll) =
           cll.copy(sto = widenSto(cll.sto))
         def widenCmp(cmp: Cmp): Cmp =
