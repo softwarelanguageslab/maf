@@ -87,7 +87,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
      * An address under which a continuation is stored. To preserve call-return semantics, this address should be (e, p) where e is the call targets
      * control and environment respectively (Gilray et al., 2016).
      */
-    case class KontAddr(expr: SchemeExp, timestamp: Timestamp) extends Address:
+    case class KontAddr(expr: SchemeExp, env: Env, timestamp: Timestamp) extends Address:
         def idn: Identity = expr.idn
         def printable = true
         override def toString = s"KontAddr(${expr} ${timestamp})"
@@ -282,7 +282,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         t: Timestamp
       ): (Sto, Kont, Timestamp) =
         val timestamp = tick(t, e, sto, kont)
-        val addr = KontAddr(e, timestamp)
+        val addr = KontAddr(e, env, timestamp)
         if kont == HltFrame then println(s"!!!!!!!!! $addr $frame")
         val sto1 = writeSto(sto, addr, Storable.K(Set(kont)))
         (sto1, frame.link(addr), timestamp)
