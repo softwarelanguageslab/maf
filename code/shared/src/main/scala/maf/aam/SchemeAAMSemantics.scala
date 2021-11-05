@@ -88,7 +88,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
      * control and environment respectively (Gilray et al., 2016).
      */
     case class KontAddr(expr: SchemeExp, timestamp: Timestamp) extends Address:
-        def idn: Identity = Identity.none
+        def idn: Identity = expr.idn
         def printable = true
         override def toString = s"KontAddr(${expr} ${timestamp})"
 
@@ -234,6 +234,29 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     def printDebug(s: State, printStore: Boolean = false): Unit =
         println(s"control cmp ${s.c}, size of store ${s.s.asInstanceOf[BasicStore[Address, Val]].content.size}, kont addr ${s.k}")
         if printStore then println(storeString(s.s, false))
+
+    def compareStates(s1: State, s2: State): Boolean =
+        def compareSto(sto1: Sto, sto2: Sto): Unit =
+          for (k, v) <- sto1.content do
+              if !sto2.content.contains(k) || !sto2.content.get(k).map(v == _).getOrElse(false) then
+                  println("!!!!!")
+                  println(s"contains ${sto2.content.contains(k)}")
+                  println(s"same? ${sto2.content.get(k).map(v == _)}")
+                  println(s"difference is between ${k}")
+                  println(s"Value s1 is ${v}, s2 is ${sto2.content.get(k)}")
+
+        println(s"con ${s1.c == s2.c}")
+        println(s"env ${s1.e == s2.e}")
+        println(s"sto ${s1.s == s2.s}")
+        println(s"sto content ${s1.s.content == s2.s.content}")
+        println(s"kon ${s1.k == s2.k}")
+
+        if s1.c == s2.c && s1.e == s2.e && s1.k == s2.k && s1.s != s2.s then
+            println(s"!!!!!!!!!!!")
+            compareSto(s1.s, s2.s)
+            println(s"!!!!!!!!!!!")
+
+        s1 == s2
 
     /** Step from one state to another */
     def step(s0: State): Set[State] =

@@ -54,6 +54,9 @@ trait AAMAnalysis:
     /** Print a debug version of the given state */
     def printDebug(s: State, printStore: Boolean = false): Unit
 
+    /** Compare two states, return true if they are equal */
+    def compareStates(s1: State, s2: State): Boolean
+
     /** Allocate a fresh address in the store */
     def alloc(identity: Identity, env: Env, sto: Sto, kont: Kont, ctx: Timestamp): Address
 
@@ -65,8 +68,20 @@ trait AAMAnalysis:
         while !todo.isEmpty && !timeout.reached && seen.size < 100 do
             println(s"todo size ${todo.size} and seen size ${seen.size}")
             seen = seen ++ todo
-            todo = todo.flatMap(step) -- seen
+            todo = todo.flatMap(step)
+            val size0 = todo.size
+            todo = todo -- seen
+            if size0 != todo.size then println(s"diff $size0 and ${todo.size}")
             todo.foreach(printDebug(_, false))
+
+        for {
+          st <- todo
+          st2 <- todo
+        } do
+            printDebug(st)
+            printDebug(st2)
+            println(compareStates(st, st2))
+            println("========")
 
         todo = (todo -- seen)
         seen
