@@ -44,7 +44,7 @@ trait AAMAnalysis:
     val initialTime: Timestamp
 
     /** Tick the time forward */
-    def tick(timestamp: Timestamp, e: Expr, sto: Sto, kont: Kont): Timestamp
+    def tick(timestamp: Timestamp, e: Expr, sto: Sto, kont: Address): Timestamp
 
     /** Inject the expression into the analysis state */
     def inject(expr: Expr): State
@@ -62,9 +62,16 @@ trait AAMAnalysis:
     /** Compare two states, return true if they are equal */
     def compareStates(s1: State, s2: State): Boolean
 
-    /** Allocate a fresh address in the store */
-    def alloc(identity: Identity, env: Env, sto: Sto, kont: Kont, ctx: Timestamp): Address
+    /** Checks whether the given state is a final state */
+    def isFinal(st: State): Boolean
 
+    /** Extracts the value of the given state (if any) */
+    def extractValue(st: State): Option[Val]
+
+    /** Allocate a fresh address in the store */
+    def alloc(identity: Identity, env: Env, sto: Sto, kont: Address, ctx: Timestamp): Address
+
+    /** Represents the given state als an element in the graph */
     def asGraphElement(state: State): GraphElementAAM
 
     def loop[G](
