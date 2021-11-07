@@ -1,7 +1,12 @@
 package maf.aam
 
 import maf.core.*
+import maf.util.graph.*
+import maf.util.graph.Graph.GraphOps
 import maf.util.benchmarks.Timeout
+
+case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) extends GraphElement:
+    def metadata: GraphMetadata = GraphMetadataString(data)
 
 /** Provides functionality for a full AAM style analysis */
 trait AAMAnalysis:
@@ -39,7 +44,7 @@ trait AAMAnalysis:
     val initialTime: Timestamp
 
     /** Tick the time forward */
-    def tick(timestamp: Timestamp, env: Env, sto: Sto, kont: Address): Timestamp
+    def tick(timestamp: Timestamp, e: Expr, sto: Sto, kont: Address): Timestamp
 
     /** Inject the expression into the analysis state */
     def inject(expr: Expr): State
@@ -52,26 +57,54 @@ trait AAMAnalysis:
       seen = Set()
 
     /** Print a debug version of the given state */
-    def printDebug(s: State): Unit
+    def printDebug(s: State, printStore: Boolean = false): Unit
+
+    /** Compare two states, return true if they are equal */
+    def compareStates(s1: State, s2: State): Boolean
+
+    /** Checks whether the given state is a final state */
+    def isFinal(st: State): Boolean
+
+    /** Extracts the value of the given state (if any) */
+    def extractValue(st: State): Option[Val]
 
     /** Allocate a fresh address in the store */
     def alloc(identity: Identity, env: Env, sto: Sto, kont: Address, ctx: Timestamp): Address
 
+    /** Represents the given state als an element in the graph */
+    def asGraphElement(state: State): GraphElementAAM
+
+    def loop[G](
+        work: List[State],
+        newWork: List[State],
+        graph: G,
+        timeout: Timeout.T
+      )(using Graph[G, GraphElementAAM, GraphElement]
+      ): (Set[State], G) =
+      if (work.isEmpty && newWork.isEmpty) || (timeout.reached) || seen.size > 400 then (work.toSet ++ newWork.toSet, graph)
+      else if work.isEmpty then loop(newWork, List(), graph, timeout)
+      else if seen.contains(work.head) then loop(work.tail, newWork, graph, timeout)
+      else
+          seen = seen + work.head
+          val todos = step(work.head)
+          val (updatedGraph, newWork1) = todos.foldLeft((graph, newWork)) { case ((g, newWork), todo) =>
+            val todoGe = asGraphElement(todo)
+            val workGe = asGraphElement(work.head)
+            val gUpdated = (if !seen.contains(todo) then g.addNode(todoGe) else g)
+              .addEdge(workGe, NoTransition(), todoGe)
+
+            (gUpdated, if !seen.contains(todo) then todo :: newWork else newWork)
+          }
+
+          loop(work.tail, newWork1, updatedGraph, timeout)
+
     /** Analyze the given expression and return the set of (non-invalid) state */
-    def analyze(expr: Expr): Set[State] =
+    def analyze[G](expr: Expr, graph: G, timeout: Timeout.T = Timeout.none)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G) =
         val s0 = inject(expr)
-        todo = step(s0)
+        val (todos, g) = loop(List(s0), List(), graph, timeout)
+        todo = todos
+        (seen, g)
 
-        while (!(todo -- seen).isEmpty) do
-            todo = (todo -- seen)
-            println(s"todo size ${todo.size} and seen size ${seen.size}")
-            seen = seen ++ todo
-            todo = todo.flatMap(step)
-        // todo.foreach(printDebug)
-
-        todo = Set()
-        seen
-
-    def analyzeWithTimeout(timeout: Timeout.T): Set[State]
+    def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G)
 
     def finished: Boolean = todo.isEmpty

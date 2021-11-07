@@ -66,6 +66,9 @@ trait Graph[G, N <: GraphElement, E <: GraphElement]:
     /** Finds nodes from the graph satisfying the predicate */
     def findNodes(g: G, p: N => Boolean): Set[N]
 
+    /** Finds the node by the given id if supported */
+    def findNodeById(g: G, id: Int): Option[N] = None
+
 object Graph:
     def apply[G, N <: GraphElement, E <: GraphElement]()(implicit g: Graph[G, N, E]): Graph[G, N, E] =
       g
@@ -89,3 +92,4 @@ object Graph:
         def nodes: Int = ev.nodes(g)
         def edges: Int = ev.nodes(g)
         def findNodes(p: N => Boolean): Set[N] = ev.findNodes(g, p)
+        def findNodeById(id: Int): Option[N] = ev.findNodeById(g, id)

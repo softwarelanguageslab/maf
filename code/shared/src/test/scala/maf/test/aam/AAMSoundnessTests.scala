@@ -17,6 +17,7 @@ import maf.util.benchmarks.Timeout
 import maf.aam.*
 
 import scala.concurrent.duration._
+import maf.util.graph.GraphElement
 
 // TODO: this is the same as the SchemeSoundnesTests maybe factor out the evalConcrete and runInterpreter
 // part since that should be the same for both
@@ -57,12 +58,23 @@ trait AAMSoundnessTests extends SchemeBenchmarkTests:
               System.gc()
               alert(s"Concrete evaluation of $benchmark failed with $e")
         idnResults
+
+    protected type G
+    protected type N = GraphElementAAM
+    protected type E = GraphElement
+    implicit protected def graphInstance: maf.util.graph.Graph[G, N, E]
+    protected def emptyGraph: G
+    protected def saveGraph(benchmark: Benchmark, graph: G): Unit
+
     protected def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
       try
           // analyze the program using a ModF analysis
           val anl = analysis(program)
           val timeout = analysisTimeout(benchmark)
-          anl.analyzeWithTimeout(timeout)
+          given instance: maf.util.graph.Graph[G, N, E] = graphInstance
+          val (_, graph) = anl.analyzeWithTimeout(timeout, emptyGraph)
+          saveGraph(benchmark, graph)
+
           assume(anl.finished, "Analysis timed out")
           anl
       catch
