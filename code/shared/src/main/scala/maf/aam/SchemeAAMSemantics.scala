@@ -14,6 +14,7 @@ import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 import maf.util.graph.{Graph, GraphElement}
+import maf.util.graph.Colors
 
 /** An AAM style semantics for Scheme */
 abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with SchemeDomain:
@@ -251,19 +252,17 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         if printStore then println(storeString(s.s, false))
 
     def compareStates(s1: State, s2: State): Boolean =
-        if s1.c == s2.c && s1.k == s2.k && s1.s.content.size == s2.s.content.size && s1.s != s2.s then
-            println("==================================================================================")
-            printDebug(s1, false)
-            printDebug(s2, false)
-            for (k, v) <- s1.s.content do
-                if s2.s.content.contains(k) && v != s2.s.content(k) then println(s"Difference detected at $k of $v and ${s2.s.content(k)}")
-            println("==================================================================================")
+        println("==================================================================================")
+        for (k, v) <- s1.s.content do
+            if s2.s.content.contains(k) && v != s2.s.content(k) then println(s"Difference detected at $k of $v and ${s2.s.content(k)}")
+        println("==================================================================================")
 
         true
 
     /** Convert the given state to a node in a graph */
-    def asGraphElement(s: State): GraphElementAAM =
-      ???
+    def asGraphElement(s: State): GraphElementAAM = s.c match
+        case Control.Ev(e, _) => GraphElementAAM(s.hashCode, label = s"ev($e)", color = Colors.Yellow, data = "")
+        case Control.Ap(v)    => GraphElementAAM(s.hashCode, label = s"ap($v)", color = Colors.Red, data = "")
 
     /** Step from one state to another */
     def step(s0: State): Set[State] =

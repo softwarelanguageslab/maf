@@ -74,7 +74,7 @@ trait AAMAnalysis:
         timeout: Timeout.T
       )(using Graph[G, GraphElementAAM, GraphElement]
       ): (Set[State], G) =
-      if (work.isEmpty && newWork.isEmpty) || (timeout.reached) then (work.toSet ++ newWork.toSet, graph)
+      if (work.isEmpty && newWork.isEmpty) || (timeout.reached) || seen.size > 400 then (work.toSet ++ newWork.toSet, graph)
       else if work.isEmpty then loop(newWork, List(), graph, timeout)
       else if seen.contains(work.head) then loop(work.tail, newWork, graph, timeout)
       else
@@ -83,10 +83,10 @@ trait AAMAnalysis:
           val (updatedGraph, newWork1) = todos.foldLeft((graph, newWork)) { case ((g, newWork), todo) =>
             val todoGe = asGraphElement(todo)
             val workGe = asGraphElement(work.head)
-            (if !seen.contains(todo) then g.addNode(todoGe) else g)
+            val gUpdated = (if !seen.contains(todo) then g.addNode(todoGe) else g)
               .addEdge(workGe, NoTransition(), todoGe)
 
-            (g, if !seen.contains(todo) then todo :: newWork else newWork)
+            (gUpdated, if !seen.contains(todo) then todo :: newWork else newWork)
           }
 
           loop(work.tail, newWork1, updatedGraph, timeout)
