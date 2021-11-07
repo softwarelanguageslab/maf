@@ -253,9 +253,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                       case Some((v, _)) => (to, lattice.refs(v))
                 case Some(s @ (v, _)) => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
 
-//TODO: widen resulting values
-//TODO: GC at every step? (ARC?)
-
 trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
@@ -275,7 +272,6 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
             case _ => ()
         super.updateV(anl, sto, adr, vlu)
 
-// TODO: shadow store/deps
 // TODO: pre-compute refs in global store
 // TODO: hashcode optimisation for stores (+ profiling?)
 // TODO: GC at every step?
