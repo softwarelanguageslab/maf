@@ -14,7 +14,12 @@ import maf.util.benchmarks.Timer
 
 object AAMTester:
     private def analysis(b: SchemeExp): SchemeAAMSemantics =
-      new SchemeAAMSemantics(b) with AAMAnalysis with SchemeAAMAnalysisResults with SchemeAAMContextInsensitivity with SchemeConstantPropagationDomain
+      new SchemeAAMSemantics(b)
+        with AAMAnalysis
+        with SchemeAAMAnalysisResults
+        with SchemeAAMContextInsensitivity
+        with SchemeConstantPropagationDomain
+        with SchemeAAMNoExt
 
     private def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)

@@ -4,10 +4,7 @@ import maf.aam.scheme.*
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.language.scheme.*
 import maf.language.scheme.primitives.*
-import maf.aam.SchemeAAMSemantics
 import maf.aam.{AAMAnalysis, GraphElementAAM}
-import maf.aam.SchemeAAMContextInsensitivity
-import maf.aam.SchemeAAMAnalysisResults
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.test.VariousSequentialBenchmarks
 import maf.test.JSS2021Benchmarks
@@ -44,4 +41,9 @@ class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with Vario
     )
     override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(12, SECONDS))
     override def analysis(b: SchemeExp): Analysis =
-      new SchemeAAMSemantics(b) with AAMAnalysis with SchemeAAMAnalysisResults with SchemeAAMContextInsensitivity with SchemeConstantPropagationDomain
+      new SchemeAAMSemantics(b)
+        with AAMAnalysis
+        with SchemeAAMAnalysisResults
+        with SchemeAAMContextInsensitivity
+        with SchemeConstantPropagationDomain
+        with SchemeAAMNoExt
