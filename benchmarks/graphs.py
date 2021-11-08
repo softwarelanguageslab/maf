@@ -22,7 +22,7 @@ print("files in artifact: %s" % glob.glob("artifact/*.json"))
 
 json_files = glob.glob("artifact/jmh-results-*-*.json")
 print(json_files)
-dates = [ datetime.datetime.fromtimestamp(os.path.getmtime(f)) for f in json_files ]
+dates = [ datetime.date(*map(int, f.split('.')[0].split('-')[-3:])) for f in json_files ]
 print(dates)
 metrics = [ read_metrics(f) for f in json_files ]
 for date, group in zip(dates, metrics):
