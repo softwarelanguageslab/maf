@@ -110,10 +110,12 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         // widen addresses (using shadow store & deps)
         widened.foreach { adr =>
           writeAddr(adr, shadowStore.getOrElse(adr, lattice.bottom))
-          deps += AddrDependency(adr) -> shadowDeps.getOrElse(adr, Set.empty)
+          val cps = shadowDeps.getOrElse(adr, Set.empty)
+          deps += AddrDependency(adr) -> cps
+          addToWorkList(cps)
+          shadowStore -= adr
+          shadowDeps -= adr
         }
-        shadowStore --= wid
-        shadowDeps --= wid
         // update results
         var merged: Set[Cmp] = Set.empty
         results = results.foldLeft(Map.empty: Res) { case (acc, (cmp, (vlu, dlt))) =>
