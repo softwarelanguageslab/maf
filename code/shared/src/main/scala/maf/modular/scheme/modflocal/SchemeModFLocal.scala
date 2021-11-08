@@ -10,6 +10,7 @@ import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 import akka.actor.ProviderSelection.Local
+import maf.util.datastructures.SmartMap
 
 abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics with GlobalStore[SchemeExp]:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
@@ -244,7 +245,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                 case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
 
       case class DeltaGC(sto: Sto) extends AGC[Dlt]:
-          def fresh(cur: Dlt) = cur.copy(delta = Map.empty) //TODO: this always carries over the set of updated addrs
+          def fresh(cur: Dlt) = cur.copy(delta = SmartMap.empty) //TODO: this always carries over the set of updated addrs
           def moveLocal(addr: Adr, from: Dlt, to: Dlt): (Dlt, Set[Adr]) =
             from.delta.get(addr) match
                 case None =>

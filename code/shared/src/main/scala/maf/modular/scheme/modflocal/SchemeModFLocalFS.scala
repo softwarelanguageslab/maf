@@ -9,6 +9,7 @@ import maf.util.benchmarks.Timeout
 import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
+import maf.util.datastructures.SmartMap
 
 abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
@@ -97,7 +98,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
               case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
 
     case class DeltaGC(sto: Sto) extends AbstractGarbageCollector[Dlt, Adr]:
-        def fresh(cur: Dlt) = cur.copy(delta = Map.empty) //TODO: this always carries over the set of updated addrs
+        def fresh(cur: Dlt) = cur.copy(delta = SmartMap.empty) //TODO: this always carries over the set of updated addrs
         def move(addr: Adr, from: Dlt, to: Dlt): (Dlt, Set[Adr]) =
           from.delta.get(addr) match
               case None =>
