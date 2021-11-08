@@ -1,5 +1,6 @@
 package maf.test.aam
 
+import maf.aam.scheme.*
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.language.scheme.*
 import maf.language.scheme.primitives.*

@@ -1,6 +1,7 @@
-package maf.cli.experiments.aam
+package maf.cli.runnables
 
 import maf.aam.*
+import maf.aam.scheme.*
 import maf.language.scheme.*
 import maf.language.scheme.primitives.*
 import maf.modular.scheme.*

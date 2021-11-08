@@ -1,8 +1,8 @@
-package maf.aam
+package maf.aam.scheme
 
 import maf.core.*
 
-trait SchemeAAMContextInsensitivity extends maf.aam.SchemeAAMSemantics:
+trait SchemeAAMContextInsensitivity extends SchemeAAMSemantics:
     type Timestamp = Unit
     val initialTime: Timestamp = ()
     def tick(timestamp: Timestamp, e: Expr, sto: Sto, kont: Address): Timestamp = ()

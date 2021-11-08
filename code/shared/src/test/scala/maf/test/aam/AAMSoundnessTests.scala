@@ -15,6 +15,7 @@ import maf.test._
 import maf.util._
 import maf.util.benchmarks.Timeout
 import maf.aam.*
+import maf.aam.scheme.*
 
 import scala.concurrent.duration._
 import maf.util.graph.GraphElement

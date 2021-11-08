@@ -1,6 +1,6 @@
-package maf.aam
+package maf.aam.scheme
 
-import maf.modular.ModAnalysis
+import maf.aam.{AAMAnalysis, GraphElementAAM}
 
 import maf.util.*
 import maf.modular.scheme._
@@ -26,6 +26,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     type State = SchemeState
     type Env = Environment[Address]
     type Ctx = Unit // TODO: fix
+    type Ext
 
     override def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G) =
       analyze(prog, graph, timeout)
@@ -222,8 +223,11 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         /** Instruction to apply the continuation that is on top of the continuation stack */
         case Ap(value: Value)
 
+    /** Provide a default "empty" extension to the state of the AAM-based analysis */
+    protected def emptyExt: Ext
+
     /** A state of the Scheme AAM machine */
-    case class SchemeState(c: Control, s: Sto, k: Address, t: Timestamp):
+    case class SchemeState(c: Control, s: Sto, k: Address, t: Timestamp, extra: Ext = emptyExt):
         override def toString: String =
             val control = c match {
               case Control.Ev(expr, env) => s"ev(${expr.toString})"
