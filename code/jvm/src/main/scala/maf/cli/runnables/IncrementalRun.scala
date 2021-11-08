@@ -14,7 +14,8 @@ import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.worklist.LIFOWorklistAlgorithm
-import maf.util.Reader
+import maf.util.{Reader, Writer}
+import maf.util.Writer.Writer
 import maf.util.benchmarks.Timeout
 import maf.util.graph.DotGraph
 import maf.util.graph.DotGraph.*
@@ -22,6 +23,8 @@ import maf.util.graph.DotGraph.*
 import scala.concurrent.duration.*
 
 object IncrementalRun extends App:
+
+    val w = Writer.open("benchOutput/incremental/errors.txt")
 
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
     // Useful when reducing a program when debugging the analysis.
@@ -86,7 +89,7 @@ object IncrementalRun extends App:
           {
           //override def focus(a: Addr): Boolean =
           //!a.toString.contains("PrmAddr") && (a.toString.contains("ret") || a.toString.contains("x2") || a.toString.contains("__"))
-          var configuration: IncrementalConfiguration = wi_cy
+          var configuration: IncrementalConfiguration = allOptimisations
           override def intraAnalysis(
               cmp: Component
             ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
@@ -105,26 +108,30 @@ object IncrementalRun extends App:
           //  a.flowInformationToDotGraph("logs/flowsA1.dot")
           a.updateAnalysis(timeout())
           //  a.flowInformationToDotGraph("logs/flowsA2.dot")
-          Thread.sleep(1000)
-          val b = base(text)
-          b.version = New
+          //Thread.sleep(1000)
+          //val b = base(text)
+          //b.version = New
           //  b.logger.logU("REAN")
-          b.analyzeWithTimeout(timeout())
+          //b.analyzeWithTimeout(timeout())
           // b.flowInformationToDotGraph("logs/flowsB.dot")
           // println("Done")
         } catch {
-          case e: Exception => e.printStackTrace()
+          case e: Exception =>
+            e.printStackTrace()
+            Writer.writeln(w, bench)
+            Writer.writeln(w, e.getStackTrace().toString)
+            Writer.writeln(w, "")
         }
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/generated")().toList //List("test/changes/scheme/generated/selsort-7.scm")
-    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(30, SECONDS))
+    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
     modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
-    println("Creating graphs")
-    createPNG("logs/flowsA1.dot", true)
-    createPNG("logs/flowsA2.dot", true)
-    createPNG("logs/flowsB.dot", true)
+    //println("Creating graphs")
+    //createPNG("logs/flowsA1.dot", true)
+    //createPNG("logs/flowsA2.dot", true)
+    //createPNG("logs/flowsB.dot", true)
     println("Done")
