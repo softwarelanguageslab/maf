@@ -12,6 +12,7 @@ case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) 
 trait AAMAnalysis:
     /** The type of the abstract values for the analysis */
     type Val
+    type LatVal
 
     /** The type of the environment that should be used in the analysis */
     type Env

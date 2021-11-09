@@ -588,7 +588,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
               case MayFailError(_) => Set()
       }
 
-    private def cond(
+    protected def cond(
         value: Val,
         csq: Expr,
         alt: Expr,
