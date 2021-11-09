@@ -12,7 +12,7 @@ import maf.util.benchmarks.Timeout
 import maf.util.{Reader, Writer}
 
 import scala.concurrent.TimeoutException
-import scala.concurrent.duration.{Duration, MINUTES}
+import scala.concurrent.duration.*
 import scala.util.Random
 
 /** Automatically add change expressions to programs. */
@@ -176,15 +176,17 @@ object ProgramChanger:
     }
 
     // A program is valid if it can be interpreted without errors. We only have to check the new version normally, but check both to be certain.
-    def validProgram(program: SchemeExp, duration: Duration = Duration(2, MINUTES)): Boolean =
-      try
-          val i = new SchemeInterpreter((_, _) => (), stack = false)
-          i.run(program, Timeout.start(duration), Old)
-          i.run(program, Timeout.start(duration), New)
-          true
-      catch
-          case e: TimeoutException => true
-          case _                   => false
+    def validProgram(program: SchemeExp, duration: Duration = Duration(1, MINUTES)): Boolean =
+        val i = new SchemeInterpreter((_, _) => (), stack = false)
+        try i.run(program, Timeout.start(duration), Old)
+        catch
+            case e: TimeoutException =>
+            case _                   => return false
+        try i.run(program, Timeout.start(duration), New)
+        catch
+            case e: TimeoutException =>
+            case _                   => false
+        true
 
     def changeBodyStatements(in: String, out: String, previouslyGenerated: List[String]): Option[String] =
         removed = 0

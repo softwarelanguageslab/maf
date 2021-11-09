@@ -117,7 +117,7 @@ object IncrementalRun extends App:
           // println("Done")
         } catch {
           case e: Exception =>
-            e.printStackTrace()
+            e.printStackTrace(System.out)
             Writer.writeln(w, bench)
             Writer.writeln(w, e.getStackTrace().toString)
             Writer.writeln(w, "")
@@ -125,7 +125,7 @@ object IncrementalRun extends App:
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
-    val modFbenchmarks: List[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/generated")().toList //List("test/changes/scheme/generated/selsort-7.scm")
+    val modFbenchmarks: List[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/generated/erroneous")().toList //List("test/changes/scheme/generated/selsort-7.scm")
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
