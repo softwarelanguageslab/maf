@@ -8,10 +8,9 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
         val _nodes: Set[N],
         val _edges: Map[N, Set[(E, N)]]):
         def _addNode(node: N): G =
-          if _nodes.contains(node) then this
-          else
-              if next % 1000 == 0 then println(s"Number of nodes: $next")
-              new G(ids + (node -> next), next + 1, _nodes + node, _edges)
+            if _nodes.contains(node) then this
+            else if next % 1000 == 0 then () //println(s"Number of nodes: $next")
+            new G(ids + (node -> next), next + 1, _nodes + node, _edges)
         private def _addEdgeNoCheck(
             node1: N,
             edge: E,
@@ -81,8 +80,12 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
             ) = ??? /* TODO[easy] implement */
           def nodes(g: G) = g._nodes.size
           def edges(g: G) = g._edges.size
+          override def findNodeById(g: G, id: Int): Option[N] =
+            g.ids.collectFirst { case (n, _id) if id == _id => n }
           def findNodes(g: G, p: N => Boolean) = ??? /* TODO[easy]: implement */
         }
+
+object SingleDotGraph extends DotGraph()
 
 object DotGraph:
     def empty[N <: GraphElement, E <: GraphElement] = new DotGraph().G.typeclass.empty
