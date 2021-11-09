@@ -18,7 +18,8 @@ import maf.util.graph.Colors
 
 /** An AAM style semantics for Scheme */
 abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with SchemeDomain:
-    type Val = Value
+    type Val
+    type LatVal = Value
     type Expr = SchemeExp
     type Kont = Frame
     type Sto = BasicStore[Address, Storable]
@@ -32,12 +33,12 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       analyze(prog, graph, timeout)
 
     /** An instantation of the <code>SchemeInterpreterBridge</code> trait to support the builtin MAF Scheme primitives */
-    private class InterpreterBridge(env: Env, private var sto: Sto, kont: Address, t: Timestamp) extends SchemeInterpreterBridge[Val, Address]:
+    private class InterpreterBridge(env: Env, private var sto: Sto, kont: Address, t: Timestamp) extends SchemeInterpreterBridge[LatVal, Address]:
         def pointer(exp: SchemeExp): Address =
           alloc(exp.idn, env, sto, kont, t)
 
-        def callcc(clo: Closure, pos: Position): Val = throw new Exception("not supported")
-        def readSto(a: Address): Value =
+        def callcc(clo: Closure, pos: Position): LatVal = throw new Exception("not supported")
+        def readSto(a: Address): LatVal =
             import Storable.*
             sto
               .lookup(a)
@@ -46,8 +47,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
                 case _    => lattice.bottom
               }
               .getOrElse(lattice.bottom)
-        def writeSto(a: Address, value: Value): Unit =
+
+        def writeSto(a: Address, value: LatVal): Unit =
           sto = sto.extend(a, Storable.V(value))
+
         def currentThread: TID =
           throw new Exception("unsupported")
 
@@ -60,10 +63,16 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
      */
     enum Storable:
         /** We can store values in the store */
-        case V(v: Val)
+        case V(v: LatVal)
 
         /** We can also store continuations in the store */
         case K(k: Set[Kont])
+
+    /** Inject the values from the lattice's abstract domain in the (possibly extended) domain of a sub analysis */
+    def inject(v: LatVal): Val
+
+    /** Project the (possibly extended) domain of a sub analysis to the lattice domain */
+    def project(v: Val): LatVal
 
     /** Instantiation of the `Storable` lattice. Only elements of the same type can be joined together, and there are no bottom or top elements */
     given storableLattice: Lattice[Storable] with
@@ -107,10 +116,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         override def toString = s"Kont0Addr"
 
     /** An address on which values will be allocated */
-    case class ValueAddr(lam: Lam, ctx: Ctx) extends Address:
+    case class ValAddr(lam: Lam, ctx: Ctx) extends Address:
         def idn: Identity = lam.idn
         def printable = true
-        override def toString = s"ValueAddr(${lam}, ${ctx})"
+        override def toString = s"ValAddr(${lam}, ${ctx})"
 
     /** The address at which the values of function parameters are allocated */
     case class VarAddr(ide: Identity, ctx: Ctx) extends Address:
@@ -128,9 +137,21 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     def readSto(sto: Sto, addr: Address): Storable =
       sto.lookup(addr).getOrElse(Storable.V(lattice.bottom))
 
+    def readStoV(sto: Sto, addr: Address): Val =
+      sto
+        .lookup(addr)
+        .collectFirst { case Storable.V(v) =>
+          inject(v)
+        }
+        .getOrElse(inject(lattice.bottom))
+
     /** Write to the given address in the store, returns the updated store */
     def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
       sto.extend(addr, value)
+
+    /** Write a value to the given address in the store, returns the updated store */
+    def writeStoV(sto: Sto, addr: Address, value: Val): Sto =
+      writeSto(sto, addr, Storable.V(project(value)))
 
     private def preprocessProgram(program: List[SchemeExp]): SchemeExp =
         val originalProgram = program
@@ -156,7 +177,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           this.copy(next = Some(next))
     case class LetFrame(
         // evaluated bindings
-        evalBds: List[(Identifier, Value)],
+        evalBds: List[(Identifier, Val)],
         // the bindings that still need to be evaluated
         bindings: List[(Identifier, SchemeExp)],
         // the body of the let
@@ -180,7 +201,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
     case class LetrecFrame(
         addresses: List[Address],
-        valeus: List[Value],
+        valeus: List[Val],
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
         env: Env,
@@ -207,8 +228,8 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     case class ArgFrame(
         f: SchemeFuncall,
         args: List[SchemeExp],
-        fv: Value,
-        argV: List[Value],
+        fv: Val,
+        argV: List[Val],
         env: Env,
         next: Option[Address] = None)
         extends Frame:
@@ -221,7 +242,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         case Ev(expr: Expr, env: Env)
 
         /** Instruction to apply the continuation that is on top of the continuation stack */
-        case Ap(value: Value)
+        case Ap(value: Val)
 
     /** Provide a default "empty" extension to the state of the AAM-based analysis */
     protected def emptyExt: Ext
@@ -313,11 +334,11 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       ): Set[State] = expr match
         // (Ev(literal), env, sto, kont) ==> (Ap(inj(literal)), env, sto, kont)
         case lit: SchemeValue =>
-          evalLiteralValue(lit, env, sto, kont, t, ext)
+          evalLiteralVal(lit, env, sto, kont, t, ext)
 
         // (Ev((lambda (x) e)), env, sto, kont) ==> (Ap(inj(closure(x, e))), env, sto, kont)
         case lam: SchemeLambdaExp =>
-          Set(SchemeState(Control.Ap(lattice.closure((lam, env.restrictTo(lam.fv)))), sto, kont, t, ext))
+          Set(SchemeState(Control.Ap(inject(lattice.closure((lam, env.restrictTo(lam.fv))))), sto, kont, t, ext))
 
         // (Ev(x), env, sto, kont) ==> (Ap(inj(v)), env, sto, kont)
         //    where: v = sto(env(x))
@@ -362,7 +383,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
      * Evaluate a literal value, these are evaluated to equivalent representations in the abstract domain. A string literal is allocated in the store
      * at a value address
      */
-    private def evalLiteralValue(
+    private def evalLiteralVal(
         lit: SchemeValue,
         env: Env,
         sto: Sto,
@@ -373,7 +394,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         val (res, sto1) = lit.value match
             case sexp.Value.String(s) =>
               val address = alloc(lit.idn, env, sto, kont, t)
-              val sto1 = writeSto(sto, address, Storable.V(lattice.string(s)))
+              val sto1 = writeStoV(sto, address, inject(lattice.string(s)))
               (lattice.pointer(address), sto1)
 
             case sexp.Value.Integer(n)   => (lattice.number(n), sto)
@@ -384,7 +405,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
             case sexp.Value.Nil          => (lattice.nil, sto)
             case lit                     => throw new Exception(s"Unsupported Scheme literal: $lit")
 
-        Set(SchemeState(Control.Ap(res), sto1, kont, t, ext))
+        Set(SchemeState(Control.Ap(inject(res)), sto1, kont, t, ext))
 
     private def evalVariable(
         id: Identifier,
@@ -394,14 +415,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         t: Timestamp,
         ext: Ext
       ): Set[State] =
-        val res: Value = env
+        val res: Val = env
           .lookup(id.name)
-          .map(sto.lookup(_))
-          .flatMap {
-            case Some(Storable.V(v)) => Some(v)
-            case _                   => None
-          }
-          .getOrElse(lattice.bottom)
+          .map(readStoV(sto, _))
+          .getOrElse(inject(lattice.bottom))
 
         Set(SchemeState(Control.Ap(res), sto, kont, t, ext))
 
@@ -422,7 +439,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         Set(SchemeState(Control.Ev(sequence.head, env), sto1, frame, t1, ext))
 
     private def evaluateLet(
-        evlBds: List[(Identifier, Value)],
+        evlBds: List[(Identifier, Val)],
         env: Env,
         sto: Sto,
         kont: Address,
@@ -444,7 +461,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
               evlBds
                 .map(_._2)
                 .zip(addresses)
-                .foldLeft(sto)((sto, current) => writeSto(sto, current._2, Storable.V(current._1)))
+                .foldLeft(sto)((sto, current) => writeStoV(sto, current._2, current._1))
 
             evaluate_sequence(env1, sto1, kont, body, t, ext)
 
@@ -472,7 +489,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
     private def evaluateLetrec(
         addresses: List[Address],
-        values: List[Value],
+        values: List[Val],
         env: Env,
         sto: Sto,
         kont: Address,
@@ -484,7 +501,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       bindings match
           case List() =>
             // the enviroment already contains the necessary bindings
-            val sto1 = addresses.zip(values).foldLeft(sto)((sto, current) => writeSto(sto, current._1, Storable.V(current._2)))
+            val sto1 = addresses.zip(values).foldLeft(sto)((sto, current) => writeStoV(sto, current._1, current._2))
             evaluate_sequence(env, sto1, kont, body, t, ext)
 
           case binding :: bindings =>
@@ -494,8 +511,8 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
     private def applyFun(
         fexp: SchemeFuncall,
-        func: Value,
-        argv: List[Value],
+        func: Val,
+        argv: List[Val],
         env: Env,
         sto: Sto,
         kon: Address,
@@ -508,8 +525,8 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
     private def applyClo(
         fexp: SchemeFuncall,
-        func: Value,
-        argv: List[Value],
+        func: Val,
+        argv: List[Val],
         env: Env,
         sto: Sto,
         kon: Address,
@@ -517,7 +534,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         ext: Ext
       ): Set[State] =
       // TODO: introduce contexts to support things like k-cfa
-      lattice.getClosures(func).flatMap {
+      lattice.getClosures(project(func)).flatMap {
         case (lam, lex: Env @unchecked) if lam.check(argv.size) =>
           val (sto0, frame, t0) = (sto, kon, t)
 
@@ -526,13 +543,13 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           val ctx = () // TODO
           // add the fixed arguments on addresses in the store
           val sto1 = lam.args.zip(fx).foldLeft(sto0) { case (sto, (par, (value, _))) =>
-            writeSto(sto, VarAddr(par.idn, ctx), Storable.V(value))
+            writeStoV(sto, VarAddr(par.idn, ctx), value)
           }
           // add variable arguments as a list to a particular address in the store
           val sto2 = lam.varArgId match
               case Some(id) =>
                 val (vlu, newsto) = allocList(vra, env, sto1, kon, t0)
-                writeSto(newsto, VarAddr(id.idn, ctx), Storable.V(vlu))
+                writeStoV(newsto, VarAddr(id.idn, ctx), vlu)
               case _ => sto1
 
           // extend the environment with the correct bindigs
@@ -548,31 +565,31 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     /** Apply the given value as a primitive function (if the value is a primitive function) */
     private def applyPrim(
         fexp: SchemeExp,
-        func: Value,
-        argv: List[Value],
+        func: Val,
+        argv: List[Val],
         env: Env,
         sto: Sto,
         kon: Address,
         t: Timestamp,
         ext: Ext
       ): Set[State] =
-      lattice.getPrimitives(func).flatMap { name =>
+      lattice.getPrimitives(project(func)).flatMap { name =>
           val primitive = primitives(name)
           given bridge: InterpreterBridge = InterpreterBridge(env, sto, kon, t)
-          primitive.callMF(fexp, argv) match
+          primitive.callMF(fexp, argv.map(project)) match
               // the primitive is successfull apply the continuation with the value returned from the primitive
               case MayFailSuccess(vlu) =>
                 val sto1 = bridge.updatedSto
-                Set(SchemeState(Control.Ap(vlu), sto1, kon, t, ext))
+                Set(SchemeState(Control.Ap(inject(vlu)), sto1, kon, t, ext))
               case MayFailBoth(vlu, _) =>
                 val sto1 = bridge.updatedSto
-                Set(SchemeState(Control.Ap(vlu), sto1, kon, t, ext))
+                Set(SchemeState(Control.Ap(inject(vlu)), sto1, kon, t, ext))
               // executing the primitive is unsuccessfull, no successors states are generated
               case MayFailError(_) => Set()
       }
 
     private def cond(
-        value: Value,
+        value: Val,
         csq: Expr,
         alt: Expr,
         env: Env,
@@ -582,28 +599,28 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         ext: Ext
       ): Set[State] =
         import Control.*
-        val csqSt = if lattice.isTrue(value) then Set(SchemeState(Ev(csq, env), sto, kont, t, ext)) else Set()
-        val altSt = if lattice.isFalse(value) then Set(SchemeState(Ev(alt, env), sto, kont, t, ext)) else Set()
+        val csqSt = if lattice.isTrue(project(value)) then Set(SchemeState(Ev(csq, env), sto, kont, t, ext)) else Set()
+        val altSt = if lattice.isFalse(project(value)) then Set(SchemeState(Ev(alt, env), sto, kont, t, ext)) else Set()
         csqSt ++ altSt
 
-    private def allocList(items: List[(Value, SchemeExp)], env: Env, sto: Sto, kont: Address, t: Timestamp): (Value, Sto) = items match
-        case Nil => (lattice.nil, sto)
+    private def allocList(items: List[(Val, SchemeExp)], env: Env, sto: Sto, kont: Address, t: Timestamp): (Val, Sto) = items match
+        case Nil => (inject(lattice.nil), sto)
         case (vlu, exp) :: rest =>
           val (tail, sto1) = allocList(rest, env, sto, kont, t)
           allocCons(exp, vlu, tail, env, sto1, kont, t)
 
     private def allocCons(
         exp: SchemeExp,
-        car: Value,
-        cdr: Value,
+        car: Val,
+        cdr: Val,
         env: Env,
         sto: Sto,
         kont: Address,
         t: Timestamp
-      ): (Value, Sto) =
+      ): (Val, Sto) =
         val addr = alloc(exp.idn, env, sto, kont, t) // TODO: check whether a seperate addr is needed for cons
-        val sto1 = writeSto(sto, addr, Storable.V(lattice.cons(car, cdr)))
-        (lattice.pointer(addr), sto1)
+        val sto1 = writeSto(sto, addr, Storable.V(lattice.cons(project(car), project(cdr))))
+        (inject(lattice.pointer(addr)), sto1)
 
     protected def continueWith(sto: Sto, kont: Address)(f: (Address) => SchemeState): Set[State] =
       Set(f(kont))
@@ -612,13 +629,13 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       f(kont)
 
     /** Apply the given continuation with the given value */
-    def continue(value: Value, sto: Sto, kont: Address, t: Timestamp, ext: Ext): Set[State] =
+    def continue(value: Val, sto: Sto, kont: Address, t: Timestamp, ext: Ext): Set[State] =
       (readSto(sto, kont) match { case Storable.K(ks) => ks; case _ => ??? }).flatMap {
         // (Ap(v), env, sto, assgn(x) :: k) ==> (Ap(nil), env, sto', k)
         //    where sto' = sto [ env(x) -> v ]
         case AssFrame(id, env, Some(next)) =>
-          val sto1 = writeSto(sto, env.lookup(id.name).get, Storable.V(value))
-          continueWith(sto, next)(SchemeState(Control.Ap(lattice.nil), sto1, _, t, ext))
+          val sto1 = writeSto(sto, env.lookup(id.name).get, Storable.V(project(value)))
+          continueWith(sto, next)(SchemeState(Control.Ap(inject(lattice.nil)), sto1, _, t, ext))
 
         // (Ap(v), env, sto, beg(e1 e2 ... en) :: k) ==> (Ev(e1), env, sto, beg(e2 .. en) :: k)
         case BegFrame(e1 :: exps, env, Some(addr)) =>
@@ -671,7 +688,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           continueWiths(sto, addr) { kont =>
               val addr = alloc(currentIdentifier.idn, env, sto, kont, t)
               val env1 = env.extend(currentIdentifier.name, addr)
-              val sto1 = writeSto(sto, addr, Storable.V(value))
+              val sto1 = writeStoV(sto, addr, value)
               evaluateLetStar(env1, sto1, kont, restBindings, body, t, ext)
           }
 
