@@ -48,7 +48,7 @@ object AdaptiveRun:
         println(prg)
 
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/various/foo.scm")
+        val txt = Reader.loadFile("test/R5RS/gambit/browse.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -57,7 +57,7 @@ object AdaptiveRun:
           with SchemeConstantPropagationDomain
           with SchemeModFLocalNoSensitivity
           with FIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFLocalAdaptiveWidening(3)
+          with SchemeModFLocalAdaptiveWidening(10)
         def printStore(sto: anl.Sto) =
           sto.content.view
             //.filterKeys(!_.isInstanceOf[PrmAddr])
@@ -77,10 +77,10 @@ object AdaptiveRun:
             val (res, dlt) = anl.results.getOrElse(cmp, (anl.lattice.bottom, Delta.empty)).asInstanceOf[(anl.Val, anl.Dlt)]
             println()
             println(s"COMPONENT ${lam.lambdaName} WHERE")
-            printStore(sto)
+            //printStore(sto)
             println(s"==> RESULTS: $res")
             println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
-            printDelta(dlt)
+            //printDelta(dlt)
             println()
           }
         println(anl.finished)
