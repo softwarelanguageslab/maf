@@ -137,7 +137,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     def readSto(sto: Sto, addr: Address): Storable =
       sto.lookup(addr).getOrElse(Storable.V(lattice.bottom))
 
-    def readStoV(sto: Sto, addr: Address): Val =
+    def readStoV(sto: Sto, addr: Address, ext: Ext): Val =
       sto
         .lookup(addr)
         .collectFirst { case Storable.V(v) =>
@@ -256,6 +256,12 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
             }
 
             s"($control, ${s.content.size}, $k)"
+
+        /** Map the given function to the value, only if it is an Ap control */
+        def mapValue(f: Val => Val): SchemeState =
+          c match
+              case Control.Ap(vlu) => this.copy(c = Control.Ap(f(vlu)))
+              case _               => this
 
     /** Inject the initial state for the given expression */
     def inject(expr: Expr): State =
@@ -383,7 +389,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
      * Evaluate a literal value, these are evaluated to equivalent representations in the abstract domain. A string literal is allocated in the store
      * at a value address
      */
-    private def evalLiteralVal(
+    protected def evalLiteralVal(
         lit: SchemeValue,
         env: Env,
         sto: Sto,
@@ -417,7 +423,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       ): Set[State] =
         val res: Val = env
           .lookup(id.name)
-          .map(readStoV(sto, _))
+          .map(readStoV(sto, _, ext))
           .getOrElse(inject(lattice.bottom))
 
         Set(SchemeState(Control.Ap(res), sto, kont, t, ext))
@@ -561,6 +567,8 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           println(s"Applied with invalid number of arguments ${argv.size}")
           Set()
       }
+
+    protected def callPrimitive(fexp: SchemeExp, func: SchemePrimitive[LatVal, Address], argv: List[Val]): LatVal = ???
 
     /** Apply the given value as a primitive function (if the value is a primitive function) */
     private def applyPrim(
