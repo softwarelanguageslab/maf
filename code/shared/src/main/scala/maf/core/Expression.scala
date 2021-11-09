@@ -17,8 +17,18 @@ trait Expression extends SmartHash:
     /** A label indicating the type of an expression. */
     def label: Label
 
-    /** Returns the list of subexpressions of the given expression. */
+    /** Returns a list of direct subexpressions of the given expression. */
     def subexpressions: List[Expression] // Uses `def` instead of `val` to avoid continuous memory overheads.
+
+    /** Returns a list of all subexpressions of an expression. */
+    def allSubexpressions: List[Expression] =
+        var subExpressions = this.subexpressions
+        var toExplore = subExpressions // Start with the direct subexpressions.
+        while toExplore.nonEmpty do
+            var sub = toExplore.flatMap(_.subexpressions)
+            subExpressions = sub ::: subExpressions
+            toExplore = sub
+        subExpressions
 
     /**
      * Returns whether this expression is isomorphic to another expression. This is a basic implementation which should be specialised in subclasses.

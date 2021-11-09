@@ -139,17 +139,24 @@ object SchemeAnalyses:
         override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra
       }
     }
+    def modflocalAnalysisAdaptive(prg: SchemeExp, k: Int, l: Int) =
+      new SchemeModFLocal(prg)
+        with SchemeConstantPropagationDomain
+        with SchemeModFLocalCallSiteSensitivity(k)
+        with FIFOWorklistAlgorithm[SchemeExp]
+        with SchemeModFLocalAnalysisResults
+        with SchemeModFLocalAdaptiveWidening(l)
     def modflocalAnalysis(prg: SchemeExp, k: Int) =
       new SchemeModFLocal(prg)
         with SchemeConstantPropagationDomain
         with SchemeModFLocalCallSiteSensitivity(k)
-        with LIFOWorklistAlgorithm[SchemeExp]
+        with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
     def modflocalFSAnalysis(prg: SchemeExp, k: Int) =
       new SchemeModFLocalFS(prg)
         with SchemeConstantPropagationDomain
         with SchemeModFLocalCallSiteSensitivity(k)
-        with LIFOWorklistAlgorithm[SchemeExp]
+        with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalFSAnalysisResults
 
     def scvModAnalysis(prg: SchemeExp) =

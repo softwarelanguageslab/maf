@@ -199,7 +199,12 @@ object ConstantPropagation:
               case (Constant(_), Top)                   => Top
               case (Constant(x), Constant(y)) if y != 0 => Constant(MathOps.modulo(x, y))
               case _                                    => Bottom
-          def remainder(n1: I, n2: I): I = binop(MathOps.remainder, n1, n2)
+          def remainder(n1: I, n2: I): I = (n1, n2) match
+              case (Top, Top)                           => Top
+              case (Top, Constant(_))                   => Top
+              case (Constant(_), Top)                   => Top
+              case (Constant(x), Constant(y)) if y != 0 => Constant(MathOps.remainder(x, y))
+              case _                                    => Bottom
           def lt[B2: BoolLattice](n1: I, n2: I): B2 = (n1, n2) match
               case (Top, Top)                 => BoolLattice[B2].top
               case (Top, Constant(_))         => BoolLattice[B2].top

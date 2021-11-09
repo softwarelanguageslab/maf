@@ -121,7 +121,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         val oldFlow = dataFlowR(cmp)
         ???
 
-    */
+     */
 
     /* ****************************** */
     /* ***** Write invalidation ***** */
@@ -223,10 +223,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 provenance -= addr
             }
             cachedWrites = cachedWrites.map({ case (k, v) => (k, v -- addrs) }).withDefaultValue(Set())
-            //SCAs = Set() // Clear the data as it is no longer needed. (This is not really required but reduces the memory footprint of the result.)
-            // New method (start)
-            //val scas = computeSCAs()
-            //SCAs = scas.map(sca => (sca, incomingSCAValue(sca))).toMap
+        //SCAs = Set() // Clear the data as it is no longer needed. (This is not really required but reduces the memory footprint of the result.)
+        // New method (start)
+        //val scas = computeSCAs()
+        //SCAs = scas.map(sca => (sca, incomingSCAValue(sca))).toMap
         super.updateAnalysis(timeout)
 
     /* ************************************ */
@@ -236,7 +236,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     trait IncrementalGlobalStoreIntraAnalysis extends IncrementalIntraAnalysis with GlobalStoreIntra:
         intra =>
 
-        /** Map of addres dependencies W ~> Set[R]. */ // (Temporary cache, such as the sets C, R, W.
+        /** Map of addres dependencies W ~> Set[R]. */
+        // (Temporary cache, such as the sets C, R, W.
         var dataFlow: Map[Addr, Set[Addr]] = Map().withDefaultValue(Set())
 
         /**
@@ -329,7 +330,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
               // Call updateAddrInc to ensure triggers happen. TODO updateAddrInc doesn't trigger => Is this the correct way of triggering?
               if updateAddrInc(component, addr, incoming) then trigger(AddrDependency(addr))
           }
-        */
+         */
 
         /* ------------------ */
         /* ----- Commit ----- */
