@@ -9,6 +9,7 @@ import maf.util.benchmarks.Timeout
 import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
+import maf.util.datastructures.SmartMap
 
 abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
@@ -97,7 +98,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
               case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
 
     case class DeltaGC(sto: Sto) extends AbstractGarbageCollector[Dlt, Adr]:
-        def fresh(cur: Dlt) = cur.copy(delta = Map.empty) //TODO: this always carries over the set of updated addrs
+        def fresh(cur: Dlt) = cur.copy(delta = SmartMap.empty) //TODO: this always carries over the set of updated addrs
         def move(addr: Adr, from: Dlt, to: Dlt): (Dlt, Set[Adr]) =
           from.delta.get(addr) match
               case None =>
@@ -114,9 +115,9 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
           val dgc = DeltaGC(gcs).collect(dlt, vlu.map(lattice.refs).getOrElse(Set.empty) ++ dlt.updates)
           (vlu, sto.replay(gcs, dgc), eff)
 
-    override protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
+    override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
-        super.applyClosure(cll, lam, ags, fvs)
+        super.applyClosure(app, lam, ags, fvs)
       }
 
     //

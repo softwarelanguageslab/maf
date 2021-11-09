@@ -26,6 +26,8 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
   // some form of "worklist" is required to keep track of which components need to be (re-)analyzed
   // this method is responsible for adding a given component to that worklist
   def addToWorkList(cmp: Component): Unit
+  // convenience method to add multiple components to the worklist
+  def addToWorkList(cps: Iterable[Component]): Unit = cps.foreach(addToWorkList)
 
   // the intra-analysis of a component can discover new components
   // when we discover a component that has not yet been analyzed, we add it to the worklist

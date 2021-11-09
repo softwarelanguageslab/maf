@@ -18,7 +18,7 @@ trait SchemeSemantics:
     type Adr = Address
     type Exp = SchemeExp
     type Lam = SchemeLambdaExp
-    type Cll = SchemeFuncall
+    type App = SchemeFuncall
     type Env = Environment[Adr]
     type Clo = (Lam, Env)
     type Idn = Identity
@@ -59,7 +59,7 @@ trait SchemeSemantics:
         case SchemeLet(bds, bdy, _)     => evalLet(bds, bdy)
         case SchemeLetStar(bds, bdy, _) => evalLetStar(bds, bdy)
         case SchemeLetrec(bds, bdy, _)  => evalLetrec(bds, bdy)
-        case cll: SchemeFuncall         => evalCall(cll)
+        case app: SchemeFuncall         => evalCall(app)
         case SchemeAssert(exp, _)       => evalAssert(exp)
         case _                          => throw new Exception(s"Unsupported Scheme expression: $exp")
 
@@ -138,37 +138,37 @@ trait SchemeSemantics:
         val fls = guard(lattice.isFalse(cnd)).flatMap(_ => alt)
         mjoin(tru, fls)
 
-    private def evalCall(cll: SchemeFuncall): A[Val] =
+    private def evalCall(app: App): A[Val] =
       for
-          fun <- eval(cll.f)
-          ags <- cll.args.mapM(arg => eval(arg))
-          res <- applyFun(cll, fun, ags)
+          fun <- eval(app.f)
+          ags <- app.args.mapM(arg => eval(arg))
+          res <- applyFun(app, fun, ags)
       yield res
 
-    private def applyFun(cll: Cll, fun: Val, ags: List[Val]): A[Val] =
-      mjoin(applyPrimitives(cll, fun, ags), applyClosures(cll, fun, ags))
+    private def applyFun(app: App, fun: Val, ags: List[Val]): A[Val] =
+      mjoin(applyPrimitives(app, fun, ags), applyClosures(app, fun, ags))
 
-    private def applyPrimitives(cll: Cll, fun: Val, ags: List[Val]): A[Val] =
+    private def applyPrimitives(app: App, fun: Val, ags: List[Val]): A[Val] =
       lattice.getPrimitives(fun).foldMapM { prm =>
-        applyPrimitive(cll, primitives(prm), ags)
+        applyPrimitive(app, primitives(prm), ags)
       }
 
-    private def applyPrimitive(cll: Cll, prm: Prim, ags: List[Val]): A[Val] =
-      prm.call(cll, ags)
+    private def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
+      prm.call(app, ags)
 
-    private def applyClosures(cll: Cll, fun: Val, ags: List[Val]): A[Val] =
+    private def applyClosures(app: App, fun: Val, ags: List[Val]): A[Val] =
         val agc = ags.length
         lattice.getClosures(fun).foldMapM { (lam, lex) =>
           for
               _ <- guard(lam.check(agc))
               fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))
-              res <- applyClosure(cll, lam, ags, fvs)
+              res <- applyClosure(app, lam, ags, fvs)
           yield res
         }
 
-    protected def applyClosure(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
-      withCtx(newContext(cll, lam, ags, _)) {
-        argBindings(cll, lam, ags, fvs) >>= { bds =>
+    protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
+      withCtx(newContext(app, lam, ags, _)) {
+        argBindings(app, lam, ags, fvs) >>= { bds =>
             val envBds = bds.map((nam, adr, _) => (nam, adr))
             val stoBds = bds.map((_, adr, vlu) => (adr, vlu))
             withEnv(_ => Environment(envBds)) {
@@ -177,7 +177,7 @@ trait SchemeSemantics:
         }
       }
 
-    private def argBindings(cll: Cll, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[List[(String, Adr, Val)]] =
+    private def argBindings(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[List[(String, Adr, Val)]] =
       for
           // fixed args
           fxa <- lam.args.zip(ags).mapM((idf, vlu) => allocVar(idf).map((idf.name, _, vlu)))
@@ -187,7 +187,7 @@ trait SchemeSemantics:
               case Some(varArg) =>
                 val len = lam.args.length
                 val (_, vag) = ags.splitAt(len)
-                val (_, vex) = cll.args.splitAt(len)
+                val (_, vex) = app.args.splitAt(len)
                 for
                     lst <- allocLst(vex.zip(vag))
                     adr <- allocVar(varArg)
