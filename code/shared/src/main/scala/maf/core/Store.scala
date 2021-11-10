@@ -39,9 +39,14 @@ sealed trait AbstractCount:
     def join(other: AbstractCount): AbstractCount
     def +(cnt: => AbstractCount): AbstractCount
     def inc: AbstractCount = this + CountOne
-case object CountOne extends AbstractCount:
+case object CountZero extends AbstractCount:
     def join(other: AbstractCount) = other
-    def +(cnt: => AbstractCount) = CountInf
+    def +(cnt: => AbstractCount) = cnt
+case object CountOne extends AbstractCount:
+    def join(other: AbstractCount) =
+      if other == CountZero then this else other
+    def +(cnt: => AbstractCount) =
+      if cnt == CountZero then this else CountInf
 case object CountInf extends AbstractCount:
     def join(other: AbstractCount) = this
     def +(cnt: => AbstractCount) = this
