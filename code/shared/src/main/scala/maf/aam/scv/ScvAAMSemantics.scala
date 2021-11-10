@@ -72,6 +72,10 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
     case class MonFunFrame(contract: Grd[LatVal], idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
         def link(kont: Address): MonFunFrame = this.copy(next = Some(kont))
 
+    /** Frame that gets pushed when we evaluate an expression in a (flat expression)/idn expression */
+    case class FlatLitFrame(exp: SchemeExp, idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
+        def link(kont: Address): FlatLitFrame = this.copy(next = Some(kont))
+
     /*=============================================================================================================================*/
     /* ===== Extension points =====================================================================================================*/
     /*=============================================================================================================================*/
@@ -130,6 +134,10 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         case ContractSchemeMon(contract, expression, idn) =>
           mon(contract, expression, idn, env, sto, kont, t, ext)
 
+        case ContractSchemeFlatContract(flat, idn) =>
+          val (sto1, frame, t1) = pushFrame(flat, env, sto, kont, FlatLitFrame(flat, idn, env), t)
+          Set(SchemeState(Control.Ev(flat, env), sto1, frame, t1, ext))
+
         case _ => super.eval(exp, env, sto, kont, t, ext)
 
     override def continue(vlu: Val, sto: Sto, kon: Address, t: Timestamp, ext: Ext): Set[State] =
@@ -177,6 +185,10 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         // [MonFun]
         case MonFunFrame(contract, idn, env, Some(next)) =>
           ???
+
+        // Rule added to evaluate flat contracts
+        case FlatLitFrame(exp, idn, env, Some(next)) =>
+          Some(SchemeState(Control.Ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn)))), sto, next, t, ext))
 
         case _ => super.continue(vlu, sto, kon, t, ext)
       }
