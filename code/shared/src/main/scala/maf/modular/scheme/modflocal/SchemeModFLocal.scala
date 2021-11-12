@@ -237,7 +237,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                 case AddrPolicy.Local   => moveLocal(addr, from, to)
                 case AddrPolicy.Widened => (to, lattice.refs(readAddr(addr)))
 
-      object StoreGC extends AGC[Sto]:
+      case object StoreGC extends AGC[Sto]:
           def fresh(cur: Sto) = LocalStore.empty
           def moveLocal(addr: Adr, from: Sto, to: Sto): (Sto, Set[Adr]) =
             from.content.get(addr) match

@@ -8,6 +8,7 @@ case class SmartMap[K,V](content: Map[K,V], hc: Long) extends Iterable[(K,V)]:
         case _ => false
     def apply(adr: K): V = content(adr)
     def get(adr: K): Option[V] = content.get(adr)
+    def getOrElse(adr: K, els: => V): V = content.getOrElse(adr, els)
     def +(bnd: (K, V)) = 
       content.get(bnd._1) match
         case None => SmartMap(content + bnd, hc + bnd.hashCode)
@@ -23,6 +24,7 @@ case class SmartMap[K,V](content: Map[K,V], hc: Long) extends Iterable[(K,V)]:
     def iterator: Iterator[(K,V)] = content.iterator
     def contains(key: K) = content.contains(key)
     def keys: Iterable[K] = content.keys
+    def keySet: Set[K] = content.keySet
     // FOR TESTING PURPOSES 
     private def computeHash: Int = content.map(_.hashCode).sum
     // assert(computeHash == hashCode) <- enable to test
