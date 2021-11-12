@@ -5,11 +5,13 @@ import maf.modular.scheme._
 import maf.modular.worklist._
 import maf.util.benchmarks.Timeout
 import maf.modular.AddrDependency
+import maf.core._
 
 trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeModFLocal with SequentialWorklistAlgorithm[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
     def debug(msg: => String) = ()
+    def debugAdvanced(msg: => String) = ()
 
     // THE WIDENED SET DETERMINES WHICH ADDRESSES ARE WIDENED
 
@@ -28,12 +30,14 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
     override def step(t: Timeout.T) =
         super.step(t)
         if ratio > k then
+            val oldVisited = visited.size
             val oldRatio = ratio
             debug("ADAPTING")
             adaptAnalysis()
             debug(s"--> ${widened.size} addresses have been widened in total.")
+            val newVisited = visited.size
             val newRatio = ratio
-            debug(s"Ratio: $oldRatio -> $newRatio")
+            debug(s"Ratio: $oldRatio -> $newRatio ($oldVisited -> $newVisited)")
 
     override def spawn(cmp: Cmp) =
         if (!visited(cmp)) then
@@ -49,19 +53,21 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         addWidened(wid)
 
     private def pickAddrs(sts: Set[Sto], cut: Int): Set[Adr] =
+        val kys = sts.flatMap(_.content.keySet)
         val ads = sts.foldLeft(Map.empty[Adr, Set[(Val, Cnt)]]) { (acc, sto) =>
-          sto.content.foldLeft(acc) { case (acc2, (adr, bnd)) =>
+          kys.foldLeft(acc) { case (acc2, adr) =>
+            val bnd = sto.content.getOrElse(adr, (lattice.bottom, CountZero))
             acc2.get(adr) match
                 case None      => acc2 + (adr -> Set(bnd))
                 case Some(bds) => acc2 + (adr -> (bds + bnd))
           }
         }
-        val lst = ads.toList.sortBy((_, bds) => bds.size)(Ordering[Int].reverse).map(_._1)
+        val lst = ads.toList.sortBy((adr, bds) => bds.size)(Ordering[Int].reverse)
         pickAddrsRec(lst, sts, cut)
 
-    private def pickAddrsRec(lst: List[Adr], sts: Set[Sto], cut: Int): Set[Adr] =
+    private def pickAddrsRec(lst: List[(Adr, Set[(Val, Cnt)])], sts: Set[Sto], cut: Int): Set[Adr] =
       if sts.size > cut then
-          val adr :: rst = lst
+          val (adr, _) :: rst = lst
           pickAddrsRec(rst, sts.map(_ - adr), cut) + adr
       else Set.empty
 
