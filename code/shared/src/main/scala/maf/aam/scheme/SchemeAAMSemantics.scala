@@ -29,6 +29,9 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     type Ctx = Unit // TODO: fix
     type Ext
 
+    lazy val initialEnv = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
+    lazy val initialStore = BasicStore(initialBds.map(p => (p._2, p._3)).toMap).extend(Kont0Addr, Storable.K(Set(HltFrame)))
+
     override def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G) =
       analyze(prog, graph, timeout)
 
@@ -137,7 +140,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     def readSto(sto: Sto, addr: Address): Storable =
       sto.lookup(addr).getOrElse(Storable.V(lattice.bottom))
 
-    def readStoV(sto: Sto, addr: Address): Val =
+    def readStoV(sto: Sto, addr: Address, ext: Ext): Val =
       sto
         .lookup(addr)
         .collectFirst { case Storable.V(v) =>
@@ -164,7 +167,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           (name, PrmAddr(name), Storable.V(lattice.primitive(p.name)))
         }
 
-    sealed trait Frame:
+    protected trait Frame:
         def link(next: Address): Frame
     case class AssFrame(id: Identifier, env: Env, next: Option[Address] = None) extends Frame:
         def link(next: Address): AssFrame =
@@ -257,11 +260,15 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
             s"($control, ${s.content.size}, $k)"
 
+        /** Map the given function to the value, only if it is an Ap control */
+        def mapValue(f: Val => Val): SchemeState =
+          c match
+              case Control.Ap(vlu) => this.copy(c = Control.Ap(f(vlu)))
+              case _               => this
+
     /** Inject the initial state for the given expression */
     def inject(expr: Expr): State =
-        val initialEnv = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
-        val initialStore = BasicStore(initialBds.map(p => (p._2, p._3)).toMap).extend(Kont0Addr, Storable.K(Set(HltFrame)))
-        SchemeState(Control.Ev(expr, initialEnv), initialStore, Kont0Addr, initialTime, emptyExt)
+      SchemeState(Control.Ev(expr, initialEnv), initialStore, Kont0Addr, initialTime, emptyExt)
 
     /** Returns a string representation of the store. */
     def storeString(store: Sto, primitives: Boolean = false): String =
@@ -383,7 +390,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
      * Evaluate a literal value, these are evaluated to equivalent representations in the abstract domain. A string literal is allocated in the store
      * at a value address
      */
-    private def evalLiteralVal(
+    protected def evalLiteralVal(
         lit: SchemeValue,
         env: Env,
         sto: Sto,
@@ -417,7 +424,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       ): Set[State] =
         val res: Val = env
           .lookup(id.name)
-          .map(readStoV(sto, _))
+          .map(readStoV(sto, _, ext))
           .getOrElse(inject(lattice.bottom))
 
         Set(SchemeState(Control.Ap(res), sto, kont, t, ext))
@@ -509,7 +516,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
             val (sto1, frame, t1) = pushFrame(binding._2, env, sto, kont, LetrecFrame(addresses1, values, bindings, body, env), t)
             Set(SchemeState(Control.Ev(binding._2, env), sto1, frame, t1, ext))
 
-    private def applyFun(
+    protected def applyFun(
         fexp: SchemeFuncall,
         func: Val,
         argv: List[Val],
@@ -562,9 +569,26 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           Set()
       }
 
-    /** Apply the given value as a primitive function (if the value is a primitive function) */
-    private def applyPrim(
+    /** Call to the given primitive while ingoring the changes to the store */
+    protected def callPrimitive(
         fexp: SchemeExp,
+        func: SchemePrimitive[LatVal, Address],
+        argv: List[Val],
+      ): LatVal =
+        given bridge: InterpreterBridge = InterpreterBridge(initialEnv, initialStore, Kont0Addr, initialTime)
+        func.callMF(fexp, argv.map(project)) match
+            case MayFailSuccess(vlu) =>
+              val sto1 = bridge.updatedSto
+              vlu
+            case MayFailBoth(vlu, _) =>
+              val sto1 = bridge.updatedSto
+              vlu
+            // executing the primitive is unsuccessfull, no successors states are generated
+            case MayFailError(_) => lattice.bottom
+
+    /** Apply the given value as a primitive function (if the value is a primitive function) */
+    protected def applyPrim(
+        fexp: SchemeFuncall,
         func: Val,
         argv: List[Val],
         env: Env,
@@ -628,9 +652,15 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     protected def continueWiths(sto: Sto, kont: Address)(f: (Address) => Set[SchemeState]): Set[State] =
       f(kont)
 
+    /** From the given store get a set of continuations associated with  the given address */
+    protected def readKonts(sto: Sto, kont: Address): Set[Kont] =
+      readSto(sto, kont) match
+          case Storable.K(ks) => ks
+          case _              => Set()
+
     /** Apply the given continuation with the given value */
     def continue(value: Val, sto: Sto, kont: Address, t: Timestamp, ext: Ext): Set[State] =
-      (readSto(sto, kont) match { case Storable.K(ks) => ks; case _ => ??? }).flatMap {
+      readKonts(sto, kont).flatMap {
         // (Ap(v), env, sto, assgn(x) :: k) ==> (Ap(nil), env, sto', k)
         //    where sto' = sto [ env(x) -> v ]
         case AssFrame(id, env, Some(next)) =>
