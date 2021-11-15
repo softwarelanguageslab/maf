@@ -8,7 +8,7 @@ import maf.language.scheme.*
 import maf.language.scheme.interpreter.SchemeInterpreter
 import maf.language.sexp.Value
 import maf.modular.incremental.ProgramVersionExtracter.getVersion
-import maf.util.benchmarks.Timeout
+import maf.util.benchmarks.*
 import maf.util.{Reader, Writer}
 
 import scala.concurrent.TimeoutException
@@ -188,6 +188,8 @@ object ProgramChanger:
             case _                   => false
         true
 
+    var stats: Table[Int] = Table.empty
+
     def changeBodyStatements(in: String, out: String, previouslyGenerated: List[String]): Option[String] =
         removed = 0
         added = 0
@@ -210,32 +212,38 @@ object ProgramChanger:
             )
             Writer.write(writer, newProgramString)
             Writer.close(writer)
+            stats = stats
+              .add(out, "added", added)
+              .add(out, "removed", removed)
+              .add(out, "swaps", swaps)
+              .add(out, "if-neg", negatedPredicate)
+              .add(out, "if-swap", branchesSwapped)
+              .add(out, "idFn", idCallsAdded)
             Some(newProgramString) // Returns true if something has changed.
         else None
-end ProgramChanger
-
-object Changer:
 
     def main(args: Array[String]): Unit =
         val inputFiles = SchemeBenchmarkPrograms.sequentialBenchmarks.toList // if args.isEmpty then List("test/R5RS/ad/quick.scm") else args.toList
         def outputFile(in: String, n: Int = 0) = "test/changes/scheme/generated/" ++ in.drop(5).dropRight(4).replace("/", "_").nn ++ s"-$n.scm"
         val amountToGenerate = 5
         println(s"Files to process: ${inputFiles.length}")
-        var generated = 0
+        val w = Writer.open("test/changes/scheme/generated/info.txt")
         for inputFile <- inputFiles do
             print(inputFile) // When an error is thrown, at least we will see which file caused problems.
             var times = amountToGenerate
             var programs: List[String] = Nil
             var tries = 0
-            while times > 0 && tries < 5 * amountToGenerate do
+            while times > 0 && tries < 100 do
                 tries += 1
                 ProgramChanger.changeBodyStatements(inputFile, outputFile(inputFile, times), programs).map { newProgram =>
                     times -= 1
-                    generated += 1
                     programs = newProgram :: programs
                 }
-            println(s": generated $amountToGenerate programs using $tries attempts.")
-        println(s"Finished processing. Generated $generated files.")
+            if times > 0 then Writer.writeln(w, s"Could not generate sufficient programs for $inputFile.")
+        Writer.writeln(w, "")
+        Writer.write(w, stats.toCSVString())
+        Writer.close(w)
+        println(s"Finished processing.")
 
     // Moves erroneous files to a subdirectory.
     def moveErroneousPrograms(): Unit =
@@ -249,8 +257,8 @@ object Changer:
                 val source = new File(file).toPath
                 val target = new File(basePath + "/erroneous" + file.drop(basePath.length)).toPath
                 Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
-end Changer
+end ProgramChanger
 
 object Mover:
     def main(args: Array[String]): Unit =
-      Changer.moveErroneousPrograms()
+      ProgramChanger.moveErroneousPrograms()
