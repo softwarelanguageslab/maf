@@ -91,7 +91,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
           // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
           // This should improve both performance and precision.
           workList = workList - cmp
-          for to <- cachedSpawns(cmp) do unspawn(to) // Transitively check for components that have to be deleted.
+          if configuration.CIcounting then for to <- cachedSpawns(cmp) do unspawn(to) // Transitively check for components that have to be deleted.
 
           // Delete the caches.
           cachedReadDeps -= cmp
@@ -137,7 +137,7 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     def deleteDisconnectedComponents(): Unit =
       // Only perform the next steps if there was a component that was unspawned but not collected.
       // In the other case, there can be no unreachable components left.
-      if deletionFlag then
+      if deletionFlag || !configuration.CIcounting then
           unreachableComponents().foreach(deleteComponent) // Make sure the components are actually deleted.
           deletionFlag = false
 
@@ -181,14 +181,16 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
             val Cdiff = C - component
 
             // For each component not previously spawned by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
-            (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
+            if configuration.CIcounting then (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
 
-            if version == New then // Check performed for efficiency but can be omitted.
+            if version == New && configuration.CIcounting then // Check performed for efficiency but can be omitted.
                 // The components previously spawned (except probably for the component itself), but that are no longer spawned.
                 val deltaC = cachedSpawns(component) -- Cdiff
                 deltaC.foreach(unspawn)
-            cachedSpawns += (component -> Cdiff) // Update the cache.
-            if version == New then deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
+            val old = cachedSpawns(component)
+            cachedSpawns += (component -> (if configuration.CIcounting then Cdiff else C)) //Cdiff) // Update the cache.
+            if version == New && (configuration.CIcounting || (old -- C).nonEmpty) then // Check whether tracing is needed: only if a component that was previously spawned is no longer spawned by this component. We do this to avoid spurious computations.
+                deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
 
         /* ------------------ */
         /* ----- Commit ----- */

@@ -27,6 +27,9 @@ case class IncrementalConfiguration(
     if cyclicValueInvalidation && !writeInvalidation then
         throw new InvalidConfigurationException("Illegal configuration state: cyclic value invalidation requires write invalidation.", this)
 
+    // Indicates which CI strategy needs to be used.
+    var CIcounting: Boolean = true
+
     private def booleanToString(b: Boolean): String = if b then "enabled" else "disabled"
 
     def infoString(): String =
@@ -38,7 +41,7 @@ case class IncrementalConfiguration(
        |***************************************""".stripMargin
 
     override def toString: String =
-        val ci = if componentInvalidation then "CI" else ""
+        val ci = if componentInvalidation then s"CI${if CIcounting then "-CT" else "-T"}" else ""
         val di = if dependencyInvalidation then "DI" else ""
         val wi =
           if writeInvalidation then if cyclicValueInvalidation then "WI+CY" else "WI"
