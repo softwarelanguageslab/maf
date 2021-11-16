@@ -178,11 +178,9 @@ object ProgramChanger:
     // A program is valid if it can be interpreted without errors. We only have to check the new version normally, but check both to be certain.
     def validProgram(program: SchemeExp, duration: Duration = Duration(1, MINUTES)): Boolean =
         val i = new SchemeInterpreter((_, _) => (), stack = false)
-        try i.run(program, Timeout.start(duration), Old)
-        catch
-            case e: TimeoutException =>
-            case _                   => return false
-        try i.run(program, Timeout.start(duration), New)
+        try
+            i.run(program, Timeout.start(duration), Old)
+            i.run(program, Timeout.start(duration), New)
         catch
             case e: TimeoutException =>
             case _                   => false
@@ -229,17 +227,18 @@ object ProgramChanger:
         println(s"Files to process: ${inputFiles.length}")
         val w = Writer.open("test/changes/scheme/generated/info.txt")
         for inputFile <- inputFiles do
-            print(inputFile) // When an error is thrown, at least we will see which file caused problems.
+            println(inputFile) // When an error is thrown, at least we will see which file caused problems.
             var times = amountToGenerate
             var programs: List[String] = Nil
             var tries = 0
-            while times > 0 && tries < 100 do
+            while times > 0 && tries < 500 do
                 tries += 1
                 ProgramChanger.changeBodyStatements(inputFile, outputFile(inputFile, times), programs).map { newProgram =>
                     times -= 1
                     programs = newProgram :: programs
                 }
-            if times > 0 then Writer.writeln(w, s"Could not generate sufficient programs for $inputFile.")
+            if times > 0 then
+                Writer.writeln(w, s"Could not generate sufficient programs for $inputFile (${amountToGenerate - times} of $amountToGenerate).")
         Writer.writeln(w, "")
         Writer.write(w, stats.toCSVString())
         Writer.close(w)
