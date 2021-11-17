@@ -181,10 +181,12 @@ object ProgramChanger:
         try
             i.run(program, Timeout.start(duration), Old)
             i.run(program, Timeout.start(duration), New)
+            true
         catch
-            case e: TimeoutException =>
-            case _                   => false
-        true
+            case e: TimeoutException => true
+            case e =>
+              e.printStackTrace()
+              false
 
     var stats: Table[Int] = Table.empty
 
@@ -200,7 +202,7 @@ object ProgramChanger:
         val newProgramString = newProgram.prettyString()
         // Don't write the program if nothing has changed or the generated expression was a duplicate.
         if (removed + added + swaps + negatedPredicate != 0) && previouslyGenerated.find(_ == newProgramString).isEmpty && validProgram(
-              newProgram
+              CSchemeParser.parseProgram(newProgramString) // Need to do this, to allow preluded definitions to be added...
             )
         then
             val writer = Writer.open(out)
