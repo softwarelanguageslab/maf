@@ -69,9 +69,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     /* ***** Component invalidation ***** */
     /* ********************************** */
 
-    /** Keep track of the number of distinct components that have spawned a given component (excluding the component itself). */
-    var countedSpawns: Map[Component, Int] = Map().withDefaultValue(0)
-
     /**
      * Keeps track of the components spawned by a component (spawner -> spawnees). Used to determine whether a component spawns less other components.
      */
@@ -91,32 +88,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
           // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
           // This should improve both performance and precision.
           workList = workList - cmp
-          if configuration.CIcounting then for to <- cachedSpawns(cmp) do unspawn(to) // Transitively check for components that have to be deleted.
 
           // Delete the caches.
           cachedReadDeps -= cmp
           cachedSpawns -= cmp
-          countedSpawns -= cmp // Deleting this cache is only useful for memory optimisations (?) as the counter for cmp will be the default value of 0.
-
-    /** Registers that a component is no longer spawned by another component. If components become unreachable, these components will be removed. */
-    def unspawn(cmp: Component): Unit =
-      if visited(cmp) then // Only do this for non-collected components to avoid counts going below zero (though with the current benchmarks they seem always to be restored to zero for some reason...).
-          // (Counts can go below zero if an already reclaimed component is encountered here, which is possible due to the foreach in deleteDisconnectedComponents.)
-          // Update the spawn count information.
-          countedSpawns += (cmp -> (countedSpawns(cmp) - 1))
-          if countedSpawns(cmp) == 0 then deleteComponent(cmp)
-          // TODO employ a technique that does not require tracing?
-          else deletionFlag = true // Delete the component if it is no longer spawned by any other component.
-
-    /* ************************************************************ */
-    /* ***** Find and delete unreachable cycles of components ***** */
-    /* ************************************************************ */
-
-    /**
-     * Keeps track of whether a component was unspawned but not deleted. If no such component exists, then there is no chance of having unreachable
-     * components left (all are deleted). Otherwise, there might be an unreachable cycle of components.
-     */
-    var deletionFlag: Boolean = false
 
     /** Computes the set of reachable components (tracing from the Main component). */
     def reachableComponents(): Set[Component] =
@@ -132,14 +107,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
     /** Computes the set of unreachable components. */
     def unreachableComponents(): Set[Component] = visited -- reachableComponents()
-
-    /** Deletes components that are no longer 'reachable' from the Main component given a spawning relation. */
-    def deleteDisconnectedComponents(): Unit =
-      // Only perform the next steps if there was a component that was unspawned but not collected.
-      // In the other case, there can be no unreachable components left.
-      if deletionFlag || !configuration.CIcounting then
-          unreachableComponents().foreach(deleteComponent) // Make sure the components are actually deleted.
-          deletionFlag = false
 
     /* ************************************************************************* */
     /* ***** Incremental update: actually perform the incremental analysis ***** */
@@ -177,20 +144,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
         /** Removes outdated components, and components that become transitively outdated, by keeping track of spawning dependencies. */
         def refineComponents(): Unit =
-            // Subtract component to avoid circular circularities due to self-recursion (this is a circularity that can easily be spotted and hence immediately omitted).
-            val Cdiff = C - component
-
-            // For each component not previously spawned by this component, increase the spawn count. Do this before removing spawns, to avoid components getting collected that have just become reachable from this component.
-            if configuration.CIcounting then (Cdiff -- cachedSpawns(component)).foreach(cmp => countedSpawns += (cmp -> (countedSpawns(cmp) + 1)))
-
-            if version == New && configuration.CIcounting then // Check performed for efficiency but can be omitted.
-                // The components previously spawned (except probably for the component itself), but that are no longer spawned.
-                val deltaC = cachedSpawns(component) -- Cdiff
-                deltaC.foreach(unspawn)
             val old = cachedSpawns(component)
-            cachedSpawns += (component -> (if configuration.CIcounting then Cdiff else C)) //Cdiff) // Update the cache.
-            if version == New && (configuration.CIcounting || (old -- C).nonEmpty) then // Check whether tracing is needed: only if a component that was previously spawned is no longer spawned by this component. We do this to avoid spurious computations.
-                deleteDisconnectedComponents() // Delete components that are no longer reachable. Important: uses the updated cache!
+            cachedSpawns += (component -> C) // Update the cache.
+            if version == New && (old -- C).nonEmpty then // Check whether tracing is needed: only if a component that was previously spawned is no longer spawned by this component. We do this to avoid spurious computations.
+                unreachableComponents().foreach(deleteComponent) // Delete components that are no longer 'reachable' from the Main component given a spawning relation. Important: use the updated cache!
 
         /* ------------------ */
         /* ----- Commit ----- */
