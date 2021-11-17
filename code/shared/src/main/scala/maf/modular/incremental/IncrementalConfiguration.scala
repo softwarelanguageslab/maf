@@ -41,7 +41,7 @@ case class IncrementalConfiguration(
        |***************************************""".stripMargin
 
     override def toString: String =
-        val ci = if componentInvalidation then s"CI${if CIcounting then "-CT" else "-T"}" else ""
+        val ci = if componentInvalidation then s"CI${if CIcounting then "/CT" else "/T"}" else ""
         val di = if dependencyInvalidation then "DI" else ""
         val wi =
           if writeInvalidation then if cyclicValueInvalidation then "WI+CY" else "WI"
@@ -104,13 +104,13 @@ object IncrementalConfiguration:
         ci_di,
         ci_wi,
         di_wi,
-        wi_cy,
+        //wi_cy,
         // Three optimisations
         ci_di_wi,
-        ci_wi_cy,
-        di_wi_cy,
+        //ci_wi_cy,
+        //di_wi_cy,
         // Four optimisations
-        allOptimisations,
+        //allOptimisations,
       )
 
     case class InvalidConfigurationException(message: String, config: IncrementalConfiguration) extends Exception(message)

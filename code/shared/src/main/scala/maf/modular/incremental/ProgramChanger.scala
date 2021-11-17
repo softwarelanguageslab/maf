@@ -241,7 +241,7 @@ object ProgramChanger:
                 Writer.writeln(fail, s"Could not generate sufficient programs for $inputFile (${amountToGenerate - times} of $amountToGenerate).")
         Writer.close(fail)
         val w = Writer.open("test/changes/scheme/generated/info.csv")
-        Writer.write(w, stats.toCSVString(rowname = "benchmark"))
+        Writer.write(w, stats.toCSVString(rowName = "benchmark"))
         Writer.close(w)
         println(s"Finished processing.")
 
