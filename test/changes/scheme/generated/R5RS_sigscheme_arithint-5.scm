@@ -7,10 +7,10 @@
 ; * calls to id fun: 0
 (letrec ((*max* 20001)
          (test (lambda (x y)
+                 (<change>
+                    ()
+                    test)
                  (if (= x *max*)
                     x
                     (test (- x (+ (* y 2) (/ x (abs y)))) (- y (+ (* x 2) (/ y (abs x)))))))))
-   (<change>
-      ()
-      test)
    (test 1 1))

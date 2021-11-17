@@ -1,15 +1,15 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 0
+; * negated predicates: 1
+; * swapped branches: 1
 ; * calls to id fun: 1
 (letrec ((show (lambda (namen punten test?)
                  (if (null? namen)
                     ()
                     (let ((res (show (cdr namen) (cdr punten) test?)))
-                       (if (test? (car punten))
+                       (if (<change> (test? (car punten)) (not (test? (car punten))))
                           (cons (car namen) res)
                           res)))))
          (one (lambda (namen punten)
@@ -40,13 +40,16 @@
                                                      (één-buis? rest))))))
                                (geen-buis? (lambda (punten)
                                              (if (null? punten)
-                                                #t
-                                                (let ((punt (car punten))
-                                                      (rest (cdr punten)))
-                                                   (<change>
-                                                      ()
-                                                      (< punt 10))
-                                                   (if (< punt 10) #f (geen-buis? rest)))))))
+                                                (<change>
+                                                   #t
+                                                   (let ((punt (car punten))
+                                                         (rest (cdr punten)))
+                                                      (if (< punt 10) #f (geen-buis? rest))))
+                                                (<change>
+                                                   (let ((punt (car punten))
+                                                         (rest (cdr punten)))
+                                                      (if (< punt 10) #f (geen-buis? rest)))
+                                                   #t)))))
                          (show namen punten één-buis?)))))))
    (equal?
       (one

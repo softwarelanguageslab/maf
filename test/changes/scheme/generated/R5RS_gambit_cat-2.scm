@@ -13,16 +13,16 @@
                           (close-output-port outport)
                           (begin
                              (write-char x outport)
-                             (catport port))))))
+                             (<change>
+                                (catport port)
+                                ((lambda (x) x) (catport port))))))))
          (go (lambda ()
+               (set! inport (open-input-file "input.txt"))
+               (set! outport (open-output-file "output.txt"))
                (<change>
-                  (set! inport (open-input-file "input.txt"))
-                  (set! outport (open-output-file "output.txt")))
-               (<change>
-                  (set! outport (open-output-file "output.txt"))
-                  (set! inport (open-input-file "input.txt")))
-               (catport inport)
+                  (catport inport)
+                  (close-input-port inport))
                (<change>
                   (close-input-port inport)
-                  ((lambda (x) x) (close-input-port inport))))))
+                  (catport inport)))))
    (go))

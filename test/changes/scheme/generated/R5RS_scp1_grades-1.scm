@@ -1,8 +1,8 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((show (lambda (namen punten test?)
@@ -13,15 +13,12 @@
                           (cons (car namen) res)
                           res)))))
          (one (lambda (namen punten)
-                (<change>
-                   ()
-                   show)
                 (letrec ((één-buis? (lambda (punten)
                                       (if (null? punten)
                                          #f
                                          (let ((punt (car punten))
                                                (rest (cdr punten)))
-                                            (if (< punt 10)
+                                            (if (<change> (< punt 10) (not (< punt 10)))
                                                (geen-buis? rest)
                                                (één-buis? rest))))))
                          (geen-buis? (lambda (punten)

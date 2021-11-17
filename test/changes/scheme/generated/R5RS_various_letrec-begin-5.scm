@@ -1,7 +1,7 @@
 ; Changes:
-; * removed: 0
+; * removed: 1
 ; * added: 0
-; * swaps: 1
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 0
@@ -11,8 +11,6 @@
          (res (begin
                 (<change>
                    (h)
-                   i)
-                (<change>
-                   i
-                   (h)))))
+                   ())
+                i)))
    res)

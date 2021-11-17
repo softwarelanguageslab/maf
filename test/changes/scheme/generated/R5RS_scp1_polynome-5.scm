@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
+; * added: 2
 ; * swaps: 0
 ; * negated predicates: 1
 ; * swapped branches: 1
@@ -12,18 +12,18 @@
                                                (if (eq? msg 'y-value) y (error "wrong message"))))))
                           dispatch)))
          (make-segment (lambda (start end)
-                         (<change>
-                            ()
-                            +)
-                         (<change>
-                            ()
-                            (display start))
                          (letrec ((midpoint (lambda ()
-                                              (make-point (/ (+ (start 'x-value) (end 'x-value)) 2) (/ (+ (start 'y-value) (end 'y-value)) 2))))
+                                              (<change>
+                                                 ()
+                                                 end)
+                                              (<change>
+                                                 (make-point (/ (+ (start 'x-value) (end 'x-value)) 2) (/ (+ (start 'y-value) (end 'y-value)) 2))
+                                                 ((lambda (x) x)
+                                                    (make-point (/ (+ (start 'x-value) (end 'x-value)) 2) (/ (+ (start 'y-value) (end 'y-value)) 2))))))
                                   (dispatch (lambda (msg)
                                               (if (eq? msg 'start-point)
                                                  start
-                                                 (if (eq? msg 'end-point)
+                                                 (if (<change> (eq? msg 'end-point) (not (eq? msg 'end-point)))
                                                     end
                                                     (if (eq? msg 'midpoint)
                                                        (midpoint)
@@ -43,21 +43,11 @@
                                                               (loop (- ctr 1) (cons (+ (coordinate ctr) ((w-vector 'coordinate) ctr)) res))))))
                                              (loop (dimension) ()))))
                                    (dispatch (lambda (msg)
-                                               (<change>
-                                                  (if (eq? msg 'dimension)
-                                                     (dimension)
-                                                     (if (eq? msg 'coordinate)
-                                                        coordinate
-                                                        (if (eq? msg 'add) add (error "wrong message"))))
-                                                  ((lambda (x) x)
-                                                     (if (eq? msg 'dimension)
-                                                        (dimension)
-                                                        (if (eq? msg 'coordinate)
-                                                           coordinate
-                                                           (if (eq? msg 'add) add (error "wrong message")))))))))
-                             (<change>
-                                ()
-                                dispatch)
+                                               (if (eq? msg 'dimension)
+                                                  (dimension)
+                                                  (if (eq? msg 'coordinate)
+                                                     coordinate
+                                                     (if (eq? msg 'add) add (error "wrong message")))))))
                              dispatch)))
          (make-polynome (lambda coefficients
                           (let ((polynome (apply make-w-vector coefficients)))
@@ -66,11 +56,21 @@
                                       (order (lambda ()
                                                (- (polynome 'dimension) 1)))
                                       (dispatch (lambda (msg)
-                                                  (if (eq? msg 'order)
-                                                     (order)
-                                                     (if (eq? msg 'coefficient)
-                                                        coefficient
-                                                        (error "wrong message"))))))
+                                                  (<change>
+                                                     ()
+                                                     coefficient)
+                                                  (<change>
+                                                     (if (eq? msg 'order)
+                                                        (order)
+                                                        (if (eq? msg 'coefficient)
+                                                           coefficient
+                                                           (error "wrong message")))
+                                                     ((lambda (x) x)
+                                                        (if (eq? msg 'order)
+                                                           (order)
+                                                           (if (eq? msg 'coefficient)
+                                                              coefficient
+                                                              (error "wrong message"))))))))
                                 dispatch))))
          (point1 (make-point 6 10))
          (point2 (make-point 10 20))
@@ -79,10 +79,10 @@
          (w-vector1 (make-w-vector 1 2 3))
          (w-vector2 (make-w-vector 4 5 6))
          (polynome (make-polynome 1 2 3)))
-   (<change>
-      (if (= (point1 'x-value) 6)
-         (if (= ((segment 'start-point) 'y-value) 10)
-            (if (= (midpoint 'x-value) 8)
+   (if (= (point1 'x-value) 6)
+      (if (= ((segment 'start-point) 'y-value) 10)
+         (if (= (midpoint 'x-value) 8)
+            (<change>
                (if (= ((w-vector1 'coordinate) 2) 2)
                   (if (= ((w-vector2 'coordinate) 1) 4)
                      (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
@@ -93,29 +93,16 @@
                      #f)
                   #f)
                #f)
-            #f)
-         #f)
-      ((lambda (x) x)
-         (if (<change> (= (point1 'x-value) 6) (not (= (point1 'x-value) 6)))
-            (if (= ((segment 'start-point) 'y-value) 10)
-               (if (= (midpoint 'x-value) 8)
-                  (if (= ((w-vector1 'coordinate) 2) 2)
-                     (if (= ((w-vector2 'coordinate) 1) 4)
-                        (<change>
-                           (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
-                              (if (= (polynome 'order) 2)
-                                 (= ((polynome 'coefficient) 2) 2)
-                                 #f)
-                              #f)
+            (<change>
+               #f
+               (if (= ((w-vector1 'coordinate) 2) 2)
+                  (if (= ((w-vector2 'coordinate) 1) 4)
+                     (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
+                        (if (= (polynome 'order) 2)
+                           (= ((polynome 'coefficient) 2) 2)
                            #f)
-                        (<change>
-                           #f
-                           (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
-                              (if (= (polynome 'order) 2)
-                                 (= ((polynome 'coefficient) 2) 2)
-                                 #f)
-                              #f)))
+                        #f)
                      #f)
-                  #f)
-               #f)
-            #f))))
+                  #f)))
+         #f)
+      #f))

@@ -10,9 +10,6 @@
                            (lambda (t)
                               (lambda (t)
                                  (lambda (i)
-                                    (<change>
-                                       ()
-                                       (((((((((W o) r) k) W) o) r) k) W) o))
                                     (lambda (n)
                                        (lambda (g)
                                           (lambda (S)
@@ -32,5 +29,8 @@
                                                                                     (lambda (break)
                                                                                        (((((((((((((((((((((W o) r) k) W) o) r) k) W) o) r) k) W) o) r) k) W) o) r) k) !) break)))))))))))))))))))))))))
                 (let ((Z z))
+                   (<change>
+                      ()
+                      z)
                    (((((((((((((((((((z z) z) z) z) z) Z) Z) Z) Z) Z) Z) Z) z) z) z) z) z) z) z)))))
    ((fix (lambda (f) (lambda (n) (if (zero? n) 1 (* n (f (- n 1))))))) 9))

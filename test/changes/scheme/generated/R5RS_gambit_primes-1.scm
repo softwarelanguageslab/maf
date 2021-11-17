@@ -3,29 +3,36 @@
 ; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 0
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((interval-list (lambda (m n)
-                          (<change>
-                             ()
-                             (display m))
                           (if (> m n)
-                             (<change>
-                                ()
-                                (cons m (interval-list (+ 1 m) n)))
-                             (<change>
-                                (cons m (interval-list (+ 1 m) n))
-                                ()))))
+                             ()
+                             (cons m (interval-list (+ 1 m) n)))))
          (sieve (lambda (l)
-                  (letrec ((remove-multiples (lambda (n l)
-                                               (if (null? l)
-                                                  ()
-                                                  (if (= (modulo (car l) n) 0)
-                                                     (remove-multiples n (cdr l))
-                                                     (cons (car l) (remove-multiples n (cdr l))))))))
-                     (if (null? l)
-                        ()
-                        (cons (car l) (sieve (remove-multiples (car l) (cdr l))))))))
+                  (<change>
+                     (letrec ((remove-multiples (lambda (n l)
+                                                  (if (null? l)
+                                                     ()
+                                                     (if (= (modulo (car l) n) 0)
+                                                        (remove-multiples n (cdr l))
+                                                        (cons (car l) (remove-multiples n (cdr l))))))))
+                        (if (null? l)
+                           ()
+                           (cons (car l) (sieve (remove-multiples (car l) (cdr l))))))
+                     ((lambda (x) x)
+                        (letrec ((remove-multiples (lambda (n l)
+                                                     (<change>
+                                                        ()
+                                                        n)
+                                                     (if (null? l)
+                                                        ()
+                                                        (if (= (modulo (car l) n) 0)
+                                                           (remove-multiples n (cdr l))
+                                                           (cons (car l) (remove-multiples n (cdr l))))))))
+                           (if (null? l)
+                              ()
+                              (cons (car l) (sieve (remove-multiples (car l) (cdr l))))))))))
          (primes<= (lambda (n)
                      (sieve (interval-list 2 n)))))
    (equal?

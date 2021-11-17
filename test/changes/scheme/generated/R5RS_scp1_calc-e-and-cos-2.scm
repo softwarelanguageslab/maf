@@ -13,7 +13,7 @@
                                                (iter (+ ctr 1) (+ res (/ 1 new-fac)) new-fac))))))
                            (<change>
                               ()
-                              (iter 1 1 1))
+                              1)
                            (iter 1 1 1))))
          (calc-cos (lambda (x n)
                      (letrec ((iter (lambda (ctr acc fac xpow sign)

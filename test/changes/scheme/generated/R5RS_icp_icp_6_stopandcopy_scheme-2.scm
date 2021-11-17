@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 3
-; * swaps: 5
-; * negated predicates: 2
+; * removed: 2
+; * added: 4
+; * swaps: 1
+; * negated predicates: 0
 ; * swapped branches: 1
-; * calls to id fun: 4
+; * calls to id fun: 6
 (letrec ((BIAS 1000)
          (NMBR-prefix 1)
          (PAIR-prefix 2)
@@ -19,6 +19,9 @@
          (VALUE (lambda (val)
                   (remainder (abs val) BIAS)))
          (MAKE (lambda (prefix val)
+                 (<change>
+                    ()
+                    prefix)
                  (+ prefix val)))
          (FREE 0)
          (SIZE 16)
@@ -34,34 +37,26 @@
                    (error "pair expected"))))
          (set-car! (lambda (cons-val car-val)
                      (if (pair? cons-val)
-                        (<change>
-                           (vector-set! THE-CARS (VALUE cons-val) car-val)
-                           (error "pair expected"))
-                        (<change>
-                           (error "pair expected")
-                           (vector-set! THE-CARS (VALUE cons-val) car-val)))))
+                        (vector-set! THE-CARS (VALUE cons-val) car-val)
+                        (error "pair expected"))))
          (set-cdr! (lambda (cons-val cdr-val)
                      (if (pair? cons-val)
                         (vector-set! THE-CDRS (VALUE cons-val) cdr-val)
                         (error "pair expected"))))
          (number? (lambda (val)
-                    (<change>
-                       (eq? (PREFIX val) NMBR-prefix)
-                       ((lambda (x) x) (eq? (PREFIX val) NMBR-prefix)))))
+                    (eq? (PREFIX val) NMBR-prefix)))
          (pair? (lambda (val)
-                  (eq? (PREFIX val) PAIR-prefix)))
+                  (<change>
+                     (eq? (PREFIX val) PAIR-prefix)
+                     ((lambda (x) x) (eq? (PREFIX val) PAIR-prefix)))))
          (null? (lambda (val)
                   (eq? (PREFIX val) NULL-prefix)))
          (MASK? (lambda (val)
                   (eq? (PREFIX val) MASK-prefix)))
          (cons (lambda (car-val cdr-val)
-                 (if (<change> (= FREE SIZE) (not (= FREE SIZE)))
-                    (RECLAIM)
-                    #f)
+                 (if (= FREE SIZE) (RECLAIM) #f)
                  (let ((hold FREE))
-                    (<change>
-                       (set! FREE (+ FREE 1))
-                       ((lambda (x) x) (set! FREE (+ FREE 1))))
+                    (set! FREE (+ FREE 1))
                     (vector-set! THE-CARS hold car-val)
                     (vector-set! THE-CDRS hold cdr-val)
                     (MAKE PAIR hold))))
@@ -70,36 +65,48 @@
          (NEW-CDRS (make-vector SIZE NULL))
          (RECLAIM (lambda ()
                     (letrec ((relocate-old-result-in-new (lambda (val)
-                                                           (if (<change> (pair? val) (not (pair? val)))
-                                                              (let* ((old (VALUE val))
-                                                                     (old-car (vector-ref THE-CARS old))
-                                                                     (old-cdr (vector-ref THE-CDRS old)))
-                                                                 (if (MASK? old-car)
-                                                                    old-cdr
-                                                                    (let* ((new FREE)
-                                                                           (pair (MAKE PAIR new)))
-                                                                       (set! FREE (+ FREE 1))
-                                                                       (<change>
+                                                           (if (pair? val)
+                                                              (<change>
+                                                                 (let* ((old (VALUE val))
+                                                                        (old-car (vector-ref THE-CARS old))
+                                                                        (old-cdr (vector-ref THE-CDRS old)))
+                                                                    (if (MASK? old-car)
+                                                                       old-cdr
+                                                                       (let* ((new FREE)
+                                                                              (pair (MAKE PAIR new)))
+                                                                          (set! FREE (+ FREE 1))
                                                                           (vector-set! NEW-CARS new old-car)
-                                                                          (vector-set! NEW-CDRS new old-cdr))
-                                                                       (<change>
                                                                           (vector-set! NEW-CDRS new old-cdr)
-                                                                          (vector-set! NEW-CARS new old-car))
-                                                                       (vector-set! THE-CARS old MASK)
-                                                                       (vector-set! THE-CDRS old pair)
-                                                                       pair)))
-                                                              val)))
+                                                                          (vector-set! THE-CARS old MASK)
+                                                                          (vector-set! THE-CDRS old pair)
+                                                                          pair)))
+                                                                 val)
+                                                              (<change>
+                                                                 val
+                                                                 (let* ((old (VALUE val))
+                                                                        (old-car (vector-ref THE-CARS old))
+                                                                        (old-cdr (vector-ref THE-CDRS old)))
+                                                                    (if (MASK? old-car)
+                                                                       old-cdr
+                                                                       (let* ((new FREE)
+                                                                              (pair (MAKE PAIR new)))
+                                                                          (set! FREE (+ FREE 1))
+                                                                          (vector-set! NEW-CARS new old-car)
+                                                                          (vector-set! NEW-CDRS new old-cdr)
+                                                                          (vector-set! THE-CARS old MASK)
+                                                                          (vector-set! THE-CDRS old pair)
+                                                                          pair)))))))
                              (gc-flip (lambda ()
                                         (<change>
-                                           ()
-                                           (display temp))
-                                        (let ((temp THE-CDRS))
-                                           (<change>
+                                           (let ((temp THE-CDRS))
                                               (set! THE-CDRS NEW-CDRS)
                                               (set! NEW-CDRS temp))
-                                           (<change>
-                                              (set! NEW-CDRS temp)
-                                              (set! THE-CDRS NEW-CDRS)))
+                                           ((lambda (x) x)
+                                              (let ((temp THE-CDRS))
+                                                 (<change>
+                                                    (set! THE-CDRS NEW-CDRS)
+                                                    ((lambda (x) x) (set! THE-CDRS NEW-CDRS)))
+                                                 (set! NEW-CDRS temp))))
                                         (let ((temp THE-CARS))
                                            (set! THE-CARS NEW-CARS)
                                            (set! NEW-CARS temp))))
@@ -108,12 +115,18 @@
                                            (gc-flip)
                                            (let ((old-car (vector-ref NEW-CARS scan))
                                                  (old-cdr (vector-ref NEW-CDRS scan)))
+                                              (<change>
+                                                 ()
+                                                 relocate-old-result-in-new)
                                               (vector-set! NEW-CARS scan (relocate-old-result-in-new old-car))
                                               (vector-set! NEW-CDRS scan (relocate-old-result-in-new old-cdr))
-                                              (gc-loop (+ scan 1)))))))
+                                              (<change>
+                                                 (gc-loop (+ scan 1))
+                                                 ((lambda (x) x) (gc-loop (+ scan 1)))))))))
+                       (set! FREE 0)
                        (<change>
-                          (set! FREE 0)
-                          ())
+                          ()
+                          gc-loop)
                        (set! ROOT (relocate-old-result-in-new ROOT))
                        (gc-loop 0))))
          (_ (lambda (val)
@@ -141,44 +154,37 @@
          (show (lambda ()
                  (display "cars > ")
                  (display THE-CARS)
-                 (newline)
+                 (<change>
+                    (newline)
+                    ())
+                 (<change>
+                    ()
+                    (display display))
                  (display "cdrs > ")
-                 (<change>
-                    (display THE-CDRS)
-                    ((lambda (x) x) (display THE-CDRS)))
+                 (display THE-CDRS)
                  (newline)
-                 (display "ROOT > ")
-                 (display ROOT)
                  (<change>
-                    (display "  FREE > ")
-                    (display FREE))
+                    (display "ROOT > ")
+                    ())
+                 (display ROOT)
+                 (display "  FREE > ")
                  (<change>
                     (display FREE)
-                    (display "  FREE > "))
-                 (newline))))
-   (<change>
-      (set! ROOT (cons (cons (cons _11 _12) (cons _13 (cons _14 _15))) ROOT))
-      (cons _21 _22))
+                    (newline))
+                 (<change>
+                    (newline)
+                    (display FREE)))))
+   (set! ROOT (cons (cons (cons _11 _12) (cons _13 (cons _14 _15))) ROOT))
    (<change>
       (cons _21 _22)
-      (set! ROOT (cons (cons (cons _11 _12) (cons _13 (cons _14 _15))) ROOT)))
-   (<change>
-      (set! ROOT (cons (cons _31 (cons (cons _32 _33) (cons _34 (cons _35 _36)))) ROOT))
-      ((lambda (x) x) (set! ROOT (cons (cons _31 (cons (cons _32 _33) (cons _34 (cons _35 _36)))) ROOT))))
-   (<change>
-      ()
-      ROOT)
+      ((lambda (x) x) (cons _21 _22)))
+   (set! ROOT (cons (cons _31 (cons (cons _32 _33) (cons _34 (cons _35 _36)))) ROOT))
    (set-cdr! (cdr (car ROOT)) ROOT)
-   (<change>
-      ()
-      cdr)
    (cons _41 (cons _42 _43))
    (set! ROOT (cons (cons _51 _52) ROOT))
    (<change>
       (set-car! (car ROOT) (cdr (car (cdr ROOT))))
-      (show))
-   (<change>
-      (show)
-      (set-car! (car ROOT) (cdr (car (cdr ROOT)))))
+      ((lambda (x) x) (set-car! (car ROOT) (cdr (car (cdr ROOT))))))
+   (show)
    (cons _61 _62)
    (show))

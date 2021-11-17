@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 3
-; * swaps: 4
+; * removed: 2
+; * added: 2
+; * swaps: 2
 ; * negated predicates: 0
-; * swapped branches: 0
-; * calls to id fun: 4
+; * swapped branches: 1
+; * calls to id fun: 5
 (letrec ((result ())
          (display2 (lambda (item)
                      (set! result (cons item result))))
@@ -15,7 +15,7 @@
          (key-ref (lambda (row)
                     (<change>
                        ()
-                       0)
+                       (vector-ref row 0))
                     (vector-ref row 0)))
          (name-ref (lambda (row)
                      (vector-ref row 1)))
@@ -28,39 +28,30 @@
          (name-set! (lambda (row value)
                       (vector-set! row 1 value)))
          (age-set! (lambda (row value)
-                     (<change>
-                        ()
-                        (vector-set! row 2 value))
                      (vector-set! row 2 value)))
          (wage-set! (lambda (row value)
                       (<change>
                          (vector-set! row 3 value)
                          ((lambda (x) x) (vector-set! row 3 value)))))
          (show-row (lambda (row)
-                     (<change>
-                        (display2 "[Sleutel:")
-                        ())
+                     (display2 "[Sleutel:")
                      (display2 (key-ref row))
                      (display2 "]")
-                     (display2 "[Naam:")
+                     (<change>
+                        (display2 "[Naam:")
+                        ((lambda (x) x) (display2 "[Naam:")))
                      (display2 (name-ref row))
+                     (display2 "]")
                      (<change>
-                        (display2 "]")
-                        ((lambda (x) x) (display2 "]")))
-                     (display2 "[Leeftijd:")
-                     (display2 (age-ref row))
+                        (display2 "[Leeftijd:")
+                        (display2 (age-ref row)))
                      (<change>
-                        (display2 "]")
-                        (display2 "[Salaris:"))
-                     (<change>
-                        (display2 "[Salaris:")
-                        (display2 "]"))
-                     (<change>
-                        (display2 (wage-ref row))
-                        (display2 "]"))
-                     (<change>
-                        (display2 "]")
-                        (display2 (wage-ref row)))))
+                        (display2 (age-ref row))
+                        (display2 "[Leeftijd:"))
+                     (display2 "]")
+                     (display2 "[Salaris:")
+                     (display2 (wage-ref row))
+                     (display2 "]")))
          (make-table (lambda (rows)
                        (make-vector rows 0)))
          (table-size (lambda (table)
@@ -70,559 +61,307 @@
                        (vector-ref table pos)
                        #f)))
          (row-set! (lambda (table pos row)
-                     (<change>
-                        (if (< pos (table-size table))
-                           (vector-set! table pos row)
-                           #f)
-                        ((lambda (x) x) (if (< pos (table-size table)) (vector-set! table pos row) #f)))))
+                     (if (< pos (table-size table))
+                        (vector-set! table pos row)
+                        #f)))
          (show-table (lambda (table)
                        (letrec ((iter (lambda (index)
                                         (if (= index (table-size table))
-                                           (newline2)
-                                           (begin
-                                              (show-row (row-ref table index))
+                                           (<change>
                                               (newline2)
-                                              (iter (+ index 1)))))))
+                                              (begin
+                                                 ((lambda (x) x) (show-row (row-ref table index)))
+                                                 (newline2)
+                                                 (iter (+ index 1))))
+                                           (<change>
+                                              (begin
+                                                 (show-row (row-ref table index))
+                                                 (newline2)
+                                                 (iter (+ index 1)))
+                                              (newline2))))))
                           (iter 0))))
          (table (make-table 10)))
-   (row-set! table 0 (make-row 8 'Bernard 45 120000))
-   (<change>
-      (row-set! table 1 (make-row 3 'Dirk 26 93000))
-      (row-set! table 2 (make-row 6 'George 48 130000)))
-   (<change>
-      (row-set! table 2 (make-row 6 'George 48 130000))
-      (row-set! table 1 (make-row 3 'Dirk 26 93000)))
    (<change>
       ()
-      __toplevel_cons)
-   (row-set! table 3 (make-row 6 'Greet 27 75000))
+      "[Sleutel:")
+   (row-set! table 0 (make-row 8 'Bernard 45 120000))
+   (row-set! table 1 (make-row 3 'Dirk 26 93000))
+   (<change>
+      (row-set! table 2 (make-row 6 'George 48 130000))
+      ())
+   (<change>
+      (row-set! table 3 (make-row 6 'Greet 27 75000))
+      ((lambda (x) x) (row-set! table 3 (make-row 6 'Greet 27 75000))))
    (<change>
       (row-set! table 4 (make-row 1 'Kaat 18 69000))
       (row-set! table 5 (make-row 5 'Mauranne 21 69000)))
    (<change>
       (row-set! table 5 (make-row 5 'Mauranne 21 69000))
       (row-set! table 4 (make-row 1 'Kaat 18 69000)))
-   (row-set! table 6 (make-row 4 'Peter 33 80000))
+   (<change>
+      (row-set! table 6 (make-row 4 'Peter 33 80000))
+      ())
    (row-set! table 7 (make-row 2 'Piet 25 96000))
    (row-set! table 8 (make-row 9 'Tom 26 96000))
    (row-set! table 9 (make-row 6 'Veronique 36 115000))
-   (<change>
-      (letrec ((expected-result (__toplevel_cons
+   (letrec ((expected-result (__toplevel_cons
+                               'newline
+                               (__toplevel_cons
                                   'newline
                                   (__toplevel_cons
-                                     'newline
+                                     "]"
                                      (__toplevel_cons
-                                        "]"
+                                        115000
                                         (__toplevel_cons
-                                           115000
+                                           "[Salaris:"
                                            (__toplevel_cons
-                                              "[Salaris:"
+                                              "]"
                                               (__toplevel_cons
-                                                 "]"
+                                                 36
                                                  (__toplevel_cons
-                                                    36
+                                                    "[Leeftijd:"
                                                     (__toplevel_cons
-                                                       "[Leeftijd:"
+                                                       "]"
                                                        (__toplevel_cons
-                                                          "]"
+                                                          'Veronique
                                                           (__toplevel_cons
-                                                             'Veronique
+                                                             "[Naam:"
                                                              (__toplevel_cons
-                                                                "[Naam:"
+                                                                "]"
                                                                 (__toplevel_cons
-                                                                   "]"
+                                                                   6
                                                                    (__toplevel_cons
-                                                                      6
+                                                                      "[Sleutel:"
                                                                       (__toplevel_cons
-                                                                         "[Sleutel:"
+                                                                         'newline
                                                                          (__toplevel_cons
-                                                                            'newline
+                                                                            "]"
                                                                             (__toplevel_cons
-                                                                               "]"
+                                                                               96000
                                                                                (__toplevel_cons
-                                                                                  96000
+                                                                                  "[Salaris:"
                                                                                   (__toplevel_cons
-                                                                                     "[Salaris:"
+                                                                                     "]"
                                                                                      (__toplevel_cons
-                                                                                        "]"
+                                                                                        26
                                                                                         (__toplevel_cons
-                                                                                           26
+                                                                                           "[Leeftijd:"
                                                                                            (__toplevel_cons
-                                                                                              "[Leeftijd:"
+                                                                                              "]"
                                                                                               (__toplevel_cons
-                                                                                                 "]"
+                                                                                                 'Tom
                                                                                                  (__toplevel_cons
-                                                                                                    'Tom
+                                                                                                    "[Naam:"
                                                                                                     (__toplevel_cons
-                                                                                                       "[Naam:"
+                                                                                                       "]"
                                                                                                        (__toplevel_cons
-                                                                                                          "]"
+                                                                                                          9
                                                                                                           (__toplevel_cons
-                                                                                                             9
+                                                                                                             "[Sleutel:"
                                                                                                              (__toplevel_cons
-                                                                                                                "[Sleutel:"
+                                                                                                                'newline
                                                                                                                 (__toplevel_cons
-                                                                                                                   'newline
+                                                                                                                   "]"
                                                                                                                    (__toplevel_cons
-                                                                                                                      "]"
+                                                                                                                      96000
                                                                                                                       (__toplevel_cons
-                                                                                                                         96000
+                                                                                                                         "[Salaris:"
                                                                                                                          (__toplevel_cons
-                                                                                                                            "[Salaris:"
+                                                                                                                            "]"
                                                                                                                             (__toplevel_cons
-                                                                                                                               "]"
+                                                                                                                               25
                                                                                                                                (__toplevel_cons
-                                                                                                                                  25
+                                                                                                                                  "[Leeftijd:"
                                                                                                                                   (__toplevel_cons
-                                                                                                                                     "[Leeftijd:"
+                                                                                                                                     "]"
                                                                                                                                      (__toplevel_cons
-                                                                                                                                        "]"
+                                                                                                                                        'Piet
                                                                                                                                         (__toplevel_cons
-                                                                                                                                           'Piet
+                                                                                                                                           "[Naam:"
                                                                                                                                            (__toplevel_cons
-                                                                                                                                              "[Naam:"
+                                                                                                                                              "]"
                                                                                                                                               (__toplevel_cons
-                                                                                                                                                 "]"
+                                                                                                                                                 2
                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                    2
+                                                                                                                                                    "[Sleutel:"
                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                       "[Sleutel:"
+                                                                                                                                                       'newline
                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                          'newline
+                                                                                                                                                          "]"
                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                             "]"
+                                                                                                                                                             80000
                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                80000
+                                                                                                                                                                "[Salaris:"
                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                   "[Salaris:"
+                                                                                                                                                                   "]"
                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                      "]"
+                                                                                                                                                                      33
                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                         33
+                                                                                                                                                                         "[Leeftijd:"
                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                            "[Leeftijd:"
+                                                                                                                                                                            "]"
                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                               "]"
+                                                                                                                                                                               'Peter
                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                  'Peter
+                                                                                                                                                                                  "[Naam:"
                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                     "[Naam:"
+                                                                                                                                                                                     "]"
                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                        "]"
+                                                                                                                                                                                        4
                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                           4
+                                                                                                                                                                                           "[Sleutel:"
                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                              "[Sleutel:"
+                                                                                                                                                                                              'newline
                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                 'newline
+                                                                                                                                                                                                 "]"
                                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                                    "]"
+                                                                                                                                                                                                    69000
                                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                                       69000
+                                                                                                                                                                                                       "[Salaris:"
                                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                                          "[Salaris:"
+                                                                                                                                                                                                          "]"
                                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                                             "]"
+                                                                                                                                                                                                             21
                                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                                21
+                                                                                                                                                                                                                "[Leeftijd:"
                                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                                   "[Leeftijd:"
+                                                                                                                                                                                                                   "]"
                                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                                      "]"
+                                                                                                                                                                                                                      'Mauranne
                                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                                         'Mauranne
+                                                                                                                                                                                                                         "[Naam:"
                                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                                            "[Naam:"
+                                                                                                                                                                                                                            "]"
                                                                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                                                                               "]"
+                                                                                                                                                                                                                               5
                                                                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                                                                  5
+                                                                                                                                                                                                                                  "[Sleutel:"
                                                                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                                                                     "[Sleutel:"
+                                                                                                                                                                                                                                     'newline
                                                                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                                                                        'newline
+                                                                                                                                                                                                                                        "]"
                                                                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                                                                           "]"
+                                                                                                                                                                                                                                           69000
                                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                                              69000
+                                                                                                                                                                                                                                              "[Salaris:"
                                                                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                                                                 "[Salaris:"
+                                                                                                                                                                                                                                                 "]"
                                                                                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                                                                                    "]"
+                                                                                                                                                                                                                                                    18
                                                                                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                                                                                       18
+                                                                                                                                                                                                                                                       "[Leeftijd:"
                                                                                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                                                                                          "[Leeftijd:"
+                                                                                                                                                                                                                                                          "]"
                                                                                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                                                                                             "]"
+                                                                                                                                                                                                                                                             'Kaat
                                                                                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                                                                                'Kaat
+                                                                                                                                                                                                                                                                "[Naam:"
                                                                                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                                                                                   "[Naam:"
+                                                                                                                                                                                                                                                                   "]"
                                                                                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                                                                                      "]"
+                                                                                                                                                                                                                                                                      1
                                                                                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                                                                                         1
+                                                                                                                                                                                                                                                                         "[Sleutel:"
                                                                                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                                                                                            "[Sleutel:"
+                                                                                                                                                                                                                                                                            'newline
                                                                                                                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                                                                                                                               'newline
+                                                                                                                                                                                                                                                                               "]"
                                                                                                                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                                                                                                                  "]"
+                                                                                                                                                                                                                                                                                  75000
                                                                                                                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                                                                                                                     75000
+                                                                                                                                                                                                                                                                                     "[Salaris:"
                                                                                                                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                                                                                                                        "[Salaris:"
+                                                                                                                                                                                                                                                                                        "]"
                                                                                                                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                                                                                                                           "]"
+                                                                                                                                                                                                                                                                                           27
                                                                                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                                                                                              27
+                                                                                                                                                                                                                                                                                              "[Leeftijd:"
                                                                                                                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                                                                                                                 "[Leeftijd:"
+                                                                                                                                                                                                                                                                                                 "]"
                                                                                                                                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                                                                                                                                    "]"
+                                                                                                                                                                                                                                                                                                    'Greet
                                                                                                                                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                                                                                                                                       'Greet
+                                                                                                                                                                                                                                                                                                       "[Naam:"
                                                                                                                                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                                                                                                                                          "[Naam:"
+                                                                                                                                                                                                                                                                                                          "]"
                                                                                                                                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                                                                                                                                             "]"
+                                                                                                                                                                                                                                                                                                             6
                                                                                                                                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                6
+                                                                                                                                                                                                                                                                                                                "[Sleutel:"
                                                                                                                                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                   "[Sleutel:"
+                                                                                                                                                                                                                                                                                                                   'newline
                                                                                                                                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                      'newline
+                                                                                                                                                                                                                                                                                                                      "]"
                                                                                                                                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                         "]"
+                                                                                                                                                                                                                                                                                                                         130000
                                                                                                                                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                            130000
+                                                                                                                                                                                                                                                                                                                            "[Salaris:"
                                                                                                                                                                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                               "[Salaris:"
+                                                                                                                                                                                                                                                                                                                               "]"
                                                                                                                                                                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                  "]"
+                                                                                                                                                                                                                                                                                                                                  48
                                                                                                                                                                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                     48
+                                                                                                                                                                                                                                                                                                                                     "[Leeftijd:"
                                                                                                                                                                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                        "[Leeftijd:"
+                                                                                                                                                                                                                                                                                                                                        "]"
                                                                                                                                                                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                           "]"
+                                                                                                                                                                                                                                                                                                                                           'George
                                                                                                                                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                              'George
+                                                                                                                                                                                                                                                                                                                                              "[Naam:"
                                                                                                                                                                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                 "[Naam:"
+                                                                                                                                                                                                                                                                                                                                                 "]"
                                                                                                                                                                                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                    "]"
+                                                                                                                                                                                                                                                                                                                                                    6
                                                                                                                                                                                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                       6
+                                                                                                                                                                                                                                                                                                                                                       "[Sleutel:"
                                                                                                                                                                                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                          "[Sleutel:"
+                                                                                                                                                                                                                                                                                                                                                          'newline
                                                                                                                                                                                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                             'newline
+                                                                                                                                                                                                                                                                                                                                                             "]"
                                                                                                                                                                                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                "]"
+                                                                                                                                                                                                                                                                                                                                                                93000
                                                                                                                                                                                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                   93000
+                                                                                                                                                                                                                                                                                                                                                                   "[Salaris:"
                                                                                                                                                                                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                      "[Salaris:"
+                                                                                                                                                                                                                                                                                                                                                                      "]"
                                                                                                                                                                                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                         "]"
+                                                                                                                                                                                                                                                                                                                                                                         26
                                                                                                                                                                                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                            26
+                                                                                                                                                                                                                                                                                                                                                                            "[Leeftijd:"
                                                                                                                                                                                                                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                               "[Leeftijd:"
+                                                                                                                                                                                                                                                                                                                                                                               "]"
                                                                                                                                                                                                                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                  "]"
+                                                                                                                                                                                                                                                                                                                                                                                  'Dirk
                                                                                                                                                                                                                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                     'Dirk
+                                                                                                                                                                                                                                                                                                                                                                                     "[Naam:"
                                                                                                                                                                                                                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                        "[Naam:"
+                                                                                                                                                                                                                                                                                                                                                                                        "]"
                                                                                                                                                                                                                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                           "]"
+                                                                                                                                                                                                                                                                                                                                                                                           3
                                                                                                                                                                                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                              3
+                                                                                                                                                                                                                                                                                                                                                                                              "[Sleutel:"
                                                                                                                                                                                                                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                 "[Sleutel:"
+                                                                                                                                                                                                                                                                                                                                                                                                 'newline
                                                                                                                                                                                                                                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                    'newline
+                                                                                                                                                                                                                                                                                                                                                                                                    "]"
                                                                                                                                                                                                                                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                       "]"
+                                                                                                                                                                                                                                                                                                                                                                                                       120000
                                                                                                                                                                                                                                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                          120000
+                                                                                                                                                                                                                                                                                                                                                                                                          "[Salaris:"
                                                                                                                                                                                                                                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                             "[Salaris:"
+                                                                                                                                                                                                                                                                                                                                                                                                             "]"
                                                                                                                                                                                                                                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                "]"
+                                                                                                                                                                                                                                                                                                                                                                                                                45
                                                                                                                                                                                                                                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                   45
+                                                                                                                                                                                                                                                                                                                                                                                                                   "[Leeftijd:"
                                                                                                                                                                                                                                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                      "[Leeftijd:"
+                                                                                                                                                                                                                                                                                                                                                                                                                      "]"
                                                                                                                                                                                                                                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                         "]"
+                                                                                                                                                                                                                                                                                                                                                                                                                         'Bernard
                                                                                                                                                                                                                                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                            'Bernard
-                                                                                                                                                                                                                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                               "[Naam:"
-                                                                                                                                                                                                                                                                                                                                                                                                                               (__toplevel_cons "]" (__toplevel_cons 8 (__toplevel_cons "[Sleutel:" ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+                                                                                                                                                                                                                                                                                                                                                                                                                            "[Naam:"
+                                                                                                                                                                                                                                                                                                                                                                                                                            (__toplevel_cons "]" (__toplevel_cons 8 (__toplevel_cons "[Sleutel:" ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+      (<change>
          (show-table table)
-         (equal? expected-result result))
-      ((lambda (x) x)
-         (letrec ((expected-result (__toplevel_cons
-                                     'newline
-                                     (__toplevel_cons
-                                        'newline
-                                        (__toplevel_cons
-                                           "]"
-                                           (__toplevel_cons
-                                              115000
-                                              (__toplevel_cons
-                                                 "[Salaris:"
-                                                 (__toplevel_cons
-                                                    "]"
-                                                    (__toplevel_cons
-                                                       36
-                                                       (__toplevel_cons
-                                                          "[Leeftijd:"
-                                                          (__toplevel_cons
-                                                             "]"
-                                                             (__toplevel_cons
-                                                                'Veronique
-                                                                (__toplevel_cons
-                                                                   "[Naam:"
-                                                                   (__toplevel_cons
-                                                                      "]"
-                                                                      (__toplevel_cons
-                                                                         6
-                                                                         (__toplevel_cons
-                                                                            "[Sleutel:"
-                                                                            (__toplevel_cons
-                                                                               'newline
-                                                                               (__toplevel_cons
-                                                                                  "]"
-                                                                                  (__toplevel_cons
-                                                                                     96000
-                                                                                     (__toplevel_cons
-                                                                                        "[Salaris:"
-                                                                                        (__toplevel_cons
-                                                                                           "]"
-                                                                                           (__toplevel_cons
-                                                                                              26
-                                                                                              (__toplevel_cons
-                                                                                                 "[Leeftijd:"
-                                                                                                 (__toplevel_cons
-                                                                                                    "]"
-                                                                                                    (__toplevel_cons
-                                                                                                       'Tom
-                                                                                                       (__toplevel_cons
-                                                                                                          "[Naam:"
-                                                                                                          (__toplevel_cons
-                                                                                                             "]"
-                                                                                                             (__toplevel_cons
-                                                                                                                9
-                                                                                                                (__toplevel_cons
-                                                                                                                   "[Sleutel:"
-                                                                                                                   (__toplevel_cons
-                                                                                                                      'newline
-                                                                                                                      (__toplevel_cons
-                                                                                                                         "]"
-                                                                                                                         (__toplevel_cons
-                                                                                                                            96000
-                                                                                                                            (__toplevel_cons
-                                                                                                                               "[Salaris:"
-                                                                                                                               (__toplevel_cons
-                                                                                                                                  "]"
-                                                                                                                                  (__toplevel_cons
-                                                                                                                                     25
-                                                                                                                                     (__toplevel_cons
-                                                                                                                                        "[Leeftijd:"
-                                                                                                                                        (__toplevel_cons
-                                                                                                                                           "]"
-                                                                                                                                           (__toplevel_cons
-                                                                                                                                              'Piet
-                                                                                                                                              (__toplevel_cons
-                                                                                                                                                 "[Naam:"
-                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                    "]"
-                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                       2
-                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                          "[Sleutel:"
-                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                             'newline
-                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                "]"
-                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                   80000
-                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                      "[Salaris:"
-                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                         "]"
-                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                            33
-                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                               "[Leeftijd:"
-                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                  "]"
-                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                     'Peter
-                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                        "[Naam:"
-                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                           "]"
-                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                              4
-                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                 "[Sleutel:"
-                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                    'newline
-                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                       "]"
-                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                          69000
-                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                             "[Salaris:"
-                                                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                                                                "]"
-                                                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                                                   21
-                                                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                                                      "[Leeftijd:"
-                                                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                                                         "]"
-                                                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                                                            'Mauranne
-                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                               "[Naam:"
-                                                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                                                  "]"
-                                                                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                                                                     5
-                                                                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                                                                        "[Sleutel:"
-                                                                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                                                                           'newline
-                                                                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                                                                              "]"
-                                                                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                                                                 69000
-                                                                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                                                                    "[Salaris:"
-                                                                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                                                                       "]"
-                                                                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                                                                          18
-                                                                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                                                                             "[Leeftijd:"
-                                                                                                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                                                                                                                "]"
-                                                                                                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                                                                                                   'Kaat
-                                                                                                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                                                                                                      "[Naam:"
-                                                                                                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                                                                                                         "]"
-                                                                                                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                                                                                                            1
-                                                                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                                                                               "[Sleutel:"
-                                                                                                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                                                                                                  'newline
-                                                                                                                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                                                                                                                     "]"
-                                                                                                                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                                                                                                                        75000
-                                                                                                                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                                                                                                                           "[Salaris:"
-                                                                                                                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                                                                                                                              "]"
-                                                                                                                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                                                                                                                 27
-                                                                                                                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                                                                                                                    "[Leeftijd:"
-                                                                                                                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                                                                                                                       "]"
-                                                                                                                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                                                                                                                          'Greet
-                                                                                                                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                                                                                                                             "[Naam:"
-                                                                                                                                                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                "]"
-                                                                                                                                                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                   6
-                                                                                                                                                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                      "[Sleutel:"
-                                                                                                                                                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                         'newline
-                                                                                                                                                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                            "]"
-                                                                                                                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                               130000
-                                                                                                                                                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                  "[Salaris:"
-                                                                                                                                                                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                     "]"
-                                                                                                                                                                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                        48
-                                                                                                                                                                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                           "[Leeftijd:"
-                                                                                                                                                                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                              "]"
-                                                                                                                                                                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                 'George
-                                                                                                                                                                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                    "[Naam:"
-                                                                                                                                                                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                       "]"
-                                                                                                                                                                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                          6
-                                                                                                                                                                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                             "[Sleutel:"
-                                                                                                                                                                                                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                'newline
-                                                                                                                                                                                                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                   "]"
-                                                                                                                                                                                                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                      93000
-                                                                                                                                                                                                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                         "[Salaris:"
-                                                                                                                                                                                                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                            "]"
-                                                                                                                                                                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                               26
-                                                                                                                                                                                                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                  "[Leeftijd:"
-                                                                                                                                                                                                                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                     "]"
-                                                                                                                                                                                                                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                        'Dirk
-                                                                                                                                                                                                                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                           "[Naam:"
-                                                                                                                                                                                                                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                              "]"
-                                                                                                                                                                                                                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                 3
-                                                                                                                                                                                                                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                    "[Sleutel:"
-                                                                                                                                                                                                                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                       'newline
-                                                                                                                                                                                                                                                                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                          "]"
-                                                                                                                                                                                                                                                                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                             120000
-                                                                                                                                                                                                                                                                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                "[Salaris:"
-                                                                                                                                                                                                                                                                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                   "]"
-                                                                                                                                                                                                                                                                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                      45
-                                                                                                                                                                                                                                                                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                         "[Leeftijd:"
-                                                                                                                                                                                                                                                                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                            "]"
-                                                                                                                                                                                                                                                                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                               'Bernard
-                                                                                                                                                                                                                                                                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                                                                                                                                                                                                                                                                  "[Naam:"
-                                                                                                                                                                                                                                                                                                                                                                                                                                  (__toplevel_cons "]" (__toplevel_cons 8 (__toplevel_cons "[Sleutel:" ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
-            (show-table table)
-            (equal? expected-result result)))))
+         ((lambda (x) x) (show-table table)))
+      (equal? expected-result result)))

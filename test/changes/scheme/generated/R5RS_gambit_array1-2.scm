@@ -22,12 +22,10 @@
                                                  result
                                                  (begin
                                                     (vector-set! result i (vector-ref x i))
-                                                    (<change>
-                                                       (__do_loop (- i 1))
-                                                       ((lambda (x) x) (__do_loop (- i 1)))))))))
+                                                    (__do_loop (- i 1)))))))
                            (<change>
                               ()
-                              __do_loop)
+                              (display (__do_loop (- n 1))))
                            (__do_loop (- n 1))))))
          (my-try (lambda (n)
                    (vector-length (create-y (create-x n)))))
@@ -39,4 +37,6 @@
                   loop)
                   100
                   ()))))
-   (= 200 (go 200)))
+   (<change>
+      (= 200 (go 200))
+      ((lambda (x) x) (= 200 (go 200)))))

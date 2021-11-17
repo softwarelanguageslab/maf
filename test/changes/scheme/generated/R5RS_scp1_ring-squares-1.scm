@@ -1,7 +1,7 @@
 ; Changes:
 ; * removed: 0
 ; * added: 1
-; * swaps: 1
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 1
@@ -15,6 +15,9 @@
                                          (set-cdr! l n)
                                          (set-cdr! n rest)
                                          (if (not (eq? rest lst)) (loop rest) #f)))))
+                        (<change>
+                           ()
+                           (display lst))
                         (loop lst)
                         lst)))
          (print-ring (lambda (r)
@@ -24,17 +27,10 @@
                                              (begin
                                                 (output " ")
                                                 (output (car l))
-                                                (<change>
-                                                   ()
-                                                   (car l))
                                                 (output "..."))
                                              (begin
-                                                (<change>
-                                                   (output " ")
-                                                   (output (car l)))
-                                                (<change>
-                                                   (output (car l))
-                                                   (output " "))
+                                                (output " ")
+                                                (output (car l))
                                                 (aux (cdr l))))
                                           #f))))
                           (aux r)

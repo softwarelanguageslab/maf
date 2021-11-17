@@ -2,9 +2,9 @@
 ; * removed: 0
 ; * added: 0
 ; * swaps: 0
-; * negated predicates: 2
-; * swapped branches: 3
-; * calls to id fun: 2
+; * negated predicates: 1
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((boom (__toplevel_cons
                  (__toplevel_cons 'blad (__toplevel_cons (__toplevel_cons 'appel 'golden) ()))
                  (__toplevel_cons
@@ -17,13 +17,7 @@
          (blad? (lambda (boom)
                   (eq? boom 'blad)))
          (appel? (lambda (boom)
-                   (if (pair? boom)
-                      (<change>
-                         (eq? (car boom) 'appel)
-                         #f)
-                      (<change>
-                         #f
-                         (eq? (car boom) 'appel)))))
+                   (if (pair? boom) (eq? (car boom) 'appel) #f)))
          (type (lambda (appel)
                  (cdr appel)))
          (leafs (lambda (boom)
@@ -48,21 +42,15 @@
                                 ()
                                 (if (blad? boom)
                                    ()
-                                   (if (<change> (appel? boom) (not (appel? boom)))
+                                   (if (appel? boom)
                                       (list (type boom))
                                       (append (all-apples (car boom)) (all-apples (cdr boom))))))))))
          (conditional-append (lambda (l1 l2)
                                (if (null? l1)
-                                  (<change>
-                                     l2
-                                     (if (member (car l1) l2)
-                                        (conditional-append (cdr l1) l2)
-                                        (cons (car l1) (conditional-append (cdr l1) l2))))
-                                  (<change>
-                                     (if (member (car l1) l2)
-                                        (conditional-append (cdr l1) l2)
-                                        (cons (car l1) (conditional-append (cdr l1) l2)))
-                                     l2))))
+                                  l2
+                                  (if (member (car l1) l2)
+                                     (conditional-append (cdr l1) l2)
+                                     (cons (car l1) (conditional-append (cdr l1) l2))))))
          (apple-types (lambda (boom)
                         (if (null? boom)
                            ()
@@ -72,26 +60,15 @@
                                  (list (type boom))
                                  (conditional-append (apple-types (car boom)) (apple-types (cdr boom))))))))
          (bewerk-boom (lambda (boom doe-blad doe-appel combiner init)
-                        (<change>
-                           (if (null? boom)
-                              init
-                              (if (blad? boom)
-                                 (doe-blad boom)
-                                 (if (appel? boom)
-                                    (doe-appel boom)
-                                    (combiner
-                                       (bewerk-boom (car boom) doe-blad doe-appel combiner init)
-                                       (bewerk-boom (cdr boom) doe-blad doe-appel combiner init)))))
-                           ((lambda (x) x)
-                              (if (<change> (null? boom) (not (null? boom)))
-                                 init
-                                 (if (blad? boom)
-                                    (doe-blad boom)
-                                    (if (appel? boom)
-                                       (doe-appel boom)
-                                       (combiner
-                                          (bewerk-boom (car boom) doe-blad doe-appel combiner init)
-                                          (bewerk-boom (cdr boom) doe-blad doe-appel combiner init)))))))))
+                        (if (null? boom)
+                           init
+                           (if (blad? boom)
+                              (doe-blad boom)
+                              (if (appel? boom)
+                                 (doe-appel boom)
+                                 (combiner
+                                    (bewerk-boom (car boom) doe-blad doe-appel combiner init)
+                                    (bewerk-boom (cdr boom) doe-blad doe-appel combiner init)))))))
          (leafs-dmv-bewerk (lambda (boom)
                              (bewerk-boom boom (lambda (blad) 1) (lambda (appel) 0) + 0)))
          (all-apples-dmv-bewerk (lambda (boom)
@@ -101,23 +78,13 @@
    (if (= (leafs boom) 4)
       (if (equal? (all-apples boom) (__toplevel_cons 'golden (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ())))))
          (if (equal? (apple-types boom) (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ()))))
-            (<change>
-               (if (= (leafs-dmv-bewerk boom) 4)
-                  (if (equal? (all-apples-dmv-bewerk boom) (__toplevel_cons 'golden (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ())))))
-                     (equal?
-                        (apple-types-dmv-bewerk boom)
-                        (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ()))))
-                     #f)
+            (if (= (leafs-dmv-bewerk boom) 4)
+               (if (<change> (equal? (all-apples-dmv-bewerk boom) (__toplevel_cons 'golden (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ()))))) (not (equal? (all-apples-dmv-bewerk boom) (__toplevel_cons 'golden (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ())))))))
+                  (equal?
+                     (apple-types-dmv-bewerk boom)
+                     (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ()))))
                   #f)
                #f)
-            (<change>
-               #f
-               (if (= (leafs-dmv-bewerk boom) 4)
-                  (if (equal? (all-apples-dmv-bewerk boom) (__toplevel_cons 'golden (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ())))))
-                     (equal?
-                        (apple-types-dmv-bewerk boom)
-                        (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ()))))
-                     #f)
-                  #f)))
+            #f)
          #f)
       #f))

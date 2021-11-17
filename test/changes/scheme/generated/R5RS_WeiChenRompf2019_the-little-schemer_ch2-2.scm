@@ -1,12 +1,18 @@
 ; Changes:
-; * removed: 2
-; * added: 1
-; * swaps: 0
+; * removed: 0
+; * added: 0
+; * swaps: 1
 ; * negated predicates: 0
-; * swapped branches: 0
+; * swapped branches: 1
 ; * calls to id fun: 0
 (letrec ((atom? (lambda (x)
-                  (if (not (pair? x)) (not (null? x)) #f)))
+                  (if (not (pair? x))
+                     (<change>
+                        (not (null? x))
+                        #f)
+                     (<change>
+                        #f
+                        (not (null? x))))))
          (lat? (lambda (l)
                  (if (null? l)
                     #t
@@ -19,19 +25,14 @@
             (__toplevel_cons
                'could
                (__toplevel_cons 'eat (__toplevel_cons 'no (__toplevel_cons 'chicken (__toplevel_cons 'fat ()))))))))
-   (<change>
-      ()
-      __toplevel_cons)
-   (<change>
-      (lat?
+   (lat?
+      (__toplevel_cons
+         (__toplevel_cons 'Jack ())
          (__toplevel_cons
-            (__toplevel_cons 'Jack ())
+            'Sprat
             (__toplevel_cons
-               'Sprat
-               (__toplevel_cons
-                  'could
-                  (__toplevel_cons 'eat (__toplevel_cons 'no (__toplevel_cons 'chicken (__toplevel_cons 'fat ()))))))))
-      ())
+               'could
+               (__toplevel_cons 'eat (__toplevel_cons 'no (__toplevel_cons 'chicken (__toplevel_cons 'fat ()))))))))
    (<change>
       (lat?
          (__toplevel_cons
@@ -39,5 +40,12 @@
             (__toplevel_cons
                (__toplevel_cons 'Sprat (__toplevel_cons 'could ()))
                (__toplevel_cons 'eat (__toplevel_cons 'no (__toplevel_cons 'chicken (__toplevel_cons 'fat ())))))))
-      ())
-   (lat? ()))
+      (lat? ()))
+   (<change>
+      (lat? ())
+      (lat?
+         (__toplevel_cons
+            'Jack
+            (__toplevel_cons
+               (__toplevel_cons 'Sprat (__toplevel_cons 'could ()))
+               (__toplevel_cons 'eat (__toplevel_cons 'no (__toplevel_cons 'chicken (__toplevel_cons 'fat ())))))))))

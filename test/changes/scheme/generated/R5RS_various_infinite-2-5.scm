@@ -8,6 +8,6 @@
 (letrec ((t (lambda (x)
               (<change>
                  ()
-                 (display x))
+                 (t (+ x 1)))
               (t (+ x 1)))))
    (t 0))

@@ -1,59 +1,42 @@
 ; Changes:
-; * removed: 2
-; * added: 0
-; * swaps: 0
+; * removed: 0
+; * added: 1
+; * swaps: 2
 ; * negated predicates: 0
-; * swapped branches: 1
+; * swapped branches: 0
 ; * calls to id fun: 3
 (letrec ((result ())
          (output (lambda (i)
-                   (set! result (cons i result))))
+                   (<change>
+                      (set! result (cons i result))
+                      ((lambda (x) x) (set! result (cons i result))))))
          (linebreak (lambda ()
                       (set! result (cons 'linebreak result))))
          (create-counter (lambda ()
                            (let ((value 0))
                               (letrec ((reset (lambda ()
                                                 (set! value 0)
-                                                (<change>
-                                                   'ok
-                                                   ((lambda (x) x) 'ok))))
+                                                'ok))
                                        (next (lambda ()
                                                (set! value (+ 1 value))
-                                               'ok))
+                                               (<change>
+                                                  'ok
+                                                  ((lambda (x) x) 'ok))))
                                        (increase (lambda (x)
                                                    (set! value (+ value x))))
                                        (dispatch (lambda (msg)
-                                                   (<change>
-                                                      (if (eq? msg 'reset)
-                                                         reset
-                                                         (if (eq? msg 'next)
-                                                            next
-                                                            (if (eq? msg 'read)
-                                                               value
-                                                               (if (eq? msg 'increase)
-                                                                  increase
-                                                                  (error "wrong message: " msg)))))
-                                                      ((lambda (x) x)
-                                                         (if (eq? msg 'reset)
-                                                            (<change>
-                                                               reset
-                                                               (if (eq? msg 'next)
-                                                                  next
-                                                                  (if (eq? msg 'read)
-                                                                     value
-                                                                     (if (eq? msg 'increase)
-                                                                        increase
-                                                                        (error "wrong message: " msg)))))
-                                                            (<change>
-                                                               (if (eq? msg 'next)
-                                                                  next
-                                                                  (if (eq? msg 'read)
-                                                                     value
-                                                                     (if (eq? msg 'increase)
-                                                                        increase
-                                                                        (error "wrong message: " msg))))
-                                                               reset)))))))
-                                 dispatch))))
+                                                   (if (eq? msg 'reset)
+                                                      reset
+                                                      (if (eq? msg 'next)
+                                                         next
+                                                         (if (eq? msg 'read)
+                                                            value
+                                                            (if (eq? msg 'increase)
+                                                               increase
+                                                               (error "wrong message: " msg))))))))
+                                 (<change>
+                                    dispatch
+                                    ((lambda (x) x) dispatch))))))
          (make-scorebord (lambda ()
                            (let ((c-home (create-counter))
                                  (c-visit (create-counter)))
@@ -97,47 +80,84 @@
          (bord (make-scorebord)))
    (<change>
       ((bord 'read))
-      ())
-   ((bord 'score) 'home 2)
+      ((bord 'score) 'home 2))
+   (<change>
+      ((bord 'score) 'home 2)
+      ((bord 'read)))
    ((bord 'read))
+   (<change>
+      ()
+      __toplevel_cons)
    ((bord 'score) 'visit 5)
    ((bord 'read))
-   (<change>
-      ((bord 'reset))
-      ())
+   ((bord 'reset))
    (<change>
       ((bord 'read))
-      ((lambda (x) x) ((bord 'read))))
-   (equal?
-      result
-      (__toplevel_cons
-         'linebreak
+      (equal?
+         result
          (__toplevel_cons
-            0
+            'linebreak
             (__toplevel_cons
-               "-"
+               0
                (__toplevel_cons
-                  0
+                  "-"
                   (__toplevel_cons
-                     'linebreak
+                     0
                      (__toplevel_cons
-                        0
+                        'linebreak
                         (__toplevel_cons
-                           "-"
+                           0
                            (__toplevel_cons
-                              2
+                              "-"
                               (__toplevel_cons
-                                 'linebreak
+                                 2
                                  (__toplevel_cons
-                                    "De score kan slechts 1, 2 of 3 zijn!"
+                                    'linebreak
                                     (__toplevel_cons
-                                       'linebreak
+                                       "De score kan slechts 1, 2 of 3 zijn!"
                                        (__toplevel_cons
                                           'linebreak
                                           (__toplevel_cons
-                                             0
+                                             'linebreak
                                              (__toplevel_cons
-                                                "-"
+                                                0
                                                 (__toplevel_cons
-                                                   2
-                                                   (__toplevel_cons 'linebreak (__toplevel_cons 0 (__toplevel_cons "-" (__toplevel_cons 0 ())))))))))))))))))))))
+                                                   "-"
+                                                   (__toplevel_cons
+                                                      2
+                                                      (__toplevel_cons 'linebreak (__toplevel_cons 0 (__toplevel_cons "-" (__toplevel_cons 0 ())))))))))))))))))))))
+   (<change>
+      (equal?
+         result
+         (__toplevel_cons
+            'linebreak
+            (__toplevel_cons
+               0
+               (__toplevel_cons
+                  "-"
+                  (__toplevel_cons
+                     0
+                     (__toplevel_cons
+                        'linebreak
+                        (__toplevel_cons
+                           0
+                           (__toplevel_cons
+                              "-"
+                              (__toplevel_cons
+                                 2
+                                 (__toplevel_cons
+                                    'linebreak
+                                    (__toplevel_cons
+                                       "De score kan slechts 1, 2 of 3 zijn!"
+                                       (__toplevel_cons
+                                          'linebreak
+                                          (__toplevel_cons
+                                             'linebreak
+                                             (__toplevel_cons
+                                                0
+                                                (__toplevel_cons
+                                                   "-"
+                                                   (__toplevel_cons
+                                                      2
+                                                      (__toplevel_cons 'linebreak (__toplevel_cons 0 (__toplevel_cons "-" (__toplevel_cons 0 ()))))))))))))))))))))
+      ((bord 'read))))

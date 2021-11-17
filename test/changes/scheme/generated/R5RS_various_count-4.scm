@@ -8,6 +8,6 @@
 (letrec ((count (lambda (n)
                   (<change>
                      ()
-                     count)
+                     n)
                   (if (= n 0) "done" (count (- n 1))))))
    (count 10))

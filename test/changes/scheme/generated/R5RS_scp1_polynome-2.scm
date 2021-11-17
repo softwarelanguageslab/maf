@@ -1,18 +1,15 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 0
-; * calls to id fun: 3
+; * negated predicates: 2
+; * swapped branches: 1
+; * calls to id fun: 1
 (letrec ((make-point (lambda (x y)
                        (letrec ((dispatch (lambda (msg)
                                             (if (eq? msg 'x-value)
                                                x
                                                (if (eq? msg 'y-value) y (error "wrong message"))))))
-                          (<change>
-                             ()
-                             (display dispatch))
                           dispatch)))
          (make-segment (lambda (start end)
                          (letrec ((midpoint (lambda ()
@@ -28,9 +25,7 @@
                             dispatch)))
          (make-w-vector (lambda args
                           (letrec ((dimension (lambda ()
-                                                (<change>
-                                                   (length args)
-                                                   ((lambda (x) x) (length args)))))
+                                                (length args)))
                                    (coordinate (lambda (n)
                                                  (<change>
                                                     (if (let ((__or_res (< n 1))) (if __or_res __or_res (> n (dimension))))
@@ -38,23 +33,19 @@
                                                        (list-ref args (- n 1)))
                                                     ((lambda (x) x)
                                                        (if (let ((__or_res (< n 1))) (if __or_res __or_res (> n (dimension))))
-                                                          (error "coordinate is out of range")
-                                                          (list-ref args (- n 1)))))))
+                                                          (<change>
+                                                             (error "coordinate is out of range")
+                                                             (list-ref args (- n 1)))
+                                                          (<change>
+                                                             (list-ref args (- n 1))
+                                                             (error "coordinate is out of range")))))))
                                    (add (lambda (w-vector)
                                           (letrec ((loop (lambda (ctr res)
-                                                           (<change>
-                                                              (if (= ctr 0)
-                                                                 (apply make-w-vector res)
-                                                                 (loop (- ctr 1) (cons (+ (coordinate ctr) ((w-vector 'coordinate) ctr)) res)))
-                                                              ((lambda (x) x)
-                                                                 (if (= ctr 0)
-                                                                    (apply make-w-vector res)
-                                                                    (loop (- ctr 1) (cons (+ (coordinate ctr) ((w-vector 'coordinate) ctr)) res))))))))
+                                                           (if (= ctr 0)
+                                                              (apply make-w-vector res)
+                                                              (loop (- ctr 1) (cons (+ (coordinate ctr) ((w-vector 'coordinate) ctr)) res))))))
                                              (loop (dimension) ()))))
                                    (dispatch (lambda (msg)
-                                               (<change>
-                                                  ()
-                                                  dimension)
                                                (if (eq? msg 'dimension)
                                                   (dimension)
                                                   (if (eq? msg 'coordinate)
@@ -82,8 +73,8 @@
          (w-vector2 (make-w-vector 4 5 6))
          (polynome (make-polynome 1 2 3)))
    (if (= (point1 'x-value) 6)
-      (if (= ((segment 'start-point) 'y-value) 10)
-         (if (= (midpoint 'x-value) 8)
+      (if (<change> (= ((segment 'start-point) 'y-value) 10) (not (= ((segment 'start-point) 'y-value) 10)))
+         (if (<change> (= (midpoint 'x-value) 8) (not (= (midpoint 'x-value) 8)))
             (if (= ((w-vector1 'coordinate) 2) 2)
                (if (= ((w-vector2 'coordinate) 1) 4)
                   (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)

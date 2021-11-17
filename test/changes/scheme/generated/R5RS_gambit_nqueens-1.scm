@@ -7,6 +7,9 @@
 ; * calls to id fun: 0
 (letrec ((one-to (lambda (n)
                    (letrec ((loop (lambda (i l)
+                                    (<change>
+                                       ()
+                                       loop)
                                     (if (= i 0) l (loop (- i 1) (cons i l))))))
                       (loop n ()))))
          (ok? (lambda (row dist placed)
@@ -27,8 +30,5 @@
                          (try-it (cdr x) (cons (car x) y) z)))))
          (nqueens (lambda (n)
                     (try-it (one-to n) () ()))))
-   (<change>
-      ()
-      8)
    (nqueens 8)
    #t)

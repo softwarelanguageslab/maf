@@ -3,7 +3,7 @@
 ; * added: 2
 ; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
+; * swapped branches: 0
 ; * calls to id fun: 2
 (letrec ((result ())
          (output (lambda (i)
@@ -11,16 +11,7 @@
          (make-ring (lambda (n)
                       (let ((last (cons 0 ())))
                          (letrec ((build-list (lambda (n)
-                                                (<change>
-                                                   (if (= n 0) last (cons n (build-list (- n 1))))
-                                                   ((lambda (x) x)
-                                                      (if (= n 0)
-                                                         (<change>
-                                                            last
-                                                            (cons n (build-list (- n 1))))
-                                                         (<change>
-                                                            (cons n (build-list (- n 1)))
-                                                            last)))))))
+                                                (if (= n 0) last (cons n (build-list (- n 1)))))))
                             (let ((ring (build-list n)))
                                (set-cdr! last ring)
                                ring)))))
@@ -33,16 +24,19 @@
                                                 (output (car l))
                                                 (<change>
                                                    ()
-                                                   car)
+                                                   "...")
                                                 (output "..."))
                                              (begin
                                                 (output " ")
                                                 (output (car l))
-                                                (aux (cdr l))))
+                                                (<change>
+                                                   ()
+                                                   (aux (cdr l)))
+                                                (<change>
+                                                   (aux (cdr l))
+                                                   ((lambda (x) x) (aux (cdr l))))))
                                           #f))))
-                          (<change>
-                             (aux r)
-                             ((lambda (x) x) (aux r)))
+                          (aux r)
                           #t)))
          (right-rotate (lambda (r)
                          (letrec ((iter (lambda (l)
@@ -50,14 +44,8 @@
                             (iter r))))
          (r (make-ring 3)))
    (<change>
-      ()
-      (display
-         (__toplevel_cons
-            2
-            (__toplevel_cons
-               " "
-               (__toplevel_cons 3 (__toplevel_cons " " (__toplevel_cons 0 (__toplevel_cons " " ()))))))))
-   (print-ring (right-rotate r))
+      (print-ring (right-rotate r))
+      ((lambda (x) x) (print-ring (right-rotate r))))
    (equal?
       result
       (__toplevel_cons

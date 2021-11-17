@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 0
+; * removed: 0
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
@@ -12,18 +12,17 @@
                    (if (= 0 x)
                       (display x)
                       (begin
+                         (<change>
+                            ()
+                            (- x 1))
                          (display x)
                          (count1 (- x 1))))))
          (count2 (lambda (x)
                    (if (= 0 x)
                       (display x)
                       (begin
-                         (<change>
-                            (count2 (- x 1))
-                            ())
-                         (<change>
-                            (display x)
-                            ((lambda (x) x) (display x))))))))
+                         (count2 (- x 1))
+                         (display x))))))
    (count1 4)
    (count2 4)
    (equal?

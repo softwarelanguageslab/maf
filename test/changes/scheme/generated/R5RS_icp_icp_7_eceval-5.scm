@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 9
-; * swaps: 1
-; * negated predicates: 5
-; * swapped branches: 2
-; * calls to id fun: 13
+; * removed: 2
+; * added: 5
+; * swaps: 3
+; * negated predicates: 0
+; * swapped branches: 3
+; * calls to id fun: 10
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
@@ -44,34 +44,23 @@
          (true #t)
          (false #f)
          (apply-in-underlying-scheme (lambda (op args)
-                                       (<change>
-                                          (if (null? args)
-                                             (op)
-                                             (if (null? (cdr args))
-                                                (op (car args))
-                                                (if (null? (cddr args))
-                                                   (op (car args) (cadr args))
-                                                   (error "apply"))))
-                                          ((lambda (x) x)
-                                             (if (null? args)
-                                                (op)
-                                                (if (null? (cdr args))
-                                                   (op (car args))
-                                                   (if (null? (cddr args))
-                                                      (op (car args) (cadr args))
-                                                      (error "apply"))))))))
+                                       (if (null? args)
+                                          (op)
+                                          (if (null? (cdr args))
+                                             (op (car args))
+                                             (if (null? (cddr args))
+                                                (op (car args) (cadr args))
+                                                (error "apply"))))))
          (true? (lambda (x)
                   (not (eq? x false))))
          (self-evaluating? (lambda (exp)
+                             (<change>
+                                ()
+                                true)
                              (if (number? exp)
                                 true
-                                (if (<change> (string? exp) (not (string? exp)))
-                                   true
-                                   false))))
+                                (if (string? exp) true false))))
          (tagged-list? (lambda (exp tag)
-                         (<change>
-                            ()
-                            exp)
                          (if (pair? exp) (eq? (car exp) tag) false)))
          (quoted? (lambda (exp)
                     (tagged-list? exp 'quote)))
@@ -84,9 +73,6 @@
          (assignment-variable (lambda (exp)
                                 (cadr exp)))
          (assignment-value (lambda (exp)
-                             (<change>
-                                ()
-                                (display caddr))
                              (caddr exp)))
          (definition? (lambda (exp)
                         (tagged-list? exp 'define)))
@@ -164,28 +150,22 @@
          (frame-values (lambda (frame)
                          (cdr frame)))
          (add-binding-to-frame! (lambda (var val frame)
-                                  (<change>
-                                     ()
-                                     (cdr frame))
-                                  (<change>
-                                     (set-car! frame (cons var (car frame)))
-                                     ())
+                                  (set-car! frame (cons var (car frame)))
                                   (set-cdr! frame (cons val (cdr frame)))))
          (lookup-variable-value (lambda (var env)
-                                  (<change>
-                                     ()
-                                     null?)
                                   (letrec ((env-loop (lambda (env)
                                                        (letrec ((scan (lambda (vars vals)
                                                                         (if (null? vars)
                                                                            (env-loop (enclosing-environment env))
-                                                                           (if (<change> (eq? var (car vars)) (not (eq? var (car vars))))
+                                                                           (if (eq? var (car vars))
                                                                               (car vals)
                                                                               (scan (cdr vars) (cdr vals)))))))
-                                                          (if (<change> (eq? env the-empty-environment) (not (eq? env the-empty-environment)))
+                                                          (if (eq? env the-empty-environment)
                                                              (error "Unbound variable" var)
                                                              (let ((frame (first-frame env)))
-                                                                (scan (frame-variables frame) (frame-values frame))))))))
+                                                                (<change>
+                                                                   (scan (frame-variables frame) (frame-values frame))
+                                                                   ((lambda (x) x) (scan (frame-variables frame) (frame-values frame))))))))))
                                      (env-loop env))))
          (set-variable-value! (lambda (var val env)
                                 (letrec ((env-loop (lambda (env)
@@ -210,12 +190,19 @@
                                                        (scan (cdr vars) (cdr vals)))))))
                                    (scan (frame-variables frame) (frame-values frame))))))
          (setup-environment (lambda ()
+                              (<change>
+                                 ()
+                                 true)
                               (let ((initial-env (extend-environment
                                                    (primitive-procedure-names)
                                                    (primitive-procedure-objects)
                                                    the-empty-environment)))
-                                 (define-variable! 'true true initial-env)
-                                 (define-variable! 'false false initial-env)
+                                 (<change>
+                                    (define-variable! 'true true initial-env)
+                                    (define-variable! 'false false initial-env))
+                                 (<change>
+                                    (define-variable! 'false false initial-env)
+                                    (define-variable! 'true true initial-env))
                                  initial-env)))
          (primitive-procedure? (lambda (proc)
                                  (tagged-list? proc 'primitive)))
@@ -242,15 +229,17 @@
          (output-prompt ";;; M-Eval value:")
          (prompt-for-input (lambda (string)
                              (linebreak)
-                             (<change>
-                                (linebreak)
-                                ((lambda (x) x) (linebreak)))
+                             (linebreak)
                              (output string)
                              (linebreak)))
          (announce-output (lambda (string)
                             (linebreak)
-                            (output string)
-                            (linebreak)))
+                            (<change>
+                               (output string)
+                               (linebreak))
+                            (<change>
+                               (linebreak)
+                               (output string))))
          (user-print (lambda (object)
                        (if (compound-procedure? object)
                           (output
@@ -259,30 +248,41 @@
          (the-global-environment (setup-environment))
          (make-machine (lambda (register-names ops controller-text)
                          (let ((machine (make-new-machine)))
-                            (for-each (lambda (register-name) ((machine 'allocate-register) register-name)) register-names)
+                            (<change>
+                               (for-each (lambda (register-name) ((machine 'allocate-register) register-name)) register-names)
+                               ((lambda (x) x)
+                                  (for-each (lambda (register-name) ((machine 'allocate-register) register-name)) register-names)))
                             (<change>
                                ((machine 'install-operations) ops)
-                               ((lambda (x) x) ((machine 'install-operations) ops)))
-                            ((machine 'install-instruction-sequence) (assemble controller-text machine))
+                               ())
+                            (<change>
+                               ((machine 'install-instruction-sequence) (assemble controller-text machine))
+                               ())
                             machine)))
          (make-register (lambda (name)
                           (let ((contents '*unassigned*))
-                             (letrec ((dispatch (lambda (message)
-                                                  (if (eq? message 'get)
-                                                     contents
-                                                     (if (eq? message 'set)
-                                                        (lambda (value)
-                                                           (set! contents value))
-                                                        (error "Unknown request -- REGISTER" message))))))
-                                (<change>
-                                   dispatch
-                                   ((lambda (x) x) dispatch))))))
+                             (<change>
+                                (letrec ((dispatch (lambda (message)
+                                                     (if (eq? message 'get)
+                                                        contents
+                                                        (if (eq? message 'set)
+                                                           (lambda (value)
+                                                              (set! contents value))
+                                                           (error "Unknown request -- REGISTER" message))))))
+                                   dispatch)
+                                ((lambda (x) x)
+                                   (letrec ((dispatch (lambda (message)
+                                                        (if (eq? message 'get)
+                                                           contents
+                                                           (if (eq? message 'set)
+                                                              (lambda (value)
+                                                                 (set! contents value))
+                                                              (error "Unknown request -- REGISTER" message))))))
+                                      dispatch))))))
          (get-contents (lambda (register)
                          (register 'get)))
          (set-contents! (lambda (register value)
-                          (<change>
-                             ((register 'set) value)
-                             ((lambda (x) x) ((register 'set) value)))))
+                          ((register 'set) value)))
          (empty-arglist (lambda ()
                           ()))
          (adjoin-arg (lambda (arg arglist)
@@ -313,13 +313,21 @@
                           (letrec ((push (lambda (x)
                                            (set! s (cons x s))
                                            (set! number-pushes (+ 1 number-pushes))
+                                           (<change>
+                                              ()
+                                              s)
                                            (set! current-depth (+ 1 current-depth))
                                            (set! max-depth (max current-depth max-depth))))
                                    (pop (lambda ()
                                           (if (null? s)
                                              (error "Empty stack -- POP")
                                              (let ((top (car s)))
-                                                (set! s (cdr s))
+                                                (<change>
+                                                   ()
+                                                   (cdr s))
+                                                (<change>
+                                                   (set! s (cdr s))
+                                                   ((lambda (x) x) (set! s (cdr s))))
                                                 (set! current-depth (- current-depth 1))
                                                 top))))
                                    (initialize (lambda ()
@@ -330,17 +338,31 @@
                                                  'done))
                                    (print-statistics (lambda ()
                                                        (linebreak)
+                                                       (<change>
+                                                          ()
+                                                          'total-pushes)
                                                        (output (list 'total-pushes '= number-pushes 'maximum-depth '= max-depth))))
                                    (dispatch (lambda (message)
-                                               (if (eq? message 'push)
-                                                  push
-                                                  (if (eq? message 'pop)
-                                                     (pop)
-                                                     (if (eq? message 'initialize)
-                                                        (initialize)
-                                                        (if (eq? message 'print-statistics)
-                                                           (print-statistics)
-                                                           (error "Unknown request -- STACK" message))))))))
+                                               (<change>
+                                                  (if (eq? message 'push)
+                                                     push
+                                                     (if (eq? message 'pop)
+                                                        (pop)
+                                                        (if (eq? message 'initialize)
+                                                           (initialize)
+                                                           (if (eq? message 'print-statistics)
+                                                              (print-statistics)
+                                                              (error "Unknown request -- STACK" message)))))
+                                                  ((lambda (x) x)
+                                                     (if (eq? message 'push)
+                                                        push
+                                                        (if (eq? message 'pop)
+                                                           (pop)
+                                                           (if (eq? message 'initialize)
+                                                              (initialize)
+                                                              (if (eq? message 'print-statistics)
+                                                                 (print-statistics)
+                                                                 (error "Unknown request -- STACK" message))))))))))
                              dispatch))))
          (make-new-machine (lambda ()
                              (let ((pc (make-register 'pc))
@@ -349,19 +371,19 @@
                                    (the-instruction-sequence ()))
                                 (let ((the-ops (list
                                                  (list 'initialize-stack (lambda () (stack 'initialize)))
-                                                 (list
-                                                    'print-stack-statistics
-                                                    (lambda ()
-                                                       (<change>
-                                                          ()
-                                                          'print-statistics)
-                                                       (stack 'print-statistics)))))
+                                                 (list 'print-stack-statistics (lambda () (stack 'print-statistics)))))
                                       (register-table (list (list 'pc pc) (list 'flag flag))))
                                    (letrec ((allocate-register (lambda (name)
-                                                                 (if (assoc name register-table)
-                                                                    (error "Multiply defined register: " name)
-                                                                    (set! register-table (cons (list name (make-register name)) register-table)))
-                                                                 'register-allocated))
+                                                                 (<change>
+                                                                    (if (assoc name register-table)
+                                                                       (error "Multiply defined register: " name)
+                                                                       (set! register-table (cons (list name (make-register name)) register-table)))
+                                                                    'register-allocated)
+                                                                 (<change>
+                                                                    'register-allocated
+                                                                    (if (assoc name register-table)
+                                                                       (error "Multiply defined register: " name)
+                                                                       (set! register-table (cons (list name (make-register name)) register-table))))))
                                             (lookup-register (lambda (name)
                                                                (let ((val (assoc name register-table)))
                                                                   (if val
@@ -387,38 +409,34 @@
                                                                  (if (eq? message 'get-register)
                                                                     lookup-register
                                                                     (if (eq? message 'install-operations)
-                                                                       (lambda (ops)
-                                                                          (set! the-ops (append the-ops ops)))
-                                                                       (if (eq? message 'stack)
-                                                                          stack
-                                                                          (if (eq? message 'operations)
-                                                                             the-ops
-                                                                             (error "Unknown request -- MACHINE" message)))))))))))
+                                                                       (<change>
+                                                                          (lambda (ops)
+                                                                             (set! the-ops (append the-ops ops)))
+                                                                          (if (eq? message 'stack)
+                                                                             stack
+                                                                             (if (eq? message 'operations)
+                                                                                the-ops
+                                                                                (error "Unknown request -- MACHINE" message))))
+                                                                       (<change>
+                                                                          (if (eq? message 'stack)
+                                                                             stack
+                                                                             (if (eq? message 'operations)
+                                                                                the-ops
+                                                                                (error "Unknown request -- MACHINE" message)))
+                                                                          (lambda (ops)
+                                                                             (set! the-ops (append the-ops ops))))))))))))
                                       dispatch)))))
          (start (lambda (machine)
                   (machine 'start)))
          (get-register-contents (lambda (machine register-name)
                                   (get-contents (get-register machine register-name))))
          (set-register-contents! (lambda (machine register-name value)
-                                   (<change>
-                                      (set-contents! (get-register machine register-name) value)
-                                      ((lambda (x) x) (set-contents! (get-register machine register-name) value)))
+                                   (set-contents! (get-register machine register-name) value)
                                    'done))
          (get-register (lambda (machine reg-name)
                          ((machine 'get-register) reg-name)))
          (assemble (lambda (controller-text machine)
-                     (<change>
-                        (extract-labels controller-text (lambda (insts labels) (update-insts! insts labels machine) insts))
-                        ((lambda (x) x)
-                           (extract-labels
-                              controller-text
-                              (lambda (insts labels)
-                                 (<change>
-                                    (update-insts! insts labels machine)
-                                    insts)
-                                 (<change>
-                                    insts
-                                    (update-insts! insts labels machine))))))))
+                     (extract-labels controller-text (lambda (insts labels) (update-insts! insts labels machine) insts))))
          (extract-labels (lambda (text receive)
                            (if (null? text)
                               (receive () ())
@@ -449,9 +467,6 @@
          (set-instruction-execution-proc! (lambda (inst proc)
                                             (set-cdr! inst proc)))
          (make-label-entry (lambda (label-name insts)
-                             (<change>
-                                ()
-                                label-name)
                              (cons label-name insts)))
          (lookup-label (lambda (labels label-name)
                          (let ((val (assoc label-name labels)))
@@ -459,35 +474,21 @@
                                (cdr val)
                                (error "Undefined label -- ASSEMBLE" label-name)))))
          (make-execution-procedure (lambda (inst labels machine pc flag stack ops)
-                                     (if (<change> (eq? (car inst) 'assign) (not (eq? (car inst) 'assign)))
+                                     (if (eq? (car inst) 'assign)
                                         (make-assign inst machine labels ops pc)
                                         (if (eq? (car inst) 'test)
-                                           (<change>
-                                              (make-test inst machine labels ops flag pc)
-                                              (if (eq? (car inst) 'branch)
-                                                 (make-branch inst machine labels flag pc)
-                                                 (if (eq? (car inst) 'goto)
-                                                    (make-goto inst machine labels pc)
-                                                    (if (eq? (car inst) 'save)
-                                                       (make-save inst machine stack pc)
-                                                       (if (eq? (car inst) 'restore)
-                                                          (if (not (eq? (car inst) 'perform))
-                                                             (make-perform inst machine labels ops pc)
-                                                             (error "Unknown instruction type -- ASSEMBLE" inst))
-                                                          (make-restore inst machine stack pc))))))
-                                           (<change>
-                                              (if (eq? (car inst) 'branch)
-                                                 (make-branch inst machine labels flag pc)
-                                                 (if (eq? (car inst) 'goto)
-                                                    (make-goto inst machine labels pc)
-                                                    (if (eq? (car inst) 'save)
-                                                       (make-save inst machine stack pc)
-                                                       (if (eq? (car inst) 'restore)
-                                                          (make-restore inst machine stack pc)
-                                                          (if (eq? (car inst) 'perform)
-                                                             (make-perform inst machine labels ops pc)
-                                                             (error "Unknown instruction type -- ASSEMBLE" inst))))))
-                                              (make-test inst machine labels ops flag pc))))))
+                                           (make-test inst machine labels ops flag pc)
+                                           (if (eq? (car inst) 'branch)
+                                              (make-branch inst machine labels flag pc)
+                                              (if (eq? (car inst) 'goto)
+                                                 (make-goto inst machine labels pc)
+                                                 (if (eq? (car inst) 'save)
+                                                    (make-save inst machine stack pc)
+                                                    (if (eq? (car inst) 'restore)
+                                                       (make-restore inst machine stack pc)
+                                                       (if (eq? (car inst) 'perform)
+                                                          (make-perform inst machine labels ops pc)
+                                                          (error "Unknown instruction type -- ASSEMBLE" inst))))))))))
          (make-assign (lambda (inst machine labels operations pc)
                         (let ((target (get-register machine (assign-reg-name inst)))
                               (value-exp (assign-value-exp inst)))
@@ -495,7 +496,9 @@
                                                (make-operation-exp value-exp machine labels operations)
                                                (make-primitive-exp (car value-exp) machine labels))))
                               (lambda ()
-                                 (set-contents! target (value-proc))
+                                 (<change>
+                                    (set-contents! target (value-proc))
+                                    ((lambda (x) x) (set-contents! target (value-proc))))
                                  (advance-pc pc))))))
          (assign-reg-name (lambda (assign-instruction)
                             (cadr assign-instruction)))
@@ -543,10 +546,14 @@
                             (if (register-exp? dest)
                                (let ((reg (get-register machine (register-exp-reg dest))))
                                   (lambda ()
-                                     (set-contents! pc (get-contents reg))))
+                                     (<change>
+                                        (set-contents! pc (get-contents reg))
+                                        ((lambda (x) x) (set-contents! pc (get-contents reg))))))
                                (error "Bad GOTO instruction -- ASSEMBLE" inst))))))
          (goto-dest (lambda (goto-instruction)
-                      (cadr goto-instruction)))
+                      (<change>
+                         (cadr goto-instruction)
+                         ((lambda (x) x) (cadr goto-instruction)))))
          (make-save (lambda (inst machine stack pc)
                       (let ((reg (get-register machine (stack-inst-reg-name inst))))
                          (lambda ()
@@ -558,14 +565,8 @@
                                (set-contents! reg (pop stack))
                                (advance-pc pc)))))
          (stack-inst-reg-name (lambda (stack-instruction)
-                                (<change>
-                                   ()
-                                   stack-instruction)
                                 (cadr stack-instruction)))
          (make-perform (lambda (inst machine labels operations pc)
-                         (<change>
-                            ()
-                            labels)
                          (let ((action (perform-action inst)))
                             (if (operation-exp? action)
                                (let ((action-proc (make-operation-exp action machine labels operations)))
@@ -596,29 +597,26 @@
          (register-exp-reg (lambda (exp)
                              (cadr exp)))
          (constant-exp? (lambda (exp)
-                          (<change>
-                             (tagged-list? exp 'const)
-                             ((lambda (x) x) (tagged-list? exp 'const)))))
+                          (tagged-list? exp 'const)))
          (constant-exp-value (lambda (exp)
                                (cadr exp)))
          (label-exp? (lambda (exp)
-                       (<change>
-                          (tagged-list? exp 'label)
-                          ((lambda (x) x) (tagged-list? exp 'label)))))
+                       (tagged-list? exp 'label)))
          (label-exp-label (lambda (exp)
                             (cadr exp)))
          (make-operation-exp (lambda (exp machine labels operations)
                                (let ((op (lookup-prim (operation-exp-op exp) operations))
-                                     (aprocs (map
-                                               (lambda (e)
-                                                  (<change>
-                                                     (make-primitive-exp e machine labels)
-                                                     ((lambda (x) x) (make-primitive-exp e machine labels))))
-                                               (operation-exp-operands exp))))
+                                     (aprocs (map (lambda (e) (make-primitive-exp e machine labels)) (operation-exp-operands exp))))
                                   (lambda ()
                                      (apply op (map (lambda (p) (p)) aprocs))))))
          (operation-exp? (lambda (exp)
-                           (if (pair? exp) (tagged-list? (car exp) 'op) #f)))
+                           (if (pair? exp)
+                              (<change>
+                                 (tagged-list? (car exp) 'op)
+                                 #f)
+                              (<change>
+                                 #f
+                                 (tagged-list? (car exp) 'op)))))
          (operation-exp-op (lambda (operation-exp)
                              (cadr (car operation-exp))))
          (operation-exp-operands (lambda (operation-exp)
@@ -626,8 +624,12 @@
          (lookup-prim (lambda (symbol operations)
                         (let ((val (assoc symbol operations)))
                            (if val
-                              (cadr val)
-                              (error "Unknown operation -- ASSEMBLE" symbol)))))
+                              (<change>
+                                 (cadr val)
+                                 (error "Unknown operation -- ASSEMBLE" symbol))
+                              (<change>
+                                 (error "Unknown operation -- ASSEMBLE" symbol)
+                                 (cadr val))))))
          (eceval-operations (list
                               (list 'read read)
                               (list 'null? null?)
@@ -1460,114 +1462,56 @@
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         (__toplevel_cons 'end ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
    (start eceval)
-   (<change>
-      ()
-      ";;; EC-Eval value:")
-   (<change>
-      (equal?
-         result
+   (equal?
+      result
+      (__toplevel_cons
+         'linebreak
          (__toplevel_cons
-            'linebreak
-            (__toplevel_cons
-               ";;; EC-Eval input:"
-               (__toplevel_cons
-                  'linebreak
-                  (__toplevel_cons
-                     'linebreak
-                     (__toplevel_cons
-                        720
-                        (__toplevel_cons
-                           'linebreak
-                           (__toplevel_cons
-                              ";;; EC-Eval value:"
-                              (__toplevel_cons
-                                 'linebreak
-                                 (__toplevel_cons
-                                    (__toplevel_cons
-                                       'total-pushes
-                                       (__toplevel_cons
-                                          '=
-                                          (__toplevel_cons 208 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 26 ()))))))
-                                    (__toplevel_cons
-                                       'linebreak
-                                       (__toplevel_cons
-                                          'linebreak
-                                          (__toplevel_cons
-                                             ";;; EC-Eval input:"
-                                             (__toplevel_cons
-                                                'linebreak
-                                                (__toplevel_cons
-                                                   'linebreak
-                                                   (__toplevel_cons
-                                                      'ok
-                                                      (__toplevel_cons
-                                                         'linebreak
-                                                         (__toplevel_cons
-                                                            ";;; EC-Eval value:"
-                                                            (__toplevel_cons
-                                                               'linebreak
-                                                               (__toplevel_cons
-                                                                  (__toplevel_cons
-                                                                     'total-pushes
-                                                                     (__toplevel_cons
-                                                                        '=
-                                                                        (__toplevel_cons 3 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 3 ()))))))
-                                                                  (__toplevel_cons
-                                                                     'linebreak
-                                                                     (__toplevel_cons
-                                                                        'linebreak
-                                                                        (__toplevel_cons ";;; EC-Eval input:" (__toplevel_cons 'linebreak (__toplevel_cons 'linebreak ())))))))))))))))))))))))))
-      ((lambda (x) x)
-         (equal?
-            result
+            ";;; EC-Eval input:"
             (__toplevel_cons
                'linebreak
                (__toplevel_cons
-                  ";;; EC-Eval input:"
+                  'linebreak
                   (__toplevel_cons
-                     'linebreak
+                     720
                      (__toplevel_cons
                         'linebreak
                         (__toplevel_cons
-                           720
+                           ";;; EC-Eval value:"
                            (__toplevel_cons
                               'linebreak
                               (__toplevel_cons
-                                 ";;; EC-Eval value:"
+                                 (__toplevel_cons
+                                    'total-pushes
+                                    (__toplevel_cons
+                                       '=
+                                       (__toplevel_cons 208 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 26 ()))))))
                                  (__toplevel_cons
                                     'linebreak
                                     (__toplevel_cons
+                                       'linebreak
                                        (__toplevel_cons
-                                          'total-pushes
-                                          (__toplevel_cons
-                                             '=
-                                             (__toplevel_cons 208 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 26 ()))))))
-                                       (__toplevel_cons
-                                          'linebreak
+                                          ";;; EC-Eval input:"
                                           (__toplevel_cons
                                              'linebreak
                                              (__toplevel_cons
-                                                ";;; EC-Eval input:"
+                                                'linebreak
                                                 (__toplevel_cons
-                                                   'linebreak
+                                                   'ok
                                                    (__toplevel_cons
                                                       'linebreak
                                                       (__toplevel_cons
-                                                         'ok
+                                                         ";;; EC-Eval value:"
                                                          (__toplevel_cons
                                                             'linebreak
                                                             (__toplevel_cons
-                                                               ";;; EC-Eval value:"
+                                                               (__toplevel_cons
+                                                                  'total-pushes
+                                                                  (__toplevel_cons
+                                                                     '=
+                                                                     (__toplevel_cons 3 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 3 ()))))))
                                                                (__toplevel_cons
                                                                   'linebreak
                                                                   (__toplevel_cons
-                                                                     (__toplevel_cons
-                                                                        'total-pushes
-                                                                        (__toplevel_cons
-                                                                           '=
-                                                                           (__toplevel_cons 3 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 3 ()))))))
-                                                                     (__toplevel_cons
-                                                                        'linebreak
-                                                                        (__toplevel_cons
-                                                                           'linebreak
-                                                                           (__toplevel_cons ";;; EC-Eval input:" (__toplevel_cons 'linebreak (__toplevel_cons 'linebreak ()))))))))))))))))))))))))))))
+                                                                     'linebreak
+                                                                     (__toplevel_cons ";;; EC-Eval input:" (__toplevel_cons 'linebreak (__toplevel_cons 'linebreak ()))))))))))))))))))))))))))

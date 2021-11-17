@@ -1,16 +1,19 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((quick-sort (lambda (a-list)
                        (letrec ((rearrange (lambda (pivot some-list)
+                                             (<change>
+                                                ()
+                                                ())
                                              (letrec ((rearrange-iter (lambda (rest result)
                                                                         (if (null? rest)
                                                                            result
-                                                                           (if (<change> (<= (car rest) pivot) (not (<= (car rest) pivot)))
+                                                                           (if (<= (car rest) pivot)
                                                                               (rearrange-iter (cdr rest) (cons (cons (car rest) (car result)) (cdr result)))
                                                                               (rearrange-iter (cdr rest) (cons (car result) (cons (car rest) (cdr result)))))))))
                                                 (rearrange-iter some-list (cons () ()))))))

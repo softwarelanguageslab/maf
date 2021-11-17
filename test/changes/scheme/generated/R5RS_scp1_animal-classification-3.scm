@@ -1,14 +1,11 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 2
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 3
-; * calls to id fun: 0
+; * negated predicates: 2
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((atom? (lambda (x)
-                  (<change>
-                     ()
-                     x)
                   (not (pair? x))))
          (maak-dier (lambda (naam eigenschappen)
                       (list naam eigenschappen)))
@@ -61,43 +58,41 @@
                                (append (list (naam (knoop boom))) (all-kinds-in (deelbomen boom)))
                                (all-kinds-in (deelbomen boom)))))))
          (all-kinds-in (lambda (lst)
-                         (if (null? lst)
-                            (<change>
-                               ()
-                               (append (all-kinds (car lst)) (all-kinds-in (cdr lst))))
-                            (<change>
-                               (append (all-kinds (car lst)) (all-kinds-in (cdr lst)))
-                               ()))))
+                         (if (<change> (null? lst) (not (null? lst)))
+                            ()
+                            (append (all-kinds (car lst)) (all-kinds-in (cdr lst))))))
          (geef-eigenschappen (lambda (boom soort)
                                (letrec ((geef-eig (lambda (boom eig)
+                                                    (<change>
+                                                       ()
+                                                       soort)
                                                     (if (dier? boom)
                                                        (if (eq? (naam boom) soort)
                                                           (append eig (list (eigenschappen boom)))
                                                           #f)
-                                                       (if (if (dier? (knoop boom)) (eq? (naam (knoop boom)) soort) #f)
+                                                       (if (if (<change> (dier? (knoop boom)) (not (dier? (knoop boom)))) (eq? (naam (knoop boom)) soort) #f)
                                                           (append eig (eigenschappen (knoop boom)))
                                                           (geef-eig-in (deelbomen boom) (append eig (eigenschappen (knoop boom))))))))
                                         (geef-eig-in (lambda (lst eig)
                                                        (if (null? lst)
                                                           #f
                                                           (let ((__or_res (geef-eig (car lst) eig)))
-                                                             (if __or_res
-                                                                __or_res
-                                                                (geef-eig-in (cdr lst) eig)))))))
+                                                             (<change>
+                                                                (if __or_res
+                                                                   __or_res
+                                                                   (geef-eig-in (cdr lst) eig))
+                                                                ((lambda (x) x) (if __or_res __or_res (geef-eig-in (cdr lst) eig)))))))))
                                   (geef-eig boom ()))))
          (ask? (lambda (boom soort eig)
+                 (<change>
+                    ()
+                    (display soort))
                  (let ((eigenschappen (geef-eigenschappen boom soort)))
                     (pair? (memq eig eigenschappen))))))
    (if (equal? (all-kinds classificatieboom) (__toplevel_cons 'dier (__toplevel_cons 'vis (__toplevel_cons 'ballonvis (__toplevel_cons 'landdier (__toplevel_cons 'olifant (__toplevel_cons 'vogel (__toplevel_cons 'kanarie (__toplevel_cons 'arend ())))))))))
       (if (ask? classificatieboom 'landdier 'kan-lopen)
-         (<change>
-            (if (ask? classificatieboom 'ballonvis 'heeft-vinnen)
-               (not (ask? classificatieboom 'olifant 'kan-vliegen))
-               #f)
+         (if (ask? classificatieboom 'ballonvis 'heeft-vinnen)
+            (not (ask? classificatieboom 'olifant 'kan-vliegen))
             #f)
-         (<change>
-            #f
-            (if (ask? classificatieboom 'ballonvis 'heeft-vinnen)
-               #f
-               (not (ask? classificatieboom 'olifant 'kan-vliegen)))))
+         #f)
       #f))

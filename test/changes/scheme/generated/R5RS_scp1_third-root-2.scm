@@ -6,11 +6,11 @@
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((derde-machtswortel (lambda (x)
+                               (<change>
+                                  ()
+                                  *)
                                (letrec ((epsilon 1.000000e-02)
                                         (hulp-derde-machtswortel (lambda (y)
-                                                                   (<change>
-                                                                      ()
-                                                                      y)
                                                                    (if (< (abs (- (* y y y) x)) epsilon)
                                                                       y
                                                                       (hulp-derde-machtswortel (/ (+ (/ x (* y y)) y y) 3))))))

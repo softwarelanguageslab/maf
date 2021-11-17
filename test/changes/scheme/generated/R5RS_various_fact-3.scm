@@ -9,5 +9,5 @@
                  (if (= n 0) 1 (* n (fact (- n 1)))))))
    (<change>
       ()
-      fact)
+      (fact 5))
    (fact 5))

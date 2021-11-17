@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 2
-; * added: 4
-; * swaps: 1
+; * added: 2
+; * swaps: 4
 ; * negated predicates: 0
-; * swapped branches: 2
-; * calls to id fun: 1
+; * swapped branches: 0
+; * calls to id fun: 7
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
@@ -14,20 +14,13 @@
                        (for-each output args)))
          (output-all-sep (lambda (args)
                            (<change>
-                              ()
-                              arg)
-                           (for-each (lambda (arg) (output arg) (output " ")) args)))
+                              (for-each (lambda (arg) (output arg) (output " ")) args)
+                              ((lambda (x) x) (for-each (lambda (arg) (<change> (output arg) ()) (output " ")) args)))))
          (make-tweet (lambda (username text tags)
                        (letrec ((output-tweet (lambda ()
-                                                (<change>
-                                                   (output-all "Tweet from " username "\n" text "\nTags: ")
-                                                   ())
-                                                (<change>
-                                                   (output-all-sep tags)
-                                                   (linebreak))
-                                                (<change>
-                                                   (linebreak)
-                                                   (output-all-sep tags))))
+                                                (output-all "Tweet from " username "\n" text "\nTags: ")
+                                                (output-all-sep tags)
+                                                (linebreak)))
                                 (dispatch (lambda (msg)
                                             (if (eq? msg 'text)
                                                text
@@ -39,7 +32,9 @@
                                                         output-tweet
                                                         (begin
                                                            (output "error - wrong msg ")
-                                                           (output msg)))))))))
+                                                           (<change>
+                                                              (output msg)
+                                                              ((lambda (x) x) (output msg)))))))))))
                           (if (> (string-length text) 140) #f dispatch))))
          (make-account (lambda (name username)
                          (let ((followers ())
@@ -48,17 +43,13 @@
                             (letrec ((follow (lambda (account)
                                                ((account 'add-follower) dispatch)))
                                      (add-follower (lambda (account)
-                                                     (<change>
-                                                        ()
-                                                        (display cons))
                                                      (set! followers (cons account followers))))
                                      (tweet (lambda (text . tags)
                                               (let ((tweet-obj (make-tweet username text tags)))
                                                  (set! tweets (cons tweet-obj tweets))
-                                                 (set! tweet-wall (cons tweet-obj tweet-wall))
                                                  (<change>
-                                                    ()
-                                                    cons)
+                                                    (set! tweet-wall (cons tweet-obj tweet-wall))
+                                                    ((lambda (x) x) (set! tweet-wall (cons tweet-obj tweet-wall))))
                                                  (for-each (lambda (follower) ((follower 'add-tweet-to-wall) tweet-obj)) followers))))
                                      (add-tweet-to-wall (lambda (tweet)
                                                           (set! tweet-wall (cons tweet tweet-wall))))
@@ -66,32 +57,51 @@
                                                        (if (eq? symbol 'wall)
                                                           (output-wall)
                                                           (if (eq? symbol 'followers)
-                                                             (<change>
-                                                                (output-followers)
-                                                                (if (eq? symbol 'account)
-                                                                   (output-entire-account)
-                                                                   (output "wrong symbol given")))
-                                                             (<change>
-                                                                (if (eq? symbol 'account)
-                                                                   (output-entire-account)
-                                                                   (output "wrong symbol given"))
-                                                                (output-followers))))))
+                                                             (output-followers)
+                                                             (if (eq? symbol 'account)
+                                                                (output-entire-account)
+                                                                (output "wrong symbol given"))))))
                                      (output-wall (lambda ()
-                                                    (output "TWEET WALL")
+                                                    (<change>
+                                                       (output "TWEET WALL")
+                                                       (linebreak))
                                                     (<change>
                                                        (linebreak)
-                                                       ())
-                                                    (for-each (lambda (tweet) ((tweet 'output)) (<change> () (display tweet)) (linebreak)) tweet-wall)))
+                                                       (output "TWEET WALL"))
+                                                    (for-each
+                                                       (lambda (tweet)
+                                                          (<change>
+                                                             ((tweet 'output))
+                                                             (linebreak))
+                                                          (<change>
+                                                             (linebreak)
+                                                             ((tweet 'output))))
+                                                       tweet-wall)))
                                      (output-followers (lambda ()
                                                          (output "FOLLOWERS")
                                                          (linebreak)
-                                                         (for-each (lambda (follower) (output (follower 'username)) (output " ")) followers)))
+                                                         (<change>
+                                                            (for-each (lambda (follower) (output (follower 'username)) (output " ")) followers)
+                                                            ((lambda (x) x)
+                                                               (for-each
+                                                                  (lambda (follower)
+                                                                     (<change>
+                                                                        (output (follower 'username))
+                                                                        ((lambda (x) x) (output (follower 'username))))
+                                                                     (output " "))
+                                                                  followers)))))
                                      (output-entire-account (lambda ()
+                                                              (<change>
+                                                                 ()
+                                                                 linebreak)
                                                               (output-all "Twitter name " username "\n" "Name " name "\n")
                                                               (output-wall)
                                                               (<change>
                                                                  (output-followers)
-                                                                 ((lambda (x) x) (output-followers)))
+                                                                 ())
+                                                              (<change>
+                                                                 ()
+                                                                 username)
                                                               (linebreak)
                                                               (linebreak)))
                                      (dispatch (lambda (msg)
@@ -102,165 +112,293 @@
                                                        (if (eq? msg 'output)
                                                           output-account
                                                           (if (eq? msg 'follow)
-                                                             (<change>
-                                                                follow
-                                                                (if (eq? msg 'add-follower)
-                                                                   add-follower
-                                                                   (if (eq? msg 'tweet)
-                                                                      tweet
-                                                                      (if (eq? msg 'add-tweet-to-wall)
-                                                                         add-tweet-to-wall
-                                                                         (begin
+                                                             follow
+                                                             (if (eq? msg 'add-follower)
+                                                                add-follower
+                                                                (if (eq? msg 'tweet)
+                                                                   tweet
+                                                                   (if (eq? msg 'add-tweet-to-wall)
+                                                                      add-tweet-to-wall
+                                                                      (begin
+                                                                         (<change>
                                                                             (output "error - wrong msg ")
-                                                                            (output msg))))))
-                                                             (<change>
-                                                                (if (eq? msg 'add-follower)
-                                                                   add-follower
-                                                                   (if (eq? msg 'tweet)
-                                                                      tweet
-                                                                      (if (eq? msg 'add-tweet-to-wall)
-                                                                         add-tweet-to-wall
-                                                                         (begin
-                                                                            (output "error - wrong msg ")
-                                                                            (output msg)))))
-                                                                follow))))))))
+                                                                            ((lambda (x) x) (output "error - wrong msg ")))
+                                                                         (output msg))))))))))))
                                dispatch))))
          (my-tweet (make-tweet "madewael" "Racket is cool!" (list "#Racket" "#Scheme")))
          (res1 (equal? (my-tweet 'username) "madewael")))
-   ((my-tweet 'output))
+   (<change>
+      ((my-tweet 'output))
+      ((lambda (x) x) ((my-tweet 'output))))
    (letrec ((accountE (make-account "Eline Philips" "ephilips"))
             (accountM (make-account "Mattias De Wael" "madewael")))
-      ((accountE 'follow) accountM)
-      ((accountM 'tweet) "Racket is cool!" "#Racket" "#Scheme")
+      (<change>
+         ((accountE 'follow) accountM)
+         ((accountM 'tweet) "Racket is cool!" "#Racket" "#Scheme"))
+      (<change>
+         ((accountM 'tweet) "Racket is cool!" "#Racket" "#Scheme")
+         ((accountE 'follow) accountM))
       ((accountE 'tweet) "Hello World!")
       ((accountE 'output) 'account)
-      ((accountM 'output) 'account)
-      (if res1
-         (equal?
-            result
-            (__toplevel_cons
-               'linebreak
+      (<change>
+         ((accountM 'output) 'account)
+         (if res1
+            (equal?
+               result
                (__toplevel_cons
                   'linebreak
                   (__toplevel_cons
-                     " "
+                     'linebreak
                      (__toplevel_cons
-                        "ephilips"
+                        " "
                         (__toplevel_cons
-                           'linebreak
+                           "ephilips"
                            (__toplevel_cons
-                              "FOLLOWERS"
+                              'linebreak
                               (__toplevel_cons
-                                 'linebreak
+                                 "FOLLOWERS"
                                  (__toplevel_cons
                                     'linebreak
                                     (__toplevel_cons
-                                       " "
+                                       'linebreak
                                        (__toplevel_cons
-                                          "#Scheme"
+                                          " "
                                           (__toplevel_cons
-                                             " "
+                                             "#Scheme"
                                              (__toplevel_cons
-                                                "#Racket"
+                                                " "
                                                 (__toplevel_cons
-                                                   "\nTags: "
+                                                   "#Racket"
                                                    (__toplevel_cons
-                                                      "Racket is cool!"
+                                                      "\nTags: "
                                                       (__toplevel_cons
-                                                         "\n"
+                                                         "Racket is cool!"
                                                          (__toplevel_cons
-                                                            "madewael"
+                                                            "\n"
                                                             (__toplevel_cons
-                                                               "Tweet from "
+                                                               "madewael"
                                                                (__toplevel_cons
-                                                                  'linebreak
+                                                                  "Tweet from "
                                                                   (__toplevel_cons
-                                                                     "TWEET WALL"
+                                                                     'linebreak
                                                                      (__toplevel_cons
-                                                                        "\n"
+                                                                        "TWEET WALL"
                                                                         (__toplevel_cons
-                                                                           "Mattias De Wael"
+                                                                           "\n"
                                                                            (__toplevel_cons
-                                                                              "Name "
+                                                                              "Mattias De Wael"
                                                                               (__toplevel_cons
-                                                                                 "\n"
+                                                                                 "Name "
                                                                                  (__toplevel_cons
-                                                                                    "madewael"
+                                                                                    "\n"
                                                                                     (__toplevel_cons
-                                                                                       "Twitter name "
+                                                                                       "madewael"
                                                                                        (__toplevel_cons
-                                                                                          'linebreak
+                                                                                          "Twitter name "
                                                                                           (__toplevel_cons
                                                                                              'linebreak
                                                                                              (__toplevel_cons
                                                                                                 'linebreak
                                                                                                 (__toplevel_cons
-                                                                                                   "FOLLOWERS"
+                                                                                                   'linebreak
                                                                                                    (__toplevel_cons
-                                                                                                      'linebreak
+                                                                                                      "FOLLOWERS"
                                                                                                       (__toplevel_cons
                                                                                                          'linebreak
                                                                                                          (__toplevel_cons
-                                                                                                            " "
+                                                                                                            'linebreak
                                                                                                             (__toplevel_cons
-                                                                                                               "#Scheme"
+                                                                                                               " "
                                                                                                                (__toplevel_cons
-                                                                                                                  " "
+                                                                                                                  "#Scheme"
                                                                                                                   (__toplevel_cons
-                                                                                                                     "#Racket"
+                                                                                                                     " "
                                                                                                                      (__toplevel_cons
-                                                                                                                        "\nTags: "
+                                                                                                                        "#Racket"
                                                                                                                         (__toplevel_cons
-                                                                                                                           "Racket is cool!"
+                                                                                                                           "\nTags: "
                                                                                                                            (__toplevel_cons
-                                                                                                                              "\n"
+                                                                                                                              "Racket is cool!"
                                                                                                                               (__toplevel_cons
-                                                                                                                                 "madewael"
+                                                                                                                                 "\n"
                                                                                                                                  (__toplevel_cons
-                                                                                                                                    "Tweet from "
+                                                                                                                                    "madewael"
                                                                                                                                     (__toplevel_cons
-                                                                                                                                       'linebreak
+                                                                                                                                       "Tweet from "
                                                                                                                                        (__toplevel_cons
                                                                                                                                           'linebreak
                                                                                                                                           (__toplevel_cons
-                                                                                                                                             "\nTags: "
+                                                                                                                                             'linebreak
                                                                                                                                              (__toplevel_cons
-                                                                                                                                                "Hello World!"
+                                                                                                                                                "\nTags: "
                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                   "\n"
+                                                                                                                                                   "Hello World!"
                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                      "ephilips"
+                                                                                                                                                      "\n"
                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                         "Tweet from "
+                                                                                                                                                         "ephilips"
                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                            'linebreak
+                                                                                                                                                            "Tweet from "
                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                               "TWEET WALL"
+                                                                                                                                                               'linebreak
                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                  "\n"
+                                                                                                                                                                  "TWEET WALL"
                                                                                                                                                                   (__toplevel_cons
-                                                                                                                                                                     "Eline Philips"
+                                                                                                                                                                     "\n"
                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                        "Name "
+                                                                                                                                                                        "Eline Philips"
                                                                                                                                                                         (__toplevel_cons
-                                                                                                                                                                           "\n"
+                                                                                                                                                                           "Name "
                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                              "ephilips"
+                                                                                                                                                                              "\n"
                                                                                                                                                                               (__toplevel_cons
-                                                                                                                                                                                 "Twitter name "
+                                                                                                                                                                                 "ephilips"
                                                                                                                                                                                  (__toplevel_cons
-                                                                                                                                                                                    'linebreak
+                                                                                                                                                                                    "Twitter name "
                                                                                                                                                                                     (__toplevel_cons
-                                                                                                                                                                                       " "
+                                                                                                                                                                                       'linebreak
                                                                                                                                                                                        (__toplevel_cons
-                                                                                                                                                                                          "#Scheme"
+                                                                                                                                                                                          " "
                                                                                                                                                                                           (__toplevel_cons
-                                                                                                                                                                                             " "
+                                                                                                                                                                                             "#Scheme"
                                                                                                                                                                                              (__toplevel_cons
-                                                                                                                                                                                                "#Racket"
+                                                                                                                                                                                                " "
                                                                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                                                                   "\nTags: "
+                                                                                                                                                                                                   "#Racket"
                                                                                                                                                                                                    (__toplevel_cons
-                                                                                                                                                                                                      "Racket is cool!"
-                                                                                                                                                                                                      (__toplevel_cons "\n" (__toplevel_cons "madewael" (__toplevel_cons "Tweet from " ()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
-         #f)))
+                                                                                                                                                                                                      "\nTags: "
+                                                                                                                                                                                                      (__toplevel_cons
+                                                                                                                                                                                                         "Racket is cool!"
+                                                                                                                                                                                                         (__toplevel_cons "\n" (__toplevel_cons "madewael" (__toplevel_cons "Tweet from " ()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+            #f))
+      (<change>
+         (if res1
+            (equal?
+               result
+               (__toplevel_cons
+                  'linebreak
+                  (__toplevel_cons
+                     'linebreak
+                     (__toplevel_cons
+                        " "
+                        (__toplevel_cons
+                           "ephilips"
+                           (__toplevel_cons
+                              'linebreak
+                              (__toplevel_cons
+                                 "FOLLOWERS"
+                                 (__toplevel_cons
+                                    'linebreak
+                                    (__toplevel_cons
+                                       'linebreak
+                                       (__toplevel_cons
+                                          " "
+                                          (__toplevel_cons
+                                             "#Scheme"
+                                             (__toplevel_cons
+                                                " "
+                                                (__toplevel_cons
+                                                   "#Racket"
+                                                   (__toplevel_cons
+                                                      "\nTags: "
+                                                      (__toplevel_cons
+                                                         "Racket is cool!"
+                                                         (__toplevel_cons
+                                                            "\n"
+                                                            (__toplevel_cons
+                                                               "madewael"
+                                                               (__toplevel_cons
+                                                                  "Tweet from "
+                                                                  (__toplevel_cons
+                                                                     'linebreak
+                                                                     (__toplevel_cons
+                                                                        "TWEET WALL"
+                                                                        (__toplevel_cons
+                                                                           "\n"
+                                                                           (__toplevel_cons
+                                                                              "Mattias De Wael"
+                                                                              (__toplevel_cons
+                                                                                 "Name "
+                                                                                 (__toplevel_cons
+                                                                                    "\n"
+                                                                                    (__toplevel_cons
+                                                                                       "madewael"
+                                                                                       (__toplevel_cons
+                                                                                          "Twitter name "
+                                                                                          (__toplevel_cons
+                                                                                             'linebreak
+                                                                                             (__toplevel_cons
+                                                                                                'linebreak
+                                                                                                (__toplevel_cons
+                                                                                                   'linebreak
+                                                                                                   (__toplevel_cons
+                                                                                                      "FOLLOWERS"
+                                                                                                      (__toplevel_cons
+                                                                                                         'linebreak
+                                                                                                         (__toplevel_cons
+                                                                                                            'linebreak
+                                                                                                            (__toplevel_cons
+                                                                                                               " "
+                                                                                                               (__toplevel_cons
+                                                                                                                  "#Scheme"
+                                                                                                                  (__toplevel_cons
+                                                                                                                     " "
+                                                                                                                     (__toplevel_cons
+                                                                                                                        "#Racket"
+                                                                                                                        (__toplevel_cons
+                                                                                                                           "\nTags: "
+                                                                                                                           (__toplevel_cons
+                                                                                                                              "Racket is cool!"
+                                                                                                                              (__toplevel_cons
+                                                                                                                                 "\n"
+                                                                                                                                 (__toplevel_cons
+                                                                                                                                    "madewael"
+                                                                                                                                    (__toplevel_cons
+                                                                                                                                       "Tweet from "
+                                                                                                                                       (__toplevel_cons
+                                                                                                                                          'linebreak
+                                                                                                                                          (__toplevel_cons
+                                                                                                                                             'linebreak
+                                                                                                                                             (__toplevel_cons
+                                                                                                                                                "\nTags: "
+                                                                                                                                                (__toplevel_cons
+                                                                                                                                                   "Hello World!"
+                                                                                                                                                   (__toplevel_cons
+                                                                                                                                                      "\n"
+                                                                                                                                                      (__toplevel_cons
+                                                                                                                                                         "ephilips"
+                                                                                                                                                         (__toplevel_cons
+                                                                                                                                                            "Tweet from "
+                                                                                                                                                            (__toplevel_cons
+                                                                                                                                                               'linebreak
+                                                                                                                                                               (__toplevel_cons
+                                                                                                                                                                  "TWEET WALL"
+                                                                                                                                                                  (__toplevel_cons
+                                                                                                                                                                     "\n"
+                                                                                                                                                                     (__toplevel_cons
+                                                                                                                                                                        "Eline Philips"
+                                                                                                                                                                        (__toplevel_cons
+                                                                                                                                                                           "Name "
+                                                                                                                                                                           (__toplevel_cons
+                                                                                                                                                                              "\n"
+                                                                                                                                                                              (__toplevel_cons
+                                                                                                                                                                                 "ephilips"
+                                                                                                                                                                                 (__toplevel_cons
+                                                                                                                                                                                    "Twitter name "
+                                                                                                                                                                                    (__toplevel_cons
+                                                                                                                                                                                       'linebreak
+                                                                                                                                                                                       (__toplevel_cons
+                                                                                                                                                                                          " "
+                                                                                                                                                                                          (__toplevel_cons
+                                                                                                                                                                                             "#Scheme"
+                                                                                                                                                                                             (__toplevel_cons
+                                                                                                                                                                                                " "
+                                                                                                                                                                                                (__toplevel_cons
+                                                                                                                                                                                                   "#Racket"
+                                                                                                                                                                                                   (__toplevel_cons
+                                                                                                                                                                                                      "\nTags: "
+                                                                                                                                                                                                      (__toplevel_cons
+                                                                                                                                                                                                         "Racket is cool!"
+                                                                                                                                                                                                         (__toplevel_cons "\n" (__toplevel_cons "madewael" (__toplevel_cons "Tweet from " ()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+            #f)
+         ((accountM 'output) 'account))))

@@ -2,26 +2,26 @@
 ; * removed: 0
 ; * added: 1
 ; * swaps: 0
-; * negated predicates: 3
-; * swapped branches: 0
-; * calls to id fun: 3
+; * negated predicates: 2
+; * swapped branches: 1
+; * calls to id fun: 1
 (letrec ((square (lambda (x)
                    (<change>
                       ()
                       *)
                    (* x x)))
          (modulo-power (lambda (base exp n)
-                         (if (= exp 0)
+                         (if (<change> (= exp 0) (not (= exp 0)))
                             1
                             (if (odd? exp)
                                (modulo (* base (modulo-power base (- exp 1) n)) n)
                                (modulo (square (modulo-power base (/ exp 2) n)) n)))))
          (is-trivial-composite? (lambda (n)
                                   (let ((__or_res (= (modulo n 2) 0)))
-                                     (<change>
-                                        (if __or_res
-                                           __or_res
-                                           (let ((__or_res (= (modulo n 3) 0)))
+                                     (if __or_res
+                                        __or_res
+                                        (let ((__or_res (= (modulo n 3) 0)))
+                                           (<change>
                                               (if __or_res
                                                  __or_res
                                                  (let ((__or_res (= (modulo n 5) 0)))
@@ -40,38 +40,44 @@
                                                                             (if __or_res
                                                                                __or_res
                                                                                (let ((__or_res (= (modulo n 19) 0)))
-                                                                                  (if __or_res __or_res (= (modulo n 23) 0))))))))))))))))
-                                        ((lambda (x) x)
-                                           (if (<change> __or_res (not __or_res))
-                                              __or_res
-                                              (let ((__or_res (= (modulo n 3) 0)))
-                                                 (if (<change> __or_res (not __or_res))
+                                                                                  (if __or_res __or_res (= (modulo n 23) 0))))))))))))))
+                                              ((lambda (x) x)
+                                                 (if __or_res
                                                     __or_res
                                                     (let ((__or_res (= (modulo n 5) 0)))
-                                                       (if (<change> __or_res (not __or_res))
-                                                          __or_res
-                                                          (let ((__or_res (= (modulo n 7) 0)))
-                                                             (if __or_res
-                                                                __or_res
-                                                                (let ((__or_res (= (modulo n 11) 0)))
-                                                                   (if __or_res
-                                                                      __or_res
-                                                                      (let ((__or_res (= (modulo n 13) 0)))
-                                                                         (if __or_res
-                                                                            __or_res
-                                                                            (let ((__or_res (= (modulo n 17) 0)))
-                                                                               (<change>
+                                                       (if __or_res
+                                                          (<change>
+                                                             __or_res
+                                                             (let ((__or_res (= (modulo n 7) 0)))
+                                                                (if __or_res
+                                                                   __or_res
+                                                                   (let ((__or_res (= (modulo n 11) 0)))
+                                                                      (if __or_res
+                                                                         __or_res
+                                                                         (let ((__or_res (= (modulo n 13) 0)))
+                                                                            (if __or_res
+                                                                               __or_res
+                                                                               (let ((__or_res (= (modulo n 17) 0)))
                                                                                   (if __or_res
                                                                                      __or_res
                                                                                      (let ((__or_res (= (modulo n 19) 0)))
-                                                                                        (if __or_res __or_res (= (modulo n 23) 0))))
-                                                                                  ((lambda (x) x)
-                                                                                     (if __or_res
-                                                                                        __or_res
-                                                                                        (let ((__or_res (= (modulo n 19) 0)))
-                                                                                           (<change>
-                                                                                              (if __or_res __or_res (= (modulo n 23) 0))
-                                                                                              ((lambda (x) x) (if __or_res __or_res (= (modulo n 23) 0)))))))))))))))))))))))))
+                                                                                        (if __or_res __or_res (= (modulo n 23) 0))))))))))))
+                                                          (<change>
+                                                             (let ((__or_res (= (modulo n 7) 0)))
+                                                                (if __or_res
+                                                                   __or_res
+                                                                   (let ((__or_res (= (modulo n 11) 0)))
+                                                                      (if __or_res
+                                                                         __or_res
+                                                                         (let ((__or_res (= (modulo n 13) 0)))
+                                                                            (if __or_res
+                                                                               __or_res
+                                                                               (let ((__or_res (= (modulo n 17) 0)))
+                                                                                  (if __or_res
+                                                                                     __or_res
+                                                                                     (let ((__or_res (= (modulo n 19) 0)))
+                                                                                        (if __or_res __or_res (= (modulo n 23) 0)))))))))))
+                                                             __or_res)))))))))))
          (is-fermat-prime? (lambda (n iterations)
                              (let ((__or_res (<= iterations 0)))
                                 (if __or_res
@@ -83,7 +89,7 @@
                                          #f))))))
          (generate-fermat-prime (lambda (byte-size iterations)
                                   (let ((n (random byte-size)))
-                                     (if (if (not (is-trivial-composite? n)) (is-fermat-prime? n iterations) #f)
+                                     (if (<change> (if (not (is-trivial-composite? n)) (is-fermat-prime? n iterations) #f) (not (if (not (is-trivial-composite? n)) (is-fermat-prime? n iterations) #f)))
                                         n
                                         (generate-fermat-prime byte-size iterations)))))
          (iterations 10)

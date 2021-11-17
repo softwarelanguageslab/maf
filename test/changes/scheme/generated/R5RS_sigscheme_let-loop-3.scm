@@ -1,15 +1,16 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((loop (lambda (i l)
-                 (<change>
-                    (let ((a 0)
-                          (b 1)
-                          (c 2))
-                       (if (< i l) (loop (+ 1 i) l) l))
-                    ((lambda (x) x) (let ((a 0) (b 1) (c 2)) (if (<change> (< i l) (not (< i l))) (loop (+ 1 i) l) l)))))))
+                 (let ((a 0)
+                       (b 1)
+                       (c 2))
+                    (if (< i l) (loop (+ 1 i) l) l)))))
+   (<change>
+      ()
+      (display 0))
    (loop 0 20000))

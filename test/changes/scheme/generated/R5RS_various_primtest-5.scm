@@ -1,13 +1,19 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 2
 ; * swaps: 0
-; * negated predicates: 1
-; * swapped branches: 1
-; * calls to id fun: 0
+; * negated predicates: 0
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((square (lambda (x)
+                   (<change>
+                      ()
+                      x)
                    (* x x)))
          (modulo-power (lambda (base exp n)
+                         (<change>
+                            ()
+                            2)
                          (if (= exp 0)
                             1
                             (if (odd? exp)
@@ -21,7 +27,7 @@
                                            (if __or_res
                                               __or_res
                                               (let ((__or_res (= (modulo n 5) 0)))
-                                                 (if (<change> __or_res (not __or_res))
+                                                 (if __or_res
                                                     __or_res
                                                     (let ((__or_res (= (modulo n 7) 0)))
                                                        (if __or_res
@@ -44,12 +50,8 @@
                                    (let* ((byte-size (ceiling (/ (log n) (log 2))))
                                           (a (random byte-size)))
                                       (if (= (modulo-power a (- n 1) n) 1)
-                                         (<change>
-                                            (is-fermat-prime? n (- iterations 1))
-                                            #f)
-                                         (<change>
-                                            #f
-                                            (is-fermat-prime? n (- iterations 1)))))))))
+                                         (is-fermat-prime? n (- iterations 1))
+                                         #f))))))
          (generate-fermat-prime (lambda (byte-size iterations)
                                   (let ((n (random byte-size)))
                                      (if (if (not (is-trivial-composite? n)) (is-fermat-prime? n iterations) #f)
@@ -57,4 +59,6 @@
                                         (generate-fermat-prime byte-size iterations)))))
          (iterations 10)
          (byte-size 15))
-   (generate-fermat-prime byte-size iterations))
+   (<change>
+      (generate-fermat-prime byte-size iterations)
+      ((lambda (x) x) (generate-fermat-prime byte-size iterations))))

@@ -12,14 +12,14 @@
                                #t
                                (if (let ((__or_res (atom? l1))) (if __or_res __or_res (atom? l2)))
                                   #f
-                                  (if (same-structure? (car l1) (car l2))
+                                  (if (<change> (same-structure? (car l1) (car l2)) (not (same-structure? (car l1) (car l2))))
                                      (same-structure? (cdr l1) (cdr l2))
                                      #f)))))
          (same-structure?-or (lambda (l1 l2)
                                (let ((__or_res (if (atom? l1) (atom? l2) #f)))
                                   (if __or_res
                                      __or_res
-                                     (if (<change> (pair? l1) (not (pair? l1)))
+                                     (if (pair? l1)
                                         (if (pair? l2)
                                            (if (same-structure?-or (car l1) (car l2))
                                               (same-structure?-or (cdr l1) (cdr l2))

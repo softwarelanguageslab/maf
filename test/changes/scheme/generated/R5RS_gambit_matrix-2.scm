@@ -2,21 +2,15 @@
 ; * removed: 0
 ; * added: 2
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 3
+; * negated predicates: 1
+; * swapped branches: 2
+; * calls to id fun: 5
 (letrec ((map2 (lambda (f l1 l2)
                  (if (let ((__or_res (null? l1))) (if __or_res __or_res (null? l2)))
-                    (<change>
-                       ()
-                       (if (if (pair? l1) (pair? l2) #f)
-                          (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2)))
-                          (error "Cannot map2 over a non-list")))
-                    (<change>
-                       (if (if (pair? l1) (pair? l2) #f)
-                          (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2)))
-                          (error "Cannot map2 over a non-list"))
-                       ()))))
+                    ()
+                    (if (if (pair? l1) (pair? l2) #f)
+                       (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2)))
+                       (error "Cannot map2 over a non-list")))))
          (chez-box (lambda (x)
                      (cons x ())))
          (chez-unbox (lambda (x)
@@ -44,9 +38,6 @@
                                                                           (begin
                                                                              (vector-set! vec i (if (= (car first) (car row)) if-equal if-different))
                                                                              (__do_loop (+ i 1) (cdr first) (cdr row)))))))
-                                                    (<change>
-                                                       ()
-                                                       __do_loop)
                                                     (__do_loop 0 first-row row))
                                                  (lambda (i)
                                                     (vector-ref vec i))))))
@@ -72,42 +63,80 @@
                      (list (miota number-of-cols)))))
          (zulu (let ((cons-if-not-null (lambda (lhs rhs)
                                         (if (null? lhs) rhs (cons lhs rhs)))))
-                 (lambda (old-row new-row-func partitions equal-cont)
-                    ((letrec ((_-*- (lambda (p-in old-row rev-p-out)
-                                     ((letrec ((_-split- (lambda (partition old-row plus minus)
-                                                          (if (null? partition)
-                                                             ((letrec ((_-minus- (lambda (old-row m)
-                                                                                  (if (null? m)
-                                                                                     (let ((rev-p-out (cons-if-not-null minus (cons-if-not-null plus rev-p-out)))
-                                                                                           (p-in (cdr p-in)))
-                                                                                        (if (null? p-in)
-                                                                                           (equal-cont (reverse rev-p-out))
-                                                                                           (_-*- p-in old-row rev-p-out)))
-                                                                                     (let ((__or_res (= 1 (car old-row))))
-                                                                                        (if __or_res
-                                                                                           __or_res
-                                                                                           (_-minus- (cdr old-row) (cdr m))))))))
-                                                                _-minus-)
-                                                                old-row
-                                                                minus)
-                                                             (let ((next (car partition)))
-                                                                (let ((__case-atom-key (new-row-func next)))
-                                                                   (if (eq? __case-atom-key 1)
-                                                                      (if (= 1 (car old-row))
-                                                                         (_-split- (cdr partition) (cdr old-row) (cons next plus) minus)
-                                                                         #f)
-                                                                      (if (eq? __case-atom-key -1)
-                                                                         (_-split- (cdr partition) old-row plus (cons next minus))
-                                                                         #f))))))))
-                                        _-split-)
-                                        (car p-in)
-                                        old-row
-                                        ()
-                                        ()))))
-                       _-*-)
-                       partitions
-                       old-row
-                       ()))))
+                 (<change>
+                    (lambda (old-row new-row-func partitions equal-cont)
+                       ((letrec ((_-*- (lambda (p-in old-row rev-p-out)
+                                        ((letrec ((_-split- (lambda (partition old-row plus minus)
+                                                             (if (null? partition)
+                                                                ((letrec ((_-minus- (lambda (old-row m)
+                                                                                     (if (null? m)
+                                                                                        (let ((rev-p-out (cons-if-not-null minus (cons-if-not-null plus rev-p-out)))
+                                                                                              (p-in (cdr p-in)))
+                                                                                           (if (null? p-in)
+                                                                                              (equal-cont (reverse rev-p-out))
+                                                                                              (_-*- p-in old-row rev-p-out)))
+                                                                                        (let ((__or_res (= 1 (car old-row))))
+                                                                                           (if __or_res
+                                                                                              __or_res
+                                                                                              (_-minus- (cdr old-row) (cdr m))))))))
+                                                                   _-minus-)
+                                                                   old-row
+                                                                   minus)
+                                                                (let ((next (car partition)))
+                                                                   (let ((__case-atom-key (new-row-func next)))
+                                                                      (if (eq? __case-atom-key 1)
+                                                                         (if (= 1 (car old-row))
+                                                                            (_-split- (cdr partition) (cdr old-row) (cons next plus) minus)
+                                                                            #f)
+                                                                         (if (eq? __case-atom-key -1)
+                                                                            (_-split- (cdr partition) old-row plus (cons next minus))
+                                                                            #f))))))))
+                                           _-split-)
+                                           (car p-in)
+                                           old-row
+                                           ()
+                                           ()))))
+                          _-*-)
+                          partitions
+                          old-row
+                          ()))
+                    ((lambda (x) x)
+                       (lambda (old-row new-row-func partitions equal-cont)
+                          ((letrec ((_-*- (lambda (p-in old-row rev-p-out)
+                                           ((letrec ((_-split- (lambda (partition old-row plus minus)
+                                                                (if (null? partition)
+                                                                   ((letrec ((_-minus- (lambda (old-row m)
+                                                                                        (if (null? m)
+                                                                                           (let ((rev-p-out (cons-if-not-null minus (cons-if-not-null plus rev-p-out)))
+                                                                                                 (p-in (cdr p-in)))
+                                                                                              (if (null? p-in)
+                                                                                                 (equal-cont (reverse rev-p-out))
+                                                                                                 (_-*- p-in old-row rev-p-out)))
+                                                                                           (let ((__or_res (= 1 (car old-row))))
+                                                                                              (if __or_res
+                                                                                                 __or_res
+                                                                                                 (_-minus- (cdr old-row) (cdr m))))))))
+                                                                      _-minus-)
+                                                                      old-row
+                                                                      minus)
+                                                                   (let ((next (car partition)))
+                                                                      (let ((__case-atom-key (new-row-func next)))
+                                                                         (if (eq? __case-atom-key 1)
+                                                                            (if (= 1 (car old-row))
+                                                                               (_-split- (cdr partition) (cdr old-row) (cons next plus) minus)
+                                                                               #f)
+                                                                            (if (eq? __case-atom-key -1)
+                                                                               (_-split- (cdr partition) old-row plus (cons next minus))
+                                                                               #f))))))))
+                                              _-split-)
+                                              (car p-in)
+                                              old-row
+                                              ()
+                                              ()))))
+                             _-*-)
+                             partitions
+                             old-row
+                             ()))))))
          (all? (lambda (ok? lst)
                  ((letrec ((_-*- (lambda (lst)
                                   (let ((__or_res (null? lst)))
@@ -146,12 +175,17 @@
          (proc->vector (lambda (size proc)
                          (let ((res (make-vector size 0)))
                             (letrec ((__do_loop (lambda (i)
-                                                  (if (= i size)
+                                                  (if (<change> (= i size) (not (= i size)))
                                                      #f
                                                      (begin
+                                                        (<change>
+                                                           ()
+                                                           (vector-set! res i (proc i)))
                                                         (vector-set! res i (proc i))
                                                         (__do_loop (+ i 1)))))))
-                               (__do_loop 0))
+                               (<change>
+                                  (__do_loop 0)
+                                  ((lambda (x) x) (__do_loop 0))))
                             res)))
          (make-modular (lambda (modulus)
                          (let* ((reduce (lambda (x)
@@ -174,7 +208,13 @@
                             (lambda (maker)
                                (maker 0 1 coef-zero? coef-+ coef-negate coef-* coef-recip)))))
          (extended-gcd (let ((n->sgn/abs (lambda (x cont)
-                                          (if (>= x 0) (cont 1 x) (cons -1 (- x))))))
+                                          (if (>= x 0)
+                                             (<change>
+                                                (cont 1 x)
+                                                (cons -1 (- x)))
+                                             (<change>
+                                                (cons -1 (- x))
+                                                (cont 1 x))))))
                          (lambda (a b cont)
                             (n->sgn/abs
                                a
@@ -195,9 +235,6 @@
                                            0
                                            q-b))))))))
          (make-row-reduce (lambda (coef-zero coef-one coef-zero? coef-+ coef-negate coef-* coef-recip)
-                            (<change>
-                               ()
-                               (display null?))
                             (lambda (mat)
                                ((letrec ((_-*- (lambda (mat)
                                                 (if (let ((__or_res (null? mat))) (if __or_res __or_res (null? (car mat))))
@@ -242,35 +279,66 @@
          (make-in-row-space? (lambda (coef-zero coef-one coef-zero? coef-+ coef-negate coef-* coef-recip)
                                (let ((row-reduce (make-row-reduce coef-zero coef-one coef-zero? coef-+ coef-negate coef-* coef-recip)))
                                   (lambda (mat)
-                                     (let ((mat (row-reduce mat)))
-                                        (lambda (row)
-                                           ((letrec ((_-*- (lambda (row mat)
-                                                            (if (null? row)
-                                                               #t
-                                                               (let ((r-first (car row))
-                                                                     (r-rest (cdr row)))
-                                                                  (if (coef-zero? r-first)
-                                                                     (_-*-
-                                                                        r-rest
-                                                                        (map
-                                                                           cdr
-                                                                           (if (let ((__or_res (null? mat))) (if __or_res __or_res (coef-zero? (caar mat))))
-                                                                              mat
-                                                                              (cdr mat))))
-                                                                     (if (null? mat)
-                                                                        #f
-                                                                        (let* ((zap-row (car mat))
-                                                                               (z-first (car zap-row))
-                                                                               (z-rest (cdr zap-row))
-                                                                               (mat (cdr mat)))
-                                                                           (if (coef-zero? z-first)
+                                     (<change>
+                                        (let ((mat (row-reduce mat)))
+                                           (lambda (row)
+                                              ((letrec ((_-*- (lambda (row mat)
+                                                               (if (null? row)
+                                                                  #t
+                                                                  (let ((r-first (car row))
+                                                                        (r-rest (cdr row)))
+                                                                     (if (coef-zero? r-first)
+                                                                        (_-*-
+                                                                           r-rest
+                                                                           (map
+                                                                              cdr
+                                                                              (if (let ((__or_res (null? mat))) (if __or_res __or_res (coef-zero? (caar mat))))
+                                                                                 mat
+                                                                                 (cdr mat))))
+                                                                        (if (null? mat)
+                                                                           #f
+                                                                           (let* ((zap-row (car mat))
+                                                                                  (z-first (car zap-row))
+                                                                                  (z-rest (cdr zap-row))
+                                                                                  (mat (cdr mat)))
+                                                                              (if (coef-zero? z-first)
+                                                                                 #f
+                                                                                 (_-*-
+                                                                                    (map2 (let ((mult (coef-negate r-first))) (lambda (r z) (coef-+ r (coef-* mult z)))) r-rest z-rest)
+                                                                                    (map cdr mat)))))))))))
+                                                 _-*-)
+                                                 row
+                                                 mat)))
+                                        ((lambda (x) x)
+                                           (let ((mat (row-reduce mat)))
+                                              (lambda (row)
+                                                 ((letrec ((_-*- (lambda (row mat)
+                                                                  (if (null? row)
+                                                                     #t
+                                                                     (let ((r-first (car row))
+                                                                           (r-rest (cdr row)))
+                                                                        (if (coef-zero? r-first)
+                                                                           (_-*-
+                                                                              r-rest
+                                                                              (map
+                                                                                 cdr
+                                                                                 (if (let ((__or_res (null? mat))) (if __or_res __or_res (coef-zero? (caar mat))))
+                                                                                    mat
+                                                                                    (cdr mat))))
+                                                                           (if (null? mat)
                                                                               #f
-                                                                              (_-*-
-                                                                                 (map2 (let ((mult (coef-negate r-first))) (lambda (r z) (coef-+ r (coef-* mult z)))) r-rest z-rest)
-                                                                                 (map cdr mat)))))))))))
-                                              _-*-)
-                                              row
-                                              mat)))))))
+                                                                              (let* ((zap-row (car mat))
+                                                                                     (z-first (car zap-row))
+                                                                                     (z-rest (cdr zap-row))
+                                                                                     (mat (cdr mat)))
+                                                                                 (if (coef-zero? z-first)
+                                                                                    #f
+                                                                                    (_-*-
+                                                                                       (map2 (let ((mult (coef-negate r-first))) (lambda (r z) (coef-+ r (coef-* mult z)))) r-rest z-rest)
+                                                                                       (map cdr mat)))))))))))
+                                                    _-*-)
+                                                    row
+                                                    mat)))))))))
          (make-modular-row-reduce (lambda (modulus)
                                     ((make-modular modulus) make-row-reduce)))
          (make-modular-in-row-space? (lambda (modulus)
@@ -279,6 +347,22 @@
                        (let* ((primes (list 2))
                               (last (chez-box primes))
                               (is-next-prime? (lambda (trial)
+                                                (<change>
+                                                   ()
+                                                   (display
+                                                      ((letrec ((_-*- (lambda (primes)
+                                                                       (let ((__or_res (null? primes)))
+                                                                          (if __or_res
+                                                                             __or_res
+                                                                             (let ((p (car primes)))
+                                                                                (let ((__or_res (< trial (* p p))))
+                                                                                   (if __or_res
+                                                                                      __or_res
+                                                                                      (if (not (zero? (modulo trial p)))
+                                                                                         (_-*- (cdr primes))
+                                                                                         #f)))))))))
+                                                         _-*-)
+                                                         primes)))
                                                 ((letrec ((_-*- (lambda (primes)
                                                                  (let ((__or_res (null? primes)))
                                                                     (if __or_res
@@ -293,16 +377,28 @@
                                                    _-*-)
                                                    primes))))
                           (if (> 2 bound)
-                             2
-                             ((letrec ((_-*- (lambda (trial)
-                                              (if (is-next-prime? trial)
-                                                 (let ((entry (list trial)))
-                                                    (set-cdr! (chez-unbox last) entry)
-                                                    (chez-set-box! last entry)
-                                                    (if (> trial bound) trial (_-*- (+ trial 2))))
-                                                 (_-*- (+ trial 2))))))
-                                _-*-)
-                                3)))))
+                             (<change>
+                                2
+                                ((letrec ((_-*- (lambda (trial)
+                                                 (if (is-next-prime? trial)
+                                                    (let ((entry (list trial)))
+                                                       (set-cdr! (chez-unbox last) entry)
+                                                       (chez-set-box! last entry)
+                                                       (if (> trial bound) trial (_-*- (+ trial 2))))
+                                                    (_-*- (+ trial 2))))))
+                                   _-*-)
+                                   3))
+                             (<change>
+                                ((letrec ((_-*- (lambda (trial)
+                                                 (if (is-next-prime? trial)
+                                                    (let ((entry (list trial)))
+                                                       (set-cdr! (chez-unbox last) entry)
+                                                       (chez-set-box! last entry)
+                                                       (if (> trial bound) trial (_-*- (+ trial 2))))
+                                                    (_-*- (+ trial 2))))))
+                                   _-*-)
+                                   3)
+                                2)))))
          (det-upper-bound (lambda (size)
                             (let ((main-part (expt size (quotient size 2))))
                                (if (even? size)
@@ -310,8 +406,12 @@
                                   (*
                                      main-part
                                      (letrec ((__do_loop (lambda (i)
-                                                           (if (>= (* i i) size) i (__do_loop (+ i 1))))))
-                                        (__do_loop 0)))))))
+                                                           (<change>
+                                                              (if (>= (* i i) size) i (__do_loop (+ i 1)))
+                                                              ((lambda (x) x) (if (>= (* i i) size) i (__do_loop (+ i 1))))))))
+                                        (<change>
+                                           (__do_loop 0)
+                                           ((lambda (x) x) (__do_loop 0)))))))))
          (go (lambda (number-of-cols inv-size folder state)
                (let* ((in-row-space? (make-modular-in-row-space? (find-prime (det-upper-bound inv-size))))
                       (make-tester (lambda (mat)
@@ -321,9 +421,7 @@
                                                        old-mat
                                                        (- inv-size 2)
                                                        (lambda (sub tests)
-                                                          (<change>
-                                                             (cons (in-row-space? (cons new-row sub)) tests)
-                                                             ((lambda (x) x) (cons (in-row-space? (cons new-row sub)) tests))))
+                                                          (cons (in-row-space? (cons new-row sub)) tests))
                                                        ()))))
                                         (lambda (row)
                                            ((letrec ((_-*- (lambda (tests)
@@ -366,32 +464,18 @@
                      (cdr all-rows)
                      state))))
          (go-folder (lambda (mat bsize.blen.blist)
-                      (<change>
-                         (let ((bsize (car bsize.blen.blist))
-                               (size (length mat)))
-                            (if (< size bsize)
-                               bsize.blen.blist
-                               (let ((blen (cadr bsize.blen.blist))
-                                     (blist (cddr bsize.blen.blist)))
-                                  (if (= size bsize)
-                                     (let ((blen (+ blen 1)))
-                                        (cons
-                                           bsize
-                                           (cons blen (if (< blen 3000) (cons mat blist) (if (= blen 3000) (cons "..." blist) blist)))))
-                                     (list size 1 mat)))))
-                         ((lambda (x) x)
-                            (let ((bsize (car bsize.blen.blist))
-                                  (size (length mat)))
-                               (if (< size bsize)
-                                  bsize.blen.blist
-                                  (let ((blen (cadr bsize.blen.blist))
-                                        (blist (cddr bsize.blen.blist)))
-                                     (if (= size bsize)
-                                        (let ((blen (+ blen 1)))
-                                           (cons
-                                              bsize
-                                              (cons blen (if (< blen 3000) (cons mat blist) (if (= blen 3000) (cons "..." blist) blist)))))
-                                        (list size 1 mat)))))))))
+                      (let ((bsize (car bsize.blen.blist))
+                            (size (length mat)))
+                         (if (< size bsize)
+                            bsize.blen.blist
+                            (let ((blen (cadr bsize.blen.blist))
+                                  (blist (cddr bsize.blen.blist)))
+                               (if (= size bsize)
+                                  (let ((blen (+ blen 1)))
+                                     (cons
+                                        bsize
+                                        (cons blen (if (< blen 3000) (cons mat blist) (if (= blen 3000) (cons "..." blist) blist)))))
+                                  (list size 1 mat)))))))
          (really-go (lambda (number-of-cols inv-size)
                       (cddr (go number-of-cols inv-size go-folder (list -1 -1)))))
          (remove-in-order (lambda (remove? lst)
@@ -427,9 +511,34 @@
                                             folder
                                             (- usize size)
                                             state))))))
-   (<change>
-      (equal?
-         (really-go 5 5)
+   (equal?
+      (really-go 5 5)
+      (__toplevel_cons
+         (__toplevel_cons
+            (__toplevel_cons
+               1
+               (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
+            (__toplevel_cons
+               (__toplevel_cons
+                  1
+                  (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
+               (__toplevel_cons
+                  (__toplevel_cons
+                     1
+                     (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
+                  (__toplevel_cons
+                     (__toplevel_cons
+                        1
+                        (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
+                     (__toplevel_cons
+                        (__toplevel_cons
+                           1
+                           (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
+                        (__toplevel_cons
+                           (__toplevel_cons
+                              1
+                              (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
+                           ()))))))
          (__toplevel_cons
             (__toplevel_cons
                (__toplevel_cons
@@ -446,7 +555,7 @@
                      (__toplevel_cons
                         (__toplevel_cons
                            1
-                           (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
+                           (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
                         (__toplevel_cons
                            (__toplevel_cons
                               1
@@ -476,7 +585,7 @@
                            (__toplevel_cons
                               (__toplevel_cons
                                  1
-                                 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
+                                 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
                               (__toplevel_cons
                                  (__toplevel_cons
                                     1
@@ -498,15 +607,15 @@
                            (__toplevel_cons
                               (__toplevel_cons
                                  1
-                                 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
+                                 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
                               (__toplevel_cons
                                  (__toplevel_cons
                                     1
-                                    (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
+                                    (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
                                  (__toplevel_cons
                                     (__toplevel_cons
                                        1
-                                       (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
+                                       (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
                                     ()))))))
                   (__toplevel_cons
                      (__toplevel_cons
@@ -528,170 +637,10 @@
                                  (__toplevel_cons
                                     (__toplevel_cons
                                        1
-                                       (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
+                                       (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
                                     (__toplevel_cons
                                        (__toplevel_cons
                                           1
-                                          (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
+                                          (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
                                        ()))))))
-                     (__toplevel_cons
-                        (__toplevel_cons
-                           (__toplevel_cons
-                              1
-                              (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                           (__toplevel_cons
-                              (__toplevel_cons
-                                 1
-                                 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
-                              (__toplevel_cons
-                                 (__toplevel_cons
-                                    1
-                                    (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
-                                 (__toplevel_cons
-                                    (__toplevel_cons
-                                       1
-                                       (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                                    (__toplevel_cons
-                                       (__toplevel_cons
-                                          1
-                                          (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                                       (__toplevel_cons
-                                          (__toplevel_cons
-                                             1
-                                             (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
-                                          ()))))))
-                        ()))))))
-      ((lambda (x) x)
-         (equal?
-            (really-go 5 5)
-            (__toplevel_cons
-               (__toplevel_cons
-                  (__toplevel_cons
-                     1
-                     (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                  (__toplevel_cons
-                     (__toplevel_cons
-                        1
-                        (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
-                     (__toplevel_cons
-                        (__toplevel_cons
-                           1
-                           (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
-                        (__toplevel_cons
-                           (__toplevel_cons
-                              1
-                              (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
-                           (__toplevel_cons
-                              (__toplevel_cons
-                                 1
-                                 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
-                              (__toplevel_cons
-                                 (__toplevel_cons
-                                    1
-                                    (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                                 ()))))))
-               (__toplevel_cons
-                  (__toplevel_cons
-                     (__toplevel_cons
-                        1
-                        (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                     (__toplevel_cons
-                        (__toplevel_cons
-                           1
-                           (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
-                        (__toplevel_cons
-                           (__toplevel_cons
-                              1
-                              (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
-                           (__toplevel_cons
-                              (__toplevel_cons
-                                 1
-                                 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
-                              (__toplevel_cons
-                                 (__toplevel_cons
-                                    1
-                                    (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
-                                 (__toplevel_cons
-                                    (__toplevel_cons
-                                       1
-                                       (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                                    ()))))))
-                  (__toplevel_cons
-                     (__toplevel_cons
-                        (__toplevel_cons
-                           1
-                           (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                        (__toplevel_cons
-                           (__toplevel_cons
-                              1
-                              (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
-                           (__toplevel_cons
-                              (__toplevel_cons
-                                 1
-                                 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
-                              (__toplevel_cons
-                                 (__toplevel_cons
-                                    1
-                                    (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
-                                 (__toplevel_cons
-                                    (__toplevel_cons
-                                       1
-                                       (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
-                                    (__toplevel_cons
-                                       (__toplevel_cons
-                                          1
-                                          (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                                       ()))))))
-                     (__toplevel_cons
-                        (__toplevel_cons
-                           (__toplevel_cons
-                              1
-                              (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                           (__toplevel_cons
-                              (__toplevel_cons
-                                 1
-                                 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
-                              (__toplevel_cons
-                                 (__toplevel_cons
-                                    1
-                                    (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
-                                 (__toplevel_cons
-                                    (__toplevel_cons
-                                       1
-                                       (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                                    (__toplevel_cons
-                                       (__toplevel_cons
-                                          1
-                                          (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
-                                       (__toplevel_cons
-                                          (__toplevel_cons
-                                             1
-                                             (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
-                                          ()))))))
-                        (__toplevel_cons
-                           (__toplevel_cons
-                              (__toplevel_cons
-                                 1
-                                 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                              (__toplevel_cons
-                                 (__toplevel_cons
-                                    1
-                                    (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 ())))))
-                                 (__toplevel_cons
-                                    (__toplevel_cons
-                                       1
-                                       (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 ())))))
-                                    (__toplevel_cons
-                                       (__toplevel_cons
-                                          1
-                                          (__toplevel_cons 1 (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                                       (__toplevel_cons
-                                          (__toplevel_cons
-                                             1
-                                             (__toplevel_cons -1 (__toplevel_cons 1 (__toplevel_cons 1 (__toplevel_cons 1 ())))))
-                                          (__toplevel_cons
-                                             (__toplevel_cons
-                                                1
-                                                (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 (__toplevel_cons -1 ())))))
-                                             ()))))))
-                           ())))))))))
+                     ())))))))

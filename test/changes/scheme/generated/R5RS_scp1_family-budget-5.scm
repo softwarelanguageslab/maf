@@ -3,8 +3,8 @@
 ; * added: 0
 ; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 1
+; * swapped branches: 1
+; * calls to id fun: 4
 (letrec ((familieboom (__toplevel_cons
                         'jan
                         (__toplevel_cons
@@ -35,27 +35,51 @@
          (familiehoofd (lambda (fam)
                          (car fam)))
          (kinderen (lambda (fam)
-                     (cdr fam)))
+                     (<change>
+                        (cdr fam)
+                        ((lambda (x) x) (cdr fam)))))
          (laatste-nakomeling? (lambda (fam)
                                 (null? (kinderen fam))))
          (verdeel-democratisch (lambda (boom budget)
-                                 (letrec ((verdeel (lambda (boom)
-                                                     (if (laatste-nakomeling? boom)
-                                                        1
-                                                        (+ 1 (verdeel-in (kinderen boom))))))
-                                          (verdeel-in (lambda (lst)
-                                                        (if (null? lst)
-                                                           0
-                                                           (+ (verdeel (car lst)) (verdeel-in (cdr lst)))))))
-                                    (/ budget (verdeel-in (kinderen boom))))))
+                                 (<change>
+                                    (letrec ((verdeel (lambda (boom)
+                                                        (if (laatste-nakomeling? boom)
+                                                           1
+                                                           (+ 1 (verdeel-in (kinderen boom))))))
+                                             (verdeel-in (lambda (lst)
+                                                           (if (null? lst)
+                                                              0
+                                                              (+ (verdeel (car lst)) (verdeel-in (cdr lst)))))))
+                                       (/ budget (verdeel-in (kinderen boom))))
+                                    ((lambda (x) x)
+                                       (letrec ((verdeel (lambda (boom)
+                                                           (if (laatste-nakomeling? boom)
+                                                              1
+                                                              (+ 1 (verdeel-in (kinderen boom))))))
+                                                (verdeel-in (lambda (lst)
+                                                              (if (null? lst)
+                                                                 0
+                                                                 (+ (verdeel (car lst)) (verdeel-in (cdr lst)))))))
+                                          (<change>
+                                             (/ budget (verdeel-in (kinderen boom)))
+                                             ((lambda (x) x) (/ budget (verdeel-in (kinderen boom))))))))))
          (budget (lambda (boom budget-list)
-                   (letrec ((budget-hulp (lambda (boom budget-list)
-                                           (+ (car budget-list) (budget-hulp-in (kinderen boom) (cdr budget-list)))))
-                            (budget-hulp-in (lambda (bomen budget-list)
-                                              (if (let ((__or_res (null? bomen))) (if __or_res __or_res (null? budget-list)))
-                                                 0
-                                                 (+ (budget-hulp (car bomen) budget-list) (budget-hulp-in (cdr bomen) budget-list))))))
-                      (budget-hulp-in (kinderen boom) budget-list))))
+                   (<change>
+                      (letrec ((budget-hulp (lambda (boom budget-list)
+                                              (+ (car budget-list) (budget-hulp-in (kinderen boom) (cdr budget-list)))))
+                               (budget-hulp-in (lambda (bomen budget-list)
+                                                 (if (let ((__or_res (null? bomen))) (if __or_res __or_res (null? budget-list)))
+                                                    0
+                                                    (+ (budget-hulp (car bomen) budget-list) (budget-hulp-in (cdr bomen) budget-list))))))
+                         (budget-hulp-in (kinderen boom) budget-list))
+                      ((lambda (x) x)
+                         (letrec ((budget-hulp (lambda (boom budget-list)
+                                                 (+ (car budget-list) (budget-hulp-in (kinderen boom) (cdr budget-list)))))
+                                  (budget-hulp-in (lambda (bomen budget-list)
+                                                    (if (let ((__or_res (null? bomen))) (if __or_res __or_res (null? budget-list)))
+                                                       0
+                                                       (+ (budget-hulp (car bomen) budget-list) (budget-hulp-in (cdr bomen) budget-list))))))
+                            (budget-hulp-in (kinderen boom) budget-list))))))
          (verdeel (lambda (boom budget)
                     (if (laatste-nakomeling? boom)
                        (list (list (familiehoofd boom) budget))
@@ -63,32 +87,49 @@
                               (new-budget (/ budget (length rest))))
                           (verdeel-in rest new-budget)))))
          (verdeel-in (lambda (bomen budget)
-                       (<change>
-                          (if (null? bomen)
-                             ()
-                             (append (verdeel (car bomen) budget) (verdeel-in (cdr bomen) budget)))
-                          ((lambda (x) x)
-                             (if (null? bomen)
-                                ()
-                                (append (verdeel (car bomen) budget) (verdeel-in (cdr bomen) budget))))))))
-   (if (<change> (= (verdeel-democratisch familieboom 1500) 100) (not (= (verdeel-democratisch familieboom 1500) 100)))
-      (if (= (budget familieboom (__toplevel_cons 100 (__toplevel_cons 50 (__toplevel_cons 20 ())))) 650)
-         (equal?
-            (verdeel familieboom 3000)
-            (__toplevel_cons
-               (__toplevel_cons 'tom (__toplevel_cons 250 ()))
+                       (if (<change> (null? bomen) (not (null? bomen)))
+                          ()
+                          (append (verdeel (car bomen) budget) (verdeel-in (cdr bomen) budget))))))
+   (if (= (verdeel-democratisch familieboom 1500) 100)
+      (<change>
+         (if (= (budget familieboom (__toplevel_cons 100 (__toplevel_cons 50 (__toplevel_cons 20 ())))) 650)
+            (equal?
+               (verdeel familieboom 3000)
                (__toplevel_cons
-                  (__toplevel_cons 'roel (__toplevel_cons 250 ()))
+                  (__toplevel_cons 'tom (__toplevel_cons 250 ()))
                   (__toplevel_cons
-                     (__toplevel_cons 'mie (__toplevel_cons 500 ()))
+                     (__toplevel_cons 'roel (__toplevel_cons 250 ()))
                      (__toplevel_cons
-                        (__toplevel_cons 'ina (__toplevel_cons 125 ()))
+                        (__toplevel_cons 'mie (__toplevel_cons 500 ()))
                         (__toplevel_cons
-                           (__toplevel_cons 'ilse (__toplevel_cons 125 ()))
+                           (__toplevel_cons 'ina (__toplevel_cons 125 ()))
                            (__toplevel_cons
-                              (__toplevel_cons 'bart (__toplevel_cons 250 ()))
+                              (__toplevel_cons 'ilse (__toplevel_cons 125 ()))
                               (__toplevel_cons
-                                 (__toplevel_cons 'iris (__toplevel_cons 500 ()))
-                                 (__toplevel_cons (__toplevel_cons 'ilse (__toplevel_cons 1000 ())) ())))))))))
+                                 (__toplevel_cons 'bart (__toplevel_cons 250 ()))
+                                 (__toplevel_cons
+                                    (__toplevel_cons 'iris (__toplevel_cons 500 ()))
+                                    (__toplevel_cons (__toplevel_cons 'ilse (__toplevel_cons 1000 ())) ())))))))))
+            #f)
          #f)
-      #f))
+      (<change>
+         #f
+         (if (= (budget familieboom (__toplevel_cons 100 (__toplevel_cons 50 (__toplevel_cons 20 ())))) 650)
+            (equal?
+               (verdeel familieboom 3000)
+               (__toplevel_cons
+                  (__toplevel_cons 'tom (__toplevel_cons 250 ()))
+                  (__toplevel_cons
+                     (__toplevel_cons 'roel (__toplevel_cons 250 ()))
+                     (__toplevel_cons
+                        (__toplevel_cons 'mie (__toplevel_cons 500 ()))
+                        (__toplevel_cons
+                           (__toplevel_cons 'ina (__toplevel_cons 125 ()))
+                           (__toplevel_cons
+                              (__toplevel_cons 'ilse (__toplevel_cons 125 ()))
+                              (__toplevel_cons
+                                 (__toplevel_cons 'bart (__toplevel_cons 250 ()))
+                                 (__toplevel_cons
+                                    (__toplevel_cons 'iris (__toplevel_cons 500 ()))
+                                    (__toplevel_cons (__toplevel_cons 'ilse (__toplevel_cons 1000 ())) ())))))))))
+            #f))))

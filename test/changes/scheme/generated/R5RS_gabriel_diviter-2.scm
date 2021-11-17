@@ -1,31 +1,40 @@
 ; Changes:
-; * removed: 0
+; * removed: 1
 ; * added: 0
 ; * swaps: 0
-; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 0
+; * negated predicates: 0
+; * swapped branches: 1
+; * calls to id fun: 2
 (letrec ((create-n (lambda (n)
                      @sensitivity:FA
-                     (letrec ((__do_loop (lambda (n a)
-                                           @sensitivity:FA
-                                           (if (<change> (= n 0) (not (= n 0)))
-                                              a
-                                              (__do_loop (- n 1) (cons () a))))))
-                        (__do_loop n ()))))
+                     (<change>
+                        (letrec ((__do_loop (lambda (n a)
+                                              @sensitivity:FA
+                                              (if (= n 0) a (__do_loop (- n 1) (cons () a))))))
+                           (__do_loop n ()))
+                        ((lambda (x) x)
+                           (letrec ((__do_loop (lambda (n a)
+                                                 @sensitivity:FA
+                                                 (if (= n 0) a (__do_loop (- n 1) (cons () a))))))
+                              (__do_loop n ()))))))
          (*ll* (create-n 200))
          (iterative-div2 (lambda (l)
                            @sensitivity:FA
                            (letrec ((__do_loop (lambda (l a)
-                                                 @sensitivity:FA
+                                                 (<change>
+                                                    @sensitivity:FA
+                                                    ())
                                                  (if (null? l)
-                                                    a
-                                                    (__do_loop (cddr l) (cons (car l) a))))))
+                                                    (<change>
+                                                       a
+                                                       (__do_loop (cddr l) (cons (car l) a)))
+                                                    (<change>
+                                                       (__do_loop (cddr l) (cons (car l) a))
+                                                       a)))))
                               (__do_loop l ())))))
-   (equal?
-      (iterative-div2 *ll*)
-      (__toplevel_cons
-         ()
+   (<change>
+      (equal?
+         (iterative-div2 *ll*)
          (__toplevel_cons
             ()
             (__toplevel_cons
@@ -216,4 +225,202 @@
                                                                                                                                                                                                                                                                                                    ()
                                                                                                                                                                                                                                                                                                    (__toplevel_cons
                                                                                                                                                                                                                                                                                                       ()
-                                                                                                                                                                                                                                                                                                      (__toplevel_cons () (__toplevel_cons () (__toplevel_cons () (__toplevel_cons () ()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+                                                                                                                                                                                                                                                                                                      (__toplevel_cons
+                                                                                                                                                                                                                                                                                                         ()
+                                                                                                                                                                                                                                                                                                         (__toplevel_cons () (__toplevel_cons () (__toplevel_cons () (__toplevel_cons () ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+      ((lambda (x) x)
+         (equal?
+            (iterative-div2 *ll*)
+            (__toplevel_cons
+               ()
+               (__toplevel_cons
+                  ()
+                  (__toplevel_cons
+                     ()
+                     (__toplevel_cons
+                        ()
+                        (__toplevel_cons
+                           ()
+                           (__toplevel_cons
+                              ()
+                              (__toplevel_cons
+                                 ()
+                                 (__toplevel_cons
+                                    ()
+                                    (__toplevel_cons
+                                       ()
+                                       (__toplevel_cons
+                                          ()
+                                          (__toplevel_cons
+                                             ()
+                                             (__toplevel_cons
+                                                ()
+                                                (__toplevel_cons
+                                                   ()
+                                                   (__toplevel_cons
+                                                      ()
+                                                      (__toplevel_cons
+                                                         ()
+                                                         (__toplevel_cons
+                                                            ()
+                                                            (__toplevel_cons
+                                                               ()
+                                                               (__toplevel_cons
+                                                                  ()
+                                                                  (__toplevel_cons
+                                                                     ()
+                                                                     (__toplevel_cons
+                                                                        ()
+                                                                        (__toplevel_cons
+                                                                           ()
+                                                                           (__toplevel_cons
+                                                                              ()
+                                                                              (__toplevel_cons
+                                                                                 ()
+                                                                                 (__toplevel_cons
+                                                                                    ()
+                                                                                    (__toplevel_cons
+                                                                                       ()
+                                                                                       (__toplevel_cons
+                                                                                          ()
+                                                                                          (__toplevel_cons
+                                                                                             ()
+                                                                                             (__toplevel_cons
+                                                                                                ()
+                                                                                                (__toplevel_cons
+                                                                                                   ()
+                                                                                                   (__toplevel_cons
+                                                                                                      ()
+                                                                                                      (__toplevel_cons
+                                                                                                         ()
+                                                                                                         (__toplevel_cons
+                                                                                                            ()
+                                                                                                            (__toplevel_cons
+                                                                                                               ()
+                                                                                                               (__toplevel_cons
+                                                                                                                  ()
+                                                                                                                  (__toplevel_cons
+                                                                                                                     ()
+                                                                                                                     (__toplevel_cons
+                                                                                                                        ()
+                                                                                                                        (__toplevel_cons
+                                                                                                                           ()
+                                                                                                                           (__toplevel_cons
+                                                                                                                              ()
+                                                                                                                              (__toplevel_cons
+                                                                                                                                 ()
+                                                                                                                                 (__toplevel_cons
+                                                                                                                                    ()
+                                                                                                                                    (__toplevel_cons
+                                                                                                                                       ()
+                                                                                                                                       (__toplevel_cons
+                                                                                                                                          ()
+                                                                                                                                          (__toplevel_cons
+                                                                                                                                             ()
+                                                                                                                                             (__toplevel_cons
+                                                                                                                                                ()
+                                                                                                                                                (__toplevel_cons
+                                                                                                                                                   ()
+                                                                                                                                                   (__toplevel_cons
+                                                                                                                                                      ()
+                                                                                                                                                      (__toplevel_cons
+                                                                                                                                                         ()
+                                                                                                                                                         (__toplevel_cons
+                                                                                                                                                            ()
+                                                                                                                                                            (__toplevel_cons
+                                                                                                                                                               ()
+                                                                                                                                                               (__toplevel_cons
+                                                                                                                                                                  ()
+                                                                                                                                                                  (__toplevel_cons
+                                                                                                                                                                     ()
+                                                                                                                                                                     (__toplevel_cons
+                                                                                                                                                                        ()
+                                                                                                                                                                        (__toplevel_cons
+                                                                                                                                                                           ()
+                                                                                                                                                                           (__toplevel_cons
+                                                                                                                                                                              ()
+                                                                                                                                                                              (__toplevel_cons
+                                                                                                                                                                                 ()
+                                                                                                                                                                                 (__toplevel_cons
+                                                                                                                                                                                    ()
+                                                                                                                                                                                    (__toplevel_cons
+                                                                                                                                                                                       ()
+                                                                                                                                                                                       (__toplevel_cons
+                                                                                                                                                                                          ()
+                                                                                                                                                                                          (__toplevel_cons
+                                                                                                                                                                                             ()
+                                                                                                                                                                                             (__toplevel_cons
+                                                                                                                                                                                                ()
+                                                                                                                                                                                                (__toplevel_cons
+                                                                                                                                                                                                   ()
+                                                                                                                                                                                                   (__toplevel_cons
+                                                                                                                                                                                                      ()
+                                                                                                                                                                                                      (__toplevel_cons
+                                                                                                                                                                                                         ()
+                                                                                                                                                                                                         (__toplevel_cons
+                                                                                                                                                                                                            ()
+                                                                                                                                                                                                            (__toplevel_cons
+                                                                                                                                                                                                               ()
+                                                                                                                                                                                                               (__toplevel_cons
+                                                                                                                                                                                                                  ()
+                                                                                                                                                                                                                  (__toplevel_cons
+                                                                                                                                                                                                                     ()
+                                                                                                                                                                                                                     (__toplevel_cons
+                                                                                                                                                                                                                        ()
+                                                                                                                                                                                                                        (__toplevel_cons
+                                                                                                                                                                                                                           ()
+                                                                                                                                                                                                                           (__toplevel_cons
+                                                                                                                                                                                                                              ()
+                                                                                                                                                                                                                              (__toplevel_cons
+                                                                                                                                                                                                                                 ()
+                                                                                                                                                                                                                                 (__toplevel_cons
+                                                                                                                                                                                                                                    ()
+                                                                                                                                                                                                                                    (__toplevel_cons
+                                                                                                                                                                                                                                       ()
+                                                                                                                                                                                                                                       (__toplevel_cons
+                                                                                                                                                                                                                                          ()
+                                                                                                                                                                                                                                          (__toplevel_cons
+                                                                                                                                                                                                                                             ()
+                                                                                                                                                                                                                                             (__toplevel_cons
+                                                                                                                                                                                                                                                ()
+                                                                                                                                                                                                                                                (__toplevel_cons
+                                                                                                                                                                                                                                                   ()
+                                                                                                                                                                                                                                                   (__toplevel_cons
+                                                                                                                                                                                                                                                      ()
+                                                                                                                                                                                                                                                      (__toplevel_cons
+                                                                                                                                                                                                                                                         ()
+                                                                                                                                                                                                                                                         (__toplevel_cons
+                                                                                                                                                                                                                                                            ()
+                                                                                                                                                                                                                                                            (__toplevel_cons
+                                                                                                                                                                                                                                                               ()
+                                                                                                                                                                                                                                                               (__toplevel_cons
+                                                                                                                                                                                                                                                                  ()
+                                                                                                                                                                                                                                                                  (__toplevel_cons
+                                                                                                                                                                                                                                                                     ()
+                                                                                                                                                                                                                                                                     (__toplevel_cons
+                                                                                                                                                                                                                                                                        ()
+                                                                                                                                                                                                                                                                        (__toplevel_cons
+                                                                                                                                                                                                                                                                           ()
+                                                                                                                                                                                                                                                                           (__toplevel_cons
+                                                                                                                                                                                                                                                                              ()
+                                                                                                                                                                                                                                                                              (__toplevel_cons
+                                                                                                                                                                                                                                                                                 ()
+                                                                                                                                                                                                                                                                                 (__toplevel_cons
+                                                                                                                                                                                                                                                                                    ()
+                                                                                                                                                                                                                                                                                    (__toplevel_cons
+                                                                                                                                                                                                                                                                                       ()
+                                                                                                                                                                                                                                                                                       (__toplevel_cons
+                                                                                                                                                                                                                                                                                          ()
+                                                                                                                                                                                                                                                                                          (__toplevel_cons
+                                                                                                                                                                                                                                                                                             ()
+                                                                                                                                                                                                                                                                                             (__toplevel_cons
+                                                                                                                                                                                                                                                                                                ()
+                                                                                                                                                                                                                                                                                                (__toplevel_cons
+                                                                                                                                                                                                                                                                                                   ()
+                                                                                                                                                                                                                                                                                                   (__toplevel_cons
+                                                                                                                                                                                                                                                                                                      ()
+                                                                                                                                                                                                                                                                                                      (__toplevel_cons
+                                                                                                                                                                                                                                                                                                         ()
+                                                                                                                                                                                                                                                                                                         (__toplevel_cons
+                                                                                                                                                                                                                                                                                                            ()
+                                                                                                                                                                                                                                                                                                            (__toplevel_cons () (__toplevel_cons () (__toplevel_cons () (__toplevel_cons () ()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))

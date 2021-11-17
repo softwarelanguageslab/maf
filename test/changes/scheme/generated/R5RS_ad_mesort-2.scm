@@ -1,17 +1,19 @@
 ; Changes:
-; * removed: 0
-; * added: 1
-; * swaps: 1
+; * removed: 1
+; * added: 0
+; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 0
+; * swapped branches: 0
+; * calls to id fun: 2
 (letrec ((copy (lambda (from-vector to-vector from-index to-index)
                  (vector-set! to-vector to-index (vector-ref from-vector from-index))))
          (move (lambda (from-vector to-vector from-low from-high to-index)
                  (letrec ((move-iter (lambda (n)
                                        (if (<= (+ from-low n) from-high)
                                           (begin
-                                             (copy from-vector to-vector (+ from-low n) (+ to-index n))
+                                             (<change>
+                                                (copy from-vector to-vector (+ from-low n) (+ to-index n))
+                                                ((lambda (x) x) (copy from-vector to-vector (+ from-low n) (+ to-index n))))
                                              (move-iter (+ n 1)))
                                           #f))))
                     (move-iter 0))))
@@ -54,24 +56,18 @@
                                                               (merge-subs-iter 0)))))
                                           (merge-sort-iter (lambda (len)
                                                              (if (< len (vector-length vector))
-                                                                (<change>
-                                                                   (begin
-                                                                      (merge-subs len)
-                                                                      (merge-sort-iter (* 2 len)))
-                                                                   #f)
-                                                                (<change>
-                                                                   #f
-                                                                   (begin
-                                                                      (merge-subs len)
-                                                                      (merge-sort-iter (* 2 len))))))))
-                                    (<change>
-                                       ()
-                                       merge-sort-iter)
+                                                                (begin
+                                                                   (merge-subs len)
+                                                                   (merge-sort-iter (* 2 len)))
+                                                                #f))))
                                     (merge-sort-iter 1)))))
-   (let ((aVector (vector 8 3 6 6 0 5 4 2 9 6)))
-      (<change>
+   (<change>
+      (let ((aVector (vector 8 3 6 6 0 5 4 2 9 6)))
          (bottom-up-merge-sort aVector)
          (equal? aVector (vector 0 2 3 4 5 6 6 6 8 9)))
-      (<change>
-         (equal? aVector (vector 0 2 3 4 5 6 6 6 8 9))
-         (bottom-up-merge-sort aVector))))
+      ((lambda (x) x)
+         (let ((aVector (vector 8 3 6 6 0 5 4 2 9 6)))
+            (<change>
+               (bottom-up-merge-sort aVector)
+               ())
+            (equal? aVector (vector 0 2 3 4 5 6 6 6 8 9))))))

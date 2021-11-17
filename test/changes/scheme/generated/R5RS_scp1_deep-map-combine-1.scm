@@ -1,35 +1,27 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
-; * swapped branches: 1
-; * calls to id fun: 1
+; * negated predicates: 0
+; * swapped branches: 0
+; * calls to id fun: 0
 (letrec ((atom? (lambda (x)
                   (not (pair? x))))
          (deep-combine (lambda (combiner null-value l)
-                         (if (<change> (null? l) (not (null? l)))
+                         (<change>
+                            ()
+                            deep-combine)
+                         (if (null? l)
                             null-value
                             (if (atom? l)
-                               (<change>
-                                  l
-                                  (combiner (deep-combine combiner null-value (car l)) (deep-combine combiner null-value (cdr l))))
-                               (<change>
-                                  (combiner (deep-combine combiner null-value (car l)) (deep-combine combiner null-value (cdr l)))
-                                  l)))))
+                               l
+                               (combiner (deep-combine combiner null-value (car l)) (deep-combine combiner null-value (cdr l)))))))
          (deep-map (lambda (f l)
-                     (<change>
-                        (if (null? l)
-                           ()
-                           (if (atom? l)
-                              (f l)
-                              (cons (deep-map f (car l)) (deep-map f (cdr l)))))
-                        ((lambda (x) x)
-                           (if (null? l)
-                              ()
-                              (if (atom? l)
-                                 (f l)
-                                 (cons (deep-map f (car l)) (deep-map f (cdr l))))))))))
+                     (if (null? l)
+                        ()
+                        (if (atom? l)
+                           (f l)
+                           (cons (deep-map f (car l)) (deep-map f (cdr l))))))))
    (if (= (deep-combine + 0 (__toplevel_cons (__toplevel_cons (__toplevel_cons (__toplevel_cons 1 (__toplevel_cons 2 ())) (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons 4 ())) ())) (__toplevel_cons (__toplevel_cons (__toplevel_cons 5 (__toplevel_cons 6 ())) (__toplevel_cons (__toplevel_cons 7 (__toplevel_cons 8 ())) ())) ())) (__toplevel_cons 9 ()))) 45)
       (equal?
          (deep-map

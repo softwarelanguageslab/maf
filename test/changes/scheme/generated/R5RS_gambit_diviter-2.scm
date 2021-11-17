@@ -8,6 +8,9 @@
 (letrec ((create-n (lambda (n)
                      (letrec ((__do_loop (lambda (n a)
                                            (if (= n 0) a (__do_loop (- n 1) (cons () a))))))
+                        (<change>
+                           ()
+                           n)
                         (__do_loop n ()))))
          (*ll* (create-n 200))
          (iterative-div2 (lambda (l)
@@ -15,9 +18,6 @@
                                                  (if (null? l)
                                                     a
                                                     (__do_loop (cddr l) (cons (car l) a))))))
-                              (<change>
-                                 ()
-                                 (display __do_loop))
                               (__do_loop l ())))))
    (equal?
       (iterative-div2 *ll*)

@@ -1,14 +1,11 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((count-pairs (lambda (x)
-                        (<change>
-                           ()
-                           not)
                         (if (not (pair? x))
                            0
                            (+ (count-pairs (car x)) (count-pairs (cdr x)) 1))))
@@ -17,11 +14,13 @@
                  (cons last (cons 'b last))))
          (ret7 (let* ((last (cons 'c ()))
                      (middle (cons last last)))
-                 (cons middle middle))))
+                 (<change>
+                    (cons middle middle)
+                    ((lambda (x) x) (cons middle middle))))))
    (<change>
       ()
-      ret3)
-   (if (<change> (= (count-pairs ret3) 3) (not (= (count-pairs ret3) 3)))
+      3)
+   (if (= (count-pairs ret3) 3)
       (if (= (count-pairs ret4) 4)
          (= (count-pairs ret7) 7)
          #f)

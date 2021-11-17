@@ -1,7 +1,7 @@
 ; Changes:
 ; * removed: 0
 ; * added: 0
-; * swaps: 1
+; * swaps: 2
 ; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 3
@@ -47,7 +47,9 @@
          (null? (lambda (val)
                   (eq? (PREFIX val) NULL-prefix)))
          (MASK? (lambda (val)
-                  (eq? (PREFIX val) MASK-prefix)))
+                  (<change>
+                     (eq? (PREFIX val) MASK-prefix)
+                     ((lambda (x) x) (eq? (PREFIX val) MASK-prefix)))))
          (cons (lambda (car-val cdr-val)
                  (if (= FREE SIZE) (RECLAIM) #f)
                  (let ((hold FREE))
@@ -118,32 +120,34 @@
          (show (lambda ()
                  (display "cars > ")
                  (display THE-CARS)
-                 (newline)
+                 (<change>
+                    (newline)
+                    ((lambda (x) x) (newline)))
                  (display "cdrs > ")
                  (display THE-CDRS)
                  (newline)
                  (display "ROOT > ")
-                 (display ROOT)
                  (<change>
-                    (display "  FREE > ")
-                    ((lambda (x) x) (display "  FREE > ")))
-                 (display FREE)
-                 (newline))))
-   (<change>
-      (set! ROOT (cons (cons (cons _11 _12) (cons _13 (cons _14 _15))) ROOT))
-      ((lambda (x) x) (set! ROOT (cons (cons (cons _11 _12) (cons _13 (cons _14 _15))) ROOT))))
+                    (display ROOT)
+                    ((lambda (x) x) (display ROOT)))
+                 (display "  FREE > ")
+                 (<change>
+                    (display FREE)
+                    (newline))
+                 (<change>
+                    (newline)
+                    (display FREE)))))
+   (set! ROOT (cons (cons (cons _11 _12) (cons _13 (cons _14 _15))) ROOT))
    (cons _21 _22)
    (set! ROOT (cons (cons _31 (cons (cons _32 _33) (cons _34 (cons _35 _36)))) ROOT))
    (set-cdr! (cdr (car ROOT)) ROOT)
    (cons _41 (cons _42 _43))
    (set! ROOT (cons (cons _51 _52) ROOT))
    (set-car! (car ROOT) (cdr (car (cdr ROOT))))
-   (<change>
-      (show)
-      (cons _61 _62))
+   (show)
    (<change>
       (cons _61 _62)
       (show))
    (<change>
       (show)
-      ((lambda (x) x) (show))))
+      (cons _61 _62)))

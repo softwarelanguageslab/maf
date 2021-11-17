@@ -1,14 +1,17 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((quadratic (lambda (a b c)
-                      (if (<change> (= a 0) (not (= a 0)))
+                      (if (= a 0)
                          (if (= b 0) 'fail (- (/ c b)))
                          (let ((delta (- (* b b) (* 4 a c))))
+                            (<change>
+                               ()
+                               (display delta))
                             (if (if (real? delta) (> delta 0) #f)
                                (let ((u (+ b (* (if (>= b 0) 1 -1) (sqrt delta)))))
                                   (list (/ u -2 a) (/ (* -2 c) u)))

@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 3
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -9,18 +9,21 @@
                      (letrec ((__do_loop (lambda (n a)
                                            (<change>
                                               ()
-                                              (= n 0))
+                                              (display (- n 1)))
                                            (if (= n 0) a (__do_loop (- n 1) (cons () a))))))
                         (__do_loop n ()))))
          (*ll* (create-n 200))
          (iterative-div2 (lambda (l)
-                           (<change>
-                              ()
-                              l)
                            (letrec ((__do_loop (lambda (l a)
                                                  (if (null? l)
                                                     a
                                                     (__do_loop (cddr l) (cons (car l) a))))))
+                              (<change>
+                                 ()
+                                 __do_loop)
+                              (<change>
+                                 ()
+                                 ())
                               (__do_loop l ())))))
    (equal?
       (iterative-div2 *ll*)

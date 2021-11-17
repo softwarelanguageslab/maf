@@ -1,24 +1,21 @@
 ; Changes:
-; * removed: 1
-; * added: 4
-; * swaps: 0
-; * negated predicates: 3
-; * swapped branches: 1
+; * removed: 4
+; * added: 2
+; * swaps: 2
+; * negated predicates: 2
+; * swapped branches: 2
 ; * calls to id fun: 6
 (letrec ((*namelist* ())
          (*lastlook* (__toplevel_cons 'xxx (__toplevel_cons () ())))
          (nameprop (lambda (name)
+                     (<change>
+                        ()
+                        pair)
                      @sensitivity:FA
                      (if (eq? name (car *lastlook*))
                         *lastlook*
                         (let ((pair (assq name *namelist*)))
-                           (if pair
-                              (<change>
-                                 (set! *lastlook* pair)
-                                 #f)
-                              (<change>
-                                 #f
-                                 (set! *lastlook* pair)))
+                           (if pair (set! *lastlook* pair) #f)
                            pair))))
          (get (lambda (name prop)
                 (<change>
@@ -34,38 +31,38 @@
                 (let ((r (nameprop name)))
                    (if (pair? r)
                       (let ((s (assq prop (cdr r))))
-                         (if (<change> (pair? s) (not (pair? s)))
+                         (if (pair? s)
                             (set-cdr! s valu)
                             (let ((item (cons prop valu)))
-                               (<change>
-                                  (set-cdr! r (cons item (cdr r)))
-                                  ((lambda (x) x) (set-cdr! r (cons item (cdr r))))))))
+                               (set-cdr! r (cons item (cdr r))))))
                       (let ((item (cons prop valu)))
                          (set! *namelist* (cons (cons name (cons item ())) *namelist*)))))
                 valu))
          (reinit-prop! (lambda ()
-                         @sensitivity:FA
+                         (<change>
+                            @sensitivity:FA
+                            ())
                          (set! *namelist* ())
                          (set! *lastlook* (__toplevel_cons 'xxx (__toplevel_cons () ())))))
          (get-null (lambda (name prop)
                      @sensitivity:FA
                      (let ((__or_res (get name prop)))
-                        (if __or_res __or_res ()))))
+                        (if (<change> __or_res (not __or_res))
+                           __or_res
+                           ()))))
          (unify-subst 0)
          (temp-temp 0)
          (add-lemma (lambda (term)
-                      @sensitivity:No
-                      (if (if (pair? term) (if (eq? (car term) 'equal) (pair? (cadr term)) #f) #f)
+                      (<change>
+                         @sensitivity:No
+                         ((lambda (x) x) @sensitivity:No))
+                      (if (<change> (if (pair? term) (if (eq? (car term) 'equal) (pair? (cadr term)) #f) #f) (not (if (pair? term) (if (eq? (car term) 'equal) (pair? (cadr term)) #f) #f)))
                          (put (car (cadr term)) 'lemmas (cons term (get-null (car (cadr term)) 'lemmas)))
                          (error 'add-lemma "ADD-LEMMA did not like term:  " term))))
          (add-lemma-lst (lambda (lst)
                           (<change>
-                             ()
-                             cdr)
-                          (<change>
-                             ()
-                             (display cdr))
-                          @sensitivity:FA
+                             @sensitivity:FA
+                             ())
                           (if (null? lst)
                              #t
                              (begin
@@ -74,7 +71,7 @@
          (apply-subst (lambda (alist term)
                         @sensitivity:No
                         (if (not (pair? term))
-                           (if (begin (set! temp-temp (assq term alist)) (<change> temp-temp ((lambda (x) x) temp-temp)))
+                           (if (begin (set! temp-temp (assq term alist)) temp-temp)
                               (cdr temp-temp)
                               term)
                            (cons (car term) (apply-subst-lst alist (cdr term))))))
@@ -84,39 +81,58 @@
                                ()
                                (cons (apply-subst alist (car lst)) (apply-subst-lst alist (cdr lst))))))
          (falsep (lambda (x lst)
-                   @sensitivity:FA
+                   (<change>
+                      @sensitivity:FA
+                      ((lambda (x) x) @sensitivity:FA))
                    (let ((__or_res (equal? x (__toplevel_cons 'f ()))))
                       (if __or_res __or_res (member x lst)))))
          (one-way-unify (lambda (term1 term2)
-                          @sensitivity:FA
+                          (<change>
+                             @sensitivity:FA
+                             ())
                           (begin
                              (set! unify-subst ())
                              (one-way-unify1 term1 term2))))
          (one-way-unify1 (lambda (term1 term2)
-                           @sensitivity:No
-                           (if (not (pair? term2))
-                              (if (begin (set! temp-temp (assq term2 unify-subst)) temp-temp)
-                                 (equal? term1 (cdr temp-temp))
-                                 (begin
-                                    (set! unify-subst (cons (cons term2 term1) unify-subst))
-                                    #t))
-                              (if (not (pair? term1))
-                                 #f
-                                 (if (<change> (eq? (car term1) (car term2)) (not (eq? (car term1) (car term2))))
-                                    (one-way-unify1-lst (cdr term1) (cdr term2))
-                                    #f)))))
+                           (<change>
+                              @sensitivity:No
+                              (if (not (pair? term2))
+                                 (if (begin (set! temp-temp (assq term2 unify-subst)) temp-temp)
+                                    (equal? term1 (cdr temp-temp))
+                                    (begin
+                                       (set! unify-subst (cons (cons term2 term1) unify-subst))
+                                       #t))
+                                 (if (not (pair? term1))
+                                    #f
+                                    (if (eq? (car term1) (car term2))
+                                       (one-way-unify1-lst (cdr term1) (cdr term2))
+                                       #f))))
+                           (<change>
+                              (if (not (pair? term2))
+                                 (if (begin (set! temp-temp (assq term2 unify-subst)) temp-temp)
+                                    (equal? term1 (cdr temp-temp))
+                                    (begin
+                                       (set! unify-subst (cons (cons term2 term1) unify-subst))
+                                       #t))
+                                 (if (not (pair? term1))
+                                    #f
+                                    (if (eq? (car term1) (car term2))
+                                       (one-way-unify1-lst (cdr term1) (cdr term2))
+                                       #f)))
+                              @sensitivity:No)))
          (one-way-unify1-lst (lambda (lst1 lst2)
-                               (<change>
-                                  ()
-                                  lst1)
-                               (<change>
-                                  @sensitivity:FA
-                                  ((lambda (x) x) @sensitivity:FA))
+                               @sensitivity:FA
                                (if (null? lst1)
-                                  #t
-                                  (if (one-way-unify1 (car lst1) (car lst2))
-                                     (one-way-unify1-lst (cdr lst1) (cdr lst2))
-                                     #f))))
+                                  (<change>
+                                     #t
+                                     (if (one-way-unify1 (car lst1) (car lst2))
+                                        (one-way-unify1-lst (cdr lst1) (cdr lst2))
+                                        #f))
+                                  (<change>
+                                     (if (one-way-unify1 (car lst1) (car lst2))
+                                        (one-way-unify1-lst (cdr lst1) (cdr lst2))
+                                        #f)
+                                     #t))))
          (rewrite (lambda (term)
                     @sensitivity:No
                     (if (not (pair? term))
@@ -124,9 +140,11 @@
                        (rewrite-with-lemmas (cons (car term) (rewrite-args (cdr term))) (get-null (car term) 'lemmas)))))
          (rewrite-args (lambda (lst)
                          @sensitivity:No
-                         (if (<change> (null? lst) (not (null? lst)))
-                            ()
-                            (cons (rewrite (car lst)) (rewrite-args (cdr lst))))))
+                         (<change>
+                            (if (null? lst)
+                               ()
+                               (cons (rewrite (car lst)) (rewrite-args (cdr lst))))
+                            ((lambda (x) x) (if (null? lst) () (cons (rewrite (car lst)) (rewrite-args (cdr lst))))))))
          (rewrite-with-lemmas (lambda (term lst)
                                 @sensitivity:FA
                                 (if (null? lst)
@@ -135,7 +153,9 @@
                                       (rewrite (apply-subst unify-subst (caddr (car lst))))
                                       (rewrite-with-lemmas term (cdr lst))))))
          (setup (lambda ()
-                  @sensitivity:FA
+                  (<change>
+                     @sensitivity:FA
+                     ((lambda (x) x) @sensitivity:FA))
                   (add-lemma-lst
                      (__toplevel_cons
                         (__toplevel_cons
@@ -1747,12 +1767,7 @@
                                                                                                                                                                                                                                                                                                                                                             ())))
                                                                                                                                                                                                                                                                                                                                                    ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
          (tautologyp (lambda (x true-lst false-lst)
-                       (<change>
-                          ()
-                          (display false-lst))
-                       (<change>
-                          @sensitivity:No
-                          ())
+                       @sensitivity:No
                        (if (truep x true-lst)
                           #t
                           (if (falsep x false-lst)
@@ -1772,7 +1787,9 @@
                   @sensitivity:FA
                   (tautologyp (rewrite x) () ())))
          (test (lambda ()
-                 @sensitivity:FA
+                 (<change>
+                    @sensitivity:FA
+                    ((lambda (x) x) @sensitivity:FA))
                  (let ((ans #f)
                        (term #f))
                     (set! term (apply-subst
@@ -1863,21 +1880,29 @@
                     (set! ans (tautp term))
                     ans)))
          (trans-of-implies (lambda (n)
-                             @sensitivity:FA
                              (<change>
-                                (cons 'implies (cons (trans-of-implies1 n) (cons (cons 'implies (cons 0 (cons n ()))) ())))
-                                ((lambda (x) x)
-                                   (cons 'implies (cons (trans-of-implies1 n) (cons (cons 'implies (cons 0 (cons n ()))) ())))))))
+                                ()
+                                cons)
+                             @sensitivity:FA
+                             (cons 'implies (cons (trans-of-implies1 n) (cons (cons 'implies (cons 0 (cons n ()))) ())))))
          (trans-of-implies1 (lambda (n)
                               @sensitivity:FA
                               (if (equal? n 1)
-                                 (cons 'implies (cons 0 (cons 1 ())))
-                                 (cons 'and (cons (cons 'implies (cons (- n 1) (cons n ()))) (cons (trans-of-implies1 (- n 1)) ()))))))
+                                 (<change>
+                                    (cons 'implies (cons 0 (cons 1 ())))
+                                    (cons 'and (cons (cons 'implies (cons (- n 1) (cons n ()))) (cons (trans-of-implies1 (- n 1)) ()))))
+                                 (<change>
+                                    (cons 'and (cons (cons 'implies (cons (- n 1) (cons n ()))) (cons (trans-of-implies1 (- n 1)) ())))
+                                    (cons 'implies (cons 0 (cons 1 ())))))))
          (truep (lambda (x lst)
-                  @sensitivity:FA
+                  (<change>
+                     @sensitivity:FA
+                     ())
                   (let ((__or_res (equal? x (__toplevel_cons 't ()))))
                      (if __or_res __or_res (member x lst))))))
-   (setup)
+   (<change>
+      (setup)
+      (test))
    (<change>
       (test)
-      ((lambda (x) x) (test))))
+      (setup)))

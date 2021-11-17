@@ -7,15 +7,11 @@
 ; * calls to id fun: 3
 (letrec ((plus (lambda (n1 n2)
                  (lambda (f)
-                    (<change>
-                       (lambda (x)
-                          ((n1 f) ((n2 f) x)))
-                       ((lambda (x) x) (lambda (x) ((n1 f) ((n2 f) x))))))))
+                    (lambda (x)
+                       ((n1 f) ((n2 f) x))))))
          (mult (lambda (n1 n2)
                  (lambda (f)
-                    (<change>
-                       (n2 (n1 f))
-                       ((lambda (x) x) (n2 (n1 f)))))))
+                    (n2 (n1 f)))))
          (pred (lambda (n)
                  (<change>
                     (lambda (f)
@@ -24,11 +20,11 @@
                     ((lambda (x) x)
                        (lambda (f)
                           (lambda (x)
-                             (((n (lambda (g) (lambda (h) (h (g f))))) (lambda (ignored) x)) (lambda (id) id))))))))
+                             (<change>
+                                (((n (lambda (g) (lambda (h) (h (g f))))) (lambda (ignored) x)) (lambda (id) id))
+                                ((lambda (x) x)
+                                   (((n (lambda (g) (lambda (h) (h (g f))))) (lambda (ignored) x)) (lambda (id) (<change> () id) id))))))))))
          (sub (lambda (n1 n2)
-                (<change>
-                   ()
-                   n2)
                 ((n2 pred) n1)))
          (church0? (lambda (n)
                      ((n (lambda (x) #f)) #t)))
@@ -40,11 +36,13 @@
                            (church=? (sub n1 church1) (sub n2 church1))))))
          (church0 (lambda (f)
                     (lambda (x)
-                       x)))
+                       (<change>
+                          ()
+                          x)
+                       (<change>
+                          x
+                          ((lambda (x) x) x)))))
          (church1 (lambda (f)
-                    (<change>
-                       ()
-                       x)
                     (lambda (x)
                        (f x))))
          (church2 (lambda (f)

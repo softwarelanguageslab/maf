@@ -6,13 +6,13 @@
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((id (lambda (x)
-               (<change>
-                  ()
-                  x)
                x))
          (blur (lambda (y)
                  y))
          (lp (lambda (a n)
+               (<change>
+                  ()
+                  blur)
                (if (<= n 1)
                   (id a)
                   (letrec ((r ((blur id) #t))

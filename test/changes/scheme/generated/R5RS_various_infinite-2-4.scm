@@ -6,8 +6,8 @@
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((t (lambda (x)
+              (<change>
+                 ()
+                 x)
               (t (+ x 1)))))
-   (<change>
-      ()
-      t)
    (t 0))

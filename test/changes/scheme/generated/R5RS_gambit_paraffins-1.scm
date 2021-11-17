@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((gen (lambda (n)
                 (let* ((n/2 (quotient n 2))
                        (radicals (make-vector (+ n/2 1) (__toplevel_cons 'H ()))))
@@ -39,7 +39,7 @@
                                                (three-partitions (- n 1))
                                                ())))
                             (bcp-generator (lambda (j)
-                                             (if (<change> (odd? j) (not (odd? j)))
+                                             (if (odd? j)
                                                 ()
                                                 ((letrec ((loop1 (lambda (rads1 lst)
                                                                   (if (null? rads1)
@@ -55,42 +55,83 @@
                                                    (vector-ref radicals (quotient j 2))
                                                    ()))))
                             (ccp-generator (lambda (j)
-                                             ((letrec ((loop1 (lambda (ps lst)
-                                                               (if (null? ps)
-                                                                  lst
-                                                                  (let* ((p (car ps))
-                                                                         (nc1 (vector-ref p 0))
-                                                                         (nc2 (vector-ref p 1))
-                                                                         (nc3 (vector-ref p 2))
-                                                                         (nc4 (vector-ref p 3)))
-                                                                     ((letrec ((loop2 (lambda (rads1 lst)
-                                                                                       (if (null? rads1)
-                                                                                          lst
-                                                                                          ((letrec ((loop3 (lambda (rads2 lst)
-                                                                                                            (if (null? rads2)
-                                                                                                               lst
-                                                                                                               ((letrec ((loop4 (lambda (rads3 lst)
-                                                                                                                                 (if (null? rads3)
-                                                                                                                                    lst
-                                                                                                                                    ((letrec ((loop5 (lambda (rads4 lst)
-                                                                                                                                                      (if (null? rads4)
-                                                                                                                                                         lst
-                                                                                                                                                         (cons (vector 'CCP (car rads1) (car rads2) (car rads3) (car rads4)) (loop5 (cdr rads4) lst))))))
-                                                                                                                                       loop5)
-                                                                                                                                       (if (= nc3 nc4) rads3 (vector-ref radicals nc4))
-                                                                                                                                       (loop4 (cdr rads3) lst))))))
-                                                                                                                  loop4)
-                                                                                                                  (if (= nc2 nc3) rads2 (vector-ref radicals nc3))
-                                                                                                                  (loop3 (cdr rads2) lst))))))
-                                                                                             loop3)
-                                                                                             (if (= nc1 nc2) rads1 (vector-ref radicals nc2))
-                                                                                             (loop2 (cdr rads1) lst))))))
-                                                                        loop2)
-                                                                        (vector-ref radicals nc1)
-                                                                        (loop1 (cdr ps) lst)))))))
-                                                loop1)
-                                                (four-partitions (- j 1))
-                                                ()))))
+                                             (<change>
+                                                ((letrec ((loop1 (lambda (ps lst)
+                                                                  (if (null? ps)
+                                                                     lst
+                                                                     (let* ((p (car ps))
+                                                                            (nc1 (vector-ref p 0))
+                                                                            (nc2 (vector-ref p 1))
+                                                                            (nc3 (vector-ref p 2))
+                                                                            (nc4 (vector-ref p 3)))
+                                                                        ((letrec ((loop2 (lambda (rads1 lst)
+                                                                                          (if (null? rads1)
+                                                                                             lst
+                                                                                             ((letrec ((loop3 (lambda (rads2 lst)
+                                                                                                               (if (null? rads2)
+                                                                                                                  lst
+                                                                                                                  ((letrec ((loop4 (lambda (rads3 lst)
+                                                                                                                                    (if (null? rads3)
+                                                                                                                                       lst
+                                                                                                                                       ((letrec ((loop5 (lambda (rads4 lst)
+                                                                                                                                                         (if (null? rads4)
+                                                                                                                                                            lst
+                                                                                                                                                            (cons (vector 'CCP (car rads1) (car rads2) (car rads3) (car rads4)) (loop5 (cdr rads4) lst))))))
+                                                                                                                                          loop5)
+                                                                                                                                          (if (= nc3 nc4) rads3 (vector-ref radicals nc4))
+                                                                                                                                          (loop4 (cdr rads3) lst))))))
+                                                                                                                     loop4)
+                                                                                                                     (if (= nc2 nc3) rads2 (vector-ref radicals nc3))
+                                                                                                                     (loop3 (cdr rads2) lst))))))
+                                                                                                loop3)
+                                                                                                (if (= nc1 nc2) rads1 (vector-ref radicals nc2))
+                                                                                                (loop2 (cdr rads1) lst))))))
+                                                                           loop2)
+                                                                           (vector-ref radicals nc1)
+                                                                           (loop1 (cdr ps) lst)))))))
+                                                   loop1)
+                                                   (four-partitions (- j 1))
+                                                   ())
+                                                ((lambda (x) x)
+                                                   ((letrec ((loop1 (lambda (ps lst)
+                                                                     (if (null? ps)
+                                                                        lst
+                                                                        (let* ((p (car ps))
+                                                                               (nc1 (vector-ref p 0))
+                                                                               (nc2 (vector-ref p 1))
+                                                                               (nc3 (vector-ref p 2))
+                                                                               (nc4 (vector-ref p 3)))
+                                                                           ((letrec ((loop2 (lambda (rads1 lst)
+                                                                                             (if (null? rads1)
+                                                                                                lst
+                                                                                                ((letrec ((loop3 (lambda (rads2 lst)
+                                                                                                                  (if (null? rads2)
+                                                                                                                     lst
+                                                                                                                     ((letrec ((loop4 (lambda (rads3 lst)
+                                                                                                                                       (if (null? rads3)
+                                                                                                                                          lst
+                                                                                                                                          ((letrec ((loop5 (lambda (rads4 lst)
+                                                                                                                                                            (if (null? rads4)
+                                                                                                                                                               lst
+                                                                                                                                                               (cons (vector 'CCP (car rads1) (car rads2) (car rads3) (car rads4)) (loop5 (cdr rads4) lst))))))
+                                                                                                                                             loop5)
+                                                                                                                                             (if (= nc3 nc4) rads3 (vector-ref radicals nc4))
+                                                                                                                                             (loop4 (cdr rads3) lst))))))
+                                                                                                                        loop4)
+                                                                                                                        (if (= nc2 nc3) rads2 (vector-ref radicals nc3))
+                                                                                                                        (loop3 (cdr rads2) lst))))))
+                                                                                                   loop3)
+                                                                                                   (if (= nc1 nc2) rads1 (vector-ref radicals nc2))
+                                                                                                   (loop2 (cdr rads1) lst))))))
+                                                                              loop2)
+                                                                              (vector-ref radicals nc1)
+                                                                              (loop1 (cdr ps) lst)))))))
+                                                      loop1)
+                                                      (four-partitions (- j 1))
+                                                      ()))))))
+                      (<change>
+                         ()
+                         1)
                       ((letrec ((loop (lambda (i)
                                        (if (> i n/2)
                                           (vector (bcp-generator n) (ccp-generator n))

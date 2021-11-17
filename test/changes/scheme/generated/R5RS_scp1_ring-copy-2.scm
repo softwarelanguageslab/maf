@@ -1,26 +1,25 @@
 ; Changes:
 ; * removed: 1
-; * added: 0
-; * swaps: 1
-; * negated predicates: 1
+; * added: 3
+; * swaps: 0
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
          (make-ring (lambda (n)
                       (let ((last (cons 0 ())))
                          (letrec ((build-list (lambda (n)
-                                                (if (<change> (= n 0) (not (= n 0)))
-                                                   last
-                                                   (cons n (build-list (- n 1)))))))
+                                                (if (= n 0) last (cons n (build-list (- n 1)))))))
                             (let ((ring (build-list n)))
-                               (<change>
-                                  (set-cdr! last ring)
-                                  ())
+                               (set-cdr! last ring)
                                ring)))))
          (print-ring (lambda (r)
                        (letrec ((aux (lambda (l)
+                                       (<change>
+                                          ()
+                                          (display l))
                                        (if (not (null? l))
                                           (if (eq? (cdr l) r)
                                              (begin
@@ -32,6 +31,9 @@
                                                 (display (car l))
                                                 (aux (cdr l))))
                                           #f))))
+                          (<change>
+                             ()
+                             r)
                           (aux r)
                           #t)))
          (copy-ring (lambda (r)
@@ -40,7 +42,9 @@
                                       (if (eq? (cdr l) r)
                                          (begin
                                             (set! last (cons (car l) ()))
-                                            last)
+                                            (<change>
+                                               last
+                                               ((lambda (x) x) last)))
                                          (cons (car l) (aux (cdr l)))))))
                          (let ((first (aux r)))
                             (set-cdr! last first)
@@ -50,11 +54,61 @@
    (print-ring s)
    (set-car! s 999)
    (<change>
-      (print-ring s)
-      (print-ring r))
+      ()
+      (display
+         (equal?
+            result
+            (__toplevel_cons
+               "..."
+               (__toplevel_cons
+                  0
+                  (__toplevel_cons
+                     " "
+                     (__toplevel_cons
+                        1
+                        (__toplevel_cons
+                           " "
+                           (__toplevel_cons
+                              2
+                              (__toplevel_cons
+                                 " "
+                                 (__toplevel_cons
+                                    3
+                                    (__toplevel_cons
+                                       " "
+                                       (__toplevel_cons
+                                          "..."
+                                          (__toplevel_cons
+                                             0
+                                             (__toplevel_cons
+                                                " "
+                                                (__toplevel_cons
+                                                   1
+                                                   (__toplevel_cons
+                                                      " "
+                                                      (__toplevel_cons
+                                                         2
+                                                         (__toplevel_cons
+                                                            " "
+                                                            (__toplevel_cons
+                                                               999
+                                                               (__toplevel_cons
+                                                                  " "
+                                                                  (__toplevel_cons
+                                                                     "..."
+                                                                     (__toplevel_cons
+                                                                        0
+                                                                        (__toplevel_cons
+                                                                           " "
+                                                                           (__toplevel_cons
+                                                                              1
+                                                                              (__toplevel_cons
+                                                                                 " "
+                                                                                 (__toplevel_cons 2 (__toplevel_cons " " (__toplevel_cons 3 (__toplevel_cons " " ()))))))))))))))))))))))))))))))
+   (print-ring s)
    (<change>
       (print-ring r)
-      (print-ring s))
+      ())
    (equal?
       result
       (__toplevel_cons

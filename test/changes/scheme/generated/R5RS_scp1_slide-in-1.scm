@@ -4,11 +4,13 @@
 ; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((schuif-in! (lambda (l1 l2)
                        (if (null? (cdr l1))
                           (begin
-                             (set-cdr! l1 l2)
+                             (<change>
+                                (set-cdr! l1 l2)
+                                ((lambda (x) x) (set-cdr! l1 l2)))
                              'ok)
                           (if (null? l2)
                              'ok

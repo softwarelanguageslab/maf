@@ -1,26 +1,16 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 1
-; * calls to id fun: 2
+; * calls to id fun: 0
 (letrec ((foldr (lambda (f base lst)
-                  (<change>
-                     (letrec ((foldr-aux (lambda (lst)
-                                           (if (null? lst)
-                                              base
-                                              (f (car lst) (foldr-aux (cdr lst)))))))
-                        (foldr-aux lst))
-                     ((lambda (x) x)
-                        (letrec ((foldr-aux (lambda (lst)
-                                              (if (null? lst)
-                                                 base
-                                                 (f (car lst) (foldr-aux (cdr lst)))))))
-                           (<change>
-                              ()
-                              (display foldr-aux))
-                           (foldr-aux lst))))))
+                  (letrec ((foldr-aux (lambda (lst)
+                                        (if (null? lst)
+                                           base
+                                           (f (car lst) (foldr-aux (cdr lst)))))))
+                     (foldr-aux lst))))
          (atom? (lambda (x)
                   (not (pair? x))))
          (Coca-Cola-NV (__toplevel_cons
@@ -82,18 +72,13 @@
                                  #f)))
          (deel-categorien (lambda (categorie)
                             (<change>
-                               (cdr categorie)
-                               ((lambda (x) x) (cdr categorie)))))
+                               ()
+                               cdr)
+                            (cdr categorie)))
          (hoofdcategorie (lambda (categorie)
-                           (<change>
-                              ()
-                              categorie)
                            (car categorie)))
          (bereken (lambda (lst)
-                    (<change>
-                       ()
-                       lst)
-                    (if (null? lst)
+                    (if (<change> (null? lst) (not (null? lst)))
                        0
                        (if (atom? lst)
                           0
@@ -117,12 +102,8 @@
                              (collect-pairs-in (deel-categorien bedrijf)))))
          (collect-pairs-in (lambda (lst)
                              (if (null? lst)
-                                (<change>
-                                   ()
-                                   (append (collect-pairs (car lst)) (collect-pairs-in (cdr lst))))
-                                (<change>
-                                   (append (collect-pairs (car lst)) (collect-pairs-in (cdr lst)))
-                                   ()))))
+                                ()
+                                (append (collect-pairs (car lst)) (collect-pairs-in (cdr lst))))))
          (verdeel-democratisch (lambda (bedrijf budget)
                                  (let* ((pairs (collect-pairs bedrijf))
                                         (total (foldr + 0 (map cadr pairs)))
@@ -139,53 +120,105 @@
                           ()
                           (cons (verdeel (car lst) budget) (verdeel-in (cdr lst) budget))))))
    (if (= (omzet Coca-Cola-NV 'Coca-Cola) 11000000)
-      (if (= (omzet Coca-Cola-NV 'Sprite) 1000000)
-         (if (= (omzet Coca-Cola-NV 'Minute-Maid) 3000000)
-            (if (equal? (verdeel-democratisch Coca-Cola-NV 128000000) (__toplevel_cons (__toplevel_cons 'Coke (__toplevel_cons 80000000 ())) (__toplevel_cons (__toplevel_cons 'Coke-Light (__toplevel_cons 6400000 ())) (__toplevel_cons (__toplevel_cons 'Coke-Zero (__toplevel_cons 1600000 ())) (__toplevel_cons (__toplevel_cons 'Fanta-Orange (__toplevel_cons 6400000 ())) (__toplevel_cons (__toplevel_cons 'Fanta-Lemon (__toplevel_cons 1600000 ())) (__toplevel_cons (__toplevel_cons 'Sprite-Zero (__toplevel_cons 8000000 ())) (__toplevel_cons (__toplevel_cons 'Minute-Maid-Sinaas (__toplevel_cons 16000000 ())) (__toplevel_cons (__toplevel_cons 'Minute-Maid-Tomaat (__toplevel_cons 8000000 ())) ())))))))))
-               (equal?
-                  (verdeel Coca-Cola-NV 1200000)
-                  (__toplevel_cons
-                     'Coca-Cola-NV
+      (<change>
+         (if (= (omzet Coca-Cola-NV 'Sprite) 1000000)
+            (if (= (omzet Coca-Cola-NV 'Minute-Maid) 3000000)
+               (if (equal? (verdeel-democratisch Coca-Cola-NV 128000000) (__toplevel_cons (__toplevel_cons 'Coke (__toplevel_cons 80000000 ())) (__toplevel_cons (__toplevel_cons 'Coke-Light (__toplevel_cons 6400000 ())) (__toplevel_cons (__toplevel_cons 'Coke-Zero (__toplevel_cons 1600000 ())) (__toplevel_cons (__toplevel_cons 'Fanta-Orange (__toplevel_cons 6400000 ())) (__toplevel_cons (__toplevel_cons 'Fanta-Lemon (__toplevel_cons 1600000 ())) (__toplevel_cons (__toplevel_cons 'Sprite-Zero (__toplevel_cons 8000000 ())) (__toplevel_cons (__toplevel_cons 'Minute-Maid-Sinaas (__toplevel_cons 16000000 ())) (__toplevel_cons (__toplevel_cons 'Minute-Maid-Tomaat (__toplevel_cons 8000000 ())) ())))))))))
+                  (equal?
+                     (verdeel Coca-Cola-NV 1200000)
                      (__toplevel_cons
+                        'Coca-Cola-NV
                         (__toplevel_cons
-                           'Frisdranken
                            (__toplevel_cons
+                              'Frisdranken
                               (__toplevel_cons
-                                 'Coca-Cola
                                  (__toplevel_cons
-                                    (__toplevel_cons
-                                       'Regular-Coca-Cola
-                                       (__toplevel_cons (__toplevel_cons 'Coke (__toplevel_cons 100000 ())) ()))
+                                    'Coca-Cola
                                     (__toplevel_cons
                                        (__toplevel_cons
-                                          'light-Coca-Cola
+                                          'Regular-Coca-Cola
+                                          (__toplevel_cons (__toplevel_cons 'Coke (__toplevel_cons 100000 ())) ()))
+                                       (__toplevel_cons
                                           (__toplevel_cons
-                                             (__toplevel_cons 'Coke-Light (__toplevel_cons 50000 ()))
-                                             (__toplevel_cons (__toplevel_cons 'Coke-Zero (__toplevel_cons 50000 ())) ())))
-                                       ())))
-                              (__toplevel_cons
-                                 (__toplevel_cons
-                                    'Fanta
-                                    (__toplevel_cons
-                                       (__toplevel_cons 'Fanta-Orange (__toplevel_cons 100000 ()))
-                                       (__toplevel_cons (__toplevel_cons 'Fanta-Lemon (__toplevel_cons 100000 ())) ())))
+                                             'light-Coca-Cola
+                                             (__toplevel_cons
+                                                (__toplevel_cons 'Coke-Light (__toplevel_cons 50000 ()))
+                                                (__toplevel_cons (__toplevel_cons 'Coke-Zero (__toplevel_cons 50000 ())) ())))
+                                          ())))
                                  (__toplevel_cons
                                     (__toplevel_cons
-                                       'Sprite
-                                       (__toplevel_cons (__toplevel_cons 'Sprite-Zero (__toplevel_cons 200000 ())) ()))
-                                    ()))))
-                        (__toplevel_cons
+                                       'Fanta
+                                       (__toplevel_cons
+                                          (__toplevel_cons 'Fanta-Orange (__toplevel_cons 100000 ()))
+                                          (__toplevel_cons (__toplevel_cons 'Fanta-Lemon (__toplevel_cons 100000 ())) ())))
+                                    (__toplevel_cons
+                                       (__toplevel_cons
+                                          'Sprite
+                                          (__toplevel_cons (__toplevel_cons 'Sprite-Zero (__toplevel_cons 200000 ())) ()))
+                                       ()))))
                            (__toplevel_cons
-                              'Sappen
                               (__toplevel_cons
+                                 'Sappen
                                  (__toplevel_cons
-                                    'Minute-Maid
                                     (__toplevel_cons
-                                       (__toplevel_cons 'Minute-Maid-Sinaas (__toplevel_cons 300000 ()))
-                                       (__toplevel_cons (__toplevel_cons 'Minute-Maid-Tomaat (__toplevel_cons 300000 ())) ())))
-                                 ()))
-                           ()))))
+                                       'Minute-Maid
+                                       (__toplevel_cons
+                                          (__toplevel_cons 'Minute-Maid-Sinaas (__toplevel_cons 300000 ()))
+                                          (__toplevel_cons (__toplevel_cons 'Minute-Maid-Tomaat (__toplevel_cons 300000 ())) ())))
+                                    ()))
+                              ()))))
+                  #f)
                #f)
             #f)
          #f)
-      #f))
+      (<change>
+         #f
+         (if (= (omzet Coca-Cola-NV 'Sprite) 1000000)
+            (if (= (omzet Coca-Cola-NV 'Minute-Maid) 3000000)
+               (if (equal? (verdeel-democratisch Coca-Cola-NV 128000000) (__toplevel_cons (__toplevel_cons 'Coke (__toplevel_cons 80000000 ())) (__toplevel_cons (__toplevel_cons 'Coke-Light (__toplevel_cons 6400000 ())) (__toplevel_cons (__toplevel_cons 'Coke-Zero (__toplevel_cons 1600000 ())) (__toplevel_cons (__toplevel_cons 'Fanta-Orange (__toplevel_cons 6400000 ())) (__toplevel_cons (__toplevel_cons 'Fanta-Lemon (__toplevel_cons 1600000 ())) (__toplevel_cons (__toplevel_cons 'Sprite-Zero (__toplevel_cons 8000000 ())) (__toplevel_cons (__toplevel_cons 'Minute-Maid-Sinaas (__toplevel_cons 16000000 ())) (__toplevel_cons (__toplevel_cons 'Minute-Maid-Tomaat (__toplevel_cons 8000000 ())) ())))))))))
+                  (equal?
+                     (verdeel Coca-Cola-NV 1200000)
+                     (__toplevel_cons
+                        'Coca-Cola-NV
+                        (__toplevel_cons
+                           (__toplevel_cons
+                              'Frisdranken
+                              (__toplevel_cons
+                                 (__toplevel_cons
+                                    'Coca-Cola
+                                    (__toplevel_cons
+                                       (__toplevel_cons
+                                          'Regular-Coca-Cola
+                                          (__toplevel_cons (__toplevel_cons 'Coke (__toplevel_cons 100000 ())) ()))
+                                       (__toplevel_cons
+                                          (__toplevel_cons
+                                             'light-Coca-Cola
+                                             (__toplevel_cons
+                                                (__toplevel_cons 'Coke-Light (__toplevel_cons 50000 ()))
+                                                (__toplevel_cons (__toplevel_cons 'Coke-Zero (__toplevel_cons 50000 ())) ())))
+                                          ())))
+                                 (__toplevel_cons
+                                    (__toplevel_cons
+                                       'Fanta
+                                       (__toplevel_cons
+                                          (__toplevel_cons 'Fanta-Orange (__toplevel_cons 100000 ()))
+                                          (__toplevel_cons (__toplevel_cons 'Fanta-Lemon (__toplevel_cons 100000 ())) ())))
+                                    (__toplevel_cons
+                                       (__toplevel_cons
+                                          'Sprite
+                                          (__toplevel_cons (__toplevel_cons 'Sprite-Zero (__toplevel_cons 200000 ())) ()))
+                                       ()))))
+                           (__toplevel_cons
+                              (__toplevel_cons
+                                 'Sappen
+                                 (__toplevel_cons
+                                    (__toplevel_cons
+                                       'Minute-Maid
+                                       (__toplevel_cons
+                                          (__toplevel_cons 'Minute-Maid-Sinaas (__toplevel_cons 300000 ()))
+                                          (__toplevel_cons (__toplevel_cons 'Minute-Maid-Tomaat (__toplevel_cons 300000 ())) ())))
+                                    ()))
+                              ()))))
+                  #f)
+               #f)
+            #f))))

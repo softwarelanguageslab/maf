@@ -1,5 +1,5 @@
 ; Changes:
-; * removed: 0
+; * removed: 1
 ; * added: 0
 ; * swaps: 0
 ; * negated predicates: 1
@@ -11,7 +11,9 @@
          (foo (lambda (i j)
                 (if (<change> (< i *lifetime*) (not (< i *lifetime*)))
                    (begin
-                      (vector-set! *vec* i (make-vector *blocksize*))
+                      (<change>
+                         (vector-set! *vec* i (make-vector *blocksize*))
+                         ())
                       (foo (+ i 1) j))
                    (if (< 0 j) (foo 0 (- j 1)) ())))))
    (if (null? (foo 0 100))

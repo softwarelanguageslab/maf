@@ -1,9 +1,9 @@
 ; Changes:
-; * removed: 1
-; * added: 4
-; * swaps: 1
-; * negated predicates: 0
-; * swapped branches: 0
+; * removed: 0
+; * added: 0
+; * swaps: 0
+; * negated predicates: 1
+; * swapped branches: 1
 ; * calls to id fun: 1
 (letrec ((MaakLampje (lambda (aantal)
                        (letrec ((state 'off)
@@ -12,39 +12,22 @@
                                 (off! (lambda ()
                                         (set! state 'off)))
                                 (broken! (lambda ()
-                                           (<change>
-                                              ()
-                                              (set! state 'broken))
                                            (set! state 'broken)))
                                 (on? (lambda ()
                                        (eq? state 'on)))
                                 (off? (lambda ()
                                         (eq? state 'off)))
                                 (broken? (lambda ()
-                                           (<change>
-                                              (eq? state 'broken)
-                                              ((lambda (x) x) (eq? state 'broken)))))
+                                           (eq? state 'broken)))
                                 (switch! (lambda ()
                                            (set! aantal (- aantal 1))
-                                           (<change>
-                                              (if (< aantal 0)
-                                                 (broken!)
-                                                 (if (off?) (on!) (if (on?) (off!) #f)))
-                                              ())
-                                           (<change>
-                                              ()
-                                              (display (- aantal 1)))
-                                           (<change>
-                                              ()
-                                              (on?))
+                                           (if (< aantal 0)
+                                              (broken!)
+                                              (if (off?) (on!) (if (on?) (off!) #f)))
                                            (not (broken?))))
                                 (change! (lambda (nieuw)
-                                           (<change>
-                                              (off!)
-                                              (set! aantal nieuw))
-                                           (<change>
-                                              (set! aantal nieuw)
-                                              (off!))
+                                           (off!)
+                                           (set! aantal nieuw)
                                            'changed))
                                 (dispatch (lambda (msg)
                                             (if (eq? msg 'switch!)
@@ -60,25 +43,41 @@
                                                            (error "Message not understood.")))))))))
                           dispatch)))
          (philips (MaakLampje 5)))
-   (if (not (philips 'test?))
+   (if (<change> (not (philips 'test?)) (not (not (philips 'test?))))
       (if (not (philips 'on?))
          (if (philips 'off?)
             (if (philips 'switch!)
                (if (philips 'switch!)
-                  (if (philips 'switch!)
+                  (<change>
                      (if (philips 'switch!)
                         (if (philips 'switch!)
-                           (if (not (philips 'switch!))
-                              (if (philips 'test?)
-                                 (if (begin (<change> () philips) ((philips 'change!) 10) (not (philips 'test?)))
-                                    (philips 'off?)
+                           (if (philips 'switch!)
+                              (if (not (philips 'switch!))
+                                 (if (philips 'test?)
+                                    (if (begin ((philips 'change!) 10) (not (philips 'test?)))
+                                       (philips 'off?)
+                                       #f)
                                     #f)
                                  #f)
                               #f)
                            #f)
                         #f)
                      #f)
-                  #f)
+                  (<change>
+                     #f
+                     (if (philips 'switch!)
+                        (if (philips 'switch!)
+                           (if (philips 'switch!)
+                              (if (not (philips 'switch!))
+                                 (if (philips 'test?)
+                                    (if (begin ((philips 'change!) 10) ((lambda (x) x) (not (philips 'test?))))
+                                       (philips 'off?)
+                                       #f)
+                                    #f)
+                                 #f)
+                              #f)
+                           #f)
+                        #f)))
                #f)
             #f)
          #f)

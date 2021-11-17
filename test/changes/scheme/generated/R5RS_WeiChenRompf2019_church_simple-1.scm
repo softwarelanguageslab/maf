@@ -7,25 +7,24 @@
 ; * calls to id fun: 2
 (letrec ((pred (lambda (n)
                  (lambda (rf)
-                    (<change>
-                       ()
-                       (lambda (g)
-                          (lambda (h)
-                             (h (g rf)))))
                     (lambda (rx)
                        (((n (lambda (g) (lambda (h) (h (g rf))))) (lambda (ignored) rx)) (lambda (id) id))))))
          (church0 (lambda (f0)
+                    (<change>
+                       ()
+                       (lambda (x0)
+                          x0))
                     (lambda (x0)
                        x0)))
          (church1 (lambda (f1)
                     (lambda (x1)
-                       (<change>
-                          (f1 x1)
-                          ((lambda (x) x) (f1 x1))))))
+                       (f1 x1))))
          (church0? (lambda (z)
                      (<change>
                         ((z (lambda (zx) #f)) #t)
                         ((lambda (x) x) ((z (lambda (zx) #f)) #t)))))
          (ff (lambda (e)
                (if (church0? e) e (ff ((church1 pred) e))))))
-   (ff church1))
+   (<change>
+      (ff church1)
+      ((lambda (x) x) (ff church1))))

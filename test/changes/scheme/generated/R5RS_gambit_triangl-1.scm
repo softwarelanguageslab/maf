@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 0
-; * swaps: 1
+; * removed: 5
+; * added: 3
+; * swaps: 2
 ; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 3
+; * swapped branches: 1
+; * calls to id fun: 0
 (letrec ((*board* (list->vector
                     (__toplevel_cons
                        1
@@ -259,81 +259,68 @@
                                                                                                                    (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 4 (__toplevel_cons 4 ())))))))))))))))))))))))))))))))))))))))
          (*answer* ())
          (attempt (lambda (i depth)
+                    (<change>
+                       ()
+                       j)
                     (if (<change> (= depth 14) (not (= depth 14)))
                        (begin
                           (set! *answer* (cons (cdr (vector->list *sequence*)) *answer*))
                           #t)
                        (if (if (= 1 (vector-ref *board* (vector-ref *a* i))) (if (= 1 (vector-ref *board* (vector-ref *b* i))) (= 0 (vector-ref *board* (vector-ref *c* i))) #f) #f)
-                          (begin
-                             (vector-set! *board* (vector-ref *a* i) 0)
-                             (<change>
+                          (<change>
+                             (begin
+                                (vector-set! *board* (vector-ref *a* i) 0)
                                 (vector-set! *board* (vector-ref *b* i) 0)
-                                ((lambda (x) x) (vector-set! *board* (vector-ref *b* i) 0)))
-                             (<change>
                                 (vector-set! *board* (vector-ref *c* i) 1)
-                                (vector-set! *sequence* depth i))
-                             (<change>
                                 (vector-set! *sequence* depth i)
-                                (vector-set! *board* (vector-ref *c* i) 1))
-                             (letrec ((__do_loop (lambda (j depth)
-                                                   (if (let ((__or_res (= j 36))) (if __or_res __or_res (attempt j depth)))
-                                                      #f
-                                                      (__do_loop (+ j 1) depth)))))
-                                (__do_loop 0 (+ depth 1)))
-                             (<change>
+                                (letrec ((__do_loop (lambda (j depth)
+                                                      (if (let ((__or_res (= j 36))) (if __or_res __or_res (attempt j depth)))
+                                                         #f
+                                                         (__do_loop (+ j 1) depth)))))
+                                   (__do_loop 0 (+ depth 1)))
                                 (vector-set! *board* (vector-ref *a* i) 1)
-                                ())
-                             (vector-set! *board* (vector-ref *b* i) 1)
-                             (vector-set! *board* (vector-ref *c* i) 0)
+                                (vector-set! *board* (vector-ref *b* i) 1)
+                                (vector-set! *board* (vector-ref *c* i) 0)
+                                #f)
                              #f)
-                          #f))))
+                          (<change>
+                             #f
+                             (begin
+                                i
+                                (vector-set! *board* (vector-ref *c* i) 1)
+                                (letrec ((__do_loop (lambda (j depth)
+                                                      (if (let ((__or_res (= j 36))) (if __or_res __or_res (attempt j depth)))
+                                                         #f
+                                                         (__do_loop (+ j 1) depth)))))
+                                   (__do_loop 0 (+ depth 1)))
+                                (vector-set! *sequence* depth i)
+                                *a*
+                                (vector-set! *board* (vector-ref *b* i) 1)
+                                #f))))))
          (test (lambda (i depth)
-                 (set! *answer* ())
-                 (attempt i depth)
                  (<change>
-                    (car *answer*)
-                    ((lambda (x) x) (car *answer*))))))
-   (<change>
-      (equal?
-         (test 22 1)
+                    (set! *answer* ())
+                    ())
+                 (attempt i depth)
+                 (car *answer*))))
+   (equal?
+      (test 22 1)
+      (__toplevel_cons
+         22
          (__toplevel_cons
-            22
+            34
             (__toplevel_cons
-               34
+               31
                (__toplevel_cons
-                  31
+                  15
                   (__toplevel_cons
-                     15
+                     7
                      (__toplevel_cons
-                        7
+                        1
                         (__toplevel_cons
-                           1
+                           20
                            (__toplevel_cons
-                              20
+                              17
                               (__toplevel_cons
-                                 17
-                                 (__toplevel_cons
-                                    25
-                                    (__toplevel_cons 6 (__toplevel_cons 5 (__toplevel_cons 13 (__toplevel_cons 32 ()))))))))))))))
-      ((lambda (x) x)
-         (equal?
-            (test 22 1)
-            (__toplevel_cons
-               22
-               (__toplevel_cons
-                  34
-                  (__toplevel_cons
-                     31
-                     (__toplevel_cons
-                        15
-                        (__toplevel_cons
-                           7
-                           (__toplevel_cons
-                              1
-                              (__toplevel_cons
-                                 20
-                                 (__toplevel_cons
-                                    17
-                                    (__toplevel_cons
-                                       25
-                                       (__toplevel_cons 6 (__toplevel_cons 5 (__toplevel_cons 13 (__toplevel_cons 32 ())))))))))))))))))
+                                 25
+                                 (__toplevel_cons 6 (__toplevel_cons 5 (__toplevel_cons 13 (__toplevel_cons 32 ())))))))))))))))

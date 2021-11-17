@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 4
-; * added: 5
-; * swaps: 5
-; * negated predicates: 4
-; * swapped branches: 4
-; * calls to id fun: 8
+; * removed: 3
+; * added: 2
+; * swaps: 2
+; * negated predicates: 0
+; * swapped branches: 0
+; * calls to id fun: 2
 (letrec ((create-redblack-tree (lambda options
                                  (letrec ((make-null-tree (lambda ()
                                                             (list (cons () 'black) () () ()))))
@@ -12,9 +12,7 @@
                                            (same? (if (null? options) equal? (car options)))
                                            (less? (if (null? options) < (cadr options))))
                                        (letrec ((make-node (lambda (item left right parent)
-                                                             (<change>
-                                                                (list (cons item 'red) left right parent)
-                                                                ((lambda (x) x) (list (cons item 'red) left right parent)))))
+                                                             (list (cons item 'red) left right parent)))
                                                 (node-item (lambda (node)
                                                              (car (car node))))
                                                 (node-color (lambda (node)
@@ -26,9 +24,6 @@
                                                 (node-parent (lambda (node)
                                                                (cadddr node)))
                                                 (node-set-item! (lambda (node item)
-                                                                  (<change>
-                                                                     ()
-                                                                     set-car!)
                                                                   (set-car! (car node) item)))
                                                 (node-set-color! (lambda (node color)
                                                                    (set-cdr! (car node) color)))
@@ -41,9 +36,7 @@
                                                 (node-set-right! (lambda (node son)
                                                                    (set-car! (cddr node) son)))
                                                 (node-set-parent! (lambda (node parent)
-                                                                    (<change>
-                                                                       (set-car! (cdddr node) parent)
-                                                                       ((lambda (x) x) (set-car! (cdddr node) parent)))))
+                                                                    (set-car! (cdddr node) parent)))
                                                 (null-tree? (lambda (tree)
                                                               (null? (node-item tree))))
                                                 (is-leaf? (lambda (node)
@@ -52,20 +45,12 @@
                                                                #f)))
                                                 (traverse (lambda (tree order action)
                                                             (letrec ((traverse-preorder (lambda (tree)
-                                                                                          (<change>
-                                                                                             (if (null-tree? tree)
-                                                                                                #t
-                                                                                                (begin
-                                                                                                   (action (node-item tree) (node-color tree))
-                                                                                                   (traverse-preorder (node-left tree))
-                                                                                                   (traverse-preorder (node-right tree))))
-                                                                                             ((lambda (x) x)
-                                                                                                (if (<change> (null-tree? tree) (not (null-tree? tree)))
-                                                                                                   #t
-                                                                                                   (begin
-                                                                                                      (action (node-item tree) (node-color tree))
-                                                                                                      (traverse-preorder (node-left tree))
-                                                                                                      (traverse-preorder (node-right tree))))))))
+                                                                                          (if (null-tree? tree)
+                                                                                             #t
+                                                                                             (begin
+                                                                                                (action (node-item tree) (node-color tree))
+                                                                                                (traverse-preorder (node-left tree))
+                                                                                                (traverse-preorder (node-right tree))))))
                                                                      (traverse-inorder (lambda (tree)
                                                                                          (if (null-tree? tree)
                                                                                             #t
@@ -117,27 +102,21 @@
                                                                       (begin
                                                                          (node-set-color-black! (node-parent node-x))
                                                                          (node-set-color-black! node-y)
-                                                                         (<change>
-                                                                            (node-set-color-red! (node-parent (node-parent node-x)))
-                                                                            ((lambda (x) x) (node-set-color-red! (node-parent (node-parent node-x)))))
+                                                                         (node-set-color-red! (node-parent (node-parent node-x)))
                                                                          (evaluate-redblack-conditions (node-parent (node-parent node-x))))
                                                                       (begin
                                                                          (if (if (not (null-tree? (node-branch (node-parent node-x)))) (same? (node-item node-x) (node-item (node-branch (node-parent node-x)))) #f)
                                                                             (begin
-                                                                               (<change>
-                                                                                  (set! node-x (node-parent node-x))
-                                                                                  (then-rotate node-x))
-                                                                               (<change>
-                                                                                  (then-rotate node-x)
-                                                                                  (set! node-x (node-parent node-x))))
+                                                                               (set! node-x (node-parent node-x))
+                                                                               (then-rotate node-x))
                                                                             #f)
                                                                          (node-set-color-black! (node-parent node-x))
                                                                          (node-set-color-red! (node-parent (node-parent node-x)))
                                                                          (other-rotate (node-parent (node-parent node-x)))
                                                                          (evaluate-redblack-conditions node-x))))))
                                                 (evaluate-redblack-conditions (lambda (node-x)
-                                                                                (if (if (not (same? (node-item node-x) (node-item content))) (if (equal? 'red (node-color (node-parent node-x))) (<change> (not (null-tree? (node-parent (node-parent node-x)))) #f) (<change> #f (not (null-tree? (node-parent (node-parent node-x)))))) #f)
-                                                                                   (if (if (<change> (not (null-tree? (node-left (node-parent (node-parent node-x))))) (not (not (null-tree? (node-left (node-parent (node-parent node-x))))))) (same? (node-item (node-parent node-x)) (node-item (node-left (node-parent (node-parent node-x))))) #f)
+                                                                                (if (if (not (same? (node-item node-x) (node-item content))) (if (equal? 'red (node-color (node-parent node-x))) (not (null-tree? (node-parent (node-parent node-x)))) #f) #f)
+                                                                                   (if (if (not (null-tree? (node-left (node-parent (node-parent node-x))))) (same? (node-item (node-parent node-x)) (node-item (node-left (node-parent (node-parent node-x))))) #f)
                                                                                       (parent-is-in node-x node-right left-rotate right-rotate)
                                                                                       (parent-is-in node-x node-left right-rotate left-rotate))
                                                                                    #f)))
@@ -145,12 +124,8 @@
                                                                (let ((node-w (main-branch (node-parent node-x))))
                                                                   (if (equal? 'red (node-color node-w))
                                                                      (begin
-                                                                        (<change>
-                                                                           (node-set-color-red! (node-parent node-x))
-                                                                           (node-set-color-black! node-w))
-                                                                        (<change>
-                                                                           (node-set-color-black! node-w)
-                                                                           (node-set-color-red! (node-parent node-x)))
+                                                                        (node-set-color-red! (node-parent node-x))
+                                                                        (node-set-color-black! node-w)
                                                                         (main-rotate (node-parent node-x))
                                                                         (set! node-w (main-branch (node-parent node-x))))
                                                                      #f)
@@ -160,32 +135,17 @@
                                                                         (fixup-redblack-conditions (node-parent node-x)))
                                                                      (begin
                                                                         (if (eq? 'black (node-color (main-branch node-w)))
-                                                                           (<change>
-                                                                              (begin
-                                                                                 (node-set-color-black! (other-branch node-w))
-                                                                                 (node-set-color-red! node-w)
-                                                                                 (other-rotate node-w)
-                                                                                 (set! node-w (main-branch (node-parent node-w))))
-                                                                              #f)
-                                                                           (<change>
-                                                                              #f
-                                                                              (begin
-                                                                                 (node-set-color-black! (other-branch node-w))
-                                                                                 (node-set-color-red! node-w)
-                                                                                 (other-rotate node-w)
-                                                                                 node-set-color-black!
-                                                                                 (set! node-w (main-branch (node-parent node-w))))))
-                                                                        (<change>
-                                                                           (node-set-color! node-w (node-color (node-parent node-x)))
-                                                                           ())
-                                                                        (<change>
-                                                                           (node-set-color-black! (node-parent node-x))
-                                                                           ())
+                                                                           (begin
+                                                                              (node-set-color-black! (other-branch node-w))
+                                                                              (node-set-color-red! node-w)
+                                                                              (other-rotate node-w)
+                                                                              (set! node-w (main-branch (node-parent node-w))))
+                                                                           #f)
+                                                                        (node-set-color! node-w (node-color (node-parent node-x)))
+                                                                        (node-set-color-black! (node-parent node-x))
                                                                         (node-set-color-black! (main-branch node-w))
                                                                         (main-rotate (node-parent node-x))
-                                                                        (<change>
-                                                                           (fixup-redblack-conditions content)
-                                                                           ((lambda (x) x) (fixup-redblack-conditions content))))))))
+                                                                        (fixup-redblack-conditions content))))))
                                                 (fixup-redblack-conditions (lambda (node-x)
                                                                              (if (if (not (same? (node-item node-x) (node-item content))) (equal? 'black (node-color node-x)) #f)
                                                                                 (if (same? (node-item node-x) (node-item (node-left (node-parent node-x))))
@@ -208,31 +168,15 @@
                                                           (letrec ((insert-aux (lambda (node parent)
                                                                                  (if (null-tree? node)
                                                                                     (let ((new-node (make-node element (make-null-tree) (make-null-tree) (make-null-tree))))
-                                                                                       (<change>
-                                                                                          (node-set-parent! (node-left new-node) new-node)
-                                                                                          ((lambda (x) x) (node-set-parent! (node-left new-node) new-node)))
-                                                                                       (<change>
-                                                                                          ()
-                                                                                          new-node)
+                                                                                       (node-set-parent! (node-left new-node) new-node)
                                                                                        (node-set-parent! (node-right new-node) new-node)
                                                                                        (if (not (null-tree? parent))
                                                                                           (begin
-                                                                                             (<change>
-                                                                                                (node-set-parent! new-node parent)
-                                                                                                (if (less? element (node-item parent))
-                                                                                                   (node-set-right! parent new-node)
-                                                                                                   (node-set-left! parent new-node)))
-                                                                                             (<change>
-                                                                                                (if (less? element (node-item parent))
-                                                                                                   (node-set-left! parent new-node)
-                                                                                                   (node-set-right! parent new-node))
-                                                                                                (node-set-parent! new-node parent))
-                                                                                             (<change>
-                                                                                                ()
+                                                                                             (node-set-parent! new-node parent)
+                                                                                             (if (less? element (node-item parent))
+                                                                                                (node-set-left! parent new-node)
                                                                                                 (node-set-right! parent new-node))
-                                                                                             (<change>
-                                                                                                (evaluate-redblack-conditions new-node)
-                                                                                                ((lambda (x) x) (evaluate-redblack-conditions new-node))))
+                                                                                             (evaluate-redblack-conditions new-node))
                                                                                           (begin
                                                                                              (set! content new-node)))
                                                                                        (node-set-color-black! content)
@@ -240,9 +184,6 @@
                                                                                     (if (same? element (node-item node))
                                                                                        (begin
                                                                                           (node-set-item! node element)
-                                                                                          (<change>
-                                                                                             ()
-                                                                                             node)
                                                                                           #t)
                                                                                        (if (less? element (node-item node))
                                                                                           (insert-aux (node-left node) node)
@@ -250,7 +191,7 @@
                                                              (insert-aux content (make-null-tree)))))
                                                 (delete (lambda (element)
                                                           (letrec ((left-most-node (lambda (node parent)
-                                                                                     (if (<change> (null-tree? (node-left node)) (not (null-tree? (node-left node))))
+                                                                                     (if (null-tree? (node-left node))
                                                                                         node
                                                                                         (left-most-node (node-left node) node))))
                                                                    (delete-aux (lambda (node)
@@ -264,7 +205,7 @@
                                                                                                         (node-right node-y)
                                                                                                         (node-left node-y))))
                                                                                           (node-set-parent! node-x (node-parent node-y))
-                                                                                          (if (<change> (null-tree? (node-parent node-y)) (not (null-tree? (node-parent node-y))))
+                                                                                          (if (null-tree? (node-parent node-y))
                                                                                              (set! content node-x)
                                                                                              (if (if (not (null-tree? (node-left (node-parent node-y)))) (same? (node-item node-y) (node-item (node-left (node-parent node-y)))) #f)
                                                                                                 (node-set-left! (node-parent node-y) node-x)
@@ -278,12 +219,8 @@
                                                                                              #f)
                                                                                           #t)
                                                                                        (if (less? element (node-item node))
-                                                                                          (<change>
-                                                                                             (delete-aux (node-left node))
-                                                                                             (delete-aux (node-right node)))
-                                                                                          (<change>
-                                                                                             (delete-aux (node-right node))
-                                                                                             (delete-aux (node-left node)))))))))
+                                                                                          (delete-aux (node-left node))
+                                                                                          (delete-aux (node-right node))))))))
                                                              (delete-aux content))))
                                                 (dispatch (lambda (msg . args)
                                                             (if (eq? msg 'empty)
@@ -301,31 +238,41 @@
          (tree (create-redblack-tree)))
    (tree 'insert 1)
    (tree 'display)
-   (<change>
-      (tree 'insert 2)
-      ())
-   (<change>
-      (tree 'display)
-      ((lambda (x) x) (tree 'display)))
+   (tree 'insert 2)
+   (tree 'display)
    (<change>
       (tree 'insert 5)
-      (tree 'display))
+      ())
    (<change>
-      (tree 'display)
-      (tree 'insert 5))
+      ()
+      tree)
+   (<change>
+      ()
+      (display 'display))
+   (tree 'display)
    (tree 'insert 7)
    (tree 'display)
    (tree 'insert 8)
    (tree 'display)
-   (tree 'insert 11)
+   (<change>
+      (tree 'insert 11)
+      ())
    (tree 'display)
    (tree 'insert 14)
-   (tree 'display)
+   (<change>
+      (tree 'display)
+      ((lambda (x) x) (tree 'display)))
    (tree 'insert 15)
    (tree 'display)
-   (tree 'insert 4)
-   (tree 'display)
-   (tree 'insert 3)
+   (<change>
+      (tree 'insert 4)
+      (tree 'display))
+   (<change>
+      (tree 'display)
+      (tree 'insert 4))
+   (<change>
+      (tree 'insert 3)
+      ((lambda (x) x) (tree 'insert 3)))
    (<change>
       (tree 'display)
       (tree 'delete 1))
@@ -333,9 +280,9 @@
       (tree 'delete 1)
       (tree 'display))
    (tree 'display)
+   (tree 'delete 2)
    (<change>
-      (tree 'delete 2)
+      (tree 'display)
       ())
-   (tree 'display)
    (tree 'delete 11)
    (tree 'display))

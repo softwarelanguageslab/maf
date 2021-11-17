@@ -1,21 +1,19 @@
 ; Changes:
-; * removed: 2
-; * added: 1
+; * removed: 0
+; * added: 0
 ; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 5
+; * calls to id fun: 1
 (letrec ((create-dictionary (lambda ()
                               (let ((content ()))
                                  (letrec ((empty? (lambda ()
                                                     (null? content)))
                                           (insert (lambda (key info)
-                                                    (<change>
-                                                       (let ((temp (assoc key content)))
-                                                          (if temp
-                                                             (set-cdr! temp info)
-                                                             (set! content (cons (cons key info) content))))
-                                                       ())
+                                                    (let ((temp (assoc key content)))
+                                                       (if temp
+                                                          (set-cdr! temp info)
+                                                          (set! content (cons (cons key info) content))))
                                                     #t))
                                           (delete (lambda (key)
                                                     (letrec ((remove-iter (lambda (current prev)
@@ -39,35 +37,16 @@
                                                                          (map-iter (cdr the-current) (cons (a-function (caar the-current) (cdar the-current)) result))))))
                                                     (map-iter content ()))))
                                           (foreach (lambda (a-action)
-                                                     (<change>
-                                                        (letrec ((foreach-iter (lambda (the-current)
-                                                                                 (if (null? the-current)
-                                                                                    #t
-                                                                                    (begin
-                                                                                       (a-action (caar the-current) (cdar the-current))
-                                                                                       (foreach-iter (cdr the-current)))))))
-                                                           (foreach-iter content)
-                                                           #t)
-                                                        ((lambda (x) x)
-                                                           (letrec ((foreach-iter (lambda (the-current)
-                                                                                    (if (null? the-current)
-                                                                                       #t
-                                                                                       (begin
-                                                                                          (a-action (caar the-current) (cdar the-current))
-                                                                                          (foreach-iter (cdr the-current)))))))
-                                                              (<change>
-                                                                 (foreach-iter content)
-                                                                 ((lambda (x) x) (foreach-iter content)))
-                                                              #t)))))
+                                                     (letrec ((foreach-iter (lambda (the-current)
+                                                                              (if (null? the-current)
+                                                                                 #t
+                                                                                 (begin
+                                                                                    (a-action (caar the-current) (cdar the-current))
+                                                                                    (foreach-iter (cdr the-current)))))))
+                                                        (foreach-iter content)
+                                                        #t)))
                                           (display-dict (lambda ()
-                                                          (foreach
-                                                             (lambda (key info)
-                                                                (<change>
-                                                                   (display key)
-                                                                   ((lambda (x) x) (display key)))
-                                                                (display " ")
-                                                                (display info)
-                                                                (newline)))))
+                                                          (foreach (lambda (key info) (display key) (display " ") (display info) (newline)))))
                                           (dispatch (lambda (msg args)
                                                       (if (eq? msg 'empty?)
                                                          (empty?)
@@ -87,35 +66,27 @@
                                     dispatch))))
          (nl->fr (create-dictionary)))
    (nl->fr 'insert (__toplevel_cons 'fiets (__toplevel_cons (__toplevel_cons 'bicyclette ()) ())))
-   (<change>
-      (nl->fr 'insert (__toplevel_cons 'auto (__toplevel_cons (__toplevel_cons 'voiture ()) ())))
-      (nl->fr 'insert (__toplevel_cons 'huis (__toplevel_cons (__toplevel_cons 'maison ()) ()))))
-   (<change>
-      (nl->fr 'insert (__toplevel_cons 'huis (__toplevel_cons (__toplevel_cons 'maison ()) ())))
-      (nl->fr 'insert (__toplevel_cons 'auto (__toplevel_cons (__toplevel_cons 'voiture ()) ()))))
+   (nl->fr 'insert (__toplevel_cons 'auto (__toplevel_cons (__toplevel_cons 'voiture ()) ())))
+   (nl->fr 'insert (__toplevel_cons 'huis (__toplevel_cons (__toplevel_cons 'maison ()) ())))
    (nl->fr 'insert (__toplevel_cons 'vrachtwagen (__toplevel_cons (__toplevel_cons 'camion ()) ())))
    (<change>
       (nl->fr 'insert (__toplevel_cons 'tientonner (__toplevel_cons (__toplevel_cons 'camion ()) ())))
-      ())
-   (<change>
-      ()
-      (__toplevel_cons 'auto (__toplevel_cons (__toplevel_cons 'voiture ()) ())))
+      ((lambda (x) x)
+         (nl->fr 'insert (__toplevel_cons 'tientonner (__toplevel_cons (__toplevel_cons 'camion ()) ())))))
    (nl->fr 'lookup (__toplevel_cons 'fiets ()))
    (nl->fr 'display ())
    (letrec ((fr->eng (create-dictionary)))
-      (<change>
-         (fr->eng 'insert (__toplevel_cons 'bicyclette (__toplevel_cons (__toplevel_cons 'bike ()) ())))
-         ((lambda (x) x)
-            (fr->eng 'insert (__toplevel_cons 'bicyclette (__toplevel_cons (__toplevel_cons 'bike ()) ())))))
+      (fr->eng 'insert (__toplevel_cons 'bicyclette (__toplevel_cons (__toplevel_cons 'bike ()) ())))
       (fr->eng 'insert (__toplevel_cons 'voiture (__toplevel_cons (__toplevel_cons 'car ()) ())))
       (<change>
          (fr->eng
             'insert
             (__toplevel_cons 'maison (__toplevel_cons (__toplevel_cons 'house (__toplevel_cons 'home ())) ())))
-         ((lambda (x) x)
-            (fr->eng
-               'insert
-               (__toplevel_cons 'maison (__toplevel_cons (__toplevel_cons 'house (__toplevel_cons 'home ())) ())))))
-      (fr->eng 'insert (__toplevel_cons 'camion (__toplevel_cons (__toplevel_cons 'truck ()) ())))
+         (fr->eng 'insert (__toplevel_cons 'camion (__toplevel_cons (__toplevel_cons 'truck ()) ()))))
+      (<change>
+         (fr->eng 'insert (__toplevel_cons 'camion (__toplevel_cons (__toplevel_cons 'truck ()) ())))
+         (fr->eng
+            'insert
+            (__toplevel_cons 'maison (__toplevel_cons (__toplevel_cons 'house (__toplevel_cons 'home ())) ()))))
       (fr->eng 'lookup (__toplevel_cons 'bicyclette ()))
       #t))

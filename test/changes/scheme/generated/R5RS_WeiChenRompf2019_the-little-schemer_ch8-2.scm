@@ -1,48 +1,26 @@
 ; Changes:
-; * removed: 0
-; * added: 1
-; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 4
+; * removed: 1
+; * added: 11
+; * swaps: 3
+; * negated predicates: 2
+; * swapped branches: 0
+; * calls to id fun: 7
 (letrec ((atom? (lambda (x)
                   (if (not (pair? x)) (not (null? x)) #f)))
          (rember-f (lambda (test?)
-                     (<change>
-                        (lambda (a l)
-                           (if (null? l)
-                              ()
-                              (if (test? a (car l))
-                                 (cdr l)
-                                 (cons (car l) (rember-f test? a (cdr l))))))
-                        ((lambda (x) x)
-                           (lambda (a l)
-                              (<change>
-                                 ()
-                                 (display l))
-                              (<change>
-                                 (if (null? l)
-                                    ()
-                                    (if (test? a (car l))
-                                       (cdr l)
-                                       (cons (car l) (rember-f test? a (cdr l)))))
-                                 ((lambda (x) x)
-                                    (if (null? l)
-                                       (<change>
-                                          ()
-                                          (if (test? a (car l))
-                                             (cdr l)
-                                             (cons (car l) (rember-f test? a (cdr l)))))
-                                       (<change>
-                                          (if (test? a (car l))
-                                             (cdr l)
-                                             (cons (car l) (rember-f test? a (cdr l))))
-                                          ())))))))))
+                     (lambda (a l)
+                        (if (null? l)
+                           ()
+                           (if (test? a (car l))
+                              (cdr l)
+                              (cons (car l) (rember-f test? a (cdr l))))))))
          (eq?-c (lambda (a)
+                  (<change>
+                     ()
+                     (lambda (x)
+                        (eq? x a)))
                   (lambda (x)
-                     (<change>
-                        (eq? x a)
-                        ((lambda (x) x) (eq? x a))))))
+                     (eq? x a))))
          (eq?-salad (eq?-c 'salad))
          (rember-eq? (rember-f eq?))
          (rember-equal? (rember-f equal?))
@@ -55,40 +33,45 @@
                                (cons (car l) ((insertL-f test?) new old (cdr l))))))))
          (insertR-f (lambda (test?)
                       (lambda (new old l)
-                         (if (null? l)
+                         (if (<change> (null? l) (not (null? l)))
                             ()
                             (if (test? (car l) old)
                                (cons old (cons new (cdr l)))
                                (cons (car l) ((insertR-f test?) new old (cdr l))))))))
          (insert-left (lambda (new old l)
-                        (cons new (cons old l))))
+                        (<change>
+                           (cons new (cons old l))
+                           ((lambda (x) x) (cons new (cons old l))))))
          (insert-right (lambda (new old l)
                          (cons old (cons new l))))
          (insert-g (lambda (test?)
-                     (<change>
-                        (lambda (insert)
-                           (lambda (new old l)
-                              (if (null? l)
-                                 ()
-                                 (if (test? (car l) old)
-                                    (insert new old (cdr l))
-                                    (cons (car l) (((insert-g test?) insert) new old (cdr l)))))))
-                        ((lambda (x) x)
-                           (lambda (insert)
-                              (lambda (new old l)
-                                 (if (null? l)
-                                    ()
-                                    (if (test? (car l) old)
-                                       (insert new old (cdr l))
-                                       (cons (car l) (((insert-g test?) insert) new old (cdr l))))))))))))
-   (((insert-g equal?) insert-left)
-      'a
-      'b
-      (__toplevel_cons 'c (__toplevel_cons 'd (__toplevel_cons 'e (__toplevel_cons 'b ())))))
-   (((insert-g equal?) insert-right)
-      'a
-      'b
-      (__toplevel_cons 'c (__toplevel_cons 'd (__toplevel_cons 'e (__toplevel_cons 'b ())))))
+                     (lambda (insert)
+                        (lambda (new old l)
+                           (if (null? l)
+                              ()
+                              (if (test? (car l) old)
+                                 (insert new old (cdr l))
+                                 (cons (car l) (((insert-g test?) insert) new old (cdr l))))))))))
+   (<change>
+      (((insert-g equal?) insert-left)
+         'a
+         'b
+         (__toplevel_cons 'c (__toplevel_cons 'd (__toplevel_cons 'e (__toplevel_cons 'b ())))))
+      ((lambda (x) x)
+         (((insert-g equal?) insert-left)
+            'a
+            'b
+            (__toplevel_cons 'c (__toplevel_cons 'd (__toplevel_cons 'e (__toplevel_cons 'b ())))))))
+   (<change>
+      (((insert-g equal?) insert-right)
+         'a
+         'b
+         (__toplevel_cons 'c (__toplevel_cons 'd (__toplevel_cons 'e (__toplevel_cons 'b ())))))
+      ((lambda (x) x)
+         (((insert-g equal?) insert-right)
+            'a
+            'b
+            (__toplevel_cons 'c (__toplevel_cons 'd (__toplevel_cons 'e (__toplevel_cons 'b ())))))))
    (letrec ((seqL (lambda (new old l)
                     (cons new (cons old l))))
             (seqR (lambda (new old l)
@@ -99,6 +82,9 @@
                     (cons new l)))
             (subst (insert-g seqS))
             (seqrem (lambda (new old l)
+                      (<change>
+                         ()
+                         (display l))
                       l))
             (yyy (lambda (a l)
                    ((insert-g seqrem) #f a l)))
@@ -113,11 +99,14 @@
             (atom-to-function (lambda (x)
                                 (if (eq? x '+) + (if (eq? x '*) * ^))))
             (value (lambda (nexp)
-                     (if (atom? nexp)
+                     (if (<change> (atom? nexp) (not (atom? nexp)))
                         nexp
                         ((atom-to-function (operator nexp)) (value (first-sub-exp nexp)) (value (second-sub-exp nexp))))))
             (multirember-f (lambda (test?)
                              (lambda (a lat)
+                                (<change>
+                                   ()
+                                   (display lat))
                                 (if (null? lat)
                                    ()
                                    (if (test? (car lat) a)
@@ -132,6 +121,9 @@
                                   (cons (car lat) (multiremberT test? (cdr lat))))))))
       (multiremberT
          (lambda (x)
+            (<change>
+               ()
+               eq?)
             (eq? x 'a))
          (__toplevel_cons
             'b
@@ -145,33 +137,69 @@
                                        (multirember&co a (cdr lat) (lambda (newlat seen) (col newlat (cons (car lat) seen))))
                                        (multirember&co a (cdr lat) (lambda (newlat seen) (col (cons (car lat) newlat) seen)))))))
                (a-friend (lambda (x y)
+                           (<change>
+                              ()
+                              (display null?))
+                           (<change>
+                              ()
+                              null?)
+                           (<change>
+                              ()
+                              null?)
                            (null? y))))
-         (multirember&co 'a (__toplevel_cons 'a ()) a-friend)
+         (<change>
+            (multirember&co 'a (__toplevel_cons 'a ()) a-friend)
+            ())
          (multirember&co
             'a
             ()
             (lambda (newlat seen)
                (a-friend newlat (cons (car (__toplevel_cons 'a ())) seen))))
          ((lambda (newlat seen) (a-friend newlat (cons (car (__toplevel_cons 'a ())) seen))) () ())
-         (multirember&co 'a (__toplevel_cons 'b (__toplevel_cons 'a ())) a-friend)
-         (multirember&co
-            'a
-            (__toplevel_cons 'a ())
-            (lambda (newlat seen)
-               (a-friend (cons (car (__toplevel_cons 'b (__toplevel_cons 'a ()))) newlat) seen)))
-         (multirember&co
-            'a
-            ()
-            (lambda (newlat seen)
+         (<change>
+            (multirember&co 'a (__toplevel_cons 'b (__toplevel_cons 'a ())) a-friend)
+            (multirember&co
+               'a
+               (__toplevel_cons 'a ())
+               (lambda (newlat seen)
+                  (__toplevel_cons 'a ())
+                  (a-friend (cons (car (__toplevel_cons 'b (__toplevel_cons 'a ()))) newlat) seen))))
+         (<change>
+            (multirember&co
+               'a
+               (__toplevel_cons 'a ())
+               (lambda (newlat seen)
+                  (a-friend (cons (car (__toplevel_cons 'b (__toplevel_cons 'a ()))) newlat) seen)))
+            (multirember&co 'a (__toplevel_cons 'b (__toplevel_cons 'a ())) a-friend))
+         (<change>
+            (multirember&co
+               'a
+               ()
+               (lambda (newlat seen)
+                  ((lambda (newlat seen) (a-friend (cons (car (__toplevel_cons 'b (__toplevel_cons 'a ()))) newlat) seen))
+                     newlat
+                     (cons (car (__toplevel_cons 'a ())) seen))))
+            ((lambda (newlat seen)
                ((lambda (newlat seen) (a-friend (cons (car (__toplevel_cons 'b (__toplevel_cons 'a ()))) newlat) seen))
                   newlat
-                  (cons (car (__toplevel_cons 'a ())) seen))))
-         ((lambda (newlat seen)
-            ((lambda (newlat seen) (a-friend (cons (car (__toplevel_cons 'b (__toplevel_cons 'a ()))) newlat) seen))
-               newlat
-               (cons (car (__toplevel_cons 'a ())) seen)))
-            ()
-            ())
+                  (cons (car (__toplevel_cons 'a ())) seen)))
+               ()
+               ()))
+         (<change>
+            ((lambda (newlat seen)
+               ((lambda (newlat seen) (a-friend (cons (car (__toplevel_cons 'b (__toplevel_cons 'a ()))) newlat) seen))
+                  newlat
+                  (cons (car (__toplevel_cons 'a ())) seen)))
+               ()
+               ())
+            (multirember&co
+               'a
+               ()
+               (lambda (newlat seen)
+                  ((lambda (x) x)
+                     ((lambda (newlat seen) (a-friend (cons (car (__toplevel_cons 'b (__toplevel_cons 'a ()))) newlat) seen))
+                        newlat
+                        (cons (car (__toplevel_cons 'a ())) seen))))))
          (multirember&co
             'a
             (__toplevel_cons
@@ -182,29 +210,59 @@
                      'c
                      (__toplevel_cons 'd (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'a ())))))))
             (lambda (x y)
+               (<change>
+                  ()
+                  x)
                (length x)))
-         (multirember&co
-            'a
-            (__toplevel_cons
+         (<change>
+            (multirember&co
                'a
                (__toplevel_cons
-                  'b
+                  'a
                   (__toplevel_cons
-                     'c
-                     (__toplevel_cons 'd (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'a ())))))))
-            (lambda (x y)
-               (display (cons "x:" x))))
-         (multirember&co
-            'a
-            (__toplevel_cons
+                     'b
+                     (__toplevel_cons
+                        'c
+                        (__toplevel_cons 'd (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'a ())))))))
+               (lambda (x y)
+                  (display (cons "x:" x))))
+            (multirember&co
                'a
                (__toplevel_cons
-                  'b
+                  'a
                   (__toplevel_cons
-                     'c
-                     (__toplevel_cons 'd (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'a ())))))))
-            (lambda (x y)
-               (display (cons "y:" y))))
+                     'b
+                     (__toplevel_cons
+                        'c
+                        (__toplevel_cons 'd (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'a ())))))))
+               (lambda (x y)
+                  (display (cons "y:" y)))))
+         (<change>
+            (multirember&co
+               'a
+               (__toplevel_cons
+                  'a
+                  (__toplevel_cons
+                     'b
+                     (__toplevel_cons
+                        'c
+                        (__toplevel_cons 'd (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'a ())))))))
+               (lambda (x y)
+                  (display (cons "y:" y))))
+            (multirember&co
+               'a
+               (__toplevel_cons
+                  'a
+                  (__toplevel_cons
+                     'b
+                     (__toplevel_cons
+                        'c
+                        (__toplevel_cons 'd (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'a ())))))))
+               (lambda (x y)
+                  (display (cons "x:" x)))))
+         (<change>
+            ()
+            cons)
          (letrec ((multiinsertL (lambda (new old lat)
                                   (if (null? lat)
                                      ()
@@ -267,6 +325,9 @@
                      (o- (lambda (n m)
                            (if (zero? m) n (sub1 (o- n (sub1 m))))))
                      (o* (lambda (n m)
+                           (<change>
+                              ()
+                              n)
                            (if (zero? m) 0 (o+ n (o* n (sub1 m))))))
                      (o/ (lambda (n m)
                            (if (< n m) 0 (add1 (o/ (o- n m) m)))))
@@ -281,16 +342,36 @@
                                              (evens-only* (cdr l)))
                                           (cons (evens-only* (car l)) (evens-only* (cdr l)))))))
                      (evens-only*&co (lambda (l col)
-                                       (if (null? l)
-                                          (col () 1 0)
-                                          (if (atom? (car l))
-                                             (if (even? (car l))
-                                                (evens-only*&co (cdr l) (lambda (newl p s) (col (cons (car l) newl) (* (car l) p) s)))
-                                                (evens-only*&co (cdr l) (lambda (newl p s) (col newl p (+ (car l) s)))))
-                                             (evens-only*&co
-                                                (car l)
-                                                (lambda (al ap as)
-                                                   (evens-only*&co (cdr l) (lambda (dl dp ds) (col (cons al dl) (* ap dp) (+ as ds)))))))))))
+                                       (<change>
+                                          (if (null? l)
+                                             (col () 1 0)
+                                             (if (atom? (car l))
+                                                (if (even? (car l))
+                                                   (evens-only*&co (cdr l) (lambda (newl p s) (col (cons (car l) newl) (* (car l) p) s)))
+                                                   (evens-only*&co (cdr l) (lambda (newl p s) (col newl p (+ (car l) s)))))
+                                                (evens-only*&co
+                                                   (car l)
+                                                   (lambda (al ap as)
+                                                      (evens-only*&co (cdr l) (lambda (dl dp ds) (col (cons al dl) (* ap dp) (+ as ds))))))))
+                                          ((lambda (x) x)
+                                             (if (null? l)
+                                                (col () 1 0)
+                                                (if (atom? (car l))
+                                                   (if (even? (car l))
+                                                      (evens-only*&co (cdr l) (lambda (newl p s) (col (cons (car l) newl) (* (car l) p) s)))
+                                                      (evens-only*&co
+                                                         (cdr l)
+                                                         (lambda (newl p s)
+                                                            (<change>
+                                                               (col newl p (+ (car l) s))
+                                                               ((lambda (x) x) (col newl p (+ (car l) s)))))))
+                                                   (evens-only*&co
+                                                      (car l)
+                                                      (lambda (al ap as)
+                                                         (<change>
+                                                            (evens-only*&co (cdr l) (lambda (dl dp ds) (col (cons al dl) (* ap dp) (+ as ds))))
+                                                            ((lambda (x) x)
+                                                               (evens-only*&co (cdr l) (lambda (dl dp ds) (col (cons al dl) (* ap dp) (+ as ds)))))))))))))))
                (evens-only*&co
                   (__toplevel_cons
                      (__toplevel_cons 9 (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 8 ()))))

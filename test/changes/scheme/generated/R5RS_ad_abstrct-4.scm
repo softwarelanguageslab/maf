@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 2
-; * added: 2
+; * removed: 4
+; * added: 3
 ; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 5
+; * calls to id fun: 4
 (letrec ((result ())
          (display2 (lambda (item)
                      (set! result (cons item result))))
@@ -13,51 +13,47 @@
          (make-row (lambda (key name age wage)
                      (vector key name age wage)))
          (key-ref (lambda (row)
-                    (<change>
-                       ()
-                       row)
                     (vector-ref row 0)))
          (name-ref (lambda (row)
-                     (<change>
-                        (vector-ref row 1)
-                        ((lambda (x) x) (vector-ref row 1)))))
+                     (vector-ref row 1)))
          (age-ref (lambda (row)
-                    (<change>
-                       ()
-                       row)
                     (vector-ref row 2)))
          (wage-ref (lambda (row)
                      (vector-ref row 3)))
          (key-set! (lambda (row value)
                      (vector-set! row 0 value)))
          (name-set! (lambda (row value)
-                      (<change>
-                         (vector-set! row 1 value)
-                         ((lambda (x) x) (vector-set! row 1 value)))))
+                      (vector-set! row 1 value)))
          (age-set! (lambda (row value)
                      (vector-set! row 2 value)))
          (wage-set! (lambda (row value)
                       (vector-set! row 3 value)))
          (show-row (lambda (row)
+                     (<change>
+                        ()
+                        row)
                      (display2 "[Sleutel:")
+                     (display2 (key-ref row))
                      (<change>
-                        (display2 (key-ref row))
-                        ((lambda (x) x) (display2 (key-ref row))))
-                     (display2 "]")
-                     (<change>
-                        (display2 "[Naam:")
-                        ())
-                     (display2 (name-ref row))
-                     (display2 "]")
-                     (display2 "[Leeftijd:")
-                     (<change>
-                        (display2 (age-ref row))
-                        ())
+                        ()
+                        (display display2))
                      (<change>
                         (display2 "]")
                         ((lambda (x) x) (display2 "]")))
+                     (display2 "[Naam:")
+                     (display2 (name-ref row))
+                     (<change>
+                        (display2 "]")
+                        (display2 "[Leeftijd:"))
+                     (<change>
+                        (display2 "[Leeftijd:")
+                        (display2 "]"))
+                     (display2 (age-ref row))
+                     (display2 "]")
                      (display2 "[Salaris:")
-                     (display2 (wage-ref row))
+                     (<change>
+                        (display2 (wage-ref row))
+                        ())
                      (display2 "]")))
          (make-table (lambda (rows)
                        (make-vector rows 0)))
@@ -68,34 +64,47 @@
                        (vector-ref table pos)
                        #f)))
          (row-set! (lambda (table pos row)
-                     (if (< pos (table-size table))
-                        (vector-set! table pos row)
-                        #f)))
+                     (<change>
+                        (if (< pos (table-size table))
+                           (vector-set! table pos row)
+                           #f)
+                        ((lambda (x) x) (if (< pos (table-size table)) (vector-set! table pos row) #f)))))
          (show-table (lambda (table)
                        (letrec ((iter (lambda (index)
-                                        (if (= index (table-size table))
-                                           (newline2)
-                                           (begin
-                                              (<change>
-                                                 (show-row (row-ref table index))
-                                                 ((lambda (x) x) (show-row (row-ref table index))))
+                                        (<change>
+                                           (if (= index (table-size table))
                                               (newline2)
-                                              (iter (+ index 1)))))))
+                                              (begin
+                                                 (show-row (row-ref table index))
+                                                 (newline2)
+                                                 (iter (+ index 1))))
+                                           ((lambda (x) x)
+                                              (if (= index (table-size table))
+                                                 (newline2)
+                                                 (begin
+                                                    (show-row (row-ref table index))
+                                                    (newline2)
+                                                    (iter (+ index 1)))))))))
                           (iter 0))))
          (table (make-table 10)))
    (row-set! table 0 (make-row 8 'Bernard 45 120000))
-   (row-set! table 1 (make-row 3 'Dirk 26 93000))
+   (<change>
+      (row-set! table 1 (make-row 3 'Dirk 26 93000))
+      ((lambda (x) x) (row-set! table 1 (make-row 3 'Dirk 26 93000))))
    (row-set! table 2 (make-row 6 'George 48 130000))
    (<change>
       (row-set! table 3 (make-row 6 'Greet 27 75000))
-      (row-set! table 4 (make-row 1 'Kaat 18 69000)))
-   (<change>
-      (row-set! table 4 (make-row 1 'Kaat 18 69000))
-      (row-set! table 3 (make-row 6 'Greet 27 75000)))
+      ())
+   (row-set! table 4 (make-row 1 'Kaat 18 69000))
    (row-set! table 5 (make-row 5 'Mauranne 21 69000))
    (row-set! table 6 (make-row 4 'Peter 33 80000))
-   (row-set! table 7 (make-row 2 'Piet 25 96000))
+   (<change>
+      (row-set! table 7 (make-row 2 'Piet 25 96000))
+      ())
    (row-set! table 8 (make-row 9 'Tom 26 96000))
+   (<change>
+      ()
+      (display "[Salaris:"))
    (row-set! table 9 (make-row 6 'Veronique 36 115000))
    (letrec ((expected-result (__toplevel_cons
                                'newline
@@ -354,5 +363,7 @@
                                                                                                                                                                                                                                                                                                                                                                                                                          (__toplevel_cons
                                                                                                                                                                                                                                                                                                                                                                                                                             "[Naam:"
                                                                                                                                                                                                                                                                                                                                                                                                                             (__toplevel_cons "]" (__toplevel_cons 8 (__toplevel_cons "[Sleutel:" ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
-      (show-table table)
+      (<change>
+         (show-table table)
+         ())
       (equal? expected-result result)))

@@ -1,15 +1,12 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 0
+; * negated predicates: 1
+; * swapped branches: 2
 ; * calls to id fun: 0
 (letrec ((day-of-week 'Sunday)
          (make-greeting (lambda ()
-                          (<change>
-                             ()
-                             day-of-week)
                           (__toplevel_cons
                              'Welcome
                              (__toplevel_cons
@@ -73,16 +70,32 @@
          (res5b (__toplevel_cons '+ (__toplevel_cons 2 (__toplevel_cons (* 3 4) ())))))
       (if (equal? exp1 res1a)
          (if (equal? exp1 res1b)
-            (if (= exp2 res2a)
-               (if (= exp2 res2b)
-                  (if (equal? exp3 res3)
-                     (if (equal? exp4 res4a)
-                        (if (equal? exp4 res4b)
-                           (if (equal? exp5 res5a) (equal? exp5 res5b) #f)
+            (<change>
+               (if (= exp2 res2a)
+                  (if (= exp2 res2b)
+                     (if (equal? exp3 res3)
+                        (if (equal? exp4 res4a)
+                           (if (equal? exp4 res4b)
+                              (if (equal? exp5 res5a) (equal? exp5 res5b) #f)
+                              #f)
                            #f)
                         #f)
                      #f)
                   #f)
                #f)
-            #f)
+            (<change>
+               #f
+               (if (= exp2 res2a)
+                  #f
+                  (if (= exp2 res2b)
+                     (if (equal? exp3 res3)
+                        (if (equal? exp4 res4a)
+                           (if (equal? exp4 res4b)
+                              (if (not (equal? exp5 res5a))
+                                 (equal? exp5 res5b)
+                                 #f)
+                              #f)
+                           #f)
+                        #f)
+                     #f))))
          #f)))

@@ -1,15 +1,19 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 4
-; * swapped branches: 5
-; * calls to id fun: 3
+; * negated predicates: 2
+; * swapped branches: 4
+; * calls to id fun: 2
 (letrec ((foldr (lambda (f base lst)
                   (letrec ((foldr-aux (lambda (lst)
                                         (if (null? lst)
-                                           base
-                                           (f (car lst) (foldr-aux (cdr lst)))))))
+                                           (<change>
+                                              base
+                                              (f (car lst) (foldr-aux (cdr lst))))
+                                           (<change>
+                                              (f (car lst) (foldr-aux (cdr lst)))
+                                              base)))))
                      (foldr-aux lst))))
          (foldl (lambda (f base lst)
                   (letrec ((foldl-aux (lambda (base lst)
@@ -37,29 +41,14 @@
                           (cons (car lst) (list-write (cdr lst) (- i 1) val)))))
          (list-remove-pos (lambda (lst i)
                             (if (= i 0)
-                               (<change>
-                                  (cdr lst)
-                                  (cons (car lst) (list-remove-pos (cdr lst) (- i 1))))
-                               (<change>
-                                  (cons (car lst) (list-remove-pos (cdr lst) (- i 1)))
-                                  (cdr lst)))))
+                               (cdr lst)
+                               (cons (car lst) (list-remove-pos (cdr lst) (- i 1))))))
          (duplicates? (lambda (lst)
                         (if (null? lst)
-                           (<change>
-                              #f
-                              (let ((__or_res (member (car lst) (cdr lst))))
-                                 (if __or_res __or_res (duplicates? (cdr lst)))))
-                           (<change>
-                              (let ((__or_res (member (car lst) (cdr lst))))
-                                 (if __or_res __or_res (duplicates? (cdr lst))))
-                              #f))))
+                           #f
+                           (let ((__or_res (member (car lst) (cdr lst))))
+                              (if __or_res __or_res (duplicates? (cdr lst)))))))
          (make-matrix (lambda (n m init)
-                        (<change>
-                           ()
-                           for)
-                        (<change>
-                           ()
-                           for)
                         (for 0 n (lambda (i) (for 0 m (lambda (j) (init i j)))))))
          (matrix-read (lambda (mat i j)
                         (list-read (list-read mat i) j)))
@@ -71,43 +60,44 @@
                        (map (lambda (lst) (map f lst)) mat)))
          (initial-random 0)
          (next-random (lambda (current-random)
-                        (<change>
-                           (remainder (+ (* current-random 3581) 12751) 131072)
-                           ((lambda (x) x) (remainder (+ (* current-random 3581) 12751) 131072)))))
+                        (remainder (+ (* current-random 3581) 12751) 131072)))
          (shuffle (lambda (lst)
                     (shuffle-aux lst initial-random)))
          (shuffle-aux (lambda (lst current-random)
                         (if (null? lst)
                            ()
                            (let ((new-random (next-random current-random)))
-                              (<change>
-                                 ()
-                                 (shuffle-aux (list-remove-pos lst i) new-random))
                               (let ((i (modulo new-random (length lst))))
                                  (cons (list-read lst i) (shuffle-aux (list-remove-pos lst i) new-random)))))))
          (make-maze (lambda (n m)
-                      (if (<change> (not (if (not (odd? n)) (odd? m) #f)) (not (not (if (not (odd? n)) (odd? m) #f))))
-                         'error
-                         (let ((cave (make-matrix
-                                       n
-                                       m
-                                       (lambda (i j)
-                                          (if (if (even? i) (even? j) #f)
-                                             (<change>
-                                                (cons i j)
-                                                #f)
-                                             (<change>
-                                                #f
-                                                (cons i j))))))
-                               (possible-holes (concat
-                                                 (for
-                                                    0
-                                                    n
-                                                    (lambda (i)
-                                                       (concat (for 0 m (lambda (j) (if (equal? (even? i) (even? j)) () (list (cons i j)))))))))))
-                            (cave-to-maze (pierce-randomly (shuffle possible-holes) cave))))))
+                      (if (not (if (odd? n) (odd? m) #f))
+                         (<change>
+                            'error
+                            (let ((cave (make-matrix n m (lambda (i j) (if (if (not (even? i)) (even? j) #f) (cons i j) #f))))
+                                  (possible-holes (concat
+                                                    (for
+                                                       0
+                                                       n
+                                                       (lambda (i)
+                                                          (concat (for 0 m (lambda (j) (if (equal? (even? i) (even? j)) () (list (cons i j)))))))))))
+                               (cave-to-maze (pierce-randomly (shuffle possible-holes) cave))))
+                         (<change>
+                            (let ((cave (make-matrix n m (lambda (i j) (if (if (even? i) (even? j) #f) (cons i j) #f))))
+                                  (possible-holes (concat
+                                                    (for
+                                                       0
+                                                       n
+                                                       (lambda (i)
+                                                          (concat (for 0 m (lambda (j) (if (equal? (even? i) (even? j)) () (list (cons i j)))))))))))
+                               (cave-to-maze (pierce-randomly (shuffle possible-holes) cave)))
+                            'error))))
          (cave-to-maze (lambda (cave)
-                         (matrix-map (lambda (x) (if (<change> x (not x)) '_ '*)) cave)))
+                         (matrix-map
+                            (lambda (x)
+                               (<change>
+                                  (if x '_ '*)
+                                  ((lambda (x) x) (if x (<change> '_ '*) (<change> '* '_)))))
+                            cave)))
          (pierce (lambda (pos cave)
                    (let ((i (car pos))
                          (j (cdr pos)))
@@ -120,6 +110,9 @@
          (try-to-pierce (lambda (pos cave)
                           (let ((i (car pos))
                                 (j (cdr pos)))
+                             (<change>
+                                ()
+                                pos)
                              (let ((ncs (neighboring-cavities pos cave)))
                                 (if (duplicates? (map (lambda (nc) (matrix-read cave (car nc) (cdr nc))) ncs))
                                    cave
@@ -132,7 +125,7 @@
                               (let ((i (car pos))
                                     (j (cdr pos)))
                                  (let ((cavity-id (matrix-read cave i j)))
-                                    (if (<change> (equal? cavity-id old-cavity-id) (not (equal? cavity-id old-cavity-id)))
+                                    (if (equal? cavity-id old-cavity-id)
                                        (foldl
                                           (lambda (c nc)
                                              (change-cavity-aux c nc new-cavity-id old-cavity-id))
@@ -151,14 +144,10 @@
                                                 ())
                                              (append
                                                 (if (if (< i (- n 1)) (matrix-read cave (+ i 1) j) #f)
-                                                   (<change>
-                                                      (list (cons (+ i 1) j))
-                                                      ())
-                                                   (<change>
-                                                      ()
-                                                      (list (cons (+ i 1) j))))
+                                                   (list (cons (+ i 1) j))
+                                                   ())
                                                 (append
-                                                   (if (if (> j 0) (matrix-read cave i (- j 1)) #f)
+                                                   (if (<change> (if (> j 0) (matrix-read cave i (- j 1)) #f) (not (if (> j 0) (matrix-read cave i (- j 1)) #f)))
                                                       (list (cons i (- j 1)))
                                                       ())
                                                    (if (if (< j (- m 1)) (matrix-read cave i (+ j 1)) #f)
@@ -345,6 +334,4 @@
                                                                                '_
                                                                                (__toplevel_cons '_ (__toplevel_cons '_ (__toplevel_cons '_ (__toplevel_cons '_ ())))))))))))
                                                           ())))))))))))))
-   (<change>
-      (equal? (make-maze 11 11) expected-result)
-      ((lambda (x) x) (equal? (make-maze 11 11) expected-result))))
+   (equal? (make-maze 11 11) expected-result))

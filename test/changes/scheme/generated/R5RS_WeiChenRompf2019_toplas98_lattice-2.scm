@@ -1,17 +1,17 @@
 ; Changes:
 ; * removed: 1
-; * added: 1
+; * added: 2
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 2
 ; * swapped branches: 0
-; * calls to id fun: 3
+; * calls to id fun: 2
 (letrec ((lexico (lambda (base)
                    (letrec ((lex-fixed (lambda (fixed lhs1 rhs1)
                                          (letrec ((check (lambda (lhs2 rhs2)
                                                            (if (null? lhs2)
                                                               fixed
                                                               (let ((probe (base (car lhs2) (car rhs2))))
-                                                                 (if (let ((__or_res (eq? probe 'equal))) (if __or_res __or_res (eq? probe fixed)))
+                                                                 (if (let ((__or_res (eq? probe 'equal))) (<change> () (if __or_res __or_res (eq? probe fixed))) (if __or_res __or_res (eq? probe fixed)))
                                                                     (check (cdr lhs2) (cdr rhs2))
                                                                     'uncomparable))))))
                                             (check lhs1 rhs1))))
@@ -33,20 +33,24 @@
                          (cdr l2)))
          (lattice-reverse! (letrec ((rotate (lambda (fo fum)
                                              (<change>
-                                                (let ((next1 (cdr fo)))
-                                                   (set-cdr! fo fum)
-                                                   (if (null? next1) fo (rotate next1 fo)))
-                                                ((lambda (x) x) (let ((next1 (cdr fo))) (set-cdr! fo fum) (if (null? next1) fo (rotate next1 fo))))))))
+                                                ()
+                                                fo)
+                                             (let ((next1 (cdr fo)))
+                                                (set-cdr! fo fum)
+                                                (if (null? next1) fo (rotate next1 fo))))))
                              (lambda (lst1)
                                 (if (null? lst1) () (rotate lst1 ())))))
          (zulu-select (lambda (test1 lst2)
                         (letrec ((select-a-1 (lambda (ac1 lst3)
                                                (if (null? lst3)
                                                   (lattice-reverse! ac1)
-                                                  (select-a-1 (let ((head1 (car lst3))) (if (test1 head1) (cons head1 ac1) ac1)) (cdr lst3))))))
-                           (<change>
-                              (select-a-1 () lst2)
-                              ((lambda (x) x) (select-a-1 () lst2))))))
+                                                  (select-a-1
+                                                     (let ((head1 (car lst3)))
+                                                        (if (<change> (test1 head1) (not (test1 head1)))
+                                                           (cons head1 ac1)
+                                                           ac1))
+                                                     (cdr lst3))))))
+                           (select-a-1 () lst2))))
          (select-map (lambda (test2 func lst4)
                        (letrec ((select-a-2 (lambda (ac2 lst5)
                                               (if (null? lst5)
@@ -96,9 +100,6 @@
                          (to-1 pas)
                          (let ((next2 (car rest))
                                (rest (cdr rest)))
-                            (<change>
-                               ()
-                               cons)
                             (to-collect
                                (map
                                   (lambda (x1)
@@ -118,25 +119,44 @@
                     (lexico (lattice->cmp target)))))
          (print-frequency 10000)
          (count-maps (lambda (source target)
-                       (let ((count 0))
-                          (maps-rest
-                             source
-                             target
-                             ()
-                             (lattice->elements source)
-                             (lambda (x4)
-                                (set! count (+ count 1))
-                                (<change>
+                       (<change>
+                          (let ((count 0))
+                             (maps-rest
+                                source
+                                target
+                                ()
+                                (lattice->elements source)
+                                (lambda (x4)
+                                   (set! count (+ count 1))
                                    (if (= 0 (remainder count print-frequency))
                                       (begin
                                          (display count)
                                          (display "...")
                                          (newline))
                                       (void))
-                                   ())
-                                1)
-                             (lambda (x5)
-                                ((letrec ((loop (lambda (i l) (if (null? l) i (loop (+ i (car l)) (cdr l)))))) loop) 0 x5)))))))
+                                   1)
+                                (lambda (x5)
+                                   ((letrec ((loop (lambda (i l) (if (null? l) i (loop (+ i (car l)) (cdr l)))))) loop) 0 x5))))
+                          ((lambda (x) x)
+                             (let ((count 0))
+                                (maps-rest
+                                   source
+                                   target
+                                   ()
+                                   (lattice->elements source)
+                                   (lambda (x4)
+                                      (<change>
+                                         (set! count (+ count 1))
+                                         ())
+                                      (if (<change> (= 0 (remainder count print-frequency)) (not (= 0 (remainder count print-frequency))))
+                                         (begin
+                                            (display count)
+                                            (display "...")
+                                            (newline))
+                                         (void))
+                                      1)
+                                   (lambda (x5)
+                                      ((letrec ((loop (lambda (i l) (if (null? l) i (loop (+ i (car l)) (cdr l)))))) loop) 0 x5)))))))))
    (let* ((l3 (make-lattice
                 (__toplevel_cons 'low (__toplevel_cons 'high ()))
                 (lambda (lhs4 rhs4)

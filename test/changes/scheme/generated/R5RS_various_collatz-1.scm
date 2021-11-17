@@ -1,19 +1,20 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((div2* (lambda (n s)
                   (if (= (* 2 n) s)
                      n
-                     (if (= (+ (* 2 n) 1) s) n (div2* (- n 1) s)))))
+                     (if (<change> (= (+ (* 2 n) 1) s) (not (= (+ (* 2 n) 1) s)))
+                        n
+                        (div2* (- n 1) s)))))
          (div2 (lambda (n)
                  (<change>
-                    ()
-                    n)
-                 (div2* n n)))
+                    (div2* n n)
+                    ((lambda (x) x) (div2* n n)))))
          (hailstone* (lambda (n count)
                        (if (= n 1)
                           count

@@ -14,7 +14,7 @@
          (iter-add (lambda (a b)
                      (<change>
                         ()
-                        (display a))
+                        a)
                      (if (= a 0)
                         b
                         (if (< a 0)

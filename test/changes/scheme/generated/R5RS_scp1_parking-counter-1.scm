@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 2
-; * swaps: 2
+; * removed: 0
+; * added: 3
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 4
+; * calls to id fun: 1
 (letrec ((create-counter (lambda (initial)
                            (letrec ((increase (lambda ()
                                                 (set! initial (+ initial 1))))
@@ -44,49 +44,48 @@
                                                                                   (loop (cdr lst) (+ index 1))))))))
                                                            (loop verdieping-ctrs 1))))
                                        (level-to-leave (lambda ()
-                                                         (letrec ((loop (lambda (lst index)
-                                                                          (if (null? lst)
-                                                                             #f
-                                                                             (let* ((level (car lst))
-                                                                                    (capacity (level 'read)))
-                                                                                (if (if (not (max-reached-level level index)) (>= capacity 0) #f)
-                                                                                   index
-                                                                                   (loop (cdr lst) (- index 1))))))))
-                                                            (loop (reverse verdieping-ctrs) nr-verdiepingen))))
+                                                         (<change>
+                                                            (letrec ((loop (lambda (lst index)
+                                                                             (if (null? lst)
+                                                                                #f
+                                                                                (let* ((level (car lst))
+                                                                                       (capacity (level 'read)))
+                                                                                   (if (if (not (max-reached-level level index)) (>= capacity 0) #f)
+                                                                                      index
+                                                                                      (loop (cdr lst) (- index 1))))))))
+                                                               (loop (reverse verdieping-ctrs) nr-verdiepingen))
+                                                            ((lambda (x) x)
+                                                               (letrec ((loop (lambda (lst index)
+                                                                                (if (null? lst)
+                                                                                   #f
+                                                                                   (let* ((level (car lst))
+                                                                                          (capacity (level 'read)))
+                                                                                      (if (if (not (max-reached-level level index)) (>= capacity 0) #f)
+                                                                                         index
+                                                                                         (loop (cdr lst) (- index 1))))))))
+                                                                  (loop (reverse verdieping-ctrs) nr-verdiepingen))))))
                                        (car-enters (lambda ()
                                                      (let ((level (level-current)))
                                                         (if level
                                                            (let ((verdieping-ctr (list-ref verdieping-ctrs (- level 1))))
                                                               (<change>
-                                                                 (set! nbr-cars (+ nbr-cars 1))
-                                                                 ((lambda (x) x) (set! nbr-cars (+ nbr-cars 1))))
-                                                              (<change>
                                                                  ()
                                                                  nbr-cars)
+                                                              (<change>
+                                                                 ()
+                                                                 +)
+                                                              (set! nbr-cars (+ nbr-cars 1))
                                                               (verdieping-ctr 'decrease))
                                                            #f))))
                                        (car-leaves (lambda ()
                                                      (let ((level (level-to-leave)))
-                                                        (<change>
-                                                           (if level
-                                                              (let ((verdieping-ctr (list-ref verdieping-ctrs (- level 1))))
-                                                                 (set! nbr-cars (- nbr-cars 1))
-                                                                 (verdieping-ctr 'increase))
-                                                              (let ((verdieping-ctr (list-ref verdieping-ctrs (- nr-verdiepingen 1))))
-                                                                 (set! nbr-cars (- nbr-cars 1))
-                                                                 (verdieping-ctr 'increase)))
-                                                           ((lambda (x) x)
-                                                              (if level
-                                                                 (let ((verdieping-ctr (list-ref verdieping-ctrs (- level 1))))
-                                                                    (set! nbr-cars (- nbr-cars 1))
-                                                                    (verdieping-ctr 'increase))
-                                                                 (let ((verdieping-ctr (list-ref verdieping-ctrs (- nr-verdiepingen 1))))
-                                                                    (<change>
-                                                                       (set! nbr-cars (- nbr-cars 1))
-                                                                       (verdieping-ctr 'increase))
-                                                                    (<change>
-                                                                       (verdieping-ctr 'increase)
-                                                                       (set! nbr-cars (- nbr-cars 1))))))))))
+                                                        (if level
+                                                           (let ((verdieping-ctr (list-ref verdieping-ctrs (- level 1))))
+                                                              (set! nbr-cars (- nbr-cars 1))
+                                                              (verdieping-ctr 'increase))
+                                                           (let ((verdieping-ctr (list-ref verdieping-ctrs (- nr-verdiepingen 1))))
+                                                              (set! nbr-cars (- nbr-cars 1))
+                                                              (verdieping-ctr 'increase))))))
                                        (dispatch (lambda (msg)
                                                    (if (eq? msg 'full?)
                                                       (full?)
@@ -101,30 +100,18 @@
                                                                   (if (eq? msg 'car-leaves)
                                                                      (car-leaves)
                                                                      (error "wrong message"))))))))))
+                                 (<change>
+                                    ()
+                                    dispatch)
                                  dispatch))))
          (parking (create-parking 3 5 2)))
    (if (= (parking 'level) 1)
       (if (not (parking 'full?))
          (if (= (begin (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (parking 'level)) 2)
             (if (not (parking 'empty?))
-               (if (begin (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (<change> (parking 'car-enters) (parking 'car-enters)) (<change> (parking 'car-enters) (parking 'car-enters)) (parking 'car-enters) (parking 'full?))
+               (if (begin (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (parking 'full?))
                   (if (not (parking 'car-enters))
-                     (=
-                        (begin
-                           (<change>
-                              (parking 'car-leaves)
-                              ((lambda (x) x) (parking 'car-leaves)))
-                           (<change>
-                              ()
-                              parking)
-                           (<change>
-                              (parking 'car-leaves)
-                              ())
-                           (parking 'car-leaves)
-                           (<change>
-                              (parking 'level)
-                              ((lambda (x) x) (parking 'level))))
-                        2)
+                     (= (begin (parking 'car-leaves) (parking 'car-leaves) (parking 'car-leaves) (parking 'level)) 2)
                      #f)
                   #f)
                #f)

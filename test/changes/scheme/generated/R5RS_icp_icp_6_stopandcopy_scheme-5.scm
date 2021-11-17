@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 2
-; * added: 1
-; * swaps: 1
+; * removed: 1
+; * added: 3
+; * swaps: 4
 ; * negated predicates: 0
-; * swapped branches: 0
-; * calls to id fun: 4
+; * swapped branches: 1
+; * calls to id fun: 5
 (letrec ((BIAS 1000)
          (NMBR-prefix 1)
          (PAIR-prefix 2)
@@ -19,15 +19,15 @@
          (VALUE (lambda (val)
                   (remainder (abs val) BIAS)))
          (MAKE (lambda (prefix val)
-                 (<change>
-                    ()
-                    +)
                  (+ prefix val)))
          (FREE 0)
          (SIZE 16)
          (THE-CARS (make-vector SIZE NULL))
          (THE-CDRS (make-vector SIZE NULL))
          (car (lambda (cons-val)
+                (<change>
+                   ()
+                   (display pair?))
                 (if (pair? cons-val)
                    (vector-ref THE-CARS (VALUE cons-val))
                    (error "pair expected"))))
@@ -44,17 +44,30 @@
                         (vector-set! THE-CDRS (VALUE cons-val) cdr-val)
                         (error "pair expected"))))
          (number? (lambda (val)
+                    (<change>
+                       ()
+                       eq?)
                     (eq? (PREFIX val) NMBR-prefix)))
          (pair? (lambda (val)
                   (eq? (PREFIX val) PAIR-prefix)))
          (null? (lambda (val)
                   (eq? (PREFIX val) NULL-prefix)))
          (MASK? (lambda (val)
-                  (eq? (PREFIX val) MASK-prefix)))
+                  (<change>
+                     (eq? (PREFIX val) MASK-prefix)
+                     ((lambda (x) x) (eq? (PREFIX val) MASK-prefix)))))
          (cons (lambda (car-val cdr-val)
-                 (if (= FREE SIZE) (RECLAIM) #f)
+                 (if (= FREE SIZE)
+                    (<change>
+                       (RECLAIM)
+                       #f)
+                    (<change>
+                       #f
+                       (RECLAIM)))
                  (let ((hold FREE))
-                    (set! FREE (+ FREE 1))
+                    (<change>
+                       (set! FREE (+ FREE 1))
+                       ((lambda (x) x) (set! FREE (+ FREE 1))))
                     (vector-set! THE-CARS hold car-val)
                     (vector-set! THE-CDRS hold cdr-val)
                     (MAKE PAIR hold))))
@@ -74,8 +87,10 @@
                                                                        (set! FREE (+ FREE 1))
                                                                        (<change>
                                                                           (vector-set! NEW-CARS new old-car)
-                                                                          ((lambda (x) x) (vector-set! NEW-CARS new old-car)))
-                                                                       (vector-set! NEW-CDRS new old-cdr)
+                                                                          (vector-set! NEW-CDRS new old-cdr))
+                                                                       (<change>
+                                                                          (vector-set! NEW-CDRS new old-cdr)
+                                                                          (vector-set! NEW-CARS new old-car))
                                                                        (vector-set! THE-CARS old MASK)
                                                                        (vector-set! THE-CDRS old pair)
                                                                        pair)))
@@ -98,12 +113,8 @@
                                               (vector-set! NEW-CDRS scan (relocate-old-result-in-new old-cdr))
                                               (gc-loop (+ scan 1)))))))
                        (set! FREE 0)
-                       (<change>
-                          (set! ROOT (relocate-old-result-in-new ROOT))
-                          (gc-loop 0))
-                       (<change>
-                          (gc-loop 0)
-                          (set! ROOT (relocate-old-result-in-new ROOT))))))
+                       (set! ROOT (relocate-old-result-in-new ROOT))
+                       (gc-loop 0))))
          (_ (lambda (val)
               (MAKE NMBR val)))
          (_11 (_ 11))
@@ -127,32 +138,45 @@
          (_61 (_ 61))
          (_62 (_ 62))
          (show (lambda ()
+                 (display "cars > ")
                  (<change>
-                    (display "cars > ")
-                    ())
-                 (display THE-CARS)
+                    (display THE-CARS)
+                    (newline))
                  (<change>
                     (newline)
-                    ((lambda (x) x) (newline)))
+                    (display THE-CARS))
                  (display "cdrs > ")
+                 (display THE-CDRS)
                  (<change>
-                    (display THE-CDRS)
-                    ())
-                 (newline)
-                 (display "ROOT > ")
-                 (display ROOT)
-                 (display "  FREE > ")
-                 (display FREE)
+                    (newline)
+                    (display "ROOT > "))
+                 (<change>
+                    (display "ROOT > ")
+                    (newline))
+                 (<change>
+                    (display ROOT)
+                    (display "  FREE > "))
+                 (<change>
+                    (display "  FREE > ")
+                    (display ROOT))
+                 (<change>
+                    (display FREE)
+                    ((lambda (x) x) (display FREE)))
                  (newline))))
    (set! ROOT (cons (cons (cons _11 _12) (cons _13 (cons _14 _15))) ROOT))
    (cons _21 _22)
    (set! ROOT (cons (cons _31 (cons (cons _32 _33) (cons _34 (cons _35 _36)))) ROOT))
-   (set-cdr! (cdr (car ROOT)) ROOT)
+   (<change>
+      (set-cdr! (cdr (car ROOT)) ROOT)
+      ())
    (cons _41 (cons _42 _43))
-   (set! ROOT (cons (cons _51 _52) ROOT))
+   (<change>
+      (set! ROOT (cons (cons _51 _52) ROOT))
+      ((lambda (x) x) (set! ROOT (cons (cons _51 _52) ROOT))))
    (set-car! (car ROOT) (cdr (car (cdr ROOT))))
    (<change>
-      (show)
-      ((lambda (x) x) (show)))
+      ()
+      (display (cons _35 _36)))
+   (show)
    (cons _61 _62)
    (show))

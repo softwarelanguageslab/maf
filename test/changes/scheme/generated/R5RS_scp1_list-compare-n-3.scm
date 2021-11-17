@@ -4,32 +4,39 @@
 ; * swaps: 0
 ; * negated predicates: 1
 ; * swapped branches: 1
-; * calls to id fun: 0
+; * calls to id fun: 2
 (letrec ((compare (lambda (lijst1 lijst2)
                     (if (let ((__or_res (null? lijst1))) (if __or_res __or_res (null? lijst2)))
-                       0
-                       (if (eq? (car lijst1) (car lijst2))
-                          (+ 1 (compare (cdr lijst1) (cdr lijst2)))
+                       (<change>
+                          0
+                          (if (eq? (car lijst1) (car lijst2))
+                             (+ 1 (compare (cdr lijst1) (cdr lijst2)))
+                             0))
+                       (<change>
+                          (if (eq? (car lijst1) (car lijst2))
+                             (+ 1 (compare (cdr lijst1) (cdr lijst2)))
+                             0)
                           0))))
          (compare-iter (lambda (lijst1 lijst2)
                          (letrec ((loop (lambda (l1 l2 res)
-                                          (if (let ((__or_res (null? l1))) (if __or_res __or_res (null? l2)))
-                                             res
-                                             (if (eq? (car l1) (car l2))
-                                                (loop (cdr l1) (cdr l2) (+ res 1))
-                                                res)))))
+                                          (<change>
+                                             (if (let ((__or_res (null? l1))) (if __or_res __or_res (null? l2)))
+                                                res
+                                                (if (eq? (car l1) (car l2))
+                                                   (loop (cdr l1) (cdr l2) (+ res 1))
+                                                   res))
+                                             ((lambda (x) x)
+                                                (if (let ((__or_res (null? l1))) (if __or_res __or_res (null? l2)))
+                                                   res
+                                                   (if (eq? (car l1) (car l2))
+                                                      (loop (cdr l1) (cdr l2) (+ res 1))
+                                                      res)))))))
                             (loop lijst1 lijst2 0))))
          (algemene-compare (lambda (lijst1 lijst2 test)
-                             (if (let ((__or_res (null? lijst1))) (if __or_res __or_res (null? lijst2)))
-                                (<change>
-                                   0
-                                   (if (test (car lijst1) (car lijst2))
-                                      (+ 1 (algemene-compare (cdr lijst1) (cdr lijst2) test))
-                                      0))
-                                (<change>
-                                   (if (test (car lijst1) (car lijst2))
-                                      (+ 1 (algemene-compare (cdr lijst1) (cdr lijst2) test))
-                                      0)
+                             (if (let ((__or_res (null? lijst1))) (<change> (if __or_res __or_res (null? lijst2)) ((lambda (x) x) (if __or_res __or_res (null? lijst2)))))
+                                0
+                                (if (test (car lijst1) (car lijst2))
+                                   (+ 1 (algemene-compare (cdr lijst1) (cdr lijst2) test))
                                    0))))
          (compare-greater (lambda (lijst1 lijst2)
                             (algemene-compare lijst1 lijst2 >))))

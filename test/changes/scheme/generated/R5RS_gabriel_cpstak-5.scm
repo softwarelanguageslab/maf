@@ -1,6 +1,6 @@
 ; Changes:
-; * removed: 1
-; * added: 0
+; * removed: 0
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -14,9 +14,7 @@
                       y
                       z
                       (lambda (v1)
-                         (<change>
-                            @sensitivity:FA
-                            ())
+                         @sensitivity:FA
                          (tak
                             (- y 1)
                             z
@@ -24,5 +22,5 @@
                             (lambda (v2)
                                @sensitivity:FA
                                (tak (- z 1) x y (lambda (v3) @sensitivity:FA (tak v1 v2 v3 k))))))))))
-         (res (tak 20 10 5 (lambda (a) @sensitivity:FA a))))
+         (res (tak 20 10 5 (lambda (a) @sensitivity:FA (<change> () (display @sensitivity:FA)) a))))
    res)

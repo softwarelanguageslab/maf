@@ -7,9 +7,9 @@
 ; * calls to id fun: 0
 (letrec ((f (lambda (x)
               (letrec ((g (lambda (y)
+                            (<change>
+                               ()
+                               (display y))
                             (+ x y))))
-                 (<change>
-                    ()
-                    (g 5))
                  (g 5)))))
    (= (f 0) 5))

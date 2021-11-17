@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 2
+; * removed: 0
 ; * added: 0
 ; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((create-counter (lambda (initial)
                            (letrec ((increase (lambda ()
                                                 (set! initial (+ initial 1))))
@@ -87,9 +87,9 @@
          (parking (create-parking 3 5 2)))
    (if (= (parking 'level) 1)
       (if (not (parking 'full?))
-         (if (= (begin (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (<change> (parking 'car-enters) (parking 'level)) (<change> (parking 'level) (parking 'car-enters))) 2)
+         (if (= (begin (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (parking 'level)) 2)
             (if (not (parking 'empty?))
-               (if (begin (parking 'car-enters) (<change> (parking 'car-enters) ((lambda (x) x) (parking 'car-enters))) (<change> (parking 'car-enters) ()) (parking 'car-enters) (<change> (parking 'car-enters) ()) (parking 'car-enters) (parking 'full?))
+               (if (begin (parking 'car-enters) (<change> (parking 'car-enters) (parking 'car-enters)) (<change> (parking 'car-enters) (parking 'car-enters)) (parking 'car-enters) (parking 'car-enters) (parking 'car-enters) (parking 'full?))
                   (if (not (parking 'car-enters))
                      (= (begin (parking 'car-leaves) (parking 'car-leaves) (parking 'car-leaves) (parking 'level)) 2)
                      #f)

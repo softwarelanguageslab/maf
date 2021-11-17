@@ -1,25 +1,20 @@
 ; Changes:
-; * removed: 1
+; * removed: 0
 ; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 1
+; * negated predicates: 1
+; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((*lifetime* 100)
          (*blocksize* 100)
          (*vec* (make-vector *lifetime*))
          (foo (lambda (i j)
                 (if (< i *lifetime*)
-                   (<change>
-                      (begin
-                         (vector-set! *vec* i (make-vector *blocksize*))
-                         (foo (+ i 1) j))
-                      (if (< 0 j) (foo 0 (- j 1)) ()))
-                   (<change>
-                      (if (< 0 j) (foo 0 (- j 1)) ())
-                      (begin
-                         (foo (+ i 1) j)))))))
-   (if (null? (foo 0 100))
+                   (begin
+                      (vector-set! *vec* i (make-vector *blocksize*))
+                      (foo (+ i 1) j))
+                   (if (< 0 j) (foo 0 (- j 1)) ())))))
+   (if (<change> (null? (foo 0 100)) (not (null? (foo 0 100))))
       (equal?
          *vec*
          (vector

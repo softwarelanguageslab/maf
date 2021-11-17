@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((make-grid (lambda (start dims)
                       (let ((v (make-vector (car dims) start)))
                          (if (not (null? (cdr dims)))
@@ -12,9 +12,14 @@
                                              (if (>= i (car dims))
                                                 #t
                                                 (begin
+                                                   (<change>
+                                                      ()
+                                                      (display (cdr dims)))
                                                    (vector-set! v i (make-grid start (cdr dims)))
                                                    (loop (+ i 1)))))))
-                               (loop 0))
+                               (<change>
+                                  (loop 0)
+                                  ((lambda (x) x) (loop 0))))
                             #t)
                          v)))
          (grid-ref (lambda (g n)
@@ -22,7 +27,7 @@
                         (vector-ref g (car n))
                         (grid-ref (vector-ref g (car n)) (cdr n)))))
          (grid-set! (lambda (g v n)
-                      (if (<change> (null? (cdr n)) (not (null? (cdr n))))
+                      (if (null? (cdr n))
                          (vector-set! g (car n) v)
                          (grid-set! (vector-ref g (car n)) v (cdr n)))))
          (t (make-grid 0 (__toplevel_cons 4 (__toplevel_cons 5 (__toplevel_cons 6 ())))))

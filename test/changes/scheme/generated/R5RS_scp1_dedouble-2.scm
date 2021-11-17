@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 2
+; * removed: 0
 ; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 0
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((ontdubbel! (lambda (lijst)
                        (let ((deEven ())
                              (deOneven ()))
@@ -12,33 +12,24 @@
                                                      (if (null? restLijst)
                                                         (begin
                                                            (set-cdr! prevE ())
+                                                           (set-cdr! prevO ())
                                                            (<change>
-                                                              ()
-                                                              prevE)
-                                                           (<change>
-                                                              (set-cdr! prevO ())
-                                                              ())
-                                                           (cons deEven deOneven))
+                                                              (cons deEven deOneven)
+                                                              ((lambda (x) x) (cons deEven deOneven))))
                                                         (if (even? (car restLijst))
-                                                           (<change>
-                                                              (begin
-                                                                 (if (null? prevE)
-                                                                    (set! deEven restLijst)
-                                                                    (set-cdr! prevE restLijst))
-                                                                 (ontdubbel-iter restLijst prevO (cdr restLijst)))
-                                                              (begin
-                                                                 (ontdubbel-iter prevE restLijst (cdr restLijst))))
-                                                           (<change>
-                                                              (begin
-                                                                 (if (null? prevO)
-                                                                    (set! deOneven restLijst)
-                                                                    (set-cdr! prevO restLijst))
-                                                                 (ontdubbel-iter prevE restLijst (cdr restLijst)))
-                                                              (begin
-                                                                 (if (null? prevE)
-                                                                    (set! deEven restLijst)
-                                                                    (set-cdr! prevE restLijst))
-                                                                 (ontdubbel-iter restLijst prevO (cdr restLijst)))))))))
+                                                           (begin
+                                                              (if (null? prevE)
+                                                                 (set! deEven restLijst)
+                                                                 (set-cdr! prevE restLijst))
+                                                              (ontdubbel-iter restLijst prevO (cdr restLijst)))
+                                                           (begin
+                                                              (<change>
+                                                                 ()
+                                                                 restLijst)
+                                                              (if (null? prevO)
+                                                                 (set! deOneven restLijst)
+                                                                 (set-cdr! prevO restLijst))
+                                                              (ontdubbel-iter prevE restLijst (cdr restLijst))))))))
                              (ontdubbel-iter deEven deOneven lijst))))))
    (equal?
       (ontdubbel!

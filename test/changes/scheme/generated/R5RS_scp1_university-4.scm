@@ -1,17 +1,15 @@
 ; Changes:
-; * removed: 0
-; * added: 1
-; * swaps: 1
+; * removed: 1
+; * added: 0
+; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 1
+; * swapped branches: 0
+; * calls to id fun: 3
 (letrec ((result ())
          (display2 (lambda (i)
                      (set! result (cons i result))))
          (newline2 (lambda ()
-                     (<change>
-                        (set! result (cons 'newline result))
-                        ((lambda (x) x) (set! result (cons 'newline result))))))
+                     (set! result (cons 'newline result))))
          (VUBOrganigram (__toplevel_cons
                           'VUB
                           (__toplevel_cons
@@ -66,22 +64,19 @@
                                       (__toplevel_cons (__toplevel_cons 'financien ()) ())))
                                 ()))))
          (display-n (lambda (n d)
-                      (if (> n 0)
-                         (begin
-                            (<change>
-                               ()
-                               (display display-n))
-                            (display2 d)
-                            (display-n (- n 1) d))
-                         #f)))
+                      (<change>
+                         (if (> n 0)
+                            (begin
+                               (display2 d)
+                               (display-n (- n 1) d))
+                            #f)
+                         ((lambda (x) x) (if (> n 0) (begin (display2 d) (display-n (- n 1) d)) #f)))))
          (print-lijn (lambda (aantalblanco tekst)
+                       (display-n aantalblanco " ")
+                       (display2 tekst)
                        (<change>
-                          (display-n aantalblanco " ")
-                          (display2 tekst))
-                       (<change>
-                          (display2 tekst)
-                          (display-n aantalblanco " "))
-                       (newline2)))
+                          (newline2)
+                          ((lambda (x) x) (newline2)))))
          (label (lambda (organigram)
                   (car organigram)))
          (takken (lambda (organigram)
@@ -104,23 +99,28 @@
                      (print 0 organigram))))
          (print-vanaf (lambda (organigram label)
                         (let ((res (organigram-member label organigram)))
-                           (if res
-                              (<change>
-                                 (print res)
-                                 #f)
-                              (<change>
-                                 #f
-                                 (print res)))))))
+                           (if res (print res) #f)))))
    (print-vanaf VUBOrganigram 'rechten)
    (letrec ((print-tot (lambda (organigram niveau)
-                         (letrec ((print-tot (lambda (organigram niveau max-niveau)
-                                               (if (<= niveau max-niveau)
-                                                  (begin
-                                                     (print-lijn niveau (label organigram))
-                                                     (for-each (lambda (organigram) (print-tot organigram (+ niveau 1) max-niveau)) (takken organigram)))
-                                                  #f))))
-                            (print-tot organigram 0 niveau)))))
-      (print-tot VUBOrganigram 2)
+                         (<change>
+                            (letrec ((print-tot (lambda (organigram niveau max-niveau)
+                                                  (if (<= niveau max-niveau)
+                                                     (begin
+                                                        (print-lijn niveau (label organigram))
+                                                        (for-each (lambda (organigram) (print-tot organigram (+ niveau 1) max-niveau)) (takken organigram)))
+                                                     #f))))
+                               (print-tot organigram 0 niveau))
+                            ((lambda (x) x)
+                               (letrec ((print-tot (lambda (organigram niveau max-niveau)
+                                                     (if (<= niveau max-niveau)
+                                                        (begin
+                                                           (print-lijn niveau (label organigram))
+                                                           (for-each (lambda (organigram) (print-tot organigram (+ niveau 1) max-niveau)) (takken organigram)))
+                                                        #f))))
+                                  (print-tot organigram 0 niveau)))))))
+      (<change>
+         (print-tot VUBOrganigram 2)
+         ())
       (equal?
          result
          (__toplevel_cons

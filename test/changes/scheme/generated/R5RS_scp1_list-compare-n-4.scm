@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
 ; * negated predicates: 2
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 3
 (letrec ((compare (lambda (lijst1 lijst2)
                     (if (let ((__or_res (null? lijst1))) (if __or_res __or_res (null? lijst2)))
                        0
@@ -22,22 +22,21 @@
                                (loop lijst1 lijst2 0))
                             ((lambda (x) x)
                                (letrec ((loop (lambda (l1 l2 res)
-                                                (if (<change> (let ((__or_res (null? l1))) (if __or_res __or_res (null? l2))) (not (let ((__or_res (null? l1))) (if __or_res __or_res (null? l2)))))
+                                                (if (let ((__or_res (null? l1))) (if __or_res __or_res (null? l2)))
                                                    res
-                                                   (if (<change> (eq? (car l1) (car l2)) (not (eq? (car l1) (car l2))))
+                                                   (if (eq? (car l1) (car l2))
                                                       (loop (cdr l1) (cdr l2) (+ res 1))
                                                       res)))))
-                                  (loop lijst1 lijst2 0))))))
+                                  (<change>
+                                     (loop lijst1 lijst2 0)
+                                     ((lambda (x) x) (loop lijst1 lijst2 0))))))))
          (algemene-compare (lambda (lijst1 lijst2 test)
-                             (if (let ((__or_res (null? lijst1))) (if __or_res __or_res (null? lijst2)))
+                             (if (<change> (let ((__or_res (null? lijst1))) ((lambda (x) x) (if __or_res __or_res (null? lijst2)))) (not (let ((__or_res (null? lijst1))) ((lambda (x) x) (if __or_res __or_res (null? lijst2))))))
                                 0
-                                (if (test (car lijst1) (car lijst2))
+                                (if (<change> (test (car lijst1) (car lijst2)) (not (test (car lijst1) (car lijst2))))
                                    (+ 1 (algemene-compare (cdr lijst1) (cdr lijst2) test))
                                    0))))
          (compare-greater (lambda (lijst1 lijst2)
-                            (<change>
-                               ()
-                               lijst1)
                             (algemene-compare lijst1 lijst2 >))))
    (if (= (compare (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'c (__toplevel_cons 'd (__toplevel_cons 'e (__toplevel_cons 'f (__toplevel_cons 'g ()))))))) (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'c (__toplevel_cons 'x (__toplevel_cons 'y ())))))) 3)
       (if (= (compare (__toplevel_cons 'x (__toplevel_cons 'a (__toplevel_cons 'b ()))) (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'c (__toplevel_cons 'd (__toplevel_cons 'e (__toplevel_cons 'f (__toplevel_cons 'g ())))))))) 0)

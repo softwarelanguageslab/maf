@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 2
-; * added: 7
-; * swaps: 3
-; * negated predicates: 7
+; * added: 8
+; * swaps: 4
+; * negated predicates: 8
 ; * swapped branches: 8
-; * calls to id fun: 6
+; * calls to id fun: 14
 (letrec ((every? (lambda (pred? l)
                    (let ((__or_res (null? l)))
                       (if __or_res
@@ -16,48 +16,26 @@
                      (let ((__or_res (pred? (car l))))
                         (if __or_res __or_res (some? pred? (cdr l)))))))
          (map2 (lambda (f l1 l2)
-                 (<change>
-                    (if (pair? l1)
-                       (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2)))
-                       ())
-                    ((lambda (x) x) (if (pair? l1) (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2))) ())))))
+                 (if (pair? l1)
+                    (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2)))
+                    ())))
          (get-last-pair (lambda (l)
                           (let ((x (cdr l)))
                              (<change>
-                                ()
-                                (display pair?))
-                             (if (pair? x) (get-last-pair x) l))))
+                                (if (pair? x) (get-last-pair x) l)
+                                ((lambda (x) x) (if (pair? x) (<change> (get-last-pair x) l) (<change> l (get-last-pair x))))))))
          (partial-evaluate (lambda (proc args)
                              (peval (alphatize proc ()) args)))
          (alphatize (lambda (exp env)
                       (letrec ((alpha (lambda (exp)
-                                        (if (const-expr? exp)
-                                           (quot (const-value exp))
-                                           (if (symbol? exp)
-                                              (let ((x (assq exp env)))
-                                                 (if (<change> x (not x)) (cdr x) exp))
-                                              (if (let ((__or_res (eq? (car exp) 'if))) (if __or_res __or_res (eq? (car exp) 'begin)))
-                                                 (<change>
+                                        (<change>
+                                           (if (const-expr? exp)
+                                              (quot (const-value exp))
+                                              (if (symbol? exp)
+                                                 (let ((x (assq exp env)))
+                                                    (if x (cdr x) exp))
+                                                 (if (let ((__or_res (eq? (car exp) 'if))) (if __or_res __or_res (eq? (car exp) 'begin)))
                                                     (cons (car exp) (map alpha (cdr exp)))
-                                                    (if (let ((__or_res (eq? (car exp) 'let))) (if (not __or_res) __or_res (eq? (car exp) 'letrec)))
-                                                       (let ((new-env (new-variables (map car (cadr exp)) env)))
-                                                          (list
-                                                             (car exp)
-                                                             (map
-                                                                (lambda (x)
-                                                                   (list
-                                                                      (cdr (assq (car x) new-env))
-                                                                      (if (eq? (car exp) 'let)
-                                                                         (alpha (cadr x))
-                                                                         (alphatize (cadr x) new-env))))
-                                                                (cadr exp))
-                                                             (alphatize (caddr exp) new-env)))
-                                                       (if (eq? (car exp) 'lambda)
-                                                          (let ((new-env (new-variables (cadr exp) env)))
-                                                             ((lambda (x) x)
-                                                                (list 'lambda (map (lambda (x) (cdr (assq x new-env))) (cadr exp)) (alphatize (caddr exp) new-env))))
-                                                          (map alpha exp))))
-                                                 (<change>
                                                     (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
                                                        (let ((new-env (new-variables (map car (cadr exp)) env)))
                                                           (list
@@ -74,23 +52,62 @@
                                                        (if (eq? (car exp) 'lambda)
                                                           (let ((new-env (new-variables (cadr exp) env)))
                                                              (list 'lambda (map (lambda (x) (cdr (assq x new-env))) (cadr exp)) (alphatize (caddr exp) new-env)))
-                                                          (map alpha exp)))
-                                                    (cons (car exp) (map alpha (cdr exp))))))))))
+                                                          (map alpha exp))))))
+                                           ((lambda (x) x)
+                                              (if (const-expr? exp)
+                                                 (quot (const-value exp))
+                                                 (if (symbol? exp)
+                                                    (<change>
+                                                       (let ((x (assq exp env)))
+                                                          (if x (cdr x) exp))
+                                                       (if (let ((__or_res (eq? (car exp) 'if))) (if __or_res __or_res (eq? (car exp) 'begin)))
+                                                          (cons (car exp) (map alpha (cdr exp)))
+                                                          (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
+                                                             (let ((new-env (new-variables (map car (cadr exp)) env)))
+                                                                (list
+                                                                   (car exp)
+                                                                   (map
+                                                                      (lambda (x)
+                                                                         (list
+                                                                            (cdr (assq (car x) new-env))
+                                                                            (if (eq? (car exp) 'let)
+                                                                               (alpha (cadr x))
+                                                                               (alphatize (cadr x) new-env))))
+                                                                      (cadr exp))
+                                                                   (alphatize (caddr exp) new-env)))
+                                                             (if (eq? (car exp) 'lambda)
+                                                                (let ((new-env (new-variables (cadr exp) env)))
+                                                                   (list 'lambda (map (lambda (x) (cdr (assq x new-env))) (cadr exp)) (alphatize (caddr exp) new-env)))
+                                                                (map alpha exp)))))
+                                                    (<change>
+                                                       (if (let ((__or_res (eq? (car exp) 'if))) (if __or_res __or_res (eq? (car exp) 'begin)))
+                                                          (cons (car exp) (map alpha (cdr exp)))
+                                                          (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
+                                                             (let ((new-env (new-variables (map car (cadr exp)) env)))
+                                                                (list
+                                                                   (car exp)
+                                                                   (map
+                                                                      (lambda (x)
+                                                                         (list
+                                                                            (cdr (assq (car x) new-env))
+                                                                            (if (eq? (car exp) 'let)
+                                                                               (alpha (cadr x))
+                                                                               (alphatize (cadr x) new-env))))
+                                                                      (cadr exp))
+                                                                   (alphatize (caddr exp) new-env)))
+                                                             (if (eq? (car exp) 'lambda)
+                                                                (let ((new-env (new-variables (cadr exp) env)))
+                                                                   (list 'lambda (map (lambda (x) (cdr (assq x new-env))) (cadr exp)) (alphatize (caddr exp) new-env)))
+                                                                (map alpha exp))))
+                                                       (let ((x (assq exp env)))
+                                                          (if x (cdr x) exp))))))))))
                          (alpha exp))))
          (const-expr? (lambda (expr)
                         (if (not (symbol? expr))
-                           (<change>
-                              (let ((__or_res (not (pair? expr))))
-                                 (if __or_res __or_res (eq? (car expr) 'quote)))
-                              #f)
-                           (<change>
-                              #f
-                              (let ((__or_res (not (pair? expr))))
-                                 (if __or_res (eq? (car expr) 'quote) __or_res))))))
+                           (let ((__or_res (not (pair? expr))))
+                              (if __or_res __or_res (eq? (car expr) 'quote)))
+                           #f)))
          (const-value (lambda (expr)
-                        (<change>
-                           ()
-                           (if (pair? expr) (cadr expr) expr))
                         (if (pair? expr) (cadr expr) expr)))
          (quot (lambda (val)
                  (list 'quote val)))
@@ -98,7 +115,9 @@
                           (append (map (lambda (x) (cons x (new-variable x))) parms) env)))
          (*current-num* 0)
          (new-variable (lambda (name)
-                         (set! *current-num* (+ *current-num* 1))
+                         (<change>
+                            (set! *current-num* (+ *current-num* 1))
+                            ((lambda (x) x) (set! *current-num* (+ *current-num* 1))))
                          (string->symbol (string-append (symbol->string name) "_" (number->string *current-num*)))))
          (peval (lambda (proc args)
                   (simplify!
@@ -112,9 +131,6 @@
                               (map2 (lambda (x y) (if (not-constant? y) (__toplevel_cons () ()) (cons x (quot y)))) parms args)))))))
          (not-constant (list '?))
          (not-constant? (lambda (x)
-                          (<change>
-                             ()
-                             (eq? x not-constant))
                           (eq? x not-constant)))
          (remove-constant (lambda (l a)
                             (if (null? l)
@@ -123,11 +139,18 @@
                                   (cons (car l) (remove-constant (cdr l) (cdr a)))
                                   (remove-constant (cdr l) (cdr a))))))
          (extract-constant (lambda (l a)
-                             (if (null? l)
-                                ()
-                                (if (not-constant? (car a))
-                                   (extract-constant (cdr l) (cdr a))
-                                   (cons (car l) (extract-constant (cdr l) (cdr a)))))))
+                             (<change>
+                                (if (null? l)
+                                   ()
+                                   (if (not-constant? (car a))
+                                      (extract-constant (cdr l) (cdr a))
+                                      (cons (car l) (extract-constant (cdr l) (cdr a)))))
+                                ((lambda (x) x)
+                                   (if (null? l)
+                                      ()
+                                      (if (not-constant? (car a))
+                                         (extract-constant (cdr l) (cdr a))
+                                         (cons (car l) (extract-constant (cdr l) (cdr a)))))))))
          (beta-subst (lambda (exp env)
                        (letrec ((bs (lambda (exp)
                                       (if (const-expr? exp)
@@ -149,194 +172,228 @@
                                                        (let ((exp (car where)))
                                                           (let ((__cond-empty-body (const-expr? exp)))
                                                              (if __cond-empty-body
-                                                                __cond-empty-body
-                                                                (let ((__cond-empty-body (symbol? exp)))
-                                                                   (if __cond-empty-body
-                                                                      __cond-empty-body
-                                                                      (if (eq? (car exp) 'if)
-                                                                         (begin
-                                                                            (s! (cdr exp))
-                                                                            (if (const-expr? (cadr exp))
-                                                                               (begin
-                                                                                  (set-car!
-                                                                                     where
-                                                                                     (if (memq (const-value (cadr exp)) (__toplevel_cons #f (__toplevel_cons () ())))
-                                                                                        (if (= (length exp) 3)
-                                                                                           (__toplevel_cons 'quote (__toplevel_cons () ()))
-                                                                                           (cadddr exp))
-                                                                                        (caddr exp)))
-                                                                                  (s! where))
-                                                                               (for-each! s! (cddr exp))))
-                                                                         (if (eq? (car exp) 'begin)
+                                                                (<change>
+                                                                   __cond-empty-body
+                                                                   (let ((__cond-empty-body (symbol? exp)))
+                                                                      (if __cond-empty-body
+                                                                         __cond-empty-body
+                                                                         (if (eq? (car exp) 'if)
                                                                             (begin
-                                                                               (for-each! s! (cdr exp))
-                                                                               ((letrec ((loop (lambda (exps)
-                                                                                                (if (not (null? (cddr exps)))
-                                                                                                   (let ((x (cadr exps)))
-                                                                                                      (loop
-                                                                                                         (if (let ((__or_res (const-expr? x))) (if __or_res __or_res (let ((__or_res (symbol? x))) (if __or_res __or_res (if (pair? x) (eq? (car x) 'lambda) #f)))))
-                                                                                                            (begin
-                                                                                                               (set-cdr! exps (cddr exps))
-                                                                                                               exps)
-                                                                                                            (cdr exps))))
-                                                                                                   #f))))
-                                                                                  loop)
-                                                                                  exp)
-                                                                               (if (null? (cddr exp))
-                                                                                  (set-car! where (cadr exp))
-                                                                                  #f))
-                                                                            (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
-                                                                               (let ((new-env (cons exp env)))
-                                                                                  (letrec ((keep (lambda (i)
-                                                                                                   (if (>= i (length (cadar where)))
-                                                                                                      ()
-                                                                                                      (let* ((var (car (list-ref (cadar where) i)))
-                                                                                                             (val (cadr (assq var (cadar where))))
-                                                                                                             (refs (ref-count (car where) var))
-                                                                                                             (self-refs (ref-count val var))
-                                                                                                             (total-refs (- (car refs) (car self-refs)))
-                                                                                                             (oper-refs (- (cadr refs) (cadr self-refs))))
-                                                                                                         (if (= total-refs 0)
-                                                                                                            (keep (+ i 1))
-                                                                                                            (if (let ((__or_res (const-expr? val))) (if __or_res __or_res (let ((__or_res (symbol? val))) (if __or_res __or_res (let ((__or_res (if (pair? val) (if (eq? (car val) 'lambda) (if (= total-refs 1) (if (= oper-refs 1) (= (car self-refs) 0) #f) #f) #f) #f))) (if __or_res __or_res (if (caddr refs) (= total-refs 1) #f)))))))
+                                                                               (s! (cdr exp))
+                                                                               (if (const-expr? (cadr exp))
+                                                                                  (begin
+                                                                                     (s! where)
+                                                                                     (set-car!
+                                                                                        where
+                                                                                        (if (memq (const-value (cadr exp)) (__toplevel_cons #f (__toplevel_cons () ())))
+                                                                                           (if (= (length exp) 3)
+                                                                                              (__toplevel_cons 'quote (__toplevel_cons () ()))
+                                                                                              (cadddr exp))
+                                                                                           (caddr exp))))
+                                                                                  (for-each! s! (cddr exp))))
+                                                                            (if (eq? (car exp) 'begin)
+                                                                               (begin
+                                                                                  ((letrec ((loop (lambda (exps)
+                                                                                                   (if (not (null? (cddr exps)))
+                                                                                                      (let ((x (cadr exps)))
+                                                                                                         (loop
+                                                                                                            (if (let ((__or_res (const-expr? x))) (if __or_res __or_res (let ((__or_res (symbol? x))) (if __or_res __or_res (if (pair? x) (eq? (car x) 'lambda) #f)))))
                                                                                                                (begin
-                                                                                                                  (set-car! where (beta-subst (car where) (list (cons var val))))
-                                                                                                                  (keep (+ i 1)))
-                                                                                                               (cons var (keep (+ i 1))))))))))
-                                                                                     (simp! (cddr exp) new-env)
-                                                                                     (for-each! (lambda (x) (simp! (cdar x) new-env)) (cadr exp))
-                                                                                     (let ((to-keep (keep 0)))
-                                                                                        (if (< (length to-keep) (length (cadar where)))
-                                                                                           (begin
+                                                                                                                  (set-cdr! exps (cddr exps))
+                                                                                                                  exps)
+                                                                                                               (cdr exps))))
+                                                                                                      #f))))
+                                                                                     loop)
+                                                                                     exp)
+                                                                                  (if (not (pair? x)) (eq? (car x) 'lambda) #f)
+                                                                                  (for-each! s! (cdr exp))
+                                                                                  (if (null? (cddr exp))
+                                                                                     (set-car! where (cadr exp))
+                                                                                     #f))
+                                                                               (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
+                                                                                  (let ((new-env (cons exp env)))
+                                                                                     (letrec ((keep (lambda (i)
+                                                                                                      (if (>= i (length (cadar where)))
+                                                                                                         ()
+                                                                                                         (let* ((var (car (list-ref (cadar where) i)))
+                                                                                                                (val (cadr (assq var (cadar where))))
+                                                                                                                (refs (ref-count (car where) var))
+                                                                                                                (self-refs (ref-count val var))
+                                                                                                                (total-refs (- (car refs) (car self-refs)))
+                                                                                                                (oper-refs (- (cadr refs) (cadr self-refs))))
+                                                                                                            (if (not (= total-refs 0))
+                                                                                                               (keep (+ i 1))
+                                                                                                               (if (let ((__or_res (const-expr? val))) (if __or_res (let ((__or_res (symbol? val))) (if __or_res __or_res (let ((__or_res (if (pair? val) (if (eq? (car val) 'lambda) (if (= total-refs 1) (if (= oper-refs 1) (= (car self-refs) 0) #f) #f) #f) #f))) (if __or_res __or_res (if (caddr refs) (= total-refs 1) #f))))) __or_res))
+                                                                                                                  (begin
+                                                                                                                     (keep (+ i 1))
+                                                                                                                     (display list)
+                                                                                                                     (set-car! where (beta-subst (car where) (list (cons var val)))))
+                                                                                                                  (cons var (keep (+ i 1))))))))))
+                                                                                        (simp! (cddr exp) new-env)
+                                                                                        ((lambda (x) x) (for-each! (lambda (x) (simp! (cdar x) new-env)) (cadr exp)))
+                                                                                        (let ((to-keep (keep 0)))
+                                                                                           ((lambda (x) x)
+                                                                                              (if (< (length to-keep) (length (cadar where)))
+                                                                                                 (if (null? to-keep)
+                                                                                                    (set-car! where (caddar where))
+                                                                                                    #f)
+                                                                                                 (begin
+                                                                                                    ((lambda (x) x) (s! where))))))))
+                                                                                  (if (eq? (car exp) 'lambda)
+                                                                                     (simp! (cddr exp) (cons exp env))
+                                                                                     (begin
+                                                                                        ((lambda (x) x) (for-each! s! exp))
+                                                                                        (if (symbol? (car exp))
+                                                                                           (let ((frame (binding-frame (car exp) env)))
+                                                                                              (if frame
+                                                                                                 (let ((proc (bound-expr (car exp) frame)))
+                                                                                                    (if (if (pair? proc) (if (eq? (car proc) 'lambda) (some? const-expr? (cdr exp)) #f) #f)
+                                                                                                       #f
+                                                                                                       (let* ((args (arg-pattern (cdr exp)))
+                                                                                                              (new-proc (peval proc args))
+                                                                                                              (new-args (remove-constant (cdr exp) args)))
+                                                                                                          ((lambda (x) x) (set-car! where (cons (add-binding new-proc frame (car exp)) new-args))))))
+                                                                                                 (set-car! where (constant-fold-global (car exp) (cdr exp)))))
+                                                                                           (let ((__cond-empty-body (not (pair? (car exp)))))
+                                                                                              (if (not __cond-empty-body)
+                                                                                                 __cond-empty-body
+                                                                                                 (if (not (eq? (caar exp) 'lambda))
+                                                                                                    (begin
+                                                                                                       (set-car! where (list 'let (map2 list (cadar exp) (cdr exp)) (caddar exp)))
+                                                                                                       (s! where))
+                                                                                                    #f))))))))))))
+                                                                (<change>
+                                                                   (let ((__cond-empty-body (symbol? exp)))
+                                                                      (if __cond-empty-body
+                                                                         __cond-empty-body
+                                                                         (if (eq? (car exp) 'if)
+                                                                            (begin
+                                                                               (s! (cdr exp))
+                                                                               (if (const-expr? (cadr exp))
+                                                                                  (begin
+                                                                                     (set-car!
+                                                                                        where
+                                                                                        (if (memq (const-value (cadr exp)) (__toplevel_cons #f (__toplevel_cons () ())))
+                                                                                           (if (= (length exp) 3)
+                                                                                              (__toplevel_cons 'quote (__toplevel_cons () ()))
+                                                                                              (cadddr exp))
+                                                                                           (caddr exp)))
+                                                                                     (s! where))
+                                                                                  (for-each! s! (cddr exp))))
+                                                                            (if (eq? (car exp) 'begin)
+                                                                               (begin
+                                                                                  (for-each! s! (cdr exp))
+                                                                                  ((letrec ((loop (lambda (exps)
+                                                                                                   (if (not (null? (cddr exps)))
+                                                                                                      (let ((x (cadr exps)))
+                                                                                                         (loop
+                                                                                                            (if (let ((__or_res (const-expr? x))) (if __or_res __or_res (let ((__or_res (symbol? x))) (if __or_res __or_res (if (pair? x) (eq? (car x) 'lambda) #f)))))
+                                                                                                               (begin
+                                                                                                                  (set-cdr! exps (cddr exps))
+                                                                                                                  exps)
+                                                                                                               (cdr exps))))
+                                                                                                      #f))))
+                                                                                     loop)
+                                                                                     exp)
+                                                                                  (if (null? (cddr exp))
+                                                                                     (set-car! where (cadr exp))
+                                                                                     #f))
+                                                                               (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
+                                                                                  (let ((new-env (cons exp env)))
+                                                                                     (letrec ((keep (lambda (i)
+                                                                                                      (if (>= i (length (cadar where)))
+                                                                                                         ()
+                                                                                                         (let* ((var (car (list-ref (cadar where) i)))
+                                                                                                                (val (cadr (assq var (cadar where))))
+                                                                                                                (refs (ref-count (car where) var))
+                                                                                                                (self-refs (ref-count val var))
+                                                                                                                (total-refs (- (car refs) (car self-refs)))
+                                                                                                                (oper-refs (- (cadr refs) (cadr self-refs))))
+                                                                                                            (if (= total-refs 0)
+                                                                                                               (keep (+ i 1))
+                                                                                                               (if (let ((__or_res (const-expr? val))) (if __or_res __or_res (let ((__or_res (symbol? val))) (if __or_res __or_res (let ((__or_res (if (pair? val) (if (eq? (car val) 'lambda) (if (= total-refs 1) (if (= oper-refs 1) (= (car self-refs) 0) #f) #f) #f) #f))) (if __or_res __or_res (if (caddr refs) (= total-refs 1) #f)))))))
+                                                                                                                  (begin
+                                                                                                                     (set-car! where (beta-subst (car where) (list (cons var val))))
+                                                                                                                     (keep (+ i 1)))
+                                                                                                                  (cons var (keep (+ i 1))))))))))
+                                                                                        (simp! (cddr exp) new-env)
+                                                                                        (for-each! (lambda (x) (simp! (cdar x) new-env)) (cadr exp))
+                                                                                        (let ((to-keep (keep 0)))
+                                                                                           (if (< (length to-keep) (length (cadar where)))
+                                                                                              (begin
+                                                                                                 (if (null? to-keep)
+                                                                                                    (set-car! where (caddar where))
+                                                                                                    (set-car! (cdar where) (map (lambda (v) (assq v (cadar where))) to-keep)))
+                                                                                                 (s! where))
                                                                                               (if (null? to-keep)
                                                                                                  (set-car! where (caddar where))
-                                                                                                 (set-car! (cdar where) (map (lambda (v) (assq v (cadar where))) to-keep)))
-                                                                                              (s! where))
-                                                                                           (if (null? to-keep)
-                                                                                              (set-car! where (caddar where))
-                                                                                              #f)))))
-                                                                               (if (eq? (car exp) 'lambda)
-                                                                                  (simp! (cddr exp) (cons exp env))
-                                                                                  (begin
-                                                                                     (for-each! s! exp)
-                                                                                     (if (symbol? (car exp))
-                                                                                        (let ((frame (binding-frame (car exp) env)))
-                                                                                           (if frame
-                                                                                              (let ((proc (bound-expr (car exp) frame)))
-                                                                                                 (if (if (pair? proc) (if (eq? (car proc) 'lambda) (some? const-expr? (cdr exp)) #f) #f)
-                                                                                                    (let* ((args (arg-pattern (cdr exp)))
-                                                                                                           (new-proc (peval proc args))
-                                                                                                           (new-args (remove-constant (cdr exp) args)))
-                                                                                                       (set-car! where (cons (add-binding new-proc frame (car exp)) new-args)))
-                                                                                                    #f))
-                                                                                              (set-car! where (constant-fold-global (car exp) (cdr exp)))))
-                                                                                        (let ((__cond-empty-body (not (pair? (car exp)))))
-                                                                                           (if __cond-empty-body
-                                                                                              __cond-empty-body
-                                                                                              (if (eq? (caar exp) 'lambda)
-                                                                                                 (begin
-                                                                                                    (set-car! where (list 'let (map2 list (cadar exp) (cdr exp)) (caddar exp)))
-                                                                                                    (s! where))
-                                                                                                 #f)))))))))))))))))
+                                                                                                 #f)))))
+                                                                                  (if (eq? (car exp) 'lambda)
+                                                                                     (simp! (cddr exp) (cons exp env))
+                                                                                     (begin
+                                                                                        (for-each! s! exp)
+                                                                                        (if (symbol? (car exp))
+                                                                                           (let ((frame (binding-frame (car exp) env)))
+                                                                                              (if frame
+                                                                                                 (let ((proc (bound-expr (car exp) frame)))
+                                                                                                    (if (if (pair? proc) (if (eq? (car proc) 'lambda) (some? const-expr? (cdr exp)) #f) #f)
+                                                                                                       (let* ((args (arg-pattern (cdr exp)))
+                                                                                                              (new-proc (peval proc args))
+                                                                                                              (new-args (remove-constant (cdr exp) args)))
+                                                                                                          (set-car! where (cons (add-binding new-proc frame (car exp)) new-args)))
+                                                                                                       #f))
+                                                                                                 (set-car! where (constant-fold-global (car exp) (cdr exp)))))
+                                                                                           (let ((__cond-empty-body (not (pair? (car exp)))))
+                                                                                              (if __cond-empty-body
+                                                                                                 __cond-empty-body
+                                                                                                 (if (eq? (caar exp) 'lambda)
+                                                                                                    (begin
+                                                                                                       (set-car! where (list 'let (map2 list (cadar exp) (cdr exp)) (caddar exp)))
+                                                                                                       (s! where))
+                                                                                                    #f)))))))))))
+                                                                   __cond-empty-body)))))))
                                            (s! where))))
                                (remove-empty-calls! (lambda (where env)
-                                                      (<change>
-                                                         (letrec ((rec! (lambda (where)
-                                                                          (let ((exp (car where)))
-                                                                             (let ((__cond-empty-body (const-expr? exp)))
-                                                                                (if __cond-empty-body
-                                                                                   __cond-empty-body
-                                                                                   (let ((__cond-empty-body (symbol? exp)))
-                                                                                      (if __cond-empty-body
-                                                                                         __cond-empty-body
-                                                                                         (if (eq? (car exp) 'if)
-                                                                                            (begin
-                                                                                               (rec! (cdr exp))
-                                                                                               (rec! (cddr exp))
-                                                                                               (rec! (cdddr exp)))
-                                                                                            (if (eq? (car exp) 'begin)
-                                                                                               (for-each! rec! (cdr exp))
-                                                                                               (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
-                                                                                                  (let ((new-env (cons exp env)))
-                                                                                                     (remove-empty-calls! (cddr exp) new-env)
-                                                                                                     (for-each! (lambda (x) (remove-empty-calls! (cdar x) new-env)) (cadr exp)))
-                                                                                                  (if (eq? (car exp) 'lambda)
-                                                                                                     (rec! (cddr exp))
-                                                                                                     (begin
-                                                                                                        (for-each! rec! (cdr exp))
-                                                                                                        (if (if (null? (cdr exp)) (symbol? (car exp)) #f)
-                                                                                                           (let ((frame (binding-frame (car exp) env)))
-                                                                                                              (if frame
-                                                                                                                 (let ((proc (bound-expr (car exp) frame)))
-                                                                                                                    (if (if (pair? proc) (eq? (car proc) 'lambda) #f)
-                                                                                                                       (begin
-                                                                                                                          (set! changed? #t)
-                                                                                                                          (set-car! where (caddr proc)))
-                                                                                                                       #f))
-                                                                                                                 #f))
-                                                                                                           #f))))))))))))))
-                                                            (rec! where))
-                                                         ((lambda (x) x)
-                                                            (letrec ((rec! (lambda (where)
-                                                                             (let ((exp (car where)))
-                                                                                (let ((__cond-empty-body (const-expr? exp)))
+                                                      (letrec ((rec! (lambda (where)
+                                                                       (let ((exp (car where)))
+                                                                          (let ((__cond-empty-body (const-expr? exp)))
+                                                                             (if __cond-empty-body
+                                                                                __cond-empty-body
+                                                                                (let ((__cond-empty-body (symbol? exp)))
                                                                                    (if __cond-empty-body
                                                                                       __cond-empty-body
-                                                                                      (let ((__cond-empty-body (symbol? exp)))
-                                                                                         (if __cond-empty-body
-                                                                                            __cond-empty-body
-                                                                                            (if (eq? (car exp) 'if)
-                                                                                               (begin
-                                                                                                  (rec! (cdr exp))
-                                                                                                  (<change>
-                                                                                                     (rec! (cddr exp))
-                                                                                                     ())
-                                                                                                  (rec! (cdddr exp)))
-                                                                                               (if (eq? (car exp) 'begin)
-                                                                                                  (for-each! rec! (cdr exp))
-                                                                                                  (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res (<change> __or_res (eq? (car exp) 'letrec)) (<change> (eq? (car exp) 'letrec) __or_res)))
-                                                                                                     (let ((new-env (cons exp env)))
-                                                                                                        (<change>
-                                                                                                           (remove-empty-calls! (cddr exp) new-env)
-                                                                                                           (for-each! (lambda (x) (remove-empty-calls! (cdar x) new-env)) (cadr exp)))
-                                                                                                        (<change>
-                                                                                                           (for-each! (lambda (x) (remove-empty-calls! (cdar x) new-env)) (cadr exp))
-                                                                                                           (remove-empty-calls! (cddr exp) new-env)))
-                                                                                                     (if (eq? (car exp) 'lambda)
-                                                                                                        (rec! (cddr exp))
-                                                                                                        (begin
-                                                                                                           (for-each! rec! (cdr exp))
-                                                                                                           (if (<change> (if (null? (cdr exp)) (symbol? (car exp)) #f) (not (if (null? (cdr exp)) (symbol? (car exp)) #f)))
-                                                                                                              (let ((frame (binding-frame (car exp) env)))
-                                                                                                                 (<change>
-                                                                                                                    (if frame
-                                                                                                                       (let ((proc (bound-expr (car exp) frame)))
-                                                                                                                          (if (if (pair? proc) (eq? (car proc) 'lambda) #f)
-                                                                                                                             (begin
-                                                                                                                                (set! changed? #t)
-                                                                                                                                (set-car! where (caddr proc)))
-                                                                                                                             #f))
-                                                                                                                       #f)
-                                                                                                                    ((lambda (x) x)
-                                                                                                                       (if frame
-                                                                                                                          (let ((proc (bound-expr (car exp) frame)))
-                                                                                                                             (<change>
-                                                                                                                                (if (if (pair? proc) (eq? (car proc) 'lambda) #f)
-                                                                                                                                   (begin
-                                                                                                                                      (set! changed? #t)
-                                                                                                                                      (set-car! where (caddr proc)))
-                                                                                                                                   #f)
-                                                                                                                                ((lambda (x) x)
-                                                                                                                                   (if (if (pair? proc) (eq? (car proc) 'lambda) #f)
-                                                                                                                                      (begin
-                                                                                                                                         (set! changed? #t)
-                                                                                                                                         (set-car! where (caddr proc)))
-                                                                                                                                      #f))))
-                                                                                                                          #f))))
-                                                                                                              #f))))))))))))))
-                                                               (rec! where))))))
+                                                                                      (if (eq? (car exp) 'if)
+                                                                                         (begin
+                                                                                            (rec! (cdr exp))
+                                                                                            (rec! (cddr exp))
+                                                                                            (rec! (cdddr exp)))
+                                                                                         (if (eq? (car exp) 'begin)
+                                                                                            (for-each! rec! (cdr exp))
+                                                                                            (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
+                                                                                               (let ((new-env (cons exp env)))
+                                                                                                  (remove-empty-calls! (cddr exp) new-env)
+                                                                                                  (for-each! (lambda (x) (remove-empty-calls! (cdar x) new-env)) (cadr exp)))
+                                                                                               (if (eq? (car exp) 'lambda)
+                                                                                                  (rec! (cddr exp))
+                                                                                                  (begin
+                                                                                                     (for-each! rec! (cdr exp))
+                                                                                                     (if (if (null? (cdr exp)) (symbol? (car exp)) #f)
+                                                                                                        (let ((frame (binding-frame (car exp) env)))
+                                                                                                           (if frame
+                                                                                                              (let ((proc (bound-expr (car exp) frame)))
+                                                                                                                 (if (if (pair? proc) (eq? (car proc) 'lambda) #f)
+                                                                                                                    (begin
+                                                                                                                       (set! changed? #t)
+                                                                                                                       (set-car! where (caddr proc)))
+                                                                                                                    #f))
+                                                                                                              #f))
+                                                                                                        #f))))))))))))))
+                                                         (rec! where))))
                                (changed? #f))
                          (let ((x (list exp)))
+                            (<change>
+                               ()
+                               (simp! x ()))
                             ((letrec ((loop (lambda ()
                                              (set! changed? #f)
                                              (simp! x ())
@@ -349,43 +406,21 @@
                             (always-evaled #t))
                          (letrec ((rc (lambda (exp ae)
                                         (let ((__cond-empty-body (const-expr? exp)))
-                                           (if __cond-empty-body
-                                              __cond-empty-body
-                                              (if (symbol? exp)
-                                                 (if (eq? exp var)
-                                                    (begin
-                                                       (<change>
+                                           (<change>
+                                              (if __cond-empty-body
+                                                 __cond-empty-body
+                                                 (if (symbol? exp)
+                                                    (if (eq? exp var)
+                                                       (begin
                                                           (set! total (+ total 1))
                                                           (set! always-evaled (if ae always-evaled #f)))
-                                                       (<change>
-                                                          (set! always-evaled (if ae always-evaled #f))
-                                                          (set! total (+ total 1))))
-                                                    #f)
-                                                 (if (eq? (car exp) 'if)
-                                                    (begin
-                                                       (<change>
+                                                       #f)
+                                                    (if (eq? (car exp) 'if)
+                                                       (begin
                                                           (rc (cadr exp) ae)
                                                           (for-each (lambda (x) (rc x #f)) (cddr exp)))
-                                                       (<change>
-                                                          (for-each (lambda (x) (rc x #f)) (cddr exp))
-                                                          (rc (cadr exp) ae)))
-                                                    (if (eq? (car exp) 'begin)
-                                                       (<change>
+                                                       (if (eq? (car exp) 'begin)
                                                           (for-each (lambda (x) (rc x ae)) (cdr exp))
-                                                          (if (let ((__or_res (eq? (car exp) 'let))) (display car) (if __or_res __or_res (eq? (car exp) 'letrec)))
-                                                             (begin
-                                                                (for-each (lambda (x) (rc (cadr x) ae)) (cadr exp))
-                                                                (rc (caddr exp) ae))
-                                                             (if (not (eq? (car exp) 'lambda))
-                                                                (rc (caddr exp) #f)
-                                                                (begin
-                                                                   (for-each (lambda (x) rc (rc x ae)) exp)
-                                                                   (if (symbol? (car exp))
-                                                                      (if (eq? (car exp) var)
-                                                                         (set! oper (+ oper 1))
-                                                                         #f)
-                                                                      #f)))))
-                                                       (<change>
                                                           (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
                                                              (begin
                                                                 (for-each (lambda (x) (rc (cadr x) ae)) (cadr exp))
@@ -398,8 +433,43 @@
                                                                       (if (eq? (car exp) var)
                                                                          (set! oper (+ oper 1))
                                                                          #f)
-                                                                      #f))))
-                                                          (for-each (lambda (x) (rc x ae)) (cdr exp)))))))))))
+                                                                      #f))))))))
+                                              ((lambda (x) x)
+                                                 (if __cond-empty-body
+                                                    __cond-empty-body
+                                                    (if (symbol? exp)
+                                                       (if (eq? exp var)
+                                                          (begin
+                                                             (set! total (+ total 1))
+                                                             (set! always-evaled (if ae always-evaled #f)))
+                                                          #f)
+                                                       (if (eq? (car exp) 'if)
+                                                          (begin
+                                                             (<change>
+                                                                (rc (cadr exp) ae)
+                                                                (for-each (lambda (x) (rc x #f)) (cddr exp)))
+                                                             (<change>
+                                                                (for-each (lambda (x) (rc x #f)) (cddr exp))
+                                                                (rc (cadr exp) ae)))
+                                                          (if (<change> (eq? (car exp) 'begin) (not (eq? (car exp) 'begin)))
+                                                             (for-each (lambda (x) (rc x ae)) (cdr exp))
+                                                             (if (let ((__or_res (eq? (car exp) 'let))) (if __or_res __or_res (eq? (car exp) 'letrec)))
+                                                                (begin
+                                                                   (<change>
+                                                                      (for-each (lambda (x) (rc (cadr x) ae)) (cadr exp))
+                                                                      ())
+                                                                   (rc (caddr exp) ae))
+                                                                (if (eq? (car exp) 'lambda)
+                                                                   (rc (caddr exp) #f)
+                                                                   (begin
+                                                                      (for-each (lambda (x) (<change> () ae) (rc x ae)) exp)
+                                                                      (<change>
+                                                                         (if (symbol? (car exp))
+                                                                            (if (eq? (car exp) var)
+                                                                               (set! oper (+ oper 1))
+                                                                               #f)
+                                                                            #f)
+                                                                         ((lambda (x) x) (if (symbol? (car exp)) (if (eq? (car exp) var) (set! oper (+ oper 1)) #f) #f))))))))))))))))
                             (rc exp #t)
                             (list total oper always-evaled)))))
          (binding-frame (lambda (var env)
@@ -418,26 +488,15 @@
                        (if (let ((__or_res (eq? (car frame) 'let))) (if __or_res __or_res (eq? (car frame) 'letrec)))
                           (cadr (assq var (cadr frame)))
                           (if (eq? (car frame) 'lambda)
-                             (<change>
-                                not-constant
-                                (error "ill-formed frame"))
-                             (<change>
-                                (error "ill-formed frame")
-                                not-constant)))))
+                             not-constant
+                             (error "ill-formed frame")))))
          (add-binding (lambda (val frame name)
                         (letrec ((find-val (lambda (val bindings)
-                                             (<change>
-                                                (if (null? bindings)
-                                                   #f
-                                                   (if (equal? val (cadar bindings))
-                                                      (caar bindings)
-                                                      (find-val val (cdr bindings))))
-                                                ((lambda (x) x)
-                                                   (if (null? bindings)
-                                                      #f
-                                                      (if (equal? val (cadar bindings))
-                                                         (caar bindings)
-                                                         (find-val val (cdr bindings)))))))))
+                                             (if (null? bindings)
+                                                #f
+                                                (if (<change> (equal? val (cadar bindings)) (not (equal? val (cadar bindings))))
+                                                   (caar bindings)
+                                                   (find-val val (cdr bindings)))))))
                            (let ((__or_res (find-val val (cadr frame))))
                               (if __or_res
                                  __or_res
@@ -447,23 +506,13 @@
          (for-each! (lambda (proc! l)
                       (if (not (null? l))
                          (begin
-                            (<change>
-                               (proc! l)
-                               ())
+                            (proc! l)
                             (for-each! proc! (cdr l)))
                          #f)))
          (arg-pattern (lambda (exps)
                         (if (null? exps)
                            ()
-                           (cons
-                              (if (const-expr? (car exps))
-                                 (<change>
-                                    (const-value (car exps))
-                                    not-constant)
-                                 (<change>
-                                    not-constant
-                                    (const-value (car exps))))
-                              (arg-pattern (cdr exps))))))
+                           (cons (if (const-expr? (car exps)) (const-value (car exps)) not-constant) (arg-pattern (cdr exps))))))
          (*primitives* (list
                          (cons
                             'car
@@ -482,7 +531,14 @@
                                      #f)
                                   #f)))
                          (cons '+ (lambda (args) (if (every? number? args) (quot (sum args 0)) #f)))
-                         (cons '* (lambda (args) (if (every? number? args) (quot (product args 1)) #f)))
+                         (cons
+                            '*
+                            (lambda (args)
+                               (<change>
+                                  (if (every? number? args)
+                                     (quot (product args 1))
+                                     #f)
+                                  ((lambda (x) x) (if (every? number? args) (quot (product args 1)) #f)))))
                          (cons
                             '-
                             (lambda (args)
@@ -502,50 +558,47 @@
                          (cons
                             '<
                             (lambda (args)
-                               (if (= (length args) 2)
-                                  (if (every? number? args)
-                                     (quot (< (car args) (cadr args)))
+                               (<change>
+                                  ()
+                                  (display 2))
+                               (<change>
+                                  (if (= (length args) 2)
+                                     (if (every? number? args)
+                                        (quot (< (car args) (cadr args)))
+                                        #f)
                                      #f)
-                                  #f)))
+                                  ((lambda (x) x)
+                                     (if (<change> (= (length args) 2) (not (= (length args) 2)))
+                                        (if (every? number? args)
+                                           (quot (< (car args) (cadr args)))
+                                           #f)
+                                        #f)))))
                          (cons
                             '=
                             (lambda (args)
-                               (if (= (length args) 2)
+                               (if (<change> (= (length args) 2) (not (= (length args) 2)))
                                   (if (every? number? args)
-                                     (quot (= (car args) (cadr args)))
-                                     #f)
+                                     (<change>
+                                        (quot (= (car args) (cadr args)))
+                                        #f)
+                                     (<change>
+                                        #f
+                                        (quot (= (car args) (cadr args)))))
                                   #f)))
                          (cons
                             '>
                             (lambda (args)
-                               (if (<change> (= (length args) 2) (not (= (length args) 2)))
+                               (if (= (length args) 2)
                                   (if (every? number? args)
                                      (quot (> (car args) (cadr args)))
                                      #f)
                                   #f)))
                          (cons 'eq? (lambda (args) (if (= (length args) 2) (quot (eq? (car args) (cadr args))) #f)))
-                         (cons
-                            'not
-                            (lambda (args)
-                               (if (= (length args) 1)
-                                  (<change>
-                                     (quot (not (car args)))
-                                     #f)
-                                  (<change>
-                                     #f
-                                     (quot (not (car args)))))))
+                         (cons 'not (lambda (args) (<change> () not) (if (= (length args) 1) (quot (not (car args))) #f)))
                          (cons 'null? (lambda (args) (if (= (length args) 1) (quot (null? (car args))) #f)))
                          (cons 'pair? (lambda (args) (if (= (length args) 1) (quot (pair? (car args))) #f)))
-                         (cons
-                            'symbol?
-                            (lambda (args)
-                               (if (<change> (= (length args) 1) (not (= (length args) 1)))
-                                  (quot (symbol? (car args)))
-                                  #f)))))
+                         (cons 'symbol? (lambda (args) (if (= (length args) 1) (quot (symbol? (car args))) #f)))))
          (sum (lambda (lst n)
-                (<change>
-                   ()
-                   cdr)
                 (if (null? lst)
                    n
                    (sum (cdr lst) (+ n (car lst))))))
@@ -555,18 +608,18 @@
                        (product (cdr lst) (* n (car lst))))))
          (reduce-global (lambda (name args)
                           (let ((x (assq name *primitives*)))
-                             (<change>
-                                ()
-                                args)
                              (if x ((cdr x) args) #f))))
          (constant-fold-global (lambda (name exprs)
                                  (letrec ((flatten (lambda (args op)
+                                                     (<change>
+                                                        ()
+                                                        op)
                                                      (if (null? args)
                                                         ()
-                                                        (if (if (pair? (car args)) (eq? (caar args) op) #f)
+                                                        (if (if (pair? (car args)) (<change> (eq? (caar args) op) #f) (<change> #f (eq? (caar args) op)))
                                                            (append (flatten (cdar args) op) (flatten (cdr args) op))
                                                            (cons (car args) (flatten (cdr args) op)))))))
-                                    (let ((args (if (let ((__or_res (eq? name '+))) (if (<change> __or_res (not __or_res)) __or_res (eq? name '*)))
+                                    (let ((args (if (let ((__or_res (eq? name '+))) (<change> (if __or_res __or_res (eq? name '*)) ((lambda (x) x) (if __or_res __or_res (eq? name '*)))))
                                                   (flatten exprs name)
                                                   exprs)))
                                        (let ((__or_res (if (every? const-expr? args)
@@ -1066,6 +1119,9 @@
                                                                                             'v
                                                                                             (__toplevel_cons 'w (__toplevel_cons 'x (__toplevel_cons 'y (__toplevel_cons 'z ()))))))))))))))))))))))))))))))))
    (let ((result (test)))
+      (<change>
+         ()
+         (display __toplevel_cons))
       (if (list? result)
          (if (= (length result) 10)
             (equal?

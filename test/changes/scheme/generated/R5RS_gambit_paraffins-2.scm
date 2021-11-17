@@ -4,13 +4,10 @@
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((gen (lambda (n)
                 (let* ((n/2 (quotient n 2))
                        (radicals (make-vector (+ n/2 1) (__toplevel_cons 'H ()))))
-                   (<change>
-                      ()
-                      (vector 'C (car rads1) (car rads2) (car rads3)))
                    (letrec ((rads-of-size (lambda (n)
                                             ((letrec ((loop1 (lambda (ps lst)
                                                               (if (null? ps)
@@ -103,6 +100,9 @@
                          loop)
                          1)))))
          (three-partitions (lambda (m)
+                             (<change>
+                                ()
+                                (display 1))
                              ((letrec ((loop1 (lambda (lst nc1)
                                                (if (< nc1 0)
                                                   lst
@@ -117,48 +117,26 @@
                                 ()
                                 (quotient m 3))))
          (four-partitions (lambda (m)
-                            (<change>
-                               ((letrec ((loop1 (lambda (lst nc1)
-                                                 (if (< nc1 0)
+                            ((letrec ((loop1 (lambda (lst nc1)
+                                              (if (< nc1 0)
+                                                 lst
+                                                 ((letrec ((loop2 (lambda (lst nc2)
+                                                                   (if (< nc2 nc1)
+                                                                      (loop1 lst (- nc1 1))
+                                                                      (let ((start (max nc2 (- (quotient (+ m 1) 2) (+ nc1 nc2)))))
+                                                                         ((letrec ((loop3 (lambda (lst nc3)
+                                                                                           (if (< nc3 start)
+                                                                                              (loop2 lst (- nc2 1))
+                                                                                              (loop3 (cons (vector nc1 nc2 nc3 (- m (+ nc1 (+ nc2 nc3)))) lst) (- nc3 1))))))
+                                                                            loop3)
+                                                                            lst
+                                                                            (quotient (- m (+ nc1 nc2)) 2)))))))
+                                                    loop2)
                                                     lst
-                                                    ((letrec ((loop2 (lambda (lst nc2)
-                                                                      (if (< nc2 nc1)
-                                                                         (loop1 lst (- nc1 1))
-                                                                         (let ((start (max nc2 (- (quotient (+ m 1) 2) (+ nc1 nc2)))))
-                                                                            ((letrec ((loop3 (lambda (lst nc3)
-                                                                                              (if (< nc3 start)
-                                                                                                 (loop2 lst (- nc2 1))
-                                                                                                 (loop3 (cons (vector nc1 nc2 nc3 (- m (+ nc1 (+ nc2 nc3)))) lst) (- nc3 1))))))
-                                                                               loop3)
-                                                                               lst
-                                                                               (quotient (- m (+ nc1 nc2)) 2)))))))
-                                                       loop2)
-                                                       lst
-                                                       (quotient (- m nc1) 3))))))
-                                  loop1)
-                                  ()
-                                  (quotient m 4))
-                               ((lambda (x) x)
-                                  ((letrec ((loop1 (lambda (lst nc1)
-                                                    (if (< nc1 0)
-                                                       lst
-                                                       ((letrec ((loop2 (lambda (lst nc2)
-                                                                         (if (< nc2 nc1)
-                                                                            (loop1 lst (- nc1 1))
-                                                                            (let ((start (max nc2 (- (quotient (+ m 1) 2) (+ nc1 nc2)))))
-                                                                               ((letrec ((loop3 (lambda (lst nc3)
-                                                                                                 (if (< nc3 start)
-                                                                                                    (loop2 lst (- nc2 1))
-                                                                                                    (loop3 (cons (vector nc1 nc2 nc3 (- m (+ nc1 (+ nc2 nc3)))) lst) (- nc3 1))))))
-                                                                                  loop3)
-                                                                                  lst
-                                                                                  (quotient (- m (+ nc1 nc2)) 2)))))))
-                                                          loop2)
-                                                          lst
-                                                          (quotient (- m nc1) 3))))))
-                                     loop1)
-                                     ()
-                                     (quotient m 4))))))
+                                                    (quotient (- m nc1) 3))))))
+                               loop1)
+                               ()
+                               (quotient m 4))))
          (nb (lambda (n)
                (let ((x (gen n)))
                   (+ (length (vector-ref x 0)) (length (vector-ref x 1)))))))

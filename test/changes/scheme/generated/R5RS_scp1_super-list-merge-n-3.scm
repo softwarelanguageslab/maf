@@ -3,26 +3,22 @@
 ; * added: 0
 ; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 1
+; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((super-merge-n (lambda (lsts n)
                           (letrec ((geef-n+rest (lambda (lst n)
-                                                  (if (let ((__or_res (= 0 n))) (if (<change> __or_res (not __or_res)) __or_res (null? lst)))
+                                                  (if (let ((__or_res (= 0 n))) (if __or_res __or_res (null? lst)))
                                                      (cons () lst)
                                                      (let* ((res (geef-n+rest (cdr lst) (- n 1)))
                                                             (first (car res))
                                                             (rest (cdr res)))
                                                         (cons (cons (car lst) first) rest))))))
-                             (if (null? lsts)
+                             (if (<change> (null? lsts) (not (null? lsts)))
                                 ()
                                 (let* ((g-n+rest (geef-n+rest (car lsts) n))
                                        (first (car g-n+rest))
                                        (rest (cdr g-n+rest)))
-                                   (append
-                                      first
-                                      (super-merge-n
-                                         (append (cdr lsts) (if (null? rest) (<change> rest (list rest)) (<change> (list rest) rest)))
-                                         n))))))))
+                                   (append first (super-merge-n (append (cdr lsts) (if (null? rest) rest (list rest))) n))))))))
    (equal?
       (super-merge-n
          (__toplevel_cons

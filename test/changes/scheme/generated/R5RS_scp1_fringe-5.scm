@@ -8,9 +8,9 @@
 (letrec ((atom? (lambda (x)
                   (not (pair? x))))
          (fringe (lambda (l)
-                   (if (null? l)
+                   (if (<change> (null? l) (not (null? l)))
                       ()
-                      (if (<change> (atom? l) (not (atom? l)))
+                      (if (atom? l)
                          (list l)
                          (append (fringe (car l)) (fringe (cdr l))))))))
    (equal?

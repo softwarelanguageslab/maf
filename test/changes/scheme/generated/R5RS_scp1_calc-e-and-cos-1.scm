@@ -2,24 +2,20 @@
 ; * removed: 0
 ; * added: 1
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
 ; * calls to id fun: 1
 (letrec ((calc-e-iter (lambda (n)
-                        (<change>
-                           ()
-                           res)
                         (letrec ((iter (lambda (ctr res fac-prev)
                                          (<change>
-                                            (if (> ctr n)
-                                               res
-                                               (let ((new-fac (* ctr fac-prev)))
-                                                  (iter (+ ctr 1) (+ res (/ 1 new-fac)) new-fac)))
-                                            ((lambda (x) x)
-                                               (if (> ctr n)
-                                                  res
-                                                  (let ((new-fac (* ctr fac-prev)))
-                                                     (iter (+ ctr 1) (+ res (/ 1 new-fac)) new-fac))))))))
+                                            ()
+                                            (display /))
+                                         (if (<change> (> ctr n) (not (> ctr n)))
+                                            res
+                                            (let ((new-fac (* ctr fac-prev)))
+                                               (<change>
+                                                  (iter (+ ctr 1) (+ res (/ 1 new-fac)) new-fac)
+                                                  ((lambda (x) x) (iter (+ ctr 1) (+ res (/ 1 new-fac)) new-fac))))))))
                            (iter 1 1 1))))
          (calc-cos (lambda (x n)
                      (letrec ((iter (lambda (ctr acc fac xpow sign)

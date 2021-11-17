@@ -1,9 +1,9 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 2
+; * negated predicates: 3
+; * swapped branches: 3
 ; * calls to id fun: 0
 (letrec ((atom? (lambda (x)
                   (not (pair? x))))
@@ -39,12 +39,9 @@
          (takken (lambda (vuurwerk)
                    (cadr vuurwerk)))
          (low-energy? (lambda (vuurwerk)
-                        (<change>
-                           ()
-                           'X)
                         (eq? vuurwerk 'X)))
          (tel-knallen (lambda (vuurwerk)
-                        (if (null? vuurwerk)
+                        (if (<change> (null? vuurwerk) (not (null? vuurwerk)))
                            0
                            (if (low-energy? vuurwerk)
                               0
@@ -67,7 +64,7 @@
                          (if (null? takken)
                             (<change>
                                0
-                               (if (low-energy? (car takken))
+                               (if (not (low-energy? (car takken)))
                                   0
                                   (+ (tel-einde (car takken) een-kleur) (tel-einde-in (cdr takken) een-kleur))))
                             (<change>
@@ -83,14 +80,26 @@
                   (not (member 'X (takken vuurwerk))))))
    (if (eq? (kleur mijn-vuurwerk) 'groen)
       (if (equal? (takken mijn-vuurwerk) (__toplevel_cons (__toplevel_cons 'blauw (__toplevel_cons (__toplevel_cons 'X (__toplevel_cons (__toplevel_cons 'blauw (__toplevel_cons (__toplevel_cons 'X (__toplevel_cons 'X ())) ())) (__toplevel_cons 'X (__toplevel_cons 'X ())))) ())) (__toplevel_cons (__toplevel_cons 'rood (__toplevel_cons (__toplevel_cons (__toplevel_cons 'groen (__toplevel_cons (__toplevel_cons 'X (__toplevel_cons 'X ())) ())) (__toplevel_cons 'X ())) ())) (__toplevel_cons 'X (__toplevel_cons (__toplevel_cons 'geel (__toplevel_cons (__toplevel_cons 'X (__toplevel_cons 'X ())) ())) ())))))
-         (if (not (low-energy? mijn-vuurwerk))
-            (if (low-energy? 'X)
-               (if (= (tel-knallen mijn-vuurwerk) 6)
-                  (if (= (tel-einde mijn-vuurwerk 'blauw) 5)
-                     (not (ster? mijn-vuurwerk))
+         (<change>
+            (if (not (low-energy? mijn-vuurwerk))
+               (if (low-energy? 'X)
+                  (if (= (tel-knallen mijn-vuurwerk) 6)
+                     (if (= (tel-einde mijn-vuurwerk 'blauw) 5)
+                        (not (ster? mijn-vuurwerk))
+                        #f)
                      #f)
                   #f)
                #f)
             #f)
-         #f)
+         (<change>
+            #f
+            (if (not (low-energy? mijn-vuurwerk))
+               (if (low-energy? 'X)
+                  (if (= (tel-knallen mijn-vuurwerk) 6)
+                     (if (not (= (tel-einde mijn-vuurwerk 'blauw) 5))
+                        (not (ster? mijn-vuurwerk))
+                        #f)
+                     #f)
+                  #f)
+               #f)))
       #f))

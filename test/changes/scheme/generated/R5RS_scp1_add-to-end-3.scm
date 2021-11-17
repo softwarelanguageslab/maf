@@ -8,7 +8,7 @@
 (letrec ((add-to-end (lambda (e l)
                        (<change>
                           ()
-                          e)
+                          cons)
                        (if (null? l)
                           (cons e ())
                           (cons (car l) (add-to-end e (cdr l)))))))

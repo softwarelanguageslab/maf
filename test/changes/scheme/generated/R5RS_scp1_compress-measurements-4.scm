@@ -4,7 +4,7 @@
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((comprimeer (lambda (metingen)
                        (letrec ((hulp (lambda (lst prev count)
                                         (if (null? lst)
@@ -12,13 +12,15 @@
                                            (if (= (car lst) prev)
                                               (hulp (cdr lst) prev (+ count 1))
                                               (cons (list prev count) (hulp (cdr lst) (car lst) 1)))))))
-                          (if (null? metingen)
+                          (<change>
                              ()
-                             (hulp (cdr metingen) (car metingen) 1)))))
+                             hulp)
+                          (<change>
+                             (if (null? metingen)
+                                ()
+                                (hulp (cdr metingen) (car metingen) 1))
+                             ((lambda (x) x) (if (null? metingen) () (hulp (cdr metingen) (car metingen) 1)))))))
          (comprimeer-iter (lambda (metingen)
-                            (<change>
-                               ()
-                               (cdr metingen))
                             (letrec ((hulp (lambda (lst prev count res)
                                              (if (null? lst)
                                                 (reverse (cons (list prev count) res))

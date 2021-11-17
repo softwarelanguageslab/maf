@@ -6,6 +6,9 @@
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((zero (lambda (f x)
+                 (<change>
+                    ()
+                    x)
                  x))
          (inc (lambda (n)
                 (lambda (f x)
@@ -13,7 +16,4 @@
          (plus (lambda (m n)
                  (lambda (f x)
                     (m f (n f x))))))
-   (<change>
-      ()
-      zero)
    ((plus (inc (inc (inc zero))) (plus (inc (inc zero)) (inc zero))) (lambda (x) (+ x 1)) 0))

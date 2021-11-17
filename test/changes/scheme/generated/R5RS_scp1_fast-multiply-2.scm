@@ -1,14 +1,11 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((double (lambda (x)
-                   (<change>
-                      ()
-                      x)
                    (+ x x)))
          (halve (lambda (x)
                   (/ x 2)))
@@ -20,7 +17,7 @@
                                     (+ a (rec-fast-multiply a (- b 1)))))))
          (iter-fast-multiply (lambda (a b)
                                (letrec ((iter (lambda (a b acc)
-                                                (if (zero? b)
+                                                (if (<change> (zero? b) (not (zero? b)))
                                                    acc
                                                    (if (even? b)
                                                       (iter (double a) (halve b) acc)

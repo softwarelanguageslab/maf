@@ -1,7 +1,7 @@
 ; Changes:
-; * removed: 0
+; * removed: 2
 ; * added: 0
-; * swaps: 1
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 0
@@ -28,12 +28,7 @@
                (__toplevel_cons
                   'could
                   (__toplevel_cons 'eat (__toplevel_cons 'no (__toplevel_cons 'chicken (__toplevel_cons 'fat ()))))))))
-      (lat?
-         (__toplevel_cons
-            'Jack
-            (__toplevel_cons
-               (__toplevel_cons 'Sprat (__toplevel_cons 'could ()))
-               (__toplevel_cons 'eat (__toplevel_cons 'no (__toplevel_cons 'chicken (__toplevel_cons 'fat ()))))))))
+      ())
    (<change>
       (lat?
          (__toplevel_cons
@@ -41,12 +36,5 @@
             (__toplevel_cons
                (__toplevel_cons 'Sprat (__toplevel_cons 'could ()))
                (__toplevel_cons 'eat (__toplevel_cons 'no (__toplevel_cons 'chicken (__toplevel_cons 'fat ())))))))
-      (lat?
-         (__toplevel_cons
-            (__toplevel_cons 'Jack ())
-            (__toplevel_cons
-               'Sprat
-               (__toplevel_cons
-                  'could
-                  (__toplevel_cons 'eat (__toplevel_cons 'no (__toplevel_cons 'chicken (__toplevel_cons 'fat ())))))))))
+      ())
    (lat? ()))

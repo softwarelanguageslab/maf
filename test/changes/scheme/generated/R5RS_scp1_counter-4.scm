@@ -1,6 +1,6 @@
 ; Changes:
-; * removed: 0
-; * added: 1
+; * removed: 1
+; * added: 0
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -12,7 +12,9 @@
                    (if (= 0 x)
                       (display x)
                       (begin
-                         (display x)
+                         (<change>
+                            (display x)
+                            ())
                          (count1 (- x 1))))))
          (count2 (lambda (x)
                    (if (= 0 x)
@@ -21,9 +23,6 @@
                          (count2 (- x 1))
                          (display x))))))
    (count1 4)
-   (<change>
-      ()
-      3)
    (count2 4)
    (equal?
       result

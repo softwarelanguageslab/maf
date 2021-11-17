@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 0
-; * swaps: 1
+; * removed: 0
+; * added: 1
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 2
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
@@ -12,12 +12,13 @@
                       (set! result (cons 'linebreak result))))
          (output-n (lambda (n x)
                      (<change>
-                        (if (> n 0)
-                           (begin
-                              (output x)
-                              (output-n (- n 1) x))
-                           #f)
-                        ((lambda (x) x) (if (> n 0) (begin (output x) (output-n (- n 1) x)) #f)))))
+                        ()
+                        output)
+                     (if (> n 0)
+                        (begin
+                           (output x)
+                           (output-n (- n 1) x))
+                        #f)))
          (parasol (lambda (n)
                     (letrec ((triangle (lambda (i)
                                          (if (< i n)
@@ -32,14 +33,12 @@
                                          (begin
                                             (<change>
                                                (output-n (- n 1) " ")
-                                               ())
+                                               ((lambda (x) x) (output-n (- n 1) " ")))
                                             (output "*")
                                             (<change>
                                                (linebreak)
-                                               (stick (+ i 1)))
-                                            (<change>
-                                               (stick (+ i 1))
-                                               (linebreak)))
+                                               ((lambda (x) x) (linebreak)))
+                                            (stick (+ i 1)))
                                          #f))))
                        (triangle 0)
                        (stick 0)))))

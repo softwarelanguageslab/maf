@@ -1,16 +1,14 @@
 ; Changes:
-; * removed: 1
-; * added: 2
-; * swaps: 0
+; * removed: 2
+; * added: 6
+; * swaps: 1
 ; * negated predicates: 1
 ; * swapped branches: 1
-; * calls to id fun: 7
+; * calls to id fun: 12
 (letrec ((make-parser (lambda (grammar lexer)
                         (letrec ((non-terminals (lambda (grammar)
                                                   (letrec ((add-nt (lambda (nt nts)
-                                                                     (<change>
-                                                                        (if (member nt nts) nts (cons nt nts))
-                                                                        ((lambda (x) x) (if (member nt nts) nts (cons nt nts)))))))
+                                                                     (if (member nt nts) nts (cons nt nts)))))
                                                      ((letrec ((def-loop (lambda (defs nts)
                                                                           (if (pair? defs)
                                                                              (let* ((def (car defs))
@@ -75,8 +73,10 @@
                                   (names (make-vector nb-confs #f)))
                               (letrec ((setup-tables (lambda (grammar nts starters enders predictors steps names)
                                                        (letrec ((add-conf (lambda (conf nt nts class)
-                                                                            (let ((i (ind nt nts)))
-                                                                               (vector-set! class i (cons conf (vector-ref class i)))))))
+                                                                            (<change>
+                                                                               (let ((i (ind nt nts)))
+                                                                                  (vector-set! class i (cons conf (vector-ref class i))))
+                                                                               ((lambda (x) x) (let ((i (ind nt nts))) (vector-set! class i (cons conf (vector-ref class i)))))))))
                                                           (let ((nb-nts (vector-length nts)))
                                                              ((letrec ((nt-loop (lambda (i)
                                                                                  (if (>= i 0)
@@ -121,6 +121,9 @@
                                                                 (vector-length nts)))))))
                                  (setup-tables grammar nts starters enders predictors steps names)
                                  (let ((parser-descr (vector lexer nts starters enders predictors steps names)))
+                                    (<change>
+                                       ()
+                                       starters)
                                     (lambda (input)
                                        (letrec ((ind (lambda (nt nts)
                                                        ((letrec ((loop (lambda (i)
@@ -132,6 +135,9 @@
                                                           loop)
                                                           (- (vector-length nts) 1))))
                                                 (comp-tok (lambda (tok nts)
+                                                            (<change>
+                                                               ()
+                                                               cons)
                                                             ((letrec ((loop (lambda (l1 l2)
                                                                              (if (pair? l1)
                                                                                 (let ((i (ind (car l1) nts)))
@@ -143,7 +149,9 @@
                                                                (cdr tok)
                                                                ())))
                                                 (input->tokens (lambda (input lexer nts)
-                                                                 (list->vector (map (lambda (tok) (comp-tok tok nts)) (lexer input)))))
+                                                                 (<change>
+                                                                    (list->vector (map (lambda (tok) (comp-tok tok nts)) (lexer input)))
+                                                                    ((lambda (x) x) (list->vector (map (lambda (tok) (comp-tok tok nts)) (lexer input)))))))
                                                 (make-states (lambda (nb-toks nb-confs)
                                                                (let ((states (make-vector (+ nb-toks 1) #f)))
                                                                   ((letrec ((loop (lambda (i)
@@ -164,12 +172,16 @@
                                                                        (let ((conf-set (make-vector (+ state-num 6) #f)))
                                                                           (vector-set! conf-set 1 -3)
                                                                           (vector-set! conf-set 2 -1)
-                                                                          (vector-set! conf-set 3 -1)
+                                                                          (<change>
+                                                                             (vector-set! conf-set 3 -1)
+                                                                             ((lambda (x) x) (vector-set! conf-set 3 -1)))
                                                                           (vector-set! conf-set 4 -1)
                                                                           (vector-set! state (+ conf 1) conf-set)
                                                                           conf-set)))))
                                                 (conf-set-merge-new! (lambda (conf-set)
-                                                                       (vector-set! conf-set (+ (vector-ref conf-set 1) 5) (vector-ref conf-set 4))
+                                                                       (<change>
+                                                                          (vector-set! conf-set (+ (vector-ref conf-set 1) 5) (vector-ref conf-set 4))
+                                                                          ())
                                                                        (vector-set! conf-set 1 (vector-ref conf-set 3))
                                                                        (vector-set! conf-set 3 -1)
                                                                        (vector-set! conf-set 4 -1)))
@@ -201,32 +213,47 @@
                                                                             (if (< tail 0)
                                                                                (begin
                                                                                   (vector-set! conf-set 0 (vector-ref state 0))
-                                                                                  (<change>
-                                                                                     (vector-set! state 0 conf)
-                                                                                     ((lambda (x) x) (vector-set! state 0 conf))))
+                                                                                  (vector-set! state 0 conf))
                                                                                #f))))))
                                                 (conf-set-adjoin* (lambda (states state-num l i)
-                                                                    (let ((state (vector-ref states state-num)))
-                                                                       ((letrec ((loop (lambda (l1)
-                                                                                        (if (pair? l1)
-                                                                                           (let* ((conf (car l1))
-                                                                                                  (conf-set (conf-set-get* state state-num conf)))
-                                                                                              (if (not (conf-set-next conf-set i))
-                                                                                                 (begin
-                                                                                                    (conf-set-adjoin state conf-set conf i)
-                                                                                                    (loop (cdr l1)))
-                                                                                                 (loop (cdr l1))))
-                                                                                           #f))))
-                                                                          loop)
-                                                                          l))))
+                                                                    (<change>
+                                                                       (let ((state (vector-ref states state-num)))
+                                                                          ((letrec ((loop (lambda (l1)
+                                                                                           (if (pair? l1)
+                                                                                              (let* ((conf (car l1))
+                                                                                                     (conf-set (conf-set-get* state state-num conf)))
+                                                                                                 (if (not (conf-set-next conf-set i))
+                                                                                                    (begin
+                                                                                                       (conf-set-adjoin state conf-set conf i)
+                                                                                                       (loop (cdr l1)))
+                                                                                                    (loop (cdr l1))))
+                                                                                              #f))))
+                                                                             loop)
+                                                                             l))
+                                                                       ((lambda (x) x)
+                                                                          (let ((state (vector-ref states state-num)))
+                                                                             ((letrec ((loop (lambda (l1)
+                                                                                              (if (pair? l1)
+                                                                                                 (let* ((conf (car l1))
+                                                                                                        (conf-set (conf-set-get* state state-num conf)))
+                                                                                                    (if (not (conf-set-next conf-set i))
+                                                                                                       (begin
+                                                                                                          (conf-set-adjoin state conf-set conf i)
+                                                                                                          (loop (cdr l1)))
+                                                                                                       (loop (cdr l1))))
+                                                                                                 #f))))
+                                                                                loop)
+                                                                                l))))))
                                                 (conf-set-adjoin** (lambda (states states* state-num conf i)
                                                                      (let ((state (vector-ref states state-num)))
                                                                         (if (conf-set-member? state conf i)
                                                                            (let* ((state* (vector-ref states* state-num))
                                                                                   (conf-set* (conf-set-get* state* state-num conf)))
-                                                                              (if (not (conf-set-next conf-set* i))
-                                                                                 (conf-set-adjoin state* conf-set* conf i)
-                                                                                 #f)
+                                                                              (<change>
+                                                                                 (if (not (conf-set-next conf-set* i))
+                                                                                    (conf-set-adjoin state* conf-set* conf i)
+                                                                                    #f)
+                                                                                 ())
                                                                               #t)
                                                                            #f))))
                                                 (conf-set-union (lambda (state conf-set conf other-set)
@@ -267,6 +294,9 @@
                                                                                loop2)
                                                                                (vector-ref enders nt))))
                                                                  (reduce (lambda (states state state-num conf-set head preds)
+                                                                           (<change>
+                                                                              ()
+                                                                              (display cdr))
                                                                            (<change>
                                                                               ((letrec ((loop1 (lambda (l)
                                                                                                 (if (pair? l)
@@ -327,19 +357,24 @@
                                                                   (nb-confs (vector-length steps))
                                                                   (states (make-states nb-toks nb-confs))
                                                                   (goal-starters (vector-ref starters 0)))
-                                                              (conf-set-adjoin* states 0 goal-starters 0)
-                                                              (forw states 0 starters enders predictors steps nts)
                                                               (<change>
-                                                                 ((letrec ((loop (lambda (i)
-                                                                                  (if (< i nb-toks)
-                                                                                     (let ((tok-nts (cdr (vector-ref toks i))))
-                                                                                        (conf-set-adjoin* states (+ i 1) tok-nts i)
-                                                                                        (forw states (+ i 1) starters enders predictors steps nts)
-                                                                                        (loop (+ i 1)))
-                                                                                     #f))))
-                                                                    loop)
-                                                                    0)
-                                                                 ())
+                                                                 (conf-set-adjoin* states 0 goal-starters 0)
+                                                                 (forw states 0 starters enders predictors steps nts))
+                                                              (<change>
+                                                                 (forw states 0 starters enders predictors steps nts)
+                                                                 (conf-set-adjoin* states 0 goal-starters 0))
+                                                              (<change>
+                                                                 ()
+                                                                 1)
+                                                              ((letrec ((loop (lambda (i)
+                                                                               (if (< i nb-toks)
+                                                                                  (let ((tok-nts (cdr (vector-ref toks i))))
+                                                                                     (conf-set-adjoin* states (+ i 1) tok-nts i)
+                                                                                     (forw states (+ i 1) starters enders predictors steps nts)
+                                                                                     (loop (+ i 1)))
+                                                                                  #f))))
+                                                                 loop)
+                                                                 0)
                                                               states)))
                                                 (produce (lambda (conf i j enders steps toks states states* nb-nts)
                                                            (let ((prev (- conf 1)))
@@ -368,23 +403,42 @@
                                                                  #f))))
                                                 (back (lambda (states states* state-num enders steps nb-nts toks)
                                                         (let ((state* (vector-ref states* state-num)))
-                                                           ((letrec ((loop1 (lambda ()
-                                                                             (let ((conf (vector-ref state* 0)))
-                                                                                (if (>= conf 0)
-                                                                                   (let* ((conf-set (vector-ref state* (+ conf 1)))
-                                                                                          (head (vector-ref conf-set 4)))
-                                                                                      (vector-set! state* 0 (vector-ref conf-set 0))
-                                                                                      (conf-set-merge-new! conf-set)
-                                                                                      ((letrec ((loop2 (lambda (i)
-                                                                                                        (if (>= i 0)
-                                                                                                           (begin
-                                                                                                              (produce conf i state-num enders steps toks states states* nb-nts)
-                                                                                                              (loop2 (conf-set-next conf-set i)))
-                                                                                                           (loop1)))))
-                                                                                         loop2)
-                                                                                         head))
-                                                                                   #f)))))
-                                                              loop1)))))
+                                                           (<change>
+                                                              ((letrec ((loop1 (lambda ()
+                                                                                (let ((conf (vector-ref state* 0)))
+                                                                                   (if (>= conf 0)
+                                                                                      (let* ((conf-set (vector-ref state* (+ conf 1)))
+                                                                                             (head (vector-ref conf-set 4)))
+                                                                                         (vector-set! state* 0 (vector-ref conf-set 0))
+                                                                                         (conf-set-merge-new! conf-set)
+                                                                                         ((letrec ((loop2 (lambda (i)
+                                                                                                           (if (>= i 0)
+                                                                                                              (begin
+                                                                                                                 (produce conf i state-num enders steps toks states states* nb-nts)
+                                                                                                                 (loop2 (conf-set-next conf-set i)))
+                                                                                                              (loop1)))))
+                                                                                            loop2)
+                                                                                            head))
+                                                                                      #f)))))
+                                                                 loop1))
+                                                              ((lambda (x) x)
+                                                                 ((letrec ((loop1 (lambda ()
+                                                                                   (let ((conf (vector-ref state* 0)))
+                                                                                      (if (>= conf 0)
+                                                                                         (let* ((conf-set (vector-ref state* (+ conf 1)))
+                                                                                                (head (vector-ref conf-set 4)))
+                                                                                            (vector-set! state* 0 (vector-ref conf-set 0))
+                                                                                            (conf-set-merge-new! conf-set)
+                                                                                            ((letrec ((loop2 (lambda (i)
+                                                                                                              (if (>= i 0)
+                                                                                                                 (begin
+                                                                                                                    (produce conf i state-num enders steps toks states states* nb-nts)
+                                                                                                                    (loop2 (conf-set-next conf-set i)))
+                                                                                                                 (loop1)))))
+                                                                                               loop2)
+                                                                                               head))
+                                                                                         #f)))))
+                                                                    loop1)))))))
                                                 (backward (lambda (states enders steps nts toks)
                                                             (let* ((nb-toks (vector-length toks))
                                                                    (nb-confs (vector-length steps))
@@ -424,14 +478,10 @@
                                                                  #f))))
                                                 (deriv-trees (lambda (conf i j enders steps names toks states nb-nts)
                                                                (let ((name (vector-ref names conf)))
-                                                                  (if (<change> name (not name))
+                                                                  (if name
                                                                      (if (< conf nb-nts)
-                                                                        (<change>
-                                                                           (list (list name (car (vector-ref toks i))))
-                                                                           (list (list name)))
-                                                                        (<change>
-                                                                           (list (list name))
-                                                                           (list (list name (car (vector-ref toks i))))))
+                                                                        (list (list name (car (vector-ref toks i))))
+                                                                        (list (list name)))
                                                                      (let ((prev (- conf 1)))
                                                                         ((letrec ((loop1 (lambda (l1 l2)
                                                                                           (if (pair? l1)
@@ -483,16 +533,6 @@
                                                                             ()))
                                                                       #f))))
                                                 (nb-deriv-trees (lambda (conf i j enders steps toks states nb-nts)
-                                                                  (<change>
-                                                                     ()
-                                                                     (lambda (k n)
-                                                                        (if (>= k 0)
-                                                                           (if (if (>= k i) (conf-set-member? (vector-ref states k) prev i) #f)
-                                                                              (let ((nb-prev-trees (nb-deriv-trees prev i k enders steps toks states nb-nts))
-                                                                                    (nb-ender-trees (nb-deriv-trees ender k j enders steps toks states nb-nts)))
-                                                                                 (loop2 (conf-set-next ender-set k) (+ n (* nb-prev-trees nb-ender-trees))))
-                                                                              (loop2 (conf-set-next ender-set k) n))
-                                                                           (loop1 (cdr l) n))))
                                                                   (let ((prev (- conf 1)))
                                                                      (if (let ((__or_res (< conf nb-nts))) (if __or_res __or_res (< (vector-ref steps prev) 0)))
                                                                         1
@@ -519,6 +559,14 @@
                                                                            0)))))
                                                 (nb-deriv-trees* (lambda (nt i j nts enders steps toks states)
                                                                    (let ((nt* (ind nt nts)))
+                                                                      (<change>
+                                                                         ()
+                                                                         (if (not (pair? l))
+                                                                            (let ((conf (car l)))
+                                                                               (if (conf-set-member? (vector-ref states j) conf i)
+                                                                                  (loop (cdr l) nb-trees)
+                                                                                  (loop (cdr l) (+ (nb-deriv-trees conf i j enders steps toks states nb-nts) nb-trees))))
+                                                                            nb-trees))
                                                                       (if nt*
                                                                          (let ((nb-nts (vector-length nts)))
                                                                             ((letrec ((loop (lambda (l nb-trees)
@@ -540,18 +588,35 @@
                                                  (steps (vector-ref parser-descr 5))
                                                  (names (vector-ref parser-descr 6))
                                                  (toks (input->tokens input lexer nts)))
-                                             (vector
-                                                nts
-                                                starters
-                                                enders
-                                                predictors
-                                                steps
-                                                names
-                                                toks
-                                                (backward (forward starters enders predictors steps nts toks) enders steps nts toks)
-                                                parsed?
-                                                deriv-trees*
-                                                nb-deriv-trees*))))))))))
+                                             (<change>
+                                                ()
+                                                (display nb-deriv-trees*))
+                                             (<change>
+                                                (vector
+                                                   nts
+                                                   starters
+                                                   enders
+                                                   predictors
+                                                   steps
+                                                   names
+                                                   toks
+                                                   (backward (forward starters enders predictors steps nts toks) enders steps nts toks)
+                                                   parsed?
+                                                   deriv-trees*
+                                                   nb-deriv-trees*)
+                                                ((lambda (x) x)
+                                                   (vector
+                                                      nts
+                                                      starters
+                                                      enders
+                                                      predictors
+                                                      steps
+                                                      names
+                                                      toks
+                                                      (backward (forward starters enders predictors steps nts toks) enders steps nts toks)
+                                                      parsed?
+                                                      deriv-trees*
+                                                      nb-deriv-trees*))))))))))))
          (parse->parsed? (lambda (parse nt i j)
                            (<change>
                               (let* ((nts (vector-ref parse 0))
@@ -564,9 +629,7 @@
                                         (enders (vector-ref parse 2))
                                         (states (vector-ref parse 7))
                                         (parsed? (vector-ref parse 8)))
-                                    (<change>
-                                       (parsed? nt i j nts enders states)
-                                       ((lambda (x) x) (parsed? nt i j nts enders states))))))))
+                                    (parsed? nt i j nts enders states))))))
          (parse->trees (lambda (parse nt i j)
                          (let* ((nts (vector-ref parse 0))
                                 (enders (vector-ref parse 2))
@@ -575,7 +638,9 @@
                                 (toks (vector-ref parse 6))
                                 (states (vector-ref parse 7))
                                 (deriv-trees* (vector-ref parse 9)))
-                            (deriv-trees* nt i j nts enders steps names toks states))))
+                            (<change>
+                               (deriv-trees* nt i j nts enders steps names toks states)
+                               ((lambda (x) x) (deriv-trees* nt i j nts enders steps names toks states))))))
          (parse->nb-trees (lambda (parse nt i j)
                             (let* ((nts (vector-ref parse 0))
                                    (enders (vector-ref parse 2))
@@ -594,7 +659,7 @@
                                      (__toplevel_cons (__toplevel_cons 's (__toplevel_cons 's ())) ())))
                                ())
                             (lambda (l)
-                               (map (lambda (x) (<change> () list) (list x x)) l)))))
+                               (map (lambda (x) (list x x)) l)))))
                     (let ((x (p
                                (__toplevel_cons
                                   'a
@@ -607,5 +672,7 @@
                                            (__toplevel_cons
                                               'a
                                               (__toplevel_cons 'a (__toplevel_cons 'a (__toplevel_cons 'a (__toplevel_cons 'a ()))))))))))))
-                       (length (parse->trees x 's 0 9)))))))
+                       (<change>
+                          (length (parse->trees x 's 0 9))
+                          ((lambda (x) x) (length (parse->trees x 's 0 9)))))))))
    (equal? (test) 1430))

@@ -1,35 +1,37 @@
 ; Changes:
-; * removed: 3
-; * added: 3
-; * swaps: 0
-; * negated predicates: 3
-; * swapped branches: 3
-; * calls to id fun: 13
+; * removed: 4
+; * added: 4
+; * swaps: 4
+; * negated predicates: 1
+; * swapped branches: 1
+; * calls to id fun: 8
 (letrec ((false #f)
          (true #t)
          (make-machine (lambda (register-names ops controller-text)
                          (let ((machine (make-new-machine)))
-                            (for-each (lambda (register-name) ((machine 'allocate-register) register-name)) register-names)
-                            ((machine 'install-operations) ops)
-                            ((machine 'install-instruction-sequence) (assemble controller-text machine))
+                            (<change>
+                               (for-each (lambda (register-name) ((machine 'allocate-register) register-name)) register-names)
+                               ((machine 'install-operations) ops))
+                            (<change>
+                               ((machine 'install-operations) ops)
+                               (for-each
+                                  (lambda (register-name)
+                                     'allocate-register
+                                     ((machine 'allocate-register) register-name))
+                                  register-names))
+                            (<change>
+                               ((machine 'install-instruction-sequence) (assemble controller-text machine))
+                               ())
                             machine)))
          (make-register (lambda (name)
                           (let ((contents '*unassigned*))
                              (letrec ((dispatch (lambda (message)
-                                                  (<change>
-                                                     (if (eq? message 'get)
-                                                        contents
-                                                        (if (eq? message 'set)
-                                                           (lambda (value)
-                                                              (set! contents value))
-                                                           (error "Unknown request -- REGISTER" message)))
-                                                     ((lambda (x) x)
-                                                        (if (eq? message 'get)
-                                                           contents
-                                                           (if (eq? message 'set)
-                                                              (lambda (value)
-                                                                 (set! contents value))
-                                                              (error "Unknown request -- REGISTER" message))))))))
+                                                  (if (eq? message 'get)
+                                                     contents
+                                                     (if (eq? message 'set)
+                                                        (lambda (value)
+                                                           (set! contents value))
+                                                        (error "Unknown request -- REGISTER" message))))))
                                 dispatch))))
          (get-contents (lambda (register)
                          (register 'get)))
@@ -103,60 +105,51 @@
                                                                        (lambda (ops)
                                                                           (set! the-ops (append the-ops ops)))
                                                                        (if (eq? message 'stack)
-                                                                          (<change>
-                                                                             stack
-                                                                             (if (not (eq? message 'operations))
-                                                                                the-ops
-                                                                                (error "Unknown request -- MACHINE" message)))
-                                                                          (<change>
-                                                                             (if (eq? message 'operations)
-                                                                                the-ops
-                                                                                (error "Unknown request -- MACHINE" message))
-                                                                             stack))))))))))
+                                                                          stack
+                                                                          (if (eq? message 'operations)
+                                                                             the-ops
+                                                                             (error "Unknown request -- MACHINE" message)))))))))))
                                       dispatch)))))
          (start (lambda (machine)
-                  (machine 'start)))
+                  (<change>
+                     (machine 'start)
+                     ((lambda (x) x) (machine 'start)))))
          (get-register-contents (lambda (machine register-name)
-                                  (<change>
-                                     ()
-                                     get-contents)
-                                  (<change>
-                                     (get-contents (get-register machine register-name))
-                                     ((lambda (x) x) (get-contents (get-register machine register-name))))))
+                                  (get-contents (get-register machine register-name))))
          (set-register-contents! (lambda (machine register-name value)
-                                   (set-contents! (get-register machine register-name) value)
                                    (<change>
-                                      'done
-                                      ((lambda (x) x) 'done))))
+                                      ()
+                                      (display register-name))
+                                   (set-contents! (get-register machine register-name) value)
+                                   'done))
          (get-register (lambda (machine reg-name)
                          ((machine 'get-register) reg-name)))
          (assemble (lambda (controller-text machine)
-                     (let ((result (extract-labels controller-text)))
-                        (let ((insts (car result))
-                              (labels (cdr result)))
-                           (update-insts! insts labels machine)
-                           insts))))
+                     (<change>
+                        (let ((result (extract-labels controller-text)))
+                           (let ((insts (car result))
+                                 (labels (cdr result)))
+                              (update-insts! insts labels machine)
+                              insts))
+                        ((lambda (x) x)
+                           (let ((result (extract-labels controller-text)))
+                              (<change>
+                                 ()
+                                 result)
+                              (let ((insts (car result))
+                                    (labels (cdr result)))
+                                 (update-insts! insts labels machine)
+                                 insts))))))
          (extract-labels (lambda (text)
-                           (<change>
-                              (if (null? text)
-                                 (cons () ())
-                                 (let ((result (extract-labels (cdr text))))
-                                    (let ((insts (car result))
-                                          (labels (cdr result)))
-                                       (let ((next-inst (car text)))
-                                          (if (symbol? next-inst)
-                                             (cons insts (cons (make-label-entry next-inst insts) labels))
-                                             (cons (cons (make-instruction next-inst) insts) labels))))))
-                              ((lambda (x) x)
-                                 (if (null? text)
-                                    (cons () ())
-                                    (let ((result (extract-labels (cdr text))))
-                                       (let ((insts (car result))
-                                             (labels (cdr result)))
-                                          (let ((next-inst (car text)))
-                                             (if (symbol? next-inst)
-                                                (cons insts (cons (make-label-entry next-inst insts) labels))
-                                                (cons (cons (make-instruction next-inst) insts) labels))))))))))
+                           (if (null? text)
+                              (cons () ())
+                              (let ((result (extract-labels (cdr text))))
+                                 (let ((insts (car result))
+                                       (labels (cdr result)))
+                                    (let ((next-inst (car text)))
+                                       (if (symbol? next-inst)
+                                          (cons insts (cons (make-label-entry next-inst insts) labels))
+                                          (cons (cons (make-instruction next-inst) insts) labels))))))))
          (update-insts! (lambda (insts labels machine)
                           (let ((pc (get-register machine 'pc))
                                 (flag (get-register machine 'flag))
@@ -171,29 +164,28 @@
          (make-instruction (lambda (text)
                              (cons text ())))
          (instruction-text (lambda (inst)
-                             (car inst)))
+                             (<change>
+                                (car inst)
+                                ((lambda (x) x) (car inst)))))
          (instruction-execution-proc (lambda (inst)
-                                       (<change>
-                                          (cdr inst)
-                                          ((lambda (x) x) (cdr inst)))))
+                                       (cdr inst)))
          (set-instruction-execution-proc! (lambda (inst proc)
                                             (set-cdr! inst proc)))
          (make-label-entry (lambda (label-name insts)
-                             (cons label-name insts)))
+                             (<change>
+                                (cons label-name insts)
+                                ((lambda (x) x) (cons label-name insts)))))
          (lookup-label (lambda (labels label-name)
                          (let ((val (assoc label-name labels)))
                             (if val
                                (cdr val)
                                (error "Undefined label -- ASSEMBLE" label-name)))))
          (make-execution-procedure (lambda (inst labels machine pc flag stack ops)
-                                     (<change>
-                                        ()
-                                        'test)
                                      (if (eq? (car inst) 'assign)
                                         (make-assign inst machine labels ops pc)
                                         (if (eq? (car inst) 'test)
                                            (make-test inst machine labels ops flag pc)
-                                           (if (<change> (eq? (car inst) 'branch) (not (eq? (car inst) 'branch)))
+                                           (if (eq? (car inst) 'branch)
                                               (make-branch inst machine labels flag pc)
                                               (if (eq? (car inst) 'goto)
                                                  (make-goto inst machine labels pc)
@@ -223,31 +215,21 @@
                       (let ((condition (test-condition inst)))
                          (if (operation-exp? condition)
                             (let ((condition-proc (make-operation-exp condition machine labels operations)))
-                               (<change>
-                                  (lambda ()
-                                     (set-contents! flag (condition-proc))
-                                     (advance-pc pc))
-                                  ((lambda (x) x) (lambda () (<change> (set-contents! flag (condition-proc)) ()) (advance-pc pc)))))
+                               (lambda ()
+                                  (set-contents! flag (condition-proc))
+                                  (advance-pc pc)))
                             (error "Bad TEST instruction -- ASSEMBLE" inst)))))
          (test-condition (lambda (test-instruction)
                            (cdr test-instruction)))
          (make-branch (lambda (inst machine labels flag pc)
                         (let ((dest (branch-dest inst)))
                            (if (label-exp? dest)
-                              (<change>
-                                 (let ((insts (lookup-label labels (label-exp-label dest))))
-                                    (lambda ()
-                                       (if (get-contents flag)
-                                          (set-contents! pc insts)
-                                          (advance-pc pc))))
-                                 (error "Bad BRANCH instruction -- ASSEMBLE" inst))
-                              (<change>
-                                 (error "Bad BRANCH instruction -- ASSEMBLE" inst)
-                                 (let ((insts (lookup-label labels (label-exp-label dest))))
-                                    (lambda ()
-                                       (if (get-contents flag)
-                                          (set-contents! pc insts)
-                                          (advance-pc pc)))))))))
+                              (let ((insts (lookup-label labels (label-exp-label dest))))
+                                 (lambda ()
+                                    (if (get-contents flag)
+                                       (set-contents! pc insts)
+                                       (advance-pc pc))))
+                              (error "Bad BRANCH instruction -- ASSEMBLE" inst)))))
          (branch-dest (lambda (branch-instruction)
                         (cadr branch-instruction)))
          (make-goto (lambda (inst machine labels pc)
@@ -264,25 +246,22 @@
          (goto-dest (lambda (goto-instruction)
                       (cadr goto-instruction)))
          (make-save (lambda (inst machine stack pc)
-                      (<change>
-                         (let ((reg (get-register machine (stack-inst-reg-name inst))))
-                            (lambda ()
-                               (push stack (get-contents reg))
-                               (advance-pc pc)))
-                         ((lambda (x) x)
-                            (let ((reg (get-register machine (stack-inst-reg-name inst))))
-                               (lambda ()
-                                  (push stack (get-contents reg))
-                                  (advance-pc pc)))))))
+                      (let ((reg (get-register machine (stack-inst-reg-name inst))))
+                         (lambda ()
+                            (push stack (get-contents reg))
+                            (advance-pc pc)))))
          (make-restore (lambda (inst machine stack pc)
                          (let ((reg (get-register machine (stack-inst-reg-name inst))))
+                            (<change>
+                               ()
+                               pc)
                             (lambda ()
-                               (set-contents! reg (pop stack))
+                               (<change>
+                                  (set-contents! reg (pop stack))
+                                  ((lambda (x) x) (set-contents! reg (pop stack))))
                                (advance-pc pc)))))
          (stack-inst-reg-name (lambda (stack-instruction)
-                                (<change>
-                                   (cadr stack-instruction)
-                                   ((lambda (x) x) (cadr stack-instruction)))))
+                                (cadr stack-instruction)))
          (make-perform (lambda (inst machine labels operations pc)
                          (let ((action (perform-action inst)))
                             (if (operation-exp? action)
@@ -296,10 +275,8 @@
          (make-primitive-exp (lambda (exp machine labels)
                                (if (constant-exp? exp)
                                   (let ((c (constant-exp-value exp)))
-                                     (<change>
-                                        (lambda ()
-                                           c)
-                                        ((lambda (x) x) (lambda () c))))
+                                     (lambda ()
+                                        c))
                                   (if (label-exp? exp)
                                      (let ((insts (lookup-label labels (label-exp-label exp))))
                                         (lambda ()
@@ -312,9 +289,7 @@
          (register-exp? (lambda (exp)
                           (tagged-list? exp 'reg)))
          (register-exp-reg (lambda (exp)
-                             (<change>
-                                (cadr exp)
-                                ((lambda (x) x) (cadr exp)))))
+                             (cadr exp)))
          (constant-exp? (lambda (exp)
                           (tagged-list? exp 'const)))
          (constant-exp-value (lambda (exp)
@@ -330,14 +305,22 @@
                                      (if (null? aprocs)
                                         (op)
                                         (if (null? (cddr aprocs))
-                                           (op ((car aprocs)) ((cadr aprocs)))
-                                           (if (null? (cdr aprocs))
-                                              (op ((car aprocs)))
-                                              (error "apply"))))))))
+                                           (<change>
+                                              (op ((car aprocs)) ((cadr aprocs)))
+                                              (if (null? (cdr aprocs))
+                                                 (op ((car aprocs)))
+                                                 (error "apply")))
+                                           (<change>
+                                              (if (null? (cdr aprocs))
+                                                 (op ((car aprocs)))
+                                                 (error "apply"))
+                                              (op ((car aprocs)) ((cadr aprocs))))))))))
          (operation-exp? (lambda (exp)
                            (if (pair? exp) (tagged-list? (car exp) 'op) #f)))
          (operation-exp-op (lambda (operation-exp)
-                             (cadr (car operation-exp))))
+                             (<change>
+                                (cadr (car operation-exp))
+                                ((lambda (x) x) (cadr (car operation-exp))))))
          (operation-exp-operands (lambda (operation-exp)
                                    (cdr operation-exp)))
          (lookup-prim (lambda (symbol operations)
@@ -346,13 +329,7 @@
                               (cadr val)
                               (error "Unknown operation -- ASSEMBLE" symbol)))))
          (tagged-list? (lambda (exp tag)
-                         (if (pair? exp)
-                            (<change>
-                               (eq? (car exp) tag)
-                               false)
-                            (<change>
-                               false
-                               (eq? (car exp) tag)))))
+                         (if (pair? exp) (eq? (car exp) tag) false)))
          (ops (__toplevel_cons
                 (__toplevel_cons '+ (__toplevel_cons + ()))
                 (__toplevel_cons
@@ -429,99 +406,213 @@
                                                                (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'test-b ())) ()))
                                                                (__toplevel_cons 'gcd-done ())))))))))))))))))
       (display "(gcd 10 15): ")
-      (<change>
-         ()
-         gcd-machine)
       (set-register-contents! gcd-machine 'a 10)
-      (set-register-contents! gcd-machine 'b 15)
-      (start gcd-machine)
-      (display (get-register-contents gcd-machine 'a))
+      (<change>
+         (set-register-contents! gcd-machine 'b 15)
+         ())
+      (<change>
+         (start gcd-machine)
+         (display (get-register-contents gcd-machine 'a)))
+      (<change>
+         (display (get-register-contents gcd-machine 'a))
+         (start gcd-machine))
       (newline))
-   (let ((fac-machine (make-machine
-                        (__toplevel_cons 'continue (__toplevel_cons 'n (__toplevel_cons 'val ())))
-                        ops
-                        (__toplevel_cons
-                           'start
+   (<change>
+      (let ((fac-machine (make-machine
+                           (__toplevel_cons 'continue (__toplevel_cons 'n (__toplevel_cons 'val ())))
+                           ops
                            (__toplevel_cons
+                              'start
                               (__toplevel_cons
-                                 'assign
                                  (__toplevel_cons
-                                    'continue
-                                    (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-done ())) ())))
-                              (__toplevel_cons
-                                 'fact-loop
-                                 (__toplevel_cons
+                                    'assign
                                     (__toplevel_cons
-                                       'test
-                                       (__toplevel_cons
-                                          (__toplevel_cons 'op (__toplevel_cons '= ()))
-                                          (__toplevel_cons
-                                             (__toplevel_cons 'reg (__toplevel_cons 'n ()))
-                                             (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ()))))
+                                       'continue
+                                       (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-done ())) ())))
+                                 (__toplevel_cons
+                                    'fact-loop
                                     (__toplevel_cons
                                        (__toplevel_cons
-                                          'branch
-                                          (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'base-case ())) ()))
-                                       (__toplevel_cons
-                                          (__toplevel_cons 'save (__toplevel_cons 'continue ()))
+                                          'test
                                           (__toplevel_cons
-                                             (__toplevel_cons 'save (__toplevel_cons 'n ()))
+                                             (__toplevel_cons 'op (__toplevel_cons '= ()))
                                              (__toplevel_cons
+                                                (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ()))))
+                                       (__toplevel_cons
+                                          (__toplevel_cons
+                                             'branch
+                                             (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'base-case ())) ()))
+                                          (__toplevel_cons
+                                             (__toplevel_cons 'save (__toplevel_cons 'continue ()))
+                                             (__toplevel_cons
+                                                (__toplevel_cons 'save (__toplevel_cons 'n ()))
                                                 (__toplevel_cons
-                                                   'assign
                                                    (__toplevel_cons
-                                                      'n
+                                                      'assign
                                                       (__toplevel_cons
-                                                         (__toplevel_cons 'op (__toplevel_cons '- ()))
+                                                         'n
                                                          (__toplevel_cons
-                                                            (__toplevel_cons 'reg (__toplevel_cons 'n ()))
-                                                            (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))))
+                                                            (__toplevel_cons 'op (__toplevel_cons '- ()))
+                                                            (__toplevel_cons
+                                                               (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                               (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))))
+                                                   (__toplevel_cons
+                                                      (__toplevel_cons
+                                                         'assign
+                                                         (__toplevel_cons
+                                                            'continue
+                                                            (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'after-fact ())) ())))
+                                                      (__toplevel_cons
+                                                         (__toplevel_cons
+                                                            'goto
+                                                            (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-loop ())) ()))
+                                                         (__toplevel_cons
+                                                            'after-fact
+                                                            (__toplevel_cons
+                                                               (__toplevel_cons 'restore (__toplevel_cons 'n ()))
+                                                               (__toplevel_cons
+                                                                  (__toplevel_cons 'restore (__toplevel_cons 'continue ()))
+                                                                  (__toplevel_cons
+                                                                     (__toplevel_cons
+                                                                        'assign
+                                                                        (__toplevel_cons
+                                                                           'val
+                                                                           (__toplevel_cons
+                                                                              (__toplevel_cons 'op (__toplevel_cons '* ()))
+                                                                              (__toplevel_cons
+                                                                                 (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                                                 (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ())))))
+                                                                     (__toplevel_cons
+                                                                        (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
+                                                                        (__toplevel_cons
+                                                                           'base-case
+                                                                           (__toplevel_cons
+                                                                              (__toplevel_cons
+                                                                                 'assign
+                                                                                 (__toplevel_cons 'val (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))
+                                                                              (__toplevel_cons
+                                                                                 (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
+                                                                                 (__toplevel_cons 'fact-done ()))))))))))))))))))))))
+         (display "(fac 5): ")
+         (set-register-contents! fac-machine 'n 5)
+         (start fac-machine)
+         (display (get-register-contents fac-machine 'val))
+         (newline))
+      (let ((fib-machine (make-machine
+                           (__toplevel_cons 'continue (__toplevel_cons 'n (__toplevel_cons 'val ())))
+                           ops
+                           (__toplevel_cons
+                              'start
+                              (__toplevel_cons
+                                 (__toplevel_cons
+                                    'assign
+                                    (__toplevel_cons
+                                       'continue
+                                       (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fib-done ())) ())))
+                                 (__toplevel_cons
+                                    'fib-loop
+                                    (__toplevel_cons
+                                       (__toplevel_cons
+                                          'test
+                                          (__toplevel_cons
+                                             (__toplevel_cons 'op (__toplevel_cons '< ()))
+                                             (__toplevel_cons
+                                                (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 2 ())) ()))))
+                                       (__toplevel_cons
+                                          (__toplevel_cons
+                                             'branch
+                                             (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'immediate-answer ())) ()))
+                                          (__toplevel_cons
+                                             (__toplevel_cons 'save (__toplevel_cons 'continue ()))
+                                             (__toplevel_cons
+                                                (__toplevel_cons 'save (__toplevel_cons 'n ()))
                                                 (__toplevel_cons
                                                    (__toplevel_cons
                                                       'assign
                                                       (__toplevel_cons
                                                          'continue
-                                                         (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'after-fact ())) ())))
+                                                         (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'afterfib-n-1 ())) ())))
                                                    (__toplevel_cons
                                                       (__toplevel_cons
-                                                         'goto
-                                                         (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-loop ())) ()))
-                                                      (__toplevel_cons
-                                                         'after-fact
+                                                         'assign
                                                          (__toplevel_cons
-                                                            (__toplevel_cons 'restore (__toplevel_cons 'n ()))
+                                                            'n
                                                             (__toplevel_cons
-                                                               (__toplevel_cons 'restore (__toplevel_cons 'continue ()))
+                                                               (__toplevel_cons 'op (__toplevel_cons '- ()))
                                                                (__toplevel_cons
+                                                                  (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                                  (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))))
+                                                      (__toplevel_cons
+                                                         (__toplevel_cons
+                                                            'goto
+                                                            (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fib-loop ())) ()))
+                                                         (__toplevel_cons
+                                                            'afterfib-n-1
+                                                            (__toplevel_cons
+                                                               (__toplevel_cons 'restore (__toplevel_cons 'n ()))
+                                                               (__toplevel_cons
+                                                                  (__toplevel_cons 'restore (__toplevel_cons 'continue ()))
                                                                   (__toplevel_cons
-                                                                     'assign
                                                                      (__toplevel_cons
-                                                                        'val
+                                                                        'assign
                                                                         (__toplevel_cons
-                                                                           (__toplevel_cons 'op (__toplevel_cons '* ()))
+                                                                           'n
                                                                            (__toplevel_cons
-                                                                              (__toplevel_cons 'reg (__toplevel_cons 'n ()))
-                                                                              (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ())))))
-                                                                  (__toplevel_cons
-                                                                     (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
+                                                                              (__toplevel_cons 'op (__toplevel_cons '- ()))
+                                                                              (__toplevel_cons
+                                                                                 (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                                                 (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 2 ())) ())))))
                                                                      (__toplevel_cons
-                                                                        'base-case
+                                                                        (__toplevel_cons 'save (__toplevel_cons 'continue ()))
                                                                         (__toplevel_cons
                                                                            (__toplevel_cons
                                                                               'assign
-                                                                              (__toplevel_cons 'val (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))
+                                                                              (__toplevel_cons
+                                                                                 'continue
+                                                                                 (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'afterfib-n-2 ())) ())))
                                                                            (__toplevel_cons
-                                                                              (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
-                                                                              (__toplevel_cons 'fact-done ()))))))))))))))))))))))
-      (<change>
-         (display "(fac 5): ")
-         ((lambda (x) x) (display "(fac 5): ")))
-      (set-register-contents! fac-machine 'n 5)
-      (<change>
-         (start fac-machine)
-         ())
-      (display (get-register-contents fac-machine 'val))
-      (newline))
+                                                                              (__toplevel_cons 'save (__toplevel_cons 'val ()))
+                                                                              (__toplevel_cons
+                                                                                 (__toplevel_cons
+                                                                                    'goto
+                                                                                    (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fib-loop ())) ()))
+                                                                                 (__toplevel_cons
+                                                                                    'afterfib-n-2
+                                                                                    (__toplevel_cons
+                                                                                       (__toplevel_cons
+                                                                                          'assign
+                                                                                          (__toplevel_cons 'n (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ())))
+                                                                                       (__toplevel_cons
+                                                                                          (__toplevel_cons 'restore (__toplevel_cons 'val ()))
+                                                                                          (__toplevel_cons
+                                                                                             (__toplevel_cons 'restore (__toplevel_cons 'continue ()))
+                                                                                             (__toplevel_cons
+                                                                                                (__toplevel_cons
+                                                                                                   'assign
+                                                                                                   (__toplevel_cons
+                                                                                                      'val
+                                                                                                      (__toplevel_cons
+                                                                                                         (__toplevel_cons 'op (__toplevel_cons '+ ()))
+                                                                                                         (__toplevel_cons
+                                                                                                            (__toplevel_cons 'reg (__toplevel_cons 'val ()))
+                                                                                                            (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'n ())) ())))))
+                                                                                                (__toplevel_cons
+                                                                                                   (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
+                                                                                                   (__toplevel_cons
+                                                                                                      'immediate-answer
+                                                                                                      (__toplevel_cons
+                                                                                                         (__toplevel_cons
+                                                                                                            'assign
+                                                                                                            (__toplevel_cons 'val (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'n ())) ())))
+                                                                                                         (__toplevel_cons
+                                                                                                            (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
+                                                                                                            (__toplevel_cons 'fib-done ())))))))))))))))))))))))))))))))
+         ((lambda (x) x) (display "(fib 5): "))
+         (start fib-machine)
+         (display (get-register-contents fib-machine 'val))
+         (newline)))
    (<change>
       (let ((fib-machine (make-machine
                            (__toplevel_cons 'continue (__toplevel_cons 'n (__toplevel_cons 'val ())))
@@ -638,123 +729,83 @@
          (start fib-machine)
          (display (get-register-contents fib-machine 'val))
          (newline))
-      ((lambda (x) x)
-         (let ((fib-machine (make-machine
-                              (__toplevel_cons 'continue (__toplevel_cons 'n (__toplevel_cons 'val ())))
-                              ops
+      (let ((fac-machine (make-machine
+                           (__toplevel_cons 'continue (__toplevel_cons 'n (__toplevel_cons 'val ())))
+                           ops
+                           (__toplevel_cons
+                              'start
                               (__toplevel_cons
-                                 'start
                                  (__toplevel_cons
+                                    'assign
                                     (__toplevel_cons
-                                       'assign
+                                       'continue
+                                       (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-done ())) ())))
+                                 (__toplevel_cons
+                                    'fact-loop
+                                    (__toplevel_cons
                                        (__toplevel_cons
-                                          'continue
-                                          (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fib-done ())) ())))
-                                    (__toplevel_cons
-                                       'fib-loop
+                                          'test
+                                          (__toplevel_cons
+                                             (__toplevel_cons 'op (__toplevel_cons '= ()))
+                                             (__toplevel_cons
+                                                (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ()))))
                                        (__toplevel_cons
                                           (__toplevel_cons
-                                             'test
-                                             (__toplevel_cons
-                                                (__toplevel_cons 'op (__toplevel_cons '< ()))
-                                                (__toplevel_cons
-                                                   (__toplevel_cons 'reg (__toplevel_cons 'n ()))
-                                                   (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 2 ())) ()))))
+                                             'branch
+                                             (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'base-case ())) ()))
                                           (__toplevel_cons
+                                             (__toplevel_cons 'save (__toplevel_cons 'continue ()))
                                              (__toplevel_cons
-                                                'branch
-                                                (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'immediate-answer ())) ()))
-                                             (__toplevel_cons
-                                                (__toplevel_cons 'save (__toplevel_cons 'continue ()))
+                                                (__toplevel_cons 'save (__toplevel_cons 'n ()))
                                                 (__toplevel_cons
-                                                   (__toplevel_cons 'save (__toplevel_cons 'n ()))
+                                                   (__toplevel_cons
+                                                      'assign
+                                                      (__toplevel_cons
+                                                         'n
+                                                         (__toplevel_cons
+                                                            (__toplevel_cons 'op (__toplevel_cons '- ()))
+                                                            (__toplevel_cons
+                                                               (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                               (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))))
                                                    (__toplevel_cons
                                                       (__toplevel_cons
                                                          'assign
                                                          (__toplevel_cons
                                                             'continue
-                                                            (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'afterfib-n-1 ())) ())))
+                                                            (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'after-fact ())) ())))
                                                       (__toplevel_cons
                                                          (__toplevel_cons
-                                                            'assign
-                                                            (__toplevel_cons
-                                                               'n
-                                                               (__toplevel_cons
-                                                                  (__toplevel_cons 'op (__toplevel_cons '- ()))
-                                                                  (__toplevel_cons
-                                                                     (__toplevel_cons 'reg (__toplevel_cons 'n ()))
-                                                                     (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))))
+                                                            'goto
+                                                            (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-loop ())) ()))
                                                          (__toplevel_cons
+                                                            'after-fact
                                                             (__toplevel_cons
-                                                               'goto
-                                                               (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fib-loop ())) ()))
-                                                            (__toplevel_cons
-                                                               'afterfib-n-1
+                                                               (__toplevel_cons 'restore (__toplevel_cons 'n ()))
                                                                (__toplevel_cons
-                                                                  (__toplevel_cons 'restore (__toplevel_cons 'n ()))
+                                                                  (__toplevel_cons 'restore (__toplevel_cons 'continue ()))
                                                                   (__toplevel_cons
-                                                                     (__toplevel_cons 'restore (__toplevel_cons 'continue ()))
                                                                      (__toplevel_cons
+                                                                        'assign
                                                                         (__toplevel_cons
-                                                                           'assign
+                                                                           'val
                                                                            (__toplevel_cons
-                                                                              'n
+                                                                              (__toplevel_cons 'op (__toplevel_cons '* ()))
                                                                               (__toplevel_cons
-                                                                                 (__toplevel_cons 'op (__toplevel_cons '- ()))
-                                                                                 (__toplevel_cons
-                                                                                    (__toplevel_cons 'reg (__toplevel_cons 'n ()))
-                                                                                    (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 2 ())) ())))))
+                                                                                 (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                                                 (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ())))))
+                                                                     (__toplevel_cons
+                                                                        (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
                                                                         (__toplevel_cons
-                                                                           (__toplevel_cons 'save (__toplevel_cons 'continue ()))
+                                                                           'base-case
                                                                            (__toplevel_cons
                                                                               (__toplevel_cons
                                                                                  'assign
-                                                                                 (__toplevel_cons
-                                                                                    'continue
-                                                                                    (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'afterfib-n-2 ())) ())))
+                                                                                 (__toplevel_cons 'val (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))
                                                                               (__toplevel_cons
-                                                                                 (__toplevel_cons 'save (__toplevel_cons 'val ()))
-                                                                                 (__toplevel_cons
-                                                                                    (__toplevel_cons
-                                                                                       'goto
-                                                                                       (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fib-loop ())) ()))
-                                                                                    (__toplevel_cons
-                                                                                       'afterfib-n-2
-                                                                                       (__toplevel_cons
-                                                                                          (__toplevel_cons
-                                                                                             'assign
-                                                                                             (__toplevel_cons 'n (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ())))
-                                                                                          (__toplevel_cons
-                                                                                             (__toplevel_cons 'restore (__toplevel_cons 'val ()))
-                                                                                             (__toplevel_cons
-                                                                                                (__toplevel_cons 'restore (__toplevel_cons 'continue ()))
-                                                                                                (__toplevel_cons
-                                                                                                   (__toplevel_cons
-                                                                                                      'assign
-                                                                                                      (__toplevel_cons
-                                                                                                         'val
-                                                                                                         (__toplevel_cons
-                                                                                                            (__toplevel_cons 'op (__toplevel_cons '+ ()))
-                                                                                                            (__toplevel_cons
-                                                                                                               (__toplevel_cons 'reg (__toplevel_cons 'val ()))
-                                                                                                               (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'n ())) ())))))
-                                                                                                   (__toplevel_cons
-                                                                                                      (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
-                                                                                                      (__toplevel_cons
-                                                                                                         'immediate-answer
-                                                                                                         (__toplevel_cons
-                                                                                                            (__toplevel_cons
-                                                                                                               'assign
-                                                                                                               (__toplevel_cons 'val (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'n ())) ())))
-                                                                                                            (__toplevel_cons
-                                                                                                               (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
-                                                                                                               (__toplevel_cons 'fib-done ())))))))))))))))))))))))))))))))
-            (display "(fib 5): ")
-            (<change>
-               (set-register-contents! fib-machine 'n 5)
-               ())
-            (<change>
-               (start fib-machine)
-               ((lambda (x) x) (start fib-machine)))
-            (display (get-register-contents fib-machine 'val))
-            (newline)))))
+                                                                                 (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
+                                                                                 (__toplevel_cons 'fact-done ()))))))))))))))))))))))
+         (display "(fac 5): ")
+         (display (get-register-contents fac-machine 'val))
+         (start fac-machine)
+         ((lambda (x) x) (newline)))))

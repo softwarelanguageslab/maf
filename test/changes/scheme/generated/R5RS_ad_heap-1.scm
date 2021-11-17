@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
-; * swaps: 0
+; * added: 3
+; * swaps: 4
 ; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 5
+; * swapped branches: 1
+; * calls to id fun: 4
 (letrec ((my-++ (lambda (n)
                   (+ n 1)))
          (my--- (lambda (n)
@@ -17,10 +17,19 @@
          (make-heap (lambda (a-vector nr-of-elements)
                       (letrec ((iter (lambda (index)
                                        (if (> index 0)
-                                          (begin
-                                             (sift-down a-vector index nr-of-elements)
-                                             (iter (my--- index)))
-                                          #f))))
+                                          (<change>
+                                             (begin
+                                                (sift-down a-vector index nr-of-elements)
+                                                (iter (my--- index)))
+                                             #f)
+                                          (<change>
+                                             #f
+                                             (begin
+                                                ((lambda (x) x) (sift-down a-vector index nr-of-elements))
+                                                (iter (my--- index))))))))
+                         (<change>
+                            ()
+                            (quotient nr-of-elements 2))
                          (iter (quotient nr-of-elements 2)))))
          (sift-down (lambda (heap from to)
                       (letrec ((smallest-child (lambda (parent)
@@ -34,75 +43,72 @@
                                                              child1
                                                              child2))))))
                                (iter (lambda (parent)
-                                       (<change>
-                                          (let ((child (smallest-child parent)))
-                                             (if child
-                                                (if (> (key (vector-ref heap parent)) (key (vector-ref heap child)))
-                                                   (begin
-                                                      (swap heap child parent)
-                                                      (iter child))
-                                                   #f)
-                                                #f))
-                                          ((lambda (x) x)
-                                             (let ((child (smallest-child parent)))
-                                                (if child
-                                                   (if (<change> (> (key (vector-ref heap parent)) (key (vector-ref heap child))) (not (> (key (vector-ref heap parent)) (key (vector-ref heap child)))))
-                                                      (begin
-                                                         (swap heap child parent)
-                                                         (iter child))
-                                                      #f)
-                                                   #f)))))))
-                         (<change>
-                            (iter from)
-                            ((lambda (x) x) (iter from))))))
+                                       (let ((child (smallest-child parent)))
+                                          (if child
+                                             (if (> (key (vector-ref heap parent)) (key (vector-ref heap child)))
+                                                (begin
+                                                   (swap heap child parent)
+                                                   (<change>
+                                                      (iter child)
+                                                      ((lambda (x) x) (iter child))))
+                                                #f)
+                                             #f)))))
+                         (iter from))))
          (swap (lambda (a-vector i1 i2)
                  (let ((temp (vector-ref a-vector i1)))
-                    (<change>
-                       (vector-set! a-vector i1 (vector-ref a-vector i2))
-                       ((lambda (x) x) (vector-set! a-vector i1 (vector-ref a-vector i2))))
+                    (vector-set! a-vector i1 (vector-ref a-vector i2))
                     (vector-set! a-vector i2 temp))))
          (sift-up (lambda (heap from)
-                    (<change>
-                       ()
-                       iter)
                     (letrec ((iter (lambda (child)
                                      (let ((parent (quotient child 2)))
-                                        (<change>
-                                           (if (> parent 0)
-                                              (if (> (key (vector-ref heap parent)) (key (vector-ref heap child)))
-                                                 (begin
-                                                    (swap heap child parent)
-                                                    (iter parent))
-                                                 #f)
+                                        (if (> parent 0)
+                                           (if (> (key (vector-ref heap parent)) (key (vector-ref heap child)))
+                                              (begin
+                                                 (swap heap child parent)
+                                                 (iter parent))
                                               #f)
-                                           ((lambda (x) x)
-                                              (if (> parent 0)
-                                                 (if (> (key (vector-ref heap parent)) (key (vector-ref heap child)))
-                                                    (begin
-                                                       (swap heap child parent)
-                                                       (iter parent))
-                                                    #f)
-                                                 #f)))))))
-                       (iter from))))
+                                           #f)))))
+                       (<change>
+                          (iter from)
+                          ((lambda (x) x) (iter from))))))
          (create-heap (lambda (size)
                         (cons 0 (make-vector (my-++ size)))))
          (is-empty? (lambda (heap)
                       (eq? (car heap) 0)))
          (insert (lambda (heap item)
+                   (<change>
+                      ()
+                      vector-length)
                    (let* ((content (cdr heap))
                           (new-nr-of-elements (my-++ (car heap)))
                           (size (my--- (vector-length content))))
-                      (display "insert    ")
-                      (if (> new-nr-of-elements size)
-                         false
-                         (begin
-                            (vector-set! content new-nr-of-elements item)
-                            (sift-up content new-nr-of-elements)
-                            (set-car! heap new-nr-of-elements)))
+                      (<change>
+                         (display "insert    ")
+                         (if (not (> new-nr-of-elements size))
+                            false
+                            (begin
+                               (sift-up content new-nr-of-elements)
+                               (set-car! heap new-nr-of-elements)
+                               (vector-set! content new-nr-of-elements item))))
+                      (<change>
+                         (if (> new-nr-of-elements size)
+                            false
+                            (begin
+                               (vector-set! content new-nr-of-elements item)
+                               (sift-up content new-nr-of-elements)
+                               (set-car! heap new-nr-of-elements)))
+                         (display "insert    "))
+                      (<change>
+                         ()
+                         >)
                       (<change>
                          (display heap)
-                         ((lambda (x) x) (display heap)))
-                      (newline))))
+                         (newline))
+                      (<change>
+                         (newline)
+                         (display heap)))))
          (v (vector 'lol 5 8 1 3 9 10 2 0)))
-   (make-heap v 8)
+   (<change>
+      (make-heap v 8)
+      ((lambda (x) x) (make-heap v 8)))
    (equal? v (vector 'lol 0 3 1 5 9 10 2 8)))

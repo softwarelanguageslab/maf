@@ -1,26 +1,22 @@
 ; Changes:
-; * removed: 1
+; * removed: 0
 ; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((create-n (lambda (n)
                      @sensitivity:FA
                      (letrec ((loop (lambda (n a)
-                                      (<change>
-                                         @sensitivity:FA
-                                         ())
+                                      @sensitivity:FA
                                       (if (= n 0) a (loop (- n 1) (cons () a))))))
-                        (<change>
-                           ()
-                           loop)
                         (loop n ())))))
+   (<change>
+      ()
+      __toplevel_cons)
    (letrec ((recursive-div2 (lambda (l)
-                              (<change>
-                                 @sensitivity:FA
-                                 ((lambda (x) x) @sensitivity:FA))
-                              (if (<change> (null? l) (not (null? l)))
+                              @sensitivity:FA
+                              (if (null? l)
                                  ()
                                  (cons (car l) (recursive-div2 (cddr l)))))))
       (let ((result (__toplevel_cons

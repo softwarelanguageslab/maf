@@ -1,20 +1,17 @@
 ; Changes:
-; * removed: 1
-; * added: 0
+; * removed: 0
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 2
+; * calls to id fun: 0
 (letrec ((h (lambda ()
-              (<change>
-                 ()
-                 ((lambda (x) x) ()))))
+              ()))
          (i 1)
          (res (begin
+                (h)
                 (<change>
-                   (h)
-                   ())
+                   ()
+                   (display i))
                 i)))
-   (<change>
-      res
-      ((lambda (x) x) res)))
+   res)

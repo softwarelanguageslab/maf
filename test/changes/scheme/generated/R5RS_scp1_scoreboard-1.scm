@@ -1,143 +1,116 @@
 ; Changes:
-; * removed: 0
-; * added: 1
-; * swaps: 0
-; * negated predicates: 1
+; * removed: 1
+; * added: 0
+; * swaps: 1
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 6
+; * calls to id fun: 3
 (letrec ((result ())
          (output (lambda (i)
-                   (set! result (cons i result))))
+                   (<change>
+                      (set! result (cons i result))
+                      ((lambda (x) x) (set! result (cons i result))))))
          (linebreak (lambda ()
                       (set! result (cons 'linebreak result))))
          (create-counter (lambda ()
-                           (let ((value 0))
-                              (letrec ((reset (lambda ()
-                                                (set! value 0)
-                                                (<change>
-                                                   'ok
-                                                   ((lambda (x) x) 'ok))))
-                                       (next (lambda ()
-                                               (set! value (+ 1 value))
-                                               'ok))
-                                       (increase (lambda (x)
-                                                   (set! value (+ value x))))
-                                       (dispatch (lambda (msg)
-                                                   (if (eq? msg 'reset)
-                                                      reset
-                                                      (if (eq? msg 'next)
-                                                         next
-                                                         (if (eq? msg 'read)
-                                                            value
-                                                            (if (eq? msg 'increase)
-                                                               increase
-                                                               (error "wrong message: " msg))))))))
-                                 dispatch))))
-         (make-scorebord (lambda ()
-                           (let ((c-home (create-counter))
-                                 (c-visit (create-counter)))
-                              (<change>
+                           (<change>
+                              (let ((value 0))
                                  (letrec ((reset (lambda ()
-                                                   ((c-home 'reset))
-                                                   ((c-visit 'reset))
+                                                   (set! value 0)
                                                    'ok))
-                                          (read (lambda ()
-                                                  (let ((c1 (c-home 'read))
-                                                        (c2 (c-visit 'read)))
-                                                     (output c1)
-                                                     (output "-")
-                                                     (output c2)
-                                                     (linebreak)
-                                                     'ok)))
-                                          (score (lambda (team n)
-                                                   (if (not (let ((__or_res (= n 1))) (if __or_res __or_res (let ((__or_res (= n 2))) (if __or_res __or_res (= n 3))))))
-                                                      (begin
-                                                         (linebreak)
-                                                         (output "De score kan slechts 1, 2 of 3 zijn!")
-                                                         (linebreak)
-                                                         'ok)
-                                                      (if (eq? team 'home)
-                                                         (begin
-                                                            ((c-home 'increase) n)
-                                                            'ok)
-                                                         (if (eq? team 'visit)
-                                                            (begin
-                                                               ((c-visit 'increase) n)
-                                                               'ok)
-                                                            (error "wrong team: " team))))))
+                                          (next (lambda ()
+                                                  (set! value (+ 1 value))
+                                                  'ok))
+                                          (increase (lambda (x)
+                                                      (set! value (+ value x))))
                                           (dispatch (lambda (msg)
                                                       (if (eq? msg 'reset)
                                                          reset
-                                                         (if (eq? msg 'read)
-                                                            read
-                                                            (if (eq? msg 'score)
-                                                               score
-                                                               (error "wrong message: " msg)))))))
-                                    dispatch)
-                                 ((lambda (x) x)
+                                                         (if (eq? msg 'next)
+                                                            next
+                                                            (if (eq? msg 'read)
+                                                               value
+                                                               (if (eq? msg 'increase)
+                                                                  increase
+                                                                  (error "wrong message: " msg))))))))
+                                    dispatch))
+                              ((lambda (x) x)
+                                 (let ((value 0))
                                     (letrec ((reset (lambda ()
-                                                      ((c-home 'reset))
-                                                      ((c-visit 'reset))
+                                                      (set! value 0)
                                                       'ok))
-                                             (read (lambda ()
-                                                     (let ((c1 (c-home 'read))
-                                                           (c2 (c-visit 'read)))
-                                                        (output c1)
-                                                        (output "-")
-                                                        (output c2)
-                                                        (linebreak)
-                                                        'ok)))
-                                             (score (lambda (team n)
-                                                      (<change>
-                                                         ()
-                                                         =)
-                                                      (if (not (let ((__or_res (= n 1))) (if __or_res __or_res (let ((__or_res (= n 2))) (if __or_res __or_res (= n 3))))))
-                                                         (begin
-                                                            (linebreak)
-                                                            (<change>
-                                                               (output "De score kan slechts 1, 2 of 3 zijn!")
-                                                               ((lambda (x) x) (output "De score kan slechts 1, 2 of 3 zijn!")))
-                                                            (linebreak)
-                                                            (<change>
-                                                               'ok
-                                                               ((lambda (x) x) 'ok)))
-                                                         (if (eq? team 'home)
-                                                            (begin
-                                                               (<change>
-                                                                  ((c-home 'increase) n)
-                                                                  ((lambda (x) x) ((c-home 'increase) n)))
-                                                               'ok)
-                                                            (if (<change> (eq? team 'visit) (not (eq? team 'visit)))
-                                                               (begin
-                                                                  ((c-visit 'increase) n)
-                                                                  'ok)
-                                                               (error "wrong team: " team))))))
+                                             (next (lambda ()
+                                                     (set! value (+ 1 value))
+                                                     'ok))
+                                             (increase (lambda (x)
+                                                         (set! value (+ value x))))
                                              (dispatch (lambda (msg)
-                                                         (<change>
-                                                            (if (eq? msg 'reset)
-                                                               reset
+                                                         (if (eq? msg 'reset)
+                                                            reset
+                                                            (if (eq? msg 'next)
+                                                               next
                                                                (if (eq? msg 'read)
-                                                                  read
-                                                                  (if (eq? msg 'score)
-                                                                     score
-                                                                     (error "wrong message: " msg))))
-                                                            ((lambda (x) x)
-                                                               (if (eq? msg 'reset)
-                                                                  reset
-                                                                  (if (eq? msg 'read)
-                                                                     read
-                                                                     (if (eq? msg 'score)
-                                                                        score
-                                                                        (error "wrong message: " msg)))))))))
+                                                                  value
+                                                                  (if (eq? msg 'increase)
+                                                                     increase
+                                                                     (error "wrong message: " msg))))))))
                                        dispatch))))))
+         (make-scorebord (lambda ()
+                           (let ((c-home (create-counter))
+                                 (c-visit (create-counter)))
+                              (letrec ((reset (lambda ()
+                                                ((c-home 'reset))
+                                                ((c-visit 'reset))
+                                                'ok))
+                                       (read (lambda ()
+                                               (let ((c1 (c-home 'read))
+                                                     (c2 (c-visit 'read)))
+                                                  (output c1)
+                                                  (output "-")
+                                                  (output c2)
+                                                  (linebreak)
+                                                  'ok)))
+                                       (score (lambda (team n)
+                                                (if (not (let ((__or_res (= n 1))) (if __or_res __or_res (let ((__or_res (= n 2))) (if __or_res __or_res (= n 3))))))
+                                                   (begin
+                                                      (linebreak)
+                                                      (output "De score kan slechts 1, 2 of 3 zijn!")
+                                                      (linebreak)
+                                                      'ok)
+                                                   (if (eq? team 'home)
+                                                      (begin
+                                                         ((c-home 'increase) n)
+                                                         'ok)
+                                                      (if (eq? team 'visit)
+                                                         (begin
+                                                            ((c-visit 'increase) n)
+                                                            'ok)
+                                                         (error "wrong team: " team))))))
+                                       (dispatch (lambda (msg)
+                                                   (if (eq? msg 'reset)
+                                                      reset
+                                                      (if (eq? msg 'read)
+                                                         read
+                                                         (if (eq? msg 'score)
+                                                            score
+                                                            (error "wrong message: " msg)))))))
+                                 dispatch))))
          (bord (make-scorebord)))
    ((bord 'read))
    ((bord 'score) 'home 2)
-   ((bord 'read))
+   (<change>
+      ((bord 'read))
+      ((lambda (x) x) ((bord 'read))))
    ((bord 'score) 'visit 5)
-   ((bord 'read))
-   ((bord 'reset))
-   ((bord 'read))
+   (<change>
+      ((bord 'read))
+      ((bord 'reset)))
+   (<change>
+      ((bord 'reset))
+      ((bord 'read)))
+   (<change>
+      ((bord 'read))
+      ())
    (equal?
       result
       (__toplevel_cons

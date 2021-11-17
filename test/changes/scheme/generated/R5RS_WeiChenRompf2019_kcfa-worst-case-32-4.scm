@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -11,21 +11,15 @@
          (lambda (x2)
             (<change>
                ()
-               x18)
+               x7)
             ((lambda (f3) (f3 #t) (f3 #f))
                (lambda (x3)
                   ((lambda (f4) (f4 #t) (f4 #f))
                      (lambda (x4)
                         ((lambda (f5) (f5 #t) (f5 #f))
                            (lambda (x5)
-                              (<change>
-                                 ()
-                                 (display (f26 #f)))
                               ((lambda (f6) (f6 #t) (f6 #f))
                                  (lambda (x6)
-                                    (<change>
-                                       ()
-                                       f30)
                                     ((lambda (f7) (f7 #t) (f7 #f))
                                        (lambda (x7)
                                           ((lambda (f8) (f8 #t) (f8 #f))

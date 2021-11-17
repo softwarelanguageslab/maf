@@ -1,25 +1,17 @@
 ; Changes:
-; * removed: 0
-; * added: 8
-; * swaps: 2
-; * negated predicates: 2
-; * swapped branches: 1
-; * calls to id fun: 11
+; * removed: 1
+; * added: 6
+; * swaps: 1
+; * negated predicates: 3
+; * swapped branches: 3
+; * calls to id fun: 7
 (letrec ((true #t)
          (false #f)
          (delay-it (lambda (exp env)
-                     (<change>
-                        ()
-                        (display exp))
-                     (<change>
-                        (list 'thunk exp env)
-                        ((lambda (x) x) (list 'thunk exp env)))))
+                     (list 'thunk exp env)))
          (thunk? (lambda (obj)
                    (tagged-list? obj 'thunk)))
          (thunk-exp (lambda (thunk)
-                      (<change>
-                         ()
-                         cadr)
                       (cadr thunk)))
          (thunk-env (lambda (thunk)
                       (caddr thunk)))
@@ -36,12 +28,19 @@
                       (if (thunk? obj)
                          (let ((result (actual-value (thunk-exp obj) (thunk-env obj))))
                             (set-car! obj 'evaluated-thunk)
-                            (set-car! (cdr obj) result)
+                            (<change>
+                               (set-car! (cdr obj) result)
+                               ((lambda (x) x) (set-car! (cdr obj) result)))
                             (set-cdr! (cdr obj) ())
                             result)
-                         (if (evaluated-thunk? obj) (thunk-value obj) obj))))
+                         (if (<change> (evaluated-thunk? obj) (not (evaluated-thunk? obj)))
+                            (thunk-value obj)
+                            obj))))
          (memo-force-it force-it2)
          (apply-in-underlying-scheme (lambda (proc args)
+                                       (<change>
+                                          ()
+                                          (null? (cdr args)))
                                        (<change>
                                           (if (null? args)
                                              (proc)
@@ -53,62 +52,119 @@
                                           ((lambda (x) x)
                                              (if (null? args)
                                                 (proc)
-                                                (if (<change> (null? (cdr args)) (not (null? (cdr args))))
+                                                (if (null? (cdr args))
                                                    (proc (car args))
                                                    (if (null? (cddr args))
                                                       (proc (car args) (cadr args))
                                                       (error "Unsupported call"))))))))
          (eval (lambda (exp env)
-                 (if (self-evaluating? exp)
-                    exp
-                    (if (variable? exp)
-                       (lookup-variable-value exp env)
-                       (if (let ((__or_res (quoted? exp))) (if __or_res __or_res (quasiquoted? exp)))
-                          (eval-quotation-args (text-of-quotation exp) env)
-                          (if (assignment? exp)
-                             (eval-assignment exp env)
-                             (if (definition? exp)
-                                (eval-definition exp env)
-                                (if (if? exp)
-                                   (eval-if exp env)
-                                   (if (lambda? exp)
-                                      (make-procedure (lambda-parameters exp) (lambda-body exp) env)
-                                      (if (begin? exp)
-                                         (eval-sequence (begin-actions exp) env)
-                                         (if (cond? exp)
-                                            (<change>
+                 (<change>
+                    (if (self-evaluating? exp)
+                       exp
+                       (if (variable? exp)
+                          (lookup-variable-value exp env)
+                          (if (let ((__or_res (quoted? exp))) (if __or_res __or_res (quasiquoted? exp)))
+                             (eval-quotation-args (text-of-quotation exp) env)
+                             (if (assignment? exp)
+                                (eval-assignment exp env)
+                                (if (definition? exp)
+                                   (eval-definition exp env)
+                                   (if (if? exp)
+                                      (eval-if exp env)
+                                      (if (lambda? exp)
+                                         (make-procedure (lambda-parameters exp) (lambda-body exp) env)
+                                         (if (begin? exp)
+                                            (eval-sequence (begin-actions exp) env)
+                                            (if (cond? exp)
                                                (eval (cond->if exp) env)
                                                (if (application? exp)
                                                   (leval-apply (actual-value (operator exp) env) (operands exp) env)
-                                                  (error "Unknown expression type -- EVAL")))
-                                            (<change>
-                                               (if (application? exp)
-                                                  (leval-apply (actual-value (operator exp) env) (operands exp) env)
-                                                  (error "Unknown expression type -- EVAL"))
-                                               (eval (cond->if exp) env)))))))))))))
+                                                  (error "Unknown expression type -- EVAL")))))))))))
+                    ((lambda (x) x)
+                       (if (self-evaluating? exp)
+                          exp
+                          (if (variable? exp)
+                             (<change>
+                                (lookup-variable-value exp env)
+                                (if (let ((__or_res (quoted? exp))) __or_res (if __or_res __or_res (quasiquoted? exp)))
+                                   (eval-quotation-args (text-of-quotation exp) env)
+                                   (if (assignment? exp)
+                                      (eval-assignment exp env)
+                                      (if (definition? exp)
+                                         (if (if? exp)
+                                            (eval-if exp env)
+                                            (if (lambda? exp)
+                                               (make-procedure (lambda-parameters exp) (lambda-body exp) env)
+                                               (if (begin? exp)
+                                                  (eval-sequence (begin-actions exp) env)
+                                                  (if (cond? exp)
+                                                     (eval (cond->if exp) env)
+                                                     (if (application? exp)
+                                                        (leval-apply (actual-value (operator exp) env) (operands exp) env)
+                                                        (error "Unknown expression type -- EVAL"))))))
+                                         (eval-definition exp env)))))
+                             (<change>
+                                (if (let ((__or_res (quoted? exp))) (if __or_res __or_res (quasiquoted? exp)))
+                                   (eval-quotation-args (text-of-quotation exp) env)
+                                   (if (assignment? exp)
+                                      (eval-assignment exp env)
+                                      (if (definition? exp)
+                                         (eval-definition exp env)
+                                         (if (if? exp)
+                                            (eval-if exp env)
+                                            (if (lambda? exp)
+                                               (make-procedure (lambda-parameters exp) (lambda-body exp) env)
+                                               (if (begin? exp)
+                                                  (eval-sequence (begin-actions exp) env)
+                                                  (if (cond? exp)
+                                                     (eval (cond->if exp) env)
+                                                     (if (application? exp)
+                                                        (leval-apply (actual-value (operator exp) env) (operands exp) env)
+                                                        (error "Unknown expression type -- EVAL")))))))))
+                                (lookup-variable-value exp env))))))))
          (actual-value (lambda (exp env)
                          (force-it (eval exp env))))
          (leval-apply (lambda (procedure arguments env)
                         (if (primitive-procedure? procedure)
                            (apply-primitive-procedure procedure (list-of-arg-values arguments env))
                            (if (compound-procedure? procedure)
-                              (eval-sequence
-                                 (procedure-body procedure)
-                                 (extend-environment
-                                    (procedure-parameters procedure)
-                                    (list-of-delayed-args arguments env)
-                                    (procedure-environment procedure)))
-                              (error "Unknown procedure type -- APPLY")))))
+                              (<change>
+                                 (eval-sequence
+                                    (procedure-body procedure)
+                                    (extend-environment
+                                       (procedure-parameters procedure)
+                                       (list-of-delayed-args arguments env)
+                                       (procedure-environment procedure)))
+                                 (error "Unknown procedure type -- APPLY"))
+                              (<change>
+                                 (error "Unknown procedure type -- APPLY")
+                                 (eval-sequence
+                                    (procedure-body procedure)
+                                    (extend-environment
+                                       (procedure-parameters procedure)
+                                       (list-of-delayed-args arguments env)
+                                       (procedure-environment procedure))))))))
          (list-of-arg-values (lambda (exps env)
-                               (if (no-operands? exps)
-                                  ()
-                                  (cons (actual-value (first-operand exps) env) (list-of-arg-values (rest-operands exps) env)))))
+                               (<change>
+                                  (if (no-operands? exps)
+                                     ()
+                                     (cons (actual-value (first-operand exps) env) (list-of-arg-values (rest-operands exps) env)))
+                                  ((lambda (x) x)
+                                     (if (no-operands? exps)
+                                        ()
+                                        (cons (actual-value (first-operand exps) env) (list-of-arg-values (rest-operands exps) env)))))))
          (list-of-delayed-args (lambda (exps env)
                                  (if (no-operands? exps)
                                     ()
                                     (cons (delay-it (first-operand exps) env) (list-of-delayed-args (rest-operands exps) env)))))
          (eval-assignment (lambda (exp env)
                             (set-variable-value! (assignment-variable exp) (eval (assignment-value exp) env) env)
+                            (<change>
+                               ()
+                               (display eval))
+                            (<change>
+                               ()
+                               (assignment-variable exp))
                             'ok))
          (eval-definition (lambda (exp env)
                             (define-variable! (definition-variable exp) (eval (definition-value exp) env) env)
@@ -130,25 +186,17 @@
          (self-evaluating? (lambda (exp)
                              (if (number? exp)
                                 true
-                                (if (string? exp) true false))))
+                                (if (<change> (string? exp) (not (string? exp)))
+                                   true
+                                   false))))
          (tagged-list? (lambda (exp tag)
-                         (<change>
-                            ()
-                            tag)
                          (if (pair? exp) (eq? (car exp) tag) false)))
          (quoted? (lambda (exp)
-                    (<change>
-                       (tagged-list? exp 'quote)
-                       ((lambda (x) x) (tagged-list? exp 'quote)))))
+                    (tagged-list? exp 'quote)))
          (text-of-quotation (lambda (exp)
                               (cadr exp)))
          (quasiquoted? (lambda (exp)
-                         (<change>
-                            ()
-                            (display tagged-list?))
-                         (<change>
-                            (tagged-list? exp 'quasiquote)
-                            ((lambda (x) x) (tagged-list? exp 'quasiquote)))))
+                         (tagged-list? exp 'quasiquote)))
          (unquote? (lambda (exp)
                      (tagged-list? exp 'unquote)))
          (variable? (lambda (exp)
@@ -164,17 +212,17 @@
          (definition-variable (lambda (exp)
                                 (if (symbol? (cadr exp)) (cadr exp) (caadr exp))))
          (definition-value (lambda (exp)
-                             (<change>
-                                (if (symbol? (cadr exp))
-                                   (caddr exp)
-                                   (make-lambda (cdadr exp) (cddr exp)))
-                                ((lambda (x) x) (if (symbol? (cadr exp)) (caddr exp) (make-lambda (cdadr exp) (cddr exp)))))))
+                             (if (<change> (symbol? (cadr exp)) (not (symbol? (cadr exp))))
+                                (caddr exp)
+                                (make-lambda (cdadr exp) (cddr exp)))))
          (if? (lambda (exp)
                 (tagged-list? exp 'if)))
          (if-predicate (lambda (exp)
                          (cadr exp)))
          (if-consequent (lambda (exp)
-                          (caddr exp)))
+                          (<change>
+                             (caddr exp)
+                             ((lambda (x) x) (caddr exp)))))
          (if-alternative (lambda (exp)
                            (if (not (null? (cdddr exp)))
                               (cadddr exp)
@@ -200,9 +248,11 @@
          (cond-actions (lambda (clause)
                          (cdr clause)))
          (cond->if (lambda (exp)
-                     (expand-clauses (cond-clauses exp))))
+                     (<change>
+                        (expand-clauses (cond-clauses exp))
+                        ((lambda (x) x) (expand-clauses (cond-clauses exp))))))
          (expand-clauses (lambda (clauses)
-                           (if (<change> (null? clauses) (not (null? clauses)))
+                           (if (null? clauses)
                               'false
                               (let ((first (car clauses))
                                     (rest (cdr clauses)))
@@ -222,26 +272,21 @@
          (rest-exps (lambda (seq)
                       (cdr seq)))
          (sequence->exp (lambda (seq)
-                          (if (null? seq)
-                             seq
-                             (if (last-exp? seq)
-                                (first-exp seq)
-                                (make-begin seq)))))
+                          (<change>
+                             (if (null? seq)
+                                seq
+                                (if (last-exp? seq)
+                                   (first-exp seq)
+                                   (make-begin seq)))
+                             ((lambda (x) x) (if (null? seq) seq (if (last-exp? seq) (first-exp seq) (make-begin seq)))))))
          (make-begin (lambda (seq)
-                       (<change>
-                          (cons 'begin seq)
-                          ((lambda (x) x) (cons 'begin seq)))))
+                       (cons 'begin seq)))
          (application? (lambda (exp)
                          (pair? exp)))
          (operator (lambda (exp)
                      (car exp)))
          (operands (lambda (exp)
-                     (<change>
-                        ()
-                        cdr)
-                     (<change>
-                        (cdr exp)
-                        ((lambda (x) x) (cdr exp)))))
+                     (cdr exp)))
          (no-operands? (lambda (ops)
                          (null? ops)))
          (first-operand (lambda (ops)
@@ -253,10 +298,11 @@
          (compound-procedure? (lambda (p)
                                 (tagged-list? p 'procedure)))
          (procedure-parameters (lambda (p)
-                                 (<change>
-                                    (cadr p)
-                                    ((lambda (x) x) (cadr p)))))
+                                 (cadr p)))
          (procedure-body (lambda (p)
+                           (<change>
+                              ()
+                              caddr)
                            (caddr p)))
          (procedure-environment (lambda (p)
                                   (cadddr p)))
@@ -278,8 +324,12 @@
          (frame-values (lambda (frame)
                          (cdr frame)))
          (add-binding-to-frame! (lambda (var val frame)
-                                  (set-car! frame (cons var (car frame)))
-                                  (set-cdr! frame (cons val (cdr frame)))))
+                                  (<change>
+                                     (set-car! frame (cons var (car frame)))
+                                     (set-cdr! frame (cons val (cdr frame))))
+                                  (<change>
+                                     (set-cdr! frame (cons val (cdr frame)))
+                                     (set-car! frame (cons var (car frame))))))
          (lookup-variable-value (lambda (var env)
                                   (letrec ((env-loop (lambda (env)
                                                        (letrec ((scan (lambda (vars vals)
@@ -292,6 +342,9 @@
                                                              (error "Unbound variable")
                                                              (let ((frame (first-frame env)))
                                                                 (scan (frame-variables frame) (frame-values frame))))))))
+                                     (<change>
+                                        ()
+                                        env-loop)
                                      (env-loop env))))
          (set-variable-value! (lambda (var val env)
                                 (letrec ((env-loop (lambda (env)
@@ -316,26 +369,13 @@
                                                        (scan (cdr vars) (cdr vals)))))))
                                    (scan (frame-variables frame) (frame-values frame))))))
          (setup-environment (lambda ()
-                              (<change>
-                                 (let ((initial-env (extend-environment
-                                                      (primitive-procedure-names)
-                                                      (primitive-procedure-objects)
-                                                      the-empty-environment)))
-                                    (define-variable! 'true true initial-env)
-                                    (define-variable! 'false false initial-env)
-                                    initial-env)
-                                 ((lambda (x) x)
-                                    (let ((initial-env (extend-environment
-                                                         (primitive-procedure-names)
-                                                         (primitive-procedure-objects)
-                                                         the-empty-environment)))
-                                       (define-variable! 'true true initial-env)
-                                       (<change>
-                                          (define-variable! 'false false initial-env)
-                                          initial-env)
-                                       (<change>
-                                          initial-env
-                                          (define-variable! 'false false initial-env)))))))
+                              (let ((initial-env (extend-environment
+                                                   (primitive-procedure-names)
+                                                   (primitive-procedure-objects)
+                                                   the-empty-environment)))
+                                 (define-variable! 'true true initial-env)
+                                 (define-variable! 'false false initial-env)
+                                 initial-env)))
          (primitive-procedure? (lambda (proc)
                                  (tagged-list? proc 'primitive)))
          (primitive-implementation (lambda (proc)
@@ -364,14 +404,9 @@
          (prompt-for-input (lambda (string)
                              (<change>
                                 (newline)
-                                (newline))
-                             (<change>
-                                (newline)
-                                (newline))
+                                ())
+                             (newline)
                              (display string)
-                             (<change>
-                                ()
-                                string)
                              (newline)))
          (announce-output (lambda (string)
                             (newline)
@@ -384,18 +419,10 @@
                           (display object))))
          (the-global-environment (setup-environment))
          (make-list (lambda (xs)
-                      (<change>
-                         ()
-                         x)
                       (if (null? xs)
                          ()
                          (let ((x (car xs)))
-                            (<change>
-                               ()
-                               cdr)
-                            (<change>
-                               (list 'cons (if (unquote? x) (cadr x) (list 'quote x)) (make-list (cdr xs)))
-                               ((lambda (x) x) (list 'cons (if (unquote? x) (cadr x) (list 'quote x)) (make-list (cdr xs)))))))))
+                            (list 'cons (if (unquote? x) (cadr x) (list 'quote x)) (make-list (cdr xs)))))))
          (unaware-eval-quotation-args (lambda (qargs env)
                                         qargs))
          (aware-eval-quotation-args (lambda (qargs env)
@@ -403,9 +430,7 @@
                                          (eval (make-list qargs) env)
                                          qargs)))
          (eval-quotation-args unaware-eval-quotation-args))
-   (<change>
-      (display "Loading definitions of cons, car, cdr as compound procedures. ")
-      ((lambda (x) x) (display "Loading definitions of cons, car, cdr as compound procedures. ")))
+   (display "Loading definitions of cons, car, cdr as compound procedures. ")
    (eval
       (__toplevel_cons
          'begin

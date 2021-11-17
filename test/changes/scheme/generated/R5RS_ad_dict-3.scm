@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 2
-; * added: 1
-; * swaps: 0
+; * removed: 1
+; * added: 0
+; * swaps: 2
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((create-dictionary (lambda ()
                               (let ((content ()))
                                  (letrec ((empty? (lambda ()
@@ -66,27 +66,32 @@
                                     dispatch))))
          (nl->fr (create-dictionary)))
    (nl->fr 'insert (__toplevel_cons 'fiets (__toplevel_cons (__toplevel_cons 'bicyclette ()) ())))
-   (<change>
-      ()
-      __toplevel_cons)
    (nl->fr 'insert (__toplevel_cons 'auto (__toplevel_cons (__toplevel_cons 'voiture ()) ())))
-   (nl->fr 'insert (__toplevel_cons 'huis (__toplevel_cons (__toplevel_cons 'maison ()) ())))
-   (nl->fr 'insert (__toplevel_cons 'vrachtwagen (__toplevel_cons (__toplevel_cons 'camion ()) ())))
    (<change>
-      (nl->fr 'insert (__toplevel_cons 'tientonner (__toplevel_cons (__toplevel_cons 'camion ()) ())))
+      (nl->fr 'insert (__toplevel_cons 'huis (__toplevel_cons (__toplevel_cons 'maison ()) ())))
       ())
+   (nl->fr 'insert (__toplevel_cons 'vrachtwagen (__toplevel_cons (__toplevel_cons 'camion ()) ())))
+   (nl->fr 'insert (__toplevel_cons 'tientonner (__toplevel_cons (__toplevel_cons 'camion ()) ())))
+   (nl->fr 'lookup (__toplevel_cons 'fiets ()))
    (<change>
-      (nl->fr 'lookup (__toplevel_cons 'fiets ()))
-      ((lambda (x) x) (nl->fr 'lookup (__toplevel_cons 'fiets ()))))
-   (nl->fr 'display ())
-   (letrec ((fr->eng (create-dictionary)))
-      (fr->eng 'insert (__toplevel_cons 'bicyclette (__toplevel_cons (__toplevel_cons 'bike ()) ())))
-      (<change>
+      (nl->fr 'display ())
+      (letrec ((fr->eng (create-dictionary)))
+         (fr->eng 'insert (__toplevel_cons 'bicyclette (__toplevel_cons (__toplevel_cons 'bike ()) ())))
          (fr->eng 'insert (__toplevel_cons 'voiture (__toplevel_cons (__toplevel_cons 'car ()) ())))
-         ())
-      (fr->eng
-         'insert
-         (__toplevel_cons 'maison (__toplevel_cons (__toplevel_cons 'house (__toplevel_cons 'home ())) ())))
-      (fr->eng 'insert (__toplevel_cons 'camion (__toplevel_cons (__toplevel_cons 'truck ()) ())))
-      (fr->eng 'lookup (__toplevel_cons 'bicyclette ()))
-      #t))
+         (fr->eng
+            'insert
+            (__toplevel_cons 'maison (__toplevel_cons (__toplevel_cons 'house (__toplevel_cons 'home ())) ())))
+         (fr->eng 'lookup (__toplevel_cons 'bicyclette ()))
+         (fr->eng 'insert (__toplevel_cons 'camion (__toplevel_cons (__toplevel_cons 'truck ()) ())))
+         #t))
+   (<change>
+      (letrec ((fr->eng (create-dictionary)))
+         (fr->eng 'insert (__toplevel_cons 'bicyclette (__toplevel_cons (__toplevel_cons 'bike ()) ())))
+         (fr->eng 'insert (__toplevel_cons 'voiture (__toplevel_cons (__toplevel_cons 'car ()) ())))
+         (fr->eng
+            'insert
+            (__toplevel_cons 'maison (__toplevel_cons (__toplevel_cons 'house (__toplevel_cons 'home ())) ())))
+         (fr->eng 'insert (__toplevel_cons 'camion (__toplevel_cons (__toplevel_cons 'truck ()) ())))
+         (fr->eng 'lookup (__toplevel_cons 'bicyclette ()))
+         #t)
+      (nl->fr 'display ())))

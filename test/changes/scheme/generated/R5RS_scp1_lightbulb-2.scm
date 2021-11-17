@@ -1,8 +1,8 @@
 ; Changes:
-; * removed: 0
-; * added: 3
+; * removed: 1
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 3
+; * negated predicates: 1
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((MaakLampje (lambda (aantal)
@@ -10,9 +10,6 @@
                                 (on! (lambda ()
                                        (set! state 'on)))
                                 (off! (lambda ()
-                                        (<change>
-                                           ()
-                                           (set! state 'off))
                                         (set! state 'off)))
                                 (broken! (lambda ()
                                            (set! state 'broken)))
@@ -21,18 +18,12 @@
                                 (off? (lambda ()
                                         (eq? state 'off)))
                                 (broken? (lambda ()
-                                           (<change>
-                                              ()
-                                              state)
                                            (eq? state 'broken)))
                                 (switch! (lambda ()
                                            (set! aantal (- aantal 1))
                                            (if (< aantal 0)
                                               (broken!)
                                               (if (off?) (on!) (if (on?) (off!) #f)))
-                                           (<change>
-                                              ()
-                                              (< aantal 0))
                                            (not (broken?))))
                                 (change! (lambda (nieuw)
                                            (off!)
@@ -41,7 +32,7 @@
                                 (dispatch (lambda (msg)
                                             (if (eq? msg 'switch!)
                                                (switch!)
-                                               (if (<change> (eq? msg 'on?) (not (eq? msg 'on?)))
+                                               (if (eq? msg 'on?)
                                                   (on?)
                                                   (if (eq? msg 'off?)
                                                      (off?)
@@ -52,17 +43,17 @@
                                                            (error "Message not understood.")))))))))
                           dispatch)))
          (philips (MaakLampje 5)))
-   (if (<change> (not (philips 'test?)) (not (not (philips 'test?))))
+   (if (not (philips 'test?))
       (if (not (philips 'on?))
          (if (philips 'off?)
             (if (philips 'switch!)
                (if (philips 'switch!)
                   (if (philips 'switch!)
-                     (if (philips 'switch!)
+                     (if (<change> (philips 'switch!) (not (philips 'switch!)))
                         (if (philips 'switch!)
                            (if (not (philips 'switch!))
-                              (if (<change> (philips 'test?) (not (philips 'test?)))
-                                 (if (begin ((philips 'change!) 10) (not (philips 'test?)))
+                              (if (philips 'test?)
+                                 (if (begin (<change> () (not (philips 'test?))) (<change> ((philips 'change!) 10) ()) (not (philips 'test?)))
                                     (philips 'off?)
                                     #f)
                                  #f)

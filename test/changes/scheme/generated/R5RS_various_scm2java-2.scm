@@ -1,51 +1,33 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
-; * swaps: 1
-; * negated predicates: 2
-; * swapped branches: 5
+; * added: 3
+; * swaps: 0
+; * negated predicates: 3
+; * swapped branches: 0
 ; * calls to id fun: 5
 (letrec ((map (lambda (f lst)
-                (<change>
-                   (if (pair? lst)
-                      (cons (f (car lst)) (map f (cdr lst)))
-                      ())
-                   ((lambda (x) x)
-                      (if (pair? lst)
-                         (<change>
-                            (cons (f (car lst)) (map f (cdr lst)))
-                            ())
-                         (<change>
-                            ()
-                            (cons (f (car lst)) (map f (cdr lst)))))))))
+                (if (pair? lst)
+                   (cons (f (car lst)) (map f (cdr lst)))
+                   ())))
          (append (lambda (lst1 lst2)
                    (if (not (pair? lst1))
                       lst2
                       (cons (car lst1) (append (cdr lst1) lst2)))))
          (string->list (lambda (s)
-                         (<change>
-                            (letrec ((f (lambda (i)
-                                          (if (< i (string-length s))
-                                             (cons (string-ref s i) (f (+ i 1)))
-                                             ()))))
-                               (f 0))
-                            ((lambda (x) x)
-                               (letrec ((f (lambda (i)
-                                             (if (< i (string-length s))
-                                                (cons (string-ref s i) (f (+ i 1)))
-                                                ()))))
-                                  (f 0))))))
+                         (letrec ((f (lambda (i)
+                                       (if (< i (string-length s))
+                                          (cons (string-ref s i) (f (+ i 1)))
+                                          ()))))
+                            (f 0))))
          (tagged-list? (lambda (tag l)
-                         (if (pair? l) (eq? tag (car l)) #f)))
+                         (if (<change> (pair? l) (not (pair? l)))
+                            (eq? tag (car l))
+                            #f)))
          (char->natural (lambda (c)
                           (let ((i (char->integer c)))
-                             (if (< i 0)
-                                (<change>
-                                   (* -2 i)
-                                   (+ (* 2 i) 1))
-                                (<change>
-                                   (+ (* 2 i) 1)
-                                   (* -2 i))))))
+                             (<change>
+                                (if (< i 0) (* -2 i) (+ (* 2 i) 1))
+                                ((lambda (x) x) (if (< i 0) (* -2 i) (+ (* 2 i) 1)))))))
          (integer->char-list (lambda (n)
                                (string->list (number->string n))))
          (const? (lambda (exp)
@@ -53,16 +35,15 @@
          (ref? (lambda (exp)
                  (symbol? exp)))
          (let? (lambda (exp)
-                 (<change>
-                    ()
-                    exp)
                  (tagged-list? 'let exp)))
          (let->bindings (lambda (exp)
                           (cadr exp)))
          (let->exp (lambda (exp)
-                     (caddr exp)))
+                     (<change>
+                        (caddr exp)
+                        ((lambda (x) x) (caddr exp)))))
          (letrec1? (lambda (exp)
-                     (if (tagged-list? 'letrec exp)
+                     (if (<change> (tagged-list? 'letrec exp) (not (tagged-list? 'letrec exp)))
                         (= (length (cadr exp)) 1)
                         #f)))
          (letrec1->binding (lambda (exp)
@@ -76,9 +57,7 @@
          (lambda->exp (lambda (exp)
                         (caddr exp)))
          (if? (lambda (exp)
-                (<change>
-                   (tagged-list? 'if exp)
-                   ((lambda (x) x) (tagged-list? 'if exp)))))
+                (tagged-list? 'if exp)))
          (if->condition (lambda (exp)
                           (cadr exp)))
          (if->then (lambda (exp)
@@ -106,6 +85,9 @@
          (begin? (lambda (exp)
                    (tagged-list? 'begin exp)))
          (begin->exps (lambda (exp)
+                        (<change>
+                           ()
+                           exp)
                         (cdr exp)))
          (set!? (lambda (exp)
                   (tagged-list? 'set! exp)))
@@ -184,9 +166,7 @@
                                    (cons (letrec1->exp exp) ()))))
                           exp)))
          (singlet? (lambda (l)
-                     (if (<change> (list? l) (not (list? l)))
-                        (= (length l) 1)
-                        #f)))
+                     (if (list? l) (= (length l) 1) #f)))
          (dummy-bind (lambda (exps)
                        (if (singlet? exps)
                           (car exps)
@@ -197,20 +177,15 @@
                        (dummy-bind (begin->exps exp))))
          (mutable-variables ())
          (mark-mutable (lambda (symbol)
-                         (set! mutable-variables (cons symbol mutable-variables))))
+                         (<change>
+                            (set! mutable-variables (cons symbol mutable-variables))
+                            ((lambda (x) x) (set! mutable-variables (cons symbol mutable-variables))))))
          (is-in? (lambda (S symbol)
-                   (<change>
-                      (if (not (pair? S))
-                         #f
-                         (if (eq? (car S) symbol)
-                            #t
-                            (is-in? (cdr S) symbol)))
-                      ((lambda (x) x)
-                         (if (<change> (not (pair? S)) (not (not (pair? S))))
-                            #f
-                            (if (eq? (car S) symbol)
-                               #t
-                               (is-in? (cdr S) symbol)))))))
+                   (if (not (pair? S))
+                      #f
+                      (if (eq? (car S) symbol)
+                         #t
+                         (is-in? (cdr S) symbol)))))
          (is-mutable? (lambda (symbol)
                         (is-in? mutable-variables symbol)))
          (analyze-mutable-variables (lambda (exp)
@@ -228,9 +203,6 @@
                                                         (analyze-mutable-variables (let->exp exp)))
                                                      (if (letrec1? exp)
                                                         (begin
-                                                           (<change>
-                                                              ()
-                                                              exp)
                                                            (analyze-mutable-variables (cadr (letrec1->binding exp)))
                                                            (analyze-mutable-variables (letrec1->exp exp)))
                                                         (if (set!? exp)
@@ -247,9 +219,7 @@
                                                                  (if (app? exp)
                                                                     (begin
                                                                        (map analyze-mutable-variables exp)
-                                                                       (<change>
-                                                                          #f
-                                                                          ((lambda (x) x) #f)))
+                                                                       #f)
                                                                     (error "unknown expression type: " exp)))))))))))))
          (m (lambda (chars)
               (if (null? chars)
@@ -258,6 +228,12 @@
          (mangle (lambda (symbol)
                    (list->string (m (string->list (symbol->string symbol))))))
          (java-compile-const (lambda (exp)
+                               (<change>
+                                  ()
+                                  exp)
+                               (<change>
+                                  ()
+                                  (display "unknown constant: "))
                                (if (integer? exp)
                                   (string-append "new IntValue(" (number->string exp) ")")
                                   (error "unknown constant: " exp))))
@@ -271,16 +247,14 @@
                                        (if (eq? '= p)
                                           "numEqual"
                                           (if (eq? 'display p)
-                                             (<change>
-                                                "display"
-                                                (error "unhandled primitive " p))
-                                             (<change>
-                                                (error "unhandled primitive " p)
-                                                "display"))))))))
+                                             "display"
+                                             (error "unhandled primitive " p))))))))
          (java-compile-ref (lambda (exp)
-                             (if (is-mutable? exp)
-                                (string-append "m_" (mangle exp) ".value")
-                                (mangle exp))))
+                             (<change>
+                                (if (is-mutable? exp)
+                                   (string-append "m_" (mangle exp) ".value")
+                                   (mangle exp))
+                                ((lambda (x) x) (if (is-mutable? exp) (string-append "m_" (mangle exp) ".value") (mangle exp))))))
          (java-compile-formals (lambda (formals)
                                  (if (not (pair? formals))
                                     ""
@@ -367,28 +341,16 @@
                                          (if (if? exp)
                                             (java-compile-if exp)
                                             (if (set!? exp)
-                                               (<change>
-                                                  (java-compile-set! exp)
-                                                  (if (let? exp)
-                                                     (java-compile-exp (let=>lambda exp))
-                                                     (if (letrec1? exp)
-                                                        (java-compile-exp (letrec1=>Y exp))
-                                                        (if (begin? exp)
-                                                           (if (app? exp)
-                                                              (java-compile-app exp)
-                                                              (error "no match"))
-                                                           (java-compile-exp (begin=>let exp))))))
-                                               (<change>
-                                                  (if (let? exp)
-                                                     (java-compile-exp (let=>lambda exp))
-                                                     (if (letrec1? exp)
-                                                        (java-compile-exp (letrec1=>Y exp))
-                                                        (if (begin? exp)
-                                                           (java-compile-exp (begin=>let exp))
-                                                           (if (app? exp)
-                                                              (java-compile-app exp)
-                                                              (error "no match")))))
-                                                  (java-compile-set! exp))))))))))
+                                               (java-compile-set! exp)
+                                               (if (let? exp)
+                                                  (java-compile-exp (let=>lambda exp))
+                                                  (if (letrec1? exp)
+                                                     (java-compile-exp (letrec1=>Y exp))
+                                                     (if (begin? exp)
+                                                        (java-compile-exp (begin=>let exp))
+                                                        (if (<change> (app? exp) (not (app? exp)))
+                                                           (java-compile-app exp)
+                                                           (error "no match")))))))))))))
          (java-compile-program (lambda (exp)
                                  (string-append
                                     "public class BOut extends RuntimeEnvironment {\n"
@@ -400,7 +362,5 @@
          (input-program 3))
    (<change>
       (analyze-mutable-variables input-program)
-      (java-compile-program input-program))
-   (<change>
-      (java-compile-program input-program)
-      (analyze-mutable-variables input-program)))
+      ((lambda (x) x) (analyze-mutable-variables input-program)))
+   (java-compile-program input-program))

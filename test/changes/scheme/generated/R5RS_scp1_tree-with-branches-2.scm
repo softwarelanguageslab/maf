@@ -1,16 +1,14 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 1
-; * calls to id fun: 2
+; * calls to id fun: 4
 (letrec ((atom? (lambda (x)
                   (not (pair? x))))
          (maak-blad (lambda (type)
-                      (<change>
-                         type
-                         ((lambda (x) x) type))))
+                      type))
          (geef-type (lambda (blad)
                       blad))
          (maak-knoop (lambda (deelbomen)
@@ -18,7 +16,9 @@
          (geef-deelbomen (lambda (boom)
                            boom))
          (maak-hybride-tak (lambda (knopen)
-                             knopen))
+                             (<change>
+                                knopen
+                                ((lambda (x) x) knopen))))
          (geef-knopen (lambda (tak)
                         tak))
          (leeg? (lambda (boom)
@@ -26,7 +26,9 @@
          (knoop? (lambda (boom)
                    (pair? boom)))
          (blad? (lambda (boom)
-                  (atom? boom)))
+                  (<change>
+                     (atom? boom)
+                     ((lambda (x) x) (atom? boom)))))
          (hybride-tak (maak-hybride-tak
                         (list
                            (maak-knoop
@@ -44,9 +46,6 @@
                    (maak-knoop (list (maak-blad 'blad) (maak-blad 'peer) (maak-blad 'appel)))
                    (maak-knoop (list (maak-blad 'appel) (maak-knoop (list (maak-blad 'appel) (maak-blad 'blad))))))))
          (tel (lambda (boom)
-                (<change>
-                   ()
-                   (display list))
                 (letrec ((combine-results (lambda (l1 l2)
                                             (list (+ (car l1) (car l2)) (+ (cadr l1) (cadr l2)) (+ (caddr l1) (caddr l2)))))
                          (tel-hulp (lambda (boom)
@@ -63,7 +62,9 @@
                                         (if (null? lst)
                                            (list 0 0 0)
                                            (combine-results (tel-hulp (car lst)) (tel-hulp-in (cdr lst)))))))
-                   (tel-hulp boom))))
+                   (<change>
+                      (tel-hulp boom)
+                      ((lambda (x) x) (tel-hulp boom))))))
          (member? (lambda (x lst)
                     (pair? (memq x lst))))
          (normaal? (lambda (knoop)
@@ -72,25 +73,29 @@
                            (not (if (member? 'appel types) (member? 'peer types) #f))
                            ((lambda (x) x) (not (if (member? 'appel types) (member? 'peer types) #f)))))))
          (check-normaal (lambda (boom)
-                          (if (leeg? boom)
+                          (if (<change> (leeg? boom) (not (leeg? boom)))
                              #t
                              (if (blad? boom)
-                                #t
-                                (if (knoop? boom)
-                                   (if (normaal? boom)
-                                      (check-normaal-in (geef-knopen boom))
-                                      #f)
-                                   (check-normaal-in (geef-knopen boom)))))))
+                                (<change>
+                                   #t
+                                   (if (knoop? boom)
+                                      (if (normaal? boom)
+                                         (check-normaal-in (geef-knopen boom))
+                                         #f)
+                                      (check-normaal-in (geef-knopen boom))))
+                                (<change>
+                                   (if (knoop? boom)
+                                      (if (normaal? boom)
+                                         (check-normaal-in (geef-knopen boom))
+                                         #f)
+                                      (check-normaal-in (geef-knopen boom)))
+                                   #t)))))
          (check-normaal-in (lambda (lst)
                              (if (null? lst)
                                 #t
                                 (if (check-normaal (car lst))
-                                   (<change>
-                                      (check-normaal-in (cdr lst))
-                                      #f)
-                                   (<change>
-                                      #f
-                                      (check-normaal-in (cdr lst))))))))
+                                   (check-normaal-in (cdr lst))
+                                   #f)))))
    (if (equal? (tel hybride-tak) (__toplevel_cons 4 (__toplevel_cons 2 (__toplevel_cons 3 ()))))
       (check-normaal hybride-tak)
       #f))

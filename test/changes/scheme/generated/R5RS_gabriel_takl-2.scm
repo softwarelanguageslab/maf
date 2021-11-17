@@ -1,28 +1,37 @@
 ; Changes:
-; * removed: 1
+; * removed: 0
 ; * added: 0
-; * swaps: 0
+; * swaps: 2
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((listn (lambda (n)
                   @sensitivity:FA
-                  (<change>
-                     (if (= n 0) () (cons n (listn (- n 1))))
-                     ((lambda (x) x) (if (= n 0) () (cons n (listn (- n 1))))))))
+                  (if (= n 0) () (cons n (listn (- n 1))))))
          (shorterp (lambda (x y)
-                     @sensitivity:FA
-                     (if (not (null? y))
-                        (let ((__or_res (null? x)))
-                           (if __or_res __or_res (shorterp (cdr x) (cdr y))))
-                        #f)))
+                     (<change>
+                        @sensitivity:FA
+                        (if (not (null? y))
+                           (let ((__or_res (null? x)))
+                              (if __or_res __or_res (shorterp (cdr x) (cdr y))))
+                           #f))
+                     (<change>
+                        (if (not (null? y))
+                           (let ((__or_res (null? x)))
+                              (if __or_res __or_res (shorterp (cdr x) (cdr y))))
+                           #f)
+                        @sensitivity:FA)))
          (mas (lambda (x y z)
                 (<change>
                    @sensitivity:FA
-                   ())
-                (if (not (shorterp y x))
-                   z
-                   (mas (mas (cdr x) y z) (mas (cdr y) z x) (mas (cdr z) x y))))))
+                   (if (not (shorterp y x))
+                      z
+                      (mas (mas (cdr x) y z) (mas (cdr y) z x) (mas (cdr z) x y))))
+                (<change>
+                   (if (not (shorterp y x))
+                      z
+                      (mas (mas (cdr x) y z) (mas (cdr y) z x) (mas (cdr z) x y)))
+                   @sensitivity:FA))))
    (let ((result (__toplevel_cons
                    7
                    (__toplevel_cons

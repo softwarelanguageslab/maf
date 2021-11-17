@@ -2,15 +2,17 @@
 ; * removed: 0
 ; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
-; * swapped branches: 1
-; * calls to id fun: 0
+; * negated predicates: 0
+; * swapped branches: 0
+; * calls to id fun: 2
 (letrec ((atom? (lambda (x)
                   (not (pair? x))))
          (maak-blad (lambda (type)
                       type))
          (geef-type (lambda (blad)
-                      blad))
+                      (<change>
+                         blad
+                         ((lambda (x) x) blad))))
          (maak-knoop (lambda (deelbomen)
                        deelbomen))
          (geef-deelbomen (lambda (boom)
@@ -42,9 +44,6 @@
                    (maak-knoop (list (maak-blad 'blad) (maak-blad 'peer) (maak-blad 'appel)))
                    (maak-knoop (list (maak-blad 'appel) (maak-knoop (list (maak-blad 'appel) (maak-blad 'blad))))))))
          (tel (lambda (boom)
-                (<change>
-                   ()
-                   0)
                 (letrec ((combine-results (lambda (l1 l2)
                                             (list (+ (car l1) (car l2)) (+ (cadr l1) (cadr l2)) (+ (caddr l1) (caddr l2)))))
                          (tel-hulp (lambda (boom)
@@ -63,21 +62,17 @@
                                            (combine-results (tel-hulp (car lst)) (tel-hulp-in (cdr lst)))))))
                    (tel-hulp boom))))
          (member? (lambda (x lst)
+                    (<change>
+                       ()
+                       (display pair?))
                     (pair? (memq x lst))))
          (normaal? (lambda (knoop)
                      (let ((types (map (lambda (x) (if (pair? x) 'tak x)) knoop)))
-                        (not
-                           (if (member? 'appel types)
-                              (<change>
-                                 (member? 'peer types)
-                                 #f)
-                              (<change>
-                                 #f
-                                 (member? 'peer types)))))))
+                        (not (if (member? 'appel types) (member? 'peer types) #f)))))
          (check-normaal (lambda (boom)
                           (if (leeg? boom)
                              #t
-                             (if (<change> (blad? boom) (not (blad? boom)))
+                             (if (blad? boom)
                                 #t
                                 (if (knoop? boom)
                                    (if (normaal? boom)
@@ -90,6 +85,11 @@
                                 (if (check-normaal (car lst))
                                    (check-normaal-in (cdr lst))
                                    #f)))))
-   (if (equal? (tel hybride-tak) (__toplevel_cons 4 (__toplevel_cons 2 (__toplevel_cons 3 ()))))
-      (check-normaal hybride-tak)
-      #f))
+   (<change>
+      (if (equal? (tel hybride-tak) (__toplevel_cons 4 (__toplevel_cons 2 (__toplevel_cons 3 ()))))
+         (check-normaal hybride-tak)
+         #f)
+      ((lambda (x) x)
+         (if (equal? (tel hybride-tak) (__toplevel_cons 4 (__toplevel_cons 2 (__toplevel_cons 3 ()))))
+            (check-normaal hybride-tak)
+            #f))))

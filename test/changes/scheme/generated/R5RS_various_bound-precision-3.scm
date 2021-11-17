@@ -8,7 +8,7 @@
 (letrec ((f (lambda (x)
               (<change>
                  ()
-                 (display (if (< x 100) f 1)))
+                 <)
               (if (< x 100) f 1)))
          (f2 (f 5)))
    (eq? (f2 2) f))

@@ -1,15 +1,13 @@
 ; Changes:
-; * removed: 1
-; * added: 6
+; * removed: 2
+; * added: 4
 ; * swaps: 1
-; * negated predicates: 4
-; * swapped branches: 4
-; * calls to id fun: 4
+; * negated predicates: 1
+; * swapped branches: 3
+; * calls to id fun: 3
 (letrec ((main (lambda args
                  (let ((n (if (null? args) 0 (car args))))
-                    (<change>
-                       (setup-boyer)
-                       ())
+                    (setup-boyer)
                     ((lambda (rewrites)
                        (if (number? rewrites)
                           (if (eq? n 0)
@@ -1732,9 +1730,6 @@
                                 (if (null? lst)
                                    #t
                                    (begin
-                                      (<change>
-                                         ()
-                                         lst)
                                       (add-lemma (car lst))
                                       (add-lemma-lst (cdr lst))))))
                (add-lemma (lambda (term)
@@ -1742,24 +1737,22 @@
                                (put (car (cadr term)) 'lemmas (cons (translate-term term) (get (car (cadr term)) 'lemmas)))
                                (error "ADD-LEMMA did not like term "))))
                (translate-term (lambda (term)
-                                 (if (not (pair? term))
+                                 (if (<change> (not (pair? term)) (not (not (pair? term))))
                                     term
                                     (cons (symbol->symbol-record (car term)) (translate-args (cdr term))))))
                (translate-args (lambda (lst)
-                                 (<change>
-                                    ()
-                                    (translate-args (cdr lst)))
                                  (if (null? lst)
-                                    (<change>
-                                       ()
-                                       (cons (translate-term (car lst)) (translate-args (cdr lst))))
-                                    (<change>
-                                       (cons (translate-term (car lst)) (translate-args (cdr lst)))
-                                       ()))))
+                                    ()
+                                    (cons (translate-term (car lst)) (translate-args (cdr lst))))))
                (untranslate-term (lambda (term)
-                                   (if (not (pair? term))
-                                      term
-                                      (cons (get-name (car term)) (map untranslate-term (cdr term))))))
+                                   (<change>
+                                      (if (not (pair? term))
+                                         term
+                                         (cons (get-name (car term)) (map untranslate-term (cdr term))))
+                                      ((lambda (x) x)
+                                         (if (not (pair? term))
+                                            term
+                                            (cons (get-name (car term)) (map untranslate-term (cdr term))))))))
                (put (lambda (sym property value)
                       (put-lemmas! (symbol->symbol-record sym) value)))
                (get (lambda (sym property)
@@ -1773,9 +1766,6 @@
                                                  r)))))
                (*symbol-records-alist* ())
                (make-symbol-record (lambda (sym)
-                                     (<change>
-                                        ()
-                                        (display ()))
                                      (cons sym ())))
                (put-lemmas! (lambda (symbol-record lemmas)
                               (set-cdr! symbol-record lemmas)))
@@ -1797,13 +1787,14 @@
                           (tautp term))))
                (translate-alist (lambda (alist)
                                   (<change>
-                                     (if (null? alist)
-                                        ()
-                                        (cons (cons (caar alist) (translate-term (cdar alist))) (translate-alist (cdr alist))))
-                                     ((lambda (x) x)
-                                        (if (null? alist)
-                                           ()
-                                           (cons (cons (caar alist) (translate-term (cdar alist))) (translate-alist (cdr alist))))))))
+                                     ()
+                                     (display (cons (caar alist) (translate-term (cdar alist)))))
+                                  (<change>
+                                     ()
+                                     cdr)
+                                  (if (null? alist)
+                                     ()
+                                     (cons (cons (caar alist) (translate-term (cdar alist))) (translate-alist (cdr alist))))))
                (apply-subst (lambda (alist term)
                               (if (not (pair? term))
                                  (let ((temp-temp (assq term alist)))
@@ -1817,9 +1808,23 @@
                         (tautologyp (rewrite x) () ())))
                (tautologyp (lambda (x true-lst false-lst)
                              (if (truep x true-lst)
-                                #t
-                                (if (falsep x false-lst)
-                                   (<change>
+                                (<change>
+                                   #t
+                                   (if (falsep x false-lst)
+                                      #f
+                                      (if (not (pair? x))
+                                         #f
+                                         (if (eq? (car x) if-constructor)
+                                            (if (truep (cadr x) true-lst)
+                                               (if (falsep (cadr x) false-lst)
+                                                  (tautologyp (cadddr x) true-lst false-lst)
+                                                  (if (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst)
+                                                     (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
+                                                     #f))
+                                               (tautologyp (caddr x) true-lst false-lst))
+                                            #f))))
+                                (<change>
+                                   (if (falsep x false-lst)
                                       #f
                                       (if (not (pair? x))
                                          #f
@@ -1832,40 +1837,30 @@
                                                      (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
                                                      #f)))
                                             #f)))
-                                   (<change>
-                                      (if (not (pair? x))
-                                         #f
-                                         (if (eq? (car x) if-constructor)
-                                            (if (truep (cadr x) true-lst)
-                                               (tautologyp (caddr x) true-lst false-lst)
-                                               (if (falsep (cadr x) false-lst)
-                                                  (tautologyp (cadddr x) true-lst false-lst)
-                                                  (if (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst)
-                                                     (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
-                                                     #f)))
-                                            #f))
-                                      #f)))))
+                                   #t))))
                (if-constructor '*)
                (rewrite-count 0)
                (rewrite (lambda (term)
-                          (<change>
-                             (set! rewrite-count (+ rewrite-count 1))
-                             ((lambda (x) x) (set! rewrite-count (+ rewrite-count 1))))
+                          (set! rewrite-count (+ rewrite-count 1))
                           (if (not (pair? term))
                              term
                              (rewrite-with-lemmas (cons (car term) (rewrite-args (cdr term))) (get-lemmas (car term))))))
                (rewrite-args (lambda (lst)
-                               (if (null? lst)
-                                  (<change>
+                               (<change>
+                                  ()
+                                  rewrite)
+                               (<change>
+                                  ()
+                                  (display rewrite))
+                               (<change>
+                                  (if (null? lst)
                                      ()
                                      (cons (rewrite (car lst)) (rewrite-args (cdr lst))))
-                                  (<change>
-                                     (cons (rewrite (car lst)) (rewrite-args (cdr lst)))
-                                     ()))))
+                                  ((lambda (x) x) (if (null? lst) () (cons (rewrite (car lst)) (rewrite-args (cdr lst))))))))
                (rewrite-with-lemmas (lambda (term lst)
-                                      (if (<change> (null? lst) (not (null? lst)))
+                                      (if (null? lst)
                                          term
-                                         (if (<change> (one-way-unify term (cadr (car lst))) (not (one-way-unify term (cadr (car lst)))))
+                                         (if (one-way-unify term (cadr (car lst)))
                                             (rewrite (apply-subst unify-subst (caddr (car lst))))
                                             (rewrite-with-lemmas term (cdr lst))))))
                (unify-subst '*)
@@ -1875,35 +1870,21 @@
                                    (one-way-unify1 term1 term2))))
                (one-way-unify1 (lambda (term1 term2)
                                  (if (not (pair? term2))
-                                    (<change>
-                                       (let ((temp-temp (assq term2 unify-subst)))
-                                          (if temp-temp
-                                             (term-equal? term1 (cdr temp-temp))
-                                             (if (number? term2)
-                                                (equal? term1 term2)
-                                                (begin
+                                    (let ((temp-temp (assq term2 unify-subst)))
+                                       (if temp-temp
+                                          (term-equal? term1 (cdr temp-temp))
+                                          (if (number? term2)
+                                             (equal? term1 term2)
+                                             (begin
+                                                (<change>
                                                    (set! unify-subst (cons (cons term2 term1) unify-subst))
-                                                   #t))))
-                                       (if (not (pair? term1))
-                                          #f
-                                          (if (not (eq? (car term1) (car term2)))
-                                             (one-way-unify1-lst (cdr term1) (cdr term2))
-                                             #f)))
-                                    (<change>
-                                       (if (not (pair? term1))
-                                          #f
-                                          (if (eq? (car term1) (car term2))
-                                             (one-way-unify1-lst (cdr term1) (cdr term2))
-                                             #f))
-                                       (let ((temp-temp (assq term2 unify-subst)))
-                                          ((lambda (x) x)
-                                             (if temp-temp
-                                                (term-equal? term1 (cdr temp-temp))
-                                                (if (number? term2)
-                                                   (equal? term1 term2)
-                                                   (begin
-                                                      (set! unify-subst (cons (cons term2 term1) unify-subst))
-                                                      #t)))))))))
+                                                   ())
+                                                #t))))
+                                    (if (not (pair? term1))
+                                       #f
+                                       (if (eq? (car term1) (car term2))
+                                          (one-way-unify1-lst (cdr term1) (cdr term2))
+                                          #f)))))
                (one-way-unify1-lst (lambda (lst1 lst2)
                                      (if (null? lst1)
                                         (null? lst2)
@@ -1913,16 +1894,15 @@
                                               (one-way-unify1-lst (cdr lst1) (cdr lst2))
                                               #f)))))
                (falsep (lambda (x lst)
-                         (let ((__or_res (term-equal? x false-term)))
-                            (if __or_res __or_res (term-member? x lst)))))
+                         (<change>
+                            (let ((__or_res (term-equal? x false-term)))
+                               (if __or_res __or_res (term-member? x lst)))
+                            ((lambda (x) x)
+                               (let ((__or_res (term-equal? x false-term)))
+                                  (if __or_res __or_res (term-member? x lst)))))))
                (truep (lambda (x lst)
                         (let ((__or_res (term-equal? x true-term)))
-                           (<change>
-                              ()
-                              (if __or_res __or_res (term-member? x lst)))
-                           (<change>
-                              (if __or_res __or_res (term-member? x lst))
-                              ((lambda (x) x) (if __or_res __or_res (term-member? x lst)))))))
+                           (if __or_res __or_res (term-member? x lst)))))
                (false-term '*)
                (true-term '*)
                (trans-of-implies (lambda (n)
@@ -1933,7 +1913,7 @@
                                        (list 'and (list 'implies (- n 1) n) (trans-of-implies1 (- n 1))))))
                (term-equal? (lambda (x y)
                               (if (pair? x)
-                                 (if (<change> (pair? y) (not (pair? y)))
+                                 (if (pair? y)
                                     (if (symbol-record-equal? (car x) (car y))
                                        (term-args-equal? (cdr x) (cdr y))
                                        #f)
@@ -1949,26 +1929,28 @@
                                             #f)))))
                (term-member? (lambda (x lst)
                                (if (null? lst)
-                                  #f
-                                  (if (term-equal? x (car lst))
-                                     #t
-                                     (term-member? x (cdr lst)))))))
+                                  (<change>
+                                     #f
+                                     (if (term-equal? x (car lst))
+                                        #t
+                                        (term-member? x (cdr lst))))
+                                  (<change>
+                                     (if (term-equal? x (car lst))
+                                        #t
+                                        (term-member? x (cdr lst)))
+                                     #f)))))
          (set! setup-boyer (lambda ()
                            (<change>
                               (set! *symbol-records-alist* ())
-                              (set! if-constructor (symbol->symbol-record 'if)))
+                              ())
                            (<change>
                               (set! if-constructor (symbol->symbol-record 'if))
-                              (set! *symbol-records-alist* ()))
-                           (set! false-term (translate-term (__toplevel_cons 'f ())))
+                              (set! false-term (translate-term (__toplevel_cons 'f ()))))
+                           (<change>
+                              (set! false-term (translate-term (__toplevel_cons 'f ())))
+                              (set! if-constructor (symbol->symbol-record 'if)))
                            (set! true-term (translate-term (__toplevel_cons 't ())))
                            (setup)))
-         (<change>
-            ()
-            (set! true-term (translate-term (__toplevel_cons 't ()))))
-         (<change>
-            ()
-            'if)
          (set! test-boyer (lambda (alist term n)
                           (set! rewrite-count 0)
                           (let ((answer (test alist term n)))

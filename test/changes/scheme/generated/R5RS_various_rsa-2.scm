@@ -1,25 +1,28 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 2
 ; * swaps: 0
-; * negated predicates: 2
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((extended-gcd (lambda (a b)
-                         (if (<change> (= (modulo a b) 0) (not (= (modulo a b) 0)))
+                         (if (= (modulo a b) 0)
                             (cons 0 1)
                             (let* ((x:y (extended-gcd b (modulo a b)))
                                    (x (car x:y))
                                    (y (cdr x:y)))
                                (cons y (- x (* y (quotient a b))))))))
          (modulo-inverse (lambda (a n)
+                           (<change>
+                              ()
+                              modulo)
                            (modulo (car (extended-gcd a n)) n)))
          (totient (lambda (p q)
                     (* (- p 1) (- q 1))))
          (square (lambda (x)
                    (* x x)))
          (modulo-power (lambda (base exp n)
-                         (if (<change> (= exp 0) (not (= exp 0)))
+                         (if (= exp 0)
                             1
                             (if (odd? exp)
                                (modulo (* base (modulo-power base (- exp 1) n)) n)
@@ -31,10 +34,18 @@
                                             #f)
                                          #f)))
          (private-exponent (lambda (e p q)
-                             (if (is-legal-public-exponent? e p q)
-                                (modulo-inverse e (totient p q))
-                                (error "Not a legal public exponent for that modulus."))))
+                             (<change>
+                                (if (is-legal-public-exponent? e p q)
+                                   (modulo-inverse e (totient p q))
+                                   (error "Not a legal public exponent for that modulus."))
+                                ((lambda (x) x)
+                                   (if (is-legal-public-exponent? e p q)
+                                      (modulo-inverse e (totient p q))
+                                      (error "Not a legal public exponent for that modulus."))))))
          (encrypt (lambda (m e n)
+                    (<change>
+                       ()
+                       modulo-power)
                     (if (> m n)
                        (error "The modulus is too small to encrypt the message.")
                        (modulo-power m e n))))

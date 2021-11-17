@@ -1,24 +1,22 @@
 ; Changes:
-; * removed: 1
-; * added: 0
-; * swaps: 1
+; * removed: 0
+; * added: 1
+; * swaps: 2
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 2
 (letrec ((result ())
          (output (lambda (i)
-                   (set! result (cons i result))))
+                   (<change>
+                      (set! result (cons i result))
+                      ((lambda (x) x) (set! result (cons i result))))))
          (make-ring (lambda (n)
                       (let ((last (cons 0 ())))
                          (letrec ((build-list (lambda (n)
                                                 (if (= n 0) last (cons n (build-list (- n 1)))))))
                             (let ((ring (build-list n)))
-                               (<change>
-                                  (set-cdr! last ring)
-                                  ring)
-                               (<change>
-                                  ring
-                                  (set-cdr! last ring)))))))
+                               (set-cdr! last ring)
+                               ring)))))
          (print-ring (lambda (r)
                        (letrec ((aux (lambda (l)
                                        (if (not (null? l))
@@ -33,13 +31,18 @@
                                                 (aux (cdr l))))
                                           #f))))
                           (aux r)
+                          (<change>
+                             ()
+                             (display aux))
                           #t)))
          (copy-ring (lambda (r)
                       (letrec ((last ())
                                (aux (lambda (l)
                                       (if (eq? (cdr l) r)
                                          (begin
-                                            (set! last (cons (car l) ()))
+                                            (<change>
+                                               (set! last (cons (car l) ()))
+                                               ((lambda (x) x) (set! last (cons (car l) ()))))
                                             last)
                                          (cons (car l) (aux (cdr l)))))))
                          (let ((first (aux r)))
@@ -47,14 +50,18 @@
                             first))))
          (r (make-ring 3))
          (s (copy-ring r)))
-   (print-ring s)
-   (set-car! s 999)
    (<change>
       (print-ring s)
-      ((lambda (x) x) (print-ring s)))
+      (set-car! s 999))
+   (<change>
+      (set-car! s 999)
+      (print-ring s))
+   (<change>
+      (print-ring s)
+      (print-ring r))
    (<change>
       (print-ring r)
-      ())
+      (print-ring s))
    (equal?
       result
       (__toplevel_cons

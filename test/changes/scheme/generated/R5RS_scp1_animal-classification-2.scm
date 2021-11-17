@@ -1,14 +1,16 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 3
 ; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 0
+; * swapped branches: 0
+; * calls to id fun: 2
 (letrec ((atom? (lambda (x)
                   (not (pair? x))))
          (maak-dier (lambda (naam eigenschappen)
-                      (list naam eigenschappen)))
+                      (<change>
+                         (list naam eigenschappen)
+                         ((lambda (x) x) (list naam eigenschappen)))))
          (naam (lambda (dier)
                  (car dier)))
          (eigenschappen (lambda (dier)
@@ -20,6 +22,9 @@
                         #f)
                      #f)))
          (maak-boom (lambda (knoop deelbomen)
+                      (<change>
+                         ()
+                         knoop)
                       (list knoop deelbomen)))
          (knoop (lambda (boom)
                   (car boom)))
@@ -50,9 +55,6 @@
                                        (maak-dier 'kanarie (__toplevel_cons 'kan-zingen (__toplevel_cons 'is-geel ())))
                                        (maak-dier 'arend (__toplevel_cons 'is-groot ())))))))
          (all-kinds (lambda (boom)
-                      (<change>
-                         ()
-                         deelbomen)
                       (if (leeg? boom)
                          ()
                          (if (dier? boom)
@@ -77,13 +79,17 @@
                                                        (if (null? lst)
                                                           #f
                                                           (let ((__or_res (geef-eig (car lst) eig)))
-                                                             (if __or_res
-                                                                (<change>
+                                                             (<change>
+                                                                ()
+                                                                __or_res)
+                                                             (<change>
+                                                                (if __or_res
                                                                    __or_res
                                                                    (geef-eig-in (cdr lst) eig))
-                                                                (<change>
-                                                                   (geef-eig-in (cdr lst) eig)
-                                                                   __or_res)))))))
+                                                                ((lambda (x) x) (if __or_res __or_res (geef-eig-in (cdr lst) eig)))))))))
+                                  (<change>
+                                     ()
+                                     (display (geef-eig boom ())))
                                   (geef-eig boom ()))))
          (ask? (lambda (boom soort eig)
                  (let ((eigenschappen (geef-eigenschappen boom soort)))

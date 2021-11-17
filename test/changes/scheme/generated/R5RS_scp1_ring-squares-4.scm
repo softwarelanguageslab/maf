@@ -1,38 +1,31 @@
 ; Changes:
-; * removed: 1
-; * added: 2
+; * removed: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((result ())
          (output (lambda (i)
-                   (<change>
-                      ()
-                      cons)
                    (set! result (cons i result))))
          (kw-lijst (lambda (lst)
-                     (<change>
-                        ()
-                        (display (* (car l) (car l))))
                      (letrec ((loop (lambda (l)
                                       (let ((rest (cdr l))
                                             (n (list (* (car l) (car l)))))
                                          (set-cdr! l n)
-                                         (<change>
-                                            (set-cdr! n rest)
-                                            ((lambda (x) x) (set-cdr! n rest)))
+                                         (set-cdr! n rest)
                                          (if (not (eq? rest lst)) (loop rest) #f)))))
-                        (<change>
-                           (loop lst)
-                           ())
+                        (loop lst)
                         lst)))
          (print-ring (lambda (r)
                        (letrec ((aux (lambda (l)
                                        (if (not (null? l))
-                                          (if (eq? (cdr l) r)
+                                          (if (<change> (eq? (cdr l) r) (not (eq? (cdr l) r)))
                                              (begin
                                                 (output " ")
+                                                (<change>
+                                                   ()
+                                                   (display " "))
                                                 (output (car l))
                                                 (output "..."))
                                              (begin

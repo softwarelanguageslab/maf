@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 0
+; * negated predicates: 0
+; * swapped branches: 1
+; * calls to id fun: 1
 (letrec ((double (lambda (x)
                    (+ x x)))
          (halve (lambda (x)
@@ -23,10 +23,28 @@
                                                       (iter (double a) (halve b) acc)
                                                       (iter a (- b 1) (+ acc a)))))))
                                   (iter a b 0)))))
-   (if (= (rec-fast-multiply 3 4) 12)
-      (if (= (rec-fast-multiply 100 200) 20000)
-         (if (<change> (= (iter-fast-multiply 3 4) 12) (not (= (iter-fast-multiply 3 4) 12)))
-            (= (iter-fast-multiply 100 200) 20000)
+   (<change>
+      ()
+      iter-fast-multiply)
+   (<change>
+      (if (= (rec-fast-multiply 3 4) 12)
+         (if (= (rec-fast-multiply 100 200) 20000)
+            (if (= (iter-fast-multiply 3 4) 12)
+               (= (iter-fast-multiply 100 200) 20000)
+               #f)
             #f)
          #f)
-      #f))
+      ((lambda (x) x)
+         (if (= (rec-fast-multiply 3 4) 12)
+            (if (= (rec-fast-multiply 100 200) 20000)
+               (<change>
+                  (if (= (iter-fast-multiply 3 4) 12)
+                     (= (iter-fast-multiply 100 200) 20000)
+                     #f)
+                  #f)
+               (<change>
+                  #f
+                  (if (= (iter-fast-multiply 3 4) 12)
+                     (= (iter-fast-multiply 100 200) 20000)
+                     #f)))
+            #f))))

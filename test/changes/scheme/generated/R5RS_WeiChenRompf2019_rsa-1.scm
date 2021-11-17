@@ -1,16 +1,19 @@
 ; Changes:
-; * removed: 0
+; * removed: 1
 ; * added: 1
 ; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 2
 (letrec ((extended-gcd (lambda (a b)
                          (if (= (modulo a b) 0)
                             (cons 0 1)
                             (let* ((x:y (extended-gcd b (modulo a b)))
                                    (x (car x:y))
                                    (y (cdr x:y)))
+                               (<change>
+                                  ()
+                                  (* y (quotient a b)))
                                (cons y (- x (* y (quotient a b))))))))
          (modulo-inverse (lambda (a n)
                            (modulo (car (extended-gcd a n)) n)))
@@ -39,9 +42,7 @@
                        (error "The modulus is too small to encrypt the message.")
                        (modulo-power m e n))))
          (decrypt (lambda (c d n)
-                    (<change>
-                       (modulo-power c d n)
-                       ((lambda (x) x) (modulo-power c d n)))))
+                    (modulo-power c d n)))
          (p 41)
          (q 47)
          (n (* p q))
@@ -51,21 +52,27 @@
          (ciphertext (encrypt plaintext e n))
          (decrypted-ciphertext (decrypt ciphertext d n)))
    (<change>
-      ()
-      (display newline))
-   (display "The plaintext is:            ")
+      (display "The plaintext is:            ")
+      ())
    (display plaintext)
-   (newline)
-   (display "The ciphertext is:           ")
+   (<change>
+      (newline)
+      (display "The ciphertext is:           "))
+   (<change>
+      (display "The ciphertext is:           ")
+      (newline))
    (display ciphertext)
    (newline)
    (display "The decrypted ciphertext is: ")
    (<change>
       (display decrypted-ciphertext)
-      (newline))
+      ((lambda (x) x) (display decrypted-ciphertext)))
+   (newline)
    (<change>
-      (newline)
-      (display decrypted-ciphertext))
-   (if (not (= plaintext decrypted-ciphertext))
-      (error "RSA fail!")
-      (display "Success")))
+      (if (not (= plaintext decrypted-ciphertext))
+         (error "RSA fail!")
+         (display "Success"))
+      ((lambda (x) x)
+         (if (not (= plaintext decrypted-ciphertext))
+            (error "RSA fail!")
+            (display "Success")))))

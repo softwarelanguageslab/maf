@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 1
-; * added: 1
-; * swaps: 1
+; * added: 0
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 2
 (letrec ((*board* (list->vector
                     (__toplevel_cons
                        1
@@ -265,18 +265,16 @@
                           #t)
                        (if (if (= 1 (vector-ref *board* (vector-ref *a* i))) (if (= 1 (vector-ref *board* (vector-ref *b* i))) (= 0 (vector-ref *board* (vector-ref *c* i))) #f) #f)
                           (begin
+                             (vector-set! *board* (vector-ref *a* i) 0)
                              (<change>
-                                (vector-set! *board* (vector-ref *a* i) 0)
-                                ())
-                             (vector-set! *board* (vector-ref *b* i) 0)
+                                (vector-set! *board* (vector-ref *b* i) 0)
+                                ((lambda (x) x) (vector-set! *board* (vector-ref *b* i) 0)))
                              (<change>
                                 (vector-set! *board* (vector-ref *c* i) 1)
-                                (vector-set! *sequence* depth i))
-                             (<change>
-                                (vector-set! *sequence* depth i)
-                                (vector-set! *board* (vector-ref *c* i) 1))
+                                ())
+                             (vector-set! *sequence* depth i)
                              (letrec ((__do_loop (lambda (j depth)
-                                                   (if (let ((__or_res (= j 36))) (<change> (if __or_res __or_res (attempt j depth)) ((lambda (x) x) (if __or_res __or_res (attempt j depth)))))
+                                                   (if (let ((__or_res (= j 36))) (if __or_res __or_res (attempt j depth)))
                                                       #f
                                                       (__do_loop (+ j 1) depth)))))
                                 (__do_loop 0 (+ depth 1)))
@@ -287,10 +285,9 @@
                           #f))))
          (test (lambda (i depth)
                  (set! *answer* ())
-                 (attempt i depth)
                  (<change>
-                    ()
-                    (display *answer*))
+                    (attempt i depth)
+                    ((lambda (x) x) (attempt i depth)))
                  (car *answer*))))
    (equal?
       (test 22 1)

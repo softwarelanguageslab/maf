@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 0
-; * added: 6
-; * swaps: 1
-; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 3
+; * removed: 1
+; * added: 1
+; * swaps: 0
+; * negated predicates: 2
+; * swapped branches: 0
+; * calls to id fun: 2
 (letrec ((apply-append (lambda (args)
                          (if (null? args)
                             ()
@@ -16,17 +16,17 @@
                                      (append (car args) (append (cadr args) (caddr args)))
                                      (error "apply-append" args)))))))
          (lexico (lambda (base)
-                   (<change>
-                      (letrec ((lex-fixed (lambda (fixed lhs rhs)
-                                            (letrec ((check (lambda (lhs rhs)
-                                                              (if (null? lhs)
-                                                                 fixed
-                                                                 (let ((probe (base (car lhs) (car rhs))))
-                                                                    (if (let ((__or_res (eq? probe 'equal))) (if __or_res __or_res (eq? probe fixed)))
-                                                                       (check (cdr lhs) (cdr rhs))
-                                                                       'uncomparable))))))
-                                               (check lhs rhs))))
-                               (lex-first (lambda (lhs rhs)
+                   (letrec ((lex-fixed (lambda (fixed lhs rhs)
+                                         (letrec ((check (lambda (lhs rhs)
+                                                           (if (null? lhs)
+                                                              fixed
+                                                              (let ((probe (base (car lhs) (car rhs))))
+                                                                 (if (let ((__or_res (eq? probe 'equal))) (if __or_res __or_res (eq? probe fixed)))
+                                                                    (check (cdr lhs) (cdr rhs))
+                                                                    'uncomparable))))))
+                                            (check lhs rhs))))
+                            (lex-first (lambda (lhs rhs)
+                                         (<change>
                                             (if (null? lhs)
                                                'equal
                                                (let ((probe (base (car lhs) (car rhs))))
@@ -34,47 +34,31 @@
                                                      (lex-fixed probe (cdr lhs) (cdr rhs))
                                                      (if (eq? probe 'equal)
                                                         (lex-first (cdr lhs) (cdr rhs))
-                                                        (if (eq? probe 'uncomparable) 'uncomparable #f))))))))
-                         lex-first)
-                      ((lambda (x) x)
-                         (letrec ((lex-fixed (lambda (fixed lhs rhs)
-                                               (letrec ((check (lambda (lhs rhs)
-                                                                 (if (null? lhs)
-                                                                    fixed
-                                                                    (let ((probe (base (car lhs) (car rhs))))
-                                                                       (if (let ((__or_res (eq? probe 'equal))) (if __or_res __or_res (eq? probe fixed)))
-                                                                          (check (cdr lhs) (cdr rhs))
-                                                                          'uncomparable))))))
-                                                  (check lhs rhs))))
-                                  (lex-first (lambda (lhs rhs)
-                                               (if (null? lhs)
+                                                        (if (eq? probe 'uncomparable) 'uncomparable #f)))))
+                                            ((lambda (x) x)
+                                               (if (<change> (null? lhs) (not (null? lhs)))
                                                   'equal
                                                   (let ((probe (base (car lhs) (car rhs))))
                                                      (if (let ((__or_res (eq? probe 'less))) (if __or_res __or_res (eq? probe 'more)))
                                                         (lex-fixed probe (cdr lhs) (cdr rhs))
                                                         (if (eq? probe 'equal)
                                                            (lex-first (cdr lhs) (cdr rhs))
-                                                           (if (eq? probe 'uncomparable) 'uncomparable #f))))))))
-                            lex-first)))))
+                                                           (if (eq? probe 'uncomparable) 'uncomparable #f))))))))))
+                      lex-first)))
          (make-lattice (lambda (elem-list cmp-func)
-                         (<change>
-                            ()
-                            cmp-func)
                          (cons elem-list cmp-func)))
          (lattice->elements car)
          (lattice->cmp cdr)
          (zulu-select (lambda (test lst)
                         (letrec ((select-a (lambda (ac lst)
+                                             (<change>
+                                                ()
+                                                (display ac))
                                              (if (null? lst)
                                                 (reverse! ac)
                                                 (select-a (let ((head (car lst))) (if (test head) (cons head ac) ac)) (cdr lst))))))
                            (select-a () lst))))
          (reverse! (letrec ((rotate (lambda (fo fum)
-                                     (<change>
-                                        ()
-                                        (let ((next (cdr fo)))
-                                           (set-cdr! fo fum)
-                                           (if (null? next) fo (rotate next fo))))
                                      (let ((next (cdr fo)))
                                         (set-cdr! fo fum)
                                         (if (null? next) fo (rotate next fo))))))
@@ -83,25 +67,13 @@
          (select-map (lambda (test func lst)
                        (letrec ((select-a (lambda (ac lst)
                                             (if (null? lst)
-                                               (<change>
-                                                  (reverse! ac)
-                                                  (select-a (let ((head (car lst))) (if (test head) (cons (func head) ac) ac)) (cdr lst)))
-                                               (<change>
-                                                  (select-a (let ((head (car lst))) (if (test head) (cons (func head) ac) ac)) (cdr lst))
-                                                  (reverse! ac))))))
-                          (<change>
-                             ()
-                             select-a)
-                          (<change>
-                             (select-a () lst)
-                             ((lambda (x) x) (select-a () lst))))))
+                                               (reverse! ac)
+                                               (select-a (let ((head (car lst))) (if (test head) (cons (func head) ac) ac)) (cdr lst))))))
+                          (select-a () lst))))
          (map-and (lambda (proc lst)
                     (if (null? lst)
                        #t
                        (letrec ((drudge (lambda (lst)
-                                          (<change>
-                                             ()
-                                             proc)
                                           (let ((rest (cdr lst)))
                                              (if (null? rest)
                                                 (proc (car lst))
@@ -120,17 +92,25 @@
                             (lattice->elements target))))))
          (maps-rest (lambda (source target pas rest to-1 to-collect)
                       (<change>
-                         ()
-                         to-collect)
-                      (if (null? rest)
-                         (to-1 pas)
-                         (let ((next (car rest))
-                               (rest (cdr rest)))
-                            (to-collect
-                               (map
-                                  (lambda (x)
-                                     (maps-rest source target (cons (cons next x) pas) rest to-1 to-collect))
-                                  (maps-1 source target pas next)))))))
+                         (if (null? rest)
+                            (to-1 pas)
+                            (let ((next (car rest))
+                                  (rest (cdr rest)))
+                               (to-collect
+                                  (map
+                                     (lambda (x)
+                                        (maps-rest source target (cons (cons next x) pas) rest to-1 to-collect))
+                                     (maps-1 source target pas next)))))
+                         ((lambda (x) x)
+                            (if (<change> (null? rest) (not (null? rest)))
+                               (to-1 pas)
+                               (let ((next (car rest))
+                                     (rest (cdr rest)))
+                                  (to-collect
+                                     (map
+                                        (lambda (x)
+                                           (maps-rest source target (cons (cons next x) pas) rest to-1 to-collect))
+                                        (maps-1 source target pas next)))))))))
          (maps (lambda (source target)
                  (make-lattice
                     (maps-rest
@@ -146,9 +126,6 @@
          (count-maps (lambda (source target)
                        (maps-rest source target () (lattice->elements source) (lambda (x) 1) sum)))
          (sum (lambda (lst)
-                (<change>
-                   ()
-                   +)
                 (if (null? lst) 0 (+ (car lst) (sum (cdr lst))))))
          (run (lambda ()
                 (let* ((l2 (make-lattice
@@ -170,14 +147,10 @@
                        (l3 (maps l2 l2))
                        (l4 (maps l3 l3)))
                    (count-maps l2 l2)
+                   (count-maps l3 l3)
                    (<change>
-                      (count-maps l3 l3)
-                      ((lambda (x) x) (count-maps l3 l3)))
-                   (count-maps l2 l3)
-                   (<change>
-                      (count-maps l3 l2)
-                      (count-maps l4 l4))
-                   (<change>
-                      (count-maps l4 l4)
-                      (count-maps l3 l2))))))
+                      (count-maps l2 l3)
+                      ())
+                   (count-maps l3 l2)
+                   (count-maps l4 l4)))))
    (= (run) 120549))

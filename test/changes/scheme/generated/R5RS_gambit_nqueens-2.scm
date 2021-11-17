@@ -1,13 +1,15 @@
 ; Changes:
-; * removed: 1
+; * removed: 0
 ; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((one-to (lambda (n)
                    (letrec ((loop (lambda (i l)
-                                    (if (= i 0) l (loop (- i 1) (cons i l))))))
+                                    (if (<change> (= i 0) (not (= i 0)))
+                                       l
+                                       (loop (- i 1) (cons i l))))))
                       (loop n ()))))
          (ok? (lambda (row dist placed)
                 (if (null? placed)
@@ -27,7 +29,5 @@
                          (try-it (cdr x) (cons (car x) y) z)))))
          (nqueens (lambda (n)
                     (try-it (one-to n) () ()))))
-   (<change>
-      (nqueens 8)
-      ())
+   (nqueens 8)
    #t)

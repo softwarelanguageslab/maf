@@ -1,31 +1,26 @@
 ; Changes:
-; * removed: 1
-; * added: 2
+; * removed: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
-; * calls to id fun: 2
+; * calls to id fun: 1
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
          (linebreak (lambda ()
                       (<change>
                          ()
-                         result)
+                         (cons 'linebreak result))
                       (set! result (cons 'linebreak result))))
          (output-n (lambda (n x)
                      (<change>
-                        ()
-                        (begin
-                           ((lambda (x) x) (output x))
-                           (output-n (- n 1) x)))
-                     (if (> n 0)
-                        (begin
-                           (output x)
-                           (<change>
-                              (output-n (- n 1) x)
-                              ((lambda (x) x) (output-n (- n 1) x))))
-                        #f)))
+                        (if (> n 0)
+                           (begin
+                              (output x)
+                              (output-n (- n 1) x))
+                           #f)
+                        ((lambda (x) x) (if (> n 0) (begin (output x) (output-n (- n 1) x)) #f)))))
          (parasol (lambda (n)
                     (letrec ((triangle (lambda (i)
                                          (if (< i n)
@@ -36,12 +31,10 @@
                                                (triangle (+ i 1)))
                                             #f)))
                              (stick (lambda (i)
-                                      (if (< i 3)
+                                      (if (<change> (< i 3) (not (< i 3)))
                                          (begin
                                             (output-n (- n 1) " ")
-                                            (<change>
-                                               (output "*")
-                                               ())
+                                            (output "*")
                                             (linebreak)
                                             (stick (+ i 1)))
                                          #f))))

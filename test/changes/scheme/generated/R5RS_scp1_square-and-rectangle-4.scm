@@ -1,9 +1,9 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 1
+; * negated predicates: 1
+; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((maak-rechthoek (lambda (l b)
                            (letrec ((oppervlakte (lambda ()
@@ -20,21 +20,14 @@
                                    (schaal! (lambda (n)
                                               (set! zijde (* n zijde))))
                                    (dispatch (lambda (m)
-                                               (<change>
-                                                  ()
-                                                  (display rechthoek))
                                                (if (eq? m 'oppervlakte)
                                                   (rechthoek 'oppervlakte)
                                                   (if (eq? m 'omtrek)
-                                                     (<change>
-                                                        (rechthoek 'omtrek)
-                                                        (if (eq? m 'schaal!) schaal! #f))
-                                                     (<change>
-                                                        (if (eq? m 'schaal!) schaal! #f)
-                                                        (rechthoek 'omtrek)))))))
+                                                     (rechthoek 'omtrek)
+                                                     (if (eq? m 'schaal!) schaal! #f))))))
                              dispatch)))
          (test (maak-vierkant 5)))
-   (if (= (test 'oppervlakte) 25)
+   (if (<change> (= (test 'oppervlakte) 25) (not (= (test 'oppervlakte) 25)))
       (if (= (test 'omtrek) 20)
          (= (begin ((test 'schaal!) 2) (test 'oppervlakte)) 25)
          #f)

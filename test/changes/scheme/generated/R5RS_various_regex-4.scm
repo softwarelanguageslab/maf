@@ -2,9 +2,9 @@
 ; * removed: 0
 ; * added: 1
 ; * swaps: 0
-; * negated predicates: 2
-; * swapped branches: 5
-; * calls to id fun: 1
+; * negated predicates: 1
+; * swapped branches: 1
+; * calls to id fun: 0
 (letrec ((debug-trace (lambda ()
                         'do-nothing))
          (regex-NULL #f)
@@ -14,36 +14,20 @@
          (regex-seq? (lambda (re)
                        (if (pair? re) (eq? (car re) 'seq) #f)))
          (regex-rep? (lambda (re)
-                       (if (<change> (pair? re) (not (pair? re)))
-                          (eq? (car re) 'rep)
-                          #f)))
+                       (if (pair? re) (eq? (car re) 'rep) #f)))
          (regex-null? (lambda (re)
                         (eq? re #f)))
          (regex-empty? (lambda (re)
                          (eq? re #t)))
          (regex-atom? (lambda (re)
                         (let ((__or_res (char? re)))
-                           (<change>
-                              (if __or_res __or_res (symbol? re))
-                              ((lambda (x) x) (if __or_res __or_res (symbol? re)))))))
+                           (if __or_res __or_res (symbol? re)))))
          (match-seq (lambda (re f)
-                      (if (regex-seq? re)
-                         (<change>
-                            (f (cadr re) (caddr re))
-                            #f)
-                         (<change>
-                            #f
-                            (f (cadr re) (caddr re))))))
+                      (if (regex-seq? re) (f (cadr re) (caddr re)) #f)))
          (match-alt (lambda (re f)
                       (if (regex-alt? re) (f (cadr re) (caddr re)) #f)))
          (match-rep (lambda (re f)
-                      (if (regex-rep? re)
-                         (<change>
-                            (f (cadr re))
-                            #f)
-                         (<change>
-                            #f
-                            (f (cadr re))))))
+                      (if (regex-rep? re) (f (cadr re)) #f)))
          (seq (lambda (pat1 pat2)
                 (if (regex-null? pat1)
                    regex-NULL
@@ -58,12 +42,8 @@
                 (if (regex-null? pat1)
                    pat2
                    (if (regex-null? pat2)
-                      (<change>
-                         pat1
-                         (cons 'alt (cons pat1 (cons pat2 ()))))
-                      (<change>
-                         (cons 'alt (cons pat1 (cons pat2 ())))
-                         pat1)))))
+                      pat1
+                      (cons 'alt (cons pat1 (cons pat2 ())))))))
          (rep (lambda (pat)
                 (if (regex-null? pat)
                    regex-BLANK
@@ -77,14 +57,15 @@
                               (if (regex-null? re)
                                  #f
                                  (if (regex-atom? re)
+                                    #f
                                     (let ((__cond-empty-body (match-seq re (lambda (pat1 pat2) (seq (regex-empty pat1) (regex-empty pat2))))))
-                                       (if (not __cond-empty-body)
+                                       (if __cond-empty-body
                                           __cond-empty-body
                                           (let ((__cond-empty-body (match-alt re (lambda (pat1 pat2) (alt (regex-empty pat1) (regex-empty pat2))))))
+                                             (display __cond-empty-body)
                                              (if __cond-empty-body
                                                 __cond-empty-body
-                                                (if (regex-rep? re) #t #f)))))
-                                    #f)))
+                                                (if (regex-rep? re) #t #f))))))))
                            (<change>
                               (if (regex-null? re)
                                  #f
@@ -99,9 +80,6 @@
                                                 (if (regex-rep? re) #t #f)))))))
                               #t))))
          (regex-derivative (lambda (re c)
-                             (<change>
-                                ()
-                                __cond-empty-body)
                              (debug-trace)
                              (if (regex-empty? re)
                                 regex-NULL
@@ -126,7 +104,7 @@
                                                            regex-NULL))))))))))))
          (d/dc regex-derivative)
          (regex-match (lambda (pattern data)
-                        (if (null? data)
+                        (if (<change> (null? data) (not (null? data)))
                            (regex-empty? (regex-empty pattern))
                            (regex-match (d/dc pattern (car data)) (cdr data)))))
          (check-expect (lambda (check expect)

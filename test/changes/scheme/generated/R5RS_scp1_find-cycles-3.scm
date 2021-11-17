@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -9,30 +9,29 @@
                  (cons last (cons 'b last))))
          (ret7 (let* ((last (cons 'c ()))
                      (middle (cons last last)))
-                 (<change>
-                    (cons middle middle)
-                    ((lambda (x) x) (cons middle middle)))))
+                 (cons middle middle)))
          (retno (let* ((last (cons 'c ()))
                       (lst (cons 'a (cons 'b last))))
-                  (<change>
-                     ()
-                     lst)
                   (set-cdr! last lst)
                   lst))
          (cycles? (lambda (lst)
-                    (<change>
-                       ()
-                       null?)
                     (letrec ((find-cycles? (lambda (current path)
-                                             (if (null? current)
-                                                #f
-                                                (if (memq current path)
-                                                   #t
-                                                   (find-cycles? (cdr current) (cons current path)))))))
-                       (<change>
-                          ()
-                          find-cycles?)
+                                             (<change>
+                                                (if (null? current)
+                                                   #f
+                                                   (if (memq current path)
+                                                      #t
+                                                      (find-cycles? (cdr current) (cons current path))))
+                                                ((lambda (x) x)
+                                                   (if (null? current)
+                                                      #f
+                                                      (if (memq current path)
+                                                         #t
+                                                         (find-cycles? (cdr current) (cons current path)))))))))
                        (find-cycles? lst ())))))
+   (<change>
+      ()
+      cons)
    (if (not (cycles? ()))
       (if (not (cycles? (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 ())))))
          (if (not (cycles? ret4))

@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 2
-; * swaps: 1
-; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 0
+; * removed: 2
+; * added: 1
+; * swaps: 0
+; * negated predicates: 0
+; * swapped branches: 2
+; * calls to id fun: 1
 (letrec ((result ())
          (display2 (lambda (i)
                      (set! result (cons i result))))
@@ -67,43 +67,53 @@
                       (if (> n 0)
                          (begin
                             (display2 d)
-                            (display-n (- n 1) d))
+                            (<change>
+                               (display-n (- n 1) d)
+                               ((lambda (x) x) (display-n (- n 1) d))))
                          #f)))
          (print-lijn (lambda (aantalblanco tekst)
-                       (display-n aantalblanco " ")
+                       (<change>
+                          (display-n aantalblanco " ")
+                          ())
                        (display2 tekst)
                        (newline2)))
          (label (lambda (organigram)
-                  (<change>
-                     ()
-                     car)
                   (car organigram)))
          (takken (lambda (organigram)
                    (cdr organigram)))
          (organigram-member-in (lambda (een-label organigrammen)
                                  (if (null? organigrammen)
-                                    #f
-                                    (let ((__or_res (organigram-member een-label (car organigrammen))))
-                                       (if __or_res
-                                          __or_res
-                                          (organigram-member-in een-label (cdr organigrammen)))))))
+                                    (<change>
+                                       #f
+                                       (let ((__or_res (organigram-member een-label (car organigrammen))))
+                                          (if __or_res
+                                             __or_res
+                                             (organigram-member-in een-label (cdr organigrammen)))))
+                                    (<change>
+                                       (let ((__or_res (organigram-member een-label (car organigrammen))))
+                                          (if __or_res
+                                             __or_res
+                                             (organigram-member-in een-label (cdr organigrammen))))
+                                       #f))))
          (organigram-member (lambda (een-label organigram)
-                              (if (<change> (eq? een-label (label organigram)) (not (eq? een-label (label organigram))))
-                                 organigram
-                                 (organigram-member-in een-label (takken organigram)))))
+                              (if (eq? een-label (label organigram))
+                                 (<change>
+                                    organigram
+                                    (organigram-member-in een-label (takken organigram)))
+                                 (<change>
+                                    (organigram-member-in een-label (takken organigram))
+                                    organigram))))
          (print (lambda (organigram)
                   (letrec ((print (lambda (diepte organigram)
                                     (<change>
                                        (print-lijn diepte (label organigram))
-                                       (for-each (lambda (organigram) (print (+ diepte 1) organigram)) (takken organigram)))
-                                    (<change>
-                                       (for-each (lambda (organigram) (print (+ diepte 1) organigram)) (takken organigram))
-                                       (print-lijn diepte (label organigram))))))
+                                       ())
+                                    (for-each (lambda (organigram) (print (+ diepte 1) organigram)) (takken organigram)))))
+                     (<change>
+                        ()
+                        (display print))
                      (print 0 organigram))))
          (print-vanaf (lambda (organigram label)
-                        (<change>
-                           ()
-                           organigram-member)
                         (let ((res (organigram-member label organigram)))
                            (if res (print res) #f)))))
    (print-vanaf VUBOrganigram 'rechten)
@@ -115,9 +125,7 @@
                                                      (for-each (lambda (organigram) (print-tot organigram (+ niveau 1) max-niveau)) (takken organigram)))
                                                   #f))))
                             (print-tot organigram 0 niveau)))))
-      (<change>
-         (print-tot VUBOrganigram 2)
-         ())
+      (print-tot VUBOrganigram 2)
       (equal?
          result
          (__toplevel_cons

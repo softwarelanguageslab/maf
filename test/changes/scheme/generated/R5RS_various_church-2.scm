@@ -10,16 +10,14 @@
                     (lambda (x)
                        ((n1 f) ((n2 f) x))))))
          (mult (lambda (n1 n2)
-                 (lambda (f)
-                    (n2 (n1 f)))))
+                 (<change>
+                    (lambda (f)
+                       (n2 (n1 f)))
+                    ((lambda (x) x) (lambda (f) (n2 (n1 f)))))))
          (pred (lambda (n)
                  (lambda (f)
-                    (<change>
-                       (lambda (x)
-                          (((n (lambda (g) (lambda (h) (h (g f))))) (lambda (ignored) x)) (lambda (id) id)))
-                       ((lambda (x) x)
-                          (lambda (x)
-                             (((n (lambda (g) (lambda (h) (h (g f))))) (lambda (ignored) x)) (lambda (id) id))))))))
+                    (lambda (x)
+                       (((n (lambda (g) (lambda (h) (h (g f))))) (lambda (ignored) x)) (lambda (id) id))))))
          (sub (lambda (n1 n2)
                 ((n2 pred) n1)))
          (church0? (lambda (n)
@@ -34,9 +32,6 @@
                     (lambda (x)
                        x)))
          (church1 (lambda (f)
-                    (<change>
-                       ()
-                       (display x))
                     (lambda (x)
                        (f x))))
          (church2 (lambda (f)
@@ -45,6 +40,9 @@
          (church3 (lambda (f)
                     (lambda (x)
                        (f (f (f x)))))))
+   (<change>
+      ()
+      church=?)
    (church=?
       (mult church2 (plus church1 church3))
       (plus (mult church2 church1) (mult church2 church3))))

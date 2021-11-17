@@ -13,12 +13,8 @@
          (print-abc (lambda (a b c)
                       (output a)
                       (output " ")
-                      (<change>
-                         (output b)
-                         (output " "))
-                      (<change>
-                         (output " ")
-                         (output b))
+                      (output b)
+                      (output " ")
                       (output c)
                       (linebreak)))
          (foo (lambda (a b c)
@@ -34,59 +30,117 @@
                          (c a))
                       (print-abc a b c)))
                 (print-abc a b c))))
-   (foo 1 2 3)
-   (equal?
-      result
-      (__toplevel_cons
-         'linebreak
+   (<change>
+      (foo 1 2 3)
+      (equal?
+         result
          (__toplevel_cons
-            3
+            'linebreak
             (__toplevel_cons
-               " "
+               3
                (__toplevel_cons
-                  2
+                  " "
                   (__toplevel_cons
-                     " "
+                     2
                      (__toplevel_cons
-                        1
+                        " "
                         (__toplevel_cons
-                           'linebreak
+                           1
                            (__toplevel_cons
-                              4
+                              'linebreak
                               (__toplevel_cons
-                                 " "
+                                 4
                                  (__toplevel_cons
-                                    3
+                                    " "
                                     (__toplevel_cons
-                                       " "
+                                       3
                                        (__toplevel_cons
-                                          3
+                                          " "
                                           (__toplevel_cons
-                                             'linebreak
+                                             3
                                              (__toplevel_cons
-                                                4
+                                                'linebreak
                                                 (__toplevel_cons
-                                                   " "
+                                                   4
                                                    (__toplevel_cons
-                                                      6
+                                                      " "
                                                       (__toplevel_cons
-                                                         " "
+                                                         6
                                                          (__toplevel_cons
-                                                            4
+                                                            " "
                                                             (__toplevel_cons
-                                                               'linebreak
+                                                               4
                                                                (__toplevel_cons
-                                                                  5
+                                                                  'linebreak
                                                                   (__toplevel_cons
-                                                                     " "
+                                                                     5
                                                                      (__toplevel_cons
-                                                                        3
+                                                                        " "
                                                                         (__toplevel_cons
-                                                                           " "
+                                                                           3
                                                                            (__toplevel_cons
-                                                                              4
+                                                                              " "
                                                                               (__toplevel_cons
-                                                                                 'linebreak
+                                                                                 4
                                                                                  (__toplevel_cons
-                                                                                    3
-                                                                                    (__toplevel_cons " " (__toplevel_cons 2 (__toplevel_cons " " (__toplevel_cons 1 ()))))))))))))))))))))))))))))))))
+                                                                                    'linebreak
+                                                                                    (__toplevel_cons
+                                                                                       3
+                                                                                       (__toplevel_cons " " (__toplevel_cons 2 (__toplevel_cons " " (__toplevel_cons 1 ()))))))))))))))))))))))))))))))))
+   (<change>
+      (equal?
+         result
+         (__toplevel_cons
+            'linebreak
+            (__toplevel_cons
+               3
+               (__toplevel_cons
+                  " "
+                  (__toplevel_cons
+                     2
+                     (__toplevel_cons
+                        " "
+                        (__toplevel_cons
+                           1
+                           (__toplevel_cons
+                              'linebreak
+                              (__toplevel_cons
+                                 4
+                                 (__toplevel_cons
+                                    " "
+                                    (__toplevel_cons
+                                       3
+                                       (__toplevel_cons
+                                          " "
+                                          (__toplevel_cons
+                                             3
+                                             (__toplevel_cons
+                                                'linebreak
+                                                (__toplevel_cons
+                                                   4
+                                                   (__toplevel_cons
+                                                      " "
+                                                      (__toplevel_cons
+                                                         6
+                                                         (__toplevel_cons
+                                                            " "
+                                                            (__toplevel_cons
+                                                               4
+                                                               (__toplevel_cons
+                                                                  'linebreak
+                                                                  (__toplevel_cons
+                                                                     5
+                                                                     (__toplevel_cons
+                                                                        " "
+                                                                        (__toplevel_cons
+                                                                           3
+                                                                           (__toplevel_cons
+                                                                              " "
+                                                                              (__toplevel_cons
+                                                                                 4
+                                                                                 (__toplevel_cons
+                                                                                    'linebreak
+                                                                                    (__toplevel_cons
+                                                                                       3
+                                                                                       (__toplevel_cons " " (__toplevel_cons 2 (__toplevel_cons " " (__toplevel_cons 1 ())))))))))))))))))))))))))))))))
+      (foo 1 2 3)))
