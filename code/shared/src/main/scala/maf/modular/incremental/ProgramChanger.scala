@@ -184,9 +184,7 @@ object ProgramChanger:
             true
         catch
             case e: TimeoutException => true
-            case e =>
-              e.printStackTrace()
-              false
+            case _                   => false
 
     var stats: Table[Int] = Table.empty
 
@@ -227,7 +225,7 @@ object ProgramChanger:
         def outputFile(in: String, n: Int = 0) = "test/changes/scheme/generated/" ++ in.drop(5).dropRight(4).replace("/", "_").nn ++ s"-$n.scm"
         val amountToGenerate = 5
         println(s"Files to process: ${inputFiles.length}")
-        val w = Writer.open("test/changes/scheme/generated/info.txt")
+        val fail = Writer.open("test/changes/scheme/generated/failed.txt")
         for inputFile <- inputFiles do
             println(inputFile) // When an error is thrown, at least we will see which file caused problems.
             var times = amountToGenerate
@@ -240,9 +238,10 @@ object ProgramChanger:
                     programs = newProgram :: programs
                 }
             if times > 0 then
-                Writer.writeln(w, s"Could not generate sufficient programs for $inputFile (${amountToGenerate - times} of $amountToGenerate).")
-        Writer.writeln(w, "")
-        Writer.write(w, stats.toCSVString())
+                Writer.writeln(fail, s"Could not generate sufficient programs for $inputFile (${amountToGenerate - times} of $amountToGenerate).")
+        Writer.close(fail)
+        val w = Writer.open("test/changes/scheme/generated/info.csv")
+        Writer.write(w, stats.toCSVString(rowname = "benchmark"))
         Writer.close(w)
         println(s"Finished processing.")
 
