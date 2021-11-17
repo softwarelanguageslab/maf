@@ -86,7 +86,6 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
           for dep <- cachedReadDeps(cmp) do deregister(cmp, dep) // Remove all dependencies related to this component.
           visited = visited - cmp // Remove the component from the visited set.
           // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
-          // This should improve both performance and precision.
           workList = workList - cmp
 
           // Delete the caches.
