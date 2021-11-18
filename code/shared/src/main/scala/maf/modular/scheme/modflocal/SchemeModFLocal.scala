@@ -59,7 +59,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, ctx: Ctx, sto: Sto) extends Component:
         def exp = SchemeBody(lam.body)
-        override def toString = s"${lam.lambdaName} [$ctx] [$sto]"
+        override def toString = s"${lam.lambdaName} [$ctx]"
 
     def initialComponent: Cmp = MainComponent
     def expr(cmp: Cmp): Exp = cmp.exp
@@ -136,6 +136,20 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
               val gcd = anl.DeltaGC(gcs).collect(d, lattice.refs(v) ++ d.updates)
               (v, sto.replay(gcs, gcd))
           }
+
+    def withRestrictedResult(blk: A[Val]): A[Val] =
+      (anl, env, sto, ctx) =>
+          blk(anl, env, sto, ctx).map { (v, d) =>
+            (v, anl.DeltaGC(sto).collect(d, lattice.refs(v) ++ d.updates))
+          }
+    
+    //override def eval(exp: Exp): A[Val] = 
+    //  withRestrictedResult(super.eval(exp))
+
+    //override protected def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
+    //  withRestrictedStore(ags.flatMap(lattice.refs).toSet) {
+    //    super.applyPrimitive(app, prm, ags)
+    //  }
 
     override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
