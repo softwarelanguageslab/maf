@@ -33,9 +33,9 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
     // The maximal number of warm-up runs.
-    val maxWarmupRuns = 5
+    val maxWarmupRuns = 3 //5
     // The number of actually measured runs.
-    val measuredRuns = 30
+    val measuredRuns = 15 //30
 
     val timeS: String = "ms" // Mean of measured times
     val stdS: String = "SD" // Standard deviation of mean
@@ -140,14 +140,14 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
             warmUp(config.toString,
                    timeout => {
                      val a = initAnalysis.deepCopy()
-                     a.configuration = config
+                     a.configuration = config.disableAsserts()
                      a.updateAnalysis(timeout)
                    }
             )
             runNTimes(config.toString,
                       () => {
                         val a = initAnalysis.deepCopy()
-                        a.configuration = config
+                        a.configuration = config.disableAsserts()
                         a
                       },
                       (timeout, analysis) => analysis.updateAnalysis(timeout)
@@ -163,7 +163,8 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
     def createOutput(): String =
         val cols = (List(initS, reanS) ++ configurations.map(_.toString)).flatMap(c => List(columnName(timeS, c), columnName(stdS, c)))
-        results.prettyString(columns = cols, rowName = "benchmark") ++ "\n\n" ++ results.toCSVString(columns = cols, rowName = "benchmark")
+        //results.prettyString(columns = cols, rowName = "benchmark") ++ "\n\n" ++
+        results.toCSVString(columns = cols, rowName = "benchmark")
 
 /* ************************** */
 /* ***** Instantiations ***** */
@@ -171,7 +172,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
 trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFPerformance extends IncrementalSchemePerformance:
