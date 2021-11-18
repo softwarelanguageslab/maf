@@ -21,28 +21,32 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
 
     // BOOKKEEPING: keep track of all components per (lam, ctx)
     var cmps: Map[(Lam, Ctx), Set[Cll]] = Map.empty
-    def ratio: Double = (visited.size - 1) / Math.max(1, cmps.size)
+    val cut = Math.max(k * c, 1).toInt
 
     // THE SHADOW STORE (& DEPS)
     var shadowStore: Map[Adr, Val] = Map.empty
     var shadowDeps: Map[Adr, Set[Cmp]] = Map.empty
 
+    var toAdapt: Set[(Lam, Ctx)] = Set.empty
     override def step(t: Timeout.T) =
         super.step(t)
-        if ratio > k then
-            val oldVisited = visited.size
-            val oldRatio = ratio
-            debug("ADAPTING")
-            adaptAnalysis()
-            debug(s"--> ${widened.size} addresses have been widened in total.")
-            val newVisited = visited.size
-            val newRatio = ratio
-            debug(s"Ratio: $oldRatio -> $newRatio ($oldVisited -> $newVisited)")
+        if toAdapt.nonEmpty then
+          val wid = toAdapt.flatMap { (lam, ctx) =>
+            val cps = cmps((lam, ctx))
+            val sts = cps.map(_.sto)
+            pickAddrs(sts, cut)
+          }
+          addWidened(wid)
+          debug(s"=> Widened ${wid.size} addresses (total: ${widened.size})")
+          toAdapt = Set.empty 
 
     override def spawn(cmp: Cmp) =
         if (!visited(cmp)) then
             val cll @ CallComponent(lam, _, ctx, sto) = cmp
-            cmps += (lam, ctx) -> (cmps.getOrElse((lam, ctx), Set.empty) + cll)
+            val cls = cmps.getOrElse((lam, ctx), Set.empty) + cll
+            cmps += (lam, ctx) -> cls
+            if cls.size > k then
+              toAdapt += (lam, ctx)
         super.spawn(cmp)
 
     private def adaptAnalysis() =
