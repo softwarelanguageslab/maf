@@ -4,15 +4,13 @@
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((zero (lambda (f x)
                  x))
          (inc (lambda (n)
                 (lambda (f x)
+                   (<change>
+                      ()
+                      n)
                    (f (n f x))))))
-   (<change>
-      ()
-      (display (inc (inc zero))))
-   (<change>
-      ((inc (inc zero)) (lambda (x) (+ x 1)) 0)
-      ((lambda (x) x) ((inc (inc zero)) (lambda (x) (+ x 1)) 0))))
+   ((inc (inc zero)) (lambda (x) (+ x 1)) 0))

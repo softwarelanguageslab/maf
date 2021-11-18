@@ -1,14 +1,14 @@
 ; Changes:
 ; * removed: 0
-; * added: 8
+; * added: 4
 ; * swaps: 0
-; * negated predicates: 4
-; * swapped branches: 2
-; * calls to id fun: 8
+; * negated predicates: 5
+; * swapped branches: 5
+; * calls to id fun: 9
 (letrec ((true #t)
          (false #f)
          (self-evaluating? (lambda (exp)
-                             (if (number? exp)
+                             (if (<change> (number? exp) (not (number? exp)))
                                 true
                                 (if (string? exp) true false))))
          (quoted? (lambda (exp)
@@ -17,9 +17,8 @@
                               (cadr exp)))
          (tagged-list? (lambda (exp tag)
                          (<change>
-                            ()
-                            false)
-                         (if (pair? exp) (eq? (car exp) tag) false)))
+                            (if (pair? exp) (eq? (car exp) tag) false)
+                            ((lambda (x) x) (if (pair? exp) (eq? (car exp) tag) false)))))
          (variable? (lambda (exp)
                       (symbol? exp)))
          (assignment? (lambda (exp)
@@ -37,29 +36,29 @@
                                 (caddr exp)
                                 (make-lambda (cdadr exp) (cddr exp)))))
          (lambda? (lambda (exp)
+                    (<change>
+                       ()
+                       exp)
                     (tagged-list? exp 'lambda)))
          (lambda-parameters (lambda (exp)
                               (cadr exp)))
          (lambda-body (lambda (exp)
-                        (cddr exp)))
+                        (<change>
+                           (cddr exp)
+                           ((lambda (x) x) (cddr exp)))))
          (make-lambda (lambda (parameters body)
                         (cons 'lambda (cons parameters body))))
          (if? (lambda (exp)
                 (tagged-list? exp 'if)))
          (if-predicate (lambda (exp)
-                         (<change>
-                            ()
-                            cadr)
                          (cadr exp)))
          (if-consequent (lambda (exp)
                           (<change>
-                             (caddr exp)
-                             ((lambda (x) x) (caddr exp)))))
+                             ()
+                             (display (caddr exp)))
+                          (caddr exp)))
          (if-alternative (lambda (exp)
-                           (<change>
-                              ()
-                              (display null?))
-                           (if (<change> (not (null? (cdddr exp))) (not (not (null? (cdddr exp)))))
+                           (if (not (null? (cdddr exp)))
                               (cadddr exp)
                               'false)))
          (begin? (lambda (exp)
@@ -73,18 +72,13 @@
          (rest-exps (lambda (seq)
                       (cdr seq)))
          (application? (lambda (exp)
-                         (<change>
-                            ()
-                            exp)
                          (pair? exp)))
          (operator (lambda (exp)
                      (car exp)))
          (operands (lambda (exp)
                      (cdr exp)))
          (no-operands? (lambda (ops)
-                         (<change>
-                            (null? ops)
-                            ((lambda (x) x) (null? ops)))))
+                         (null? ops)))
          (first-operand (lambda (ops)
                           (car ops)))
          (rest-operands (lambda (ops)
@@ -93,10 +87,16 @@
                     (cons 'if (cons predicate (cons consequent (cons alternative ()))))))
          (sequence->exp (lambda (seq)
                           (if (null? seq)
-                             seq
-                             (if (last-exp? seq)
-                                (first-exp seq)
-                                (make-begin seq)))))
+                             (<change>
+                                seq
+                                (if (not (last-exp? seq))
+                                   (first-exp seq)
+                                   (make-begin seq)))
+                             (<change>
+                                (if (last-exp? seq)
+                                   (first-exp seq)
+                                   (make-begin seq))
+                                seq))))
          (make-begin (lambda (seq)
                        (cons 'begin seq)))
          (cond? (lambda (exp)
@@ -104,21 +104,19 @@
          (cond-clauses (lambda (exp)
                          (cdr exp)))
          (cond-else-clause? (lambda (clause)
+                              (<change>
+                                 ()
+                                 (display cond-predicate))
                               (eq? (cond-predicate clause) 'else)))
          (cond-predicate (lambda (clause)
-                           (<change>
-                              (car clause)
-                              ((lambda (x) x) (car clause)))))
+                           (car clause)))
          (cond-actions (lambda (clause)
                          (cdr clause)))
          (cond->if (lambda (exp)
                      (expand-clauses (cond-clauses exp))))
          (expand-clauses (lambda (clauses)
                            (<change>
-                              ()
-                              (make-if (cond-predicate first) (sequence->exp (cond-actions first)) (expand-clauses rest)))
-                           (if (null? clauses)
-                              (<change>
+                              (if (null? clauses)
                                  'false
                                  (let ((first (car clauses))
                                        (rest (cdr clauses)))
@@ -127,15 +125,16 @@
                                           (sequence->exp (cond-actions first))
                                           (error "ELSE clause isn't last -- COND->IF" clauses))
                                        (make-if (cond-predicate first) (sequence->exp (cond-actions first)) (expand-clauses rest)))))
-                              (<change>
-                                 (let ((first (car clauses))
-                                       (rest (cdr clauses)))
-                                    (if (cond-else-clause? first)
-                                       (if (null? rest)
-                                          (sequence->exp (cond-actions first))
-                                          (error "ELSE clause isn't last -- COND->IF" clauses))
-                                       (make-if (cond-predicate first) (sequence->exp (cond-actions first)) (expand-clauses rest))))
-                                 'false))))
+                              ((lambda (x) x)
+                                 (if (null? clauses)
+                                    'false
+                                    (let ((first (car clauses))
+                                          (rest (cdr clauses)))
+                                       (if (cond-else-clause? first)
+                                          (if (null? rest)
+                                             (sequence->exp (cond-actions first))
+                                             (error "ELSE clause isn't last -- COND->IF" clauses))
+                                          (make-if (cond-predicate first) (sequence->exp (cond-actions first)) (expand-clauses rest)))))))))
          (compile (lambda (exp target linkage)
                     (if (self-evaluating? exp)
                        (compile-self-evaluating exp target linkage)
@@ -145,58 +144,49 @@
                              (compile-variable exp target linkage)
                              (if (assignment? exp)
                                 (compile-assignment exp target linkage)
-                                (if (definition? exp)
+                                (if (<change> (definition? exp) (not (definition? exp)))
                                    (compile-definition exp target linkage)
                                    (if (if? exp)
                                       (compile-if exp target linkage)
                                       (if (lambda? exp)
-                                         (compile-lambda exp target linkage)
-                                         (if (begin? exp)
-                                            (compile-sequence (begin-actions exp) target linkage)
-                                            (if (cond? exp)
-                                               (compile (cond->if exp) target linkage)
-                                               (if (application? exp)
-                                                  (compile-application exp target linkage)
-                                                  (error "Unknown expression type -- COMPILE" exp)))))))))))))
+                                         (<change>
+                                            (compile-lambda exp target linkage)
+                                            (if (begin? exp)
+                                               (compile-sequence (begin-actions exp) target linkage)
+                                               (if (not (cond? exp))
+                                                  (compile (cond->if exp) target linkage)
+                                                  (if (application? exp)
+                                                     (compile-application exp target linkage)
+                                                     (error "Unknown expression type -- COMPILE" exp)))))
+                                         (<change>
+                                            (if (begin? exp)
+                                               (compile-sequence (begin-actions exp) target linkage)
+                                               (if (cond? exp)
+                                                  (compile (cond->if exp) target linkage)
+                                                  (if (application? exp)
+                                                     (compile-application exp target linkage)
+                                                     (error "Unknown expression type -- COMPILE" exp))))
+                                            (compile-lambda exp target linkage)))))))))))
          (make-instruction-sequence (lambda (needs modifies statements)
-                                      (<change>
-                                         (cons needs (cons modifies (cons statements ())))
-                                         ((lambda (x) x) (cons needs (cons modifies (cons statements ())))))))
+                                      (cons needs (cons modifies (cons statements ())))))
          (empty-instruction-sequence (lambda ()
                                        (make-instruction-sequence () () ())))
          (compile-linkage (lambda (linkage)
-                            (<change>
-                               (if (eq? linkage 'return)
+                            (if (eq? linkage 'return)
+                               (make-instruction-sequence
+                                  (__toplevel_cons 'continue ())
+                                  ()
+                                  (__toplevel_cons
+                                     (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
+                                     ()))
+                               (if (eq? linkage 'next)
+                                  (empty-instruction-sequence)
                                   (make-instruction-sequence
-                                     (__toplevel_cons 'continue ())
+                                     ()
                                      ()
                                      (__toplevel_cons
-                                        (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
-                                        ()))
-                                  (if (eq? linkage 'next)
-                                     (empty-instruction-sequence)
-                                     (make-instruction-sequence
-                                        ()
-                                        ()
-                                        (__toplevel_cons
-                                           (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons linkage ())) ()))
-                                           ()))))
-                               ((lambda (x) x)
-                                  (if (eq? linkage 'return)
-                                     (make-instruction-sequence
-                                        (__toplevel_cons 'continue ())
-                                        ()
-                                        (__toplevel_cons
-                                           (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
-                                           ()))
-                                     (if (eq? linkage 'next)
-                                        (empty-instruction-sequence)
-                                        (make-instruction-sequence
-                                           ()
-                                           ()
-                                           (__toplevel_cons
-                                              (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons linkage ())) ()))
-                                              ()))))))))
+                                        (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons linkage ())) ()))
+                                        ()))))))
          (end-with-linkage (lambda (linkage instruction-sequence)
                              (preserving (__toplevel_cons 'continue ()) instruction-sequence (compile-linkage linkage))))
          (compile-self-evaluating (lambda (exp target linkage)
@@ -294,10 +284,9 @@
                                                  ()))))))))
          (label-counter 0)
          (new-label-number (lambda ()
-                             (set! label-counter (+ 1 label-counter))
                              (<change>
-                                ()
-                                label-counter)
+                                (set! label-counter (+ 1 label-counter))
+                                ((lambda (x) x) (set! label-counter (+ 1 label-counter))))
                              label-counter))
          (make-label (lambda (name)
                        (string->symbol (string-append (symbol->string name) (number->string (new-label-number))))))
@@ -305,10 +294,10 @@
                        (let ((t-branch (make-label 'true-branch))
                              (f-branch (make-label 'false-branch))
                              (after-if (make-label 'after-if)))
+                          (<change>
+                             ()
+                             t-branch)
                           (let ((consequent-linkage (if (eq? linkage 'next) after-if linkage)))
-                             (<change>
-                                ()
-                                cons)
                              (let ((p-code (compile (if-predicate exp) 'val 'next))
                                    (c-code (compile (if-consequent exp) target consequent-linkage))
                                    (a-code (compile (if-alternative exp) target linkage)))
@@ -344,57 +333,30 @@
                                    (compile (first-exp seq) target 'next)
                                    (compile-sequence (rest-exps seq) target linkage)))))
          (compile-lambda (lambda (exp target linkage)
-                           (<change>
-                              ()
-                              ())
                            (let ((proc-entry (make-label 'entry))
                                  (after-lambda (make-label 'after-lambda)))
-                              (<change>
-                                 (let ((lambda-linkage (if (eq? linkage 'next) after-lambda linkage)))
-                                    (append-instruction-sequences
-                                       (cons
-                                          (tack-on-instruction-sequence
-                                             (end-with-linkage
-                                                lambda-linkage
-                                                (make-instruction-sequence
-                                                   (__toplevel_cons 'env ())
-                                                   (cons target ())
+                              (let ((lambda-linkage (if (eq? linkage 'next) after-lambda linkage)))
+                                 (append-instruction-sequences
+                                    (cons
+                                       (tack-on-instruction-sequence
+                                          (end-with-linkage
+                                             lambda-linkage
+                                             (make-instruction-sequence
+                                                (__toplevel_cons 'env ())
+                                                (cons target ())
+                                                (__toplevel_cons
                                                    (__toplevel_cons
+                                                      'assign
                                                       (__toplevel_cons
-                                                         'assign
+                                                         target
                                                          (__toplevel_cons
-                                                            target
+                                                            (__toplevel_cons 'op (__toplevel_cons 'make-compiled-procedure ()))
                                                             (__toplevel_cons
-                                                               (__toplevel_cons 'op (__toplevel_cons 'make-compiled-procedure ()))
-                                                               (__toplevel_cons
-                                                                  (__toplevel_cons 'label (__toplevel_cons proc-entry ()))
-                                                                  (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'env ())) ())))))
-                                                      ())))
-                                             (compile-lambda-body exp proc-entry))
-                                          (cons after-lambda ()))))
-                                 ((lambda (x) x)
-                                    (let ((lambda-linkage (if (eq? linkage 'next) after-lambda linkage)))
-                                       (append-instruction-sequences
-                                          (cons
-                                             (tack-on-instruction-sequence
-                                                (end-with-linkage
-                                                   lambda-linkage
-                                                   (make-instruction-sequence
-                                                      (__toplevel_cons 'env ())
-                                                      (cons target ())
-                                                      (__toplevel_cons
-                                                         (__toplevel_cons
-                                                            'assign
-                                                            (__toplevel_cons
-                                                               target
-                                                               (__toplevel_cons
-                                                                  (__toplevel_cons 'op (__toplevel_cons 'make-compiled-procedure ()))
-                                                                  (__toplevel_cons
-                                                                     (__toplevel_cons 'label (__toplevel_cons proc-entry ()))
-                                                                     (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'env ())) ())))))
-                                                         ())))
-                                                (compile-lambda-body exp proc-entry))
-                                             (cons after-lambda ())))))))))
+                                                               (__toplevel_cons 'label (__toplevel_cons proc-entry ()))
+                                                               (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'env ())) ())))))
+                                                   ())))
+                                          (compile-lambda-body exp proc-entry))
+                                       (cons after-lambda ())))))))
          (compile-lambda-body (lambda (exp proc-entry)
                                 (let ((formals (lambda-parameters exp)))
                                    (append-instruction-sequences
@@ -427,19 +389,17 @@
                                                      ()))))
                                          (cons (compile-sequence (lambda-body exp) 'val 'return) ()))))))
          (compile-application (lambda (exp target linkage)
-                                (<change>
-                                   (let ((proc-code (compile (operator exp) 'proc 'next))
-                                         (operand-codes (map (lambda (operand) (compile operand 'val 'next)) (operands exp))))
+                                (let ((proc-code (compile (operator exp) 'proc 'next))
+                                      (operand-codes (map (lambda (operand) (compile operand 'val 'next)) (operands exp))))
+                                   (<change>
                                       (preserving
                                          (__toplevel_cons 'env (__toplevel_cons 'continue ()))
                                          proc-code
                                          (preserving
                                             (__toplevel_cons 'proc (__toplevel_cons 'continue ()))
                                             (construct-arglist operand-codes)
-                                            (compile-procedure-call target linkage))))
-                                   ((lambda (x) x)
-                                      (let ((proc-code (compile (operator exp) 'proc 'next))
-                                            (operand-codes (map (lambda (operand) (compile operand 'val 'next)) (operands exp))))
+                                            (compile-procedure-call target linkage)))
+                                      ((lambda (x) x)
                                          (preserving
                                             (__toplevel_cons 'env (__toplevel_cons 'continue ()))
                                             proc-code
@@ -450,37 +410,70 @@
          (construct-arglist (lambda (operand-codes)
                               (let ((operand-codes (reverse operand-codes)))
                                  (if (null? operand-codes)
-                                    (make-instruction-sequence
-                                       ()
-                                       (__toplevel_cons 'argl ())
-                                       (__toplevel_cons
+                                    (<change>
+                                       (make-instruction-sequence
+                                          ()
+                                          (__toplevel_cons 'argl ())
                                           (__toplevel_cons
-                                             'assign
-                                             (__toplevel_cons 'argl (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons () ())) ())))
-                                          ()))
-                                    (let ((code-to-get-last-arg (append-instruction-sequences
-                                                                  (cons
-                                                                     (car operand-codes)
+                                             (__toplevel_cons
+                                                'assign
+                                                (__toplevel_cons 'argl (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons () ())) ())))
+                                             ()))
+                                       (let ((code-to-get-last-arg (append-instruction-sequences
                                                                      (cons
-                                                                        (make-instruction-sequence
-                                                                           (__toplevel_cons 'val ())
-                                                                           (__toplevel_cons 'argl ())
-                                                                           (__toplevel_cons
+                                                                        (car operand-codes)
+                                                                        (cons
+                                                                           (make-instruction-sequence
+                                                                              (__toplevel_cons 'val ())
+                                                                              (__toplevel_cons 'argl ())
                                                                               (__toplevel_cons
-                                                                                 'assign
                                                                                  (__toplevel_cons
-                                                                                    'argl
+                                                                                    'assign
                                                                                     (__toplevel_cons
-                                                                                       (__toplevel_cons 'op (__toplevel_cons 'list ()))
-                                                                                       (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))))
-                                                                              ()))
-                                                                        ())))))
-                                       (if (null? (cdr operand-codes))
-                                          code-to-get-last-arg
-                                          (preserving
-                                             (__toplevel_cons 'env ())
+                                                                                       'argl
+                                                                                       (__toplevel_cons
+                                                                                          (__toplevel_cons 'op (__toplevel_cons 'list ()))
+                                                                                          (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))))
+                                                                                 ()))
+                                                                           ())))))
+                                          (if (null? (cdr operand-codes))
                                              code-to-get-last-arg
-                                             (code-to-get-rest-args (cdr operand-codes)))))))))
+                                             (preserving
+                                                (__toplevel_cons 'env ())
+                                                code-to-get-last-arg
+                                                (code-to-get-rest-args (cdr operand-codes))))))
+                                    (<change>
+                                       (let ((code-to-get-last-arg (append-instruction-sequences
+                                                                     (cons
+                                                                        (car operand-codes)
+                                                                        (cons
+                                                                           (make-instruction-sequence
+                                                                              (__toplevel_cons 'val ())
+                                                                              (__toplevel_cons 'argl ())
+                                                                              (__toplevel_cons
+                                                                                 (__toplevel_cons
+                                                                                    'assign
+                                                                                    (__toplevel_cons
+                                                                                       'argl
+                                                                                       (__toplevel_cons
+                                                                                          (__toplevel_cons 'op (__toplevel_cons 'list ()))
+                                                                                          (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))))
+                                                                                 ()))
+                                                                           ())))))
+                                          (if (null? (cdr operand-codes))
+                                             code-to-get-last-arg
+                                             (preserving
+                                                (__toplevel_cons 'env ())
+                                                code-to-get-last-arg
+                                                (code-to-get-rest-args (cdr operand-codes)))))
+                                       (make-instruction-sequence
+                                          ()
+                                          (__toplevel_cons 'argl ())
+                                          (__toplevel_cons
+                                             (__toplevel_cons
+                                                'assign
+                                                (__toplevel_cons 'argl (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons () ())) ())))
+                                             ())))))))
          (code-to-get-rest-args (lambda (operand-codes)
                                   (let ((code-for-next-arg (preserving
                                                              (__toplevel_cons 'argl ())
@@ -506,76 +499,124 @@
                                            code-for-next-arg
                                            (code-to-get-rest-args (cdr operand-codes)))))))
          (compile-procedure-call (lambda (target linkage)
-                                   (let ((primitive-branch (make-label 'primitive-branch))
-                                         (compiled-branch (make-label 'compiled-branch))
-                                         (after-call (make-label 'after-call)))
-                                      (let ((compiled-linkage (if (eq? linkage 'next) after-call linkage)))
-                                         (append-instruction-sequences
-                                            (cons
-                                               (make-instruction-sequence
-                                                  (__toplevel_cons 'proc ())
-                                                  ()
-                                                  (__toplevel_cons
-                                                     (__toplevel_cons
-                                                        'test
-                                                        (__toplevel_cons
-                                                           (__toplevel_cons 'op (__toplevel_cons 'primitive-procedure? ()))
-                                                           (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'proc ())) ())))
-                                                     (__toplevel_cons
-                                                        (__toplevel_cons
-                                                           'branch
-                                                           (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons primitive-branch ())) ()))
-                                                        ())))
+                                   (<change>
+                                      (let ((primitive-branch (make-label 'primitive-branch))
+                                            (compiled-branch (make-label 'compiled-branch))
+                                            (after-call (make-label 'after-call)))
+                                         (let ((compiled-linkage (if (eq? linkage 'next) after-call linkage)))
+                                            (append-instruction-sequences
                                                (cons
-                                                  (parallel-instruction-sequences
-                                                     (append-instruction-sequences
-                                                        (cons compiled-branch (cons (compile-proc-appl target compiled-linkage) ())))
-                                                     (append-instruction-sequences
-                                                        (cons
-                                                           primitive-branch
+                                                  (make-instruction-sequence
+                                                     (__toplevel_cons 'proc ())
+                                                     ()
+                                                     (__toplevel_cons
+                                                        (__toplevel_cons
+                                                           'test
+                                                           (__toplevel_cons
+                                                              (__toplevel_cons 'op (__toplevel_cons 'primitive-procedure? ()))
+                                                              (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'proc ())) ())))
+                                                        (__toplevel_cons
+                                                           (__toplevel_cons
+                                                              'branch
+                                                              (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons primitive-branch ())) ()))
+                                                           ())))
+                                                  (cons
+                                                     (parallel-instruction-sequences
+                                                        (append-instruction-sequences
+                                                           (cons compiled-branch (cons (compile-proc-appl target compiled-linkage) ())))
+                                                        (append-instruction-sequences
                                                            (cons
-                                                              (end-with-linkage
-                                                                 linkage
-                                                                 (make-instruction-sequence
-                                                                    (__toplevel_cons 'proc (__toplevel_cons 'argl ()))
-                                                                    (cons target ())
-                                                                    (__toplevel_cons
+                                                              primitive-branch
+                                                              (cons
+                                                                 (end-with-linkage
+                                                                    linkage
+                                                                    (make-instruction-sequence
+                                                                       (__toplevel_cons 'proc (__toplevel_cons 'argl ()))
+                                                                       (cons target ())
                                                                        (__toplevel_cons
-                                                                          'assign
                                                                           (__toplevel_cons
-                                                                             target
+                                                                             'assign
                                                                              (__toplevel_cons
-                                                                                (__toplevel_cons 'op (__toplevel_cons 'apply-primitive-procedure ()))
+                                                                                target
                                                                                 (__toplevel_cons
-                                                                                   (__toplevel_cons 'reg (__toplevel_cons 'proc ()))
-                                                                                   (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'argl ())) ())))))
-                                                                       ())))
-                                                              ()))))
-                                                  (cons after-call ()))))))))
+                                                                                   (__toplevel_cons 'op (__toplevel_cons 'apply-primitive-procedure ()))
+                                                                                   (__toplevel_cons
+                                                                                      (__toplevel_cons 'reg (__toplevel_cons 'proc ()))
+                                                                                      (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'argl ())) ())))))
+                                                                          ())))
+                                                                 ()))))
+                                                     (cons after-call ()))))))
+                                      ((lambda (x) x)
+                                         (let ((primitive-branch (make-label 'primitive-branch))
+                                               (compiled-branch (make-label 'compiled-branch))
+                                               (after-call (make-label 'after-call)))
+                                            (let ((compiled-linkage (if (eq? linkage 'next) after-call linkage)))
+                                               (append-instruction-sequences
+                                                  (cons
+                                                     (make-instruction-sequence
+                                                        (__toplevel_cons 'proc ())
+                                                        ()
+                                                        (__toplevel_cons
+                                                           (__toplevel_cons
+                                                              'test
+                                                              (__toplevel_cons
+                                                                 (__toplevel_cons 'op (__toplevel_cons 'primitive-procedure? ()))
+                                                                 (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'proc ())) ())))
+                                                           (__toplevel_cons
+                                                              (__toplevel_cons
+                                                                 'branch
+                                                                 (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons primitive-branch ())) ()))
+                                                              ())))
+                                                     (cons
+                                                        (parallel-instruction-sequences
+                                                           (append-instruction-sequences
+                                                              (cons compiled-branch (cons (compile-proc-appl target compiled-linkage) ())))
+                                                           (append-instruction-sequences
+                                                              (cons
+                                                                 primitive-branch
+                                                                 (cons
+                                                                    (end-with-linkage
+                                                                       linkage
+                                                                       (make-instruction-sequence
+                                                                          (__toplevel_cons 'proc (__toplevel_cons 'argl ()))
+                                                                          (cons target ())
+                                                                          (__toplevel_cons
+                                                                             (__toplevel_cons
+                                                                                'assign
+                                                                                (__toplevel_cons
+                                                                                   target
+                                                                                   (__toplevel_cons
+                                                                                      (__toplevel_cons 'op (__toplevel_cons 'apply-primitive-procedure ()))
+                                                                                      (__toplevel_cons
+                                                                                         (__toplevel_cons 'reg (__toplevel_cons 'proc ()))
+                                                                                         (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'argl ())) ())))))
+                                                                             ())))
+                                                                    ()))))
+                                                        (cons after-call ()))))))))))
          (compile-proc-appl (lambda (target linkage)
-                              (<change>
-                                 (if (if (eq? target 'val) (not (eq? linkage 'return)) #f)
-                                    (make-instruction-sequence
-                                       (__toplevel_cons 'proc ())
-                                       all-regs
+                              (if (if (eq? target 'val) (not (eq? linkage 'return)) #f)
+                                 (make-instruction-sequence
+                                    (__toplevel_cons 'proc ())
+                                    all-regs
+                                    (__toplevel_cons
+                                       (__toplevel_cons
+                                          'assign
+                                          (__toplevel_cons
+                                             'continue
+                                             (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons linkage ())) ())))
                                        (__toplevel_cons
                                           (__toplevel_cons
                                              'assign
                                              (__toplevel_cons
-                                                'continue
-                                                (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons linkage ())) ())))
-                                          (__toplevel_cons
-                                             (__toplevel_cons
-                                                'assign
+                                                'val
                                                 (__toplevel_cons
-                                                   'val
-                                                   (__toplevel_cons
-                                                      (__toplevel_cons 'op (__toplevel_cons 'compiled-procedure-entry ()))
-                                                      (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'proc ())) ()))))
-                                             (__toplevel_cons
-                                                (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))
-                                                ()))))
-                                    (if (if (not (eq? target 'val)) (not (eq? linkage 'return)) #f)
+                                                   (__toplevel_cons 'op (__toplevel_cons 'compiled-procedure-entry ()))
+                                                   (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'proc ())) ()))))
+                                          (__toplevel_cons
+                                             (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))
+                                             ()))))
+                                 (if (if (<change> (not (eq? target 'val)) (not (not (eq? target 'val)))) (not (eq? linkage 'return)) #f)
+                                    (<change>
                                        (let ((proc-return (make-label 'proc-return)))
                                           (make-instruction-sequence
                                              (__toplevel_cons 'proc ())
@@ -621,19 +662,13 @@
                                                    (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))
                                                    ())))
                                           (if (if (not (eq? target 'val)) (eq? linkage 'return) #f)
-                                             (error "return linkage, target not val -- COMPILE" target)
-                                             #f))))
-                                 ((lambda (x) x)
-                                    (if (if (eq? target 'val) (not (eq? linkage 'return)) #f)
-                                       (make-instruction-sequence
-                                          (__toplevel_cons 'proc ())
-                                          all-regs
-                                          (__toplevel_cons
-                                             (__toplevel_cons
-                                                'assign
-                                                (__toplevel_cons
-                                                   'continue
-                                                   (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons linkage ())) ())))
+                                             #f
+                                             (error "return linkage, target not val -- COMPILE" target))))
+                                    (<change>
+                                       (if (if (eq? target 'val) (eq? linkage 'return) #f)
+                                          (make-instruction-sequence
+                                             (__toplevel_cons 'proc (__toplevel_cons 'continue ()))
+                                             all-regs
                                              (__toplevel_cons
                                                 (__toplevel_cons
                                                    'assign
@@ -644,41 +679,20 @@
                                                          (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'proc ())) ()))))
                                                 (__toplevel_cons
                                                    (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))
-                                                   ()))))
-                                       (if (if (not (eq? target 'val)) (not (eq? linkage 'return)) #f)
-                                          (let ((proc-return (make-label 'proc-return)))
-                                             (make-instruction-sequence
-                                                (__toplevel_cons 'proc ())
-                                                all-regs
+                                                   ())))
+                                          (if (if (not (eq? target 'val)) (eq? linkage 'return) #f)
+                                             (error "return linkage, target not val -- COMPILE" target)
+                                             #f))
+                                       (let ((proc-return (make-label 'proc-return)))
+                                          (make-instruction-sequence
+                                             (__toplevel_cons 'proc ())
+                                             all-regs
+                                             (__toplevel_cons
                                                 (__toplevel_cons
+                                                   'assign
                                                    (__toplevel_cons
-                                                      'assign
-                                                      (__toplevel_cons
-                                                         'continue
-                                                         (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons proc-return ())) ())))
-                                                   (__toplevel_cons
-                                                      (__toplevel_cons
-                                                         'assign
-                                                         (__toplevel_cons
-                                                            'val
-                                                            (__toplevel_cons
-                                                               (__toplevel_cons 'op (__toplevel_cons 'compiled-procedure-entry ()))
-                                                               (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'proc ())) ()))))
-                                                      (__toplevel_cons
-                                                         (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))
-                                                         (__toplevel_cons
-                                                            proc-return
-                                                            (__toplevel_cons
-                                                               (__toplevel_cons
-                                                                  'assign
-                                                                  (__toplevel_cons target (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ())))
-                                                               (__toplevel_cons
-                                                                  (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons linkage ())) ()))
-                                                                  ()))))))))
-                                          (if (<change> (if (not (eq? target 'val)) (eq? linkage 'return) #f) (not (if (not (eq? target 'val)) (eq? linkage 'return) #f)))
-                                             (make-instruction-sequence
-                                                (__toplevel_cons 'proc (__toplevel_cons 'continue ()))
-                                                all-regs
+                                                      'continue
+                                                      (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons proc-return ())) ())))
                                                 (__toplevel_cons
                                                    (__toplevel_cons
                                                       'assign
@@ -689,10 +703,15 @@
                                                             (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'proc ())) ()))))
                                                    (__toplevel_cons
                                                       (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))
-                                                      ())))
-                                             (if (if (not (eq? target 'val)) (eq? linkage 'return) #f)
-                                                (error "return linkage, target not val -- COMPILE" target)
-                                                #f))))))))
+                                                      (__toplevel_cons
+                                                         proc-return
+                                                         (__toplevel_cons
+                                                            (__toplevel_cons
+                                                               'assign
+                                                               (__toplevel_cons target (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ())))
+                                                            (__toplevel_cons
+                                                               (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons linkage ())) ()))
+                                                               ())))))))))))))
          (all-regs (__toplevel_cons
                      'env
                      (__toplevel_cons
@@ -701,11 +720,11 @@
          (registers-needed (lambda (s)
                              (if (symbol? s) () (car s))))
          (registers-modified (lambda (s)
-                               (if (symbol? s) () (cadr s))))
+                               (<change>
+                                  (if (symbol? s) () (cadr s))
+                                  ((lambda (x) x) (if (symbol? s) () (cadr s))))))
          (statements (lambda (s)
-                       (if (<change> (symbol? s) (not (symbol? s)))
-                          (cons s ())
-                          (caddr s))))
+                       (if (symbol? s) (cons s ()) (caddr s))))
          (needs-register? (lambda (seq reg)
                             (memq reg (registers-needed seq))))
          (modifies-register? (lambda (seq reg)
@@ -725,16 +744,10 @@
                                             (append-seq-list seqs))))
          (list-union (lambda (s1 s2)
                        (if (null? s1)
-                          (<change>
-                             s2
-                             (if (memq (car s1) s2)
-                                (list-union (cdr s1) s2)
-                                (cons (car s1) (list-union (cdr s1) s2))))
-                          (<change>
-                             (if (memq (car s1) s2)
-                                (list-union (cdr s1) s2)
-                                (cons (car s1) (list-union (cdr s1) s2)))
-                             s2))))
+                          s2
+                          (if (memq (car s1) s2)
+                             (list-union (cdr s1) s2)
+                             (cons (car s1) (list-union (cdr s1) s2))))))
          (list-difference (lambda (s1 s2)
                             (if (null? s1)
                                ()
@@ -745,28 +758,48 @@
                        (if (null? regs)
                           (append-instruction-sequences (cons seq1 (cons seq2 ())))
                           (let ((first-reg (car regs)))
-                             (if (if (needs-register? seq2 first-reg) (modifies-register? seq1 first-reg) #f)
-                                (preserving
-                                   (cdr regs)
-                                   (make-instruction-sequence
-                                      (list-union (cons first-reg ()) (registers-needed seq1))
-                                      (list-difference (registers-modified seq1) (cons first-reg ()))
-                                      (append
-                                         (__toplevel_cons (__toplevel_cons 'save (__toplevel_cons first-reg ())) ())
-                                         (statements seq1)
-                                         (__toplevel_cons (__toplevel_cons 'restore (__toplevel_cons first-reg ())) ())))
-                                   seq2)
-                                (preserving (cdr regs) seq1 seq2))))))
+                             (<change>
+                                (if (if (needs-register? seq2 first-reg) (modifies-register? seq1 first-reg) #f)
+                                   (preserving
+                                      (cdr regs)
+                                      (make-instruction-sequence
+                                         (list-union (cons first-reg ()) (registers-needed seq1))
+                                         (list-difference (registers-modified seq1) (cons first-reg ()))
+                                         (append
+                                            (__toplevel_cons (__toplevel_cons 'save (__toplevel_cons first-reg ())) ())
+                                            (statements seq1)
+                                            (__toplevel_cons (__toplevel_cons 'restore (__toplevel_cons first-reg ())) ())))
+                                      seq2)
+                                   (preserving (cdr regs) seq1 seq2))
+                                ((lambda (x) x)
+                                   (if (if (needs-register? seq2 first-reg) (modifies-register? seq1 first-reg) #f)
+                                      (preserving
+                                         (cdr regs)
+                                         (make-instruction-sequence
+                                            (list-union (cons first-reg ()) (registers-needed seq1))
+                                            (list-difference (registers-modified seq1) (cons first-reg ()))
+                                            (append
+                                               (__toplevel_cons (__toplevel_cons 'save (__toplevel_cons first-reg ())) ())
+                                               (statements seq1)
+                                               (__toplevel_cons (__toplevel_cons 'restore (__toplevel_cons first-reg ())) ())))
+                                         seq2)
+                                      (preserving (cdr regs) seq1 seq2))))))))
          (tack-on-instruction-sequence (lambda (seq body-seq)
                                          (make-instruction-sequence
                                             (registers-needed seq)
                                             (registers-modified seq)
                                             (append (statements seq) (statements body-seq)))))
          (parallel-instruction-sequences (lambda (seq1 seq2)
-                                           (make-instruction-sequence
-                                              (list-union (registers-needed seq1) (registers-needed seq2))
-                                              (list-union (registers-modified seq1) (registers-modified seq2))
-                                              (append (statements seq1) (statements seq2))))))
+                                           (<change>
+                                              (make-instruction-sequence
+                                                 (list-union (registers-needed seq1) (registers-needed seq2))
+                                                 (list-union (registers-modified seq1) (registers-modified seq2))
+                                                 (append (statements seq1) (statements seq2)))
+                                              ((lambda (x) x)
+                                                 (make-instruction-sequence
+                                                    (list-union (registers-needed seq1) (registers-needed seq2))
+                                                    (list-union (registers-modified seq1) (registers-modified seq2))
+                                                    (append (statements seq1) (statements seq2))))))))
    (let ((result1 (compile (__toplevel_cons 'define (__toplevel_cons 'x (__toplevel_cons 4 ()))) 'val 'return))
          (expected-result1 (__toplevel_cons
                              (__toplevel_cons 'env (__toplevel_cons 'continue ()))

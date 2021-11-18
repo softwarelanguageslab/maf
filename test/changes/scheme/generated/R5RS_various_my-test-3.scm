@@ -2,7 +2,7 @@
 ; * removed: 0
 ; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((random-bool (lambda ()
@@ -12,8 +12,6 @@
          (g (lambda (x)
               (<change>
                  ()
-                 f)
-              (if (<change> (random-bool) (not (random-bool)))
-                 x
-                 (f (cons 'g x))))))
+                 random-bool)
+              (if (random-bool) x (f (cons 'g x))))))
    (f ()))

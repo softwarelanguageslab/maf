@@ -1,75 +1,52 @@
 ; Changes:
-; * removed: 1
-; * added: 1
-; * swaps: 2
+; * removed: 0
+; * added: 2
+; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 0
-; * calls to id fun: 2
+; * swapped branches: 1
+; * calls to id fun: 0
 (letrec ((result ())
          (output (lambda (i)
+                   (<change>
+                      ()
+                      result)
                    (set! result (cons i result))))
          (linebreak (lambda ()
                       (set! result (cons 'linebreak result))))
          (output-n (lambda (n x)
                      (if (> n 0)
-                        (begin
-                           (<change>
+                        (<change>
+                           (begin
                               (output x)
-                              ((lambda (x) x) (output x)))
-                           (<change>
-                              ()
-                              n)
-                           (output-n (- n 1) x))
-                        #f)))
+                              (output-n (- n 1) x))
+                           #f)
+                        (<change>
+                           #f
+                           (begin
+                              (output x)
+                              (output-n (- n 1) x))))))
          (parasol (lambda (n)
-                    (<change>
-                       (letrec ((triangle (lambda (i)
-                                            (if (< i n)
-                                               (begin
-                                                  (output-n (- n i 1) " ")
-                                                  (output-n (+ (* 2 i) 1) "*")
-                                                  (linebreak)
-                                                  (triangle (+ i 1)))
-                                               #f)))
-                                (stick (lambda (i)
-                                         (if (< i 3)
+                    (letrec ((triangle (lambda (i)
+                                         (if (< i n)
                                             (begin
-                                               (output-n (- n 1) " ")
-                                               (output "*")
+                                               (output-n (- n i 1) " ")
+                                               (output-n (+ (* 2 i) 1) "*")
                                                (linebreak)
-                                               (stick (+ i 1)))
-                                            #f))))
-                          (triangle 0)
-                          (stick 0))
-                       ((lambda (x) x)
-                          (letrec ((triangle (lambda (i)
-                                               (if (< i n)
-                                                  (begin
-                                                     (output-n (- n i 1) " ")
-                                                     (output-n (+ (* 2 i) 1) "*")
-                                                     (<change>
-                                                        (linebreak)
-                                                        (triangle (+ i 1)))
-                                                     (<change>
-                                                        (triangle (+ i 1))
-                                                        (linebreak)))
-                                                  #f)))
-                                   (stick (lambda (i)
-                                            (if (< i 3)
-                                               (begin
-                                                  (<change>
-                                                     (output-n (- n 1) " ")
-                                                     ())
-                                                  (output "*")
-                                                  (linebreak)
-                                                  (stick (+ i 1)))
-                                               #f))))
-                             (<change>
-                                (triangle 0)
-                                (stick 0))
-                             (<change>
-                                (stick 0)
-                                (triangle 0))))))))
+                                               (triangle (+ i 1)))
+                                            #f)))
+                             (stick (lambda (i)
+                                      (if (< i 3)
+                                         (begin
+                                            (output-n (- n 1) " ")
+                                            (output "*")
+                                            (linebreak)
+                                            (stick (+ i 1)))
+                                         #f))))
+                       (triangle 0)
+                       (stick 0)))))
+   (<change>
+      ()
+      "*")
    (parasol 10)
    (equal?
       result

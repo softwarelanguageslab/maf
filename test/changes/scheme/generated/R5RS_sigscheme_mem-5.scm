@@ -1,7 +1,7 @@
 ; Changes:
-; * removed: 0
+; * removed: 1
 ; * added: 0
-; * swaps: 1
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 0
@@ -13,10 +13,8 @@
                    (begin
                       (<change>
                          (vector-set! *vec* i (make-vector *blocksize*))
-                         (foo (+ i 1) j))
-                      (<change>
-                         (foo (+ i 1) j)
-                         (vector-set! *vec* i (make-vector *blocksize*))))
+                         ())
+                      (foo (+ i 1) j))
                    (if (< 0 j) (foo 0 (- j 1)) ())))))
    (if (null? (foo 0 100))
       (equal?

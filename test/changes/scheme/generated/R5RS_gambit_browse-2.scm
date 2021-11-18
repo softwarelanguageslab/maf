@@ -1,27 +1,18 @@
 ; Changes:
 ; * removed: 0
 ; * added: 0
-; * swaps: 0
-; * negated predicates: 2
-; * swapped branches: 2
+; * swaps: 3
+; * negated predicates: 3
+; * swapped branches: 1
 ; * calls to id fun: 5
 (letrec ((lookup (lambda (key table)
-                   (<change>
-                      ((letrec ((loop (lambda (x)
-                                       (if (null? x)
-                                          #f
-                                          (let ((pair (car x)))
-                                             (if (eq? (car pair) key) pair (loop (cdr x))))))))
-                         loop)
-                         table)
-                      ((lambda (x) x)
-                         ((letrec ((loop (lambda (x)
-                                          (if (null? x)
-                                             #f
-                                             (let ((pair (car x)))
-                                                (if (eq? (car pair) key) pair (loop (cdr x))))))))
-                            loop)
-                            table)))))
+                   ((letrec ((loop (lambda (x)
+                                    (if (null? x)
+                                       #f
+                                       (let ((pair (car x)))
+                                          (if (eq? (car pair) key) pair (loop (cdr x))))))))
+                      loop)
+                      table)))
          (properties ())
          (get (lambda (key1 key2)
                 (let ((x (lookup key1 properties)))
@@ -33,15 +24,15 @@
                 (let ((x (lookup key1 properties)))
                    (if x
                       (let ((y (lookup key2 (cdr x))))
-                         (if y
-                            (set-cdr! y val)
-                            (set-cdr! x (cons (cons key2 val) (cdr x)))))
+                         (<change>
+                            (if y
+                               (set-cdr! y val)
+                               (set-cdr! x (cons (cons key2 val) (cdr x))))
+                            ((lambda (x) x) (if y (set-cdr! y val) (set-cdr! x (cons (cons key2 val) (cdr x)))))))
                       (set! properties (cons (list key1 (cons key2 val)) properties))))))
          (*current-gensym* 0)
          (generate-symbol (lambda ()
-                            (<change>
-                               (set! *current-gensym* (+ *current-gensym* 1))
-                               ((lambda (x) x) (set! *current-gensym* (+ *current-gensym* 1))))
+                            (set! *current-gensym* (+ *current-gensym* 1))
                             (string->symbol (number->string *current-gensym*))))
          (append-to-tail! (lambda (x y)
                             (if (null? x)
@@ -97,44 +88,48 @@
                                                 (__do_loop (- n 1) (if (zero? i) m (- i 1)) (generate-symbol) a))))))
                        (__do_loop n m (generate-symbol) ())))))
          (browse-random (lambda ()
-                          (<change>
-                             (set! *rand* (remainder (* *rand* 17) 251))
-                             ((lambda (x) x) (set! *rand* (remainder (* *rand* 17) 251))))
+                          (set! *rand* (remainder (* *rand* 17) 251))
                           *rand*))
          (randomize (lambda (l)
                       (letrec ((__do_loop (lambda (a)
-                                            (if (null? l)
+                                            (if (<change> (null? l) (not (null? l)))
                                                a
                                                (begin
                                                   (let ((n (remainder (browse-random) (length l))))
                                                      (if (zero? n)
                                                         (begin
-                                                           (set! a (cons (car l) a))
+                                                           (<change>
+                                                              (set! a (cons (car l) a))
+                                                              ((lambda (x) x) (set! a (cons (car l) a))))
                                                            (set! l (cdr l))
                                                            l)
                                                         (letrec ((__do_loop (lambda (n x)
                                                                               (if (= n 1)
                                                                                  (begin
-                                                                                    (set! a (cons (cadr x) a))
-                                                                                    (set-cdr! x (cddr x))
-                                                                                    x)
+                                                                                    (<change>
+                                                                                       (set! a (cons (cadr x) a))
+                                                                                       (set-cdr! x (cddr x)))
+                                                                                    (<change>
+                                                                                       (set-cdr! x (cddr x))
+                                                                                       (set! a (cons (cadr x) a)))
+                                                                                    (<change>
+                                                                                       x
+                                                                                       ((lambda (x) x) x)))
                                                                                  (__do_loop (- n 1) (cdr x))))))
                                                            (__do_loop n l))))
                                                   (__do_loop a))))))
-                         (<change>
-                            (__do_loop ())
-                            ((lambda (x) x) (__do_loop ()))))))
+                         (__do_loop ()))))
          (my-match (lambda (pat dat alist)
-                     (if (<change> (null? pat) (not (null? pat)))
+                     (if (null? pat)
                         (null? dat)
                         (if (null? dat)
-                           ()
-                           (if (let ((__or_res (eq? (car pat) '?))) (if __or_res __or_res (eq? (car pat) (car dat))))
-                              (<change>
+                           (<change>
+                              ()
+                              (if (let ((__or_res (eq? (car pat) '?))) (if __or_res __or_res (eq? (car pat) (car dat))))
                                  (my-match (cdr pat) (cdr dat) alist)
-                                 (if (eq? (car pat) '*)
+                                 (if (not (eq? (car pat) '*))
                                     (let ((__or_res (my-match (cdr pat) dat alist)))
-                                       (if __or_res
+                                       (if (not __or_res)
                                           __or_res
                                           (let ((__or_res (my-match (cdr pat) (cdr dat) alist)))
                                              (if __or_res
@@ -144,8 +139,8 @@
                                        (if (eq? (string-ref (symbol->string (car pat)) 0) #\?)
                                           (let ((val (assq (car pat) alist)))
                                              (if val
-                                                (my-match (cdr pat) (cdr dat) (cons (cons (car pat) (car dat)) alist))
-                                                (my-match (cons (cdr val) (cdr pat)) dat alist)))
+                                                (my-match (cons (cdr val) (cdr pat)) dat alist)
+                                                (my-match (cdr pat) (cdr dat) (cons (cons (car pat) (car dat)) alist))))
                                           (if (eq? (string-ref (symbol->string (car pat)) 0) #\*)
                                              (let ((val (assq (car pat) alist)))
                                                 (if val
@@ -159,12 +154,14 @@
                                                                                (if (null? d) () (cdr d)))))))
                                                       (__do_loop () (cons () dat) dat))))
                                              #f))
-                                       (if (not (pair? (car dat)))
+                                       (if (pair? (car dat))
                                           (if (my-match (car pat) (car dat) alist)
                                              (my-match (cdr pat) (cdr dat) alist)
                                              #f)
-                                          #f))))
-                              (<change>
+                                          #f)))))
+                           (<change>
+                              (if (let ((__or_res (eq? (car pat) '?))) (if __or_res __or_res (eq? (car pat) (car dat))))
+                                 (my-match (cdr pat) (cdr dat) alist)
                                  (if (eq? (car pat) '*)
                                     (let ((__or_res (my-match (cdr pat) dat alist)))
                                        (if __or_res
@@ -196,8 +193,8 @@
                                           (if (my-match (car pat) (car dat) alist)
                                              (my-match (cdr pat) (cdr dat) alist)
                                              #f)
-                                          #f)))
-                                 (my-match (cdr pat) (cdr dat) alist)))))))
+                                          #f))))
+                              ())))))
          (database (randomize
                      (init
                         100
@@ -272,54 +269,112 @@
                                                  #f
                                                  (begin
                                                     (letrec ((__do_loop (lambda (pats)
-                                                                          (if (null? pats)
-                                                                             #f
-                                                                             (begin
-                                                                                (letrec ((__do_loop (lambda (p)
-                                                                                                      (if (null? p)
-                                                                                                         #f
-                                                                                                         (begin
-                                                                                                            (my-match (car pats) (car p) ())
-                                                                                                            (__do_loop (cdr p)))))))
-                                                                                   (__do_loop (get (car units) 'pattern)))
-                                                                                (__do_loop (cdr pats)))))))
+                                                                          (<change>
+                                                                             (if (null? pats)
+                                                                                #f
+                                                                                (begin
+                                                                                   (letrec ((__do_loop (lambda (p)
+                                                                                                         (if (null? p)
+                                                                                                            #f
+                                                                                                            (begin
+                                                                                                               (my-match (car pats) (car p) ())
+                                                                                                               (__do_loop (cdr p)))))))
+                                                                                      (__do_loop (get (car units) 'pattern)))
+                                                                                   (__do_loop (cdr pats))))
+                                                                             ((lambda (x) x)
+                                                                                (if (null? pats)
+                                                                                   #f
+                                                                                   (begin
+                                                                                      (<change>
+                                                                                         (letrec ((__do_loop (lambda (p)
+                                                                                                               (if (null? p)
+                                                                                                                  #f
+                                                                                                                  (begin
+                                                                                                                     (my-match (car pats) (car p) ())
+                                                                                                                     (__do_loop (cdr p)))))))
+                                                                                            (__do_loop (get (car units) 'pattern)))
+                                                                                         (__do_loop (cdr pats)))
+                                                                                      (<change>
+                                                                                         (__do_loop (cdr pats))
+                                                                                         (letrec ((__do_loop (lambda (p)
+                                                                                                               (if (null? p)
+                                                                                                                  #f
+                                                                                                                  (begin
+                                                                                                                     (my-match (car pats) (car p) ())
+                                                                                                                     (__do_loop (cdr p)))))))
+                                                                                            ((lambda (x) x) (__do_loop (get (car units) 'pattern))))))))))))
                                                        (__do_loop pats))
                                                     (__do_loop (cdr units)))))))
-                           (<change>
-                              (__do_loop units)
-                              ((lambda (x) x) (__do_loop units)))))))
-   (browse
-      (__toplevel_cons
-         (__toplevel_cons
-            '*a
-            (__toplevel_cons
-               '?b
-               (__toplevel_cons
-                  '*b
-                  (__toplevel_cons
-                     '?b
-                     (__toplevel_cons
-                        'a
-                        (__toplevel_cons '*a (__toplevel_cons 'a (__toplevel_cons '*b (__toplevel_cons '*a ())))))))))
+                           (__do_loop units)))))
+   (<change>
+      (browse
          (__toplevel_cons
             (__toplevel_cons
                '*a
                (__toplevel_cons
-                  '*b
+                  '?b
                   (__toplevel_cons
                      '*b
                      (__toplevel_cons
-                        '*a
-                        (__toplevel_cons (__toplevel_cons '*a ()) (__toplevel_cons (__toplevel_cons '*b ()) ()))))))
+                        '?b
+                        (__toplevel_cons
+                           'a
+                           (__toplevel_cons '*a (__toplevel_cons 'a (__toplevel_cons '*b (__toplevel_cons '*a ())))))))))
             (__toplevel_cons
                (__toplevel_cons
-                  '?
+                  '*a
+                  (__toplevel_cons
+                     '*b
+                     (__toplevel_cons
+                        '*b
+                        (__toplevel_cons
+                           '*a
+                           (__toplevel_cons (__toplevel_cons '*a ()) (__toplevel_cons (__toplevel_cons '*b ()) ()))))))
+               (__toplevel_cons
                   (__toplevel_cons
                      '?
                      (__toplevel_cons
-                        '*
+                        '?
                         (__toplevel_cons
-                           (__toplevel_cons 'b (__toplevel_cons 'a ()))
-                           (__toplevel_cons '* (__toplevel_cons '? (__toplevel_cons '? ())))))))
-               ()))))
-   *current-gensym*)
+                           '*
+                           (__toplevel_cons
+                              (__toplevel_cons 'b (__toplevel_cons 'a ()))
+                              (__toplevel_cons '* (__toplevel_cons '? (__toplevel_cons '? ())))))))
+                  ()))))
+      *current-gensym*)
+   (<change>
+      *current-gensym*
+      (browse
+         (__toplevel_cons
+            (__toplevel_cons
+               '*a
+               (__toplevel_cons
+                  '?b
+                  (__toplevel_cons
+                     '*b
+                     (__toplevel_cons
+                        '?b
+                        (__toplevel_cons
+                           'a
+                           (__toplevel_cons '*a (__toplevel_cons 'a (__toplevel_cons '*b (__toplevel_cons '*a ())))))))))
+            (__toplevel_cons
+               (__toplevel_cons
+                  '*a
+                  (__toplevel_cons
+                     '*b
+                     (__toplevel_cons
+                        '*b
+                        (__toplevel_cons
+                           '*a
+                           (__toplevel_cons (__toplevel_cons '*a ()) (__toplevel_cons (__toplevel_cons '*b ()) ()))))))
+               (__toplevel_cons
+                  (__toplevel_cons
+                     '?
+                     (__toplevel_cons
+                        '?
+                        (__toplevel_cons
+                           '*
+                           (__toplevel_cons
+                              (__toplevel_cons 'b (__toplevel_cons 'a ()))
+                              (__toplevel_cons '* (__toplevel_cons '? (__toplevel_cons '? ())))))))
+                  ()))))))

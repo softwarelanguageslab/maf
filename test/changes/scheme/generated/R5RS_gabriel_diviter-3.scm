@@ -1,13 +1,16 @@
 ; Changes:
-; * removed: 1
-; * added: 4
+; * removed: 0
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((create-n (lambda (n)
                      @sensitivity:FA
                      (letrec ((__do_loop (lambda (n a)
+                                           (<change>
+                                              ()
+                                              n)
                                            @sensitivity:FA
                                            (if (= n 0) a (__do_loop (- n 1) (cons () a))))))
                         (__do_loop n ()))))
@@ -15,20 +18,8 @@
          (iterative-div2 (lambda (l)
                            (<change>
                               @sensitivity:FA
-                              ())
-                           (<change>
-                              ()
-                              (null? l))
+                              ((lambda (x) x) @sensitivity:FA))
                            (letrec ((__do_loop (lambda (l a)
-                                                 (<change>
-                                                    ()
-                                                    (display __do_loop))
-                                                 (<change>
-                                                    ()
-                                                    a)
-                                                 (<change>
-                                                    ()
-                                                    (null? l))
                                                  @sensitivity:FA
                                                  (if (null? l)
                                                     a

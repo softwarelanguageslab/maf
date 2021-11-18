@@ -1,20 +1,14 @@
 ; Changes:
-; * removed: 1
-; * added: 4
-; * swaps: 1
-; * negated predicates: 1
-; * swapped branches: 1
+; * removed: 0
+; * added: 2
+; * swaps: 3
+; * negated predicates: 0
+; * swapped branches: 0
 ; * calls to id fun: 3
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
          (linebreak (lambda ()
-                      (<change>
-                         ()
-                         result)
-                      (<change>
-                         ()
-                         result)
                       (set! result (cons 'linebreak result))))
          (output-all (lambda args
                        (for-each output args)))
@@ -30,7 +24,7 @@
                                                text
                                                (if (eq? msg 'tags)
                                                   tags
-                                                  (if (<change> (eq? msg 'username) (not (eq? msg 'username)))
+                                                  (if (eq? msg 'username)
                                                      username
                                                      (if (eq? msg 'output)
                                                         output-tweet
@@ -47,51 +41,42 @@
                                      (add-follower (lambda (account)
                                                      (set! followers (cons account followers))))
                                      (tweet (lambda (text . tags)
+                                              (<change>
+                                                 ()
+                                                 (make-tweet username text tags))
                                               (let ((tweet-obj (make-tweet username text tags)))
                                                  (<change>
                                                     (set! tweets (cons tweet-obj tweets))
-                                                    ((lambda (x) x) (set! tweets (cons tweet-obj tweets))))
-                                                 (set! tweet-wall (cons tweet-obj tweet-wall))
+                                                    (set! tweet-wall (cons tweet-obj tweet-wall)))
+                                                 (<change>
+                                                    (set! tweet-wall (cons tweet-obj tweet-wall))
+                                                    (set! tweets (cons tweet-obj tweets)))
                                                  (for-each (lambda (follower) ((follower 'add-tweet-to-wall) tweet-obj)) followers))))
                                      (add-tweet-to-wall (lambda (tweet)
                                                           (set! tweet-wall (cons tweet tweet-wall))))
                                      (output-account (lambda (symbol)
                                                        (if (eq? symbol 'wall)
-                                                          (<change>
-                                                             (output-wall)
-                                                             (if (eq? symbol 'followers)
-                                                                (output-followers)
-                                                                (if (eq? symbol 'account)
-                                                                   (output-entire-account)
-                                                                   (output "wrong symbol given"))))
-                                                          (<change>
-                                                             (if (eq? symbol 'followers)
-                                                                (output-followers)
-                                                                (if (eq? symbol 'account)
-                                                                   (output-entire-account)
-                                                                   (output "wrong symbol given")))
-                                                             (output-wall)))))
+                                                          (output-wall)
+                                                          (if (eq? symbol 'followers)
+                                                             (output-followers)
+                                                             (if (eq? symbol 'account)
+                                                                (output-entire-account)
+                                                                (output "wrong symbol given"))))))
                                      (output-wall (lambda ()
                                                     (output "TWEET WALL")
                                                     (linebreak)
-                                                    (for-each
-                                                       (lambda (tweet)
-                                                          (<change>
-                                                             ((tweet 'output))
-                                                             ((lambda (x) x) ((tweet 'output))))
-                                                          (linebreak))
-                                                       tweet-wall)))
+                                                    (for-each (lambda (tweet) (<change> () linebreak) ((tweet 'output)) (linebreak)) tweet-wall)))
                                      (output-followers (lambda ()
-                                                         (<change>
-                                                            (output "FOLLOWERS")
-                                                            (linebreak))
+                                                         (output "FOLLOWERS")
                                                          (<change>
                                                             (linebreak)
-                                                            (output "FOLLOWERS"))
+                                                            ((lambda (x) x) (linebreak)))
                                                          (for-each (lambda (follower) (output (follower 'username)) (output " ")) followers)))
                                      (output-entire-account (lambda ()
                                                               (output-all "Twitter name " username "\n" "Name " name "\n")
-                                                              (output-wall)
+                                                              (<change>
+                                                                 (output-wall)
+                                                                 ((lambda (x) x) (output-wall)))
                                                               (output-followers)
                                                               (linebreak)
                                                               (linebreak)))
@@ -113,27 +98,27 @@
                                                                       (begin
                                                                          (output "error - wrong msg ")
                                                                          (output msg))))))))))))
-                               (<change>
-                                  ()
-                                  dispatch)
                                dispatch))))
          (my-tweet (make-tweet "madewael" "Racket is cool!" (list "#Racket" "#Scheme")))
          (res1 (equal? (my-tweet 'username) "madewael")))
-   ((my-tweet 'output))
+   (<change>
+      ((my-tweet 'output))
+      ((lambda (x) x) ((my-tweet 'output))))
    (letrec ((accountE (make-account "Eline Philips" "ephilips"))
             (accountM (make-account "Mattias De Wael" "madewael")))
       (<change>
-         ()
-         __toplevel_cons)
-      ((accountE 'follow) accountM)
+         ((accountE 'follow) accountM)
+         ((accountM 'tweet) "Racket is cool!" "#Racket" "#Scheme"))
       (<change>
          ((accountM 'tweet) "Racket is cool!" "#Racket" "#Scheme")
-         ((lambda (x) x) ((accountM 'tweet) "Racket is cool!" "#Racket" "#Scheme")))
+         ((accountE 'follow) accountM))
       ((accountE 'tweet) "Hello World!")
       (<change>
          ((accountE 'output) 'account)
-         ())
-      ((accountM 'output) 'account)
+         ((accountM 'output) 'account))
+      (<change>
+         ((accountM 'output) 'account)
+         ((accountE 'output) 'account))
       (if res1
          (equal?
             result

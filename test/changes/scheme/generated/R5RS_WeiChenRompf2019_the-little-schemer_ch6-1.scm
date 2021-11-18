@@ -1,29 +1,33 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 2
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 2
 (letrec ((atom? (lambda (x)
-                  (if (not (pair? x)) (not (null? x)) #f)))
+                  (<change>
+                     (if (not (pair? x)) (not (null? x)) #f)
+                     ((lambda (x) x) (if (not (pair? x)) (not (null? x)) #f)))))
          (numbered? (lambda (aexp)
-                      (if (atom? aexp)
-                         (number? aexp)
-                         (if (numbered? (car aexp))
-                            (numbered? (car (cdr (cdr aexp))))
-                            #f))))
+                      (<change>
+                         (if (atom? aexp)
+                            (number? aexp)
+                            (if (numbered? (car aexp))
+                               (numbered? (car (cdr (cdr aexp))))
+                               #f))
+                         ((lambda (x) x)
+                            (if (atom? aexp)
+                               (number? aexp)
+                               (if (<change> (numbered? (car aexp)) (not (numbered? (car aexp))))
+                                  (numbered? (car (cdr (cdr aexp))))
+                                  #f))))))
          (^ (lambda (n m)
-              (<change>
-                 ()
-                 ^)
-              (<change>
-                 (if (zero? m) 1 (* n (^ n (- m 1))))
-                 ((lambda (x) x) (if (zero? m) 1 (* n (^ n (- m 1))))))))
+              (if (zero? m) 1 (* n (^ n (- m 1))))))
          (value (lambda (nexp)
                   (if (atom? nexp)
                      nexp
-                     (if (eq? (car (cdr nexp)) '+)
+                     (if (<change> (eq? (car (cdr nexp)) '+) (not (eq? (car (cdr nexp)) '+)))
                         (+ (value (car nexp)) (value (car (cdr (cdr nexp)))))
                         (if (eq? (car (cdr nexp)) '*)
                            (* (value (car nexp)) (value (car (cdr (cdr nexp)))))

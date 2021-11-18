@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -19,7 +19,4 @@
                            (s ((blur id) #f)))
                      (not ((blur lp) s (- n 1)))))))
          (res (lp #f 2)))
-   (<change>
-      ()
-      res)
    res)

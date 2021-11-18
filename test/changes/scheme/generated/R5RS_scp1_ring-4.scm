@@ -1,13 +1,15 @@
 ; Changes:
-; * removed: 0
-; * added: 1
-; * swaps: 1
+; * removed: 2
+; * added: 3
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 1
-; * calls to id fun: 1
+; * calls to id fun: 2
 (letrec ((result ())
          (output (lambda (i)
-                   (set! result (cons i result))))
+                   (<change>
+                      (set! result (cons i result))
+                      ((lambda (x) x) (set! result (cons i result))))))
          (make-ring (lambda (n)
                       (let ((last (cons 0 ())))
                          (letrec ((build-list (lambda (n)
@@ -18,97 +20,99 @@
          (print-ring (lambda (r)
                        (letrec ((aux (lambda (l)
                                        (if (not (null? l))
-                                          (if (eq? (cdr l) r)
-                                             (<change>
+                                          (<change>
+                                             (if (eq? (cdr l) r)
                                                 (begin
                                                    (output " ")
                                                    (output (car l))
                                                    (output "..."))
                                                 (begin
-                                                   aux
                                                    (output " ")
                                                    (output (car l))
                                                    (aux (cdr l))))
-                                             (<change>
+                                             #f)
+                                          (<change>
+                                             #f
+                                             (if (eq? (cdr l) r)
+                                                (begin
+                                                   (output (car l))
+                                                   "..."
+                                                   (output "..."))
                                                 (begin
                                                    (output " ")
                                                    (output (car l))
-                                                   (aux (cdr l)))
-                                                (begin
-                                                   (output " ")
-                                                   (output (car l))
-                                                   (output "..."))))
-                                          #f))))
-                          (<change>
-                             (aux r)
-                             #t)
-                          (<change>
-                             #t
-                             (aux r)))))
+                                                   (aux (cdr l)))))))))
+                          (aux r)
+                          #t)))
          (r (make-ring 3)))
-   (print-ring r)
-   (print-ring (cdr r))
    (<change>
-      (equal?
-         result
+      (print-ring r)
+      ())
+   (<change>
+      (print-ring (cdr r))
+      ((lambda (x) x) (print-ring (cdr r))))
+   (<change>
+      ()
+      __toplevel_cons)
+   (<change>
+      ()
+      (__toplevel_cons
+         "..."
          (__toplevel_cons
-            "..."
+            3
             (__toplevel_cons
-               3
+               " "
                (__toplevel_cons
-                  " "
-                  (__toplevel_cons
-                     0
-                     (__toplevel_cons
-                        " "
-                        (__toplevel_cons
-                           1
-                           (__toplevel_cons
-                              " "
-                              (__toplevel_cons
-                                 2
-                                 (__toplevel_cons
-                                    " "
-                                    (__toplevel_cons
-                                       "..."
-                                       (__toplevel_cons
-                                          0
-                                          (__toplevel_cons
-                                             " "
-                                             (__toplevel_cons
-                                                1
-                                                (__toplevel_cons
-                                                   " "
-                                                   (__toplevel_cons 2 (__toplevel_cons " " (__toplevel_cons 3 (__toplevel_cons " " ())))))))))))))))))))
-      ((lambda (x) x)
-         (equal?
-            result
-            (__toplevel_cons
-               "..."
-               (__toplevel_cons
-                  3
+                  0
                   (__toplevel_cons
                      " "
                      (__toplevel_cons
-                        0
+                        1
                         (__toplevel_cons
                            " "
                            (__toplevel_cons
-                              1
+                              2
                               (__toplevel_cons
                                  " "
                                  (__toplevel_cons
-                                    2
+                                    "..."
                                     (__toplevel_cons
-                                       " "
+                                       0
                                        (__toplevel_cons
-                                          "..."
+                                          " "
                                           (__toplevel_cons
-                                             0
+                                             1
                                              (__toplevel_cons
                                                 " "
-                                                (__toplevel_cons
-                                                   1
-                                                   (__toplevel_cons
-                                                      " "
-                                                      (__toplevel_cons 2 (__toplevel_cons " " (__toplevel_cons 3 (__toplevel_cons " " ()))))))))))))))))))))))
+                                                (__toplevel_cons 2 (__toplevel_cons " " (__toplevel_cons 3 (__toplevel_cons " " ())))))))))))))))))))
+   (equal?
+      result
+      (__toplevel_cons
+         "..."
+         (__toplevel_cons
+            3
+            (__toplevel_cons
+               " "
+               (__toplevel_cons
+                  0
+                  (__toplevel_cons
+                     " "
+                     (__toplevel_cons
+                        1
+                        (__toplevel_cons
+                           " "
+                           (__toplevel_cons
+                              2
+                              (__toplevel_cons
+                                 " "
+                                 (__toplevel_cons
+                                    "..."
+                                    (__toplevel_cons
+                                       0
+                                       (__toplevel_cons
+                                          " "
+                                          (__toplevel_cons
+                                             1
+                                             (__toplevel_cons
+                                                " "
+                                                (__toplevel_cons 2 (__toplevel_cons " " (__toplevel_cons 3 (__toplevel_cons " " ()))))))))))))))))))))

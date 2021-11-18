@@ -1,15 +1,17 @@
 ; Changes:
 ; * removed: 0
 ; * added: 1
-; * swaps: 2
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 2
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
          (linebreak (lambda ()
-                      (set! result (cons 'linebreak result))))
+                      (<change>
+                         (set! result (cons 'linebreak result))
+                         ((lambda (x) x) (set! result (cons 'linebreak result))))))
          (create-counter (lambda ()
                            (let ((value 0))
                               (letrec ((reset (lambda ()
@@ -72,26 +74,18 @@
                                                             (error "wrong message: " msg)))))))
                                  dispatch))))
          (bord (make-scorebord)))
-   ((bord 'read))
-   (<change>
-      ((bord 'score) 'home 2)
-      ((bord 'read)))
    (<change>
       ((bord 'read))
-      ((bord 'score) 'home 2))
-   (<change>
-      ((bord 'score) 'visit 5)
-      ((lambda (x) x) ((bord 'score) 'visit 5)))
+      ((lambda (x) x) ((bord 'read))))
+   ((bord 'score) 'home 2)
    ((bord 'read))
-   (<change>
-      ((bord 'reset))
-      ((bord 'read)))
-   (<change>
-      ((bord 'read))
-      ((bord 'reset)))
+   ((bord 'score) 'visit 5)
    (<change>
       ()
-      __toplevel_cons)
+      ((bord 'read)))
+   ((bord 'read))
+   ((bord 'reset))
+   ((bord 'read))
    (equal?
       result
       (__toplevel_cons

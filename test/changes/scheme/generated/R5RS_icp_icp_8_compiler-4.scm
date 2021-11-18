@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 5
+; * added: 4
 ; * swaps: 1
-; * negated predicates: 6
-; * swapped branches: 3
-; * calls to id fun: 5
+; * negated predicates: 4
+; * swapped branches: 5
+; * calls to id fun: 7
 (letrec ((true #t)
          (false #f)
          (expand-clauses (lambda (clauses)
@@ -48,29 +48,30 @@
          (tagged-list? (lambda (exp tag)
                          (if (pair? exp) (eq? (car exp) tag) false)))
          (quoted? (lambda (exp)
-                    (tagged-list? exp 'quote)))
+                    (<change>
+                       (tagged-list? exp 'quote)
+                       ((lambda (x) x) (tagged-list? exp 'quote)))))
          (text-of-quotation (lambda (exp)
-                              (cadr exp)))
+                              (<change>
+                                 (cadr exp)
+                                 ((lambda (x) x) (cadr exp)))))
          (variable? (lambda (exp)
                       (symbol? exp)))
          (assignment? (lambda (exp)
                         (tagged-list? exp 'set!)))
          (assignment-variable (lambda (exp)
+                                (<change>
+                                   ()
+                                   (cadr exp))
                                 (cadr exp)))
          (assignment-value (lambda (exp)
-                             (<change>
-                                (caddr exp)
-                                ((lambda (x) x) (caddr exp)))))
+                             (caddr exp)))
          (definition? (lambda (exp)
-                        (<change>
-                           (tagged-list? exp 'define)
-                           ((lambda (x) x) (tagged-list? exp 'define)))))
+                        (tagged-list? exp 'define)))
          (definition-variable (lambda (exp)
-                                (if (<change> (symbol? (cadr exp)) (not (symbol? (cadr exp))))
-                                   (cadr exp)
-                                   (caadr exp))))
+                                (if (symbol? (cadr exp)) (cadr exp) (caadr exp))))
          (definition-value (lambda (exp)
-                             (if (symbol? (cadr exp))
+                             (if (<change> (symbol? (cadr exp)) (not (symbol? (cadr exp))))
                                 (caddr exp)
                                 (make-lambda (cdadr exp) (cddr exp)))))
          (if? (lambda (exp)
@@ -80,12 +81,15 @@
          (if-consequent (lambda (exp)
                           (caddr exp)))
          (if-alternative (lambda (exp)
-                           (if (<change> (not (null? (cdddr exp))) (not (not (null? (cdddr exp)))))
+                           (if (not (null? (cdddr exp)))
                               (cadddr exp)
                               'false)))
          (cond? (lambda (exp)
                   (tagged-list? exp 'cond)))
          (cond-clauses (lambda (exp)
+                         (<change>
+                            ()
+                            (display cdr))
                          (cdr exp)))
          (cond-else-clause? (lambda (clause)
                               (eq? (cond-predicate clause) 'else)))
@@ -94,7 +98,9 @@
          (cond-actions (lambda (clause)
                          (cdr clause)))
          (lambda? (lambda (exp)
-                    (tagged-list? exp 'lambda)))
+                    (<change>
+                       (tagged-list? exp 'lambda)
+                       ((lambda (x) x) (tagged-list? exp 'lambda)))))
          (lambda-parameters (lambda (exp)
                               (cadr exp)))
          (lambda-body (lambda (exp)
@@ -102,7 +108,9 @@
          (make-lambda (lambda (parameters body)
                         (cons 'lambda (cons parameters body))))
          (begin? (lambda (exp)
-                   (tagged-list? exp 'begin)))
+                   (<change>
+                      (tagged-list? exp 'begin)
+                      ((lambda (x) x) (tagged-list? exp 'begin)))))
          (begin-actions (lambda (exp)
                           (cdr exp)))
          (last-exp? (lambda (seq)
@@ -135,9 +143,6 @@
                                      (error "Too many arguments supplied" vars vals)
                                      (error "Too few arguments supplied" vars vals)))))
          (make-frame (lambda (variables values)
-                       (<change>
-                          ()
-                          (cons variables values))
                        (cons variables values)))
          (frame-variables (lambda (frame)
                             (car frame)))
@@ -158,12 +163,6 @@
                                                              (error "Unbound variable" var)
                                                              (let ((frame (first-frame env)))
                                                                 (scan (frame-variables frame) (frame-values frame))))))))
-                                     (<change>
-                                        ()
-                                        env-loop)
-                                     (<change>
-                                        ()
-                                        (display env))
                                      (env-loop env))))
          (set-variable-value! (lambda (var val env)
                                 (letrec ((env-loop (lambda (env)
@@ -176,10 +175,10 @@
                                                         (if (eq? env the-empty-environment)
                                                            (error "Unbound variable -- SET!" var)
                                                            (let ((frame (first-frame env)))
-                                                              (scan (frame-variables frame) (frame-values frame))))))))
-                                   (<change>
-                                      (env-loop env)
-                                      ((lambda (x) x) (env-loop env))))))
+                                                              (<change>
+                                                                 (scan (frame-variables frame) (frame-values frame))
+                                                                 ((lambda (x) x) (scan (frame-variables frame) (frame-values frame))))))))))
+                                   (env-loop env))))
          (define-variable! (lambda (var val env)
                              (let ((frame (first-frame env)))
                                 (letrec ((scan (lambda (vars vals)
@@ -192,27 +191,47 @@
          (apply-primitive-procedure (lambda (proc args)
                                       (apply-in-underlying-scheme (primitive-implementation proc) args)))
          (compile (lambda (exp target linkage)
-                    (if (self-evaluating? exp)
+                    (if (<change> (self-evaluating? exp) (not (self-evaluating? exp)))
                        (compile-self-evaluating exp target linkage)
                        (if (quoted? exp)
-                          (compile-quoted exp target linkage)
-                          (if (variable? exp)
-                             (compile-variable exp target linkage)
-                             (if (assignment? exp)
-                                (compile-assignment exp target linkage)
-                                (if (definition? exp)
-                                   (compile-definition exp target linkage)
-                                   (if (if? exp)
-                                      (compile-if exp target linkage)
-                                      (if (lambda? exp)
-                                         (compile-lambda exp target linkage)
-                                         (if (<change> (begin? exp) (not (begin? exp)))
-                                            (compile-sequence (begin-actions exp) target linkage)
-                                            (if (cond? exp)
-                                               (compile (cond->if exp) target linkage)
-                                               (if (application? exp)
-                                                  (compile-application exp target linkage)
-                                                  (error "Unknown expression type -- COMPILE" exp)))))))))))))
+                          (<change>
+                             (compile-quoted exp target linkage)
+                             (if (not (variable? exp))
+                                (compile-variable exp target linkage)
+                                (if (assignment? exp)
+                                   (compile-assignment exp target linkage)
+                                   (if (definition? exp)
+                                      (compile-definition exp target linkage)
+                                      (if (if? exp)
+                                         (if (lambda? exp)
+                                            (compile-lambda exp target linkage)
+                                            (if (begin? exp)
+                                               (compile-sequence (begin-actions exp) target linkage)
+                                               (if (cond? exp)
+                                                  (compile (cond->if exp) target linkage)
+                                                  (if (application? exp)
+                                                     (compile-application exp target linkage)
+                                                     (error "Unknown expression type -- COMPILE" exp)))))
+                                         (compile-if exp target linkage))))))
+                          (<change>
+                             (if (variable? exp)
+                                (compile-variable exp target linkage)
+                                (if (assignment? exp)
+                                   (compile-assignment exp target linkage)
+                                   (if (definition? exp)
+                                      (compile-definition exp target linkage)
+                                      (if (if? exp)
+                                         (compile-if exp target linkage)
+                                         (if (lambda? exp)
+                                            (compile-lambda exp target linkage)
+                                            (if (begin? exp)
+                                               (compile-sequence (begin-actions exp) target linkage)
+                                               (if (cond? exp)
+                                                  (compile (cond->if exp) target linkage)
+                                                  (if (application? exp)
+                                                     (compile-application exp target linkage)
+                                                     (error "Unknown expression type -- COMPILE" exp)))))))))
+                             (compile-quoted exp target linkage))))))
          (make-instruction-sequence (lambda (needs modifies statements)
                                       (list needs modifies statements)))
          (empty-instruction-sequence (lambda ()
@@ -277,31 +296,58 @@
                                                   (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'env ())) ())))))
                                       ())))))
          (compile-assignment (lambda (exp target linkage)
-                               (let ((var (assignment-variable exp))
-                                     (get-value-code (compile (assignment-value exp) 'val 'next)))
-                                  (end-with-linkage
-                                     linkage
-                                     (preserving
-                                        (__toplevel_cons 'env ())
-                                        get-value-code
-                                        (make-instruction-sequence
-                                           (__toplevel_cons 'env (__toplevel_cons 'val ()))
-                                           (list target)
-                                           (__toplevel_cons
+                               (<change>
+                                  (let ((var (assignment-variable exp))
+                                        (get-value-code (compile (assignment-value exp) 'val 'next)))
+                                     (end-with-linkage
+                                        linkage
+                                        (preserving
+                                           (__toplevel_cons 'env ())
+                                           get-value-code
+                                           (make-instruction-sequence
+                                              (__toplevel_cons 'env (__toplevel_cons 'val ()))
+                                              (list target)
                                               (__toplevel_cons
-                                                 'perform
                                                  (__toplevel_cons
-                                                    (__toplevel_cons 'op (__toplevel_cons 'set-variable-value! ()))
+                                                    'perform
                                                     (__toplevel_cons
-                                                       (__toplevel_cons 'const (__toplevel_cons var ()))
+                                                       (__toplevel_cons 'op (__toplevel_cons 'set-variable-value! ()))
                                                        (__toplevel_cons
-                                                          (__toplevel_cons 'reg (__toplevel_cons 'val ()))
-                                                          (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'env ())) ())))))
-                                              (__toplevel_cons
+                                                          (__toplevel_cons 'const (__toplevel_cons var ()))
+                                                          (__toplevel_cons
+                                                             (__toplevel_cons 'reg (__toplevel_cons 'val ()))
+                                                             (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'env ())) ())))))
                                                  (__toplevel_cons
-                                                    'assign
-                                                    (__toplevel_cons target (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 'ok ())) ())))
-                                                 ()))))))))
+                                                    (__toplevel_cons
+                                                       'assign
+                                                       (__toplevel_cons target (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 'ok ())) ())))
+                                                    ()))))))
+                                  ((lambda (x) x)
+                                     (let ((var (assignment-variable exp))
+                                           (get-value-code (compile (assignment-value exp) 'val 'next)))
+                                        (end-with-linkage
+                                           linkage
+                                           (preserving
+                                              (__toplevel_cons 'env ())
+                                              get-value-code
+                                              (make-instruction-sequence
+                                                 (__toplevel_cons 'env (__toplevel_cons 'val ()))
+                                                 (list target)
+                                                 (__toplevel_cons
+                                                    (__toplevel_cons
+                                                       'perform
+                                                       (__toplevel_cons
+                                                          (__toplevel_cons 'op (__toplevel_cons 'set-variable-value! ()))
+                                                          (__toplevel_cons
+                                                             (__toplevel_cons 'const (__toplevel_cons var ()))
+                                                             (__toplevel_cons
+                                                                (__toplevel_cons 'reg (__toplevel_cons 'val ()))
+                                                                (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'env ())) ())))))
+                                                    (__toplevel_cons
+                                                       (__toplevel_cons
+                                                          'assign
+                                                          (__toplevel_cons target (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 'ok ())) ())))
+                                                       ()))))))))))
          (compile-definition (lambda (exp target linkage)
                                (let ((var (definition-variable exp))
                                      (get-value-code (compile (definition-value exp) 'val 'next)))
@@ -330,6 +376,9 @@
                                                  ()))))))))
          (label-counter 0)
          (new-label-number (lambda ()
+                             (<change>
+                                ()
+                                label-counter)
                              (<change>
                                 (set! label-counter (+ 1 label-counter))
                                 label-counter)
@@ -498,13 +547,7 @@
                                    (let ((primitive-branch (make-label 'primitive-branch))
                                          (compiled-branch (make-label 'compiled-branch))
                                          (after-call (make-label 'after-call)))
-                                      (let ((compiled-linkage (if (eq? linkage 'next)
-                                                                (<change>
-                                                                   after-call
-                                                                   linkage)
-                                                                (<change>
-                                                                   linkage
-                                                                   after-call))))
+                                      (let ((compiled-linkage (if (eq? linkage 'next) after-call linkage)))
                                          (append-instruction-sequences
                                             (make-instruction-sequence
                                                (__toplevel_cons 'proc ())
@@ -542,7 +585,7 @@
                                                            ())))))
                                             after-call)))))
          (compile-proc-appl (lambda (target linkage)
-                              (if (<change> (if (eq? target 'val) (not (eq? linkage 'return)) #f) (not (if (eq? target 'val) (not (eq? linkage 'return)) #f)))
+                              (if (if (eq? target 'val) (not (eq? linkage 'return)) #f)
                                  (make-instruction-sequence
                                     (__toplevel_cons 'proc ())
                                     all-regs
@@ -609,17 +652,18 @@
                                                 (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ()))
                                                 ())))
                                        (if (if (not (eq? target 'val)) (eq? linkage 'return) #f)
-                                          (error "return linkage, target not val -- COMPILE" target)
-                                          #f))))))
+                                          (<change>
+                                             (error "return linkage, target not val -- COMPILE" target)
+                                             #f)
+                                          (<change>
+                                             #f
+                                             (error "return linkage, target not val -- COMPILE" target))))))))
          (all-regs (__toplevel_cons
                      'env
                      (__toplevel_cons
                         'proc
                         (__toplevel_cons 'val (__toplevel_cons 'argl (__toplevel_cons 'continue ()))))))
          (registers-needed (lambda (s)
-                             (<change>
-                                ()
-                                car)
                              (if (symbol? s) () (car s))))
          (registers-modified (lambda (s)
                                (if (symbol? s) () (cadr s))))
@@ -631,61 +675,64 @@
                                (memq reg (registers-modified seq))))
          (append-instruction-sequences (lambda seqs
                                          (letrec ((append-2-sequences (lambda (seq1 seq2)
-                                                                        (<change>
-                                                                           (make-instruction-sequence
-                                                                              (list-union
-                                                                                 (registers-needed seq1)
-                                                                                 (list-difference (registers-needed seq2) (registers-modified seq1)))
-                                                                              (list-union (registers-modified seq1) (registers-modified seq2))
-                                                                              (append (statements seq1) (statements seq2)))
-                                                                           ((lambda (x) x)
-                                                                              (make-instruction-sequence
-                                                                                 (list-union
-                                                                                    (registers-needed seq1)
-                                                                                    (list-difference (registers-needed seq2) (registers-modified seq1)))
-                                                                                 (list-union (registers-modified seq1) (registers-modified seq2))
-                                                                                 (append (statements seq1) (statements seq2)))))))
+                                                                        (make-instruction-sequence
+                                                                           (list-union
+                                                                              (registers-needed seq1)
+                                                                              (list-difference (registers-needed seq2) (registers-modified seq1)))
+                                                                           (list-union (registers-modified seq1) (registers-modified seq2))
+                                                                           (append (statements seq1) (statements seq2)))))
                                                   (append-seq-list (lambda (seqs)
                                                                      (if (null? seqs)
                                                                         (empty-instruction-sequence)
                                                                         (append-2-sequences (car seqs) (append-seq-list (cdr seqs)))))))
                                             (append-seq-list seqs))))
          (list-union (lambda (s1 s2)
-                       (if (<change> (null? s1) (not (null? s1)))
+                       (if (null? s1)
                           s2
                           (if (memq (car s1) s2)
                              (list-union (cdr s1) s2)
                              (cons (car s1) (list-union (cdr s1) s2))))))
          (list-difference (lambda (s1 s2)
                             (if (null? s1)
-                               (<change>
-                                  ()
-                                  (if (memq (car s1) s2)
-                                     (list-difference (cdr s1) s2)
-                                     (cons (car s1) (list-difference (cdr s1) s2))))
-                               (<change>
-                                  (if (memq (car s1) s2)
-                                     (list-difference (cdr s1) s2)
-                                     (cons (car s1) (list-difference (cdr s1) s2)))
-                                  ()))))
+                               ()
+                               (if (memq (car s1) s2)
+                                  (list-difference (cdr s1) s2)
+                                  (cons (car s1) (list-difference (cdr s1) s2))))))
          (preserving (lambda (regs seq1 seq2)
                        (if (null? regs)
                           (append-instruction-sequences seq1 seq2)
                           (let ((first-reg (car regs)))
                              (if (if (needs-register? seq2 first-reg) (<change> (modifies-register? seq1 first-reg) #f) (<change> #f (modifies-register? seq1 first-reg)))
-                                (preserving
-                                   (cdr regs)
-                                   (make-instruction-sequence
-                                      (list-union (list first-reg) (registers-needed seq1))
-                                      (list-difference (registers-modified seq1) (list first-reg))
-                                      (append
-                                         (__toplevel_cons (__toplevel_cons 'save (__toplevel_cons first-reg ())) ())
+                                (<change>
+                                   (preserving
+                                      (cdr regs)
+                                      (make-instruction-sequence
+                                         (list-union (list first-reg) (registers-needed seq1))
+                                         (list-difference (registers-modified seq1) (list first-reg))
                                          (append
-                                            (statements seq1)
-                                            (__toplevel_cons (__toplevel_cons 'restore (__toplevel_cons first-reg ())) ()))))
-                                   seq2)
-                                (preserving (cdr regs) seq1 seq2))))))
+                                            (__toplevel_cons (__toplevel_cons 'save (__toplevel_cons first-reg ())) ())
+                                            (append
+                                               (statements seq1)
+                                               (__toplevel_cons (__toplevel_cons 'restore (__toplevel_cons first-reg ())) ()))))
+                                      seq2)
+                                   (preserving (cdr regs) seq1 seq2))
+                                (<change>
+                                   (preserving (cdr regs) seq1 seq2)
+                                   (preserving
+                                      (cdr regs)
+                                      (make-instruction-sequence
+                                         (list-union (list first-reg) (registers-needed seq1))
+                                         (list-difference (registers-modified seq1) (list first-reg))
+                                         (append
+                                            (__toplevel_cons (__toplevel_cons 'save (__toplevel_cons first-reg ())) ())
+                                            (append
+                                               (statements seq1)
+                                               (__toplevel_cons (__toplevel_cons 'restore (__toplevel_cons first-reg ())) ()))))
+                                      seq2)))))))
          (tack-on-instruction-sequence (lambda (seq body-seq)
+                                         (<change>
+                                            ()
+                                            (display append))
                                          (make-instruction-sequence
                                             (registers-needed seq)
                                             (registers-modified seq)
@@ -700,11 +747,11 @@
          (compiled-procedure? (lambda (proc)
                                 (tagged-list? proc 'compiled-procedure)))
          (compiled-procedure-entry (lambda (c-proc)
-                                     (cadr c-proc)))
+                                     (<change>
+                                        (cadr c-proc)
+                                        ((lambda (x) x) (cadr c-proc)))))
          (compiled-procedure-env (lambda (c-proc)
-                                   (<change>
-                                      (caddr c-proc)
-                                      ((lambda (x) x) (caddr c-proc))))))
+                                   (caddr c-proc))))
    (compile
       (__toplevel_cons
          'begin
@@ -715,9 +762,6 @@
             (__toplevel_cons (__toplevel_cons 'id (__toplevel_cons 2 ())) ())))
       'val
       'next)
-   (<change>
-      ()
-      (display (__toplevel_cons (__toplevel_cons 'id (__toplevel_cons 2 ())) ())))
    (compile
       (__toplevel_cons
          'begin

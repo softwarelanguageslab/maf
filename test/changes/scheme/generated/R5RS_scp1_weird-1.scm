@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
 ; * added: 1
-; * swaps: 1
+; * swaps: 0
 ; * negated predicates: 1
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
@@ -15,26 +15,24 @@
                         (weird (/ x 2))
                         (weird (+ (* 3 x) 1))))))
          (depth-weird (lambda (x)
+                        (<change>
+                           ()
+                           0)
                         (if (= x 1)
                            0
                            (if (even? x)
                               (+ 1 (depth-weird (/ x 2)))
                               (+ (depth-weird (+ (* 3 x) 1)) 1)))))
          (weird-table (lambda (min max)
-                        (if (<change> (< min max) (not (< min max)))
+                        (if (< min max)
                            (begin
-                              (<change>
-                                 (for-each output (list min "\t" (depth-weird min) "\n"))
-                                 (weird-table (+ min 1) max))
+                              (for-each output (list min "\t" (depth-weird min) "\n"))
                               (<change>
                                  (weird-table (+ min 1) max)
-                                 (for-each output (list min "\t" (depth-weird min) "\n"))))
+                                 ((lambda (x) x) (weird-table (+ min 1) max))))
                            #f))))
-   (<change>
-      ()
-      1)
    (weird-table 1 10)
-   (if (= (weird 15) 1)
+   (if (<change> (= (weird 15) 1) (not (= (weird 15) 1)))
       (if (= (depth-weird 15) 17)
          (equal?
             result

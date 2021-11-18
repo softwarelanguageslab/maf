@@ -12,9 +12,9 @@
                        ((f g f m) f g m)
                        (<change>
                           ()
-                          f)
+                          g)
+                       ((g f g m) g f m)
                        (<change>
-                          ((g f g m) g f m)
-                          ((lambda (x) x) ((g f g m) g f m)))
-                       g)))))
+                          g
+                          ((lambda (x) x) g)))))))
    (equal? (test test test 10) test))

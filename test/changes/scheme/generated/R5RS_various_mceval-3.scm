@@ -1,43 +1,44 @@
 ; Changes:
 ; * removed: 8
-; * added: 7
-; * swaps: 15
+; * added: 5
+; * swaps: 9
 ; * negated predicates: 2
-; * swapped branches: 2
-; * calls to id fun: 14
+; * swapped branches: 0
+; * calls to id fun: 9
 (letrec ((self-evaluating? (lambda (exp)
-                             @sensitivity:FA
+                             (<change>
+                                @sensitivity:FA
+                                ())
                              (if (<change> (number? exp) (not (number? exp)))
                                 #t
                                 (if (string? exp) #t #f))))
          (variable? (lambda (exp)
+                      @sensitivity:FA
                       (<change>
-                         @sensitivity:FA
-                         ())
+                         ()
+                         symbol?)
                       (symbol? exp)))
          (tagged-list? (lambda (exp tag)
-                         @sensitivity:FA
+                         (<change>
+                            @sensitivity:FA
+                            ((lambda (x) x) @sensitivity:FA))
                          (if (pair? exp) (eq? (car exp) tag) #f)))
          (quoted? (lambda (exp)
                     (<change>
                        @sensitivity:FA
-                       ((lambda (x) x) @sensitivity:FA))
+                       ())
                     (tagged-list? exp 'quote)))
          (text-of-quotation (lambda (exp)
                               (<change>
                                  @sensitivity:FA
-                                 (cadr exp))
-                              (<change>
-                                 (cadr exp)
-                                 @sensitivity:FA)))
+                                 ())
+                              (cadr exp)))
          (assignment? (lambda (exp)
                         @sensitivity:FA
                         (tagged-list? exp 'set!)))
          (assignment-variable (lambda (exp)
                                 @sensitivity:FA
-                                (<change>
-                                   (cadr exp)
-                                   ((lambda (x) x) (cadr exp)))))
+                                (cadr exp)))
          (assignment-value (lambda (exp)
                              (<change>
                                 @sensitivity:FA
@@ -52,32 +53,26 @@
                                 @sensitivity:FA
                                 (if (symbol? (cadr exp)) (cadr exp) (caadr exp))))
          (make-lambda (lambda (parameters body)
-                        (<change>
-                           @sensitivity:FA
-                           ())
+                        @sensitivity:FA
                         (cons 'lambda (cons parameters body))))
          (definition-value (lambda (exp)
-                             @sensitivity:FA
+                             (<change>
+                                @sensitivity:FA
+                                ())
                              (if (symbol? (cadr exp))
-                                (<change>
-                                   (caddr exp)
-                                   (make-lambda (cdadr exp) (cddr exp)))
-                                (<change>
-                                   (make-lambda (cdadr exp) (cddr exp))
-                                   (caddr exp)))))
+                                (caddr exp)
+                                (make-lambda (cdadr exp) (cddr exp)))))
          (lambda? (lambda (exp)
-                    (<change>
-                       @sensitivity:FA
-                       (tagged-list? exp 'lambda))
-                    (<change>
-                       (tagged-list? exp 'lambda)
-                       @sensitivity:FA)))
+                    @sensitivity:FA
+                    (tagged-list? exp 'lambda)))
          (lambda-parameters (lambda (exp)
+                              @sensitivity:FA
                               (<change>
                                  ()
-                                 (display exp))
-                              @sensitivity:FA
-                              (cadr exp)))
+                                 (cadr exp))
+                              (<change>
+                                 (cadr exp)
+                                 ((lambda (x) x) (cadr exp)))))
          (lambda-body (lambda (exp)
                         @sensitivity:FA
                         (cddr exp)))
@@ -85,11 +80,15 @@
                 @sensitivity:FA
                 (tagged-list? exp 'if)))
          (if-predicate (lambda (exp)
+                         @sensitivity:FA
                          (<change>
-                            @sensitivity:FA
-                            ())
+                            ()
+                            (display (cadr exp)))
                          (cadr exp)))
          (if-consequent (lambda (exp)
+                          (<change>
+                             ()
+                             exp)
                           (<change>
                              @sensitivity:FA
                              (caddr exp))
@@ -97,40 +96,33 @@
                              (caddr exp)
                              @sensitivity:FA)))
          (if-alternative (lambda (exp)
-                           @sensitivity:FA
                            (<change>
-                              (if (not (null? (cdddr exp)))
-                                 (cadddr exp)
-                                 'false)
-                              ((lambda (x) x) (if (not (null? (cdddr exp))) (cadddr exp) 'false)))))
+                              @sensitivity:FA
+                              ())
+                           (if (not (null? (cdddr exp)))
+                              (cadddr exp)
+                              'false)))
          (make-if (lambda (predicate consequent alternative)
-                    (<change>
-                       @sensitivity:FA
-                       ())
+                    @sensitivity:FA
                     (cons 'if (cons predicate (cons consequent (cons alternative ()))))))
          (begin? (lambda (exp)
-                   @sensitivity:FA
-                   (tagged-list? exp 'begin)))
+                   (<change>
+                      @sensitivity:FA
+                      (tagged-list? exp 'begin))
+                   (<change>
+                      (tagged-list? exp 'begin)
+                      @sensitivity:FA)))
          (begin-actions (lambda (exp)
-                          (<change>
-                             @sensitivity:FA
-                             ((lambda (x) x) @sensitivity:FA))
+                          @sensitivity:FA
                           (cdr exp)))
          (last-exp? (lambda (seq)
-                      (<change>
-                         @sensitivity:FA
-                         ((lambda (x) x) @sensitivity:FA))
+                      @sensitivity:FA
                       (null? (cdr seq))))
          (first-exp (lambda (seq)
                       @sensitivity:FA
-                      (<change>
-                         (car seq)
-                         ((lambda (x) x) (car seq)))))
+                      (car seq)))
          (rest-exps (lambda (seq)
                       @sensitivity:FA
-                      (<change>
-                         ()
-                         (cdr seq))
                       (cdr seq)))
          (mk-begin (lambda (seq)
                      @sensitivity:FA
@@ -143,15 +135,15 @@
                                 (first-exp seq)
                                 (mk-begin seq)))))
          (application? (lambda (exp)
-                         (<change>
-                            @sensitivity:FA
-                            (pair? exp))
-                         (<change>
-                            (pair? exp)
-                            @sensitivity:FA)))
+                         @sensitivity:FA
+                         (pair? exp)))
          (operator (lambda (exp)
-                     @sensitivity:FA
-                     (car exp)))
+                     (<change>
+                        @sensitivity:FA
+                        (car exp))
+                     (<change>
+                        (car exp)
+                        @sensitivity:FA)))
          (operands (lambda (exp)
                      @sensitivity:FA
                      (cdr exp)))
@@ -159,27 +151,17 @@
                          @sensitivity:FA
                          (null? ops)))
          (first-operand (lambda (ops)
-                          (<change>
-                             @sensitivity:FA
-                             ((lambda (x) x) @sensitivity:FA))
+                          @sensitivity:FA
                           (car ops)))
          (rest-operands (lambda (ops)
                           @sensitivity:FA
                           (cdr ops)))
          (cond? (lambda (exp)
-                  (<change>
-                     @sensitivity:FA
-                     ((lambda (x) x) @sensitivity:FA))
-                  (<change>
-                     (tagged-list? exp 'cond)
-                     ((lambda (x) x) (tagged-list? exp 'cond)))))
+                  @sensitivity:FA
+                  (tagged-list? exp 'cond)))
          (cond-clauses (lambda (exp)
-                         (<change>
-                            @sensitivity:FA
-                            (cdr exp))
-                         (<change>
-                            (cdr exp)
-                            @sensitivity:FA)))
+                         @sensitivity:FA
+                         (cdr exp)))
          (cond-predicate (lambda (clause)
                            @sensitivity:FA
                            (car clause)))
@@ -191,87 +173,62 @@
                                  (eq? (cond-predicate clause) 'else)
                                  @sensitivity:FA)))
          (cond-actions (lambda (clause)
-                         (<change>
-                            ()
-                            cdr)
                          @sensitivity:FA
-                         (<change>
-                            ()
-                            (display @sensitivity:FA))
                          (cdr clause)))
          (expand-clauses (lambda (clauses)
                            @sensitivity:No
                            (if (null? clauses)
-                              (<change>
-                                 'false
-                                 (let ((first (car clauses))
-                                       (rest (cdr clauses)))
-                                    (if (cond-else-clause? first)
-                                       (if (null? rest)
-                                          (sequence->exp (cond-actions first))
-                                          (error "ELSE clause isn't last -- COND->IF" clauses))
-                                       (make-if (cond-predicate first) (sequence->exp (cond-actions first)) (expand-clauses rest)))))
-                              (<change>
-                                 (let ((first (car clauses))
-                                       (rest (cdr clauses)))
-                                    (if (cond-else-clause? first)
-                                       (if (null? rest)
-                                          (sequence->exp (cond-actions first))
-                                          (error "ELSE clause isn't last -- COND->IF" clauses))
-                                       (make-if (cond-predicate first) (sequence->exp (cond-actions first)) (expand-clauses rest))))
-                                 'false))))
+                              'false
+                              (let ((first (car clauses))
+                                    (rest (cdr clauses)))
+                                 (if (cond-else-clause? first)
+                                    (if (null? rest)
+                                       (sequence->exp (cond-actions first))
+                                       (error "ELSE clause isn't last -- COND->IF" clauses))
+                                    (make-if (cond-predicate first) (sequence->exp (cond-actions first)) (expand-clauses rest)))))))
          (cond->if (lambda (exp)
                      @sensitivity:FA
-                     (<change>
-                        (expand-clauses (cond-clauses exp))
-                        ((lambda (x) x) (expand-clauses (cond-clauses exp))))))
+                     (expand-clauses (cond-clauses exp))))
          (true? (lambda (x)
                   @sensitivity:FA
-                  (<change>
-                     (not (eq? x #f))
-                     ((lambda (x) x) (not (eq? x #f))))))
+                  (not (eq? x #f))))
          (false? (lambda (x)
                    (<change>
                       @sensitivity:FA
-                      ((lambda (x) x) @sensitivity:FA))
+                      ())
                    (eq? x #f)))
          (make-procedure (lambda (parameters body env)
-                           @sensitivity:FA
+                           (<change>
+                              @sensitivity:FA
+                              ())
                            (cons 'procedure (cons parameters (cons body (cons env ()))))))
          (compound-procedure? (lambda (p)
                                 @sensitivity:FA
                                 (tagged-list? p 'procedure)))
          (procedure-parameters (lambda (p)
-                                 (<change>
-                                    @sensitivity:FA
-                                    ())
+                                 @sensitivity:FA
                                  (cadr p)))
          (procedure-body (lambda (p)
                            @sensitivity:FA
-                           (<change>
-                              ()
-                              (display caddr))
                            (caddr p)))
          (procedure-environment (lambda (p)
-                                  @sensitivity:FA
                                   (<change>
                                      ()
-                                     cadddr)
+                                     p)
+                                  @sensitivity:FA
                                   (cadddr p)))
          (enclosing-environment (lambda (env)
                                   @sensitivity:FA
                                   (cdr env)))
          (first-frame (lambda (env)
-                        @sensitivity:FA
+                        (<change>
+                           @sensitivity:FA
+                           ())
                         (car env)))
          (the-empty-environment ())
          (make-frame (lambda (variables values)
-                       (<change>
-                          @sensitivity:FA
-                          (cons variables values))
-                       (<change>
-                          (cons variables values)
-                          @sensitivity:FA)))
+                       @sensitivity:FA
+                       (cons variables values)))
          (frame-variables (lambda (frame)
                             @sensitivity:FA
                             (car frame)))
@@ -283,28 +240,23 @@
                                   (set-car! frame (cons var (car frame)))
                                   (set-cdr! frame (cons val (cdr frame)))))
          (extend-environment (lambda (vars vals base-env)
-                               (<change>
-                                  @sensitivity:No
-                                  (if (= (length vars) (length vals))
-                                     (cons (make-frame vars vals) base-env)
-                                     (if (< (length vars) (length vals))
-                                        (error "Too many arguments supplied" vars vals)
-                                        (error "Too few arguments supplied" vars vals))))
+                               @sensitivity:No
                                (<change>
                                   (if (= (length vars) (length vals))
                                      (cons (make-frame vars vals) base-env)
                                      (if (< (length vars) (length vals))
                                         (error "Too many arguments supplied" vars vals)
                                         (error "Too few arguments supplied" vars vals)))
-                                  @sensitivity:No)))
+                                  ((lambda (x) x)
+                                     (if (= (length vars) (length vals))
+                                        (cons (make-frame vars vals) base-env)
+                                        (if (< (length vars) (length vals))
+                                           (error "Too many arguments supplied" vars vals)
+                                           (error "Too few arguments supplied" vars vals)))))))
          (lookup-variable-value (lambda (var env)
-                                  (<change>
-                                     @sensitivity:FA
-                                     ())
+                                  @sensitivity:FA
                                   (letrec ((env-loop (lambda (env)
-                                                       (<change>
-                                                          @sensitivity:FA
-                                                          ((lambda (x) x) @sensitivity:FA))
+                                                       @sensitivity:FA
                                                        (letrec ((scan (lambda (vars vals)
                                                                         @sensitivity:FA
                                                                         (if (null? vars)
@@ -321,48 +273,88 @@
                                 @sensitivity:FA
                                 (letrec ((env-loop (lambda (env)
                                                      @sensitivity:FA
-                                                     (letrec ((scan (lambda (vars vals)
-                                                                      @sensitivity:FA
-                                                                      (if (null? vars)
-                                                                         (env-loop (enclosing-environment env))
-                                                                         (if (eq? var (car vars))
-                                                                            (set-car! vals val)
-                                                                            (scan (cdr vars) (cdr vals)))))))
-                                                        (if (eq? env the-empty-environment)
-                                                           (error "Unbound variable -- SET!" var)
-                                                           (let ((frame (first-frame env)))
-                                                              (scan (frame-variables frame) (frame-values frame))))))))
+                                                     (<change>
+                                                        (letrec ((scan (lambda (vars vals)
+                                                                         @sensitivity:FA
+                                                                         (if (null? vars)
+                                                                            (env-loop (enclosing-environment env))
+                                                                            (if (eq? var (car vars))
+                                                                               (set-car! vals val)
+                                                                               (scan (cdr vars) (cdr vals)))))))
+                                                           (if (eq? env the-empty-environment)
+                                                              (error "Unbound variable -- SET!" var)
+                                                              (let ((frame (first-frame env)))
+                                                                 (scan (frame-variables frame) (frame-values frame)))))
+                                                        ((lambda (x) x)
+                                                           (letrec ((scan (lambda (vars vals)
+                                                                            (<change>
+                                                                               @sensitivity:FA
+                                                                               (if (null? vars)
+                                                                                  (env-loop (enclosing-environment env))
+                                                                                  (if (not (eq? var (car vars)))
+                                                                                     (set-car! vals val)
+                                                                                     (scan (cdr vars) (cdr vals)))))
+                                                                            (<change>
+                                                                               (if (null? vars)
+                                                                                  (env-loop (enclosing-environment env))
+                                                                                  (if (eq? var (car vars))
+                                                                                     (set-car! vals val)
+                                                                                     (scan (cdr vars) (cdr vals))))
+                                                                               @sensitivity:FA))))
+                                                              (<change>
+                                                                 (if (eq? env the-empty-environment)
+                                                                    (error "Unbound variable -- SET!" var)
+                                                                    (let ((frame (first-frame env)))
+                                                                       (scan (frame-variables frame) (frame-values frame))))
+                                                                 ((lambda (x) x)
+                                                                    (if (eq? env the-empty-environment)
+                                                                       (error "Unbound variable -- SET!" var)
+                                                                       (let ((frame (first-frame env)))
+                                                                          (scan (frame-variables frame) (frame-values frame))))))))))))
                                    (env-loop env))))
          (define-variable! (lambda (var val env)
+                             @sensitivity:FA
                              (<change>
-                                @sensitivity:FA
-                                ())
-                             (let ((frame (first-frame env)))
-                                (letrec ((scan (lambda (vars vals)
-                                                 @sensitivity:FA
-                                                 (if (null? vars)
-                                                    (add-binding-to-frame! var val frame)
-                                                    (if (eq? var (car vars))
-                                                       (set-car! vals val)
-                                                       (scan (cdr vars) (cdr vals)))))))
-                                   (scan (frame-variables frame) (frame-values frame))))))
+                                (let ((frame (first-frame env)))
+                                   (letrec ((scan (lambda (vars vals)
+                                                    @sensitivity:FA
+                                                    (if (null? vars)
+                                                       (add-binding-to-frame! var val frame)
+                                                       (if (eq? var (car vars))
+                                                          (set-car! vals val)
+                                                          (scan (cdr vars) (cdr vals)))))))
+                                      (scan (frame-variables frame) (frame-values frame))))
+                                ((lambda (x) x)
+                                   (let ((frame (first-frame env)))
+                                      (letrec ((scan (lambda (vars vals)
+                                                       @sensitivity:FA
+                                                       (if (null? vars)
+                                                          (add-binding-to-frame! var val frame)
+                                                          (if (eq? var (car vars))
+                                                             (set-car! vals val)
+                                                             (scan (cdr vars) (cdr vals)))))))
+                                         (scan (frame-variables frame) (frame-values frame))))))))
          (primitive-procedure? (lambda (proc)
-                                 @sensitivity:FA
+                                 (<change>
+                                    @sensitivity:FA
+                                    ((lambda (x) x) @sensitivity:FA))
                                  (tagged-list? proc 'primitive)))
          (primitive-implementation (lambda (proc)
-                                     @sensitivity:FA
-                                     (cadr proc)))
+                                     (<change>
+                                        @sensitivity:FA
+                                        (cadr proc))
+                                     (<change>
+                                        (cadr proc)
+                                        @sensitivity:FA)))
          (primitive-procedures (cons (cons '= (cons = ())) (cons (cons '* (cons * ())) (cons (cons '- (cons - ())) ()))))
          (primitive-procedure-names (lambda ()
-                                      @sensitivity:FA
+                                      (<change>
+                                         @sensitivity:FA
+                                         ((lambda (x) x) @sensitivity:FA))
                                       (map car primitive-procedures)))
          (primitive-procedure-objects (lambda ()
-                                        (<change>
-                                           @sensitivity:FA
-                                           (map (lambda (proc) (cons 'primitive (cons (cadr proc) ()))) primitive-procedures))
-                                        (<change>
-                                           (map (lambda (proc) (cons 'primitive (cons (cadr proc) ()))) primitive-procedures)
-                                           @sensitivity:FA)))
+                                        @sensitivity:FA
+                                        (map (lambda (proc) (cons 'primitive (cons (cadr proc) ()))) primitive-procedures)))
          (setup-environment (lambda ()
                               (let ((initial-env (extend-environment
                                                    (primitive-procedure-names)
@@ -374,9 +366,7 @@
                                  (<change>
                                     (define-variable! 'false #f initial-env)
                                     (define-variable! 'true #t initial-env))
-                                 (<change>
-                                    initial-env
-                                    ((lambda (x) x) initial-env)))))
+                                 initial-env)))
          (the-global-environment (setup-environment))
          (apply-primitive-procedure (lambda (proc args)
                                       @sensitivity:FA
@@ -393,19 +383,24 @@
                    @sensitivity:FA
                    (letrec ((eval-sequence (lambda (exps env)
                                              @sensitivity:FA
-                                             (if (last-exp? exps)
-                                                (mceval (first-exp exps) env)
-                                                (begin
-                                                   (<change>
+                                             (<change>
+                                                (if (last-exp? exps)
+                                                   (mceval (first-exp exps) env)
+                                                   (begin
                                                       (mceval (first-exp exps) env)
-                                                      (eval-sequence (rest-exps exps) env))
-                                                   (<change>
-                                                      (eval-sequence (rest-exps exps) env)
-                                                      (mceval (first-exp exps) env)))))))
+                                                      (eval-sequence (rest-exps exps) env)))
+                                                ((lambda (x) x)
+                                                   (if (last-exp? exps)
+                                                      (mceval (first-exp exps) env)
+                                                      (begin
+                                                         (<change>
+                                                            (mceval (first-exp exps) env)
+                                                            (eval-sequence (rest-exps exps) env))
+                                                         (<change>
+                                                            (eval-sequence (rest-exps exps) env)
+                                                            (mceval (first-exp exps) env)))))))))
                       (let ((mcapply (lambda (procedure arguments)
-                                       (<change>
-                                          @sensitivity:FA
-                                          ())
+                                       @sensitivity:FA
                                        (if (primitive-procedure? procedure)
                                           (apply-primitive-procedure procedure arguments)
                                           (if (compound-procedure? procedure)
@@ -414,33 +409,16 @@
                                                 (extend-environment (procedure-parameters procedure) arguments (procedure-environment procedure)))
                                              (error "Unknown procedure type -- APPLY" procedure))))))
                          (let ((eval-if (lambda (exp env)
-                                          (<change>
-                                             @sensitivity:FA
-                                             (if (not (true? (mceval (if-predicate exp) env)))
-                                                (mceval (if-consequent exp) env)
-                                                (mceval (if-alternative exp) env)))
-                                          (<change>
-                                             (if (true? (mceval (if-predicate exp) env))
-                                                (mceval (if-consequent exp) env)
-                                                (mceval (if-alternative exp) env))
-                                             @sensitivity:FA))))
+                                          @sensitivity:FA
+                                          (if (true? (mceval (if-predicate exp) env))
+                                             (mceval (if-consequent exp) env)
+                                             (mceval (if-alternative exp) env)))))
                             (let ((eval-assignment (lambda (exp env)
-                                                     (<change>
-                                                        ()
-                                                        env)
-                                                     (<change>
-                                                        (set-variable-value! (assignment-variable exp) (mceval (assignment-value exp) env) env)
-                                                        'ok)
-                                                     (<change>
-                                                        'ok
-                                                        (set-variable-value! (assignment-variable exp) (mceval (assignment-value exp) env) env)))))
+                                                     (set-variable-value! (assignment-variable exp) (mceval (assignment-value exp) env) env)
+                                                     'ok)))
                                (let ((eval-definition (lambda (exp env)
-                                                        (<change>
-                                                           @sensitivity:FA
-                                                           (define-variable! (definition-variable exp) (mceval (definition-value exp) env) env))
-                                                        (<change>
-                                                           (define-variable! (definition-variable exp) (mceval (definition-value exp) env) env)
-                                                           @sensitivity:FA)
+                                                        @sensitivity:FA
+                                                        (define-variable! (definition-variable exp) (mceval (definition-value exp) env) env)
                                                         'ok)))
                                   (letrec ((list-of-values (lambda (exps env)
                                                              @sensitivity:FA

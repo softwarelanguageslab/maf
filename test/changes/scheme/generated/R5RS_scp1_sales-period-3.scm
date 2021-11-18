@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 2
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 1
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((foldr (lambda (f base lst)
                   (letrec ((foldr-aux (lambda (lst)
                                         (if (null? lst)
@@ -13,35 +13,23 @@
                      (foldr-aux lst))))
          (totaal (lambda (aankopen kortingen)
                    (letrec ((zoek-korting (lambda (kortingen artikel)
-                                            (foldr
-                                               +
-                                               0
-                                               (map
-                                                  (lambda (x)
-                                                     (if (<change> (eq? (car x) artikel) (not (eq? (car x) artikel)))
-                                                        (cadr x)
-                                                        0))
-                                                  kortingen)))))
+                                            (foldr + 0 (map (lambda (x) (if (eq? (car x) artikel) (cadr x) 0)) kortingen)))))
                       (if (null? aankopen)
-                         (<change>
-                            0
-                            (let* ((aankoop (car aankopen))
-                                   (korting (zoek-korting kortingen (car aankoop)))
-                                   (prijs (cadr aankoop)))
-                               ((lambda (x) x) (+ (- prijs (/ (* prijs korting) 100)) (totaal (cdr aankopen) (cdr kortingen))))))
-                         (<change>
-                            (let* ((aankoop (car aankopen))
-                                   (korting (zoek-korting kortingen (car aankoop)))
-                                   (prijs (cadr aankoop)))
-                               (+ (- prijs (/ (* prijs korting) 100)) (totaal (cdr aankopen) (cdr kortingen))))
-                            0)))))
+                         0
+                         (let* ((aankoop (car aankopen))
+                                (korting (zoek-korting kortingen (car aankoop)))
+                                (prijs (cadr aankoop)))
+                            (+ (- prijs (/ (* prijs korting) 100)) (totaal (cdr aankopen) (cdr kortingen))))))))
          (totaal-iter (lambda (aankopen kortingen)
                         (letrec ((zoek-korting (lambda (kortingen artikel)
-                                                 (foldr + 0 (map (lambda (x) (if (eq? (car x) artikel) (cadr x) 0)) kortingen))))
+                                                 (<change>
+                                                    ()
+                                                    (display (foldr + 0 (map (lambda (x) (if (eq? (car x) artikel) 0 (cadr x))) kortingen))))
+                                                 (foldr
+                                                    +
+                                                    0
+                                                    (map (lambda (x) (<change> () (display x)) (if (eq? (car x) artikel) (cadr x) 0)) kortingen))))
                                  (loop (lambda (lst res)
-                                         (<change>
-                                            ()
-                                            +)
                                          (if (null? lst)
                                             res
                                             (let* ((aankoop (car lst))

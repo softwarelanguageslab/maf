@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -94,10 +94,13 @@
    (table 'insert 4 69)
    (table 'insert 14 98)
    (<change>
-      (table 'insert 7 72)
-      (table 'insert 27 14))
+      ()
+      4)
+   (table 'insert 7 72)
    (<change>
       (table 'insert 27 14)
-      (table 'insert 7 72))
-   (table 'insert 11 50)
+      (table 'insert 11 50))
+   (<change>
+      (table 'insert 11 50)
+      (table 'insert 27 14))
    (table 'display))

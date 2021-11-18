@@ -8,8 +8,8 @@
 (letrec ((f (lambda (x)
               x))
          (x 1))
-   (set! x "hello")
    (<change>
       ()
-      f)
+      "hello")
+   (set! x "hello")
    (f x))

@@ -1,14 +1,11 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 2
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((deriv (lambda (a)
-                  (<change>
-                     ()
-                     a)
                   (if (not (pair? a))
                      (if (eq? a 'x) 1 0)
                      (if (eq? (car a) '+)
@@ -77,4 +74,10 @@
                                            (__toplevel_cons (__toplevel_cons '/ (__toplevel_cons 1 (__toplevel_cons 'x ()))) ())))
                                      ())))
                             (__toplevel_cons 0 ()))))))))
+   (<change>
+      ()
+      (display res))
+   (<change>
+      ()
+      res)
    res)

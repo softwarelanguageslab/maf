@@ -9,8 +9,8 @@
                  x))
          (inc (lambda (n)
                 (lambda (f x)
-                   (<change>
-                      ()
-                      f)
                    (f (n f x))))))
+   (<change>
+      ()
+      ((inc (inc zero)) (lambda (x) (+ x 1)) 0))
    ((inc (inc zero)) (lambda (x) (+ x 1)) 0))

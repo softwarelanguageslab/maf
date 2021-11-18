@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 0
 ; * swaps: 0
 ; * negated predicates: 1
 ; * swapped branches: 0
@@ -20,9 +20,6 @@
                              1
                              (+ (leaf-count (car tree)) (leaf-count (cdr tree)))))))
          (depth-and-leaf-count (lambda (tree)
-                                 (<change>
-                                    ()
-                                    0)
                                  (letrec ((make-res cons)
                                           (depth car)
                                           (leaf-count cdr))
@@ -40,9 +37,6 @@
               (__toplevel_cons
                  (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons 4 ())) (__toplevel_cons 5 ()))
                  (__toplevel_cons (__toplevel_cons 6 (__toplevel_cons 7 ())) ())))))
-   (<change>
-      ()
-      =)
    (if (= (depth l) 3)
       (if (= (leaf-count l) 7)
          (equal? (depth-and-leaf-count l) (cons 3 7))

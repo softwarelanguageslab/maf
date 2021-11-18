@@ -1,51 +1,50 @@
 ; Changes:
-; * removed: 2
+; * removed: 0
 ; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 2
-; * calls to id fun: 1
+; * swapped branches: 0
+; * calls to id fun: 2
 (letrec ((result ())
          (output (lambda (i)
-                   (set! result (cons i result))))
+                   (<change>
+                      ()
+                      result)
+                   (<change>
+                      (set! result (cons i result))
+                      ((lambda (x) x) (set! result (cons i result))))))
          (make-ring (lambda (n)
-                      (let ((last (cons 0 ())))
-                         (letrec ((build-list (lambda (n)
-                                                (if (= n 0) last (cons n (build-list (- n 1)))))))
-                            (let ((ring (build-list n)))
-                               (set-cdr! last ring)
-                               ring)))))
+                      (<change>
+                         (let ((last (cons 0 ())))
+                            (letrec ((build-list (lambda (n)
+                                                   (if (= n 0) last (cons n (build-list (- n 1)))))))
+                               (let ((ring (build-list n)))
+                                  (set-cdr! last ring)
+                                  ring)))
+                         ((lambda (x) x)
+                            (let ((last (cons 0 ())))
+                               (letrec ((build-list (lambda (n)
+                                                      (if (= n 0) last (cons n (build-list (- n 1)))))))
+                                  (let ((ring (build-list n)))
+                                     (set-cdr! last ring)
+                                     ring)))))))
          (print-ring (lambda (r)
                        (letrec ((aux (lambda (l)
                                        (if (not (null? l))
                                           (if (eq? (cdr l) r)
-                                             (<change>
-                                                (begin
-                                                   (output " ")
-                                                   (output (car l))
-                                                   (output "..."))
-                                                (begin
-                                                   (output " ")
-                                                   (output (car l))
-                                                   (aux (cdr l))))
-                                             (<change>
-                                                (begin
-                                                   (output " ")
-                                                   (output (car l))
-                                                   (aux (cdr l)))
-                                                (begin
-                                                   ((lambda (x) x) (output " "))
-                                                   (output "..."))))
+                                             (begin
+                                                (output " ")
+                                                (output (car l))
+                                                (output "..."))
+                                             (begin
+                                                (output " ")
+                                                (output (car l))
+                                                (aux (cdr l))))
                                           #f))))
-                          (<change>
-                             (aux r)
-                             ())
+                          (aux r)
                           #t)))
          (right-rotate (lambda (r)
                          (letrec ((iter (lambda (l)
-                                          (<change>
-                                             ()
-                                             (if (eq? (cdr l) r) (iter (cdr l)) l))
                                           (if (eq? (cdr l) r) l (iter (cdr l))))))
                             (iter r))))
          (r (make-ring 3)))

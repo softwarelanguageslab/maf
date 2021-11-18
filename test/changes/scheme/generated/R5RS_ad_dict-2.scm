@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 1
-; * swaps: 0
+; * removed: 0
+; * added: 0
+; * swaps: 2
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((create-dictionary (lambda ()
                               (let ((content ()))
                                  (letrec ((empty? (lambda ()
@@ -38,11 +38,18 @@
                                                     (map-iter content ()))))
                                           (foreach (lambda (a-action)
                                                      (letrec ((foreach-iter (lambda (the-current)
-                                                                              (if (null? the-current)
-                                                                                 #t
-                                                                                 (begin
-                                                                                    (a-action (caar the-current) (cdar the-current))
-                                                                                    (foreach-iter (cdr the-current)))))))
+                                                                              (<change>
+                                                                                 (if (null? the-current)
+                                                                                    #t
+                                                                                    (begin
+                                                                                       (a-action (caar the-current) (cdar the-current))
+                                                                                       (foreach-iter (cdr the-current))))
+                                                                                 ((lambda (x) x)
+                                                                                    (if (null? the-current)
+                                                                                       #t
+                                                                                       (begin
+                                                                                          (a-action (caar the-current) (cdar the-current))
+                                                                                          (foreach-iter (cdr the-current)))))))))
                                                         (foreach-iter content)
                                                         #t)))
                                           (display-dict (lambda ()
@@ -68,21 +75,28 @@
    (nl->fr 'insert (__toplevel_cons 'fiets (__toplevel_cons (__toplevel_cons 'bicyclette ()) ())))
    (nl->fr 'insert (__toplevel_cons 'auto (__toplevel_cons (__toplevel_cons 'voiture ()) ())))
    (nl->fr 'insert (__toplevel_cons 'huis (__toplevel_cons (__toplevel_cons 'maison ()) ())))
-   (<change>
-      ()
-      __toplevel_cons)
    (nl->fr 'insert (__toplevel_cons 'vrachtwagen (__toplevel_cons (__toplevel_cons 'camion ()) ())))
-   (<change>
-      (nl->fr 'insert (__toplevel_cons 'tientonner (__toplevel_cons (__toplevel_cons 'camion ()) ())))
-      ())
+   (nl->fr 'insert (__toplevel_cons 'tientonner (__toplevel_cons (__toplevel_cons 'camion ()) ())))
    (nl->fr 'lookup (__toplevel_cons 'fiets ()))
-   (nl->fr 'display ())
-   (letrec ((fr->eng (create-dictionary)))
-      (fr->eng 'insert (__toplevel_cons 'bicyclette (__toplevel_cons (__toplevel_cons 'bike ()) ())))
-      (fr->eng 'insert (__toplevel_cons 'voiture (__toplevel_cons (__toplevel_cons 'car ()) ())))
-      (fr->eng
-         'insert
-         (__toplevel_cons 'maison (__toplevel_cons (__toplevel_cons 'house (__toplevel_cons 'home ())) ())))
-      (fr->eng 'insert (__toplevel_cons 'camion (__toplevel_cons (__toplevel_cons 'truck ()) ())))
-      (fr->eng 'lookup (__toplevel_cons 'bicyclette ()))
-      #t))
+   (<change>
+      (nl->fr 'display ())
+      (letrec ((fr->eng (create-dictionary)))
+         (fr->eng 'insert (__toplevel_cons 'bicyclette (__toplevel_cons (__toplevel_cons 'bike ()) ())))
+         (fr->eng 'insert (__toplevel_cons 'voiture (__toplevel_cons (__toplevel_cons 'car ()) ())))
+         (fr->eng
+            'insert
+            (__toplevel_cons 'maison (__toplevel_cons (__toplevel_cons 'house (__toplevel_cons 'home ())) ())))
+         (fr->eng 'insert (__toplevel_cons 'camion (__toplevel_cons (__toplevel_cons 'truck ()) ())))
+         #t
+         (fr->eng 'lookup (__toplevel_cons 'bicyclette ()))))
+   (<change>
+      (letrec ((fr->eng (create-dictionary)))
+         (fr->eng 'insert (__toplevel_cons 'bicyclette (__toplevel_cons (__toplevel_cons 'bike ()) ())))
+         (fr->eng 'insert (__toplevel_cons 'voiture (__toplevel_cons (__toplevel_cons 'car ()) ())))
+         (fr->eng
+            'insert
+            (__toplevel_cons 'maison (__toplevel_cons (__toplevel_cons 'house (__toplevel_cons 'home ())) ())))
+         (fr->eng 'insert (__toplevel_cons 'camion (__toplevel_cons (__toplevel_cons 'truck ()) ())))
+         (fr->eng 'lookup (__toplevel_cons 'bicyclette ()))
+         #t)
+      (nl->fr 'display ())))

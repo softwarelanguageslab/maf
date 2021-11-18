@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 0
-; * added: 0
-; * swaps: 1
+; * removed: 3
+; * added: 1
+; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 1
+; * swapped branches: 1
+; * calls to id fun: 0
 (letrec ((first-el (lambda (best)
                      (if (not (null? best)) (caar best) #f)))
          (smaller? (lambda (el1 el2)
@@ -12,60 +12,42 @@
          (same? (lambda (el1 el2)
                   (equal? el1 el2)))
          (merge (lambda (best1 best2)
-                  (<change>
-                     (letrec ((merge-in (lambda (curr1 curr2 prev)
-                                          (if (null? curr1)
-                                             (set-cdr! prev curr2)
-                                             (if (null? curr2)
-                                                (set-cdr! prev curr1)
-                                                (if (same? (first-el curr1) (first-el curr2))
+                  (letrec ((merge-in (lambda (curr1 curr2 prev)
+                                       (if (null? curr1)
+                                          (set-cdr! prev curr2)
+                                          (if (<change> (null? curr2) (not (null? curr2)))
+                                             (set-cdr! prev curr1)
+                                             (if (same? (first-el curr1) (first-el curr2))
+                                                (<change>
                                                    (begin
                                                       (set-cdr! prev curr1)
                                                       (merge-in (cdr curr1) (cdr curr2) curr1))
+                                                   (if (smaller? (first-el curr1) (first-el curr2))
+                                                      (begin
+                                                         (display set-cdr!)
+                                                         (merge-in (cdr curr1) curr2 curr1))
+                                                      (begin
+                                                         (set-cdr! prev curr2)
+                                                         (merge-in curr1 (cdr curr2) curr2))))
+                                                (<change>
                                                    (if (smaller? (first-el curr1) (first-el curr2))
                                                       (begin
                                                          (set-cdr! prev curr1)
                                                          (merge-in (cdr curr1) curr2 curr1))
                                                       (begin
                                                          (set-cdr! prev curr2)
-                                                         (merge-in curr1 (cdr curr2) curr2)))))))))
-                        (let* ((result (if (smaller? (first-el best1) (first-el best2))
-                                         best1
-                                         best2))
-                               (curr1 (if (eq? result best1) (cdr best1) best1))
-                               (curr2 (if (eq? result best2) (cdr best2) best2)))
+                                                         (merge-in curr1 (cdr curr2) curr2)))
+                                                   (begin
+                                                      (merge-in (cdr curr1) (cdr curr2) curr1)))))))))
+                     (let* ((result (if (smaller? (first-el best1) (first-el best2))
+                                      best1
+                                      best2))
+                            (curr1 (if (eq? result best1) (cdr best1) best1))
+                            (curr2 (if (eq? result best2) (cdr best2) best2)))
+                        (<change>
                            (merge-in curr1 curr2 result)
-                           result))
-                     ((lambda (x) x)
-                        (letrec ((merge-in (lambda (curr1 curr2 prev)
-                                             (if (null? curr1)
-                                                (set-cdr! prev curr2)
-                                                (if (null? curr2)
-                                                   (set-cdr! prev curr1)
-                                                   (if (same? (first-el curr1) (first-el curr2))
-                                                      (begin
-                                                         (set-cdr! prev curr1)
-                                                         (merge-in (cdr curr1) (cdr curr2) curr1))
-                                                      (if (smaller? (first-el curr1) (first-el curr2))
-                                                         (begin
-                                                            (set-cdr! prev curr1)
-                                                            (merge-in (cdr curr1) curr2 curr1))
-                                                         (begin
-                                                            (set-cdr! prev curr2)
-                                                            (merge-in curr1 (cdr curr2) curr2)))))))))
-                           (let* ((result (if (smaller? (first-el best1) (first-el best2))
-                                            best1
-                                            best2))
-                                  (curr1 (if (<change> (eq? result best1) (not (eq? result best1)))
-                                           (cdr best1)
-                                           best1))
-                                  (curr2 (if (eq? result best2) (cdr best2) best2)))
-                              (<change>
-                                 (merge-in curr1 curr2 result)
-                                 result)
-                              (<change>
-                                 result
-                                 (merge-in curr1 curr2 result))))))))
+                           ())
+                        result))))
          (best1 (__toplevel_cons
                   (__toplevel_cons
                      'ann

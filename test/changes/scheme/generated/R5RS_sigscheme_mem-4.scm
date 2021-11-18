@@ -12,11 +12,11 @@
                 (if (< i *lifetime*)
                    (begin
                       (vector-set! *vec* i (make-vector *blocksize*))
-                      (<change>
-                         ()
-                         (display foo))
                       (foo (+ i 1) j))
                    (if (< 0 j) (foo 0 (- j 1)) ())))))
+   (<change>
+      ()
+      0)
    (if (null? (foo 0 100))
       (equal?
          *vec*

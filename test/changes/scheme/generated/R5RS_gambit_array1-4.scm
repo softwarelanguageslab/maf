@@ -1,24 +1,18 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
-; * swaps: 1
+; * added: 1
+; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
+; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((create-x (lambda (n)
                      (letrec ((result (make-vector n 0)))
                         (letrec ((__do_loop (lambda (i)
                                               (if (>= i n)
-                                                 (<change>
-                                                    result
-                                                    (begin
-                                                       (__do_loop (+ i 1))
-                                                       (vector-set! result i i)))
-                                                 (<change>
-                                                    (begin
-                                                       (vector-set! result i i)
-                                                       (__do_loop (+ i 1)))
-                                                    result)))))
+                                                 result
+                                                 (begin
+                                                    (vector-set! result i i)
+                                                    (__do_loop (+ i 1)))))))
                            (__do_loop 0)))))
          (create-y (lambda (x)
                      (let* ((n (vector-length x))
@@ -40,4 +34,7 @@
                   loop)
                   100
                   ()))))
+   (<change>
+      ()
+      200)
    (= 200 (go 200)))

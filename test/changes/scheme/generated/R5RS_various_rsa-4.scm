@@ -6,7 +6,7 @@
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((extended-gcd (lambda (a b)
-                         (if (= (modulo a b) 0)
+                         (if (<change> (= (modulo a b) 0) (not (= (modulo a b) 0)))
                             (cons 0 1)
                             (let* ((x:y (extended-gcd b (modulo a b)))
                                    (x (car x:y))
@@ -26,7 +26,7 @@
                                (modulo (square (modulo-power base (/ exp 2) n)) n)))))
          (is-legal-public-exponent? (lambda (e p q)
                                       (if (< 1 e)
-                                         (if (<change> (< e (totient p q)) (not (< e (totient p q))))
+                                         (if (< e (totient p q))
                                             (= 1 (gcd e (totient p q)))
                                             #f)
                                          #f)))

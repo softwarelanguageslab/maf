@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 1
-; * added: 2
-; * swaps: 0
+; * removed: 0
+; * added: 0
+; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((inport #f)
          (nl #f)
          (nw #f)
@@ -16,34 +16,29 @@
                          (begin
                             (list nl nw nc))
                          (begin
-                            (set! nc (+ nc 1))
-                            (if (char=? x #\
+                            (<change>
+                               (set! nc (+ nc 1))
+                               (if (char=? x #\
+) (set! nl (+ nl 1)) #f))
+                            (<change>
+                               (if (char=? x #\
 ) (set! nl (+ nl 1)) #f)
+                               (set! nc (+ nc 1)))
                             (if (let ((__or_res (char=? x #\ ))) (if __or_res __or_res (char=? x #\
 )))
                                (set! inword #f)
                                (if (not inword)
                                   (begin
-                                     (<change>
-                                        (set! nw (+ nw 1))
-                                        ())
-                                     (<change>
-                                        ()
-                                        (set! inword #t))
+                                     (set! nw (+ nw 1))
                                      (set! inword #t))
                                   #f))
-                            (<change>
-                               ()
-                               (not inword))
                             (wcport port))))))
          (go (lambda ()
                (set! inport (open-input-file "input.txt"))
                (set! nl 0)
                (set! nw 0)
                (set! nc 0)
-               (<change>
-                  (set! inword #f)
-                  ((lambda (x) x) (set! inword #f)))
+               (set! inword #f)
                (let ((result (wcport inport)))
                   (close-input-port inport)
                   result))))

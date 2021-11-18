@@ -1,32 +1,17 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 4
+; * negated predicates: 1
+; * swapped branches: 0
+; * calls to id fun: 3
 (letrec ((phi (lambda (x1 x2 x3 x4)
-                (<change>
-                   (if (let ((__or_res x1)) (if __or_res __or_res (let ((__or_res (not x2))) (if __or_res __or_res (not x3)))))
-                      (if (let ((__or_res (not x2))) (if __or_res __or_res (not x3)))
-                         (let ((__or_res x4))
-                            (if __or_res __or_res x2))
-                         #f)
+                (if (let ((__or_res x1)) (if __or_res __or_res (let ((__or_res (not x2))) (if __or_res __or_res (not x3)))))
+                   (if (let ((__or_res (not x2))) (<change> (if __or_res __or_res (not x3)) ((lambda (x) x) (if (<change> __or_res (not __or_res)) __or_res (not x3)))))
+                      (let ((__or_res x4))
+                         (if __or_res __or_res x2))
                       #f)
-                   ((lambda (x) x)
-                      (if (let ((__or_res x1)) (if __or_res __or_res (let ((__or_res (not x2))) (if __or_res __or_res (not x3)))))
-                         (<change>
-                            (if (let ((__or_res (not x2))) (if __or_res __or_res (not x3)))
-                               (let ((__or_res x4))
-                                  (if __or_res __or_res x2))
-                               #f)
-                            #f)
-                         (<change>
-                            #f
-                            (if (let ((__or_res (not x2))) (if __or_res __or_res (not x3)))
-                               (let ((__or_res x4))
-                                  (if __or_res __or_res x2))
-                               #f)))))))
+                   #f)))
          (try (lambda (f)
                 (let ((__or_res (f #t)))
                    (if __or_res __or_res (f #f)))))
@@ -43,9 +28,4 @@
                                                 (<change>
                                                    (try (lambda (n4) (p n1 n2 n3 n4)))
                                                    ((lambda (x) x) (try (lambda (n4) (p n1 n2 n3 n4))))))))))))))))
-   (<change>
-      ()
-      sat-solve-4)
-   (<change>
-      (sat-solve-4 phi)
-      ((lambda (x) x) (sat-solve-4 phi))))
+   (sat-solve-4 phi))

@@ -101,13 +101,13 @@ object IncrementalConfiguration:
         ci_di,
         ci_wi,
         di_wi,
-        wi_cy,
+        //wi_cy,
         // Three optimisations
         ci_di_wi,
-        ci_wi_cy,
-        di_wi_cy,
+        //ci_wi_cy,
+        //di_wi_cy,
         // Four optimisations
-        allOptimisations,
+        //allOptimisations,
       )
 
     case class InvalidConfigurationException(message: String, config: IncrementalConfiguration) extends Exception(message)

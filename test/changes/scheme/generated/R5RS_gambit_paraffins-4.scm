@@ -39,9 +39,6 @@
                                                (three-partitions (- n 1))
                                                ())))
                             (bcp-generator (lambda (j)
-                                             (<change>
-                                                ()
-                                                odd?)
                                              (if (odd? j)
                                                 ()
                                                 ((letrec ((loop1 (lambda (rads1 lst)
@@ -140,4 +137,7 @@
          (nb (lambda (n)
                (let ((x (gen n)))
                   (+ (length (vector-ref x 0)) (length (vector-ref x 1)))))))
+   (<change>
+      ()
+      =)
    (= (nb 17) 24894))

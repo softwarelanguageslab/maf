@@ -3,7 +3,7 @@
 ; * added: 0
 ; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 0
+; * swapped branches: 1
 ; * calls to id fun: 0
 (letrec ((atom? (lambda (x)
                   (if (not (pair? x)) (not (null? x)) #f)))
@@ -11,8 +11,12 @@
                       (if (atom? aexp)
                          (number? aexp)
                          (if (numbered? (car aexp))
-                            (numbered? (car (cdr (cdr aexp))))
-                            #f))))
+                            (<change>
+                               (numbered? (car (cdr (cdr aexp))))
+                               #f)
+                            (<change>
+                               #f
+                               (numbered? (car (cdr (cdr aexp)))))))))
          (^ (lambda (n m)
               (if (<change> (zero? m) (not (zero? m)))
                  1

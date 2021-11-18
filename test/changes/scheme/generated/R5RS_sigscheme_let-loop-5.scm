@@ -8,7 +8,7 @@
 (letrec ((loop (lambda (i l)
                  (<change>
                     ()
-                    loop)
+                    (if (< i l) (loop (+ 1 i) l) l))
                  (let ((a 0)
                        (b 1)
                        (c 2))

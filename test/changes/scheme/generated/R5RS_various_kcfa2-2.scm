@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -13,9 +13,6 @@
                       (f2 #t)))
                    (lambda (x2)
                       ((lambda (z) (z x1 x2)) (lambda (y1 y2) y1))))))))
-   (<change>
-      ()
-      (display res))
    (<change>
       ()
       res)

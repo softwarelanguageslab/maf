@@ -1,13 +1,19 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 3
 ; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 0
+; * swapped branches: 2
+; * calls to id fun: 1
 (letrec ((atom? (lambda (x)
+                  (<change>
+                     ()
+                     (pair? x))
                   (not (pair? x))))
          (maak-blad (lambda (type)
+                      (<change>
+                         ()
+                         (display type))
                       type))
          (geef-type (lambda (blad)
                       blad))
@@ -47,7 +53,7 @@
                          (tel-hulp (lambda (boom)
                                      (if (leeg? boom)
                                         (list 0 0 0)
-                                        (if (<change> (if (blad? boom) (eq? boom 'appel) #f) (not (if (blad? boom) (eq? boom 'appel) #f)))
+                                        (if (if (blad? boom) (eq? boom 'appel) #f)
                                            (list 1 0 0)
                                            (if (if (blad? boom) (eq? boom 'peer) #f)
                                               (list 0 1 0)
@@ -62,24 +68,39 @@
          (member? (lambda (x lst)
                     (pair? (memq x lst))))
          (normaal? (lambda (knoop)
-                     (let ((types (map (lambda (x) (if (pair? x) 'tak x)) knoop)))
+                     (let ((types (map (lambda (x) (<change> () (pair? x)) (if (<change> (pair? x) (not (pair? x))) 'tak x)) knoop)))
                         (not (if (member? 'appel types) (member? 'peer types) #f)))))
          (check-normaal (lambda (boom)
                           (if (leeg? boom)
-                             #t
-                             (if (blad? boom)
+                             (<change>
                                 #t
-                                (if (knoop? boom)
-                                   (if (normaal? boom)
-                                      (check-normaal-in (geef-knopen boom))
-                                      #f)
-                                   (check-normaal-in (geef-knopen boom)))))))
+                                (if (blad? boom)
+                                   (if (knoop? boom)
+                                      (if (normaal? boom)
+                                         (check-normaal-in (geef-knopen boom))
+                                         #f)
+                                      (check-normaal-in (geef-knopen boom)))
+                                   #t))
+                             (<change>
+                                (if (blad? boom)
+                                   #t
+                                   (if (knoop? boom)
+                                      (if (normaal? boom)
+                                         (check-normaal-in (geef-knopen boom))
+                                         #f)
+                                      (check-normaal-in (geef-knopen boom))))
+                                #t))))
          (check-normaal-in (lambda (lst)
                              (if (null? lst)
                                 #t
                                 (if (check-normaal (car lst))
                                    (check-normaal-in (cdr lst))
                                    #f)))))
-   (if (equal? (tel hybride-tak) (__toplevel_cons 4 (__toplevel_cons 2 (__toplevel_cons 3 ()))))
-      (check-normaal hybride-tak)
-      #f))
+   (<change>
+      (if (equal? (tel hybride-tak) (__toplevel_cons 4 (__toplevel_cons 2 (__toplevel_cons 3 ()))))
+         (check-normaal hybride-tak)
+         #f)
+      ((lambda (x) x)
+         (if (equal? (tel hybride-tak) (__toplevel_cons 4 (__toplevel_cons 2 (__toplevel_cons 3 ()))))
+            (check-normaal hybride-tak)
+            #f))))

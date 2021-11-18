@@ -1,28 +1,23 @@
 ; Changes:
-; * removed: 0
+; * removed: 1
 ; * added: 0
-; * swaps: 1
-; * negated predicates: 1
-; * swapped branches: 1
-; * calls to id fun: 0
+; * swaps: 0
+; * negated predicates: 0
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((listn (lambda (n)
                   (<change>
                      @sensitivity:FA
-                     (if (not (= n 0)) () (cons n (listn (- n 1)))))
-                  (<change>
-                     (if (= n 0) () (cons n (listn (- n 1))))
-                     @sensitivity:FA)))
+                     ())
+                  (if (= n 0) () (cons n (listn (- n 1))))))
          (shorterp (lambda (x y)
-                     @sensitivity:FA
+                     (<change>
+                        @sensitivity:FA
+                        ((lambda (x) x) @sensitivity:FA))
                      (if (not (null? y))
-                        (<change>
-                           (let ((__or_res (null? x)))
-                              (if __or_res __or_res (shorterp (cdr x) (cdr y))))
-                           #f)
-                        (<change>
-                           #f
-                           (let ((__or_res (null? x)))
-                              (if __or_res __or_res (shorterp (cdr x) (cdr y))))))))
+                        (let ((__or_res (null? x)))
+                           (if __or_res __or_res (shorterp (cdr x) (cdr y))))
+                        #f)))
          (mas (lambda (x y z)
                 @sensitivity:FA
                 (if (not (shorterp y x))

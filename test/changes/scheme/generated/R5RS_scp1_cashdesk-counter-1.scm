@@ -1,9 +1,9 @@
 ; Changes:
-; * removed: 2
-; * added: 2
-; * swaps: 1
+; * removed: 1
+; * added: 0
+; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 1
+; * swapped branches: 0
 ; * calls to id fun: 2
 (letrec ((maak-teller (lambda ()
                         (let ((result 0))
@@ -12,9 +12,6 @@
                                                 (set! result (+ result bedrag))
                                                 ((lambda (x) x) (set! result (+ result bedrag))))))
                                     (reset (lambda ()
-                                             (<change>
-                                                ()
-                                                result)
                                              (set! result 0)))
                                     (dispatch (lambda (msg)
                                                 (if (eq? msg 'toets)
@@ -31,20 +28,12 @@
                                    (ingetoetst 'product)
                                    (ontvangen 0))
                                 (letrec ((toets (lambda (type bedrag)
-                                                  (<change>
-                                                     (set! ingetoetst type)
-                                                     (if (eq? type 'product)
-                                                        ((te-betalen 'toets) bedrag)
-                                                        (if (eq? type 'ontvangen)
-                                                           (set! ontvangen bedrag)
-                                                           (error "wrong type"))))
-                                                  (<change>
-                                                     (if (eq? type 'product)
-                                                        ((te-betalen 'toets) bedrag)
-                                                        (if (eq? type 'ontvangen)
-                                                           (set! ontvangen bedrag)
-                                                           (error "wrong type")))
-                                                     (set! ingetoetst type))))
+                                                  (set! ingetoetst type)
+                                                  (if (eq? type 'product)
+                                                     ((te-betalen 'toets) bedrag)
+                                                     (if (eq? type 'ontvangen)
+                                                        (set! ontvangen bedrag)
+                                                        (error "wrong type")))))
                                          (enter (lambda ()
                                                   (if (eq? ingetoetst 'product)
                                                      (te-betalen 'lees)
@@ -61,30 +50,23 @@
                                          (dispatch (lambda (msg)
                                                      (if (eq? msg 'toets)
                                                         toets
-                                                        (if (<change> (eq? msg 'enter) (not (eq? msg 'enter)))
+                                                        (if (eq? msg 'enter)
                                                            (enter)
                                                            (if (eq? msg 'inhoud)
                                                               (inhoud)
                                                               (if (eq? msg 'afsluiten)
-                                                                 (<change>
-                                                                    (afsluiten)
-                                                                    (error "wrong message"))
-                                                                 (<change>
-                                                                    (error "wrong message")
-                                                                    (afsluiten)))))))))
+                                                                 (afsluiten)
+                                                                 (error "wrong message"))))))))
                                    dispatch))))
          (teller (maak-teller))
          (winkelkassa (maak-winkelkassa)))
-   (<change>
-      ()
-      ((winkelkassa 'toets) 'product 20))
    (<change>
       ((winkelkassa 'toets) 'product 20)
       ())
    ((teller 'toets) 20)
    ((winkelkassa 'toets) 'product 5)
-   (if (= (teller 'lees) 20)
-      (if (begin (<change> (teller 'reset) ()) (<change> (= (teller 'lees) 0) ((lambda (x) x) (= (teller 'lees) 0))))
+   (if (<change> (= (teller 'lees) 20) (not (= (teller 'lees) 20)))
+      (if (begin (teller 'reset) (<change> (= (teller 'lees) 0) ((lambda (x) x) (= (teller 'lees) 0))))
          (if (= (winkelkassa 'enter) 25)
             (if (= (begin ((winkelkassa 'toets) 'product 10) (winkelkassa 'enter)) 35)
                (if (begin ((winkelkassa 'toets) 'ontvangen 50) (= (winkelkassa 'enter) 15))

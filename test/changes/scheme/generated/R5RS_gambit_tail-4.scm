@@ -9,6 +9,9 @@
          (outport #f)
          (readline (lambda (port line-so-far)
                      (let ((x (read-char port)))
+                        (<change>
+                           ()
+                           port)
                         (if (eof-object? x)
                            x
                            (if (char=? x #\
@@ -19,9 +22,6 @@
                        (let ((x (readline port ())))
                           (if (eof-object? x)
                              (begin
-                                (<change>
-                                   ()
-                                   outport)
                                 (<change>
                                    (display file-so-far outport)
                                    ())

@@ -4,7 +4,7 @@
 ; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((inport #f)
          (outport #f)
          (readline (lambda (port line-so-far)
@@ -32,5 +32,7 @@
                   (set! outport (open-output-file "output.txt"))
                   (set! inport (open-input-file "input.txt")))
                (tail-r inport)
-               (close-input-port inport))))
+               (<change>
+                  (close-input-port inport)
+                  ((lambda (x) x) (close-input-port inport))))))
    (go))

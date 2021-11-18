@@ -4,10 +4,13 @@
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((count-pairs (lambda (lst)
                         (let ((path ()))
                            (letrec ((count (lambda (current)
+                                             (<change>
+                                                ()
+                                                (set! path (cons current path)))
                                              (if (null? current)
                                                 0
                                                 (if (not (pair? current))
@@ -17,9 +20,8 @@
                                                       (begin
                                                          (set! path (cons current path))
                                                          (<change>
-                                                            ()
-                                                            (+ 1 (count (car current)) (count (cdr current))))
-                                                         (+ 1 (count (car current)) (count (cdr current))))))))))
+                                                            (+ 1 (count (car current)) (count (cdr current)))
+                                                            ((lambda (x) x) (+ 1 (count (car current)) (count (cdr current))))))))))))
                               (count lst)))))
          (ret3 (cons 'a (cons 'b (cons 'c ()))))
          (ret4 (let ((last (cons 'c ())))

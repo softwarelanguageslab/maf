@@ -1,16 +1,14 @@
 ; Changes:
-; * removed: 2
+; * removed: 0
 ; * added: 0
-; * swaps: 2
+; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 2
+; * calls to id fun: 0
 (letrec ((true #t)
          (false #f)
          (make-item (lambda (priority element)
-                      (<change>
-                         (cons priority element)
-                         ((lambda (x) x) (cons priority element)))))
+                      (cons priority element)))
          (get-priority (lambda (item)
                          (car item)))
          (get-element (lambda (item)
@@ -30,18 +28,12 @@
                                                                                          (if (> (get-priority (car rest)) priority)
                                                                                             (find-iter (cdr rest) rest)
                                                                                             prev)))))
-                                                                   (<change>
-                                                                      (find-iter (content) front)
-                                                                      ((lambda (x) x) (find-iter (content) front))))))
+                                                                   (find-iter (content) front))))
                                               (empty? (lambda ()
                                                         (null? (content))))
                                               (enqueue (lambda (priority element)
-                                                         (<change>
-                                                            (insert-after! (find-prev-cell priority) (make-item priority element))
-                                                            true)
-                                                         (<change>
-                                                            true
-                                                            (insert-after! (find-prev-cell priority) (make-item priority element)))))
+                                                         (insert-after! (find-prev-cell priority) (make-item priority element))
+                                                         true))
                                               (dequeue (lambda ()
                                                          (if (null? (content))
                                                             false
@@ -65,17 +57,13 @@
                  -- create-priority-queue" m))))))))
                                         dispatch))))
          (pq (create-priority-queue)))
-   (<change>
-      ((pq 'enqueue) 66 'Patrick)
-      ())
+   ((pq 'enqueue) 66 'Patrick)
    ((pq 'enqueue) -106 'Octo)
    ((pq 'enqueue) 0 'Sandy)
    (<change>
       ((pq 'enqueue) 89 'Spongebob)
-      ())
+      ((pq 'dequeue)))
    (<change>
       ((pq 'dequeue))
-      (equal? ((pq 'dequeue)) 'Patrick))
-   (<change>
-      (equal? ((pq 'dequeue)) 'Patrick)
-      ((pq 'dequeue))))
+      ((pq 'enqueue) 89 'Spongebob))
+   (equal? ((pq 'dequeue)) 'Patrick))

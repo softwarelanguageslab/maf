@@ -1,47 +1,31 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 1
-; * swapped branches: 1
-; * calls to id fun: 1
+; * negated predicates: 2
+; * swapped branches: 0
+; * calls to id fun: 0
 (letrec ((atom? (lambda (x)
                   (not (pair? x))))
          (depth (lambda (tree)
-                  (<change>
-                     (if (null? tree)
+                  (if (<change> (null? tree) (not (null? tree)))
+                     0
+                     (if (atom? tree)
                         0
-                        (if (atom? tree)
-                           0
-                           (max (+ 1 (depth (car tree))) (depth (cdr tree)))))
-                     ((lambda (x) x)
-                        (if (null? tree)
-                           0
-                           (if (<change> (atom? tree) (not (atom? tree)))
-                              0
-                              (max (+ 1 (depth (car tree))) (depth (cdr tree)))))))))
+                        (max (+ 1 (depth (car tree))) (depth (cdr tree)))))))
          (leaf-count (lambda (tree)
-                       (<change>
-                          ()
-                          (display null?))
                        (if (null? tree)
-                          (<change>
-                             0
-                             (if (atom? tree)
-                                1
-                                (+ (leaf-count (car tree)) (leaf-count (cdr tree)))))
-                          (<change>
-                             (if (atom? tree)
-                                1
-                                (+ (leaf-count (car tree)) (leaf-count (cdr tree))))
-                             0))))
+                          0
+                          (if (atom? tree)
+                             1
+                             (+ (leaf-count (car tree)) (leaf-count (cdr tree)))))))
          (depth-and-leaf-count (lambda (tree)
                                  (letrec ((make-res cons)
                                           (depth car)
                                           (leaf-count cdr))
                                     (if (null? tree)
                                        (make-res 0 0)
-                                       (if (atom? tree)
+                                       (if (<change> (atom? tree) (not (atom? tree)))
                                           (make-res 0 1)
                                           (let ((res-car (depth-and-leaf-count (car tree)))
                                                 (res-cdr (depth-and-leaf-count (cdr tree))))

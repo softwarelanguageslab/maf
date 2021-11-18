@@ -1,6 +1,6 @@
 ; Changes:
-; * removed: 1
-; * added: 1
+; * removed: 0
+; * added: 0
 ; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -15,39 +15,27 @@
                       (output " ")
                       (output b)
                       (output " ")
-                      (output c)
-                      (linebreak)))
+                      (<change>
+                         (output c)
+                         (linebreak))
+                      (<change>
+                         (linebreak)
+                         (output c))))
          (foo (lambda (a b c)
-                (<change>
-                   (print-abc a b c)
-                   ())
-                (<change>
-                   (let ((a 4)
-                         (c 5)
-                         (b c))
+                (print-abc a b c)
+                (let ((a 4)
+                      (c 5)
+                      (b c))
+                   (<change>
                       (print-abc a b c)
-                      (let ((b 6)
-                            (c a))
-                         (print-abc a b c))
-                      (let ((a b)
-                            (c a))
-                         (print-abc a b c)))
-                   (print-abc a b c))
-                (<change>
-                   (print-abc a b c)
-                   (let ((a 4)
-                         (c 5)
-                         (b c))
-                      (print-abc a b c)
-                      (let ((b 6)
-                            (c a))
-                         (print-abc a b c))
-                      (let ((a b)
-                            (c a))
-                         ((lambda (x) x) (print-abc a b c))))))))
-   (<change>
-      ()
-      __toplevel_cons)
+                      ((lambda (x) x) (print-abc a b c)))
+                   (let ((b 6)
+                         (c a))
+                      (print-abc a b c))
+                   (let ((a b)
+                         (c a))
+                      (print-abc a b c)))
+                (print-abc a b c))))
    (foo 1 2 3)
    (equal?
       result

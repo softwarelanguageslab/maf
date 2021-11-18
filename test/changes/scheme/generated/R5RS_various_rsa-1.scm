@@ -1,33 +1,23 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 2
+; * swapped branches: 1
+; * calls to id fun: 1
 (letrec ((extended-gcd (lambda (a b)
-                         (<change>
-                            (if (= (modulo a b) 0)
-                               (cons 0 1)
-                               (let* ((x:y (extended-gcd b (modulo a b)))
-                                      (x (car x:y))
-                                      (y (cdr x:y)))
-                                  (cons y (- x (* y (quotient a b))))))
-                            ((lambda (x) x)
-                               (if (<change> (= (modulo a b) 0) (not (= (modulo a b) 0)))
-                                  (cons 0 1)
-                                  (let* ((x:y (extended-gcd b (modulo a b)))
-                                         (x (car x:y))
-                                         (y (cdr x:y)))
-                                     (cons y (- x (* y (quotient a b))))))))))
+                         (if (= (modulo a b) 0)
+                            (cons 0 1)
+                            (let* ((x:y (extended-gcd b (modulo a b)))
+                                   (x (car x:y))
+                                   (y (cdr x:y)))
+                               (cons y (- x (* y (quotient a b))))))))
          (modulo-inverse (lambda (a n)
                            (modulo (car (extended-gcd a n)) n)))
          (totient (lambda (p q)
                     (* (- p 1) (- q 1))))
          (square (lambda (x)
-                   (<change>
-                      (* x x)
-                      ((lambda (x) x) (* x x)))))
+                   (* x x)))
          (modulo-power (lambda (base exp n)
                          (if (= exp 0)
                             1
@@ -36,21 +26,27 @@
                                (modulo (square (modulo-power base (/ exp 2) n)) n)))))
          (is-legal-public-exponent? (lambda (e p q)
                                       (if (< 1 e)
-                                         (if (< e (totient p q))
+                                         (if (<change> (< e (totient p q)) (not (< e (totient p q))))
                                             (= 1 (gcd e (totient p q)))
                                             #f)
                                          #f)))
          (private-exponent (lambda (e p q)
-                             (<change>
-                                ()
-                                modulo-inverse)
                              (if (is-legal-public-exponent? e p q)
-                                (modulo-inverse e (totient p q))
-                                (error "Not a legal public exponent for that modulus."))))
+                                (<change>
+                                   (modulo-inverse e (totient p q))
+                                   (error "Not a legal public exponent for that modulus."))
+                                (<change>
+                                   (error "Not a legal public exponent for that modulus.")
+                                   (modulo-inverse e (totient p q))))))
          (encrypt (lambda (m e n)
-                    (if (> m n)
-                       (error "The modulus is too small to encrypt the message.")
-                       (modulo-power m e n))))
+                    (<change>
+                       (if (> m n)
+                          (error "The modulus is too small to encrypt the message.")
+                          (modulo-power m e n))
+                       ((lambda (x) x)
+                          (if (> m n)
+                             (error "The modulus is too small to encrypt the message.")
+                             (modulo-power m e n))))))
          (decrypt (lambda (c d n)
                     (modulo-power c d n)))
          (p 41)
@@ -63,5 +59,5 @@
          (decrypted-ciphertext (decrypt ciphertext d n)))
    (<change>
       ()
-      decrypted-ciphertext)
+      plaintext)
    (= plaintext decrypted-ciphertext))

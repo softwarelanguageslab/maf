@@ -3,7 +3,7 @@
 ; * added: 0
 ; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 0
+; * swapped branches: 1
 ; * calls to id fun: 0
 (letrec ((false #f)
          (true #t)
@@ -39,13 +39,21 @@
                                dispatch)))))
    (let ((stack (create-stack =)))
       (if ((stack 'empty?))
-         (if (begin ((stack 'push) 13) (not ((stack 'empty?))))
-            (if (<change> ((stack 'is-in) 13) (not ((stack 'is-in) 13)))
-               (if (= ((stack 'top)) 13)
-                  (begin
-                     ((stack 'push) 14)
-                     (= ((stack 'pop)) 14))
+         (if (<change> (begin ((stack 'push) 13) (not ((stack 'empty?)))) (not (begin ((stack 'push) 13) (not ((stack 'empty?))))))
+            (if ((stack 'is-in) 13)
+               (<change>
+                  (if (= ((stack 'top)) 13)
+                     (begin
+                        ((stack 'push) 14)
+                        (= ((stack 'pop)) 14))
+                     #f)
                   #f)
-               #f)
+               (<change>
+                  #f
+                  (if (= ((stack 'top)) 13)
+                     (begin
+                        ((stack 'push) 14)
+                        (= ((stack 'pop)) 14))
+                     #f)))
             #f)
          #f)))

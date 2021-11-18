@@ -1,18 +1,16 @@
 ; Changes:
-; * removed: 4
-; * added: 7
-; * swaps: 0
-; * negated predicates: 4
-; * swapped branches: 1
-; * calls to id fun: 9
+; * removed: 0
+; * added: 4
+; * swaps: 2
+; * negated predicates: 2
+; * swapped branches: 2
+; * calls to id fun: 3
 (letrec ((void (lambda ()
                  'void))
          (assq (lambda (k l)
-                 (<change>
-                    (if (null? l)
-                       #f
-                       (if (eq? (caar l) k) (car l) (assq k (cdr l))))
-                    ((lambda (x) x) (if (null? l) #f (if (eq? (caar l) k) (car l) (assq k (cdr l))))))))
+                 (if (null? l)
+                    #f
+                    (if (eq? (caar l) k) (car l) (assq k (cdr l))))))
          (member (lambda (v l)
                    (if (null? l)
                       #f
@@ -20,28 +18,12 @@
          (*namelist* ())
          (*lastlook* (__toplevel_cons 'xxx (__toplevel_cons () ())))
          (nameprop (lambda (name)
-                     (<change>
-                        (if (eq? name (car *lastlook*))
-                           *lastlook*
-                           (let ((pair (assq name *namelist*)))
-                              (if pair (set! *lastlook* pair) (void))
-                              pair))
-                        ((lambda (x) x)
-                           (if (eq? name (car *lastlook*))
-                              *lastlook*
-                              (let ((pair (assq name *namelist*)))
-                                 (if pair
-                                    (<change>
-                                       (set! *lastlook* pair)
-                                       (void))
-                                    (<change>
-                                       (void)
-                                       (set! *lastlook* pair)))
-                                 pair))))))
+                     (if (eq? name (car *lastlook*))
+                        *lastlook*
+                        (let ((pair (assq name *namelist*)))
+                           (if pair (set! *lastlook* pair) (void))
+                           pair))))
          (get (lambda (name prop)
-                (<change>
-                   ()
-                   r)
                 (<change>
                    (let ((r (nameprop name)))
                       (if (pair? r)
@@ -50,88 +32,71 @@
                          #f))
                    ((lambda (x) x)
                       (let ((r (nameprop name)))
-                         (<change>
-                            ()
-                            (cdr s))
-                         (<change>
-                            (if (pair? r)
-                               (let ((s (assq prop (cdr r))))
-                                  (if (pair? s) (cdr s) #f))
-                               #f)
-                            ((lambda (x) x) (if (pair? r) (let ((s (assq prop (cdr r)))) (if (pair? s) (cdr s) #f)) #f))))))))
+                         (if (pair? r)
+                            (let ((s (assq prop (cdr r))))
+                               (if (pair? s) (cdr s) #f))
+                            #f))))))
          (put (lambda (name prop valu)
+                (<change>
+                   ()
+                   valu)
                 (let ((r (nameprop name)))
                    (if (pair? r)
                       (let ((s (assq prop (cdr r))))
                          (if (pair? s)
                             (set-cdr! s valu)
                             (let ((item (cons prop valu)))
-                               (<change>
-                                  (set-cdr! r (cons item (cdr r)))
-                                  ((lambda (x) x) (set-cdr! r (cons item (cdr r))))))))
+                               (set-cdr! r (cons item (cdr r))))))
                       (let ((item (cons prop valu)))
                          (set! *namelist* (cons (cons name (list item)) *namelist*)))))
                 valu))
          (reinit-prop! (lambda ()
                          (set! *namelist* ())
-                         (<change>
-                            (set! *lastlook* (__toplevel_cons 'xxx (__toplevel_cons () ())))
-                            ((lambda (x) x) (set! *lastlook* (__toplevel_cons 'xxx (__toplevel_cons () ())))))))
+                         (set! *lastlook* (__toplevel_cons 'xxx (__toplevel_cons () ())))))
          (run-benchmark (lambda (benchmark-name benchmark-thunk)
                           (let ((ten (lambda ()
+                                       (<change>
+                                          (benchmark-thunk)
+                                          ((lambda (x) x) (benchmark-thunk)))
+                                       (benchmark-thunk)
+                                       (benchmark-thunk)
                                        (benchmark-thunk)
                                        (<change>
                                           (benchmark-thunk)
-                                          ())
-                                       (<change>
-                                          ()
                                           (benchmark-thunk))
                                        (<change>
                                           (benchmark-thunk)
-                                          ((lambda (x) x) (benchmark-thunk)))
-                                       (benchmark-thunk)
-                                       (<change>
-                                          (benchmark-thunk)
-                                          ())
+                                          (benchmark-thunk))
                                        (benchmark-thunk)
                                        (benchmark-thunk)
-                                       (<change>
-                                          (benchmark-thunk)
-                                          ())
-                                       (<change>
-                                          (benchmark-thunk)
-                                          ((lambda (x) x) (benchmark-thunk)))
+                                       (benchmark-thunk)
                                        (benchmark-thunk))))
                              (ten)
                              (ten)
-                             (ten)
-                             (ten))))
+                             (<change>
+                                (ten)
+                                (ten))
+                             (<change>
+                                (ten)
+                                (ten)))))
          (get-null (lambda (name prop)
                      (let ((__or_res (get name prop)))
                         (if __or_res __or_res ()))))
          (unify-subst 0)
          (temp-temp 0)
          (add-lemma (lambda (term)
-                      (<change>
-                         ()
-                         car)
-                      (if (if (pair? term) (if (eq? (car term) 'equal) (pair? (cadr term)) #f) #f)
+                      (if (if (pair? term) (if (eq? (car term) 'equal) (<change> (pair? (cadr term)) #f) (<change> #f (pair? (cadr term)))) #f)
                          (put (car (cadr term)) 'lemmas (cons term (get-null (car (cadr term)) 'lemmas)))
                          (error 'add-lemma "ADD-LEMMA did not like term:  " term))))
          (add-lemma-lst (lambda (lst)
-                          (<change>
-                             ()
-                             (display #t))
                           (if (null? lst)
                              #t
                              (begin
-                                (<change>
-                                   (add-lemma (car lst))
-                                   ())
+                                (add-lemma (car lst))
                                 (add-lemma-lst (cdr lst))))))
          (apply-subst (lambda (alist term)
-                        (if (<change> (not (pair? term)) (not (not (pair? term))))
-                           (if (begin (set! temp-temp (assq term alist)) temp-temp)
+                        (if (not (pair? term))
+                           (if (begin (<change> () (set! temp-temp (assq term alist))) (set! temp-temp (assq term alist)) temp-temp)
                               (cdr temp-temp)
                               term)
                            (cons (car term) (apply-subst-lst alist (cdr term))))))
@@ -140,27 +105,36 @@
                                ()
                                (cons (apply-subst alist (car lst)) (apply-subst-lst alist (cdr lst))))))
          (falsep (lambda (x lst)
-                   (<change>
-                      ()
-                      __or_res)
                    (let ((__or_res (eq? x (__toplevel_cons 'f ()))))
+                      (<change>
+                         ()
+                         (if __or_res __or_res (member x lst)))
                       (if __or_res __or_res (member x lst)))))
          (one-way-unify (lambda (term1 term2)
-                          (begin
-                             (set! unify-subst ())
-                             (one-way-unify1 term1 term2))))
+                          (<change>
+                             (begin
+                                (set! unify-subst ())
+                                (one-way-unify1 term1 term2))
+                             ((lambda (x) x) (begin (set! unify-subst ()) (one-way-unify1 term1 term2))))))
          (one-way-unify1 (lambda (term1 term2)
                            (if (not (pair? term2))
                               (if (begin (set! temp-temp (assq term2 unify-subst)) temp-temp)
                                  (eq? term1 (cdr temp-temp))
                                  (begin
                                     (set! unify-subst (cons (cons term2 term1) unify-subst))
+                                    (<change>
+                                       ()
+                                       cons)
                                     #t))
                               (if (not (pair? term1))
                                  #f
                                  (if (eq? (car term1) (car term2))
-                                    (one-way-unify1-lst (cdr term1) (cdr term2))
-                                    #f)))))
+                                    (<change>
+                                       (one-way-unify1-lst (cdr term1) (cdr term2))
+                                       #f)
+                                    (<change>
+                                       #f
+                                       (one-way-unify1-lst (cdr term1) (cdr term2))))))))
          (one-way-unify1-lst (lambda (lst1 lst2)
                                (if (null? lst1)
                                   #t
@@ -168,7 +142,7 @@
                                      (one-way-unify1-lst (cdr lst1) (cdr lst2))
                                      #f))))
          (rewrite (lambda (term)
-                    (if (<change> (not (pair? term)) (not (not (pair? term))))
+                    (if (not (pair? term))
                        term
                        (rewrite-with-lemmas (cons (car term) (rewrite-args (cdr term))) (get-null (car term) 'lemmas)))))
          (rewrite-args (lambda (lst)
@@ -176,9 +150,6 @@
                             ()
                             (cons (rewrite (car lst)) (rewrite-args (cdr lst))))))
          (rewrite-with-lemmas (lambda (term lst)
-                                (<change>
-                                   ()
-                                   (cdr lst))
                                 (if (null? lst)
                                    term
                                    (if (one-way-unify term (cadr (car lst)))
@@ -1800,14 +1771,14 @@
                           #t
                           (if (falsep x false-lst)
                              #f
-                             (if (<change> (not (pair? x)) (not (not (pair? x))))
+                             (if (not (pair? x))
                                 #f
                                 (if (eq? (car x) 'if)
-                                   (if (truep (cadr x) true-lst)
+                                   (if (<change> (truep (cadr x) true-lst) (not (truep (cadr x) true-lst)))
                                       (tautologyp (caddr x) true-lst false-lst)
                                       (if (falsep (cadr x) false-lst)
                                          (tautologyp (cadddr x) true-lst false-lst)
-                                         (if (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst)
+                                         (if (<change> (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst) (not (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst)))
                                             (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
                                             #f)))
                                    #f))))))
@@ -1906,12 +1877,10 @@
          (trans-of-implies (lambda (n)
                              (list 'implies (trans-of-implies1 n) (list 'implies 0 n))))
          (trans-of-implies1 (lambda (n)
-                              (if (<change> (eq? n 1) (not (eq? n 1)))
+                              (if (eq? n 1)
                                  (list 'implies 0 1)
                                  (list 'and (list 'implies (- n 1) n) (trans-of-implies1 (- n 1))))))
          (truep (lambda (x lst)
                   (let ((__or_res (eq? x (__toplevel_cons 't ()))))
-                     (<change>
-                        (if __or_res __or_res (member x lst))
-                        ((lambda (x) x) (if __or_res __or_res (member x lst))))))))
+                     (if __or_res __or_res (member x lst))))))
    (run-benchmark "Boyer" (lambda () (setup) (test))))

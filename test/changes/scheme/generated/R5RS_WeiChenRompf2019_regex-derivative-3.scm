@@ -1,14 +1,16 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 1
-; * negated predicates: 0
-; * swapped branches: 2
-; * calls to id fun: 3
+; * negated predicates: 1
+; * swapped branches: 1
+; * calls to id fun: 2
 (letrec ((debug-trace (lambda ()
                         'do-nothing))
          (cadr (lambda (p)
-                 (car (cdr p))))
+                 (<change>
+                    (car (cdr p))
+                    ((lambda (x) x) (car (cdr p))))))
          (caddr (lambda (p)
                   (car (cdr (cdr p)))))
          (regex-NULL #f)
@@ -16,13 +18,13 @@
          (regex-alt? (lambda (re)
                        (if (pair? re) (eq? (car re) 'alt) #f)))
          (regex-seq? (lambda (re)
-                       (<change>
-                          (if (pair? re) (eq? (car re) 'seq) #f)
-                          ((lambda (x) x) (if (pair? re) (eq? (car re) 'seq) #f)))))
+                       (if (pair? re) (eq? (car re) 'seq) #f)))
          (regex-rep? (lambda (re)
                        (if (pair? re) (eq? (car re) 'rep) #f)))
          (regex-null? (lambda (re)
-                        (eq? re #f)))
+                        (<change>
+                           (eq? re #f)
+                           ((lambda (x) x) (eq? re #f)))))
          (regex-empty? (lambda (re)
                          (eq? re #t)))
          (regex-atom? (lambda (re)
@@ -31,46 +33,34 @@
          (match-seq (lambda (re f)
                       (if (regex-seq? re) (f (cadr re) (caddr re)) #f)))
          (match-alt (lambda (re f)
+                      (<change>
+                         ()
+                         (display re))
                       (if (regex-alt? re) (f (cadr re) (caddr re)) #f)))
          (match-rep (lambda (re f)
                       (if (regex-rep? re) (f (cadr re)) #f)))
          (seq (lambda (pat1 pat2)
-                (<change>
-                   (if (regex-null? pat1)
+                (if (regex-null? pat1)
+                   regex-NULL
+                   (if (regex-null? pat2)
                       regex-NULL
-                      (if (regex-null? pat2)
-                         regex-NULL
-                         (if (regex-empty? pat1)
-                            pat2
-                            (if (regex-empty? pat2)
-                               pat1
-                               (cons 'seq (cons pat1 (cons pat2 ())))))))
-                   ((lambda (x) x)
-                      (if (regex-null? pat1)
-                         (<change>
-                            regex-NULL
-                            (if (regex-null? pat2)
-                               regex-NULL
-                               (if (regex-empty? pat1)
-                                  pat2
-                                  (if (regex-empty? pat2)
-                                     pat1
-                                     (cons 'seq (cons pat1 (cons pat2 ())))))))
-                         (<change>
-                            (if (regex-null? pat2)
-                               regex-NULL
-                               (if (regex-empty? pat1)
-                                  pat2
-                                  (if (regex-empty? pat2)
-                                     pat1
-                                     (cons 'seq (cons pat1 (cons pat2 ()))))))
-                            regex-NULL))))))
+                      (if (regex-empty? pat1)
+                         pat2
+                         (if (regex-empty? pat2)
+                            pat1
+                            (cons 'seq (cons pat1 (cons pat2 ())))))))))
          (alt (lambda (pat1 pat2)
                 (if (regex-null? pat1)
-                   pat2
-                   (if (regex-null? pat2)
-                      pat1
-                      (cons 'alt (cons pat1 (cons pat2 ())))))))
+                   (<change>
+                      pat2
+                      (if (regex-null? pat2)
+                         pat1
+                         (cons 'alt (cons pat1 (cons pat2 ())))))
+                   (<change>
+                      (if (regex-null? pat2)
+                         pat1
+                         (cons 'alt (cons pat1 (cons pat2 ()))))
+                      pat2))))
          (rep (lambda (pat)
                 (if (regex-null? pat)
                    regex-BLANK
@@ -88,7 +78,9 @@
                                     #f
                                     (if (match-alt re (lambda (pat1 pat2) (alt (regex-empty pat1) (regex-empty pat2))))
                                        #f
-                                       (if (regex-rep? re) #t #f))))))))
+                                       (if (<change> (regex-rep? re) (not (regex-rep? re)))
+                                          #t
+                                          #f))))))))
          (d/dc (lambda (re c)
                  (debug-trace)
                  (if (regex-empty? re)
@@ -96,28 +88,16 @@
                     (if (regex-null? re)
                        regex-NULL
                        (if (eq? c re)
-                          (<change>
-                             regex-BLANK
-                             (if (regex-atom? re)
-                                regex-NULL
-                                (if (match-seq re (lambda (pat1 pat2) (alt (seq (d/dc pat1 c) pat2) (seq (regex-empty pat1) (d/dc pat2 c)))))
+                          regex-BLANK
+                          (if (regex-atom? re)
+                             regex-NULL
+                             (if (match-seq re (lambda (pat1 pat2) (alt (seq (d/dc pat1 c) pat2) (seq (regex-empty pat1) (d/dc pat2 c)))))
+                                #f
+                                (if (match-alt re (lambda (pat1 pat2) (alt (d/dc pat1 c) (d/dc pat2 c))))
                                    #f
-                                   (if (match-alt re (lambda (pat1 pat2) (alt (d/dc pat1 c) (d/dc pat2 c))))
+                                   (if (match-rep re (lambda (pat) (seq (d/dc pat c) (rep pat))))
                                       #f
-                                      (if (match-rep re (lambda (pat) (seq (d/dc pat c) (rep pat))))
-                                         #f
-                                         regex-NULL)))))
-                          (<change>
-                             (if (regex-atom? re)
-                                regex-NULL
-                                (if (match-seq re (lambda (pat1 pat2) (alt (seq (d/dc pat1 c) pat2) (seq (regex-empty pat1) (d/dc pat2 c)))))
-                                   #f
-                                   (if (match-alt re (lambda (pat1 pat2) (alt (d/dc pat1 c) (d/dc pat2 c))))
-                                      #f
-                                      (if (match-rep re (lambda (pat) (seq (d/dc pat c) (rep pat))))
-                                         #f
-                                         regex-NULL))))
-                             regex-BLANK))))))
+                                      regex-NULL)))))))))
          (regex-match (lambda (pattern data)
                         (if (null? data)
                            (regex-empty? (regex-empty pattern))
@@ -125,9 +105,7 @@
          (check-expect (lambda (check expect)
                          (if (not (equal? check expect))
                             (begin
-                               (<change>
-                                  (display "check-expect failed; got: ")
-                                  ((lambda (x) x) (display "check-expect failed; got: ")))
+                               (display "check-expect failed; got: ")
                                (display check)
                                (<change>
                                   (display "; expected: ")

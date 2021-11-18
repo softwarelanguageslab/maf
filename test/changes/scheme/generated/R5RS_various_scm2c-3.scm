@@ -1,28 +1,24 @@
 ; Changes:
-; * removed: 2
-; * added: 10
-; * swaps: 3
+; * removed: 3
+; * added: 7
+; * swaps: 2
 ; * negated predicates: 8
-; * swapped branches: 10
-; * calls to id fun: 6
+; * swapped branches: 8
+; * calls to id fun: 13
 (letrec ((void (lambda ()
-                 (<change>
-                    (if #f #t #f)
-                    ((lambda (x) x) (if #f #t #f)))))
+                 (if #f #t #f)))
          (tagged-list? (lambda (tag l)
-                         (if (pair? l) (eq? tag (car l)) #f)))
+                         (<change>
+                            (if (pair? l) (eq? tag (car l)) #f)
+                            ((lambda (x) x) (if (pair? l) (<change> (eq? tag (car l)) #f) (<change> #f (eq? tag (car l))))))))
          (char->natural (lambda (c)
-                          (<change>
-                             (let ((i (char->integer c)))
-                                (if (< i 0) (* -2 i) (+ (* 2 i) 1)))
-                             ((lambda (x) x) (let ((i (char->integer c))) (if (< i 0) (* -2 i) (+ (* 2 i) 1)))))))
+                          (let ((i (char->integer c)))
+                             (if (< i 0) (* -2 i) (+ (* 2 i) 1)))))
          (integer->char-list (lambda (n)
                                (string->list (number->string n))))
          (gensym-count 0)
          (gensym (lambda (param)
-                   (<change>
-                      (set! gensym-count (+ gensym-count 1))
-                      ((lambda (x) x) (set! gensym-count (+ gensym-count 1))))
+                   (set! gensym-count (+ gensym-count 1))
                    (string->symbol
                       (string-append (if (symbol? param) (symbol->string param) param) "$" (number->string gensym-count)))))
          (symbol<? (lambda (sym1 sym2)
@@ -32,21 +28,15 @@
                       (list sym)
                       (if (eq? sym (car S))
                          S
-                         (if (symbol<? sym (car S))
+                         (if (<change> (symbol<? sym (car S)) (not (symbol<? sym (car S))))
                             (cons sym S)
                             (cons (car S) (insert sym (cdr S))))))))
          (remove (lambda (sym S)
                    (if (not (pair? S))
-                      (<change>
-                         ()
-                         (if (eq? (car S) sym)
-                            (cdr S)
-                            (cons (car S) (remove sym (cdr S)))))
-                      (<change>
-                         (if (eq? (car S) sym)
-                            (cdr S)
-                            (cons (car S) (remove sym (cdr S))))
-                         ()))))
+                      ()
+                      (if (eq? (car S) sym)
+                         (cdr S)
+                         (cons (car S) (remove sym (cdr S)))))))
          (union (lambda (set1 set2)
                   (if (not (pair? set1))
                      set2
@@ -64,23 +54,23 @@
                     (cons (list (car list1) (car list2)) (azip (cdr list1) (cdr list2)))
                     ())))
          (assq-remove-key (lambda (env key)
-                            (if (<change> (not (pair? env)) (not (not (pair? env))))
+                            (if (not (pair? env))
                                ()
                                (if (eq? (car (car env)) key)
                                   (assq-remove-key (cdr env) key)
                                   (cons (car env) (assq-remove-key (cdr env) key))))))
          (assq-remove-keys (lambda (env keys)
-                             (<change>
-                                ()
-                                (display keys))
                              (if (not (pair? keys))
                                 env
                                 (assq-remove-keys (assq-remove-key env (car keys)) (cdr keys)))))
          (const? (lambda (exp)
+                   (<change>
+                      ()
+                      boolean?)
+                   (<change>
+                      ()
+                      boolean?)
                    (let ((__or_res (integer? exp)))
-                      (<change>
-                         ()
-                         boolean?)
                       (if __or_res __or_res (boolean? exp)))))
          (ref? (lambda (exp)
                  (symbol? exp)))
@@ -104,11 +94,12 @@
                                (map car (cadr exp))))
          (letrec->args (lambda (exp)
                          (<change>
-                            ()
-                            cadr)
-                         (map cadr (cadr exp))))
+                            (map cadr (cadr exp))
+                            ((lambda (x) x) (map cadr (cadr exp))))))
          (lambda? (lambda (exp)
-                    (tagged-list? 'lambda exp)))
+                    (<change>
+                       (tagged-list? 'lambda exp)
+                       ((lambda (x) x) (tagged-list? 'lambda exp)))))
          (lambda->formals (lambda (exp)
                             (cadr exp)))
          (lambda->exp (lambda (exp)
@@ -126,30 +117,24 @@
          (app->fun (lambda (exp)
                      (<change>
                         ()
-                        car)
+                        (display exp))
                      (car exp)))
          (app->args (lambda (exp)
-                      (cdr exp)))
+                      (<change>
+                         (cdr exp)
+                         ((lambda (x) x) (cdr exp)))))
          (prim? (lambda (exp)
                   (let ((__or_res (eq? exp '+)))
                      (if __or_res
                         __or_res
                         (let ((__or_res (eq? exp '-)))
                            (if __or_res
-                              (<change>
-                                 __or_res
-                                 (let ((__or_res (eq? exp '*)))
-                                    (if __or_res
-                                       __or_res
-                                       (let ((__or_res (eq? exp '=)))
-                                          (if __or_res __or_res (eq? exp 'display))))))
-                              (<change>
-                                 (let ((__or_res (eq? exp '*)))
-                                    (if __or_res
-                                       __or_res
-                                       (let ((__or_res (eq? exp '=)))
-                                          (if __or_res __or_res (eq? exp 'display)))))
-                                 __or_res)))))))
+                              __or_res
+                              (let ((__or_res (eq? exp '*)))
+                                 (if __or_res
+                                    __or_res
+                                    (let ((__or_res (eq? exp '=)))
+                                       (if __or_res __or_res (eq? exp 'display)))))))))))
          (begin? (lambda (exp)
                    (tagged-list? 'begin exp)))
          (begin->exps (lambda (exp)
@@ -165,16 +150,10 @@
          (closure->lam (lambda (exp)
                          (cadr exp)))
          (closure->env (lambda (exp)
-                         (<change>
-                            ()
-                            (display caddr))
                          (caddr exp)))
          (env-make? (lambda (exp)
                       (tagged-list? 'env-make exp)))
          (env-make->id (lambda (exp)
-                         (<change>
-                            ()
-                            cadr)
                          (cadr exp)))
          (env-make->fields (lambda (exp)
                              (map car (cddr exp))))
@@ -185,11 +164,11 @@
          (env-get->id (lambda (exp)
                         (cadr exp)))
          (env-get->field (lambda (exp)
-                           (<change>
-                              ()
-                              (display caddr))
                            (caddr exp)))
          (env-get->env (lambda (exp)
+                         (<change>
+                            ()
+                            (cadddr exp))
                          (cadddr exp)))
          (set-cell!? (lambda (exp)
                        (tagged-list? 'set-cell! exp)))
@@ -198,7 +177,9 @@
          (set-cell!->value (lambda (exp)
                              (caddr exp)))
          (cell? (lambda (exp)
-                  (tagged-list? 'cell exp)))
+                  (<change>
+                     (tagged-list? 'cell exp)
+                     ((lambda (x) x) (tagged-list? 'cell exp)))))
          (cell->value (lambda (exp)
                         (cadr exp)))
          (cell-get? (lambda (exp)
@@ -211,14 +192,16 @@
          (substitute (lambda (env exp)
                        (letrec ((substitute-with (lambda (env)
                                                    (lambda (exp)
-                                                      (substitute env exp)))))
-                          (if (<change> (null? env) (not (null? env)))
+                                                      (<change>
+                                                         (substitute env exp)
+                                                         ((lambda (x) x) (substitute env exp)))))))
+                          (if (null? env)
                              exp
                              (if (const? exp)
                                 exp
                                 (if (prim? exp)
                                    exp
-                                   (if (<change> (ref? exp) (not (ref? exp)))
+                                   (if (ref? exp)
                                       (substitute-var env exp)
                                       (if (lambda? exp)
                                          (__toplevel_cons
@@ -232,7 +215,7 @@
                                                (__toplevel_cons
                                                   (substitute-var env (set!->var exp))
                                                   (__toplevel_cons (substitute env (set!->exp exp)) ())))
-                                            (if (if? exp)
+                                            (if (<change> (if? exp) (not (if? exp)))
                                                (__toplevel_cons
                                                   'if
                                                   (__toplevel_cons
@@ -255,39 +238,69 @@
                                                               (__toplevel_cons (substitute new-env (letrec->exp exp)) ()))))
                                                      (if (begin? exp)
                                                         (cons 'begin (map (substitute-with env) (begin->exps exp)))
-                                                        (if (<change> (cell? exp) (not (cell? exp)))
+                                                        (if (cell? exp)
                                                            (__toplevel_cons 'cell (__toplevel_cons (substitute env (cell->value exp)) ()))
-                                                           (if (cell-get? exp)
+                                                           (if (<change> (cell-get? exp) (not (cell-get? exp)))
                                                               (__toplevel_cons 'cell-get (__toplevel_cons (substitute env (cell-get->cell exp)) ()))
                                                               (if (set-cell!? exp)
-                                                                 (__toplevel_cons
-                                                                    'set-cell!
+                                                                 (<change>
                                                                     (__toplevel_cons
-                                                                       (substitute env (set-cell!->cell exp))
-                                                                       (__toplevel_cons (substitute env (set-cell!->value exp)) ())))
-                                                                 (if (closure? exp)
-                                                                    (__toplevel_cons
-                                                                       'closure
+                                                                       'set-cell!
                                                                        (__toplevel_cons
-                                                                          (substitute env (closure->lam exp))
-                                                                          (__toplevel_cons (substitute env (closure->env exp)) ())))
-                                                                    (if (env-make? exp)
+                                                                          (substitute env (set-cell!->cell exp))
+                                                                          (__toplevel_cons (substitute env (set-cell!->value exp)) ())))
+                                                                    (if (closure? exp)
                                                                        (__toplevel_cons
-                                                                          'env-make
+                                                                          'closure
                                                                           (__toplevel_cons
-                                                                             (env-make->id exp)
-                                                                             (__toplevel_append
-                                                                                (azip (env-make->fields exp) (map (substitute-with env) (env-make->values exp)))
-                                                                                ())))
-                                                                       (if (env-get? exp)
+                                                                             (substitute env (closure->lam exp))
+                                                                             (__toplevel_cons (substitute env (closure->env exp)) ())))
+                                                                       (if (env-make? exp)
                                                                           (__toplevel_cons
-                                                                             'env-get
+                                                                             'env-make
                                                                              (__toplevel_cons
-                                                                                (env-get->id exp)
-                                                                                (__toplevel_cons (env-get->field exp) (__toplevel_cons (substitute env (env-get->env exp)) ()))))
-                                                                          (if (app? exp)
-                                                                             (map (substitute-with env) exp)
-                                                                             (error "unhandled expression type in substitution: " exp)))))))))))))))))))))
+                                                                                (env-make->id exp)
+                                                                                (__toplevel_append
+                                                                                   (azip (env-make->fields exp) (map (substitute-with env) (env-make->values exp)))
+                                                                                   ())))
+                                                                          (if (env-get? exp)
+                                                                             (if (app? exp)
+                                                                                (map (substitute-with env) exp)
+                                                                                (error "unhandled expression type in substitution: " exp))
+                                                                             (__toplevel_cons
+                                                                                'env-get
+                                                                                (__toplevel_cons
+                                                                                   (env-get->id exp)
+                                                                                   (__toplevel_cons (env-get->field exp) (__toplevel_cons (substitute env (env-get->env exp)) ()))))))))
+                                                                 (<change>
+                                                                    (if (closure? exp)
+                                                                       (__toplevel_cons
+                                                                          'closure
+                                                                          (__toplevel_cons
+                                                                             (substitute env (closure->lam exp))
+                                                                             (__toplevel_cons (substitute env (closure->env exp)) ())))
+                                                                       (if (env-make? exp)
+                                                                          (__toplevel_cons
+                                                                             'env-make
+                                                                             (__toplevel_cons
+                                                                                (env-make->id exp)
+                                                                                (__toplevel_append
+                                                                                   (azip (env-make->fields exp) (map (substitute-with env) (env-make->values exp)))
+                                                                                   ())))
+                                                                          (if (env-get? exp)
+                                                                             (__toplevel_cons
+                                                                                'env-get
+                                                                                (__toplevel_cons
+                                                                                   (env-get->id exp)
+                                                                                   (__toplevel_cons (env-get->field exp) (__toplevel_cons (substitute env (env-get->env exp)) ()))))
+                                                                             (if (app? exp)
+                                                                                (map (substitute-with env) exp)
+                                                                                (error "unhandled expression type in substitution: " exp)))))
+                                                                    (__toplevel_cons
+                                                                       'set-cell!
+                                                                       (__toplevel_cons
+                                                                          (substitute env (set-cell!->cell exp))
+                                                                          (__toplevel_cons (substitute env (set-cell!->value exp)) ()))))))))))))))))))))
          (let=>lambda (lambda (exp)
                         (if (let? exp)
                            (let ((vars (map car (let->bindings exp)))
@@ -299,62 +312,56 @@
                                  (__toplevel_append args ())))
                            exp)))
          (letrec=>lets+sets (lambda (exp)
-                              (<change>
-                                 (if (letrec? exp)
-                                    (let* ((bindings (letrec->bindings exp))
-                                           (namings (map (lambda (b) (list (car b) #f)) bindings))
-                                           (names (letrec->bound-vars exp))
-                                           (sets (map (lambda (binding) (cons 'set! binding)) bindings))
-                                           (args (letrec->args exp)))
+                              (if (letrec? exp)
+                                 (let* ((bindings (letrec->bindings exp))
+                                        (namings (map (lambda (b) (list (car b) #f)) bindings))
+                                        (names (letrec->bound-vars exp))
+                                        (sets (map (lambda (binding) (cons 'set! binding)) bindings))
+                                        (args (letrec->args exp)))
+                                    (__toplevel_cons
+                                       'let
                                        (__toplevel_cons
-                                          'let
+                                          namings
                                           (__toplevel_cons
-                                             namings
-                                             (__toplevel_cons
-                                                (__toplevel_cons 'begin (__toplevel_append (append sets (list (letrec->exp exp))) ()))
-                                                ()))))
-                                    #f)
-                                 ((lambda (x) x)
-                                    (if (letrec? exp)
-                                       (let* ((bindings (letrec->bindings exp))
-                                              (namings (map (lambda (b) (list (car b) #f)) bindings))
-                                              (names (letrec->bound-vars exp))
-                                              (sets (map (lambda (binding) (cons 'set! binding)) bindings))
-                                              (args (letrec->args exp)))
-                                          (__toplevel_cons
-                                             'let
-                                             (__toplevel_cons
-                                                namings
-                                                (__toplevel_cons
-                                                   (__toplevel_cons 'begin (__toplevel_append (append sets (list (letrec->exp exp))) ()))
-                                                   ()))))
-                                       #f)))))
+                                             (__toplevel_cons 'begin (__toplevel_append (append sets (list (letrec->exp exp))) ()))
+                                             ()))))
+                                 #f)))
          (begin=>let (lambda (exp)
-                       (letrec ((singlet? (lambda (l)
-                                            (if (list? l) (= (length l) 1) #f)))
-                                (dummy-bind (lambda (exps)
-                                              (if (singlet? exps)
-                                                 (car exps)
-                                                 (if (pair? exps)
-                                                    (<change>
+                       (<change>
+                          ()
+                          exps)
+                       (<change>
+                          (letrec ((singlet? (lambda (l)
+                                               (if (list? l) (= (length l) 1) #f)))
+                                   (dummy-bind (lambda (exps)
+                                                 (if (singlet? exps)
+                                                    (car exps)
+                                                    (if (pair? exps)
                                                        (__toplevel_cons
                                                           'let
                                                           (__toplevel_cons
                                                              (__toplevel_cons (__toplevel_cons '$_ (__toplevel_cons (car exps) ())) ())
                                                              (__toplevel_cons (dummy-bind (cdr exps)) ())))
-                                                       #f)
-                                                    (<change>
-                                                       #f
-                                                       (__toplevel_cons
-                                                          'let
+                                                       #f)))))
+                             (dummy-bind (begin->exps exp)))
+                          ((lambda (x) x)
+                             (letrec ((singlet? (lambda (l)
+                                                  (if (list? l) (= (length l) 1) #f)))
+                                      (dummy-bind (lambda (exps)
+                                                    (if (singlet? exps)
+                                                       (car exps)
+                                                       (if (pair? exps)
                                                           (__toplevel_cons
-                                                             (__toplevel_cons (__toplevel_cons '$_ (__toplevel_cons (car exps) ())) ())
-                                                             (__toplevel_cons (dummy-bind (cdr exps)) ())))))))))
-                          (dummy-bind (begin->exps exp)))))
+                                                             'let
+                                                             (__toplevel_cons
+                                                                (__toplevel_cons (__toplevel_cons '$_ (__toplevel_cons (car exps) ())) ())
+                                                                (__toplevel_cons (dummy-bind (cdr exps)) ())))
+                                                          #f)))))
+                                (dummy-bind (begin->exps exp)))))))
          (desugar (lambda (exp)
                     (if (const? exp)
                        exp
-                       (if (prim? exp)
+                       (if (<change> (prim? exp) (not (prim? exp)))
                           exp
                           (if (ref? exp)
                              exp
@@ -362,7 +369,7 @@
                                 (__toplevel_cons
                                    'lambda
                                    (__toplevel_cons (lambda->formals exp) (__toplevel_cons (desugar (lambda->exp exp)) ())))
-                                (if (<change> (set!? exp) (not (set!? exp)))
+                                (if (set!? exp)
                                    (__toplevel_cons 'set! (__toplevel_cons (set!->var exp) (__toplevel_cons (set!->exp exp) ())))
                                    (if (if? exp)
                                       (__toplevel_cons
@@ -380,7 +387,7 @@
                                                   (__toplevel_cons 'cell (__toplevel_cons (desugar (cell->value exp)) ()))
                                                   (if (cell-get? exp)
                                                      (__toplevel_cons 'cell-get (__toplevel_cons (desugar (cell-get->cell exp)) ()))
-                                                     (if (set-cell!? exp)
+                                                     (if (<change> (set-cell!? exp) (not (set-cell!? exp)))
                                                         (__toplevel_cons
                                                            'set-cell!
                                                            (__toplevel_cons
@@ -416,18 +423,43 @@
                                                                           (env-get->id exp)
                                                                           (__toplevel_cons (env-get->field exp) (__toplevel_cons (env-get->env exp) ()))))))))))))))))))))))
          (free-vars (lambda (exp)
-                      (<change>
+                      (if (const? exp)
                          ()
-                         exp)
-                      (<change>
-                         (if (const? exp)
+                         (if (prim? exp)
                             ()
-                            (if (prim? exp)
-                               ()
-                               (if (ref? exp)
-                                  (list exp)
-                                  (if (lambda? exp)
+                            (if (ref? exp)
+                               (list exp)
+                               (if (lambda? exp)
+                                  (<change>
                                      (difference (free-vars (lambda->exp exp)) (lambda->formals exp))
+                                     (if (if? exp)
+                                        (union
+                                           (free-vars (if->condition exp))
+                                           (union (free-vars (if->then exp)) (free-vars (if->else exp))))
+                                        (if (not (set!? exp))
+                                           (union (list (set!->var exp)) (free-vars (set!->exp exp)))
+                                           (if (let? exp)
+                                              (free-vars (let=>lambda exp))
+                                              (if (letrec? exp)
+                                                 not-handled
+                                                 (if (begin? exp)
+                                                    (reduce union (map free-vars (begin->exps exp)) ())
+                                                    (if (cell-get? exp)
+                                                       (free-vars (cell-get->cell exp))
+                                                       (if (cell? exp)
+                                                          (free-vars (cell->value exp))
+                                                          (if (set-cell!? exp)
+                                                             (union (free-vars (set-cell!->cell exp)) (free-vars (set-cell!->value exp)))
+                                                             (if (closure? exp)
+                                                                (union (free-vars (closure->lam exp)) (free-vars (closure->env exp)))
+                                                                (if (env-make? exp)
+                                                                   (reduce union (map free-vars (env-make->values exp)) ())
+                                                                   (if (env-get? exp)
+                                                                      (free-vars (env-get->env exp))
+                                                                      (if (app? exp)
+                                                                         (reduce union (map free-vars exp) ())
+                                                                         (error "unknown expression: " exp))))))))))))))
+                                  (<change>
                                      (if (if? exp)
                                         (union
                                            (free-vars (if->condition exp))
@@ -454,46 +486,13 @@
                                                                       (free-vars (env-get->env exp))
                                                                       (if (app? exp)
                                                                          (reduce union (map free-vars exp) ())
-                                                                         (error "unknown expression: " exp)))))))))))))))))
-                         ((lambda (x) x)
-                            (if (const? exp)
-                               ()
-                               (if (<change> (prim? exp) (not (prim? exp)))
-                                  ()
-                                  (if (ref? exp)
-                                     (list exp)
-                                     (if (lambda? exp)
-                                        (difference (free-vars (lambda->exp exp)) (lambda->formals exp))
-                                        (if (if? exp)
-                                           (union
-                                              (free-vars (if->condition exp))
-                                              (union (free-vars (if->then exp)) (free-vars (if->else exp))))
-                                           (if (set!? exp)
-                                              (union (list (set!->var exp)) (free-vars (set!->exp exp)))
-                                              (if (let? exp)
-                                                 (free-vars (let=>lambda exp))
-                                                 (if (letrec? exp)
-                                                    not-handled
-                                                    (if (begin? exp)
-                                                       (reduce union (map free-vars (begin->exps exp)) ())
-                                                       (if (cell-get? exp)
-                                                          (free-vars (cell-get->cell exp))
-                                                          (if (cell? exp)
-                                                             (free-vars (cell->value exp))
-                                                             (if (set-cell!? exp)
-                                                                (union (free-vars (set-cell!->cell exp)) (free-vars (set-cell!->value exp)))
-                                                                (if (closure? exp)
-                                                                   (union (free-vars (closure->lam exp)) (free-vars (closure->env exp)))
-                                                                   (if (env-make? exp)
-                                                                      (reduce union (map free-vars (env-make->values exp)) ())
-                                                                      (if (env-get? exp)
-                                                                         (free-vars (env-get->env exp))
-                                                                         (if (app? exp)
-                                                                            (reduce union (map free-vars exp) ())
-                                                                            (error "unknown expression: " exp)))))))))))))))))))))
+                                                                         (error "unknown expression: " exp)))))))))))))
+                                     (difference (free-vars (lambda->exp exp)) (lambda->formals exp)))))))))
          (mutable-variables ())
          (mark-mutable (lambda (symbol)
-                         (set! mutable-variables (cons symbol mutable-variables))))
+                         (<change>
+                            (set! mutable-variables (cons symbol mutable-variables))
+                            ((lambda (x) x) (set! mutable-variables (cons symbol mutable-variables))))))
          (is-mutable? (lambda (symbol)
                         (letrec ((is-in? (lambda (S)
                                            (if (not (pair? S))
@@ -504,12 +503,11 @@
                                       (if (const? exp)
                                          (void)
                                          (if (prim? exp)
-                                            (void)
-                                            (if (ref? exp)
+                                            (<change>
                                                (void)
-                                               (if (lambda? exp)
-                                                  (<change>
-                                                     (analyze-mutable-variables (lambda->exp exp))
+                                               (if (ref? exp)
+                                                  (void)
+                                                  (if (lambda? exp)
                                                      (if (set!? exp)
                                                         (begin
                                                            (mark-mutable (set!->var exp))
@@ -517,7 +515,7 @@
                                                         (if (if? exp)
                                                            (begin
                                                               (analyze-mutable-variables (if->condition exp))
-                                                              (analyze-mutable-variables (if->then exp))
+                                                              ((lambda (x) x) (analyze-mutable-variables (if->then exp)))
                                                               (analyze-mutable-variables (if->else exp)))
                                                            (if (let? exp)
                                                               (begin
@@ -533,10 +531,15 @@
                                                                        (void))
                                                                     (if (app? exp)
                                                                        (begin
-                                                                          (void)
-                                                                          (map analyze-mutable-variables exp))
-                                                                       (error "unknown expression type: " exp))))))))
-                                                  (<change>
+                                                                          (map analyze-mutable-variables exp)
+                                                                          (void))
+                                                                       (error "unknown expression type: " exp)))))))
+                                                     (analyze-mutable-variables (lambda->exp exp)))))
+                                            (<change>
+                                               (if (ref? exp)
+                                                  (void)
+                                                  (if (lambda? exp)
+                                                     (analyze-mutable-variables (lambda->exp exp))
                                                      (if (set!? exp)
                                                         (begin
                                                            (mark-mutable (set!->var exp))
@@ -562,8 +565,8 @@
                                                                        (begin
                                                                           (map analyze-mutable-variables exp)
                                                                           (void))
-                                                                       (error "unknown expression type: " exp)))))))
-                                                     (analyze-mutable-variables (lambda->exp exp)))))))))
+                                                                       (error "unknown expression type: " exp)))))))))
+                                               (void))))))
          (wrap-mutables (lambda (exp)
                           (letrec ((wrap-mutable-formals (lambda (formals body-exp)
                                                            (if (not (pair? formals))
@@ -612,38 +615,47 @@
                    (letrec ((m (lambda (chars)
                                  (if (null? chars)
                                     ()
-                                    (if (let ((__or_res (if (char-alphabetic? (car chars)) (not (char=? (car chars) #\_)) #f))) (if __or_res (<change> __or_res (char-numeric? (car chars))) (<change> (char-numeric? (car chars)) __or_res)))
+                                    (if (let ((__or_res (if (char-alphabetic? (car chars)) (not (char=? (car chars) #\_)) #f))) (if __or_res __or_res (char-numeric? (car chars))))
                                        (cons (car chars) (m (cdr chars)))
                                        (cons #\_ (append (integer->char-list (char->natural (car chars))) (m (cdr chars)))))))))
                       (list->string (m (string->list (symbol->string symbol)))))))
          (num-environments 0)
          (environments ())
          (allocate-environment (lambda (fields)
-                                 (let ((id num-environments))
-                                    (set! num-environments (+ 1 num-environments))
-                                    (set! environments (cons (cons id fields) environments))
-                                    id)))
+                                 (<change>
+                                    (let ((id num-environments))
+                                       (set! num-environments (+ 1 num-environments))
+                                       (set! environments (cons (cons id fields) environments))
+                                       id)
+                                    ((lambda (x) x)
+                                       (let ((id num-environments))
+                                          (set! num-environments (+ 1 num-environments))
+                                          (set! environments (cons (cons id fields) environments))
+                                          (<change>
+                                             ()
+                                             id)
+                                          id)))))
          (get-environment (lambda (id)
                             (cdr (assv id environments))))
          (closure-convert (lambda (exp)
                             (if (const? exp)
-                               (<change>
+                               exp
+                               (if (prim? exp)
                                   exp
-                                  (if (prim? exp)
+                                  (if (ref? exp)
                                      exp
-                                     (if (ref? exp)
-                                        exp
-                                        (if (not (lambda? exp))
-                                           (let* (($env (gensym 'env))
-                                                  (body (closure-convert (lambda->exp exp)))
-                                                  (fv (difference (free-vars body) (lambda->formals exp)))
-                                                  (id (allocate-environment fv))
-                                                  (sub (map
-                                                         (lambda (v)
-                                                            (list
-                                                               v
-                                                               (__toplevel_cons 'env-get (__toplevel_cons id (__toplevel_cons v (__toplevel_cons $env ()))))))
-                                                         fv)))
+                                     (if (lambda? exp)
+                                        (let* (($env (gensym 'env))
+                                               (body (closure-convert (lambda->exp exp)))
+                                               (fv (difference (free-vars body) (lambda->formals exp)))
+                                               (id (allocate-environment fv))
+                                               (sub (map
+                                                      (lambda (v)
+                                                         (list
+                                                            v
+                                                            (__toplevel_cons 'env-get (__toplevel_cons id (__toplevel_cons v (__toplevel_cons $env ()))))))
+                                                      fv)))
+                                           (<change>
                                               (__toplevel_cons
                                                  'closure
                                                  (__toplevel_cons
@@ -654,85 +666,48 @@
                                                           (__toplevel_cons (substitute sub body) ())))
                                                     (__toplevel_cons
                                                        (__toplevel_cons 'env-make (__toplevel_cons id (__toplevel_append (azip fv fv) ())))
-                                                       ()))))
-                                           (if (if? exp)
-                                              (__toplevel_cons
-                                                 'if
+                                                       ())))
+                                              ((lambda (x) x)
                                                  (__toplevel_cons
-                                                    (closure-convert (if->condition exp))
+                                                    'closure
                                                     (__toplevel_cons
-                                                       (closure-convert (if->then exp))
-                                                       (__toplevel_cons (closure-convert (if->else exp)) ()))))
-                                              (if (set!? exp)
-                                                 (__toplevel_cons
-                                                    'set!
-                                                    (__toplevel_cons (set!->var exp) (__toplevel_cons (closure-convert (set!->exp exp)) ())))
-                                                 (if (cell? exp)
-                                                    (__toplevel_cons 'cell (__toplevel_cons (closure-convert (cell->value exp)) ()))
-                                                    (if (cell-get? exp)
-                                                       (__toplevel_cons 'cell-get (__toplevel_cons (closure-convert (cell-get->cell exp)) ()))
-                                                       (if (set-cell!? exp)
-                                                          (__toplevel_cons
-                                                             'set-cell!
-                                                             (__toplevel_cons
-                                                                (closure-convert (set-cell!->cell exp))
-                                                                (__toplevel_cons (closure-convert (set-cell!->value exp)) ())))
-                                                          (if (app? exp)
-                                                             (error "unhandled exp: " exp)
-                                                             (map closure-convert exp)))))))))))
-                               (<change>
-                                  (if (prim? exp)
-                                     exp
-                                     (if (ref? exp)
-                                        exp
-                                        (if (lambda? exp)
-                                           (let* (($env (gensym 'env))
-                                                  (body (closure-convert (lambda->exp exp)))
-                                                  (fv (difference (free-vars body) (lambda->formals exp)))
-                                                  (id (allocate-environment fv))
-                                                  (sub (map
-                                                         (lambda (v)
-                                                            (list
-                                                               v
-                                                               (__toplevel_cons 'env-get (__toplevel_cons id (__toplevel_cons v (__toplevel_cons $env ()))))))
-                                                         fv)))
-                                              (__toplevel_cons
-                                                 'closure
-                                                 (__toplevel_cons
-                                                    (__toplevel_cons
-                                                       'lambda
                                                        (__toplevel_cons
-                                                          (__toplevel_cons $env (__toplevel_append (lambda->formals exp) ()))
-                                                          (__toplevel_cons (substitute sub body) ())))
-                                                    (__toplevel_cons
-                                                       (__toplevel_cons 'env-make (__toplevel_cons id (__toplevel_append (azip fv fv) ())))
-                                                       ()))))
-                                           (if (if? exp)
-                                              (__toplevel_cons
-                                                 'if
-                                                 (__toplevel_cons
-                                                    (closure-convert (if->condition exp))
-                                                    (__toplevel_cons
-                                                       (closure-convert (if->then exp))
-                                                       (__toplevel_cons (closure-convert (if->else exp)) ()))))
-                                              (if (set!? exp)
-                                                 (__toplevel_cons
-                                                    'set!
-                                                    (__toplevel_cons (set!->var exp) (__toplevel_cons (closure-convert (set!->exp exp)) ())))
-                                                 (if (cell? exp)
-                                                    (__toplevel_cons 'cell (__toplevel_cons (closure-convert (cell->value exp)) ()))
-                                                    (if (cell-get? exp)
-                                                       (__toplevel_cons 'cell-get (__toplevel_cons (closure-convert (cell-get->cell exp)) ()))
-                                                       (if (set-cell!? exp)
+                                                          'lambda
                                                           (__toplevel_cons
-                                                             'set-cell!
-                                                             (__toplevel_cons
-                                                                (closure-convert (set-cell!->cell exp))
-                                                                (__toplevel_cons (closure-convert (set-cell!->value exp)) ())))
-                                                          (if (app? exp)
+                                                             (__toplevel_cons $env (__toplevel_append (lambda->formals exp) ()))
+                                                             (__toplevel_cons (substitute sub body) ())))
+                                                       (__toplevel_cons
+                                                          (__toplevel_cons 'env-make (__toplevel_cons id (__toplevel_append (azip fv fv) ())))
+                                                          ()))))))
+                                        (if (if? exp)
+                                           (__toplevel_cons
+                                              'if
+                                              (__toplevel_cons
+                                                 (closure-convert (if->condition exp))
+                                                 (__toplevel_cons
+                                                    (closure-convert (if->then exp))
+                                                    (__toplevel_cons (closure-convert (if->else exp)) ()))))
+                                           (if (<change> (set!? exp) (not (set!? exp)))
+                                              (__toplevel_cons
+                                                 'set!
+                                                 (__toplevel_cons (set!->var exp) (__toplevel_cons (closure-convert (set!->exp exp)) ())))
+                                              (if (cell? exp)
+                                                 (__toplevel_cons 'cell (__toplevel_cons (closure-convert (cell->value exp)) ()))
+                                                 (if (cell-get? exp)
+                                                    (__toplevel_cons 'cell-get (__toplevel_cons (closure-convert (cell-get->cell exp)) ()))
+                                                    (if (set-cell!? exp)
+                                                       (__toplevel_cons
+                                                          'set-cell!
+                                                          (__toplevel_cons
+                                                             (closure-convert (set-cell!->cell exp))
+                                                             (__toplevel_cons (closure-convert (set-cell!->value exp)) ())))
+                                                       (if (app? exp)
+                                                          (<change>
                                                              (map closure-convert exp)
-                                                             (error "unhandled exp: " exp))))))))))
-                                  exp))))
+                                                             (error "unhandled exp: " exp))
+                                                          (<change>
+                                                             (error "unhandled exp: " exp)
+                                                             (map closure-convert exp))))))))))))))
          (c-compile-program (lambda (exp)
                               (let* ((preamble "")
                                      (append-preamble (lambda (s)
@@ -759,40 +734,22 @@
                                 (if (ref? exp)
                                    (c-compile-ref exp)
                                    (if (if? exp)
-                                      (<change>
-                                         (c-compile-if exp append-preamble)
-                                         (if (cell? exp)
-                                            (if (cell-get? exp)
-                                               (c-compile-cell-get exp append-preamble)
-                                               (if (set-cell!? exp)
-                                                  (c-compile-set-cell! exp append-preamble)
-                                                  (if (closure? exp)
-                                                     (c-compile-closure exp append-preamble)
-                                                     (if (env-make? exp)
-                                                        (c-compile-env-make exp append-preamble)
-                                                        (if (not (env-get? exp))
-                                                           (c-compile-env-get exp append-preamble)
-                                                           (if (app? exp)
-                                                              (c-compile-app exp append-preamble)
-                                                              (error "unknown exp in c-compile-exp: " exp)))))))
-                                            (c-compile-cell exp append-preamble)))
-                                      (<change>
-                                         (if (cell? exp)
-                                            (c-compile-cell exp append-preamble)
-                                            (if (cell-get? exp)
-                                               (c-compile-cell-get exp append-preamble)
-                                               (if (set-cell!? exp)
-                                                  (c-compile-set-cell! exp append-preamble)
-                                                  (if (closure? exp)
-                                                     (c-compile-closure exp append-preamble)
-                                                     (if (env-make? exp)
-                                                        (c-compile-env-make exp append-preamble)
-                                                        (if (env-get? exp)
-                                                           (c-compile-env-get exp append-preamble)
-                                                           (if (app? exp)
-                                                              (c-compile-app exp append-preamble)
-                                                              (error "unknown exp in c-compile-exp: " exp))))))))
-                                         (c-compile-if exp append-preamble))))))))
+                                      (c-compile-if exp append-preamble)
+                                      (if (cell? exp)
+                                         (c-compile-cell exp append-preamble)
+                                         (if (cell-get? exp)
+                                            (c-compile-cell-get exp append-preamble)
+                                            (if (set-cell!? exp)
+                                               (c-compile-set-cell! exp append-preamble)
+                                               (if (closure? exp)
+                                                  (c-compile-closure exp append-preamble)
+                                                  (if (env-make? exp)
+                                                     (c-compile-env-make exp append-preamble)
+                                                     (if (env-get? exp)
+                                                        (c-compile-env-get exp append-preamble)
+                                                        (if (app? exp)
+                                                           (c-compile-app exp append-preamble)
+                                                           (error "unknown exp in c-compile-exp: " exp))))))))))))))
          (c-compile-const (lambda (exp)
                             (if (integer? exp)
                                (string-append "MakeInt(" (number->string exp) ")")
@@ -808,25 +765,33 @@
                                     "__product"
                                     (if (eq? '= p)
                                        "__numEqual"
-                                       (if (eq? 'display p)
+                                       (if (<change> (eq? 'display p) (not (eq? 'display p)))
                                           "__display"
                                           (error "unhandled primitive: " p))))))))
          (c-compile-ref (lambda (exp)
-                          (<change>
-                             ()
-                             exp)
                           (mangle exp)))
          (c-compile-args (lambda (args append-preamble)
-                           (if (not (pair? args))
-                              ""
-                              (string-append
-                                 (c-compile-exp (car args) append-preamble)
-                                 (if (pair? (cdr args))
-                                    (string-append ", " (c-compile-args (cdr args) append-preamble))
-                                    "")))))
+                           (<change>
+                              (if (not (pair? args))
+                                 ""
+                                 (string-append
+                                    (c-compile-exp (car args) append-preamble)
+                                    (if (pair? (cdr args))
+                                       (string-append ", " (c-compile-args (cdr args) append-preamble))
+                                       "")))
+                              ((lambda (x) x)
+                                 (if (not (pair? args))
+                                    ""
+                                    (string-append
+                                       (c-compile-exp (car args) append-preamble)
+                                       (if (pair? (cdr args))
+                                          (string-append ", " (c-compile-args (cdr args) append-preamble))
+                                          "")))))))
          (c-compile-app (lambda (exp append-preamble)
                           (let (($tmp (mangle (gensym 'tmp))))
-                             (append-preamble (string-append "Value " $tmp " ; "))
+                             (<change>
+                                (append-preamble (string-append "Value " $tmp " ; "))
+                                ())
                              (let* ((args (app->args exp))
                                     (fun (app->fun exp)))
                                 (string-append
@@ -844,28 +809,16 @@
                                    (c-compile-args args append-preamble)
                                    "))")))))
          (c-compile-if (lambda (exp append-preamble)
-                         (<change>
-                            (string-append
-                               "("
-                               (c-compile-exp (if->condition exp) append-preamble)
-                               ").b.value ? "
-                               "("
-                               (c-compile-exp (if->then exp) append-preamble)
-                               ") : "
-                               "("
-                               (c-compile-exp (if->else exp) append-preamble)
-                               ")")
-                            ((lambda (x) x)
-                               (string-append
-                                  "("
-                                  (c-compile-exp (if->condition exp) append-preamble)
-                                  ").b.value ? "
-                                  "("
-                                  (c-compile-exp (if->then exp) append-preamble)
-                                  ") : "
-                                  "("
-                                  (c-compile-exp (if->else exp) append-preamble)
-                                  ")")))))
+                         (string-append
+                            "("
+                            (c-compile-exp (if->condition exp) append-preamble)
+                            ").b.value ? "
+                            "("
+                            (c-compile-exp (if->then exp) append-preamble)
+                            ") : "
+                            "("
+                            (c-compile-exp (if->else exp) append-preamble)
+                            ")")))
          (c-compile-set-cell! (lambda (exp append-preamble)
                                 (string-append
                                    "(*"
@@ -926,9 +879,6 @@
          (c-compile-lambda (lambda (exp)
                              (let* ((preamble "")
                                     (append-preamble (lambda (s)
-                                                       (<change>
-                                                          ()
-                                                          preamble)
                                                        (set! preamble (string-append preamble "  " s "\n")))))
                                 (let ((formals (c-compile-formals (lambda->formals exp)))
                                       (body (c-compile-exp (lambda->exp exp) append-preamble)))
@@ -981,13 +931,14 @@
                                   (<change>
                                      (emit "#include <stdlib.h>")
                                      ())
+                                  (emit "#include <stdio.h>")
+                                  (emit "#include \"scheme.h\"")
                                   (<change>
-                                     (emit "#include <stdio.h>")
+                                     ()
                                      (emit "#include \"scheme.h\""))
                                   (<change>
-                                     (emit "#include \"scheme.h\"")
-                                     (emit "#include <stdio.h>"))
-                                  (emit "")
+                                     (emit "")
+                                     ((lambda (x) x) (emit "")))
                                   (emit
                                      "
 Value __sum ;
@@ -996,8 +947,12 @@ Value __product ;
 Value __display ;
 Value __numEqual ;
 ")
-                                  (for-each (lambda (env) (emit (c-compile-env-struct env))) environments)
-                                  (set! compiled-program (c-compile-program input-program))
+                                  (<change>
+                                     (for-each (lambda (env) (emit (c-compile-env-struct env))) environments)
+                                     (set! compiled-program (c-compile-program input-program)))
+                                  (<change>
+                                     (set! compiled-program (c-compile-program input-program))
+                                     (for-each (lambda (env) (emit (c-compile-env-struct env))) environments))
                                   (emit "Value __prim_sum(Value e, Value a, Value b) {
   return MakeInt(a.z.value + b.z.value) ;
 }")

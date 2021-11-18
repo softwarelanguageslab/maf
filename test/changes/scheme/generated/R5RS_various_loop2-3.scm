@@ -1,9 +1,9 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 2
 ; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
+; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((lp1 (lambda (i x)
                 (letrec ((a (= 0 i)))
@@ -11,13 +11,10 @@
                       x
                       (letrec ((lp2 (lambda (j f y)
                                       (letrec ((b (= 0 j)))
-                                         (if b
-                                            (<change>
-                                               (lp1 (- i 1) y)
-                                               (lp2 (- j 1) f (f y)))
-                                            (<change>
-                                               (lp2 (- j 1) f (f y))
-                                               (lp1 (- i 1) y)))))))
+                                         (if b (lp1 (- i 1) y) (lp2 (- j 1) f (f y)))))))
+                         (<change>
+                            ()
+                            lp2)
                          (lp2 10 (lambda (n) (+ n i)) x)))))))
    (<change>
       ()

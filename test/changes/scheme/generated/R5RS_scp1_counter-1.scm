@@ -4,7 +4,7 @@
 ; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 2
+; * calls to id fun: 0
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
@@ -19,43 +19,25 @@
                       (display x)
                       (begin
                          (count2 (- x 1))
-                         (<change>
-                            (display x)
-                            ((lambda (x) x) (display x))))))))
+                         (display x))))))
    (<change>
       (count1 4)
-      ((lambda (x) x) (count1 4)))
+      (count2 4))
    (<change>
       (count2 4)
-      (equal?
-         result
+      (count1 4))
+   (equal?
+      result
+      (__toplevel_cons
+         4
          (__toplevel_cons
-            4
+            3
             (__toplevel_cons
-               3
+               2
                (__toplevel_cons
-                  2
+                  1
                   (__toplevel_cons
-                     1
+                     0
                      (__toplevel_cons
                         0
-                        (__toplevel_cons
-                           0
-                           (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 (__toplevel_cons 4 ()))))))))))))
-   (<change>
-      (equal?
-         result
-         (__toplevel_cons
-            4
-            (__toplevel_cons
-               3
-               (__toplevel_cons
-                  2
-                  (__toplevel_cons
-                     1
-                     (__toplevel_cons
-                        0
-                        (__toplevel_cons
-                           0
-                           (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 (__toplevel_cons 4 ())))))))))))
-      (count2 4)))
+                        (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 (__toplevel_cons 4 ()))))))))))))

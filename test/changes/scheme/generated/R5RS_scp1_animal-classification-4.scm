@@ -1,16 +1,13 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 2
 ; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 0
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((atom? (lambda (x)
                   (not (pair? x))))
          (maak-dier (lambda (naam eigenschappen)
-                      (<change>
-                         ()
-                         (list naam eigenschappen))
                       (list naam eigenschappen)))
          (naam (lambda (dier)
                  (car dier)))
@@ -19,12 +16,8 @@
          (dier? (lambda (dier)
                   (if (pair? dier)
                      (if (atom? (naam dier))
-                        (<change>
-                           (pair? (eigenschappen dier))
-                           #f)
-                        (<change>
-                           #f
-                           (pair? (eigenschappen dier))))
+                        (pair? (eigenschappen dier))
+                        #f)
                      #f)))
          (maak-boom (lambda (knoop deelbomen)
                       (list knoop deelbomen)))
@@ -33,6 +26,9 @@
          (deelbomen (lambda (boom)
                       (cadr boom)))
          (leeg? (lambda (boom)
+                  (<change>
+                     ()
+                     (null? boom))
                   (null? boom)))
          (knoop? (lambda (boom)
                    (dier? boom)))
@@ -57,6 +53,9 @@
                                        (maak-dier 'kanarie (__toplevel_cons 'kan-zingen (__toplevel_cons 'is-geel ())))
                                        (maak-dier 'arend (__toplevel_cons 'is-groot ())))))))
          (all-kinds (lambda (boom)
+                      (<change>
+                         ()
+                         (display boom))
                       (if (leeg? boom)
                          ()
                          (if (dier? boom)
@@ -65,9 +64,11 @@
                                (append (list (naam (knoop boom))) (all-kinds-in (deelbomen boom)))
                                (all-kinds-in (deelbomen boom)))))))
          (all-kinds-in (lambda (lst)
-                         (if (null? lst)
-                            ()
-                            (append (all-kinds (car lst)) (all-kinds-in (cdr lst))))))
+                         (<change>
+                            (if (null? lst)
+                               ()
+                               (append (all-kinds (car lst)) (all-kinds-in (cdr lst))))
+                            ((lambda (x) x) (if (null? lst) () (append (all-kinds (car lst)) (all-kinds-in (cdr lst))))))))
          (geef-eigenschappen (lambda (boom soort)
                                (letrec ((geef-eig (lambda (boom eig)
                                                     (if (dier? boom)

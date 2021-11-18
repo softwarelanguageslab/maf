@@ -1,5 +1,5 @@
 ; Changes:
-; * removed: 1
+; * removed: 0
 ; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
@@ -10,21 +10,16 @@
                          (if (< i n)
                             (begin
                                (set! sum (+ sum 1))
-                               (tail-rec-aux (+ i 1) n))
+                               (<change>
+                                  (tail-rec-aux (+ i 1) n)
+                                  ((lambda (x) x) (tail-rec-aux (+ i 1) n))))
                             sum)))
          (tail-rec-loop (lambda (n)
-                          (<change>
-                             (set! sum 0)
-                             ())
+                          (set! sum 0)
                           (tail-rec-aux 0 n)
-                          (<change>
-                             sum
-                             ((lambda (x) x) sum))))
+                          sum))
          (do-loop (lambda (n)
                     (set! sum 0)
-                    (<change>
-                       ()
-                       __do_loop)
                     (letrec ((__do_loop (lambda (i)
                                           (if (>= i n)
                                              sum
@@ -32,6 +27,9 @@
                                                 (set! sum (+ sum 1))
                                                 (__do_loop (+ i 1)))))))
                        (<change>
-                          (__do_loop 0)
-                          ((lambda (x) x) (__do_loop 0)))))))
-   (= (do-loop 1000) 1000))
+                          ()
+                          (__do_loop 0))
+                       (__do_loop 0)))))
+   (<change>
+      (= (do-loop 1000) 1000)
+      ((lambda (x) x) (= (do-loop 1000) 1000))))

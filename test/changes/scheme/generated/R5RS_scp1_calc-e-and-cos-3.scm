@@ -2,14 +2,14 @@
 ; * removed: 0
 ; * added: 1
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((calc-e-iter (lambda (n)
+                        (<change>
+                           ()
+                           *)
                         (letrec ((iter (lambda (ctr res fac-prev)
-                                         (<change>
-                                            ()
-                                            ctr)
                                          (if (> ctr n)
                                             res
                                             (let ((new-fac (* ctr fac-prev)))
@@ -27,10 +27,19 @@
                         (iter 1 1 1 1 1))))
          (close-to (lambda (x y)
                      (< (abs (- x y)) 1.000000e-08))))
-   (if (close-to (exact->inexact (calc-e-iter 10)) 2.718282e+00)
-      (if (close-to (calc-cos 0 10) 1)
-         (if (close-to (calc-cos (/ 3.141500e+00 2) 10) 4.632679e-05)
-            (close-to (calc-cos 3.141500e+00 10) -1.000000e+00)
+   (<change>
+      (if (close-to (exact->inexact (calc-e-iter 10)) 2.718282e+00)
+         (if (close-to (calc-cos 0 10) 1)
+            (if (close-to (calc-cos (/ 3.141500e+00 2) 10) 4.632679e-05)
+               (close-to (calc-cos 3.141500e+00 10) -1.000000e+00)
+               #f)
             #f)
          #f)
-      #f))
+      ((lambda (x) x)
+         (if (<change> (close-to (exact->inexact (calc-e-iter 10)) 2.718282e+00) (not (close-to (exact->inexact (calc-e-iter 10)) 2.718282e+00)))
+            (if (close-to (calc-cos 0 10) 1)
+               (if (close-to (calc-cos (/ 3.141500e+00 2) 10) 4.632679e-05)
+                  (close-to (calc-cos 3.141500e+00 10) -1.000000e+00)
+                  #f)
+               #f)
+            #f))))

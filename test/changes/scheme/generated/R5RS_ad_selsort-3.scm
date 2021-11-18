@@ -1,8 +1,8 @@
 ; Changes:
-; * removed: 0
+; * removed: 1
 ; * added: 0
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 1
 (letrec ((selection-sort (lambda (vector)
@@ -22,7 +22,7 @@
                                                      ((lambda (x) x)
                                                         (letrec ((min-iter (lambda (index pos-of-min-so-far)
                                                                              (if (<= index high)
-                                                                                (if (<change> (< (vector-ref vector index) (vector-ref vector pos-of-min-so-far)) (not (< (vector-ref vector index) (vector-ref vector pos-of-min-so-far))))
+                                                                                (if (< (vector-ref vector index) (vector-ref vector pos-of-min-so-far))
                                                                                    (min-iter (+ index 1) index)
                                                                                    (min-iter (+ index 1) pos-of-min-so-far))
                                                                                 pos-of-min-so-far))))
@@ -36,5 +36,7 @@
                                                                     #f))))
                                     (selection-sort-iter 0))))))
          (vect (vector 5 7 0 9 6 4 3 8 2 1)))
-   (selection-sort vect)
+   (<change>
+      (selection-sort vect)
+      ())
    (equal? vect (vector 0 1 2 3 4 5 6 7 8 9)))

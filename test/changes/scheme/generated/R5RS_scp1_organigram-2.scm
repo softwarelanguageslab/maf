@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 3
 ; * swaps: 0
-; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 0
+; * negated predicates: 0
+; * swapped branches: 1
+; * calls to id fun: 1
 (letrec ((organigram (__toplevel_cons
                        'directeur
                        (__toplevel_cons
@@ -35,7 +35,9 @@
          (baas (lambda (organigram)
                  (car organigram)))
          (sub-organigrammen (lambda (organigram)
-                              (cdr organigram)))
+                              (<change>
+                                 (cdr organigram)
+                                 ((lambda (x) x) (cdr organigram)))))
          (hierarchisch? (lambda (p1 p2 organigram)
                           (letrec ((hierarchisch?-in (lambda (path organigrammen)
                                                        (if (null? organigrammen)
@@ -45,11 +47,21 @@
                                                                 __or_res
                                                                 (hierarchisch?-in path (cdr organigrammen)))))))
                                    (hierarchisch? (lambda (path organigram)
+                                                    (<change>
+                                                       ()
+                                                       (display sub-organigrammen))
+                                                    (<change>
+                                                       ()
+                                                       (display p1))
                                                     (if (if (eq? p1 (baas organigram)) (member p2 path) #f)
                                                        #t
                                                        (if (if (eq? p2 (baas organigram)) (member p1 path) #f)
-                                                          #t
-                                                          (hierarchisch?-in (cons (baas organigram) path) (sub-organigrammen organigram)))))))
+                                                          (<change>
+                                                             #t
+                                                             (hierarchisch?-in (cons (baas organigram) path) (sub-organigrammen organigram)))
+                                                          (<change>
+                                                             (hierarchisch?-in (cons (baas organigram) path) (sub-organigrammen organigram))
+                                                             #t))))))
                              (hierarchisch? () organigram))))
          (collegas (lambda (p organigram)
                      (letrec ((collegas-in (lambda (oversten organigrammen)
@@ -66,12 +78,12 @@
                               (werknemers (lambda (organigram)
                                             (cons (baas organigram) (werknemers-in (sub-organigrammen organigram)))))
                               (collegas (lambda (oversten organigram)
-                                          (if (<change> (eq? p (baas organigram)) (not (eq? p (baas organigram))))
+                                          (<change>
+                                             ()
+                                             organigram)
+                                          (if (eq? p (baas organigram))
                                              (append oversten (werknemers-in (sub-organigrammen organigram)))
                                              (collegas-in (cons (baas organigram) oversten) (sub-organigrammen organigram))))))
-                        (<change>
-                           ()
-                           (display (collegas () organigram)))
                         (collegas () organigram)))))
    (if (hierarchisch? 'directeur 'verkoopsleider-brussel organigram)
       (if (hierarchisch? 'bediende1 'hoofd-productie organigram)

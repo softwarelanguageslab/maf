@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 0
+; * negated predicates: 1
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((gen (lambda (n)
                 (let* ((n/2 (quotient n 2))
                        (radicals (make-vector (+ n/2 1) (__toplevel_cons 'H ()))))
@@ -39,36 +39,20 @@
                                                (three-partitions (- n 1))
                                                ())))
                             (bcp-generator (lambda (j)
-                                             (if (odd? j)
-                                                (<change>
-                                                   ()
-                                                   ((letrec ((loop1 (lambda (rads1 lst)
-                                                                     (if (null? rads1)
-                                                                        lst
-                                                                        ((letrec ((loop2 (lambda (rads2 lst)
-                                                                                          (if (null? rads2)
-                                                                                             lst
-                                                                                             (cons (vector 'BCP (car rads1) (car rads2)) (loop2 (cdr rads2) lst))))))
-                                                                           loop2)
-                                                                           rads1
-                                                                           (loop1 (cdr rads1) lst))))))
-                                                      loop1)
-                                                      (vector-ref radicals (quotient j 2))
-                                                      ()))
-                                                (<change>
-                                                   ((letrec ((loop1 (lambda (rads1 lst)
-                                                                     (if (null? rads1)
-                                                                        lst
-                                                                        ((letrec ((loop2 (lambda (rads2 lst)
-                                                                                          (if (null? rads2)
-                                                                                             lst
-                                                                                             (cons (vector 'BCP (car rads1) (car rads2)) (loop2 (cdr rads2) lst))))))
-                                                                           loop2)
-                                                                           rads1
-                                                                           (loop1 (cdr rads1) lst))))))
-                                                      loop1)
-                                                      (vector-ref radicals (quotient j 2))
-                                                      ())
+                                             (if (<change> (odd? j) (not (odd? j)))
+                                                ()
+                                                ((letrec ((loop1 (lambda (rads1 lst)
+                                                                  (if (null? rads1)
+                                                                     lst
+                                                                     ((letrec ((loop2 (lambda (rads2 lst)
+                                                                                       (if (null? rads2)
+                                                                                          lst
+                                                                                          (cons (vector 'BCP (car rads1) (car rads2)) (loop2 (cdr rads2) lst))))))
+                                                                        loop2)
+                                                                        rads1
+                                                                        (loop1 (cdr rads1) lst))))))
+                                                   loop1)
+                                                   (vector-ref radicals (quotient j 2))
                                                    ()))))
                             (ccp-generator (lambda (j)
                                              ((letrec ((loop1 (lambda (ps lst)
@@ -151,9 +135,8 @@
                                ()
                                (quotient m 4))))
          (nb (lambda (n)
-               (<change>
-                  ()
-                  0)
                (let ((x (gen n)))
-                  (+ (length (vector-ref x 0)) (length (vector-ref x 1)))))))
+                  (<change>
+                     (+ (length (vector-ref x 0)) (length (vector-ref x 1)))
+                     ((lambda (x) x) (+ (length (vector-ref x 0)) (length (vector-ref x 1)))))))))
    (= (nb 17) 24894))

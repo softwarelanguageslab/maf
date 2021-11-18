@@ -1,0 +1,4 @@
+Could not generate sufficient programs for test/R5RS/WeiChenRompf2019/church_exp.sch (0 of 5).
+Could not generate sufficient programs for test/R5RS/various/foo.scm (0 of 5).
+Could not generate sufficient programs for test/R5RS/various/sym.scm (3 of 5).
+Could not generate sufficient programs for test/R5RS/WeiChenRompf2019/omega.scm (4 of 5).

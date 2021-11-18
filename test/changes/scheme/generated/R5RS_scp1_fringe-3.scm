@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -8,26 +8,14 @@
 (letrec ((atom? (lambda (x)
                   (not (pair? x))))
          (fringe (lambda (l)
+                   (<change>
+                      ()
+                      car)
                    (if (null? l)
                       ()
                       (if (atom? l)
                          (list l)
                          (append (fringe (car l)) (fringe (cdr l))))))))
-   (<change>
-      ()
-      (display fringe))
-   (<change>
-      ()
-      (display
-         (__toplevel_cons
-            (__toplevel_cons (__toplevel_cons (__toplevel_cons (__toplevel_cons 2 ()) ()) ()) ())
-            (__toplevel_cons
-               (__toplevel_cons
-                  3
-                  (__toplevel_cons (__toplevel_cons 4 (__toplevel_cons 5 ())) (__toplevel_cons 6 ())))
-               (__toplevel_cons
-                  (__toplevel_cons (__toplevel_cons 7 ()) (__toplevel_cons 8 (__toplevel_cons 9 ())))
-                  ())))))
    (equal?
       (fringe
          (__toplevel_cons

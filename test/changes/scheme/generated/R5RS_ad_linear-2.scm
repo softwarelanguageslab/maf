@@ -1,17 +1,19 @@
 ; Changes:
-; * removed: 2
-; * added: 0
-; * swaps: 0
+; * removed: 0
+; * added: 1
+; * swaps: 3
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 3
 (letrec ((create-hash-table (lambda (size hash-fct)
                               (let ((content (make-vector size 0))
                                     (same? =))
                                  (letrec ((next-index (lambda (index)
                                                         (remainder (+ index 1) size)))
                                           (make-item (lambda (status key info)
-                                                       (list status key info)))
+                                                       (<change>
+                                                          (list status key info)
+                                                          ((lambda (x) x) (list status key info)))))
                                           (get-status (lambda (item)
                                                         (car item)))
                                           (set-status! (lambda (item status)
@@ -56,8 +58,12 @@
                                                     (let ((temp (find-item key)))
                                                        (if temp
                                                           (begin
-                                                             (set-status! temp 'deleted)
-                                                             #t)
+                                                             (<change>
+                                                                (set-status! temp 'deleted)
+                                                                #t)
+                                                             (<change>
+                                                                #t
+                                                                (set-status! temp 'deleted)))
                                                           #f))))
                                           (display-table (lambda ()
                                                            (let ((stop (vector-length content)))
@@ -66,8 +72,12 @@
                                                                                   (begin
                                                                                      (display current)
                                                                                      (display "  ")
-                                                                                     (display (vector-ref content current))
-                                                                                     (newline)
+                                                                                     (<change>
+                                                                                        (display (vector-ref content current))
+                                                                                        (newline))
+                                                                                     (<change>
+                                                                                        (newline)
+                                                                                        (display (vector-ref content current)))
                                                                                      (iter (+ current 1)))
                                                                                   #f))))
                                                                  (iter 0)))))
@@ -81,23 +91,34 @@
                                                                (if (eq? msg 'display)
                                                                   (display-table)
                                                                   (error "unknown request -- create-hash-table" msg))))))))
-                                    (letrec ((__do_loop (lambda (index)
-                                                          (if (negative? index)
-                                                             'done
-                                                             (begin
-                                                                (vector-set! content index (make-item 'empty () ()))
-                                                                (__do_loop (- index 1)))))))
-                                       (__do_loop (- (vector-length content) 1)))
+                                    (<change>
+                                       (letrec ((__do_loop (lambda (index)
+                                                             (if (negative? index)
+                                                                'done
+                                                                (begin
+                                                                   (vector-set! content index (make-item 'empty () ()))
+                                                                   (__do_loop (- index 1)))))))
+                                          (__do_loop (- (vector-length content) 1)))
+                                       ((lambda (x) x)
+                                          (letrec ((__do_loop (lambda (index)
+                                                                (if (negative? index)
+                                                                   'done
+                                                                   (begin
+                                                                      (vector-set! content index (make-item 'empty () ()))
+                                                                      (__do_loop (- index 1)))))))
+                                             (__do_loop (- (vector-length content) 1)))))
                                     dispatch))))
-         (table (create-hash-table 13 (lambda (key) (modulo key 13)))))
-   (table 'insert 1 79)
-   (table 'insert 4 69)
+         (table (create-hash-table 13 (lambda (key) (<change> () (display modulo)) (modulo key 13)))))
+   (<change>
+      (table 'insert 1 79)
+      (table 'insert 4 69))
+   (<change>
+      (table 'insert 4 69)
+      (table 'insert 1 79))
    (table 'insert 14 98)
    (table 'insert 7 72)
-   (<change>
-      (table 'insert 27 14)
-      ())
+   (table 'insert 27 14)
    (<change>
       (table 'insert 11 50)
-      ())
+      ((lambda (x) x) (table 'insert 11 50)))
    (table 'display))

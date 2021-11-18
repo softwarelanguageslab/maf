@@ -3,17 +3,15 @@
 ; * added: 0
 ; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 0
-; * calls to id fun: 1
+; * swapped branches: 1
+; * calls to id fun: 0
 (letrec ((extended-gcd (lambda (a b)
-                         (if (<change> (= (modulo a b) 0) (not (= (modulo a b) 0)))
+                         (if (= (modulo a b) 0)
                             (cons 0 1)
                             (let* ((x:y (extended-gcd b (modulo a b)))
                                    (x (car x:y))
                                    (y (cdr x:y)))
-                               (<change>
-                                  (cons y (- x (* y (quotient a b))))
-                                  ((lambda (x) x) (cons y (- x (* y (quotient a b))))))))))
+                               (cons y (- x (* y (quotient a b))))))))
          (modulo-inverse (lambda (a n)
                            (modulo (car (extended-gcd a n)) n)))
          (totient (lambda (p q)
@@ -29,11 +27,15 @@
          (is-legal-public-exponent? (lambda (e p q)
                                       (if (< 1 e)
                                          (if (< e (totient p q))
-                                            (= 1 (gcd e (totient p q)))
-                                            #f)
+                                            (<change>
+                                               (= 1 (gcd e (totient p q)))
+                                               #f)
+                                            (<change>
+                                               #f
+                                               (= 1 (gcd e (totient p q)))))
                                          #f)))
          (private-exponent (lambda (e p q)
-                             (if (is-legal-public-exponent? e p q)
+                             (if (<change> (is-legal-public-exponent? e p q) (not (is-legal-public-exponent? e p q)))
                                 (modulo-inverse e (totient p q))
                                 (error "Not a legal public exponent for that modulus."))))
          (encrypt (lambda (m e n)

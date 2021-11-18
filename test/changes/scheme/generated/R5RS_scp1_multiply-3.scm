@@ -6,11 +6,11 @@
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((rec-multiply (lambda (a b)
-                         (<change>
-                            ()
-                            (display 0))
                          (if (zero? b) 0 (+ a (rec-multiply a (- b 1))))))
          (iter-multiply (lambda (a b)
+                          (<change>
+                             ()
+                             (display (lambda (result counter) (if (zero? counter) result (iter (+ result a) (- counter 1))))))
                           (letrec ((iter (lambda (result counter)
                                            (if (zero? counter)
                                               result

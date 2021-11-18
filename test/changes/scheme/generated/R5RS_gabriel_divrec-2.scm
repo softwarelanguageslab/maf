@@ -2,18 +2,16 @@
 ; * removed: 1
 ; * added: 0
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 1
 (letrec ((create-n (lambda (n)
-                     @sensitivity:FA
+                     (<change>
+                        @sensitivity:FA
+                        ())
                      (letrec ((loop (lambda (n a)
-                                      (<change>
-                                         @sensitivity:FA
-                                         ())
-                                      (<change>
-                                         (if (= n 0) a (loop (- n 1) (cons () a)))
-                                         ((lambda (x) x) (if (<change> (= n 0) (not (= n 0))) a (loop (- n 1) (cons () a))))))))
+                                      @sensitivity:FA
+                                      (if (= n 0) a (loop (- n 1) (cons () a))))))
                         (loop n ())))))
    (letrec ((recursive-div2 (lambda (l)
                               @sensitivity:FA
@@ -213,4 +211,6 @@
                                                                                                                                                                                                                                                                                                                 (__toplevel_cons
                                                                                                                                                                                                                                                                                                                    ()
                                                                                                                                                                                                                                                                                                                    (__toplevel_cons () (__toplevel_cons () (__toplevel_cons () (__toplevel_cons () ()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
-         (equal? (recursive-div2 (create-n 200)) result))))
+         (<change>
+            (equal? (recursive-div2 (create-n 200)) result)
+            ((lambda (x) x) (equal? (recursive-div2 (create-n 200)) result))))))

@@ -1,15 +1,12 @@
 ; Changes:
-; * removed: 0
-; * added: 3
-; * swaps: 2
+; * removed: 2
+; * added: 1
+; * swaps: 1
 ; * negated predicates: 0
-; * swapped branches: 0
-; * calls to id fun: 3
+; * swapped branches: 2
+; * calls to id fun: 2
 (letrec ((result ())
          (output (lambda (i)
-                   (<change>
-                      ()
-                      result)
                    (set! result (cons i result))))
          (make-ring (lambda (n)
                       (let ((last (cons 0 ())))
@@ -21,54 +18,44 @@
          (print-ring (lambda (r)
                        (letrec ((aux (lambda (l)
                                        (if (not (null? l))
-                                          (if (eq? (cdr l) r)
-                                             (begin
-                                                (<change>
+                                          (<change>
+                                             (if (eq? (cdr l) r)
+                                                (begin
                                                    (output " ")
-                                                   (output (car l)))
-                                                (<change>
                                                    (output (car l))
-                                                   (output " "))
-                                                (output "..."))
-                                             (begin
-                                                (<change>
+                                                   (output "..."))
+                                                (begin
                                                    (output " ")
-                                                   (output (car l)))
-                                                (<change>
                                                    (output (car l))
-                                                   (output " "))
-                                                (aux (cdr l))))
-                                          #f))))
+                                                   (aux (cdr l))))
+                                             #f)
+                                          (<change>
+                                             #f
+                                             (if (eq? (cdr l) r)
+                                                (begin
+                                                   (output (car l))
+                                                   (output "..."))
+                                                (begin
+                                                   (output (car l))
+                                                   (aux (cdr l)))))))))
                           (aux r)
-                          (<change>
-                             #t
-                             ((lambda (x) x) #t)))))
+                          #t)))
          (copy-ring (lambda (r)
                       (letrec ((last ())
                                (aux (lambda (l)
-                                      (<change>
-                                         (if (eq? (cdr l) r)
-                                            (begin
-                                               (set! last (cons (car l) ()))
-                                               last)
-                                            (cons (car l) (aux (cdr l))))
-                                         ((lambda (x) x)
-                                            (if (eq? (cdr l) r)
-                                               (begin
-                                                  (<change>
-                                                     ()
-                                                     last)
-                                                  (set! last (cons (car l) ()))
-                                                  last)
-                                               (cons (car l) (aux (cdr l)))))))))
-                         (<change>
-                            (let ((first (aux r)))
-                               (set-cdr! last first)
-                               first)
-                            ((lambda (x) x) (let ((first (aux r))) (set-cdr! last first) first))))))
+                                      (if (eq? (cdr l) r)
+                                         (begin
+                                            (set! last (cons (car l) ()))
+                                            last)
+                                         (cons (car l) (aux (cdr l)))))))
+                         (let ((first (aux r)))
+                            (set-cdr! last first)
+                            first))))
          (right-rotate (lambda (r)
                          (letrec ((iter (lambda (l)
-                                          (if (eq? (cdr l) r) l (iter (cdr l))))))
+                                          (<change>
+                                             (if (eq? (cdr l) r) l (iter (cdr l)))
+                                             ((lambda (x) x) (if (eq? (cdr l) r) l (iter (cdr l))))))))
                             (iter r))))
          (Josephus (lambda (r n)
                      (letrec ((remove-nth! (lambda (l n)
@@ -78,75 +65,25 @@
                                                    (cdr l))
                                                 (remove-nth! (cdr l) (- n 1)))))
                               (iter (lambda (l)
+                                      (<change>
+                                         ()
+                                         (cdr l))
                                       (print-ring l)
                                       (if (eq? l (cdr l))
-                                         (car l)
-                                         (iter (remove-nth! l n))))))
+                                         (<change>
+                                            (car l)
+                                            (iter (remove-nth! l n)))
+                                         (<change>
+                                            (iter (remove-nth! l n))
+                                            (car l))))))
                         (if (= n 1)
                            (car (right-rotate r))
                            (iter (copy-ring r))))))
          (ring (make-ring 5)))
    (Josephus ring 5)
-   (print-ring ring)
    (<change>
-      ()
-      (__toplevel_cons
-         3
-         (__toplevel_cons
-            " "
-            (__toplevel_cons
-               4
-               (__toplevel_cons
-                  " "
-                  (__toplevel_cons
-                     5
-                     (__toplevel_cons
-                        " "
-                        (__toplevel_cons
-                           0
-                           (__toplevel_cons
-                              " "
-                              (__toplevel_cons
-                                 "..."
-                                 (__toplevel_cons
-                                    2
-                                    (__toplevel_cons
-                                       " "
-                                       (__toplevel_cons
-                                          3
-                                          (__toplevel_cons
-                                             " "
-                                             (__toplevel_cons
-                                                4
-                                                (__toplevel_cons
-                                                   " "
-                                                   (__toplevel_cons
-                                                      5
-                                                      (__toplevel_cons
-                                                         " "
-                                                         (__toplevel_cons
-                                                            0
-                                                            (__toplevel_cons
-                                                               " "
-                                                               (__toplevel_cons
-                                                                  "..."
-                                                                  (__toplevel_cons
-                                                                     0
-                                                                     (__toplevel_cons
-                                                                        " "
-                                                                        (__toplevel_cons
-                                                                           1
-                                                                           (__toplevel_cons
-                                                                              " "
-                                                                              (__toplevel_cons
-                                                                                 2
-                                                                                 (__toplevel_cons
-                                                                                    " "
-                                                                                    (__toplevel_cons
-                                                                                       3
-                                                                                       (__toplevel_cons
-                                                                                          " "
-                                                                                          (__toplevel_cons 4 (__toplevel_cons " " (__toplevel_cons 5 (__toplevel_cons " " ())))))))))))))))))))))))))))))))))
+      (print-ring ring)
+      ((lambda (x) x) (print-ring ring)))
    (equal?
       result
       (__toplevel_cons

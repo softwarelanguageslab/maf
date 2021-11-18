@@ -1,27 +1,33 @@
 ; Changes:
-; * removed: 1
-; * added: 6
+; * removed: 5
+; * added: 3
 ; * swaps: 6
-; * negated predicates: 2
-; * swapped branches: 2
-; * calls to id fun: 7
+; * negated predicates: 1
+; * swapped branches: 0
+; * calls to id fun: 6
 (letrec ((*namelist* ())
          (*lastlook* (__toplevel_cons 'xxx (__toplevel_cons () ())))
          (nameprop (lambda (name)
-                     @sensitivity:FA
-                     (if (eq? name (car *lastlook*))
-                        *lastlook*
-                        (let ((pair (assq name *namelist*)))
-                           (if pair (set! *lastlook* pair) #f)
-                           pair))))
+                     (<change>
+                        @sensitivity:FA
+                        (if (eq? name (car *lastlook*))
+                           *lastlook*
+                           (let ((pair (assq name *namelist*)))
+                              (if pair (set! *lastlook* pair) #f)
+                              pair)))
+                     (<change>
+                        (if (eq? name (car *lastlook*))
+                           *lastlook*
+                           (let ((pair (assq name *namelist*)))
+                              (if pair (set! *lastlook* pair) #f)
+                              pair))
+                        @sensitivity:FA)))
          (get (lambda (name prop)
                 @sensitivity:FA
                 (let ((r (nameprop name)))
                    (if (pair? r)
                       (let ((s (assq prop (cdr r))))
-                         (if (<change> (pair? s) (not (pair? s)))
-                            (cdr s)
-                            #f))
+                         (if (pair? s) (cdr s) #f))
                       #f))))
          (put (lambda (name prop valu)
                 @sensitivity:FA
@@ -36,124 +42,105 @@
                          (set! *namelist* (cons (cons name (cons item ())) *namelist*)))))
                 valu))
          (reinit-prop! (lambda ()
-                         @sensitivity:FA
+                         (<change>
+                            @sensitivity:FA
+                            ())
                          (set! *namelist* ())
                          (set! *lastlook* (__toplevel_cons 'xxx (__toplevel_cons () ())))))
          (get-null (lambda (name prop)
-                     (<change>
-                        ()
-                        __or_res)
                      @sensitivity:FA
                      (let ((__or_res (get name prop)))
                         (if __or_res __or_res ()))))
          (unify-subst 0)
          (temp-temp 0)
          (add-lemma (lambda (term)
-                      (<change>
-                         @sensitivity:No
-                         (if (if (pair? term) (if (eq? (car term) 'equal) (pair? (cadr term)) #f) #f)
-                            (put (car (cadr term)) 'lemmas (cons term (get-null (car (cadr term)) 'lemmas)))
-                            (error 'add-lemma "ADD-LEMMA did not like term:  " term)))
-                      (<change>
-                         (if (if (pair? term) (if (eq? (car term) 'equal) (pair? (cadr term)) #f) #f)
-                            (put (car (cadr term)) 'lemmas (cons term (get-null (car (cadr term)) 'lemmas)))
-                            (error 'add-lemma "ADD-LEMMA did not like term:  " term))
-                         @sensitivity:No)))
+                      @sensitivity:No
+                      (if (if (pair? term) (if (eq? (car term) 'equal) (pair? (cadr term)) #f) #f)
+                         (put (car (cadr term)) 'lemmas (cons term (get-null (car (cadr term)) 'lemmas)))
+                         (error 'add-lemma "ADD-LEMMA did not like term:  " term))))
          (add-lemma-lst (lambda (lst)
                           (<change>
                              ()
-                             (display lst))
+                             #t)
                           @sensitivity:FA
-                          (if (null? lst)
-                             #t
-                             (begin
-                                (add-lemma (car lst))
-                                (add-lemma-lst (cdr lst))))))
+                          (<change>
+                             (if (null? lst)
+                                #t
+                                (begin
+                                   (add-lemma (car lst))
+                                   (add-lemma-lst (cdr lst))))
+                             ((lambda (x) x)
+                                (if (null? lst)
+                                   #t
+                                   (begin
+                                      (<change>
+                                         (add-lemma (car lst))
+                                         ((lambda (x) x) (add-lemma (car lst))))
+                                      (<change>
+                                         ()
+                                         car)
+                                      (add-lemma-lst (cdr lst))))))))
          (apply-subst (lambda (alist term)
                         (<change>
-                           ()
-                           (assq term alist))
-                        @sensitivity:No
+                           @sensitivity:No
+                           (if (not (pair? term))
+                              (if (begin (set! temp-temp (assq term alist)) temp-temp)
+                                 (cdr temp-temp)
+                                 term)
+                              (cons (car term) (apply-subst-lst alist (cdr term)))))
                         (<change>
                            (if (not (pair? term))
                               (if (begin (set! temp-temp (assq term alist)) temp-temp)
                                  (cdr temp-temp)
                                  term)
                               (cons (car term) (apply-subst-lst alist (cdr term))))
-                           ((lambda (x) x)
-                              (if (not (pair? term))
-                                 (if (begin (<change> (set! temp-temp (assq term alist)) temp-temp) (<change> temp-temp (set! temp-temp (assq term alist))))
-                                    (cdr temp-temp)
-                                    term)
-                                 (cons (car term) (apply-subst-lst alist (cdr term))))))))
+                           @sensitivity:No)))
          (apply-subst-lst (lambda (alist lst)
-                            @sensitivity:FA
+                            (<change>
+                               @sensitivity:FA
+                               ())
                             (if (null? lst)
                                ()
                                (cons (apply-subst alist (car lst)) (apply-subst-lst alist (cdr lst))))))
          (falsep (lambda (x lst)
-                   @sensitivity:FA
+                   (<change>
+                      @sensitivity:FA
+                      ())
                    (let ((__or_res (equal? x (__toplevel_cons 'f ()))))
                       (<change>
                          (if __or_res __or_res (member x lst))
-                         ((lambda (x) x) (if (<change> __or_res (not __or_res)) __or_res (member x lst)))))))
+                         ((lambda (x) x) (if __or_res __or_res (member x lst)))))))
          (one-way-unify (lambda (term1 term2)
                           @sensitivity:FA
                           (begin
-                             (<change>
-                                (set! unify-subst ())
-                                (one-way-unify1 term1 term2))
+                             (set! unify-subst ())
                              (<change>
                                 (one-way-unify1 term1 term2)
-                                (set! unify-subst ())))))
+                                ((lambda (x) x) (one-way-unify1 term1 term2))))))
          (one-way-unify1 (lambda (term1 term2)
-                           (<change>
-                              @sensitivity:No
-                              (if (not (pair? term2))
-                                 (if (begin temp-temp)
-                                    (equal? term1 (cdr temp-temp))
-                                    (begin
+                           @sensitivity:No
+                           (if (not (pair? term2))
+                              (if (begin (set! temp-temp (assq term2 unify-subst)) temp-temp)
+                                 (equal? term1 (cdr temp-temp))
+                                 (begin
+                                    (<change>
                                        (set! unify-subst (cons (cons term2 term1) unify-subst))
-                                       #t))
-                                 (if (not (pair? term1))
-                                    #f
-                                    (if (eq? (car term1) (car term2))
-                                       (one-way-unify1-lst (cdr term1) (cdr term2))
-                                       #f))))
-                           (<change>
-                              (if (not (pair? term2))
-                                 (if (begin (set! temp-temp (assq term2 unify-subst)) temp-temp)
-                                    (equal? term1 (cdr temp-temp))
-                                    (begin
-                                       (set! unify-subst (cons (cons term2 term1) unify-subst))
-                                       #t))
-                                 (if (not (pair? term1))
-                                    #f
-                                    (if (eq? (car term1) (car term2))
-                                       (one-way-unify1-lst (cdr term1) (cdr term2))
-                                       #f)))
-                              @sensitivity:No)))
+                                       ((lambda (x) x) (set! unify-subst (cons (cons term2 term1) unify-subst))))
+                                    #t))
+                              (if (not (pair? term1))
+                                 #f
+                                 (if (eq? (car term1) (car term2))
+                                    (one-way-unify1-lst (cdr term1) (cdr term2))
+                                    #f)))))
          (one-way-unify1-lst (lambda (lst1 lst2)
                                (<change>
-                                  ()
-                                  (cdr lst1))
-                               (<change>
-                                  ()
-                                  (display car))
-                               (<change>
                                   @sensitivity:FA
-                                  (if (null? lst1)
-                                     #t
-                                     (if (one-way-unify1 (car lst1) (car lst2))
-                                        (one-way-unify1-lst (cdr lst1) (cdr lst2))
-                                        #f)))
-                               (<change>
-                                  (if (null? lst1)
-                                     #t
-                                     (if (one-way-unify1 (car lst1) (car lst2))
-                                        (one-way-unify1-lst (cdr lst1) (cdr lst2))
-                                        #f))
-                                  @sensitivity:FA)))
+                                  ())
+                               (if (null? lst1)
+                                  #t
+                                  (if (one-way-unify1 (car lst1) (car lst2))
+                                     (one-way-unify1-lst (cdr lst1) (cdr lst2))
+                                     #f))))
          (rewrite (lambda (term)
                     @sensitivity:No
                     (if (not (pair? term))
@@ -162,31 +149,20 @@
          (rewrite-args (lambda (lst)
                          @sensitivity:No
                          (if (null? lst)
-                            (<change>
-                               ()
-                               (cons (rewrite (car lst)) (rewrite-args (cdr lst))))
-                            (<change>
-                               (cons (rewrite (car lst)) (rewrite-args (cdr lst)))
-                               ()))))
+                            ()
+                            (cons (rewrite (car lst)) (rewrite-args (cdr lst))))))
          (rewrite-with-lemmas (lambda (term lst)
+                                @sensitivity:FA
                                 (<change>
-                                   @sensitivity:FA
-                                   (if (null? lst)
-                                      term
-                                      (if (one-way-unify term (cadr (car lst)))
-                                         (rewrite (apply-subst unify-subst (caddr (car lst))))
-                                         (rewrite-with-lemmas term (cdr lst)))))
-                                (<change>
-                                   (if (null? lst)
-                                      term
-                                      (if (one-way-unify term (cadr (car lst)))
-                                         (rewrite (apply-subst unify-subst (caddr (car lst))))
-                                         (rewrite-with-lemmas term (cdr lst))))
-                                   @sensitivity:FA)))
+                                   ()
+                                   unify-subst)
+                                (if (null? lst)
+                                   term
+                                   (if (one-way-unify term (cadr (car lst)))
+                                      (rewrite (apply-subst unify-subst (caddr (car lst))))
+                                      (rewrite-with-lemmas term (cdr lst))))))
          (setup (lambda ()
-                  (<change>
-                     @sensitivity:FA
-                     ((lambda (x) x) @sensitivity:FA))
+                  @sensitivity:FA
                   (add-lemma-lst
                      (__toplevel_cons
                         (__toplevel_cons
@@ -1798,146 +1774,245 @@
                                                                                                                                                                                                                                                                                                                                                             ())))
                                                                                                                                                                                                                                                                                                                                                    ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
          (tautologyp (lambda (x true-lst false-lst)
-                       @sensitivity:No
-                       (if (truep x true-lst)
-                          #t
-                          (if (falsep x false-lst)
-                             #f
-                             (if (not (pair? x))
+                       (<change>
+                          @sensitivity:No
+                          (if (truep x true-lst)
+                             #t
+                             (if (falsep x false-lst)
                                 #f
-                                (if (eq? (car x) 'if)
-                                   (if (truep (cadr x) true-lst)
-                                      (<change>
+                                (if (not (pair? x))
+                                   #f
+                                   (if (eq? (car x) 'if)
+                                      (if (truep (cadr x) true-lst)
+                                         (tautologyp (caddr x) true-lst false-lst)
+                                         (if (falsep (cadr x) false-lst)
+                                            (tautologyp (cadddr x) true-lst false-lst)
+                                            (if (not (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst))
+                                               (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
+                                               #f)))
+                                      #f)))))
+                       (<change>
+                          (if (truep x true-lst)
+                             #t
+                             (if (falsep x false-lst)
+                                #f
+                                (if (not (pair? x))
+                                   #f
+                                   (if (eq? (car x) 'if)
+                                      (if (truep (cadr x) true-lst)
                                          (tautologyp (caddr x) true-lst false-lst)
                                          (if (falsep (cadr x) false-lst)
                                             (tautologyp (cadddr x) true-lst false-lst)
                                             (if (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst)
                                                (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
                                                #f)))
-                                      (<change>
-                                         (if (falsep (cadr x) false-lst)
-                                            (tautologyp (cadddr x) true-lst false-lst)
-                                            (if (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst)
-                                               (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
-                                               #f))
-                                         (tautologyp (caddr x) true-lst false-lst)))
-                                   #f))))))
+                                      #f))))
+                          @sensitivity:No)))
          (tautp (lambda (x)
                   @sensitivity:FA
-                  (<change>
-                     ()
-                     (display @sensitivity:FA))
                   (tautologyp (rewrite x) () ())))
          (test (lambda ()
                  (<change>
                     @sensitivity:FA
-                    ((lambda (x) x) @sensitivity:FA))
-                 (let ((ans #f)
-                       (term #f))
-                    (set! term (apply-subst
-                               (__toplevel_cons
-                                  (__toplevel_cons
-                                     'x
-                                     (__toplevel_cons
-                                        'f
-                                        (__toplevel_cons
-                                           (__toplevel_cons
-                                              'plus
-                                              (__toplevel_cons
-                                                 (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                                 (__toplevel_cons
-                                                    (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons (__toplevel_cons 'zero ()) ())))
-                                                    ())))
-                                           ())))
+                    (let ((ans #f)
+                          (term #f))
+                       (set! term (apply-subst
                                   (__toplevel_cons
                                      (__toplevel_cons
-                                        'y
+                                        'x
                                         (__toplevel_cons
                                            'f
                                            (__toplevel_cons
                                               (__toplevel_cons
-                                                 'times
+                                                 'plus
                                                  (__toplevel_cons
-                                                    (__toplevel_cons 'times (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                                    (__toplevel_cons (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons 'd ()))) ())))
+                                                    (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                    (__toplevel_cons
+                                                       (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons (__toplevel_cons 'zero ()) ())))
+                                                       ())))
                                               ())))
                                      (__toplevel_cons
                                         (__toplevel_cons
-                                           'z
+                                           'y
                                            (__toplevel_cons
                                               'f
                                               (__toplevel_cons
                                                  (__toplevel_cons
-                                                    'reverse
+                                                    'times
                                                     (__toplevel_cons
-                                                       (__toplevel_cons
-                                                          'append
-                                                          (__toplevel_cons
-                                                             (__toplevel_cons 'append (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                                             (__toplevel_cons (__toplevel_cons 'nil ()) ())))
-                                                       ()))
+                                                       (__toplevel_cons 'times (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                       (__toplevel_cons (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons 'd ()))) ())))
                                                  ())))
                                         (__toplevel_cons
                                            (__toplevel_cons
-                                              'u
+                                              'z
                                               (__toplevel_cons
-                                                 'equal
+                                                 'f
                                                  (__toplevel_cons
-                                                    (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                                    (__toplevel_cons (__toplevel_cons 'difference (__toplevel_cons 'x (__toplevel_cons 'y ()))) ()))))
-                                           (__toplevel_cons
-                                              (__toplevel_cons
-                                                 'w
-                                                 (__toplevel_cons
-                                                    'lessp
                                                     (__toplevel_cons
-                                                       (__toplevel_cons 'remainder (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                       'reverse
                                                        (__toplevel_cons
                                                           (__toplevel_cons
-                                                             'member
-                                                             (__toplevel_cons 'a (__toplevel_cons (__toplevel_cons 'length (__toplevel_cons 'b ())) ())))
-                                                          ()))))
-                                              ())))))
-                               (__toplevel_cons
-                                  'implies
+                                                             'append
+                                                             (__toplevel_cons
+                                                                (__toplevel_cons 'append (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                                (__toplevel_cons (__toplevel_cons 'nil ()) ())))
+                                                          ()))
+                                                    ())))
+                                           (__toplevel_cons
+                                              (__toplevel_cons
+                                                 'u
+                                                 (__toplevel_cons
+                                                    'equal
+                                                    (__toplevel_cons
+                                                       (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                       (__toplevel_cons (__toplevel_cons 'difference (__toplevel_cons 'x (__toplevel_cons 'y ()))) ()))))
+                                              (__toplevel_cons
+                                                 (__toplevel_cons
+                                                    'w
+                                                    (__toplevel_cons
+                                                       'lessp
+                                                       (__toplevel_cons
+                                                          (__toplevel_cons 'remainder (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                          (__toplevel_cons
+                                                             (__toplevel_cons
+                                                                'member
+                                                                (__toplevel_cons 'a (__toplevel_cons (__toplevel_cons 'length (__toplevel_cons 'b ())) ())))
+                                                             ()))))
+                                                 ())))))
+                                  (__toplevel_cons
+                                     'implies
+                                     (__toplevel_cons
+                                        (__toplevel_cons
+                                           'and
+                                           (__toplevel_cons
+                                              (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'y ())))
+                                              (__toplevel_cons
+                                                 (__toplevel_cons
+                                                    'and
+                                                    (__toplevel_cons
+                                                       (__toplevel_cons 'implies (__toplevel_cons 'y (__toplevel_cons 'z ())))
+                                                       (__toplevel_cons
+                                                          (__toplevel_cons
+                                                             'and
+                                                             (__toplevel_cons
+                                                                (__toplevel_cons 'implies (__toplevel_cons 'z (__toplevel_cons 'u ())))
+                                                                (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'u (__toplevel_cons 'w ()))) ())))
+                                                          ())))
+                                                 ())))
+                                        (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'w ()))) ())))))
+                       ((lambda (x) x) ans)))
+                 (<change>
+                    (let ((ans #f)
+                          (term #f))
+                       (set! term (apply-subst
                                   (__toplevel_cons
                                      (__toplevel_cons
-                                        'and
+                                        'x
                                         (__toplevel_cons
-                                           (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'y ())))
+                                           'f
                                            (__toplevel_cons
                                               (__toplevel_cons
-                                                 'and
+                                                 'plus
                                                  (__toplevel_cons
-                                                    (__toplevel_cons 'implies (__toplevel_cons 'y (__toplevel_cons 'z ())))
+                                                    (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
                                                     (__toplevel_cons
-                                                       (__toplevel_cons
-                                                          'and
-                                                          (__toplevel_cons
-                                                             (__toplevel_cons 'implies (__toplevel_cons 'z (__toplevel_cons 'u ())))
-                                                             (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'u (__toplevel_cons 'w ()))) ())))
+                                                       (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons (__toplevel_cons 'zero ()) ())))
                                                        ())))
                                               ())))
-                                     (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'w ()))) ())))))
-                    (set! ans (tautp term))
-                    (<change>
-                       ans
-                       ((lambda (x) x) ans)))))
+                                     (__toplevel_cons
+                                        (__toplevel_cons
+                                           'y
+                                           (__toplevel_cons
+                                              'f
+                                              (__toplevel_cons
+                                                 (__toplevel_cons
+                                                    'times
+                                                    (__toplevel_cons
+                                                       (__toplevel_cons 'times (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                       (__toplevel_cons (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons 'd ()))) ())))
+                                                 ())))
+                                        (__toplevel_cons
+                                           (__toplevel_cons
+                                              'z
+                                              (__toplevel_cons
+                                                 'f
+                                                 (__toplevel_cons
+                                                    (__toplevel_cons
+                                                       'reverse
+                                                       (__toplevel_cons
+                                                          (__toplevel_cons
+                                                             'append
+                                                             (__toplevel_cons
+                                                                (__toplevel_cons 'append (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                                (__toplevel_cons (__toplevel_cons 'nil ()) ())))
+                                                          ()))
+                                                    ())))
+                                           (__toplevel_cons
+                                              (__toplevel_cons
+                                                 'u
+                                                 (__toplevel_cons
+                                                    'equal
+                                                    (__toplevel_cons
+                                                       (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                       (__toplevel_cons (__toplevel_cons 'difference (__toplevel_cons 'x (__toplevel_cons 'y ()))) ()))))
+                                              (__toplevel_cons
+                                                 (__toplevel_cons
+                                                    'w
+                                                    (__toplevel_cons
+                                                       'lessp
+                                                       (__toplevel_cons
+                                                          (__toplevel_cons 'remainder (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                          (__toplevel_cons
+                                                             (__toplevel_cons
+                                                                'member
+                                                                (__toplevel_cons 'a (__toplevel_cons (__toplevel_cons 'length (__toplevel_cons 'b ())) ())))
+                                                             ()))))
+                                                 ())))))
+                                  (__toplevel_cons
+                                     'implies
+                                     (__toplevel_cons
+                                        (__toplevel_cons
+                                           'and
+                                           (__toplevel_cons
+                                              (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'y ())))
+                                              (__toplevel_cons
+                                                 (__toplevel_cons
+                                                    'and
+                                                    (__toplevel_cons
+                                                       (__toplevel_cons 'implies (__toplevel_cons 'y (__toplevel_cons 'z ())))
+                                                       (__toplevel_cons
+                                                          (__toplevel_cons
+                                                             'and
+                                                             (__toplevel_cons
+                                                                (__toplevel_cons 'implies (__toplevel_cons 'z (__toplevel_cons 'u ())))
+                                                                (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'u (__toplevel_cons 'w ()))) ())))
+                                                          ())))
+                                                 ())))
+                                        (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'w ()))) ())))))
+                       (set! ans (tautp term))
+                       ans)
+                    @sensitivity:FA)))
          (trans-of-implies (lambda (n)
-                             @sensitivity:FA
-                             (cons 'implies (cons (trans-of-implies1 n) (cons (cons 'implies (cons 0 (cons n ()))) ())))))
+                             (<change>
+                                @sensitivity:FA
+                                (cons 'implies (cons (trans-of-implies1 n) (cons (cons 'implies (cons 0 (cons n ()))) ()))))
+                             (<change>
+                                (cons 'implies (cons (trans-of-implies1 n) (cons (cons 'implies (cons 0 (cons n ()))) ())))
+                                @sensitivity:FA)))
          (trans-of-implies1 (lambda (n)
-                              (<change>
-                                 @sensitivity:FA
-                                 ((lambda (x) x) @sensitivity:FA))
+                              @sensitivity:FA
                               (if (equal? n 1)
                                  (cons 'implies (cons 0 (cons 1 ())))
                                  (cons 'and (cons (cons 'implies (cons (- n 1) (cons n ()))) (cons (trans-of-implies1 (- n 1)) ()))))))
          (truep (lambda (x lst)
-                  @sensitivity:FA
-                  (let ((__or_res (equal? x (__toplevel_cons 't ()))))
-                     (if __or_res __or_res (member x lst))))))
+                  (<change>
+                     @sensitivity:FA
+                     (let ((__or_res (equal? x (__toplevel_cons 't ()))))
+                        (if __or_res __or_res (member x lst))))
+                  (<change>
+                     (let ((__or_res (equal? x (__toplevel_cons 't ()))))
+                        (if __or_res __or_res (member x lst)))
+                     @sensitivity:FA))))
    (setup)
-   (<change>
-      (test)
-      ((lambda (x) x) (test))))
+   (test))

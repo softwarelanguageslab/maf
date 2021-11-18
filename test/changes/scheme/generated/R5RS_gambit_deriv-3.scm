@@ -7,10 +7,10 @@
 ; * calls to id fun: 0
 (letrec ((deriv (lambda (a)
                   (if (not (pair? a))
-                     (if (<change> (eq? a 'x) (not (eq? a 'x))) 1 0)
+                     (if (eq? a 'x) 1 0)
                      (if (eq? (car a) '+)
                         (cons '+ (map deriv (cdr a)))
-                        (if (eq? (car a) '-)
+                        (if (<change> (eq? (car a) '-) (not (eq? (car a) '-)))
                            (cons '- (map deriv (cdr a)))
                            (if (eq? (car a) '*)
                               (list '* a (cons '+ (map (lambda (a) (list '/ (deriv a) a)) (cdr a))))

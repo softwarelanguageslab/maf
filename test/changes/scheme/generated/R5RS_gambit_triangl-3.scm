@@ -1,9 +1,9 @@
 ; Changes:
-; * removed: 0
+; * removed: 1
 ; * added: 0
-; * swaps: 3
-; * negated predicates: 3
-; * swapped branches: 1
+; * swaps: 2
+; * negated predicates: 1
+; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((*board* (list->vector
                     (__toplevel_cons
@@ -259,50 +259,39 @@
                                                                                                                    (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 4 (__toplevel_cons 4 ())))))))))))))))))))))))))))))))))))))))
          (*answer* ())
          (attempt (lambda (i depth)
-                    (if (= depth 14)
+                    (if (<change> (= depth 14) (not (= depth 14)))
                        (begin
                           (<change>
                              (set! *answer* (cons (cdr (vector->list *sequence*)) *answer*))
-                             #t)
-                          (<change>
-                             #t
-                             (set! *answer* (cons (cdr (vector->list *sequence*)) *answer*))))
-                       (if (if (<change> (= 1 (vector-ref *board* (vector-ref *a* i))) (not (= 1 (vector-ref *board* (vector-ref *a* i))))) (if (<change> (= 1 (vector-ref *board* (vector-ref *b* i))) (not (= 1 (vector-ref *board* (vector-ref *b* i))))) (= 0 (vector-ref *board* (vector-ref *c* i))) #f) #f)
-                          (<change>
-                             (begin
-                                (vector-set! *board* (vector-ref *a* i) 0)
-                                (vector-set! *board* (vector-ref *b* i) 0)
-                                (vector-set! *board* (vector-ref *c* i) 1)
-                                (vector-set! *sequence* depth i)
-                                (letrec ((__do_loop (lambda (j depth)
-                                                      (if (let ((__or_res (= j 36))) (if __or_res __or_res (attempt j depth)))
-                                                         #f
-                                                         (__do_loop (+ j 1) depth)))))
-                                   (__do_loop 0 (+ depth 1)))
-                                (vector-set! *board* (vector-ref *a* i) 1)
+                             ())
+                          #t)
+                       (if (if (= 1 (vector-ref *board* (vector-ref *a* i))) (if (= 1 (vector-ref *board* (vector-ref *b* i))) (= 0 (vector-ref *board* (vector-ref *c* i))) #f) #f)
+                          (begin
+                             (vector-set! *board* (vector-ref *a* i) 0)
+                             (vector-set! *board* (vector-ref *b* i) 0)
+                             (vector-set! *board* (vector-ref *c* i) 1)
+                             (vector-set! *sequence* depth i)
+                             (letrec ((__do_loop (lambda (j depth)
+                                                   (if (let ((__or_res (= j 36))) (if __or_res __or_res (attempt j depth)))
+                                                      #f
+                                                      (__do_loop (+ j 1) depth)))))
+                                (__do_loop 0 (+ depth 1)))
+                             (vector-set! *board* (vector-ref *a* i) 1)
+                             (<change>
                                 (vector-set! *board* (vector-ref *b* i) 1)
+                                (vector-set! *board* (vector-ref *c* i) 0))
+                             (<change>
                                 (vector-set! *board* (vector-ref *c* i) 0)
-                                #f)
+                                (vector-set! *board* (vector-ref *b* i) 1))
                              #f)
-                          (<change>
-                             #f
-                             (begin
-                                (vector-set! *board* (vector-ref *b* i) 0)
-                                (vector-set! *board* (vector-ref *a* i) 0)
-                                (vector-set! *board* (vector-ref *c* i) 1)
-                                (letrec ((__do_loop (lambda (j depth)
-                                                      (if (not (let ((__or_res (= j 36))) (if __or_res __or_res (attempt j depth))))
-                                                         #f
-                                                         (__do_loop (+ j 1) depth)))))
-                                   (__do_loop 0 (+ depth 1)))
-                                (vector-set! *sequence* depth i)
-                                (vector-set! *board* (vector-ref *a* i) 1)
-                                (vector-set! *board* (vector-ref *b* i) 1)
-                                (vector-set! *board* (vector-ref *c* i) 0)
-                                #f))))))
+                          #f))))
          (test (lambda (i depth)
-                 (set! *answer* ())
-                 (attempt i depth)
+                 (<change>
+                    (set! *answer* ())
+                    (attempt i depth))
+                 (<change>
+                    (attempt i depth)
+                    (set! *answer* ()))
                  (car *answer*))))
    (equal?
       (test 22 1)

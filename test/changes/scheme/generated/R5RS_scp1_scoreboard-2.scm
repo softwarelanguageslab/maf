@@ -1,23 +1,29 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
-; * swaps: 1
+; * added: 4
+; * swaps: 2
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 4
+; * calls to id fun: 1
 (letrec ((result ())
          (output (lambda (i)
-                   (<change>
-                      (set! result (cons i result))
-                      ((lambda (x) x) (set! result (cons i result))))))
+                   (set! result (cons i result))))
          (linebreak (lambda ()
                       (set! result (cons 'linebreak result))))
          (create-counter (lambda ()
                            (let ((value 0))
                               (letrec ((reset (lambda ()
                                                 (set! value 0)
-                                                'ok))
+                                                (<change>
+                                                   'ok
+                                                   ((lambda (x) x) 'ok))))
                                        (next (lambda ()
+                                               (<change>
+                                                  ()
+                                                  value)
+                                               (<change>
+                                                  ()
+                                                  (set! value (+ 1 value)))
                                                (<change>
                                                   (set! value (+ 1 value))
                                                   'ok)
@@ -80,26 +86,29 @@
          (bord (make-scorebord)))
    ((bord 'read))
    ((bord 'score) 'home 2)
-   ((bord 'read))
+   (<change>
+      ((bord 'read))
+      ((bord 'score) 'visit 5))
    (<change>
       ((bord 'score) 'visit 5)
-      ((lambda (x) x) ((bord 'score) 'visit 5)))
+      ((bord 'read)))
    ((bord 'read))
    ((bord 'reset))
    (<change>
-      ((bord 'read))
-      ((lambda (x) x) ((bord 'read))))
+      ()
+      __toplevel_cons)
    (<change>
-      (equal?
-         result
+      ()
+      (__toplevel_cons
+         "-"
          (__toplevel_cons
-            'linebreak
+            2
             (__toplevel_cons
-               0
+               'linebreak
                (__toplevel_cons
-                  "-"
+                  "De score kan slechts 1, 2 of 3 zijn!"
                   (__toplevel_cons
-                     0
+                     'linebreak
                      (__toplevel_cons
                         'linebreak
                         (__toplevel_cons
@@ -108,52 +117,38 @@
                               "-"
                               (__toplevel_cons
                                  2
-                                 (__toplevel_cons
-                                    'linebreak
-                                    (__toplevel_cons
-                                       "De score kan slechts 1, 2 of 3 zijn!"
-                                       (__toplevel_cons
-                                          'linebreak
-                                          (__toplevel_cons
-                                             'linebreak
-                                             (__toplevel_cons
-                                                0
-                                                (__toplevel_cons
-                                                   "-"
-                                                   (__toplevel_cons
-                                                      2
-                                                      (__toplevel_cons 'linebreak (__toplevel_cons 0 (__toplevel_cons "-" (__toplevel_cons 0 ()))))))))))))))))))))
-      ((lambda (x) x)
-         (equal?
-            result
+                                 (__toplevel_cons 'linebreak (__toplevel_cons 0 (__toplevel_cons "-" (__toplevel_cons 0 ()))))))))))))))
+   ((bord 'read))
+   (equal?
+      result
+      (__toplevel_cons
+         'linebreak
+         (__toplevel_cons
+            0
             (__toplevel_cons
-               'linebreak
+               "-"
                (__toplevel_cons
                   0
                   (__toplevel_cons
-                     "-"
+                     'linebreak
                      (__toplevel_cons
                         0
                         (__toplevel_cons
-                           'linebreak
+                           "-"
                            (__toplevel_cons
-                              0
+                              2
                               (__toplevel_cons
-                                 "-"
+                                 'linebreak
                                  (__toplevel_cons
-                                    2
+                                    "De score kan slechts 1, 2 of 3 zijn!"
                                     (__toplevel_cons
                                        'linebreak
                                        (__toplevel_cons
-                                          "De score kan slechts 1, 2 of 3 zijn!"
+                                          'linebreak
                                           (__toplevel_cons
-                                             'linebreak
+                                             0
                                              (__toplevel_cons
-                                                'linebreak
+                                                "-"
                                                 (__toplevel_cons
-                                                   0
-                                                   (__toplevel_cons
-                                                      "-"
-                                                      (__toplevel_cons
-                                                         2
-                                                         (__toplevel_cons 'linebreak (__toplevel_cons 0 (__toplevel_cons "-" (__toplevel_cons 0 ())))))))))))))))))))))))
+                                                   2
+                                                   (__toplevel_cons 'linebreak (__toplevel_cons 0 (__toplevel_cons "-" (__toplevel_cons 0 ())))))))))))))))))))))

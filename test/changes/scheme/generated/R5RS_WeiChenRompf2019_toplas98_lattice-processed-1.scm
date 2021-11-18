@@ -1,47 +1,33 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 2
-; * calls to id fun: 2
+; * negated predicates: 1
+; * swapped branches: 0
+; * calls to id fun: 4
 (letrec ((lexico (lambda (base)
                    (letrec ((lex-fixed (lambda (fixed lhs rhs)
                                          (letrec ((check (lambda (lhs rhs)
                                                            (if (null? lhs)
-                                                              (<change>
-                                                                 fixed
-                                                                 (let ((probe (base (car lhs) (car rhs))))
-                                                                    (if (let ((__or_res (eq? probe 'equal))) (if __or_res __or_res (eq? probe fixed)))
-                                                                       (check (cdr lhs) (cdr rhs))
-                                                                       'uncomparable)))
-                                                              (<change>
-                                                                 (let ((probe (base (car lhs) (car rhs))))
-                                                                    (if (let ((__or_res (eq? probe 'equal))) (if __or_res __or_res (eq? probe fixed)))
-                                                                       (check (cdr lhs) (cdr rhs))
-                                                                       'uncomparable))
-                                                                 fixed)))))
+                                                              fixed
+                                                              (let ((probe (base (car lhs) (car rhs))))
+                                                                 (if (<change> (let ((__or_res (eq? probe 'equal))) (if __or_res __or_res (eq? probe fixed))) (not (let ((__or_res (eq? probe 'equal))) (if __or_res __or_res (eq? probe fixed)))))
+                                                                    (check (cdr lhs) (cdr rhs))
+                                                                    'uncomparable))))))
                                             (check lhs rhs))))
                             (lex-first (lambda (lhs rhs)
                                          (if (null? lhs)
                                             'equal
                                             (let ((probe (base (car lhs) (car rhs))))
                                                (if (let ((__or_res (eq? probe 'less))) (if __or_res __or_res (eq? probe 'more)))
-                                                  (<change>
-                                                     (lex-fixed probe (cdr lhs) (cdr rhs))
-                                                     (if (eq? probe 'equal)
-                                                        (lex-first (cdr lhs) (cdr rhs))
-                                                        (if (eq? probe 'uncomparable) 'uncomparable #f)))
-                                                  (<change>
-                                                     (if (eq? probe 'equal)
-                                                        (lex-first (cdr lhs) (cdr rhs))
-                                                        (if (eq? probe 'uncomparable) 'uncomparable #f))
-                                                     (lex-fixed probe (cdr lhs) (cdr rhs)))))))))
-                      lex-first)))
+                                                  (lex-fixed probe (cdr lhs) (cdr rhs))
+                                                  (if (eq? probe 'equal)
+                                                     (lex-first (cdr lhs) (cdr rhs))
+                                                     (if (eq? probe 'uncomparable) 'uncomparable #f))))))))
+                      (<change>
+                         lex-first
+                         ((lambda (x) x) lex-first)))))
          (make-lattice (lambda (elem-list cmp-func)
-                         (<change>
-                            ()
-                            (display elem-list))
                          (cons elem-list cmp-func)))
          (lattice->elements (lambda (l)
                               (car l)))
@@ -56,15 +42,24 @@
          (lattice-reverse! (letrec ((rotate (lambda (fo fum)
                                              (let ((next (cdr fo)))
                                                 (set-cdr! fo fum)
-                                                (if (null? next) fo (rotate next fo))))))
+                                                (<change>
+                                                   (if (null? next) fo (rotate next fo))
+                                                   ((lambda (x) x) (if (null? next) fo (rotate next fo))))))))
                              (lambda (lst)
                                 (if (null? lst) () (rotate lst ())))))
          (select-map (lambda (test func lst)
-                       (letrec ((select-a (lambda (ac lst)
-                                            (if (null? lst)
-                                               (lattice-reverse! ac)
-                                               (select-a (let ((head (car lst))) (if (test head) (cons (func head) ac) ac)) (cdr lst))))))
-                          (select-a () lst))))
+                       (<change>
+                          (letrec ((select-a (lambda (ac lst)
+                                               (if (null? lst)
+                                                  (lattice-reverse! ac)
+                                                  (select-a (let ((head (car lst))) (if (test head) (cons (func head) ac) ac)) (cdr lst))))))
+                             (select-a () lst))
+                          ((lambda (x) x)
+                             (letrec ((select-a (lambda (ac lst)
+                                                  (if (null? lst)
+                                                     (lattice-reverse! ac)
+                                                     (select-a (let ((head (car lst))) (if (test head) (cons (func head) ac) ac)) (cdr lst))))))
+                                (select-a () lst))))))
          (map-and (lambda (proc lst)
                     (if (null? lst)
                        #t
@@ -103,11 +98,8 @@
                        ()
                        (lattice->elements source)
                        (lambda (x)
-                          (list (map (lambda (l) (<change> (cdr l) ((lambda (x) x) (cdr l)))) x)))
+                          (list (map (lambda (l) (cdr l)) x)))
                        (lambda (x)
-                          (<change>
-                             ()
-                             apply)
                           (apply append x)))
                     (lexico (lattice->cmp target)))))
          (print-frequency 10000)

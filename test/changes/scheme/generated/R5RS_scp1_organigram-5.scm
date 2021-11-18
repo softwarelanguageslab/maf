@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 2
 ; * swaps: 0
 ; * negated predicates: 1
 ; * swapped branches: 0
@@ -60,18 +60,24 @@
                                                       __or_res
                                                       (collegas-in oversten (cdr organigrammen)))))))
                               (werknemers-in (lambda (organigrammen)
+                                               (<change>
+                                                  ()
+                                                  (null? organigrammen))
                                                (if (null? organigrammen)
                                                   ()
                                                   (append (werknemers (car organigrammen)) (werknemers-in (cdr organigrammen))))))
                               (werknemers (lambda (organigram)
+                                            (<change>
+                                               ()
+                                               (display werknemers-in))
                                             (cons (baas organigram) (werknemers-in (sub-organigrammen organigram)))))
                               (collegas (lambda (oversten organigram)
                                           (if (eq? p (baas organigram))
                                              (append oversten (werknemers-in (sub-organigrammen organigram)))
                                              (collegas-in (cons (baas organigram) oversten) (sub-organigrammen organigram))))))
                         (collegas () organigram)))))
-   (if (<change> (hierarchisch? 'directeur 'verkoopsleider-brussel organigram) (not (hierarchisch? 'directeur 'verkoopsleider-brussel organigram)))
-      (if (hierarchisch? 'bediende1 'hoofd-productie organigram)
+   (if (hierarchisch? 'directeur 'verkoopsleider-brussel organigram)
+      (if (<change> (hierarchisch? 'bediende1 'hoofd-productie organigram) (not (hierarchisch? 'bediende1 'hoofd-productie organigram)))
          (if (not (hierarchisch? 'hoofd-personeel 'bediende3 organigram))
             (equal?
                (collegas 'hoofd-inkoop organigram)

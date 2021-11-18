@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
-; * swaps: 1
+; * added: 1
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((inport #f)
          (outport #f)
          (catport (lambda (port)
@@ -17,10 +17,11 @@
          (go (lambda ()
                (set! inport (open-input-file "input.txt"))
                (set! outport (open-output-file "output.txt"))
-               (<change>
-                  (catport inport)
-                  (close-input-port inport))
-               (<change>
-                  (close-input-port inport)
-                  (catport inport)))))
-   (go))
+               (catport inport)
+               (close-input-port inport))))
+   (<change>
+      ()
+      go)
+   (<change>
+      (go)
+      ((lambda (x) x) (go))))

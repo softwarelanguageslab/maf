@@ -10,7 +10,7 @@
          (depth (lambda (tree)
                   (if (null? tree)
                      0
-                     (if (<change> (atom? tree) (not (atom? tree)))
+                     (if (atom? tree)
                         0
                         (max (+ 1 (depth (car tree))) (depth (cdr tree)))))))
          (leaf-count (lambda (tree)
@@ -37,7 +37,7 @@
               (__toplevel_cons
                  (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons 4 ())) (__toplevel_cons 5 ()))
                  (__toplevel_cons (__toplevel_cons 6 (__toplevel_cons 7 ())) ())))))
-   (if (= (depth l) 3)
+   (if (<change> (= (depth l) 3) (not (= (depth l) 3)))
       (if (= (leaf-count l) 7)
          (equal? (depth-and-leaf-count l) (cons 3 7))
          #f)

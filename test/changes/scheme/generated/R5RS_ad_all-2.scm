@@ -1,41 +1,38 @@
 ; Changes:
-; * removed: 1
-; * added: 0
-; * swaps: 0
+; * removed: 3
+; * added: 2
+; * swaps: 2
 ; * negated predicates: 1
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 3
 (letrec ((bubble-sort (lambda (vector)
                         (letrec ((swap (lambda (vector index1 index2)
-                                         (<change>
-                                            (let ((temp (vector-ref vector index1)))
+                                         (let ((temp (vector-ref vector index1)))
+                                            (<change>
                                                (vector-set! vector index1 (vector-ref vector index2))
-                                               (vector-set! vector index2 temp))
-                                            ((lambda (x) x)
-                                               (let ((temp (vector-ref vector index1)))
-                                                  (vector-set! vector index1 (vector-ref vector index2))
-                                                  (vector-set! vector index2 temp))))))
+                                               ())
+                                            (vector-set! vector index2 temp))))
                                  (bubble (lambda (index)
                                            (letrec ((bubble-iter (lambda (index1 changed)
                                                                    (if (<= index1 index)
                                                                       (begin
-                                                                         (<change>
-                                                                            (if (> (vector-ref vector index1) (vector-ref vector (+ index1 1)))
-                                                                               (begin
-                                                                                  (swap vector index1 (+ index1 1))
-                                                                                  (set! changed #t))
-                                                                               #f)
-                                                                            ())
+                                                                         (if (> (vector-ref vector index1) (vector-ref vector (+ index1 1)))
+                                                                            (begin
+                                                                               (swap vector index1 (+ index1 1))
+                                                                               (set! changed #t))
+                                                                            #f)
                                                                          (bubble-iter (+ index1 1) changed))
                                                                       changed))))
                                               (bubble-iter 0 #f))))
                                  (bubble-sort-iter (lambda (index)
-                                                     (if (<change> (>= index 0) (not (>= index 0)))
+                                                     (if (>= index 0)
                                                         (if (bubble index)
                                                            (bubble-sort-iter (- index 1))
                                                            #f)
                                                         #f))))
-                           (bubble-sort-iter (- (vector-length vector) 2)))))
+                           (<change>
+                              (bubble-sort-iter (- (vector-length vector) 2))
+                              ((lambda (x) x) (bubble-sort-iter (- (vector-length vector) 2)))))))
          (vect (vector 9 5 1 7 8 9 4 6 2 3)))
    (bubble-sort vect)
    (equal? vect (vector 1 2 3 4 5 6 7 8 9 9))
@@ -46,7 +43,7 @@
                                                   (vector-set! vector index2 temp))))
                                        (pos-of-min (lambda (vector low high)
                                                      (letrec ((min-iter (lambda (index pos-of-min-so-far)
-                                                                          (if (<= index high)
+                                                                          (if (<change> (<= index high) (not (<= index high)))
                                                                              (if (< (vector-ref vector index) (vector-ref vector pos-of-min-so-far))
                                                                                 (min-iter (+ index 1) index)
                                                                                 (min-iter (+ index 1) pos-of-min-so-far))
@@ -62,7 +59,9 @@
                                        (selection-sort-iter 0))))))
             (vect2 (vector 5 7 0 9 6 4 3 8 2 1)))
       (selection-sort vect2)
-      (equal? vect2 (vector 0 1 2 3 4 5 6 7 8 9))
+      (<change>
+         (equal? vect2 (vector 0 1 2 3 4 5 6 7 8 9))
+         ())
       (letrec ((result ())
                (display2 (lambda (item)
                            (set! result (cons item result))))
@@ -73,7 +72,9 @@
                (key-ref (lambda (row)
                           (vector-ref row 0)))
                (name-ref (lambda (row)
-                           (vector-ref row 1)))
+                           (<change>
+                              (vector-ref row 1)
+                              ((lambda (x) x) (vector-ref row 1)))))
                (age-ref (lambda (row)
                           (vector-ref row 2)))
                (wage-ref (lambda (row)
@@ -90,14 +91,27 @@
                            (display2 "[Sleutel:")
                            (display2 (key-ref row))
                            (display2 "]")
-                           (display2 "[Naam:")
-                           (display2 (name-ref row))
+                           (<change>
+                              (display2 "[Naam:")
+                              (display2 (name-ref row)))
+                           (<change>
+                              (display2 (name-ref row))
+                              (display2 "[Naam:"))
                            (display2 "]")
                            (display2 "[Leeftijd:")
-                           (display2 (age-ref row))
+                           (<change>
+                              (display2 (age-ref row))
+                              ())
                            (display2 "]")
-                           (display2 "[Salaris:")
-                           (display2 (wage-ref row))
+                           (<change>
+                              ()
+                              (display display2))
+                           (<change>
+                              (display2 "[Salaris:")
+                              (display2 (wage-ref row)))
+                           (<change>
+                              (display2 (wage-ref row))
+                              (display2 "[Salaris:"))
                            (display2 "]")))
                (make-table (lambda (rows)
                              (make-vector rows 0)))
@@ -117,7 +131,9 @@
                                                  (newline2)
                                                  (begin
                                                     (show-row (row-ref table index))
-                                                    (newline2)
+                                                    (<change>
+                                                       (newline2)
+                                                       ((lambda (x) x) (newline2)))
                                                     (iter (+ index 1)))))))
                                 (iter 0))))
                (table (make-table 10)))
@@ -127,6 +143,9 @@
          (row-set! table 3 (make-row 6 'Greet 27 75000))
          (row-set! table 4 (make-row 1 'Kaat 18 69000))
          (row-set! table 5 (make-row 5 'Mauranne 21 69000))
+         (<change>
+            ()
+            __toplevel_cons)
          (row-set! table 6 (make-row 4 'Peter 33 80000))
          (row-set! table 7 (make-row 2 'Piet 25 96000))
          (row-set! table 8 (make-row 9 'Tom 26 96000))

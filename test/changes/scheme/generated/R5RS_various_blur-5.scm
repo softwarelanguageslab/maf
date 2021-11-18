@@ -1,14 +1,22 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 2
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 2
 (letrec ((id (lambda (x)
                x))
          (blur (lambda (y)
-                 y))
+                 (<change>
+                    ()
+                    y)
+                 (<change>
+                    ()
+                    y)
+                 (<change>
+                    y
+                    ((lambda (x) x) y))))
          (lp (lambda (a n)
                (if (<= n 1)
                   (id a)
@@ -17,6 +25,5 @@
                      (not ((blur lp) s (- n 1)))))))
          (res (lp #f 2)))
    (<change>
-      ()
-      res)
-   res)
+      res
+      ((lambda (x) x) res)))

@@ -4,7 +4,7 @@
 ; * swaps: 0
 ; * negated predicates: 1
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((unfringe-1 (lambda (l)
                        (if (null? l)
                           ()
@@ -24,31 +24,61 @@
                                               (loop (pair l))))))
                              loop)
                              l)))))
-   (if (<change> (equal? (unfringe-1 (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 (__toplevel_cons 4 (__toplevel_cons 5 (__toplevel_cons 6 (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 9 ())))))))))) (__toplevel_cons 1 (__toplevel_cons (__toplevel_cons 2 (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons (__toplevel_cons 4 (__toplevel_cons (__toplevel_cons 5 (__toplevel_cons (__toplevel_cons 6 (__toplevel_cons (__toplevel_cons 7 (__toplevel_cons (__toplevel_cons 8 (__toplevel_cons (__toplevel_cons 9 ()) ())) ())) ())) ())) ())) ())) ())) ()))) (not (equal? (unfringe-1 (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 (__toplevel_cons 4 (__toplevel_cons 5 (__toplevel_cons 6 (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 9 ())))))))))) (__toplevel_cons 1 (__toplevel_cons (__toplevel_cons 2 (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons (__toplevel_cons 4 (__toplevel_cons (__toplevel_cons 5 (__toplevel_cons (__toplevel_cons 6 (__toplevel_cons (__toplevel_cons 7 (__toplevel_cons (__toplevel_cons 8 (__toplevel_cons (__toplevel_cons 9 ()) ())) ())) ())) ())) ())) ())) ())) ())))))
-      (equal?
-         (unfringe-2
-            (__toplevel_cons
-               1
+   (<change>
+      (if (equal? (unfringe-1 (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 (__toplevel_cons 4 (__toplevel_cons 5 (__toplevel_cons 6 (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 9 ())))))))))) (__toplevel_cons 1 (__toplevel_cons (__toplevel_cons 2 (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons (__toplevel_cons 4 (__toplevel_cons (__toplevel_cons 5 (__toplevel_cons (__toplevel_cons 6 (__toplevel_cons (__toplevel_cons 7 (__toplevel_cons (__toplevel_cons 8 (__toplevel_cons (__toplevel_cons 9 ()) ())) ())) ())) ())) ())) ())) ())) ())))
+         (equal?
+            (unfringe-2
                (__toplevel_cons
-                  2
+                  1
                   (__toplevel_cons
-                     3
+                     2
                      (__toplevel_cons
-                        4
+                        3
                         (__toplevel_cons
-                           5
-                           (__toplevel_cons 6 (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 9 ()))))))))))
-         (__toplevel_cons
+                           4
+                           (__toplevel_cons
+                              5
+                              (__toplevel_cons 6 (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 9 ()))))))))))
             (__toplevel_cons
                (__toplevel_cons
                   (__toplevel_cons
-                     (__toplevel_cons 1 (__toplevel_cons 2 ()))
-                     (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons 4 ())) ()))
+                     (__toplevel_cons
+                        (__toplevel_cons 1 (__toplevel_cons 2 ()))
+                        (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons 4 ())) ()))
+                     (__toplevel_cons
+                        (__toplevel_cons
+                           (__toplevel_cons 5 (__toplevel_cons 6 ()))
+                           (__toplevel_cons (__toplevel_cons 7 (__toplevel_cons 8 ())) ()))
+                        ()))
+                  (__toplevel_cons (__toplevel_cons (__toplevel_cons (__toplevel_cons 9 ()) ()) ()) ()))
+               ()))
+         #f)
+      ((lambda (x) x)
+         (if (<change> (equal? (unfringe-1 (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 (__toplevel_cons 4 (__toplevel_cons 5 (__toplevel_cons 6 (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 9 ())))))))))) (__toplevel_cons 1 (__toplevel_cons (__toplevel_cons 2 (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons (__toplevel_cons 4 (__toplevel_cons (__toplevel_cons 5 (__toplevel_cons (__toplevel_cons 6 (__toplevel_cons (__toplevel_cons 7 (__toplevel_cons (__toplevel_cons 8 (__toplevel_cons (__toplevel_cons 9 ()) ())) ())) ())) ())) ())) ())) ())) ()))) (not (equal? (unfringe-1 (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 (__toplevel_cons 4 (__toplevel_cons 5 (__toplevel_cons 6 (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 9 ())))))))))) (__toplevel_cons 1 (__toplevel_cons (__toplevel_cons 2 (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons (__toplevel_cons 4 (__toplevel_cons (__toplevel_cons 5 (__toplevel_cons (__toplevel_cons 6 (__toplevel_cons (__toplevel_cons 7 (__toplevel_cons (__toplevel_cons 8 (__toplevel_cons (__toplevel_cons 9 ()) ())) ())) ())) ())) ())) ())) ())) ())))))
+            (equal?
+               (unfringe-2
+                  (__toplevel_cons
+                     1
+                     (__toplevel_cons
+                        2
+                        (__toplevel_cons
+                           3
+                           (__toplevel_cons
+                              4
+                              (__toplevel_cons
+                                 5
+                                 (__toplevel_cons 6 (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 9 ()))))))))))
+               (__toplevel_cons
                   (__toplevel_cons
                      (__toplevel_cons
-                        (__toplevel_cons 5 (__toplevel_cons 6 ()))
-                        (__toplevel_cons (__toplevel_cons 7 (__toplevel_cons 8 ())) ()))
-                     ()))
-               (__toplevel_cons (__toplevel_cons (__toplevel_cons (__toplevel_cons 9 ()) ()) ()) ()))
-            ()))
-      #f))
+                        (__toplevel_cons
+                           (__toplevel_cons 1 (__toplevel_cons 2 ()))
+                           (__toplevel_cons (__toplevel_cons 3 (__toplevel_cons 4 ())) ()))
+                        (__toplevel_cons
+                           (__toplevel_cons
+                              (__toplevel_cons 5 (__toplevel_cons 6 ()))
+                              (__toplevel_cons (__toplevel_cons 7 (__toplevel_cons 8 ())) ()))
+                           ()))
+                     (__toplevel_cons (__toplevel_cons (__toplevel_cons (__toplevel_cons 9 ()) ()) ()) ()))
+                  ()))
+            #f))))

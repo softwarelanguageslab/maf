@@ -4,13 +4,13 @@
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 2
+; * calls to id fun: 1
 (letrec ((one-to (lambda (n)
                    (letrec ((loop (lambda (i l)
-                                    (<change>
-                                       (if (= i 0) l (loop (- i 1) (cons i l)))
-                                       ((lambda (x) x) (if (= i 0) l (loop (- i 1) (cons i l))))))))
-                      (loop n ()))))
+                                    (if (= i 0) l (loop (- i 1) (cons i l))))))
+                      (<change>
+                         (loop n ())
+                         ((lambda (x) x) (loop n ()))))))
          (ok? (lambda (row dist placed)
                 (if (null? placed)
                    #t
@@ -32,6 +32,4 @@
    (<change>
       (nqueens 8)
       ())
-   (<change>
-      #t
-      ((lambda (x) x) #t)))
+   #t)

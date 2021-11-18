@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 2
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -12,6 +12,9 @@
                                                      (if (null? restLijst)
                                                         (begin
                                                            (set-cdr! prevE ())
+                                                           (<change>
+                                                              ()
+                                                              (display cons))
                                                            (set-cdr! prevO ())
                                                            (cons deEven deOneven))
                                                         (if (even? (car restLijst))
@@ -28,13 +31,7 @@
                              (ontdubbel-iter deEven deOneven lijst))))))
    (<change>
       ()
-      (__toplevel_cons
-         4
-         (__toplevel_cons
-            5
-            (__toplevel_cons
-               6
-               (__toplevel_cons 7 (__toplevel_cons 8 (__toplevel_cons 9 (__toplevel_cons 10 ()))))))))
+      (__toplevel_cons 9 (__toplevel_cons 10 ())))
    (equal?
       (ontdubbel!
          (__toplevel_cons

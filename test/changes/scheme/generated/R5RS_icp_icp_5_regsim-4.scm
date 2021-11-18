@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 0
-; * added: 8
-; * swaps: 3
-; * negated predicates: 2
-; * swapped branches: 0
-; * calls to id fun: 9
+; * removed: 4
+; * added: 6
+; * swaps: 2
+; * negated predicates: 1
+; * swapped branches: 1
+; * calls to id fun: 12
 (letrec ((false #f)
          (true #t)
          (make-machine (lambda (register-names ops controller-text)
@@ -36,9 +36,6 @@
          (set-contents! (lambda (register value)
                           ((register 'set) value)))
          (make-stack (lambda ()
-                       (<change>
-                          ()
-                          ())
                        (let ((s ()))
                           (letrec ((push (lambda (x)
                                            (set! s (cons x s))))
@@ -46,8 +43,12 @@
                                           (if (null? s)
                                              (error "Empty stack -- POP")
                                              (let ((top (car s)))
-                                                (set! s (cdr s))
-                                                top))))
+                                                (<change>
+                                                   (set! s (cdr s))
+                                                   ((lambda (x) x) (set! s (cdr s))))
+                                                (<change>
+                                                   top
+                                                   ((lambda (x) x) top))))))
                                    (initialize (lambda ()
                                                  (set! s ())
                                                  'done))
@@ -68,37 +69,57 @@
          (push (lambda (stack value)
                  ((stack 'push) value)))
          (make-new-machine (lambda ()
-                             (<change>
-                                (let ((pc (make-register 'pc))
-                                      (flag (make-register 'flag))
-                                      (stack (make-stack))
-                                      (the-instruction-sequence ()))
-                                   (let ((the-ops (list
-                                                    (list 'initialize-stack (lambda () (stack 'initialize)))
-                                                    (list 'print-stack-statistics (lambda () (stack 'print-statistics)))))
-                                         (register-table (list (list 'pc pc) (list 'flag flag))))
-                                      (letrec ((allocate-register (lambda (name)
+                             (let ((pc (make-register 'pc))
+                                   (flag (make-register 'flag))
+                                   (stack (make-stack))
+                                   (the-instruction-sequence ()))
+                                (let ((the-ops (list
+                                                 (list 'initialize-stack (lambda () (stack 'initialize)))
+                                                 (list 'print-stack-statistics (lambda () (stack 'print-statistics)))))
+                                      (register-table (list (list 'pc pc) (list 'flag flag))))
+                                   (letrec ((allocate-register (lambda (name)
+                                                                 (<change>
                                                                     (if (assoc name register-table)
                                                                        (error "Multiply defined register: " name)
                                                                        (set! register-table (cons (list name (make-register name)) register-table)))
-                                                                    'register-allocated))
-                                               (lookup-register (lambda (name)
-                                                                  (let ((val (assoc name register-table)))
-                                                                     (if val
-                                                                        (cadr val)
-                                                                        (error "Unknown register:" name)))))
-                                               (execute (lambda ()
-                                                          (let ((insts (get-contents pc)))
-                                                             (if (null? insts)
-                                                                'done
-                                                                (begin
+                                                                    ())
+                                                                 'register-allocated))
+                                            (lookup-register (lambda (name)
+                                                               (let ((val (assoc name register-table)))
+                                                                  (if val
+                                                                     (cadr val)
+                                                                     (error "Unknown register:" name)))))
+                                            (execute (lambda ()
+                                                       (let ((insts (get-contents pc)))
+                                                          (if (<change> (null? insts) (not (null? insts)))
+                                                             'done
+                                                             (begin
+                                                                (<change>
                                                                    ((instruction-execution-proc (car insts)))
-                                                                   (execute))))))
-                                               (dispatch (lambda (message)
-                                                           (if (eq? message 'start)
+                                                                   ())
+                                                                (execute))))))
+                                            (dispatch (lambda (message)
+                                                        (if (eq? message 'start)
+                                                           (<change>
                                                               (begin
                                                                  (set-contents! pc the-instruction-sequence)
                                                                  (execute))
+                                                              (if (eq? message 'install-instruction-sequence)
+                                                                 (lambda (seq)
+                                                                    ((lambda (x) x) (set! the-instruction-sequence seq)))
+                                                                 (if (eq? message 'allocate-register)
+                                                                    allocate-register
+                                                                    (if (eq? message 'get-register)
+                                                                       lookup-register
+                                                                       (if (eq? message 'install-operations)
+                                                                          (lambda (ops)
+                                                                             (set! the-ops (append the-ops ops)))
+                                                                          (if (eq? message 'stack)
+                                                                             stack
+                                                                             (if (eq? message 'operations)
+                                                                                the-ops
+                                                                                (error "Unknown request -- MACHINE" message))))))))
+                                                           (<change>
                                                               (if (eq? message 'install-instruction-sequence)
                                                                  (lambda (seq)
                                                                     (set! the-instruction-sequence seq))
@@ -113,93 +134,36 @@
                                                                              stack
                                                                              (if (eq? message 'operations)
                                                                                 the-ops
-                                                                                (error "Unknown request -- MACHINE" message)))))))))))
-                                         dispatch)))
-                                ((lambda (x) x)
-                                   (let ((pc (make-register 'pc))
-                                         (flag (make-register 'flag))
-                                         (stack (make-stack))
-                                         (the-instruction-sequence ()))
-                                      (let ((the-ops (list
-                                                       (list 'initialize-stack (lambda () (<change> () stack) (stack 'initialize)))
-                                                       (list 'print-stack-statistics (lambda () (stack 'print-statistics)))))
-                                            (register-table (list (list 'pc pc) (list 'flag flag))))
-                                         (letrec ((allocate-register (lambda (name)
-                                                                       (if (assoc name register-table)
-                                                                          (error "Multiply defined register: " name)
-                                                                          (set! register-table (cons (list name (make-register name)) register-table)))
-                                                                       'register-allocated))
-                                                  (lookup-register (lambda (name)
-                                                                     (let ((val (assoc name register-table)))
-                                                                        (if val
-                                                                           (cadr val)
-                                                                           (error "Unknown register:" name)))))
-                                                  (execute (lambda ()
-                                                             (let ((insts (get-contents pc)))
-                                                                (if (null? insts)
-                                                                   'done
-                                                                   (begin
-                                                                      ((instruction-execution-proc (car insts)))
-                                                                      (execute))))))
-                                                  (dispatch (lambda (message)
-                                                              (if (eq? message 'start)
-                                                                 (begin
-                                                                    (set-contents! pc the-instruction-sequence)
-                                                                    (execute))
-                                                                 (if (eq? message 'install-instruction-sequence)
-                                                                    (lambda (seq)
-                                                                       (set! the-instruction-sequence seq))
-                                                                    (if (eq? message 'allocate-register)
-                                                                       allocate-register
-                                                                       (if (eq? message 'get-register)
-                                                                          lookup-register
-                                                                          (if (eq? message 'install-operations)
-                                                                             (lambda (ops)
-                                                                                (set! the-ops (append the-ops ops)))
-                                                                             (if (eq? message 'stack)
-                                                                                stack
-                                                                                (if (eq? message 'operations)
-                                                                                   the-ops
-                                                                                   (error "Unknown request -- MACHINE" message)))))))))))
-                                            dispatch)))))))
+                                                                                (error "Unknown request -- MACHINE" message)))))))
+                                                              (begin
+                                                                 (set-contents! pc the-instruction-sequence)
+                                                                 (execute)))))))
+                                      dispatch)))))
          (start (lambda (machine)
-                  (<change>
-                     ()
-                     (machine 'start))
                   (machine 'start)))
          (get-register-contents (lambda (machine register-name)
                                   (get-contents (get-register machine register-name))))
          (set-register-contents! (lambda (machine register-name value)
                                    (<change>
                                       (set-contents! (get-register machine register-name) value)
-                                      'done)
-                                   (<change>
-                                      'done
-                                      (set-contents! (get-register machine register-name) value))))
+                                      ((lambda (x) x) (set-contents! (get-register machine register-name) value)))
+                                   'done))
          (get-register (lambda (machine reg-name)
-                         ((machine 'get-register) reg-name)))
+                         (<change>
+                            ((machine 'get-register) reg-name)
+                            ((lambda (x) x) ((machine 'get-register) reg-name)))))
          (assemble (lambda (controller-text machine)
-                     (<change>
-                        (let ((result (extract-labels controller-text)))
-                           (let ((insts (car result))
-                                 (labels (cdr result)))
-                              (update-insts! insts labels machine)
-                              insts))
-                        ((lambda (x) x)
-                           (let ((result (extract-labels controller-text)))
-                              (let ((insts (car result))
-                                    (labels (cdr result)))
-                                 (update-insts! insts labels machine)
-                                 insts))))))
+                     (let ((result (extract-labels controller-text)))
+                        (let ((insts (car result))
+                              (labels (cdr result)))
+                           (update-insts! insts labels machine)
+                           insts))))
          (extract-labels (lambda (text)
                            (if (null? text)
                               (cons () ())
                               (let ((result (extract-labels (cdr text))))
                                  (let ((insts (car result))
                                        (labels (cdr result)))
-                                    (<change>
-                                       ()
-                                       (symbol? next-inst))
                                     (let ((next-inst (car text)))
                                        (if (symbol? next-inst)
                                           (cons insts (cons (make-label-entry next-inst insts) labels))
@@ -209,16 +173,26 @@
                                 (flag (get-register machine 'flag))
                                 (stack (machine 'stack))
                                 (ops (machine 'operations)))
-                             (for-each
-                                (lambda (inst)
-                                   (set-instruction-execution-proc!
-                                      inst
-                                      (make-execution-procedure (instruction-text inst) labels machine pc flag stack ops)))
-                                insts))))
+                             (<change>
+                                (for-each
+                                   (lambda (inst)
+                                      (set-instruction-execution-proc!
+                                         inst
+                                         (make-execution-procedure (instruction-text inst) labels machine pc flag stack ops)))
+                                   insts)
+                                ((lambda (x) x)
+                                   (for-each
+                                      (lambda (inst)
+                                         (set-instruction-execution-proc!
+                                            inst
+                                            (make-execution-procedure (instruction-text inst) labels machine pc flag stack ops)))
+                                      insts))))))
          (make-instruction (lambda (text)
                              (cons text ())))
          (instruction-text (lambda (inst)
-                             (car inst)))
+                             (<change>
+                                (car inst)
+                                ((lambda (x) x) (car inst)))))
          (instruction-execution-proc (lambda (inst)
                                        (cdr inst)))
          (set-instruction-execution-proc! (lambda (inst proc)
@@ -227,11 +201,9 @@
                              (cons label-name insts)))
          (lookup-label (lambda (labels label-name)
                          (let ((val (assoc label-name labels)))
-                            (<change>
-                               (if val
-                                  (cdr val)
-                                  (error "Undefined label -- ASSEMBLE" label-name))
-                               ((lambda (x) x) (if val (cdr val) (error "Undefined label -- ASSEMBLE" label-name)))))))
+                            (if val
+                               (cdr val)
+                               (error "Undefined label -- ASSEMBLE" label-name)))))
          (make-execution-procedure (lambda (inst labels machine pc flag stack ops)
                                      (if (eq? (car inst) 'assign)
                                         (make-assign inst machine labels ops pc)
@@ -241,7 +213,7 @@
                                               (make-branch inst machine labels flag pc)
                                               (if (eq? (car inst) 'goto)
                                                  (make-goto inst machine labels pc)
-                                                 (if (<change> (eq? (car inst) 'save) (not (eq? (car inst) 'save)))
+                                                 (if (eq? (car inst) 'save)
                                                     (make-save inst machine stack pc)
                                                     (if (eq? (car inst) 'restore)
                                                        (make-restore inst machine stack pc)
@@ -249,18 +221,27 @@
                                                           (make-perform inst machine labels ops pc)
                                                           (error "Unknown instruction type -- ASSEMBLE" inst))))))))))
          (make-assign (lambda (inst machine labels operations pc)
+                        (<change>
+                           ()
+                           labels)
                         (let ((target (get-register machine (assign-reg-name inst)))
                               (value-exp (assign-value-exp inst)))
                            (let ((value-proc (if (operation-exp? value-exp)
                                                (make-operation-exp value-exp machine labels operations)
                                                (make-primitive-exp (car value-exp) machine labels))))
-                              (lambda ()
-                                 (<change>
+                              (<change>
+                                 (lambda ()
                                     (set-contents! target (value-proc))
                                     (advance-pc pc))
-                                 (<change>
-                                    (advance-pc pc)
-                                    (set-contents! target (value-proc))))))))
+                                 ((lambda (x) x)
+                                    (lambda ()
+                                       (set-contents! target (value-proc))
+                                       (<change>
+                                          ()
+                                          pc)
+                                       (<change>
+                                          (advance-pc pc)
+                                          ((lambda (x) x) (advance-pc pc))))))))))
          (assign-reg-name (lambda (assign-instruction)
                             (cadr assign-instruction)))
          (assign-value-exp (lambda (assign-instruction)
@@ -303,47 +284,40 @@
                       (cadr goto-instruction)))
          (make-save (lambda (inst machine stack pc)
                       (<change>
-                         ()
-                         stack-inst-reg-name)
-                      (let ((reg (get-register machine (stack-inst-reg-name inst))))
-                         (lambda ()
-                            (push stack (get-contents reg))
-                            (<change>
-                               (advance-pc pc)
-                               ((lambda (x) x) (advance-pc pc)))))))
+                         (let ((reg (get-register machine (stack-inst-reg-name inst))))
+                            (lambda ()
+                               (push stack (get-contents reg))
+                               (advance-pc pc)))
+                         ((lambda (x) x)
+                            (let ((reg (get-register machine (stack-inst-reg-name inst))))
+                               (lambda ()
+                                  (<change>
+                                     (push stack (get-contents reg))
+                                     (advance-pc pc))
+                                  (<change>
+                                     (advance-pc pc)
+                                     (push stack (get-contents reg)))))))))
          (make-restore (lambda (inst machine stack pc)
                          (let ((reg (get-register machine (stack-inst-reg-name inst))))
                             (lambda ()
                                (<change>
                                   (set-contents! reg (pop stack))
-                                  (advance-pc pc))
-                               (<change>
-                                  (advance-pc pc)
-                                  (set-contents! reg (pop stack)))))))
+                                  ((lambda (x) x) (set-contents! reg (pop stack))))
+                               (advance-pc pc)))))
          (stack-inst-reg-name (lambda (stack-instruction)
-                                (<change>
-                                   (cadr stack-instruction)
-                                   ((lambda (x) x) (cadr stack-instruction)))))
+                                (cadr stack-instruction)))
          (make-perform (lambda (inst machine labels operations pc)
                          (let ((action (perform-action inst)))
-                            (<change>
-                               (if (operation-exp? action)
-                                  (let ((action-proc (make-operation-exp action machine labels operations)))
-                                     (lambda ()
-                                        (action-proc)
-                                        (advance-pc pc)))
-                                  (error "Bad PERFORM instruction -- ASSEMBLE" inst))
-                               ((lambda (x) x)
-                                  (if (<change> (operation-exp? action) (not (operation-exp? action)))
-                                     (let ((action-proc (make-operation-exp action machine labels operations)))
-                                        (lambda ()
-                                           (action-proc)
-                                           (<change>
-                                              ()
-                                              action-proc)
-                                           (advance-pc pc)))
-                                     (error "Bad PERFORM instruction -- ASSEMBLE" inst)))))))
+                            (if (operation-exp? action)
+                               (let ((action-proc (make-operation-exp action machine labels operations)))
+                                  (lambda ()
+                                     (action-proc)
+                                     (advance-pc pc)))
+                               (error "Bad PERFORM instruction -- ASSEMBLE" inst)))))
          (perform-action (lambda (inst)
+                           (<change>
+                              ()
+                              (display inst))
                            (cdr inst)))
          (make-primitive-exp (lambda (exp machine labels)
                                (if (constant-exp? exp)
@@ -364,21 +338,22 @@
          (register-exp-reg (lambda (exp)
                              (cadr exp)))
          (constant-exp? (lambda (exp)
+                          (<change>
+                             ()
+                             exp)
                           (tagged-list? exp 'const)))
          (constant-exp-value (lambda (exp)
+                               (<change>
+                                  ()
+                                  cadr)
                                (cadr exp)))
          (label-exp? (lambda (exp)
                        (tagged-list? exp 'label)))
          (label-exp-label (lambda (exp)
-                            (<change>
-                               (cadr exp)
-                               ((lambda (x) x) (cadr exp)))))
+                            (cadr exp)))
          (make-operation-exp (lambda (exp machine labels operations)
                                (let ((op (lookup-prim (operation-exp-op exp) operations))
                                      (aprocs (map (lambda (e) (make-primitive-exp e machine labels)) (operation-exp-operands exp))))
-                                  (<change>
-                                     ()
-                                     null?)
                                   (lambda ()
                                      (if (null? aprocs)
                                         (op)
@@ -413,157 +388,159 @@
                             (__toplevel_cons
                                (__toplevel_cons '> (__toplevel_cons > ()))
                                (__toplevel_cons (__toplevel_cons 'display (__toplevel_cons (lambda (x) (display x)) ())) ())))))))))
-   (let ((gcd-machine (make-machine
-                        (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 't ())))
-                        ops
-                        (__toplevel_cons
-                           'test-b
+   (<change>
+      (let ((gcd-machine (make-machine
+                           (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 't ())))
+                           ops
                            (__toplevel_cons
-                              (__toplevel_cons
-                                 'test
-                                 (__toplevel_cons
-                                    (__toplevel_cons 'op (__toplevel_cons '= ()))
-                                    (__toplevel_cons
-                                       (__toplevel_cons 'reg (__toplevel_cons 'b ()))
-                                       (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 0 ())) ()))))
+                              'test-b
                               (__toplevel_cons
                                  (__toplevel_cons
-                                    'branch
-                                    (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'gcd-done ())) ()))
+                                    'test
+                                    (__toplevel_cons
+                                       (__toplevel_cons 'op (__toplevel_cons '= ()))
+                                       (__toplevel_cons
+                                          (__toplevel_cons 'reg (__toplevel_cons 'b ()))
+                                          (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 0 ())) ()))))
                                  (__toplevel_cons
                                     (__toplevel_cons
-                                       'assign
-                                       (__toplevel_cons 't (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'a ())) ())))
-                                    (__toplevel_cons
-                                       'rem-loop
-                                       (__toplevel_cons
-                                          (__toplevel_cons
-                                             'test
-                                             (__toplevel_cons
-                                                (__toplevel_cons 'op (__toplevel_cons '< ()))
-                                                (__toplevel_cons
-                                                   (__toplevel_cons 'reg (__toplevel_cons 't ()))
-                                                   (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'b ())) ()))))
-                                          (__toplevel_cons
-                                             (__toplevel_cons
-                                                'branch
-                                                (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'rem-done ())) ()))
-                                             (__toplevel_cons
-                                                (__toplevel_cons
-                                                   'assign
-                                                   (__toplevel_cons
-                                                      't
-                                                      (__toplevel_cons
-                                                         (__toplevel_cons 'op (__toplevel_cons '- ()))
-                                                         (__toplevel_cons
-                                                            (__toplevel_cons 'reg (__toplevel_cons 't ()))
-                                                            (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'b ())) ())))))
-                                                (__toplevel_cons
-                                                   (__toplevel_cons
-                                                      'goto
-                                                      (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'rem-loop ())) ()))
-                                                   (__toplevel_cons
-                                                      'rem-done
-                                                      (__toplevel_cons
-                                                         (__toplevel_cons
-                                                            'assign
-                                                            (__toplevel_cons 'a (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'b ())) ())))
-                                                         (__toplevel_cons
-                                                            (__toplevel_cons
-                                                               'assign
-                                                               (__toplevel_cons 'b (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 't ())) ())))
-                                                            (__toplevel_cons
-                                                               (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'test-b ())) ()))
-                                                               (__toplevel_cons 'gcd-done ())))))))))))))))))
-      (display "(gcd 10 15): ")
-      (set-register-contents! gcd-machine 'a 10)
-      (set-register-contents! gcd-machine 'b 15)
-      (start gcd-machine)
-      (display (get-register-contents gcd-machine 'a))
-      (newline))
-   (let ((fac-machine (make-machine
-                        (__toplevel_cons 'continue (__toplevel_cons 'n (__toplevel_cons 'val ())))
-                        ops
-                        (__toplevel_cons
-                           'start
-                           (__toplevel_cons
-                              (__toplevel_cons
-                                 'assign
-                                 (__toplevel_cons
-                                    'continue
-                                    (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-done ())) ())))
-                              (__toplevel_cons
-                                 'fact-loop
-                                 (__toplevel_cons
-                                    (__toplevel_cons
-                                       'test
-                                       (__toplevel_cons
-                                          (__toplevel_cons 'op (__toplevel_cons '= ()))
-                                          (__toplevel_cons
-                                             (__toplevel_cons 'reg (__toplevel_cons 'n ()))
-                                             (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ()))))
+                                       'branch
+                                       (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'gcd-done ())) ()))
                                     (__toplevel_cons
                                        (__toplevel_cons
-                                          'branch
-                                          (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'base-case ())) ()))
+                                          'assign
+                                          (__toplevel_cons 't (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'a ())) ())))
                                        (__toplevel_cons
-                                          (__toplevel_cons 'save (__toplevel_cons 'continue ()))
+                                          'rem-loop
                                           (__toplevel_cons
-                                             (__toplevel_cons 'save (__toplevel_cons 'n ()))
+                                             (__toplevel_cons
+                                                'test
+                                                (__toplevel_cons
+                                                   (__toplevel_cons 'op (__toplevel_cons '< ()))
+                                                   (__toplevel_cons
+                                                      (__toplevel_cons 'reg (__toplevel_cons 't ()))
+                                                      (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'b ())) ()))))
                                              (__toplevel_cons
                                                 (__toplevel_cons
-                                                   'assign
-                                                   (__toplevel_cons
-                                                      'n
-                                                      (__toplevel_cons
-                                                         (__toplevel_cons 'op (__toplevel_cons '- ()))
-                                                         (__toplevel_cons
-                                                            (__toplevel_cons 'reg (__toplevel_cons 'n ()))
-                                                            (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))))
+                                                   'branch
+                                                   (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'rem-done ())) ()))
                                                 (__toplevel_cons
                                                    (__toplevel_cons
                                                       'assign
                                                       (__toplevel_cons
-                                                         'continue
-                                                         (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'after-fact ())) ())))
+                                                         't
+                                                         (__toplevel_cons
+                                                            (__toplevel_cons 'op (__toplevel_cons '- ()))
+                                                            (__toplevel_cons
+                                                               (__toplevel_cons 'reg (__toplevel_cons 't ()))
+                                                               (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'b ())) ())))))
                                                    (__toplevel_cons
                                                       (__toplevel_cons
                                                          'goto
-                                                         (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-loop ())) ()))
+                                                         (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'rem-loop ())) ()))
                                                       (__toplevel_cons
-                                                         'after-fact
+                                                         'rem-done
                                                          (__toplevel_cons
-                                                            (__toplevel_cons 'restore (__toplevel_cons 'n ()))
                                                             (__toplevel_cons
-                                                               (__toplevel_cons 'restore (__toplevel_cons 'continue ()))
+                                                               'assign
+                                                               (__toplevel_cons 'a (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'b ())) ())))
+                                                            (__toplevel_cons
                                                                (__toplevel_cons
+                                                                  'assign
+                                                                  (__toplevel_cons 'b (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 't ())) ())))
+                                                               (__toplevel_cons
+                                                                  (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'test-b ())) ()))
+                                                                  (__toplevel_cons 'gcd-done ())))))))))))))))))
+         (display "(gcd 10 15): ")
+         (set-register-contents! gcd-machine 'a 10)
+         (set-register-contents! gcd-machine 'b 15)
+         (start gcd-machine)
+         (display (get-register-contents gcd-machine 'a))
+         (newline))
+      ())
+   (<change>
+      (let ((fac-machine (make-machine
+                           (__toplevel_cons 'continue (__toplevel_cons 'n (__toplevel_cons 'val ())))
+                           ops
+                           (__toplevel_cons
+                              'start
+                              (__toplevel_cons
+                                 (__toplevel_cons
+                                    'assign
+                                    (__toplevel_cons
+                                       'continue
+                                       (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-done ())) ())))
+                                 (__toplevel_cons
+                                    'fact-loop
+                                    (__toplevel_cons
+                                       (__toplevel_cons
+                                          'test
+                                          (__toplevel_cons
+                                             (__toplevel_cons 'op (__toplevel_cons '= ()))
+                                             (__toplevel_cons
+                                                (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ()))))
+                                       (__toplevel_cons
+                                          (__toplevel_cons
+                                             'branch
+                                             (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'base-case ())) ()))
+                                          (__toplevel_cons
+                                             (__toplevel_cons 'save (__toplevel_cons 'continue ()))
+                                             (__toplevel_cons
+                                                (__toplevel_cons 'save (__toplevel_cons 'n ()))
+                                                (__toplevel_cons
+                                                   (__toplevel_cons
+                                                      'assign
+                                                      (__toplevel_cons
+                                                         'n
+                                                         (__toplevel_cons
+                                                            (__toplevel_cons 'op (__toplevel_cons '- ()))
+                                                            (__toplevel_cons
+                                                               (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                               (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))))
+                                                   (__toplevel_cons
+                                                      (__toplevel_cons
+                                                         'assign
+                                                         (__toplevel_cons
+                                                            'continue
+                                                            (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'after-fact ())) ())))
+                                                      (__toplevel_cons
+                                                         (__toplevel_cons
+                                                            'goto
+                                                            (__toplevel_cons (__toplevel_cons 'label (__toplevel_cons 'fact-loop ())) ()))
+                                                         (__toplevel_cons
+                                                            'after-fact
+                                                            (__toplevel_cons
+                                                               (__toplevel_cons 'restore (__toplevel_cons 'n ()))
+                                                               (__toplevel_cons
+                                                                  (__toplevel_cons 'restore (__toplevel_cons 'continue ()))
                                                                   (__toplevel_cons
-                                                                     'assign
                                                                      (__toplevel_cons
-                                                                        'val
+                                                                        'assign
                                                                         (__toplevel_cons
-                                                                           (__toplevel_cons 'op (__toplevel_cons '* ()))
+                                                                           'val
                                                                            (__toplevel_cons
-                                                                              (__toplevel_cons 'reg (__toplevel_cons 'n ()))
-                                                                              (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ())))))
-                                                                  (__toplevel_cons
-                                                                     (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
+                                                                              (__toplevel_cons 'op (__toplevel_cons '* ()))
+                                                                              (__toplevel_cons
+                                                                                 (__toplevel_cons 'reg (__toplevel_cons 'n ()))
+                                                                                 (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'val ())) ())))))
                                                                      (__toplevel_cons
-                                                                        'base-case
+                                                                        (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
                                                                         (__toplevel_cons
+                                                                           'base-case
                                                                            (__toplevel_cons
-                                                                              'assign
-                                                                              (__toplevel_cons 'val (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))
-                                                                           (__toplevel_cons
-                                                                              (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
-                                                                              (__toplevel_cons 'fact-done ()))))))))))))))))))))))
-      (display "(fac 5): ")
-      (set-register-contents! fac-machine 'n 5)
-      (<change>
+                                                                              (__toplevel_cons
+                                                                                 'assign
+                                                                                 (__toplevel_cons 'val (__toplevel_cons (__toplevel_cons 'const (__toplevel_cons 1 ())) ())))
+                                                                              (__toplevel_cons
+                                                                                 (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
+                                                                                 (__toplevel_cons 'fact-done ()))))))))))))))))))))))
+         (display "(fac 5): ")
+         (set-register-contents! fac-machine 'n 5)
          (start fac-machine)
-         ((lambda (x) x) (start fac-machine)))
-      (display (get-register-contents fac-machine 'val))
-      (newline))
+         (display (get-register-contents fac-machine 'val))
+         (newline))
+      ())
    (let ((fib-machine (make-machine
                         (__toplevel_cons 'continue (__toplevel_cons 'n (__toplevel_cons 'val ())))
                         ops
@@ -676,6 +653,10 @@
                                                                                                          (__toplevel_cons 'fib-done ())))))))))))))))))))))))))))))))
       (display "(fib 5): ")
       (set-register-contents! fib-machine 'n 5)
-      (start fib-machine)
-      (display (get-register-contents fib-machine 'val))
+      (<change>
+         (start fib-machine)
+         (display (get-register-contents fib-machine 'val)))
+      (<change>
+         (display (get-register-contents fib-machine 'val))
+         (start fib-machine))
       (newline)))

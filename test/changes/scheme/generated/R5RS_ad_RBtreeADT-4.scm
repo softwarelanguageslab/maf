@@ -1,15 +1,13 @@
 ; Changes:
-; * removed: 4
-; * added: 1
-; * swaps: 0
+; * removed: 1
+; * added: 5
+; * swaps: 3
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 4
 (letrec ((create-redblack-tree (lambda options
                                  (letrec ((make-null-tree (lambda ()
-                                                            (<change>
-                                                               (list (cons () 'black) () () ())
-                                                               ((lambda (x) x) (list (cons () 'black) () () ()))))))
+                                                            (list (cons () 'black) () () ()))))
                                     (let* ((content (make-null-tree))
                                            (same? (if (null? options) equal? (car options)))
                                            (less? (if (null? options) < (cadr options))))
@@ -238,39 +236,65 @@
                                                                            (error "unknown request -- create-BST")))))))))
                                           dispatch)))))
          (tree (create-redblack-tree)))
-   (tree 'insert 1)
+   (<change>
+      (tree 'insert 1)
+      ((lambda (x) x) (tree 'insert 1)))
+   (<change>
+      ()
+      4)
    (tree 'display)
    (tree 'insert 2)
    (tree 'display)
-   (tree 'insert 5)
+   (<change>
+      (tree 'insert 5)
+      ((lambda (x) x) (tree 'insert 5)))
    (tree 'display)
-   (tree 'insert 7)
+   (<change>
+      (tree 'insert 7)
+      ((lambda (x) x) (tree 'insert 7)))
    (tree 'display)
    (<change>
       (tree 'insert 8)
-      ())
-   (tree 'display)
-   (tree 'insert 11)
+      ((lambda (x) x) (tree 'insert 8)))
    (<change>
       ()
-      (tree 'insert 3))
+      (display (tree 'delete 2)))
+   (tree 'display)
+   (tree 'insert 11)
    (tree 'display)
    (tree 'insert 14)
-   (tree 'display)
-   (tree 'insert 15)
-   (tree 'display)
-   (tree 'insert 4)
-   (tree 'display)
    (<change>
-      (tree 'insert 3)
-      ())
-   (tree 'display)
+      (tree 'display)
+      (tree 'insert 15))
    (<change>
-      (tree 'delete 1)
-      ())
+      (tree 'insert 15)
+      (tree 'display))
    (<change>
       (tree 'display)
       ())
+   (<change>
+      (tree 'insert 4)
+      (tree 'display))
+   (<change>
+      (tree 'display)
+      (tree 'insert 4))
+   (tree 'insert 3)
+   (<change>
+      ()
+      tree)
+   (<change>
+      ()
+      tree)
+   (tree 'display)
+   (<change>
+      ()
+      (display tree))
+   (<change>
+      (tree 'delete 1)
+      (tree 'display))
+   (<change>
+      (tree 'display)
+      (tree 'delete 1))
    (tree 'delete 2)
    (tree 'display)
    (tree 'delete 11)

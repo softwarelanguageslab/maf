@@ -3,25 +3,20 @@
 ; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 2
-; * calls to id fun: 0
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((show (lambda (namen punten test?)
                  (if (null? namen)
-                    (<change>
-                       ()
-                       (let ((res (show (cdr namen) (cdr punten) test?)))
-                          (display (test? (car punten)))
-                          (if (test? (car punten))
-                             (cons (car namen) res)
-                             res)))
-                    (<change>
-                       (let ((res (show (cdr namen) (cdr punten) test?)))
-                          (if (test? (car punten))
-                             (cons (car namen) res)
-                             res))
-                       ()))))
+                    ()
+                    (let ((res (show (cdr namen) (cdr punten) test?)))
+                       (if (test? (car punten))
+                          (cons (car namen) res)
+                          res)))))
          (one (lambda (namen punten)
                 (letrec ((één-buis? (lambda (punten)
+                                      (<change>
+                                         ()
+                                         geen-buis?)
                                       (if (null? punten)
                                          #f
                                          (let ((punt (car punten))
@@ -30,17 +25,18 @@
                                                (geen-buis? rest)
                                                (één-buis? rest))))))
                          (geen-buis? (lambda (punten)
-                                       (if (null? punten)
-                                          #t
-                                          (let ((punt (car punten))
-                                                (rest (cdr punten)))
-                                             (if (< punt 10)
-                                                (<change>
-                                                   #f
-                                                   (geen-buis? rest))
-                                                (<change>
-                                                   (geen-buis? rest)
-                                                   #f)))))))
+                                       (<change>
+                                          (if (null? punten)
+                                             #t
+                                             (let ((punt (car punten))
+                                                   (rest (cdr punten)))
+                                                (if (< punt 10) #f (geen-buis? rest))))
+                                          ((lambda (x) x)
+                                             (if (null? punten)
+                                                #t
+                                                (let ((punt (car punten))
+                                                      (rest (cdr punten)))
+                                                   (if (< punt 10) #f (geen-buis? rest)))))))))
                    (show namen punten één-buis?)))))
    (equal?
       (one

@@ -1,9 +1,9 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 2
-; * swapped branches: 0
+; * negated predicates: 1
+; * swapped branches: 1
 ; * calls to id fun: 0
 (letrec ((make-point (lambda (x y)
                        (letrec ((dispatch (lambda (msg)
@@ -15,16 +15,13 @@
                          (letrec ((midpoint (lambda ()
                                               (make-point (/ (+ (start 'x-value) (end 'x-value)) 2) (/ (+ (start 'y-value) (end 'y-value)) 2))))
                                   (dispatch (lambda (msg)
-                                              (if (<change> (eq? msg 'start-point) (not (eq? msg 'start-point)))
+                                              (if (eq? msg 'start-point)
                                                  start
                                                  (if (eq? msg 'end-point)
                                                     end
-                                                    (if (<change> (eq? msg 'midpoint) (not (eq? msg 'midpoint)))
+                                                    (if (eq? msg 'midpoint)
                                                        (midpoint)
                                                        (error "wrong message")))))))
-                            (<change>
-                               ()
-                               dispatch)
                             dispatch)))
          (make-w-vector (lambda args
                           (letrec ((dimension (lambda ()
@@ -69,15 +66,27 @@
    (if (= (point1 'x-value) 6)
       (if (= ((segment 'start-point) 'y-value) 10)
          (if (= (midpoint 'x-value) 8)
-            (if (= ((w-vector1 'coordinate) 2) 2)
-               (if (= ((w-vector2 'coordinate) 1) 4)
-                  (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
-                     (if (= (polynome 'order) 2)
-                        (= ((polynome 'coefficient) 2) 2)
+            (<change>
+               (if (= ((w-vector1 'coordinate) 2) 2)
+                  (if (= ((w-vector2 'coordinate) 1) 4)
+                     (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
+                        (if (= (polynome 'order) 2)
+                           (= ((polynome 'coefficient) 2) 2)
+                           #f)
                         #f)
                      #f)
                   #f)
                #f)
-            #f)
+            (<change>
+               #f
+               (if (= ((w-vector1 'coordinate) 2) 2)
+                  (if (= ((w-vector2 'coordinate) 1) 4)
+                     (if (not (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5))
+                        (if (= (polynome 'order) 2)
+                           (= ((polynome 'coefficient) 2) 2)
+                           #f)
+                        #f)
+                     #f)
+                  #f)))
          #f)
       #f))

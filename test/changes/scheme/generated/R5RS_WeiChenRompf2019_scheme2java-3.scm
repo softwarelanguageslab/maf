@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
-; * swaps: 0
+; * added: 8
+; * swaps: 1
 ; * negated predicates: 1
-; * swapped branches: 1
-; * calls to id fun: 3
+; * swapped branches: 3
+; * calls to id fun: 2
 (letrec ((string->list (lambda (s)
                          (letrec ((f (lambda (i)
                                        (if (< i (string-length s))
@@ -25,6 +25,9 @@
          (ref? (lambda (exp)
                  (symbol? exp)))
          (let? (lambda (exp)
+                 (<change>
+                    ()
+                    'let)
                  (tagged-list? 'let exp)))
          (let->bindings (lambda (exp)
                           (cadr exp)))
@@ -41,22 +44,22 @@
          (lambda? (lambda (exp)
                     (tagged-list? 'lambda exp)))
          (lambda->formals (lambda (exp)
-                            (cadr exp)))
+                            (<change>
+                               (cadr exp)
+                               ((lambda (x) x) (cadr exp)))))
          (lambda->exp (lambda (exp)
                         (caddr exp)))
          (if? (lambda (exp)
-                (<change>
-                   ()
-                   (display exp))
                 (tagged-list? 'if exp)))
          (if->condition (lambda (exp)
                           (cadr exp)))
          (if->then (lambda (exp)
+                     (<change>
+                        ()
+                        (display caddr))
                      (caddr exp)))
          (if->else (lambda (exp)
-                     (<change>
-                        (cadddr exp)
-                        ((lambda (x) x) (cadddr exp)))))
+                     (cadddr exp)))
          (app? (lambda (exp)
                  (pair? exp)))
          (app->fun (lambda (exp)
@@ -77,36 +80,29 @@
                                        (if __or_res __or_res (eq? exp 'display)))))))))))
          (begin? (lambda (exp)
                    (<change>
-                      (tagged-list? 'begin exp)
-                      ((lambda (x) x) (tagged-list? 'begin exp)))))
+                      ()
+                      exp)
+                   (tagged-list? 'begin exp)))
          (begin2exps (lambda (exp)
                        (cdr exp)))
          (isset!? (lambda (exp)
                     (tagged-list? 'set! exp)))
          (set-var (lambda (exp)
-                    (cadr exp)))
+                    (<change>
+                       (cadr exp)
+                       ((lambda (x) x) (cadr exp)))))
          (set-exp (lambda (exp)
                     (caddr exp)))
          (let=>lambda (lambda (exp)
                         (if (let? exp)
-                           (<change>
-                              (let ((vars (map car (let->bindings exp)))
-                                    (args (map cadr (let->bindings exp))))
+                           (let ((vars (map car (let->bindings exp)))
+                                 (args (map cadr (let->bindings exp))))
+                              (__toplevel_cons
                                  (__toplevel_cons
-                                    (__toplevel_cons
-                                       'lambda
-                                       (__toplevel_cons (__toplevel_append vars ()) (__toplevel_cons (let->exp exp) ())))
-                                    (__toplevel_append args ())))
-                              exp)
-                           (<change>
-                              exp
-                              (let ((vars (map car (let->bindings exp)))
-                                    (args (map cadr (let->bindings exp))))
-                                 (__toplevel_cons
-                                    (__toplevel_cons
-                                       'lambda
-                                       (__toplevel_cons (__toplevel_append vars ()) (__toplevel_cons (let->exp exp) ())))
-                                    (__toplevel_append args ())))))))
+                                    'lambda
+                                    (__toplevel_cons (__toplevel_append vars ()) (__toplevel_cons (let->exp exp) ())))
+                                 (__toplevel_append args ())))
+                           exp)))
          (arity (lambda (lam)
                   (length (lambda->formals lam))))
          (xargs (lambda (n)
@@ -169,31 +165,50 @@
                      ()))))
          (letrec1=>Y (lambda (exp)
                        (if (letrec1? exp)
-                          (let* ((binding (letrec1->binding exp))
-                                 (name (car binding))
-                                 (arg (cadr binding))
-                                 (num-args (arity arg)))
-                             (__toplevel_cons
-                                'let
+                          (<change>
+                             (let* ((binding (letrec1->binding exp))
+                                    (name (car binding))
+                                    (arg (cadr binding))
+                                    (num-args (arity arg)))
                                 (__toplevel_cons
+                                   'let
                                    (__toplevel_cons
                                       (__toplevel_cons
-                                         name
                                          (__toplevel_cons
+                                            name
                                             (__toplevel_cons
-                                               (Yn num-args)
                                                (__toplevel_cons
-                                                  (__toplevel_cons 'lambda (__toplevel_cons (__toplevel_cons name ()) (__toplevel_cons arg ())))
-                                                  ()))
-                                            ()))
-                                      ())
-                                   (__toplevel_cons (letrec1->exp exp) ()))))
-                          exp)))
+                                                  (Yn num-args)
+                                                  (__toplevel_cons
+                                                     (__toplevel_cons 'lambda (__toplevel_cons (__toplevel_cons name ()) (__toplevel_cons arg ())))
+                                                     ()))
+                                               ()))
+                                         ())
+                                      (__toplevel_cons (letrec1->exp exp) ()))))
+                             exp)
+                          (<change>
+                             exp
+                             (let* ((binding (letrec1->binding exp))
+                                    (name (car binding))
+                                    (arg (cadr binding))
+                                    (num-args (arity arg)))
+                                (__toplevel_cons
+                                   'let
+                                   (__toplevel_cons
+                                      (__toplevel_cons
+                                         (__toplevel_cons
+                                            name
+                                            (__toplevel_cons
+                                               (__toplevel_cons
+                                                  (Yn num-args)
+                                                  (__toplevel_cons
+                                                     (__toplevel_cons 'lambda (__toplevel_cons (__toplevel_cons name ()) (__toplevel_cons arg ())))
+                                                     ()))
+                                               ()))
+                                         ())
+                                      (__toplevel_cons (letrec1->exp exp) ()))))))))
          (begin=>let (lambda (exp)
                        (letrec ((singlet? (lambda (l)
-                                            (<change>
-                                               ()
-                                               =)
                                             (if (list? l) (= (length l) 1) #f)))
                                 (dummy-bind (lambda (exps)
                                               (if (singlet? exps)
@@ -217,38 +232,78 @@
                            (is-in? mutable-variables))))
          (analyze-mutable-variables (lambda (exp)
                                       (if (const? exp)
-                                         (void)
-                                         (if (ref? exp)
+                                         (<change>
                                             (void)
-                                            (if (prim? exp)
+                                            (if (ref? exp)
                                                (void)
-                                               (if (lambda? exp)
-                                                  (analyze-mutable-variables (lambda->exp exp))
-                                                  (if (let? exp)
-                                                     (begin
-                                                        (map analyze-mutable-variables (map cadr (let->bindings exp)))
-                                                        (analyze-mutable-variables (let->exp exp)))
-                                                     (if (letrec1? exp)
+                                               (if (not (prim? exp))
+                                                  (void)
+                                                  (if (lambda? exp)
+                                                     (analyze-mutable-variables (lambda->exp exp))
+                                                     (if (let? exp)
                                                         (begin
-                                                           (analyze-mutable-variables (cadr (letrec1->binding exp)))
-                                                           (analyze-mutable-variables (letrec1->exp exp)))
-                                                        (if (isset!? exp)
-                                                           (mark-mutable (set-var exp))
-                                                           (if (if? exp)
-                                                              (begin
-                                                                 (analyze-mutable-variables (if->condition exp))
-                                                                 (analyze-mutable-variables (if->then exp))
-                                                                 (analyze-mutable-variables (if->else exp)))
-                                                              (if (begin? exp)
+                                                           (map analyze-mutable-variables (map cadr (let->bindings exp)))
+                                                           (analyze-mutable-variables (let->exp exp)))
+                                                        (if (letrec1? exp)
+                                                           (begin
+                                                              (analyze-mutable-variables (cadr (letrec1->binding exp)))
+                                                              (display (analyze-mutable-variables (letrec1->exp exp)))
+                                                              (analyze-mutable-variables (letrec1->exp exp)))
+                                                           (if (isset!? exp)
+                                                              (mark-mutable (set-var exp))
+                                                              (if (if? exp)
                                                                  (begin
-                                                                    (map analyze-mutable-variables (begin2exps exp))
-                                                                    (void))
-                                                                 (if (app? exp)
+                                                                    (analyze-mutable-variables (if->then exp))
+                                                                    (analyze-mutable-variables (if->condition exp))
+                                                                    (analyze-mutable-variables (if->else exp)))
+                                                                 (if (begin? exp)
                                                                     (begin
-                                                                       (map analyze-mutable-variables exp)
+                                                                       (map analyze-mutable-variables (begin2exps exp))
                                                                        (void))
-                                                                    (error "unknown expression type: " exp)))))))))))))
+                                                                    (if (app? exp)
+                                                                       (begin
+                                                                          (map analyze-mutable-variables exp)
+                                                                          (void))
+                                                                       (error "unknown expression type: " exp)))))))))))
+                                         (<change>
+                                            (if (ref? exp)
+                                               (void)
+                                               (if (prim? exp)
+                                                  (void)
+                                                  (if (lambda? exp)
+                                                     (analyze-mutable-variables (lambda->exp exp))
+                                                     (if (let? exp)
+                                                        (begin
+                                                           (map analyze-mutable-variables (map cadr (let->bindings exp)))
+                                                           (analyze-mutable-variables (let->exp exp)))
+                                                        (if (letrec1? exp)
+                                                           (begin
+                                                              (analyze-mutable-variables (cadr (letrec1->binding exp)))
+                                                              (analyze-mutable-variables (letrec1->exp exp)))
+                                                           (if (isset!? exp)
+                                                              (mark-mutable (set-var exp))
+                                                              (if (if? exp)
+                                                                 (begin
+                                                                    (analyze-mutable-variables (if->condition exp))
+                                                                    (analyze-mutable-variables (if->then exp))
+                                                                    (analyze-mutable-variables (if->else exp)))
+                                                                 (if (begin? exp)
+                                                                    (begin
+                                                                       (map analyze-mutable-variables (begin2exps exp))
+                                                                       (void))
+                                                                    (if (app? exp)
+                                                                       (begin
+                                                                          (map analyze-mutable-variables exp)
+                                                                          (void))
+                                                                       (error "unknown expression type: " exp))))))))))
+                                            (void)))))
          (mangle (lambda (symbol)
+                   (<change>
+                      ()
+                      (display #\_))
+                   (<change>
+                      ()
+                      (display symbol->string))
                    (letrec ((m (lambda (chars)
                                  (if (null? chars)
                                     ()
@@ -271,7 +326,7 @@
                                    (java-compile-prim exp)
                                    (if (ref? exp)
                                       (java-compile-ref exp)
-                                      (if (<change> (lambda? exp) (not (lambda? exp)))
+                                      (if (lambda? exp)
                                          (java-compile-lambda exp)
                                          (if (if? exp)
                                             (java-compile-if exp)
@@ -285,6 +340,9 @@
                                                         (java-compile-exp (begin=>let exp))
                                                         (if (app? exp) (java-compile-app exp) #f))))))))))))
          (java-compile-const (lambda (exp)
+                               (<change>
+                                  ()
+                                  (string-append "new IntValue(" (number->string exp) ")"))
                                (if (integer? exp)
                                   (string-append "new IntValue(" (number->string exp) ")")
                                   (error "unknown constant: " exp))))
@@ -311,8 +369,12 @@
                                        "final Value "
                                        (mangle (car formals))
                                        (if (pair? (cdr formals))
-                                          (string-append ", " (java-compile-formals (cdr formals)))
-                                          "")))))
+                                          (<change>
+                                             (string-append ", " (java-compile-formals (cdr formals)))
+                                             "")
+                                          (<change>
+                                             ""
+                                             (string-append ", " (java-compile-formals (cdr formals)))))))))
          (java-compile-lambda (lambda (exp)
                                 (letrec ((java-wrap-mutables (lambda (vars)
                                                                (if (not (pair? vars))
@@ -353,21 +415,13 @@
          (java-compile-set! (lambda (exp)
                               (<change>
                                  ()
-                                 exp)
-                              (<change>
-                                 (string-append
-                                    "VoidValue.Void(m_"
-                                    (mangle (set-var exp))
-                                    ".value = "
-                                    (java-compile-exp (set-exp exp))
-                                    ")")
-                                 ((lambda (x) x)
-                                    (string-append
-                                       "VoidValue.Void(m_"
-                                       (mangle (set-var exp))
-                                       ".value = "
-                                       (java-compile-exp (set-exp exp))
-                                       ")")))))
+                                 "VoidValue.Void(m_")
+                              (string-append
+                                 "VoidValue.Void(m_"
+                                 (mangle (set-var exp))
+                                 ".value = "
+                                 (java-compile-exp (set-exp exp))
+                                 ")")))
          (java-compile-app (lambda (exp)
                              (let* ((args (app->args exp))
                                     (fun (app->fun exp))

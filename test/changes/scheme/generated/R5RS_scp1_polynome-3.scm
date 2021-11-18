@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 1
-; * calls to id fun: 1
+; * swapped branches: 2
+; * calls to id fun: 0
 (letrec ((make-point (lambda (x y)
                        (letrec ((dispatch (lambda (msg)
                                             (if (eq? msg 'x-value)
@@ -31,18 +31,11 @@
                                                     (error "coordinate is out of range")
                                                     (list-ref args (- n 1)))))
                                    (add (lambda (w-vector)
-                                          (<change>
-                                             (letrec ((loop (lambda (ctr res)
-                                                              (if (= ctr 0)
-                                                                 (apply make-w-vector res)
-                                                                 (loop (- ctr 1) (cons (+ (coordinate ctr) ((w-vector 'coordinate) ctr)) res))))))
-                                                (loop (dimension) ()))
-                                             ((lambda (x) x)
-                                                (letrec ((loop (lambda (ctr res)
-                                                                 (if (= ctr 0)
-                                                                    (apply make-w-vector res)
-                                                                    (loop (- ctr 1) (cons (+ (coordinate ctr) ((w-vector 'coordinate) ctr)) res))))))
-                                                   (loop (dimension) ()))))))
+                                          (letrec ((loop (lambda (ctr res)
+                                                           (if (= ctr 0)
+                                                              (apply make-w-vector res)
+                                                              (loop (- ctr 1) (cons (+ (coordinate ctr) ((w-vector 'coordinate) ctr)) res))))))
+                                             (loop (dimension) ()))))
                                    (dispatch (lambda (msg)
                                                (if (eq? msg 'dimension)
                                                   (dimension)
@@ -51,9 +44,6 @@
                                                      (if (eq? msg 'add) add (error "wrong message")))))))
                              dispatch)))
          (make-polynome (lambda coefficients
-                          (<change>
-                             ()
-                             (display (polynome 'dimension)))
                           (let ((polynome (apply make-w-vector coefficients)))
                              (letrec ((coefficient (lambda (index)
                                                      ((polynome 'coordinate) index)))
@@ -73,32 +63,26 @@
          (w-vector1 (make-w-vector 1 2 3))
          (w-vector2 (make-w-vector 4 5 6))
          (polynome (make-polynome 1 2 3)))
-   (if (<change> (= (point1 'x-value) 6) (not (= (point1 'x-value) 6)))
+   (if (= (point1 'x-value) 6)
       (if (= ((segment 'start-point) 'y-value) 10)
-         (<change>
-            (if (= (midpoint 'x-value) 8)
-               (if (= ((w-vector1 'coordinate) 2) 2)
-                  (if (= ((w-vector2 'coordinate) 1) 4)
+         (if (= (midpoint 'x-value) 8)
+            (if (<change> (= ((w-vector1 'coordinate) 2) 2) (not (= ((w-vector1 'coordinate) 2) 2)))
+               (if (= ((w-vector2 'coordinate) 1) 4)
+                  (<change>
                      (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
                         (if (= (polynome 'order) 2)
                            (= ((polynome 'coefficient) 2) 2)
                            #f)
                         #f)
                      #f)
-                  #f)
+                  (<change>
+                     #f
+                     (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
+                        (if (= (polynome 'order) 2)
+                           #f
+                           (= ((polynome 'coefficient) 2) 2))
+                        #f)))
                #f)
             #f)
-         (<change>
-            #f
-            (if (= (midpoint 'x-value) 8)
-               (if (= ((w-vector1 'coordinate) 2) 2)
-                  (if (= ((w-vector2 'coordinate) 1) 4)
-                     (if (= ((((w-vector1 'add) w-vector2) 'coordinate) 1) 5)
-                        (if (= (polynome 'order) 2)
-                           (= ((polynome 'coefficient) 2) 2)
-                           #f)
-                        #f)
-                     #f)
-                  #f)
-               #f)))
+         #f)
       #f))

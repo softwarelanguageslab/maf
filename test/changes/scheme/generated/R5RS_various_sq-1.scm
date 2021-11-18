@@ -6,11 +6,11 @@
 ; * swapped branches: 0
 ; * calls to id fun: 1
 (let ((sq (lambda (x)
-            (* x x))))
+            (<change>
+               (* x x)
+               ((lambda (x) x) (* x x))))))
+   (sq 2)
    (<change>
       ()
-      sq)
-   (<change>
-      (sq 2)
-      ((lambda (x) x) (sq 2)))
+      (display sq))
    (sq 3))

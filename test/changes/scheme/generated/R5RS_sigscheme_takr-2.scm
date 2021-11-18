@@ -2,9 +2,9 @@
 ; * removed: 0
 ; * added: 6
 ; * swaps: 0
-; * negated predicates: 7
-; * swapped branches: 8
-; * calls to id fun: 6
+; * negated predicates: 4
+; * swapped branches: 5
+; * calls to id fun: 7
 (letrec ((tak0 (lambda (x y z)
                  (if (not (< y x))
                     z
@@ -14,53 +14,45 @@
                     z
                     (tak2 (tak74 (- x 1) y z) (tak22 (- y 1) z x) (tak34 (- z 1) x y)))))
          (tak2 (lambda (x y z)
+                 (<change>
+                    ()
+                    x)
                  (if (not (< y x))
                     z
                     (tak3 (tak11 (- x 1) y z) (tak33 (- y 1) z x) (tak51 (- z 1) x y)))))
          (tak3 (lambda (x y z)
                  (if (not (< y x))
-                    (<change>
-                       z
-                       (tak4 (tak48 (- x 1) y z) (tak44 (- y 1) z x) (tak68 (- z 1) x y)))
-                    (<change>
-                       (tak4 (tak48 (- x 1) y z) (tak44 (- y 1) z x) (tak68 (- z 1) x y))
-                       z))))
+                    z
+                    (tak4 (tak48 (- x 1) y z) (tak44 (- y 1) z x) (tak68 (- z 1) x y)))))
          (tak4 (lambda (x y z)
                  (if (not (< y x))
                     z
                     (tak5 (tak85 (- x 1) y z) (tak55 (- y 1) z x) (tak85 (- z 1) x y)))))
          (tak5 (lambda (x y z)
-                 (<change>
-                    ()
-                    (tak6 (tak22 (- x 1) y z) (tak66 (- y 1) z x) (tak2 (- z 1) x y)))
-                 (<change>
-                    (if (not (< y x))
+                 (if (not (< y x))
+                    (<change>
                        z
                        (tak6 (tak22 (- x 1) y z) (tak66 (- y 1) z x) (tak2 (- z 1) x y)))
-                    ((lambda (x) x)
-                       (if (not (< y x))
-                          z
-                          (tak6 (tak22 (- x 1) y z) (tak66 (- y 1) z x) (tak2 (- z 1) x y)))))))
+                    (<change>
+                       (tak6 (tak22 (- x 1) y z) (tak66 (- y 1) z x) (tak2 (- z 1) x y))
+                       z))))
          (tak6 (lambda (x y z)
                  (if (not (< y x))
                     z
                     (tak7 (tak59 (- x 1) y z) (tak77 (- y 1) z x) (tak19 (- z 1) x y)))))
          (tak7 (lambda (x y z)
                  (if (not (< y x))
-                    z
-                    (tak8 (tak96 (- x 1) y z) (tak88 (- y 1) z x) (tak36 (- z 1) x y)))))
-         (tak8 (lambda (x y z)
-                 (if (not (< y x))
                     (<change>
                        z
-                       (tak9 (tak33 (- x 1) y z) (tak99 (- y 1) z x) (tak53 (- z 1) x y)))
+                       (tak8 (tak96 (- x 1) y z) (tak88 (- y 1) z x) (tak36 (- z 1) x y)))
                     (<change>
-                       (tak9 (tak33 (- x 1) y z) (tak99 (- y 1) z x) (tak53 (- z 1) x y))
+                       (tak8 (tak96 (- x 1) y z) (tak88 (- y 1) z x) (tak36 (- z 1) x y))
                        z))))
+         (tak8 (lambda (x y z)
+                 (if (not (< y x))
+                    z
+                    (tak9 (tak33 (- x 1) y z) (tak99 (- y 1) z x) (tak53 (- z 1) x y)))))
          (tak9 (lambda (x y z)
-                 (<change>
-                    ()
-                    tak10)
                  (if (not (< y x))
                     z
                     (tak10 (tak70 (- x 1) y z) (tak10 (- y 1) z x) (tak70 (- z 1) x y)))))
@@ -77,7 +69,7 @@
                      z
                      (tak13 (tak81 (- x 1) y z) (tak43 (- y 1) z x) (tak21 (- z 1) x y)))))
          (tak13 (lambda (x y z)
-                  (if (<change> (not (< y x)) (not (not (< y x))))
+                  (if (not (< y x))
                      z
                      (tak14 (tak18 (- x 1) y z) (tak54 (- y 1) z x) (tak38 (- z 1) x y)))))
          (tak14 (lambda (x y z)
@@ -89,13 +81,26 @@
                      z
                      (tak16 (tak92 (- x 1) y z) (tak76 (- y 1) z x) (tak72 (- z 1) x y)))))
          (tak16 (lambda (x y z)
-                  (if (not (< y x))
-                     z
-                     (tak17 (tak29 (- x 1) y z) (tak87 (- y 1) z x) (tak89 (- z 1) x y)))))
+                  (<change>
+                     ()
+                     -)
+                  (<change>
+                     (if (not (< y x))
+                        z
+                        (tak17 (tak29 (- x 1) y z) (tak87 (- y 1) z x) (tak89 (- z 1) x y)))
+                     ((lambda (x) x)
+                        (if (not (< y x))
+                           z
+                           (tak17 (tak29 (- x 1) y z) (tak87 (- y 1) z x) (tak89 (- z 1) x y)))))))
          (tak17 (lambda (x y z)
-                  (if (not (< y x))
-                     z
-                     (tak18 (tak66 (- x 1) y z) (tak98 (- y 1) z x) (tak6 (- z 1) x y)))))
+                  (<change>
+                     (if (not (< y x))
+                        z
+                        (tak18 (tak66 (- x 1) y z) (tak98 (- y 1) z x) (tak6 (- z 1) x y)))
+                     ((lambda (x) x)
+                        (if (not (< y x))
+                           z
+                           (tak18 (tak66 (- x 1) y z) (tak98 (- y 1) z x) (tak6 (- z 1) x y)))))))
          (tak18 (lambda (x y z)
                   (if (not (< y x))
                      z
@@ -110,26 +115,24 @@
                      (tak21 (tak77 (- x 1) y z) (tak31 (- y 1) z x) (tak57 (- z 1) x y)))))
          (tak21 (lambda (x y z)
                   (if (not (< y x))
-                     (<change>
-                        z
-                        (tak22 (tak14 (- x 1) y z) (tak42 (- y 1) z x) (tak74 (- z 1) x y)))
-                     (<change>
-                        (tak22 (tak14 (- x 1) y z) (tak42 (- y 1) z x) (tak74 (- z 1) x y))
-                        z))))
+                     z
+                     (tak22 (tak14 (- x 1) y z) (tak42 (- y 1) z x) (tak74 (- z 1) x y)))))
          (tak22 (lambda (x y z)
                   (if (not (< y x))
-                     z
-                     (tak23 (tak51 (- x 1) y z) (tak53 (- y 1) z x) (tak91 (- z 1) x y)))))
-         (tak23 (lambda (x y z)
-                  (<change>
-                     (if (not (< y x))
+                     (<change>
                         z
-                        (tak24 (tak88 (- x 1) y z) (tak64 (- y 1) z x) (tak8 (- z 1) x y)))
-                     ((lambda (x) x)
-                        (if (not (< y x))
-                           z
-                           (tak24 (tak88 (- x 1) y z) (tak64 (- y 1) z x) (tak8 (- z 1) x y)))))))
+                        (tak23 (tak51 (- x 1) y z) (tak53 (- y 1) z x) (tak91 (- z 1) x y)))
+                     (<change>
+                        (tak23 (tak51 (- x 1) y z) (tak53 (- y 1) z x) (tak91 (- z 1) x y))
+                        z))))
+         (tak23 (lambda (x y z)
+                  (if (not (< y x))
+                     z
+                     (tak24 (tak88 (- x 1) y z) (tak64 (- y 1) z x) (tak8 (- z 1) x y)))))
          (tak24 (lambda (x y z)
+                  (<change>
+                     ()
+                     (- x 1))
                   (if (not (< y x))
                      z
                      (tak25 (tak25 (- x 1) y z) (tak75 (- y 1) z x) (tak25 (- z 1) x y)))))
@@ -142,27 +145,17 @@
                      z
                      (tak27 (tak99 (- x 1) y z) (tak97 (- y 1) z x) (tak59 (- z 1) x y)))))
          (tak27 (lambda (x y z)
-                  (<change>
-                     (if (not (< y x))
-                        z
-                        (tak28 (tak36 (- x 1) y z) (tak8 (- y 1) z x) (tak76 (- z 1) x y)))
-                     ((lambda (x) x)
-                        (if (not (< y x))
-                           z
-                           (tak28 (tak36 (- x 1) y z) (tak8 (- y 1) z x) (tak76 (- z 1) x y)))))))
+                  (if (not (< y x))
+                     z
+                     (tak28 (tak36 (- x 1) y z) (tak8 (- y 1) z x) (tak76 (- z 1) x y)))))
          (tak28 (lambda (x y z)
                   (if (not (< y x))
                      z
                      (tak29 (tak73 (- x 1) y z) (tak19 (- y 1) z x) (tak93 (- z 1) x y)))))
          (tak29 (lambda (x y z)
-                  (<change>
-                     (if (not (< y x))
-                        z
-                        (tak30 (tak10 (- x 1) y z) (tak30 (- y 1) z x) (tak10 (- z 1) x y)))
-                     ((lambda (x) x)
-                        (if (not (< y x))
-                           z
-                           (tak30 (tak10 (- x 1) y z) (tak30 (- y 1) z x) (tak10 (- z 1) x y)))))))
+                  (if (not (< y x))
+                     z
+                     (tak30 (tak10 (- x 1) y z) (tak30 (- y 1) z x) (tak10 (- z 1) x y)))))
          (tak30 (lambda (x y z)
                   (if (not (< y x))
                      z
@@ -184,7 +177,7 @@
                      z
                      (tak35 (tak95 (- x 1) y z) (tak85 (- y 1) z x) (tak95 (- z 1) x y)))))
          (tak35 (lambda (x y z)
-                  (if (<change> (not (< y x)) (not (not (< y x))))
+                  (if (not (< y x))
                      z
                      (tak36 (tak32 (- x 1) y z) (tak96 (- y 1) z x) (tak12 (- z 1) x y)))))
          (tak36 (lambda (x y z)
@@ -196,7 +189,7 @@
                      z
                      (tak38 (tak6 (- x 1) y z) (tak18 (- y 1) z x) (tak46 (- z 1) x y)))))
          (tak38 (lambda (x y z)
-                  (if (<change> (not (< y x)) (not (not (< y x))))
+                  (if (not (< y x))
                      z
                      (tak39 (tak43 (- x 1) y z) (tak29 (- y 1) z x) (tak63 (- z 1) x y)))))
          (tak39 (lambda (x y z)
@@ -216,26 +209,28 @@
                      z
                      (tak43 (tak91 (- x 1) y z) (tak73 (- y 1) z x) (tak31 (- z 1) x y)))))
          (tak43 (lambda (x y z)
-                  (if (not (< y x))
+                  (if (<change> (not (< y x)) (not (not (< y x))))
                      z
                      (tak44 (tak28 (- x 1) y z) (tak84 (- y 1) z x) (tak48 (- z 1) x y)))))
          (tak44 (lambda (x y z)
-                  (if (not (< y x))
-                     z
-                     (tak45 (tak65 (- x 1) y z) (tak95 (- y 1) z x) (tak65 (- z 1) x y)))))
+                  (<change>
+                     (if (not (< y x))
+                        z
+                        (tak45 (tak65 (- x 1) y z) (tak95 (- y 1) z x) (tak65 (- z 1) x y)))
+                     ((lambda (x) x)
+                        (if (not (< y x))
+                           z
+                           (tak45 (tak65 (- x 1) y z) (tak95 (- y 1) z x) (tak65 (- z 1) x y)))))))
          (tak45 (lambda (x y z)
                   (if (not (< y x))
                      z
                      (tak46 (tak2 (- x 1) y z) (tak6 (- y 1) z x) (tak82 (- z 1) x y)))))
          (tak46 (lambda (x y z)
-                  (if (<change> (not (< y x)) (not (not (< y x))))
+                  (if (not (< y x))
                      z
                      (tak47 (tak39 (- x 1) y z) (tak17 (- y 1) z x) (tak99 (- z 1) x y)))))
          (tak47 (lambda (x y z)
-                  (<change>
-                     ()
-                     y)
-                  (if (<change> (not (< y x)) (not (not (< y x))))
+                  (if (not (< y x))
                      z
                      (tak48 (tak76 (- x 1) y z) (tak28 (- y 1) z x) (tak16 (- z 1) x y)))))
          (tak48 (lambda (x y z)
@@ -245,7 +240,7 @@
          (tak49 (lambda (x y z)
                   (<change>
                      ()
-                     -)
+                     (display (tak50 (- x 1) y z)))
                   (if (not (< y x))
                      z
                      (tak50 (tak50 (- x 1) y z) (tak50 (- y 1) z x) (tak50 (- z 1) x y)))))
@@ -262,9 +257,6 @@
                      z
                      (tak52 (tak24 (- x 1) y z) (tak72 (- y 1) z x) (tak84 (- z 1) x y)))))
          (tak52 (lambda (x y z)
-                  (<change>
-                     ()
-                     z)
                   (if (not (< y x))
                      z
                      (tak53 (tak61 (- x 1) y z) (tak83 (- y 1) z x) (tak1 (- z 1) x y)))))
@@ -285,6 +277,9 @@
                      z
                      (tak57 (tak9 (- x 1) y z) (tak27 (- y 1) z x) (tak69 (- z 1) x y)))))
          (tak57 (lambda (x y z)
+                  (<change>
+                     ()
+                     (not (< y x)))
                   (if (not (< y x))
                      z
                      (tak58 (tak46 (- x 1) y z) (tak38 (- y 1) z x) (tak86 (- z 1) x y)))))
@@ -309,6 +304,9 @@
                      z
                      (tak63 (tak31 (- x 1) y z) (tak93 (- y 1) z x) (tak71 (- z 1) x y)))))
          (tak63 (lambda (x y z)
+                  (<change>
+                     ()
+                     z)
                   (if (not (< y x))
                      z
                      (tak64 (tak68 (- x 1) y z) (tak4 (- y 1) z x) (tak88 (- z 1) x y)))))
@@ -321,11 +319,16 @@
                      z
                      (tak66 (tak42 (- x 1) y z) (tak26 (- y 1) z x) (tak22 (- z 1) x y)))))
          (tak66 (lambda (x y z)
-                  (if (not (< y x))
-                     z
-                     (tak67 (tak79 (- x 1) y z) (tak37 (- y 1) z x) (tak39 (- z 1) x y)))))
+                  (<change>
+                     (if (not (< y x))
+                        z
+                        (tak67 (tak79 (- x 1) y z) (tak37 (- y 1) z x) (tak39 (- z 1) x y)))
+                     ((lambda (x) x)
+                        (if (not (< y x))
+                           z
+                           (tak67 (tak79 (- x 1) y z) (tak37 (- y 1) z x) (tak39 (- z 1) x y)))))))
          (tak67 (lambda (x y z)
-                  (if (<change> (not (< y x)) (not (not (< y x))))
+                  (if (not (< y x))
                      z
                      (tak68 (tak16 (- x 1) y z) (tak48 (- y 1) z x) (tak56 (- z 1) x y)))))
          (tak68 (lambda (x y z)
@@ -339,12 +342,8 @@
                         (tak70 (tak90 (- x 1) y z) (tak70 (- y 1) z x) (tak90 (- z 1) x y)))
                      ((lambda (x) x)
                         (if (not (< y x))
-                           (<change>
-                              z
-                              (tak70 (tak90 (- x 1) y z) (tak70 (- y 1) z x) (tak90 (- z 1) x y)))
-                           (<change>
-                              (tak70 (tak90 (- x 1) y z) (tak70 (- y 1) z x) (tak90 (- z 1) x y))
-                              z))))))
+                           z
+                           (tak70 (tak90 (- x 1) y z) (tak70 (- y 1) z x) (tak90 (- z 1) x y)))))))
          (tak70 (lambda (x y z)
                   (if (not (< y x))
                      z
@@ -362,7 +361,7 @@
                      z
                      (tak74 (tak38 (- x 1) y z) (tak14 (- y 1) z x) (tak58 (- z 1) x y)))))
          (tak74 (lambda (x y z)
-                  (if (not (< y x))
+                  (if (<change> (not (< y x)) (not (not (< y x))))
                      z
                      (tak75 (tak75 (- x 1) y z) (tak25 (- y 1) z x) (tak75 (- z 1) x y)))))
          (tak75 (lambda (x y z)
@@ -371,17 +370,16 @@
                      (tak76 (tak12 (- x 1) y z) (tak36 (- y 1) z x) (tak92 (- z 1) x y)))))
          (tak76 (lambda (x y z)
                   (if (not (< y x))
-                     z
-                     (tak77 (tak49 (- x 1) y z) (tak47 (- y 1) z x) (tak9 (- z 1) x y)))))
-         (tak77 (lambda (x y z)
-                  (<change>
-                     (if (not (< y x))
+                     (<change>
                         z
-                        (tak78 (tak86 (- x 1) y z) (tak58 (- y 1) z x) (tak26 (- z 1) x y)))
-                     ((lambda (x) x)
-                        (if (not (< y x))
-                           z
-                           (tak78 (tak86 (- x 1) y z) (tak58 (- y 1) z x) (tak26 (- z 1) x y)))))))
+                        (tak77 (tak49 (- x 1) y z) (tak47 (- y 1) z x) (tak9 (- z 1) x y)))
+                     (<change>
+                        (tak77 (tak49 (- x 1) y z) (tak47 (- y 1) z x) (tak9 (- z 1) x y))
+                        z))))
+         (tak77 (lambda (x y z)
+                  (if (not (< y x))
+                     z
+                     (tak78 (tak86 (- x 1) y z) (tak58 (- y 1) z x) (tak26 (- z 1) x y)))))
          (tak78 (lambda (x y z)
                   (if (not (< y x))
                      z
@@ -400,20 +398,21 @@
                      (tak82 (tak34 (- x 1) y z) (tak2 (- y 1) z x) (tak94 (- z 1) x y)))))
          (tak82 (lambda (x y z)
                   (if (not (< y x))
-                     (<change>
-                        z
-                        (tak83 (tak71 (- x 1) y z) (tak13 (- y 1) z x) (tak11 (- z 1) x y)))
-                     (<change>
-                        (tak83 (tak71 (- x 1) y z) (tak13 (- y 1) z x) (tak11 (- z 1) x y))
-                        z))))
+                     z
+                     (tak83 (tak71 (- x 1) y z) (tak13 (- y 1) z x) (tak11 (- z 1) x y)))))
          (tak83 (lambda (x y z)
-                  (if (not (< y x))
+                  (if (<change> (not (< y x)) (not (not (< y x))))
                      z
                      (tak84 (tak8 (- x 1) y z) (tak24 (- y 1) z x) (tak28 (- z 1) x y)))))
          (tak84 (lambda (x y z)
-                  (if (not (< y x))
-                     z
-                     (tak85 (tak45 (- x 1) y z) (tak35 (- y 1) z x) (tak45 (- z 1) x y)))))
+                  (<change>
+                     (if (not (< y x))
+                        z
+                        (tak85 (tak45 (- x 1) y z) (tak35 (- y 1) z x) (tak45 (- z 1) x y)))
+                     ((lambda (x) x)
+                        (if (not (< y x))
+                           z
+                           (tak85 (tak45 (- x 1) y z) (tak35 (- y 1) z x) (tak45 (- z 1) x y)))))))
          (tak85 (lambda (x y z)
                   (if (not (< y x))
                      z
@@ -423,20 +422,13 @@
                      z
                      (tak87 (tak19 (- x 1) y z) (tak57 (- y 1) z x) (tak79 (- z 1) x y)))))
          (tak87 (lambda (x y z)
-                  (<change>
-                     ()
-                     (display not))
                   (if (not (< y x))
                      z
                      (tak88 (tak56 (- x 1) y z) (tak68 (- y 1) z x) (tak96 (- z 1) x y)))))
          (tak88 (lambda (x y z)
                   (if (not (< y x))
-                     (<change>
-                        z
-                        (tak89 (tak93 (- x 1) y z) (tak79 (- y 1) z x) (tak13 (- z 1) x y)))
-                     (<change>
-                        (tak89 (tak93 (- x 1) y z) (tak79 (- y 1) z x) (tak13 (- z 1) x y))
-                        z))))
+                     z
+                     (tak89 (tak93 (- x 1) y z) (tak79 (- y 1) z x) (tak13 (- z 1) x y)))))
          (tak89 (lambda (x y z)
                   (if (not (< y x))
                      z
@@ -454,9 +446,14 @@
                      z
                      (tak93 (tak41 (- x 1) y z) (tak23 (- y 1) z x) (tak81 (- z 1) x y)))))
          (tak93 (lambda (x y z)
-                  (if (not (< y x))
-                     z
-                     (tak94 (tak78 (- x 1) y z) (tak34 (- y 1) z x) (tak98 (- z 1) x y)))))
+                  (<change>
+                     (if (not (< y x))
+                        z
+                        (tak94 (tak78 (- x 1) y z) (tak34 (- y 1) z x) (tak98 (- z 1) x y)))
+                     ((lambda (x) x)
+                        (if (not (< y x))
+                           z
+                           (tak94 (tak78 (- x 1) y z) (tak34 (- y 1) z x) (tak98 (- z 1) x y)))))))
          (tak94 (lambda (x y z)
                   (if (not (< y x))
                      z
@@ -467,12 +464,8 @@
                      (tak96 (tak52 (- x 1) y z) (tak56 (- y 1) z x) (tak32 (- z 1) x y)))))
          (tak96 (lambda (x y z)
                   (if (not (< y x))
-                     (<change>
-                        z
-                        (tak97 (tak89 (- x 1) y z) (tak67 (- y 1) z x) (tak49 (- z 1) x y)))
-                     (<change>
-                        (tak97 (tak89 (- x 1) y z) (tak67 (- y 1) z x) (tak49 (- z 1) x y))
-                        z))))
+                     z
+                     (tak97 (tak89 (- x 1) y z) (tak67 (- y 1) z x) (tak49 (- z 1) x y)))))
          (tak97 (lambda (x y z)
                   (if (not (< y x))
                      z

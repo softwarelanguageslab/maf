@@ -2,9 +2,9 @@
 ; * removed: 0
 ; * added: 1
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 2
 (letrec ((familieboom (__toplevel_cons
                         'jan
                         (__toplevel_cons
@@ -35,8 +35,13 @@
          (familiehoofd (lambda (fam)
                          (car fam)))
          (kinderen (lambda (fam)
-                     (cdr fam)))
+                     (<change>
+                        (cdr fam)
+                        ((lambda (x) x) (cdr fam)))))
          (laatste-nakomeling? (lambda (fam)
+                                (<change>
+                                   ()
+                                   kinderen)
                                 (null? (kinderen fam))))
          (verdeel-democratisch (lambda (boom budget)
                                  (letrec ((verdeel (lambda (boom)
@@ -44,9 +49,6 @@
                                                         1
                                                         (+ 1 (verdeel-in (kinderen boom))))))
                                           (verdeel-in (lambda (lst)
-                                                        (<change>
-                                                           ()
-                                                           lst)
                                                         (if (null? lst)
                                                            0
                                                            (+ (verdeel (car lst)) (verdeel-in (cdr lst)))))))
@@ -66,10 +68,15 @@
                               (new-budget (/ budget (length rest))))
                           (verdeel-in rest new-budget)))))
          (verdeel-in (lambda (bomen budget)
-                       (if (null? bomen)
-                          ()
-                          (append (verdeel (car bomen) budget) (verdeel-in (cdr bomen) budget))))))
-   (if (= (verdeel-democratisch familieboom 1500) 100)
+                       (<change>
+                          (if (null? bomen)
+                             ()
+                             (append (verdeel (car bomen) budget) (verdeel-in (cdr bomen) budget)))
+                          ((lambda (x) x)
+                             (if (null? bomen)
+                                ()
+                                (append (verdeel (car bomen) budget) (verdeel-in (cdr bomen) budget))))))))
+   (if (<change> (= (verdeel-democratisch familieboom 1500) 100) (not (= (verdeel-democratisch familieboom 1500) 100)))
       (if (= (budget familieboom (__toplevel_cons 100 (__toplevel_cons 50 (__toplevel_cons 20 ())))) 650)
          (equal?
             (verdeel familieboom 3000)

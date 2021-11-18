@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 1
 (letrec ((make-flip (lambda ()
                       (let ((state 0))
                          (lambda ()
@@ -12,10 +12,14 @@
                             state))))
          (flip (make-flip)))
    (<change>
-      ()
-      =)
-   (if (= (flip) 1)
-      (if (= (flip) 0)
-         (if (= (flip) 1) (= (flip) 0) #f)
+      (if (= (flip) 1)
+         (if (= (flip) 0)
+            (if (= (flip) 1) (= (flip) 0) #f)
+            #f)
          #f)
-      #f))
+      ((lambda (x) x)
+         (if (= (flip) 1)
+            (if (<change> (= (flip) 0) (not (= (flip) 0)))
+               (if (= (flip) 1) (= (flip) 0) #f)
+               #f)
+            #f))))

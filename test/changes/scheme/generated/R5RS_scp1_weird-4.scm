@@ -1,23 +1,19 @@
 ; Changes:
-; * removed: 1
+; * removed: 0
 ; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
-; * swapped branches: 2
+; * negated predicates: 3
+; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
          (weird (lambda (x)
-                  (if (= x 1)
+                  (if (<change> (= x 1) (not (= x 1)))
                      1
                      (if (even? x)
-                        (<change>
-                           (weird (/ x 2))
-                           (weird (+ (* 3 x) 1)))
-                        (<change>
-                           (weird (+ (* 3 x) 1))
-                           (weird (/ x 2)))))))
+                        (weird (/ x 2))
+                        (weird (+ (* 3 x) 1))))))
          (depth-weird (lambda (x)
                         (if (= x 1)
                            0
@@ -25,154 +21,80 @@
                               (+ 1 (depth-weird (/ x 2)))
                               (+ (depth-weird (+ (* 3 x) 1)) 1)))))
          (weird-table (lambda (min max)
-                        (if (< min max)
+                        (if (<change> (< min max) (not (< min max)))
                            (begin
                               (for-each output (list min "\t" (depth-weird min) "\n"))
                               (weird-table (+ min 1) max))
                            #f))))
-   (<change>
-      (weird-table 1 10)
-      ())
+   (weird-table 1 10)
    (if (= (weird 15) 1)
-      (<change>
-         (if (= (depth-weird 15) 17)
-            (equal?
-               result
+      (if (<change> (= (depth-weird 15) 17) (not (= (depth-weird 15) 17)))
+         (equal?
+            result
+            (__toplevel_cons
+               "\n"
                (__toplevel_cons
-                  "\n"
+                  19
                   (__toplevel_cons
-                     19
+                     "\t"
                      (__toplevel_cons
-                        "\t"
+                        9
                         (__toplevel_cons
-                           9
+                           "\n"
                            (__toplevel_cons
-                              "\n"
+                              3
                               (__toplevel_cons
-                                 3
+                                 "\t"
                                  (__toplevel_cons
-                                    "\t"
+                                    8
                                     (__toplevel_cons
-                                       8
+                                       "\n"
                                        (__toplevel_cons
-                                          "\n"
+                                          16
                                           (__toplevel_cons
-                                             16
+                                             "\t"
                                              (__toplevel_cons
-                                                "\t"
+                                                7
                                                 (__toplevel_cons
-                                                   7
+                                                   "\n"
                                                    (__toplevel_cons
-                                                      "\n"
+                                                      8
                                                       (__toplevel_cons
-                                                         8
+                                                         "\t"
                                                          (__toplevel_cons
-                                                            "\t"
+                                                            6
                                                             (__toplevel_cons
-                                                               6
+                                                               "\n"
                                                                (__toplevel_cons
-                                                                  "\n"
+                                                                  5
                                                                   (__toplevel_cons
-                                                                     5
+                                                                     "\t"
                                                                      (__toplevel_cons
-                                                                        "\t"
+                                                                        5
                                                                         (__toplevel_cons
-                                                                           5
+                                                                           "\n"
                                                                            (__toplevel_cons
-                                                                              "\n"
+                                                                              2
                                                                               (__toplevel_cons
-                                                                                 2
+                                                                                 "\t"
                                                                                  (__toplevel_cons
-                                                                                    "\t"
+                                                                                    4
                                                                                     (__toplevel_cons
-                                                                                       4
+                                                                                       "\n"
                                                                                        (__toplevel_cons
-                                                                                          "\n"
+                                                                                          7
                                                                                           (__toplevel_cons
-                                                                                             7
+                                                                                             "\t"
                                                                                              (__toplevel_cons
-                                                                                                "\t"
+                                                                                                3
                                                                                                 (__toplevel_cons
-                                                                                                   3
+                                                                                                   "\n"
                                                                                                    (__toplevel_cons
-                                                                                                      "\n"
+                                                                                                      1
                                                                                                       (__toplevel_cons
-                                                                                                         1
+                                                                                                         "\t"
                                                                                                          (__toplevel_cons
-                                                                                                            "\t"
-                                                                                                            (__toplevel_cons
-                                                                                                               2
-                                                                                                               (__toplevel_cons "\n" (__toplevel_cons 0 (__toplevel_cons "\t" (__toplevel_cons 1 ())))))))))))))))))))))))))))))))))))))
-            #f)
+                                                                                                            2
+                                                                                                            (__toplevel_cons "\n" (__toplevel_cons 0 (__toplevel_cons "\t" (__toplevel_cons 1 ())))))))))))))))))))))))))))))))))))))
          #f)
-      (<change>
-         #f
-         (if (= (depth-weird 15) 17)
-            (equal?
-               result
-               (__toplevel_cons
-                  "\n"
-                  (__toplevel_cons
-                     19
-                     (__toplevel_cons
-                        "\t"
-                        (__toplevel_cons
-                           9
-                           (__toplevel_cons
-                              "\n"
-                              (__toplevel_cons
-                                 3
-                                 (__toplevel_cons
-                                    "\t"
-                                    (__toplevel_cons
-                                       8
-                                       (__toplevel_cons
-                                          "\n"
-                                          (__toplevel_cons
-                                             16
-                                             (__toplevel_cons
-                                                "\t"
-                                                (__toplevel_cons
-                                                   7
-                                                   (__toplevel_cons
-                                                      "\n"
-                                                      (__toplevel_cons
-                                                         8
-                                                         (__toplevel_cons
-                                                            "\t"
-                                                            (__toplevel_cons
-                                                               6
-                                                               (__toplevel_cons
-                                                                  "\n"
-                                                                  (__toplevel_cons
-                                                                     5
-                                                                     (__toplevel_cons
-                                                                        "\t"
-                                                                        (__toplevel_cons
-                                                                           5
-                                                                           (__toplevel_cons
-                                                                              "\n"
-                                                                              (__toplevel_cons
-                                                                                 2
-                                                                                 (__toplevel_cons
-                                                                                    "\t"
-                                                                                    (__toplevel_cons
-                                                                                       4
-                                                                                       (__toplevel_cons
-                                                                                          "\n"
-                                                                                          (__toplevel_cons
-                                                                                             7
-                                                                                             (__toplevel_cons
-                                                                                                "\t"
-                                                                                                (__toplevel_cons
-                                                                                                   3
-                                                                                                   (__toplevel_cons
-                                                                                                      "\n"
-                                                                                                      (__toplevel_cons
-                                                                                                         1
-                                                                                                         (__toplevel_cons
-                                                                                                            "\t"
-                                                                                                            (__toplevel_cons
-                                                                                                               2
-                                                                                                               (__toplevel_cons "\n" (__toplevel_cons 0 (__toplevel_cons "\t" (__toplevel_cons 1 ())))))))))))))))))))))))))))))))))))))
-            #f))))
+      #f))

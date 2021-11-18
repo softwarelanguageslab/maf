@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -55,9 +55,6 @@
                                                    (vector-ref radicals (quotient j 2))
                                                    ()))))
                             (ccp-generator (lambda (j)
-                                             (<change>
-                                                ()
-                                                =)
                                              ((letrec ((loop1 (lambda (ps lst)
                                                                (if (null? ps)
                                                                   lst
@@ -105,7 +102,7 @@
          (three-partitions (lambda (m)
                              (<change>
                                 ()
-                                -)
+                                (display +))
                              ((letrec ((loop1 (lambda (lst nc1)
                                                (if (< nc1 0)
                                                   lst

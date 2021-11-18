@@ -1,48 +1,42 @@
 ; Changes:
-; * removed: 1
-; * added: 0
+; * removed: 0
+; * added: 3
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 2
 (letrec ((permutations (lambda (x)
                          (let ((x x)
                                (perms (list x)))
                             (letrec ((P (lambda (n)
-                                          (<change>
-                                             (if (> n 1)
-                                                (letrec ((__do_loop (lambda (j)
-                                                                      (if (zero? j)
+                                          (if (> n 1)
+                                             (letrec ((__do_loop (lambda (j)
+                                                                   (if (zero? j)
+                                                                      (P (- n 1))
+                                                                      (begin
                                                                          (P (- n 1))
-                                                                         (begin
-                                                                            (P (- n 1))
-                                                                            (F n)
-                                                                            (__do_loop (- j 1)))))))
-                                                   (__do_loop (- n 1)))
-                                                #f)
-                                             ((lambda (x) x)
-                                                (if (> n 1)
-                                                   (letrec ((__do_loop (lambda (j)
-                                                                         (if (zero? j)
-                                                                            (P (- n 1))
-                                                                            (begin
-                                                                               (P (- n 1))
-                                                                               (F n)
-                                                                               (__do_loop (- j 1)))))))
-                                                      (__do_loop (- n 1)))
-                                                   #f)))))
+                                                                         (F n)
+                                                                         (__do_loop (- j 1)))))))
+                                                (__do_loop (- n 1)))
+                                             #f)))
                                      (F (lambda (n)
+                                          (set! x (revloop x n (list-tail x n)))
                                           (<change>
-                                             (set! x (revloop x n (list-tail x n)))
-                                             ())
-                                          (set! perms (cons x perms))))
+                                             (set! perms (cons x perms))
+                                             ((lambda (x) x) (set! perms (cons x perms))))))
                                      (revloop (lambda (x n y)
                                                 (if (zero? n)
                                                    y
                                                    (revloop (cdr x) (- n 1) (cons (car x) y)))))
                                      (list-tail (lambda (x n)
+                                                  (<change>
+                                                     ()
+                                                     (display 1))
                                                   (if (zero? n) x (list-tail (cdr x) (- n 1))))))
                                (P (length x))
+                               (<change>
+                                  ()
+                                  P)
                                perms))))
          (sumlists (lambda (x)
                      (letrec ((__do_loop (lambda (x sum)
@@ -55,6 +49,9 @@
                                                                           sum
                                                                           (__do_loop (cdr y) (+ sum (car y)))))))
                                                     (__do_loop (car x) sum)))))))
+                        (<change>
+                           ()
+                           x)
                         (__do_loop x 0))))
          (one..n (lambda (n)
                    (letrec ((__do_loop (lambda (n p)
@@ -62,4 +59,7 @@
                       (__do_loop n ()))))
          (factorial (lambda (n)
                       (if (= n 0) 1 (* n (factorial (- n 1)))))))
-   (= (sumlists (permutations (one..n 9))) (* (quotient (* 9 (+ 9 1)) 2) (factorial 9))))
+   (<change>
+      (= (sumlists (permutations (one..n 9))) (* (quotient (* 9 (+ 9 1)) 2) (factorial 9)))
+      ((lambda (x) x)
+         (= (sumlists (permutations (one..n 9))) (* (quotient (* 9 (+ 9 1)) 2) (factorial 9))))))

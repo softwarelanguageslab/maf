@@ -1,31 +1,25 @@
 ; Changes:
-; * removed: 0
-; * added: 1
+; * removed: 1
+; * added: 0
 ; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
+; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((insert-aux! (lambda (lst lst2)
                         (set-cdr! lst2 ())
-                        (if (null? (cdr lst))
-                           (set-cdr! lst lst2)
-                           (insert-aux! (cdr lst) lst2))
+                        (<change>
+                           (if (null? (cdr lst))
+                              (set-cdr! lst lst2)
+                              (insert-aux! (cdr lst) lst2))
+                           ())
                         lst))
          (insert! (lambda (lst1 lst2)
                     (if (not (null? lst1))
-                       (<change>
-                          (begin
-                             (insert! (cdr lst1) (cdr lst2))
-                             (insert-aux! (car lst1) lst2)
-                             lst1)
-                          #f)
-                       (<change>
-                          #f
-                          (begin
-                             (insert! (cdr lst1) (cdr lst2))
-                             lst2
-                             (insert-aux! (car lst1) lst2)
-                             lst1))))))
+                       (begin
+                          (insert! (cdr lst1) (cdr lst2))
+                          (insert-aux! (car lst1) lst2)
+                          lst1)
+                       #f))))
    (if (equal? (insert-aux! (__toplevel_cons 'a (__toplevel_cons 12 (__toplevel_cons 'q ()))) (__toplevel_cons 'v (__toplevel_cons 'w (__toplevel_cons 'x (__toplevel_cons 'y (__toplevel_cons 'z ())))))) (__toplevel_cons 'a (__toplevel_cons 12 (__toplevel_cons 'q (__toplevel_cons 'v ())))))
       (equal?
          (insert!

@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 16
+; * added: 8
 ; * swaps: 3
-; * negated predicates: 4
-; * swapped branches: 2
-; * calls to id fun: 9
+; * negated predicates: 3
+; * swapped branches: 5
+; * calls to id fun: 16
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
@@ -39,12 +39,7 @@
                  (if (null? input)
                     ()
                     (let ((next (car input)))
-                       (<change>
-                          ()
-                          (display input))
-                       (<change>
-                          (set! input (cdr input))
-                          ((lambda (x) x) (set! input (cdr input))))
+                       (set! input (cdr input))
                        next))))
          (true #t)
          (false #f)
@@ -53,7 +48,7 @@
                                           (op)
                                           (if (null? (cdr args))
                                              (op (car args))
-                                             (if (null? (cddr args))
+                                             (if (<change> (null? (cddr args)) (not (null? (cddr args))))
                                                 (op (car args) (cadr args))
                                                 (error "apply"))))))
          (true? (lambda (x)
@@ -67,9 +62,6 @@
          (quoted? (lambda (exp)
                     (tagged-list? exp 'quote)))
          (text-of-quotation (lambda (exp)
-                              (<change>
-                                 ()
-                                 (display cadr))
                               (cadr exp)))
          (variable? (lambda (exp)
                       (symbol? exp)))
@@ -82,26 +74,21 @@
          (definition? (lambda (exp)
                         (tagged-list? exp 'define)))
          (definition-variable (lambda (exp)
+                                (<change>
+                                   ()
+                                   cadr)
                                 (if (symbol? (cadr exp)) (cadr exp) (caadr exp))))
          (definition-value (lambda (exp)
-                             (<change>
-                                ()
-                                symbol?)
                              (if (symbol? (cadr exp))
                                 (caddr exp)
                                 (make-lambda (cdadr exp) (cddr exp)))))
          (if? (lambda (exp)
                 (tagged-list? exp 'if)))
          (if-predicate (lambda (exp)
-                         (<change>
-                            (cadr exp)
-                            ((lambda (x) x) (cadr exp)))))
+                         (cadr exp)))
          (if-consequent (lambda (exp)
                           (caddr exp)))
          (if-alternative (lambda (exp)
-                           (<change>
-                              ()
-                              (cdddr exp))
                            (if (not (null? (cdddr exp)))
                               (cadddr exp)
                               'false)))
@@ -118,15 +105,11 @@
          (begin-actions (lambda (exp)
                           (cdr exp)))
          (last-exp? (lambda (seq)
-                      (<change>
-                         ()
-                         (display seq))
                       (null? (cdr seq))))
          (first-exp (lambda (seq)
                       (<change>
-                         ()
-                         car)
-                      (car seq)))
+                         (car seq)
+                         ((lambda (x) x) (car seq)))))
          (rest-exps (lambda (seq)
                       (cdr seq)))
          (application? (lambda (exp)
@@ -138,9 +121,6 @@
          (no-operands? (lambda (ops)
                          (null? ops)))
          (first-operand (lambda (ops)
-                          (<change>
-                             ()
-                             ops)
                           (car ops)))
          (rest-operands (lambda (ops)
                           (cdr ops)))
@@ -149,13 +129,13 @@
          (compound-procedure? (lambda (p)
                                 (tagged-list? p 'procedure)))
          (procedure-parameters (lambda (p)
-                                 (cadr p)))
+                                 (<change>
+                                    (cadr p)
+                                    ((lambda (x) x) (cadr p)))))
          (procedure-body (lambda (p)
                            (caddr p)))
          (procedure-environment (lambda (p)
-                                  (<change>
-                                     (cadddr p)
-                                     ((lambda (x) x) (cadddr p)))))
+                                  (cadddr p)))
          (enclosing-environment (lambda (env)
                                   (cdr env)))
          (first-frame (lambda (env)
@@ -174,55 +154,47 @@
          (frame-values (lambda (frame)
                          (cdr frame)))
          (add-binding-to-frame! (lambda (var val frame)
-                                  (set-car! frame (cons var (car frame)))
-                                  (set-cdr! frame (cons val (cdr frame)))))
-         (lookup-variable-value (lambda (var env)
                                   (<change>
-                                     (letrec ((env-loop (lambda (env)
-                                                          (letrec ((scan (lambda (vars vals)
-                                                                           (if (null? vars)
-                                                                              (env-loop (enclosing-environment env))
-                                                                              (if (eq? var (car vars))
+                                     (set-car! frame (cons var (car frame)))
+                                     (set-cdr! frame (cons val (cdr frame))))
+                                  (<change>
+                                     (set-cdr! frame (cons val (cdr frame)))
+                                     (set-car! frame (cons var (car frame))))))
+         (lookup-variable-value (lambda (var env)
+                                  (letrec ((env-loop (lambda (env)
+                                                       (letrec ((scan (lambda (vars vals)
+                                                                        (<change>
+                                                                           ()
+                                                                           cdr)
+                                                                        (if (null? vars)
+                                                                           (env-loop (enclosing-environment env))
+                                                                           (if (eq? var (car vars))
+                                                                              (<change>
                                                                                  (car vals)
-                                                                                 (scan (cdr vars) (cdr vals)))))))
-                                                             (if (eq? env the-empty-environment)
-                                                                (error "Unbound variable" var)
-                                                                (let ((frame (first-frame env)))
-                                                                   (scan (frame-variables frame) (frame-values frame))))))))
-                                        (env-loop env))
-                                     ((lambda (x) x)
-                                        (letrec ((env-loop (lambda (env)
-                                                             (<change>
-                                                                (letrec ((scan (lambda (vars vals)
-                                                                                 (if (null? vars)
-                                                                                    (env-loop (enclosing-environment env))
-                                                                                    (if (eq? var (car vars))
-                                                                                       (car vals)
-                                                                                       (scan (cdr vars) (cdr vals)))))))
-                                                                   (if (eq? env the-empty-environment)
-                                                                      (error "Unbound variable" var)
-                                                                      (let ((frame (first-frame env)))
-                                                                         (scan (frame-variables frame) (frame-values frame)))))
-                                                                ((lambda (x) x)
-                                                                   (letrec ((scan (lambda (vars vals)
-                                                                                    (if (null? vars)
-                                                                                       (env-loop (enclosing-environment env))
-                                                                                       (if (eq? var (car vars))
-                                                                                          (car vals)
-                                                                                          (scan (cdr vars) (cdr vals)))))))
-                                                                      (if (eq? env the-empty-environment)
-                                                                         (error "Unbound variable" var)
-                                                                         (let ((frame (first-frame env)))
-                                                                            (scan (frame-variables frame) (frame-values frame))))))))))
-                                           (env-loop env))))))
+                                                                                 (scan (cdr vars) (cdr vals)))
+                                                                              (<change>
+                                                                                 (scan (cdr vars) (cdr vals))
+                                                                                 (car vals)))))))
+                                                          (if (eq? env the-empty-environment)
+                                                             (error "Unbound variable" var)
+                                                             (let ((frame (first-frame env)))
+                                                                (scan (frame-variables frame) (frame-values frame))))))))
+                                     (env-loop env))))
          (set-variable-value! (lambda (var val env)
                                 (letrec ((env-loop (lambda (env)
                                                      (letrec ((scan (lambda (vars vals)
-                                                                      (if (null? vars)
-                                                                         (env-loop (enclosing-environment env))
-                                                                         (if (eq? var (car vars))
-                                                                            (set-car! vals val)
-                                                                            (scan (cdr vars) (cdr vals)))))))
+                                                                      (<change>
+                                                                         (if (null? vars)
+                                                                            (env-loop (enclosing-environment env))
+                                                                            (if (eq? var (car vars))
+                                                                               (set-car! vals val)
+                                                                               (scan (cdr vars) (cdr vals))))
+                                                                         ((lambda (x) x)
+                                                                            (if (null? vars)
+                                                                               (env-loop (enclosing-environment env))
+                                                                               (if (eq? var (car vars))
+                                                                                  (set-car! vals val)
+                                                                                  (scan (cdr vars) (cdr vals)))))))))
                                                         (if (eq? env the-empty-environment)
                                                            (error "Unbound variable -- SET!" var)
                                                            (let ((frame (first-frame env)))
@@ -231,27 +203,31 @@
          (define-variable! (lambda (var val env)
                              (let ((frame (first-frame env)))
                                 (letrec ((scan (lambda (vars vals)
-                                                 (<change>
-                                                    (if (null? vars)
-                                                       (add-binding-to-frame! var val frame)
-                                                       (if (eq? var (car vars))
-                                                          (set-car! vals val)
-                                                          (scan (cdr vars) (cdr vals))))
-                                                    ((lambda (x) x)
-                                                       (if (null? vars)
-                                                          (add-binding-to-frame! var val frame)
-                                                          (if (eq? var (car vars))
-                                                             (set-car! vals val)
-                                                             (scan (cdr vars) (cdr vals)))))))))
+                                                 (if (null? vars)
+                                                    (add-binding-to-frame! var val frame)
+                                                    (if (eq? var (car vars))
+                                                       (set-car! vals val)
+                                                       (scan (cdr vars) (cdr vals)))))))
                                    (scan (frame-variables frame) (frame-values frame))))))
          (setup-environment (lambda ()
-                              (let ((initial-env (extend-environment
-                                                   (primitive-procedure-names)
-                                                   (primitive-procedure-objects)
-                                                   the-empty-environment)))
-                                 (define-variable! 'true true initial-env)
-                                 (define-variable! 'false false initial-env)
-                                 initial-env)))
+                              (<change>
+                                 (let ((initial-env (extend-environment
+                                                      (primitive-procedure-names)
+                                                      (primitive-procedure-objects)
+                                                      the-empty-environment)))
+                                    (define-variable! 'true true initial-env)
+                                    (define-variable! 'false false initial-env)
+                                    initial-env)
+                                 ((lambda (x) x)
+                                    (let ((initial-env (extend-environment
+                                                         (primitive-procedure-names)
+                                                         (primitive-procedure-objects)
+                                                         the-empty-environment)))
+                                       (<change>
+                                          (define-variable! 'true true initial-env)
+                                          ((lambda (x) x) (define-variable! 'true true initial-env)))
+                                       (define-variable! 'false false initial-env)
+                                       initial-env)))))
          (primitive-procedure? (lambda (proc)
                                  (tagged-list? proc 'primitive)))
          (primitive-implementation (lambda (proc)
@@ -270,6 +246,9 @@
          (primitive-procedure-names (lambda ()
                                       (map car primitive-procedures)))
          (primitive-procedure-objects (lambda ()
+                                        (<change>
+                                           ()
+                                           cadr)
                                         (map (lambda (proc) (list 'primitive (cadr proc))) primitive-procedures)))
          (apply-primitive-procedure (lambda (proc args)
                                       (apply-in-underlying-scheme (primitive-implementation proc) args)))
@@ -285,10 +264,17 @@
                                 (linebreak)
                                 (output string))))
          (announce-output (lambda (string)
-                            (linebreak)
-                            (output string)
+                            (<change>
+                               (linebreak)
+                               ((lambda (x) x) (linebreak)))
+                            (<change>
+                               (output string)
+                               ((lambda (x) x) (output string)))
                             (linebreak)))
          (user-print (lambda (object)
+                       (<change>
+                          ()
+                          output)
                        (if (compound-procedure? object)
                           (output
                              (list 'compound-procedure (procedure-parameters object) (procedure-body object) '<procedure-env>))
@@ -329,9 +315,6 @@
          (compiled-procedure? (lambda (proc)
                                 (tagged-list? proc 'compiled-procedure)))
          (compiled-procedure-entry (lambda (c-proc)
-                                     (<change>
-                                        ()
-                                        cadr)
                                      (cadr c-proc)))
          (compiled-procedure-env (lambda (c-proc)
                                    (caddr c-proc)))
@@ -340,16 +323,13 @@
          (push (lambda (stack value)
                  ((stack 'push) value)))
          (make-stack (lambda ()
+                       (<change>
+                          ()
+                          cons)
                        (let ((s ())
                              (number-pushes 0)
                              (max-depth 0)
                              (current-depth 0))
-                          (<change>
-                             ()
-                             1)
-                          (<change>
-                             ()
-                             (display 'pop))
                           (letrec ((push (lambda (x)
                                            (set! s (cons x s))
                                            (set! number-pushes (+ 1 number-pushes))
@@ -363,12 +343,8 @@
                                                 (set! current-depth (- current-depth 1))
                                                 top))))
                                    (initialize (lambda ()
-                                                 (<change>
-                                                    (set! s ())
-                                                    (set! number-pushes 0))
-                                                 (<change>
-                                                    (set! number-pushes 0)
-                                                    (set! s ()))
+                                                 (set! s ())
+                                                 (set! number-pushes 0)
                                                  (set! max-depth 0)
                                                  (set! current-depth 0)
                                                  'done))
@@ -396,7 +372,7 @@
                                                  (list 'print-stack-statistics (lambda () (stack 'print-statistics)))))
                                       (register-table (list (list 'pc pc) (list 'flag flag))))
                                    (letrec ((allocate-register (lambda (name)
-                                                                 (if (<change> (assoc name register-table) (not (assoc name register-table)))
+                                                                 (if (assoc name register-table)
                                                                     (error "Multiply defined register: " name)
                                                                     (set! register-table (cons (list name (make-register name)) register-table)))
                                                                  'register-allocated))
@@ -427,7 +403,7 @@
                                                                     (if (eq? message 'install-operations)
                                                                        (lambda (ops)
                                                                           (set! the-ops (append the-ops ops)))
-                                                                       (if (<change> (eq? message 'stack) (not (eq? message 'stack)))
+                                                                       (if (eq? message 'stack)
                                                                           stack
                                                                           (if (eq? message 'operations)
                                                                              the-ops
@@ -443,23 +419,16 @@
          (get-register (lambda (machine reg-name)
                          ((machine 'get-register) reg-name)))
          (assemble (lambda (controller-text machine)
-                     (extract-labels
-                        controller-text
-                        (lambda (insts labels)
-                           (update-insts! insts labels machine)
-                           (<change>
-                              ()
-                              (display insts))
-                           insts))))
+                     (<change>
+                        (extract-labels controller-text (lambda (insts labels) (update-insts! insts labels machine) insts))
+                        ((lambda (x) x)
+                           (extract-labels controller-text (lambda (insts labels) (update-insts! insts labels machine) insts))))))
          (extract-labels (lambda (text receive)
-                           (if (null? text)
+                           (if (<change> (null? text) (not (null? text)))
                               (receive () ())
                               (extract-labels
                                  (cdr text)
                                  (lambda (insts labels)
-                                    (<change>
-                                       ()
-                                       symbol?)
                                     (let ((next-inst (car text)))
                                        (<change>
                                           (if (symbol? next-inst)
@@ -491,7 +460,9 @@
          (instruction-execution-proc (lambda (inst)
                                        (cdr inst)))
          (set-instruction-execution-proc! (lambda (inst proc)
-                                            (set-cdr! inst proc)))
+                                            (<change>
+                                               (set-cdr! inst proc)
+                                               ((lambda (x) x) (set-cdr! inst proc)))))
          (make-label-entry (lambda (label-name insts)
                              (cons label-name insts)))
          (lookup-label (lambda (labels label-name)
@@ -501,38 +472,45 @@
                                (error "Undefined label -- ASSEMBLE" label-name)))))
          (make-execution-procedure (lambda (inst labels machine pc flag stack ops)
                                      (if (eq? (car inst) 'assign)
-                                        (make-assign inst machine labels ops pc)
-                                        (if (eq? (car inst) 'test)
-                                           (make-test inst machine labels ops flag pc)
-                                           (if (<change> (eq? (car inst) 'branch) (not (eq? (car inst) 'branch)))
-                                              (make-branch inst machine labels flag pc)
-                                              (if (eq? (car inst) 'goto)
-                                                 (make-goto inst machine labels pc)
-                                                 (if (eq? (car inst) 'save)
-                                                    (make-save inst machine stack pc)
-                                                    (if (eq? (car inst) 'restore)
-                                                       (make-restore inst machine stack pc)
-                                                       (if (eq? (car inst) 'perform)
-                                                          (make-perform inst machine labels ops pc)
-                                                          (error "Unknown instruction type -- ASSEMBLE" inst))))))))))
+                                        (<change>
+                                           (make-assign inst machine labels ops pc)
+                                           (if (eq? (car inst) 'test)
+                                              (make-test inst machine labels ops flag pc)
+                                              (if (eq? (car inst) 'branch)
+                                                 (make-branch inst machine labels flag pc)
+                                                 (if (eq? (car inst) 'goto)
+                                                    (make-goto inst machine labels pc)
+                                                    (if (eq? (car inst) 'save)
+                                                       (make-save inst machine stack pc)
+                                                       (if (eq? (car inst) 'restore)
+                                                          (if (eq? (car inst) 'perform)
+                                                             (make-perform inst machine labels ops pc)
+                                                             (error "Unknown instruction type -- ASSEMBLE" inst))
+                                                          (make-restore inst machine stack pc)))))))
+                                        (<change>
+                                           (if (eq? (car inst) 'test)
+                                              (make-test inst machine labels ops flag pc)
+                                              (if (eq? (car inst) 'branch)
+                                                 (make-branch inst machine labels flag pc)
+                                                 (if (eq? (car inst) 'goto)
+                                                    (make-goto inst machine labels pc)
+                                                    (if (eq? (car inst) 'save)
+                                                       (make-save inst machine stack pc)
+                                                       (if (eq? (car inst) 'restore)
+                                                          (make-restore inst machine stack pc)
+                                                          (if (eq? (car inst) 'perform)
+                                                             (make-perform inst machine labels ops pc)
+                                                             (error "Unknown instruction type -- ASSEMBLE" inst)))))))
+                                           (make-assign inst machine labels ops pc)))))
          (make-assign (lambda (inst machine labels operations pc)
                         (let ((target (get-register machine (assign-reg-name inst)))
                               (value-exp (assign-value-exp inst)))
                            (let ((value-proc (if (operation-exp? value-exp)
                                                (make-operation-exp value-exp machine labels operations)
                                                (make-primitive-exp (car value-exp) machine labels))))
-                              (<change>
-                                 (lambda ()
-                                    (set-contents! target (value-proc))
-                                    (advance-pc pc))
-                                 ((lambda (x) x)
-                                    (lambda ()
-                                       (<change>
-                                          (set-contents! target (value-proc))
-                                          (advance-pc pc))
-                                       (<change>
-                                          (advance-pc pc)
-                                          (set-contents! target (value-proc))))))))))
+                              (lambda ()
+                                 (set-contents! target (value-proc))
+                                 (advance-pc pc))))))
          (assign-reg-name (lambda (assign-instruction)
                             (cadr assign-instruction)))
          (assign-value-exp (lambda (assign-instruction)
@@ -541,6 +519,9 @@
                        (set-contents! pc (cdr (get-contents pc)))))
          (make-test (lambda (inst machine labels operations flag pc)
                       (let ((condition (test-condition inst)))
+                         (<change>
+                            ()
+                            condition-proc)
                          (if (operation-exp? condition)
                             (let ((condition-proc (make-operation-exp condition machine labels operations)))
                                (lambda ()
@@ -548,15 +529,9 @@
                                   (advance-pc pc)))
                             (error "Bad TEST instruction -- ASSEMBLE" inst)))))
          (test-condition (lambda (test-instruction)
-                           (<change>
-                              ()
-                              (display cdr))
                            (cdr test-instruction)))
          (make-branch (lambda (inst machine labels flag pc)
                         (let ((dest (branch-dest inst)))
-                           (<change>
-                              ()
-                              (set-contents! pc insts))
                            (if (label-exp? dest)
                               (let ((insts (lookup-label labels (label-exp-label dest))))
                                  (lambda ()
@@ -572,18 +547,27 @@
                             (let ((insts (lookup-label labels (label-exp-label dest))))
                                (lambda ()
                                   (set-contents! pc insts)))
-                            (if (<change> (register-exp? dest) (not (register-exp? dest)))
+                            (if (register-exp? dest)
                                (let ((reg (get-register machine (register-exp-reg dest))))
-                                  (lambda ()
-                                     (set-contents! pc (get-contents reg))))
+                                  (<change>
+                                     (lambda ()
+                                        (set-contents! pc (get-contents reg)))
+                                     ((lambda (x) x) (lambda () (set-contents! pc (get-contents reg))))))
                                (error "Bad GOTO instruction -- ASSEMBLE" inst))))))
          (goto-dest (lambda (goto-instruction)
                       (cadr goto-instruction)))
          (make-save (lambda (inst machine stack pc)
                       (let ((reg (get-register machine (stack-inst-reg-name inst))))
-                         (lambda ()
-                            (push stack (get-contents reg))
-                            (advance-pc pc)))))
+                         (<change>
+                            (lambda ()
+                               (push stack (get-contents reg))
+                               (advance-pc pc))
+                            ((lambda (x) x)
+                               (lambda ()
+                                  (push stack (get-contents reg))
+                                  (<change>
+                                     (advance-pc pc)
+                                     ((lambda (x) x) (advance-pc pc)))))))))
          (make-restore (lambda (inst machine stack pc)
                          (let ((reg (get-register machine (stack-inst-reg-name inst))))
                             (<change>
@@ -604,22 +588,33 @@
          (perform-action (lambda (inst)
                            (cdr inst)))
          (make-primitive-exp (lambda (exp machine labels)
-                               (<change>
-                                  ()
-                                  (display c))
                                (if (constant-exp? exp)
-                                  (let ((c (constant-exp-value exp)))
-                                     (lambda ()
-                                        c))
-                                  (if (label-exp? exp)
-                                     (let ((insts (lookup-label labels (label-exp-label exp))))
+                                  (<change>
+                                     (let ((c (constant-exp-value exp)))
                                         (lambda ()
-                                           insts))
-                                     (if (register-exp? exp)
-                                        (let ((r (get-register machine (register-exp-reg exp))))
+                                           c))
+                                     (if (label-exp? exp)
+                                        (let ((insts (lookup-label labels (label-exp-label exp))))
                                            (lambda ()
-                                              (get-contents r)))
-                                        (error "Unknown expression type -- ASSEMBLE" exp))))))
+                                              insts))
+                                        (if (register-exp? exp)
+                                           (let ((r (get-register machine (register-exp-reg exp))))
+                                              (lambda ()
+                                                 (get-contents r)))
+                                           (error "Unknown expression type -- ASSEMBLE" exp))))
+                                  (<change>
+                                     (if (label-exp? exp)
+                                        (let ((insts (lookup-label labels (label-exp-label exp))))
+                                           (lambda ()
+                                              insts))
+                                        (if (register-exp? exp)
+                                           (let ((r (get-register machine (register-exp-reg exp))))
+                                              (lambda ()
+                                                 (get-contents r)))
+                                           (error "Unknown expression type -- ASSEMBLE" exp)))
+                                     (let ((c (constant-exp-value exp)))
+                                        (lambda ()
+                                           c))))))
          (register-exp? (lambda (exp)
                           (tagged-list? exp 'reg)))
          (register-exp-reg (lambda (exp)
@@ -627,7 +622,9 @@
          (constant-exp? (lambda (exp)
                           (tagged-list? exp 'const)))
          (constant-exp-value (lambda (exp)
-                               (cadr exp)))
+                               (<change>
+                                  (cadr exp)
+                                  ((lambda (x) x) (cadr exp)))))
          (label-exp? (lambda (exp)
                        (tagged-list? exp 'label)))
          (label-exp-label (lambda (exp)
@@ -636,25 +633,26 @@
                                (let ((op (lookup-prim (operation-exp-op exp) operations))
                                      (aprocs (map (lambda (e) (make-primitive-exp e machine labels)) (operation-exp-operands exp))))
                                   (<change>
-                                     ()
-                                     (p))
-                                  (lambda ()
-                                     (apply op (map (lambda (p) (p)) aprocs))))))
+                                     (lambda ()
+                                        (apply op (map (lambda (p) (p)) aprocs)))
+                                     ((lambda (x) x) (lambda () (apply op (map (lambda (p) (p)) aprocs))))))))
          (operation-exp? (lambda (exp)
                            (if (pair? exp) (tagged-list? (car exp) 'op) #f)))
          (operation-exp-op (lambda (operation-exp)
                              (cadr (car operation-exp))))
          (operation-exp-operands (lambda (operation-exp)
+                                   (<change>
+                                      ()
+                                      (display operation-exp))
                                    (cdr operation-exp)))
          (lookup-prim (lambda (symbol operations)
+                        (<change>
+                           ()
+                           symbol)
                         (let ((val (assoc symbol operations)))
-                           (if val
-                              (<change>
-                                 (cadr val)
-                                 (error "Unknown operation -- ASSEMBLE" symbol))
-                              (<change>
-                                 (error "Unknown operation -- ASSEMBLE" symbol)
-                                 (cadr val))))))
+                           (if (<change> val (not val))
+                              (cadr val)
+                              (error "Unknown operation -- ASSEMBLE" symbol)))))
          (eceval-operations (list
                               (list 'read read)
                               (list 'null? null?)
@@ -1486,57 +1484,113 @@
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      (__toplevel_cons
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         (__toplevel_cons 'goto (__toplevel_cons (__toplevel_cons 'reg (__toplevel_cons 'continue ())) ()))
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         (__toplevel_cons 'end ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
-   (start eceval)
-   (equal?
-      result
-      (__toplevel_cons
-         'linebreak
+   (<change>
+      (start eceval)
+      (equal?
+         result
          (__toplevel_cons
-            ";;; EC-Eval input:"
+            'linebreak
             (__toplevel_cons
-               'linebreak
+               ";;; EC-Eval input:"
                (__toplevel_cons
                   'linebreak
                   (__toplevel_cons
-                     720
+                     'linebreak
                      (__toplevel_cons
-                        'linebreak
+                        720
                         (__toplevel_cons
-                           ";;; EC-Eval value:"
+                           'linebreak
                            (__toplevel_cons
-                              'linebreak
+                              ";;; EC-Eval value:"
                               (__toplevel_cons
+                                 'linebreak
                                  (__toplevel_cons
-                                    'total-pushes
                                     (__toplevel_cons
-                                       '=
-                                       (__toplevel_cons 208 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 26 ()))))))
-                                 (__toplevel_cons
-                                    'linebreak
+                                       'total-pushes
+                                       (__toplevel_cons
+                                          '=
+                                          (__toplevel_cons 208 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 26 ()))))))
                                     (__toplevel_cons
                                        'linebreak
                                        (__toplevel_cons
-                                          ";;; EC-Eval input:"
+                                          'linebreak
                                           (__toplevel_cons
-                                             'linebreak
+                                             ";;; EC-Eval input:"
                                              (__toplevel_cons
                                                 'linebreak
                                                 (__toplevel_cons
-                                                   'ok
+                                                   'linebreak
                                                    (__toplevel_cons
-                                                      'linebreak
+                                                      'ok
                                                       (__toplevel_cons
-                                                         ";;; EC-Eval value:"
+                                                         'linebreak
                                                          (__toplevel_cons
-                                                            'linebreak
+                                                            ";;; EC-Eval value:"
                                                             (__toplevel_cons
+                                                               'linebreak
                                                                (__toplevel_cons
-                                                                  'total-pushes
                                                                   (__toplevel_cons
-                                                                     '=
-                                                                     (__toplevel_cons 3 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 3 ()))))))
-                                                               (__toplevel_cons
-                                                                  'linebreak
+                                                                     'total-pushes
+                                                                     (__toplevel_cons
+                                                                        '=
+                                                                        (__toplevel_cons 3 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 3 ()))))))
                                                                   (__toplevel_cons
                                                                      'linebreak
-                                                                     (__toplevel_cons ";;; EC-Eval input:" (__toplevel_cons 'linebreak (__toplevel_cons 'linebreak ()))))))))))))))))))))))))))
+                                                                     (__toplevel_cons
+                                                                        'linebreak
+                                                                        (__toplevel_cons ";;; EC-Eval input:" (__toplevel_cons 'linebreak (__toplevel_cons 'linebreak ()))))))))))))))))))))))))))
+   (<change>
+      (equal?
+         result
+         (__toplevel_cons
+            'linebreak
+            (__toplevel_cons
+               ";;; EC-Eval input:"
+               (__toplevel_cons
+                  'linebreak
+                  (__toplevel_cons
+                     'linebreak
+                     (__toplevel_cons
+                        720
+                        (__toplevel_cons
+                           'linebreak
+                           (__toplevel_cons
+                              ";;; EC-Eval value:"
+                              (__toplevel_cons
+                                 'linebreak
+                                 (__toplevel_cons
+                                    (__toplevel_cons
+                                       'total-pushes
+                                       (__toplevel_cons
+                                          '=
+                                          (__toplevel_cons 208 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 26 ()))))))
+                                    (__toplevel_cons
+                                       'linebreak
+                                       (__toplevel_cons
+                                          'linebreak
+                                          (__toplevel_cons
+                                             ";;; EC-Eval input:"
+                                             (__toplevel_cons
+                                                'linebreak
+                                                (__toplevel_cons
+                                                   'linebreak
+                                                   (__toplevel_cons
+                                                      'ok
+                                                      (__toplevel_cons
+                                                         'linebreak
+                                                         (__toplevel_cons
+                                                            ";;; EC-Eval value:"
+                                                            (__toplevel_cons
+                                                               'linebreak
+                                                               (__toplevel_cons
+                                                                  (__toplevel_cons
+                                                                     'total-pushes
+                                                                     (__toplevel_cons
+                                                                        '=
+                                                                        (__toplevel_cons 3 (__toplevel_cons 'maximum-depth (__toplevel_cons '= (__toplevel_cons 3 ()))))))
+                                                                  (__toplevel_cons
+                                                                     'linebreak
+                                                                     (__toplevel_cons
+                                                                        'linebreak
+                                                                        (__toplevel_cons ";;; EC-Eval input:" (__toplevel_cons 'linebreak (__toplevel_cons 'linebreak ())))))))))))))))))))))))))
+      (start eceval)))

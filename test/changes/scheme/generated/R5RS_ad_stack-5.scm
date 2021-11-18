@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
-; * swaps: 1
+; * added: 2
+; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 0
-; * calls to id fun: 0
+; * swapped branches: 1
+; * calls to id fun: 1
 (letrec ((false #f)
          (true #t)
          (create-stack (lambda (eq-fnct)
@@ -13,7 +13,9 @@
                                                (null? content)))
                                      (push (lambda (element)
                                              (set! content (cons element content))
-                                             #t))
+                                             (<change>
+                                                #t
+                                                ((lambda (x) x) #t))))
                                      (pop (lambda ()
                                             (if (null? content)
                                                #f
@@ -39,13 +41,24 @@
                                dispatch)))))
    (let ((stack (create-stack =)))
       (if ((stack 'empty?))
-         (if (begin (<change> ((stack 'push) 13) (not ((stack 'empty?)))) (<change> (not ((stack 'empty?))) ((stack 'push) 13)))
-            (if ((stack 'is-in) 13)
-               (if (= ((stack 'top)) 13)
-                  (begin
-                     ((stack 'push) 14)
-                     (= ((stack 'pop)) 14))
+         (if (begin (<change> () stack) ((stack 'push) 13) (not ((stack 'empty?))))
+            (<change>
+               (if ((stack 'is-in) 13)
+                  (if (= ((stack 'top)) 13)
+                     (begin
+                        ((stack 'push) 14)
+                        (= ((stack 'pop)) 14))
+                     #f)
                   #f)
                #f)
-            #f)
+            (<change>
+               #f
+               (if ((stack 'is-in) 13)
+                  (if (= ((stack 'top)) 13)
+                     (begin
+                        (display stack)
+                        ((stack 'push) 14)
+                        (= ((stack 'pop)) 14))
+                     #f)
+                  #f)))
          #f)))

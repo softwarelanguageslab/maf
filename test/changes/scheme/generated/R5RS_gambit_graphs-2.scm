@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
-; * swaps: 1
+; * added: 2
+; * swaps: 2
 ; * negated predicates: 0
-; * swapped branches: 2
-; * calls to id fun: 5
+; * swapped branches: 1
+; * calls to id fun: 2
 (letrec ((fold (lambda (lst folder state)
                  (letrec ((__do_loop (lambda (lst state)
                                        (if (null? lst)
@@ -16,25 +16,23 @@
                             (vector)
                             (let ((x (make-vector size (f 0))))
                                (<change>
-                                  ((letrec ((loop (lambda (i)
-                                                   (if (< i size)
-                                                      (begin
-                                                         (vector-set! x i (f i))
-                                                         (loop (+ i 1)))
-                                                      #f))))
-                                     loop)
-                                     1)
-                                  x)
-                               (<change>
-                                  x
-                                  ((letrec ((loop (lambda (i)
-                                                   (if (< i size)
-                                                      (begin
-                                                         (vector-set! x i (f i))
-                                                         (loop (+ i 1)))
-                                                      #f))))
-                                     loop)
-                                     1))))))
+                                  ()
+                                  (lambda (i)
+                                     i
+                                     (if (< i size)
+                                        (begin
+                                           ((lambda (x) x) (vector-set! x i (f i)))
+                                           (loop (+ i 1)))
+                                        #f)))
+                               ((letrec ((loop (lambda (i)
+                                                (if (< i size)
+                                                   (begin
+                                                      (vector-set! x i (f i))
+                                                      (loop (+ i 1)))
+                                                   #f))))
+                                  loop)
+                                  1)
+                               x))))
          (vector-fold (lambda (vec folder state)
                         (let ((len (vector-length vec)))
                            (letrec ((__do_loop (lambda (i state)
@@ -43,11 +41,8 @@
                                                     (__do_loop (+ i 1) (folder (vector-ref vec i) state))))))
                               (__do_loop 0 state)))))
          (vector-map (lambda (vec proc)
-                       (proc->vector (vector-length vec) (lambda (i) (<change> () vec) (proc (vector-ref vec i))))))
+                       (proc->vector (vector-length vec) (lambda (i) (proc (vector-ref vec i))))))
          (giota (lambda (limit)
-                  (<change>
-                     ()
-                     cons)
                   ((letrec ((_-*- (lambda (limit res)
                                    (if (zero? limit)
                                       res
@@ -58,25 +53,21 @@
                      ())))
          (gnatural-fold (lambda (limit folder state)
                           (letrec ((__do_loop (lambda (i state)
-                                                (<change>
-                                                   (if (= i limit)
-                                                      state
-                                                      (__do_loop (+ i 1) (folder i state)))
-                                                   ((lambda (x) x) (if (= i limit) state (__do_loop (+ i 1) (folder i state))))))))
+                                                (if (= i limit)
+                                                   state
+                                                   (__do_loop (+ i 1) (folder i state))))))
                              (__do_loop 0 state))))
          (gnatural-for-each (lambda (limit proc!)
                               (letrec ((__do_loop (lambda (i)
                                                     (if (= i limit)
-                                                       (<change>
-                                                          #f
-                                                          (begin
-                                                             ((lambda (x) x) (proc! i))
-                                                             (__do_loop (+ i 1))))
-                                                       (<change>
-                                                          (begin
+                                                       #f
+                                                       (begin
+                                                          (<change>
                                                              (proc! i)
                                                              (__do_loop (+ i 1)))
-                                                          #f)))))
+                                                          (<change>
+                                                             (__do_loop (+ i 1))
+                                                             (proc! i)))))))
                                  (__do_loop 0))))
          (natural-for-all? (lambda (limit ok?)
                              ((letrec ((_-*- (lambda (i)
@@ -143,9 +134,7 @@
                                             (if (eq? __case-atom-key 'equal)
                                                (begin
                                                   (vector-set! perm x perm-x)
-                                                  (<change>
-                                                     (deeper (+ x 1) state)
-                                                     ((lambda (x) x) (deeper (+ x 1) state))))
+                                                  (deeper (+ x 1) state))
                                                (if (eq? __case-atom-key 'more)
                                                   (accross state)
                                                   (error "???"))))))
@@ -178,23 +167,14 @@
                                  (non-root-minimal? (let ((cont (lambda (perm state accross)
                                                                  (accross #t))))
                                                       (lambda (size)
-                                                         (<change>
-                                                            ()
-                                                            edge?)
                                                          (minimal-folder size edge? cont #t))))
                                  (root-minimal? (let ((cont (lambda (perm state accross)
                                                              (let ((__case-atom-key (cmp-next-vertex edge? perm root root)))
                                                                 (if (eq? __case-atom-key 'less)
-                                                                   (<change>
-                                                                      #f
-                                                                      (if (let ((__or_res (eq? __case-atom-key 'equal))) (if __or_res __or_res (eq? __case-atom-key 'more)))
-                                                                         (accross #t)
-                                                                         (error "???")))
-                                                                   (<change>
-                                                                      (if (let ((__or_res (eq? __case-atom-key 'equal))) (if __or_res __or_res (eq? __case-atom-key 'more)))
-                                                                         (accross #t)
-                                                                         (error "???"))
-                                                                      #f))))))
+                                                                   #f
+                                                                   (if (let ((__or_res (eq? __case-atom-key 'equal))) (if __or_res __or_res (eq? __case-atom-key 'more)))
+                                                                      (accross #t)
+                                                                      (error "???")))))))
                                                   (lambda ()
                                                      (minimal-folder root edge? cont #t)))))
                              ((letrec ((_-*- (lambda (vertex state)
@@ -271,36 +251,35 @@
                                      size
                                      (lambda (v)
                                         (let ((from-v (make-vector size #f)))
-                                           (vector-set! from-v v #t)
-                                           (for-each (lambda (x) (vector-set! from-v x #t)) (vector-ref vertex->out v))
+                                           (<change>
+                                              (vector-set! from-v v #t)
+                                              (for-each (lambda (x) (vector-set! from-v x #t)) (vector-ref vertex->out v)))
+                                           (<change>
+                                              (for-each (lambda (x) (vector-set! from-v x #t)) (vector-ref vertex->out v))
+                                              (vector-set! from-v v #t))
                                            from-v)))))
-                           (<change>
-                              (gnatural-for-each
-                                 size
-                                 (lambda (m)
-                                    (let ((from-m (vector-ref res m)))
-                                       (gnatural-for-each
-                                          size
-                                          (lambda (f)
+                           (gnatural-for-each
+                              size
+                              (lambda (m)
+                                 (let ((from-m (vector-ref res m)))
+                                    (gnatural-for-each
+                                       size
+                                       (lambda (f)
+                                          (<change>
                                              (let ((from-f (vector-ref res f)))
                                                 (if (vector-ref from-f m)
                                                    (gnatural-for-each size (lambda (t) (if (vector-ref from-m t) (vector-set! from-f t #t) #f)))
-                                                   #f)))))))
-                              ((lambda (x) x)
-                                 (gnatural-for-each
-                                    size
-                                    (lambda (m)
-                                       (let ((from-m (vector-ref res m)))
-                                          (gnatural-for-each
-                                             size
-                                             (lambda (f)
+                                                   #f))
+                                             ((lambda (x) x)
                                                 (let ((from-f (vector-ref res f)))
                                                    (if (vector-ref from-f m)
-                                                      (gnatural-for-each size (lambda (t) (if (vector-ref from-m t) (vector-set! from-f t #t) #f)))
-                                                      #f)))))))))
-                           (<change>
-                              res
-                              ((lambda (x) x) res)))))
+                                                      (<change>
+                                                         (gnatural-for-each size (lambda (t) (if (vector-ref from-m t) (vector-set! from-f t #t) #f)))
+                                                         #f)
+                                                      (<change>
+                                                         #f
+                                                         (gnatural-for-each size (lambda (t) (if (vector-ref from-m t) (vector-set! from-f t #t) #f)))))))))))))
+                           res)))
          (run (lambda (n)
                 (fold-over-rdg n 2 cons ()))))
    (= (length (run 5)) 596))

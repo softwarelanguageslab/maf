@@ -1,10 +1,10 @@
 ; Changes:
-; * removed: 3
-; * added: 3
-; * swaps: 6
+; * removed: 0
+; * added: 1
+; * swaps: 0
 ; * negated predicates: 0
-; * swapped branches: 1
-; * calls to id fun: 6
+; * swapped branches: 0
+; * calls to id fun: 1
 (letrec ((foldr (lambda (f base lst)
                   (letrec ((foldr-aux (lambda (lst)
                                         (if (null? lst)
@@ -29,6 +29,9 @@
                                     (value (lambda (pos)
                                              (list-ref inhoud pos)))
                                     (dispatch (lambda (msg)
+                                                (<change>
+                                                   ()
+                                                   msg)
                                                 (if (eq? msg 'newValue)
                                                    newValue
                                                    (if (eq? msg 'return)
@@ -47,19 +50,13 @@
    ((buffer 'newValue) 3)
    (<change>
       ((buffer 'newValue) 9)
-      ())
+      ((lambda (x) x) ((buffer 'newValue) 9)))
    (letrec ((res1 (if (= (buffer 'returnSum) 12)
                     (if (equal? (buffer 'return) (__toplevel_cons 3 (__toplevel_cons 9 ())))
-                       (<change>
-                          (if (begin (buffer 'flush))
-                             (null? (buffer 'return))
-                             #f)
+                       (if (begin (buffer 'flush))
+                          (null? (buffer 'return))
                           #f)
-                       (<change>
-                          #f
-                          (if (begin (buffer 'flush))
-                             (null? (buffer 'return))
-                             #f)))
+                       #f)
                     #f))
             (make-counter (lambda ()
                             (let ((state 0))
@@ -70,22 +67,13 @@
                                         (reset (lambda ()
                                                  (set! state 0)))
                                         (dispatch (lambda (msg)
-                                                    (<change>
-                                                       (if (eq? msg 'increment)
-                                                          (increment)
-                                                          (if (eq? msg 'read)
-                                                             (read)
-                                                             (if (eq? msg 'reset)
-                                                                (reset)
-                                                                (error "wrong message"))))
-                                                       ((lambda (x) x)
-                                                          (if (eq? msg 'increment)
-                                                             (increment)
-                                                             (if (eq? msg 'read)
-                                                                (read)
-                                                                (if (eq? msg 'reset)
-                                                                   (reset)
-                                                                   (error "wrong message")))))))))
+                                                    (if (eq? msg 'increment)
+                                                       (increment)
+                                                       (if (eq? msg 'read)
+                                                          (read)
+                                                          (if (eq? msg 'reset)
+                                                             (reset)
+                                                             (error "wrong message")))))))
                                   dispatch))))
             (maak-verkeersteller (lambda ()
                                    (let ((voorbijgereden (make-counter))
@@ -128,92 +116,45 @@
       (verkeersteller 'newCar)
       (verkeersteller 'newCar)
       (verkeersteller 'newHour)
-      (<change>
-         (verkeersteller 'newHour)
-         (verkeersteller 'newCar))
-      (<change>
-         (verkeersteller 'newCar)
-         (verkeersteller 'newHour))
-      (verkeersteller 'newCar)
-      (verkeersteller 'newCar)
-      (<change>
-         (verkeersteller 'newHour)
-         ((lambda (x) x) (verkeersteller 'newHour)))
-      (verkeersteller 'newHour)
-      (verkeersteller 'newHour)
-      (<change>
-         (verkeersteller 'newCar)
-         (verkeersteller 'newHour))
-      (<change>
-         (verkeersteller 'newHour)
-         (verkeersteller 'newCar))
-      (<change>
-         (verkeersteller 'newHour)
-         ((lambda (x) x) (verkeersteller 'newHour)))
       (verkeersteller 'newHour)
       (verkeersteller 'newCar)
-      (<change>
-         ()
-         __toplevel_cons)
+      (verkeersteller 'newCar)
       (verkeersteller 'newCar)
       (verkeersteller 'newHour)
-      (verkeersteller 'newCar)
-      (<change>
-         ()
-         __toplevel_cons)
-      (verkeersteller 'newCar)
-      (verkeersteller 'newHour)
-      (<change>
-         (verkeersteller 'newCar)
-         ())
-      (<change>
-         (verkeersteller 'newHour)
-         ((lambda (x) x) (verkeersteller 'newHour)))
-      (verkeersteller 'newHour)
-      (<change>
-         (verkeersteller 'newHour)
-         ((lambda (x) x) (verkeersteller 'newHour)))
-      (<change>
-         (verkeersteller 'newHour)
-         (verkeersteller 'newCar))
-      (<change>
-         (verkeersteller 'newCar)
-         (verkeersteller 'newHour))
-      (verkeersteller 'newHour)
-      (verkeersteller 'newCar)
-      (<change>
-         (verkeersteller 'newHour)
-         (verkeersteller 'newHour))
-      (<change>
-         (verkeersteller 'newHour)
-         (verkeersteller 'newHour))
-      (<change>
-         (verkeersteller 'newCar)
-         ((lambda (x) x) (verkeersteller 'newCar)))
       (verkeersteller 'newHour)
       (verkeersteller 'newHour)
       (verkeersteller 'newCar)
       (verkeersteller 'newHour)
       (verkeersteller 'newHour)
-      (<change>
-         ()
-         __toplevel_cons)
+      (verkeersteller 'newHour)
       (verkeersteller 'newCar)
-      (<change>
-         (verkeersteller 'newCar)
-         ())
-      (<change>
-         (verkeersteller 'newHour)
-         (verkeersteller 'newCar))
-      (<change>
-         (verkeersteller 'newCar)
-         (verkeersteller 'newHour))
-      (<change>
-         (verkeersteller 'newHour)
-         (verkeersteller 'newCar))
-      (<change>
-         (verkeersteller 'newCar)
-         (verkeersteller 'newHour))
+      (verkeersteller 'newCar)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newCar)
+      (verkeersteller 'newHour)
+      (verkeersteller 'newCar)
       (verkeersteller 'newDay)
       (verkeersteller 'newHour)
       (verkeersteller 'newDay)

@@ -14,5 +14,5 @@
                             ((lambda (z) (z x1 x2 x3)) (lambda (y1 y2 y3) y1))))))))))
    (<change>
       ()
-      (display res))
+      res)
    res)

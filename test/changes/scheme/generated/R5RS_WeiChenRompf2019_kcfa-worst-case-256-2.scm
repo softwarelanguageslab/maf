@@ -1,24 +1,21 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
 ; * calls to id fun: 0
 ((lambda (f1) (f1 #t) (f1 #f))
    (lambda (x1)
-      (<change>
-         ()
-         y224)
       ((lambda (f2) (f2 #t) (f2 #f))
          (lambda (x2)
             ((lambda (f3) (f3 #t) (f3 #f))
                (lambda (x3)
+                  (<change>
+                     ()
+                     f225)
                   ((lambda (f4) (f4 #t) (f4 #f))
                      (lambda (x4)
-                        (<change>
-                           ()
-                           #t)
                         ((lambda (f5) (f5 #t) (f5 #f))
                            (lambda (x5)
                               ((lambda (f6) (f6 #t) (f6 #f))

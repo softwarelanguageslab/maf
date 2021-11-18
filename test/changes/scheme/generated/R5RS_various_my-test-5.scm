@@ -1,18 +1,17 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
+; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((random-bool (lambda ()
-                        (<change>
-                           (= (random 2) 0)
-                           ((lambda (x) x) (= (random 2) 0)))))
+                        (= (random 2) 0)))
          (f (lambda (x)
-              (if (<change> (random-bool) (not (random-bool)))
-                 x
-                 (g (cons 'f x)))))
+              (if (random-bool) x (g (cons 'f x)))))
          (g (lambda (x)
+              (<change>
+                 ()
+                 (cons 'g x))
               (if (random-bool) x (f (cons 'g x))))))
    (f ()))

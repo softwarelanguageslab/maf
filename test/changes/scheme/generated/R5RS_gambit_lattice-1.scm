@@ -1,9 +1,9 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
-; * swaps: 0
-; * negated predicates: 2
-; * swapped branches: 0
+; * added: 1
+; * swaps: 1
+; * negated predicates: 1
+; * swapped branches: 2
 ; * calls to id fun: 2
 (letrec ((apply-append (lambda (args)
                          (if (null? args)
@@ -11,10 +11,16 @@
                             (if (null? (cdr args))
                                (car args)
                                (if (null? (cddr args))
-                                  (append (car args) (cadr args))
-                                  (if (null? (cdddr args))
-                                     (append (car args) (append (cadr args) (caddr args)))
-                                     (error "apply-append" args)))))))
+                                  (<change>
+                                     (append (car args) (cadr args))
+                                     (if (null? (cdddr args))
+                                        (append (car args) (append (cadr args) (caddr args)))
+                                        (error "apply-append" args)))
+                                  (<change>
+                                     (if (null? (cdddr args))
+                                        (append (car args) (append (cadr args) (caddr args)))
+                                        (error "apply-append" args))
+                                     (append (car args) (cadr args))))))))
          (lexico (lambda (base)
                    (letrec ((lex-fixed (lambda (fixed lhs rhs)
                                          (letrec ((check (lambda (lhs rhs)
@@ -40,25 +46,20 @@
          (lattice->elements car)
          (lattice->cmp cdr)
          (zulu-select (lambda (test lst)
-                        (<change>
-                           (letrec ((select-a (lambda (ac lst)
-                                                (if (null? lst)
-                                                   (reverse! ac)
-                                                   (select-a (let ((head (car lst))) (if (test head) (cons head ac) ac)) (cdr lst))))))
-                              (select-a () lst))
-                           ((lambda (x) x)
-                              (letrec ((select-a (lambda (ac lst)
-                                                   (if (null? lst)
-                                                      (reverse! ac)
-                                                      (select-a (let ((head (car lst))) (if (test head) (cons head ac) ac)) (cdr lst))))))
-                                 (select-a () lst))))))
+                        (letrec ((select-a (lambda (ac lst)
+                                             (if (null? lst)
+                                                (reverse! ac)
+                                                (select-a (let ((head (car lst))) (if (test head) (cons head ac) ac)) (cdr lst))))))
+                           (select-a () lst))))
          (reverse! (letrec ((rotate (lambda (fo fum)
-                                     (<change>
-                                        ()
-                                        set-cdr!)
                                      (let ((next (cdr fo)))
                                         (set-cdr! fo fum)
-                                        (if (null? next) fo (rotate next fo))))))
+                                        (<change>
+                                           ()
+                                           fum)
+                                        (if (<change> (null? next) (not (null? next)))
+                                           fo
+                                           (rotate next fo))))))
                      (lambda (lst)
                         (if (null? lst) () (rotate lst ())))))
          (select-map (lambda (test func lst)
@@ -68,43 +69,25 @@
                                                (select-a (let ((head (car lst))) (if (test head) (cons (func head) ac) ac)) (cdr lst))))))
                           (select-a () lst))))
          (map-and (lambda (proc lst)
-                    (<change>
-                       ()
-                       drudge)
-                    (if (<change> (null? lst) (not (null? lst)))
+                    (if (null? lst)
                        #t
                        (letrec ((drudge (lambda (lst)
                                           (let ((rest (cdr lst)))
-                                             (<change>
-                                                ()
-                                                lst)
                                              (if (null? rest)
                                                 (proc (car lst))
-                                                (if (<change> (proc (car lst)) (not (proc (car lst))))
-                                                   (drudge rest)
-                                                   #f))))))
+                                                (if (proc (car lst)) (drudge rest) #f))))))
                           (drudge lst)))))
          (maps-1 (lambda (source target pas new)
                    (let ((scmp (lattice->cmp source))
                          (tcmp (lattice->cmp target)))
-                      (<change>
-                         (let ((less (select-map (lambda (p) (eq? 'less (scmp (car p) new))) cdr pas))
-                               (more (select-map (lambda (p) (eq? 'more (scmp (car p) new))) cdr pas)))
-                            (zulu-select
-                               (lambda (t)
-                                  (if (map-and (lambda (t2) (memq (tcmp t2 t) (__toplevel_cons 'less (__toplevel_cons 'equal ())))) less)
-                                     (map-and (lambda (t2) (memq (tcmp t2 t) (__toplevel_cons 'more (__toplevel_cons 'equal ())))) more)
-                                     #f))
-                               (lattice->elements target)))
-                         ((lambda (x) x)
-                            (let ((less (select-map (lambda (p) (eq? 'less (scmp (car p) new))) cdr pas))
-                                  (more (select-map (lambda (p) (eq? 'more (scmp (car p) new))) cdr pas)))
-                               (zulu-select
-                                  (lambda (t)
-                                     (if (map-and (lambda (t2) (memq (tcmp t2 t) (__toplevel_cons 'less (__toplevel_cons 'equal ())))) less)
-                                        (map-and (lambda (t2) (memq (tcmp t2 t) (__toplevel_cons 'more (__toplevel_cons 'equal ())))) more)
-                                        #f))
-                                  (lattice->elements target))))))))
+                      (let ((less (select-map (lambda (p) (eq? 'less (scmp (car p) new))) cdr pas))
+                            (more (select-map (lambda (p) (eq? 'more (scmp (car p) new))) cdr pas)))
+                         (zulu-select
+                            (lambda (t)
+                               (if (map-and (lambda (t2) (memq (tcmp t2 t) (__toplevel_cons 'less (__toplevel_cons 'equal ())))) less)
+                                  (map-and (lambda (t2) (memq (tcmp t2 t) (__toplevel_cons 'more (__toplevel_cons 'equal ())))) more)
+                                  #f))
+                            (lattice->elements target))))))
          (maps-rest (lambda (source target pas rest to-1 to-collect)
                       (if (null? rest)
                          (to-1 pas)
@@ -130,7 +113,13 @@
          (count-maps (lambda (source target)
                        (maps-rest source target () (lattice->elements source) (lambda (x) 1) sum)))
          (sum (lambda (lst)
-                (if (null? lst) 0 (+ (car lst) (sum (cdr lst))))))
+                (if (null? lst)
+                   (<change>
+                      0
+                      (+ (car lst) (sum (cdr lst))))
+                   (<change>
+                      (+ (car lst) (sum (cdr lst)))
+                      0))))
          (run (lambda ()
                 (let* ((l2 (make-lattice
                              (__toplevel_cons 'low (__toplevel_cons 'high ()))
@@ -150,9 +139,17 @@
                                       (error "make-lattice base"))))))
                        (l3 (maps l2 l2))
                        (l4 (maps l3 l3)))
-                   (count-maps l2 l2)
-                   (count-maps l3 l3)
-                   (count-maps l2 l3)
+                   (<change>
+                      (count-maps l2 l2)
+                      ((lambda (x) x) (count-maps l2 l2)))
+                   (<change>
+                      (count-maps l3 l3)
+                      (count-maps l2 l3))
+                   (<change>
+                      (count-maps l2 l3)
+                      (count-maps l3 l3))
                    (count-maps l3 l2)
-                   (count-maps l4 l4)))))
+                   (<change>
+                      (count-maps l4 l4)
+                      ((lambda (x) x) (count-maps l4 l4)))))))
    (= (run) 120549))

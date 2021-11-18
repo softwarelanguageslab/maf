@@ -1,113 +1,218 @@
 ; Changes:
-; * removed: 1
-; * added: 3
-; * swaps: 2
+; * removed: 0
+; * added: 5
+; * swaps: 0
 ; * negated predicates: 3
-; * swapped branches: 4
-; * calls to id fun: 6
+; * swapped branches: 3
+; * calls to id fun: 7
 (letrec ((main (lambda args
                  (let ((n (if (null? args) 0 (car args))))
+                    (<change>
+                       ()
+                       __toplevel_cons)
                     (setup-boyer)
-                    ((lambda (rewrites)
-                       (if (number? rewrites)
-                          (if (eq? n 0)
-                             (= rewrites 95024)
-                             (if (eq? n 1)
-                                (= rewrites 591777)
-                                (if (eq? n 2)
-                                   (= rewrites 1813975)
-                                   (if (eq? n 3)
-                                      (= rewrites 5375678)
-                                      (if (eq? n 4)
-                                         (= rewrites 16445406)
-                                         (if (eq? n 5) (= rewrites 51507739) #t))))))
-                          #f))
-                       (test-boyer
-                          (__toplevel_cons
-                             (__toplevel_cons
-                                'x
-                                (__toplevel_cons
-                                   'f
-                                   (__toplevel_cons
-                                      (__toplevel_cons
-                                         'plus
-                                         (__toplevel_cons
-                                            (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                            (__toplevel_cons
-                                               (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons (__toplevel_cons 'zero ()) ())))
-                                               ())))
-                                      ())))
+                    (<change>
+                       ((lambda (rewrites)
+                          (if (number? rewrites)
+                             (if (eq? n 0)
+                                (= rewrites 95024)
+                                (if (eq? n 1)
+                                   (= rewrites 591777)
+                                   (if (eq? n 2)
+                                      (= rewrites 1813975)
+                                      (if (eq? n 3)
+                                         (= rewrites 5375678)
+                                         (if (eq? n 4)
+                                            (= rewrites 16445406)
+                                            (if (eq? n 5) (= rewrites 51507739) #t))))))
+                             #f))
+                          (test-boyer
                              (__toplevel_cons
                                 (__toplevel_cons
-                                   'y
+                                   'x
                                    (__toplevel_cons
                                       'f
                                       (__toplevel_cons
                                          (__toplevel_cons
-                                            'times
+                                            'plus
                                             (__toplevel_cons
-                                               (__toplevel_cons 'times (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                               (__toplevel_cons (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons 'd ()))) ())))
+                                               (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                               (__toplevel_cons
+                                                  (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons (__toplevel_cons 'zero ()) ())))
+                                                  ())))
                                          ())))
                                 (__toplevel_cons
                                    (__toplevel_cons
-                                      'z
+                                      'y
                                       (__toplevel_cons
                                          'f
                                          (__toplevel_cons
                                             (__toplevel_cons
-                                               'reverse
+                                               'times
                                                (__toplevel_cons
-                                                  (__toplevel_cons
-                                                     'append
-                                                     (__toplevel_cons
-                                                        (__toplevel_cons 'append (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                                        (__toplevel_cons (__toplevel_cons 'nil ()) ())))
-                                                  ()))
+                                                  (__toplevel_cons 'times (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                  (__toplevel_cons (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons 'd ()))) ())))
                                             ())))
                                    (__toplevel_cons
                                       (__toplevel_cons
-                                         'u
+                                         'z
                                          (__toplevel_cons
-                                            'equal
+                                            'f
                                             (__toplevel_cons
-                                               (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                               (__toplevel_cons (__toplevel_cons 'difference (__toplevel_cons 'x (__toplevel_cons 'y ()))) ()))))
-                                      (__toplevel_cons
-                                         (__toplevel_cons
-                                            'w
-                                            (__toplevel_cons
-                                               'lessp
                                                (__toplevel_cons
-                                                  (__toplevel_cons 'remainder (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                  'reverse
                                                   (__toplevel_cons
                                                      (__toplevel_cons
-                                                        'member
-                                                        (__toplevel_cons 'a (__toplevel_cons (__toplevel_cons 'length (__toplevel_cons 'b ())) ())))
-                                                     ()))))
-                                         ())))))
-                          (__toplevel_cons
-                             'implies
+                                                        'append
+                                                        (__toplevel_cons
+                                                           (__toplevel_cons 'append (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                           (__toplevel_cons (__toplevel_cons 'nil ()) ())))
+                                                     ()))
+                                               ())))
+                                      (__toplevel_cons
+                                         (__toplevel_cons
+                                            'u
+                                            (__toplevel_cons
+                                               'equal
+                                               (__toplevel_cons
+                                                  (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                  (__toplevel_cons (__toplevel_cons 'difference (__toplevel_cons 'x (__toplevel_cons 'y ()))) ()))))
+                                         (__toplevel_cons
+                                            (__toplevel_cons
+                                               'w
+                                               (__toplevel_cons
+                                                  'lessp
+                                                  (__toplevel_cons
+                                                     (__toplevel_cons 'remainder (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                     (__toplevel_cons
+                                                        (__toplevel_cons
+                                                           'member
+                                                           (__toplevel_cons 'a (__toplevel_cons (__toplevel_cons 'length (__toplevel_cons 'b ())) ())))
+                                                        ()))))
+                                            ())))))
                              (__toplevel_cons
+                                'implies
                                 (__toplevel_cons
-                                   'and
                                    (__toplevel_cons
-                                      (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'y ())))
+                                      'and
+                                      (__toplevel_cons
+                                         (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'y ())))
+                                         (__toplevel_cons
+                                            (__toplevel_cons
+                                               'and
+                                               (__toplevel_cons
+                                                  (__toplevel_cons 'implies (__toplevel_cons 'y (__toplevel_cons 'z ())))
+                                                  (__toplevel_cons
+                                                     (__toplevel_cons
+                                                        'and
+                                                        (__toplevel_cons
+                                                           (__toplevel_cons 'implies (__toplevel_cons 'z (__toplevel_cons 'u ())))
+                                                           (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'u (__toplevel_cons 'w ()))) ())))
+                                                     ())))
+                                            ())))
+                                   (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'w ()))) ())))
+                             4))
+                       ((lambda (x) x)
+                          ((lambda (rewrites)
+                             (if (number? rewrites)
+                                (if (eq? n 0)
+                                   (= rewrites 95024)
+                                   (if (eq? n 1)
+                                      (= rewrites 591777)
+                                      (if (eq? n 2)
+                                         (= rewrites 1813975)
+                                         (if (eq? n 3)
+                                            (= rewrites 5375678)
+                                            (if (eq? n 4)
+                                               (= rewrites 16445406)
+                                               (if (eq? n 5) (= rewrites 51507739) #t))))))
+                                #f))
+                             (test-boyer
+                                (__toplevel_cons
+                                   (__toplevel_cons
+                                      'x
+                                      (__toplevel_cons
+                                         'f
+                                         (__toplevel_cons
+                                            (__toplevel_cons
+                                               'plus
+                                               (__toplevel_cons
+                                                  (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                  (__toplevel_cons
+                                                     (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons (__toplevel_cons 'zero ()) ())))
+                                                     ())))
+                                            ())))
+                                   (__toplevel_cons
+                                      (__toplevel_cons
+                                         'y
+                                         (__toplevel_cons
+                                            'f
+                                            (__toplevel_cons
+                                               (__toplevel_cons
+                                                  'times
+                                                  (__toplevel_cons
+                                                     (__toplevel_cons 'times (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                     (__toplevel_cons (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons 'd ()))) ())))
+                                               ())))
                                       (__toplevel_cons
                                          (__toplevel_cons
-                                            'and
+                                            'z
                                             (__toplevel_cons
-                                               (__toplevel_cons 'implies (__toplevel_cons 'y (__toplevel_cons 'z ())))
+                                               'f
                                                (__toplevel_cons
                                                   (__toplevel_cons
-                                                     'and
+                                                     'reverse
                                                      (__toplevel_cons
-                                                        (__toplevel_cons 'implies (__toplevel_cons 'z (__toplevel_cons 'u ())))
-                                                        (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'u (__toplevel_cons 'w ()))) ())))
+                                                        (__toplevel_cons
+                                                           'append
+                                                           (__toplevel_cons
+                                                              (__toplevel_cons 'append (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                              (__toplevel_cons (__toplevel_cons 'nil ()) ())))
+                                                        ()))
                                                   ())))
-                                         ())))
-                                (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'w ()))) ())))
-                          4)))))
+                                         (__toplevel_cons
+                                            (__toplevel_cons
+                                               'u
+                                               (__toplevel_cons
+                                                  'equal
+                                                  (__toplevel_cons
+                                                     (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                     (__toplevel_cons (__toplevel_cons 'difference (__toplevel_cons 'x (__toplevel_cons 'y ()))) ()))))
+                                            (__toplevel_cons
+                                               (__toplevel_cons
+                                                  'w
+                                                  (__toplevel_cons
+                                                     'lessp
+                                                     (__toplevel_cons
+                                                        (__toplevel_cons 'remainder (__toplevel_cons 'a (__toplevel_cons 'b ())))
+                                                        (__toplevel_cons
+                                                           (__toplevel_cons
+                                                              'member
+                                                              (__toplevel_cons 'a (__toplevel_cons (__toplevel_cons 'length (__toplevel_cons 'b ())) ())))
+                                                           ()))))
+                                               ())))))
+                                (__toplevel_cons
+                                   'implies
+                                   (__toplevel_cons
+                                      (__toplevel_cons
+                                         'and
+                                         (__toplevel_cons
+                                            (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'y ())))
+                                            (__toplevel_cons
+                                               (__toplevel_cons
+                                                  'and
+                                                  (__toplevel_cons
+                                                     (__toplevel_cons 'implies (__toplevel_cons 'y (__toplevel_cons 'z ())))
+                                                     (__toplevel_cons
+                                                        (__toplevel_cons
+                                                           'and
+                                                           (__toplevel_cons
+                                                              (__toplevel_cons 'implies (__toplevel_cons 'z (__toplevel_cons 'u ())))
+                                                              (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'u (__toplevel_cons 'w ()))) ())))
+                                                        ())))
+                                               ())))
+                                      (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'w ()))) ())))
+                                4)))))))
          (setup-boyer (lambda ()
                         #t))
          (test-boyer (lambda ()
@@ -1730,12 +1835,8 @@
                                 (if (null? lst)
                                    #t
                                    (begin
-                                      (<change>
-                                         (add-lemma (car lst))
-                                         (add-lemma-lst (cdr lst)))
-                                      (<change>
-                                         (add-lemma-lst (cdr lst))
-                                         (add-lemma (car lst)))))))
+                                      (add-lemma (car lst))
+                                      (add-lemma-lst (cdr lst))))))
                (add-lemma (lambda (term)
                             (if (if (pair? term) (if (eq? (car term) 'equal) (pair? (cadr term)) #f) #f)
                                (put (car (cadr term)) 'lemmas (cons (translate-term term) (get (car (cadr term)) 'lemmas)))
@@ -1746,12 +1847,8 @@
                                     (cons (symbol->symbol-record (car term)) (translate-args (cdr term))))))
                (translate-args (lambda (lst)
                                  (if (null? lst)
-                                    (<change>
-                                       ()
-                                       (cons (translate-term (car lst)) (translate-args (cdr lst))))
-                                    (<change>
-                                       (cons (translate-term (car lst)) (translate-args (cdr lst)))
-                                       ()))))
+                                    ()
+                                    (cons (translate-term (car lst)) (translate-args (cdr lst))))))
                (untranslate-term (lambda (term)
                                    (if (<change> (not (pair? term)) (not (not (pair? term))))
                                       term
@@ -1769,44 +1866,38 @@
                                                  r)))))
                (*symbol-records-alist* ())
                (make-symbol-record (lambda (sym)
-                                     (<change>
-                                        (vector sym ())
-                                        ((lambda (x) x) (vector sym ())))))
+                                     (vector sym ())))
                (put-lemmas! (lambda (symbol-record lemmas)
                               (vector-set! symbol-record 1 lemmas)))
                (get-lemmas (lambda (symbol-record)
                              (vector-ref symbol-record 1)))
                (get-name (lambda (symbol-record)
-                           (<change>
-                              (vector-ref symbol-record 0)
-                              ((lambda (x) x) (vector-ref symbol-record 0)))))
+                           (vector-ref symbol-record 0)))
                (symbol-record-equal? (lambda (r1 r2)
-                                       (eq? r1 r2)))
+                                       (<change>
+                                          (eq? r1 r2)
+                                          ((lambda (x) x) (eq? r1 r2)))))
                (test (lambda (alist term n)
                        (let ((term (apply-subst
                                      (translate-alist alist)
                                      (translate-term
                                         (letrec ((__do_loop (lambda (term n)
+                                                              (<change>
+                                                                 ()
+                                                                 __do_loop)
                                                               (if (zero? n)
-                                                                 (<change>
-                                                                    term
-                                                                    (__do_loop (list 'or term (__toplevel_cons 'f ())) (- n 1)))
-                                                                 (<change>
-                                                                    (__do_loop (list 'or term (__toplevel_cons 'f ())) (- n 1))
-                                                                    term)))))
-                                           (__do_loop term n))))))
+                                                                 term
+                                                                 (__do_loop (list 'or term (__toplevel_cons 'f ())) (- n 1))))))
+                                           (<change>
+                                              (__do_loop term n)
+                                              ((lambda (x) x) (__do_loop term n))))))))
                           (<change>
                              (tautp term)
                              ((lambda (x) x) (tautp term))))))
                (translate-alist (lambda (alist)
-                                  (<change>
-                                     (if (null? alist)
-                                        ()
-                                        (cons (cons (caar alist) (translate-term (cdar alist))) (translate-alist (cdr alist))))
-                                     ((lambda (x) x)
-                                        (if (null? alist)
-                                           ()
-                                           (cons (cons (caar alist) (translate-term (cdar alist))) (translate-alist (cdr alist))))))))
+                                  (if (null? alist)
+                                     ()
+                                     (cons (cons (caar alist) (translate-term (cdar alist))) (translate-alist (cdr alist))))))
                (apply-subst (lambda (alist term)
                               (if (not (pair? term))
                                  (let ((temp-temp (assq term alist)))
@@ -1819,38 +1910,21 @@
                (tautp (lambda (x)
                         (tautologyp (rewrite x) () ())))
                (tautologyp (lambda (x true-lst false-lst)
-                             (<change>
-                                (if (truep x true-lst)
-                                   #t
-                                   (if (falsep x false-lst)
+                             (if (truep x true-lst)
+                                #t
+                                (if (falsep x false-lst)
+                                   #f
+                                   (if (not (pair? x))
                                       #f
-                                      (if (not (pair? x))
-                                         #f
-                                         (if (eq? (car x) if-constructor)
-                                            (if (truep (cadr x) true-lst)
-                                               (tautologyp (caddr x) true-lst false-lst)
-                                               (if (falsep (cadr x) false-lst)
-                                                  (tautologyp (cadddr x) true-lst false-lst)
-                                                  (if (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst)
-                                                     (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
-                                                     #f)))
-                                            #f))))
-                                ((lambda (x) x)
-                                   (if (truep x true-lst)
-                                      #t
-                                      (if (falsep x false-lst)
-                                         #f
-                                         (if (not (pair? x))
-                                            #f
-                                            (if (eq? (car x) if-constructor)
-                                               (if (truep (cadr x) true-lst)
-                                                  (tautologyp (caddr x) true-lst false-lst)
-                                                  (if (falsep (cadr x) false-lst)
-                                                     (tautologyp (cadddr x) true-lst false-lst)
-                                                     (if (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst)
-                                                        (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
-                                                        #f)))
-                                               #f))))))))
+                                      (if (eq? (car x) if-constructor)
+                                         (if (truep (cadr x) true-lst)
+                                            (tautologyp (caddr x) true-lst false-lst)
+                                            (if (falsep (cadr x) false-lst)
+                                               (tautologyp (cadddr x) true-lst false-lst)
+                                               (if (tautologyp (caddr x) (cons (cadr x) true-lst) false-lst)
+                                                  (tautologyp (cadddr x) true-lst (cons (cadr x) false-lst))
+                                                  #f)))
+                                         #f))))))
                (if-constructor '*)
                (rewrite-count 0)
                (scons (lambda (x y original)
@@ -1859,24 +1933,21 @@
                            (cons x y))))
                (rewrite (lambda (term)
                           (set! rewrite-count (+ rewrite-count 1))
-                          (<change>
-                             ()
-                             (display cdr))
-                          (<change>
-                             ()
-                             car)
                           (if (not (pair? term))
-                             (<change>
-                                term
-                                (rewrite-with-lemmas (scons (car term) (rewrite-args (cdr term)) term) (get-lemmas (car term))))
-                             (<change>
-                                (rewrite-with-lemmas (scons (car term) (rewrite-args (cdr term)) term) (get-lemmas (car term)))
-                                term))))
+                             term
+                             (rewrite-with-lemmas (scons (car term) (rewrite-args (cdr term)) term) (get-lemmas (car term))))))
                (rewrite-args (lambda (lst)
                                (if (null? lst)
-                                  ()
-                                  (scons (rewrite (car lst)) (rewrite-args (cdr lst)) lst))))
+                                  (<change>
+                                     ()
+                                     (scons (rewrite (car lst)) (rewrite-args (cdr lst)) lst))
+                                  (<change>
+                                     (scons (rewrite (car lst)) (rewrite-args (cdr lst)) lst)
+                                     ()))))
                (rewrite-with-lemmas (lambda (term lst)
+                                      (<change>
+                                         ()
+                                         lst)
                                       (if (null? lst)
                                          term
                                          (if (one-way-unify term (cadr (car lst)))
@@ -1884,35 +1955,49 @@
                                             (rewrite-with-lemmas term (cdr lst))))))
                (unify-subst '*)
                (one-way-unify (lambda (term1 term2)
-                                (<change>
-                                   ()
-                                   term1)
                                 (begin
                                    (set! unify-subst ())
                                    (one-way-unify1 term1 term2))))
                (one-way-unify1 (lambda (term1 term2)
+                                 (<change>
+                                    ()
+                                    temp-temp)
                                  (if (not (pair? term2))
                                     (let ((temp-temp (assq term2 unify-subst)))
-                                       (if temp-temp
-                                          (term-equal? term1 (cdr temp-temp))
-                                          (if (number? term2)
-                                             (equal? term1 term2)
-                                             (begin
-                                                (<change>
+                                       (<change>
+                                          (if temp-temp
+                                             (term-equal? term1 (cdr temp-temp))
+                                             (if (number? term2)
+                                                (equal? term1 term2)
+                                                (begin
                                                    (set! unify-subst (cons (cons term2 term1) unify-subst))
-                                                   ())
-                                                #t))))
-                                    (if (<change> (not (pair? term1)) (not (not (pair? term1))))
+                                                   #t)))
+                                          ((lambda (x) x)
+                                             (if temp-temp
+                                                (term-equal? term1 (cdr temp-temp))
+                                                (if (number? term2)
+                                                   (equal? term1 term2)
+                                                   (begin
+                                                      (set! unify-subst (cons (cons term2 term1) unify-subst))
+                                                      (<change>
+                                                         ()
+                                                         (display term2))
+                                                      #t))))))
+                                    (if (not (pair? term1))
                                        #f
                                        (if (eq? (car term1) (car term2))
-                                          (one-way-unify1-lst (cdr term1) (cdr term2))
-                                          #f)))))
+                                          (<change>
+                                             (one-way-unify1-lst (cdr term1) (cdr term2))
+                                             #f)
+                                          (<change>
+                                             #f
+                                             (one-way-unify1-lst (cdr term1) (cdr term2))))))))
                (one-way-unify1-lst (lambda (lst1 lst2)
                                      (if (null? lst1)
                                         (null? lst2)
                                         (if (null? lst2)
                                            #f
-                                           (if (one-way-unify1 (car lst1) (car lst2))
+                                           (if (<change> (one-way-unify1 (car lst1) (car lst2)) (not (one-way-unify1 (car lst1) (car lst2))))
                                               (one-way-unify1-lst (cdr lst1) (cdr lst2))
                                               #f)))))
                (falsep (lambda (x lst)
@@ -1920,13 +2005,7 @@
                             (if __or_res __or_res (term-member? x lst)))))
                (truep (lambda (x lst)
                         (let ((__or_res (term-equal? x true-term)))
-                           (if __or_res
-                              (<change>
-                                 __or_res
-                                 (term-member? x lst))
-                              (<change>
-                                 (term-member? x lst)
-                                 __or_res)))))
+                           (if __or_res __or_res (term-member? x lst)))))
                (false-term '*)
                (true-term '*)
                (trans-of-implies (lambda (n)
@@ -1944,13 +2023,26 @@
                                     #f)
                                  (equal? x y))))
                (term-args-equal? (lambda (lst1 lst2)
-                                   (if (null? lst1)
-                                      (null? lst2)
-                                      (if (null? lst2)
-                                         #f
-                                         (if (term-equal? (car lst1) (car lst2))
-                                            (term-args-equal? (cdr lst1) (cdr lst2))
-                                            #f)))))
+                                   (<change>
+                                      (if (null? lst1)
+                                         (null? lst2)
+                                         (if (null? lst2)
+                                            #f
+                                            (if (term-equal? (car lst1) (car lst2))
+                                               (term-args-equal? (cdr lst1) (cdr lst2))
+                                               #f)))
+                                      ((lambda (x) x)
+                                         (if (null? lst1)
+                                            (null? lst2)
+                                            (if (null? lst2)
+                                               #f
+                                               (if (term-equal? (car lst1) (car lst2))
+                                                  (<change>
+                                                     (term-args-equal? (cdr lst1) (cdr lst2))
+                                                     #f)
+                                                  (<change>
+                                                     #f
+                                                     (term-args-equal? (cdr lst1) (cdr lst2))))))))))
                (term-member? (lambda (x lst)
                                (if (null? lst)
                                   #f
@@ -1972,12 +2064,7 @@
                                  (set! true-term (translate-term (__toplevel_cons 't ())))
                                  (setup)))))
          (set! test-boyer (lambda (alist term n)
-                          (<change>
-                             (set! rewrite-count 0)
-                             (let ((answer (test alist term n)))
-                                (if answer rewrite-count #f)))
-                          (<change>
-                             (let ((answer (test alist term n)))
-                                (if answer rewrite-count #f))
-                             (set! rewrite-count 0))))))
+                          (set! rewrite-count 0)
+                          (let ((answer (test alist term n)))
+                             (if answer rewrite-count #f))))))
    (main 4))

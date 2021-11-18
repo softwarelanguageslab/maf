@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
-; * swaps: 1
+; * added: 1
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 2
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
@@ -31,67 +31,60 @@
                           (aux r)
                           #t)))
          (copy-ring (lambda (r)
-                      (letrec ((last ())
-                               (aux (lambda (l)
-                                      (if (eq? (cdr l) r)
-                                         (begin
-                                            (set! last (cons (car l) ()))
-                                            last)
-                                         (cons (car l) (aux (cdr l)))))))
-                         (let ((first (aux r)))
-                            (set-cdr! last first)
-                            first))))
+                      (<change>
+                         (letrec ((last ())
+                                  (aux (lambda (l)
+                                         (if (eq? (cdr l) r)
+                                            (begin
+                                               (set! last (cons (car l) ()))
+                                               last)
+                                            (cons (car l) (aux (cdr l)))))))
+                            (let ((first (aux r)))
+                               (set-cdr! last first)
+                               first))
+                         ((lambda (x) x)
+                            (letrec ((last ())
+                                     (aux (lambda (l)
+                                            (<change>
+                                               (if (eq? (cdr l) r)
+                                                  (begin
+                                                     (set! last (cons (car l) ()))
+                                                     last)
+                                                  (cons (car l) (aux (cdr l))))
+                                               ((lambda (x) x)
+                                                  (if (eq? (cdr l) r)
+                                                     (begin
+                                                        (set! last (cons (car l) ()))
+                                                        last)
+                                                     (cons (car l) (aux (cdr l)))))))))
+                               (let ((first (aux r)))
+                                  (set-cdr! last first)
+                                  (<change>
+                                     ()
+                                     (set-cdr! last first))
+                                  first))))))
          (right-rotate (lambda (r)
-                         (<change>
-                            ()
-                            eq?)
                          (letrec ((iter (lambda (l)
-                                          (<change>
-                                             ()
-                                             (display eq?))
                                           (if (eq? (cdr l) r) l (iter (cdr l))))))
                             (iter r))))
          (Josephus (lambda (r n)
-                     (<change>
-                        (letrec ((remove-nth! (lambda (l n)
-                                                (if (<= n 2)
-                                                   (begin
-                                                      (set-cdr! l (cddr l))
-                                                      (cdr l))
-                                                   (remove-nth! (cdr l) (- n 1)))))
-                                 (iter (lambda (l)
-                                         (print-ring l)
-                                         (if (eq? l (cdr l))
-                                            (car l)
-                                            (iter (remove-nth! l n))))))
-                           (if (= n 1)
-                              (car (right-rotate r))
-                              (iter (copy-ring r))))
-                        ((lambda (x) x)
-                           (letrec ((remove-nth! (lambda (l n)
-                                                   (<change>
-                                                      ()
-                                                      l)
-                                                   (if (<= n 2)
-                                                      (begin
-                                                         (set-cdr! l (cddr l))
-                                                         (cdr l))
-                                                      (remove-nth! (cdr l) (- n 1)))))
-                                    (iter (lambda (l)
-                                            (print-ring l)
-                                            (if (eq? l (cdr l))
-                                               (car l)
-                                               (iter (remove-nth! l n))))))
-                              (if (= n 1)
-                                 (car (right-rotate r))
-                                 (iter (copy-ring r))))))))
+                     (letrec ((remove-nth! (lambda (l n)
+                                             (if (<= n 2)
+                                                (begin
+                                                   (set-cdr! l (cddr l))
+                                                   (cdr l))
+                                                (remove-nth! (cdr l) (- n 1)))))
+                              (iter (lambda (l)
+                                      (print-ring l)
+                                      (if (eq? l (cdr l))
+                                         (car l)
+                                         (iter (remove-nth! l n))))))
+                        (if (= n 1)
+                           (car (right-rotate r))
+                           (iter (copy-ring r))))))
          (ring (make-ring 5)))
-   (<change>
-      (Josephus ring 5)
-      (print-ring ring))
-   (<change>
-      (print-ring ring)
-      (Josephus ring 5))
+   (Josephus ring 5)
+   (print-ring ring)
    (equal?
       result
       (__toplevel_cons

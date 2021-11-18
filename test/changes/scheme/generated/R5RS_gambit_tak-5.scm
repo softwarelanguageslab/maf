@@ -4,7 +4,7 @@
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((tak (lambda (x y z)
                 (if (not (< y x))
                    z
@@ -13,6 +13,4 @@
    (<change>
       ()
       res)
-   (<change>
-      res
-      ((lambda (x) x) res)))
+   res)

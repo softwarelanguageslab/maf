@@ -1,24 +1,18 @@
 ; Changes:
-; * removed: 1
-; * added: 5
-; * swaps: 1
+; * removed: 0
+; * added: 0
+; * swaps: 0
 ; * negated predicates: 1
-; * swapped branches: 1
-; * calls to id fun: 7
+; * swapped branches: 0
+; * calls to id fun: 5
 (letrec ((map2 (lambda (f l1 l2)
                  (if (let ((__or_res (null? l1))) (if __or_res __or_res (null? l2)))
                     ()
                     (if (if (pair? l1) (pair? l2) #f)
-                       (<change>
-                          (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2)))
-                          (error "Cannot map2 over a non-list"))
-                       (<change>
-                          (error "Cannot map2 over a non-list")
-                          (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2))))))))
+                       (cons (f (car l1) (car l2)) (map2 f (cdr l1) (cdr l2)))
+                       (error "Cannot map2 over a non-list")))))
          (chez-box (lambda (x)
-                     (<change>
-                        (cons x ())
-                        ((lambda (x) x) (cons x ())))))
+                     (cons x ())))
          (chez-unbox (lambda (x)
                        (car x)))
          (chez-set-box! (lambda (x y)
@@ -36,43 +30,78 @@
                   (let* ((first-row (first-row-perm 'now))
                          (number-of-cols (length first-row))
                          (make-row->func (lambda (if-equal if-different)
-                                           (lambda (row)
-                                              (let ((vec (make-vector number-of-cols 0)))
-                                                 (letrec ((__do_loop (lambda (i first row)
-                                                                       (if (<change> (= i number-of-cols) (not (= i number-of-cols)))
-                                                                          #f
-                                                                          (begin
-                                                                             (<change>
+                                           (<change>
+                                              (lambda (row)
+                                                 (let ((vec (make-vector number-of-cols 0)))
+                                                    (letrec ((__do_loop (lambda (i first row)
+                                                                          (if (= i number-of-cols)
+                                                                             #f
+                                                                             (begin
                                                                                 (vector-set! vec i (if (= (car first) (car row)) if-equal if-different))
-                                                                                ())
-                                                                             (__do_loop (+ i 1) (cdr first) (cdr row)))))))
-                                                    (__do_loop 0 first-row row))
-                                                 (lambda (i)
-                                                    (vector-ref vec i))))))
+                                                                                (__do_loop (+ i 1) (cdr first) (cdr row)))))))
+                                                       (__do_loop 0 first-row row))
+                                                    (lambda (i)
+                                                       (vector-ref vec i))))
+                                              ((lambda (x) x)
+                                                 (lambda (row)
+                                                    (let ((vec (make-vector number-of-cols 0)))
+                                                       (letrec ((__do_loop (lambda (i first row)
+                                                                             (if (= i number-of-cols)
+                                                                                #f
+                                                                                (begin
+                                                                                   (vector-set!
+                                                                                      vec
+                                                                                      i
+                                                                                      (if (<change> (= (car first) (car row)) (not (= (car first) (car row))))
+                                                                                         if-equal
+                                                                                         if-different))
+                                                                                   (__do_loop (+ i 1) (cdr first) (cdr row)))))))
+                                                          (__do_loop 0 first-row row))
+                                                       (lambda (i)
+                                                          (<change>
+                                                             (vector-ref vec i)
+                                                             ((lambda (x) x) (vector-ref vec i))))))))))
                          (mat (cdr mat)))
                      (zebra (first-row-perm 'child) (make-row->func 1 -1) (make-row->func -1 1) mat number-of-cols))))
          (zebra (lambda (row-perm row->func+ row->func- mat number-of-cols)
-                  ((letrec ((_-*- (lambda (row-perm mat partitions)
-                                   (let ((__or_res (not row-perm)))
-                                      (if __or_res
-                                         __or_res
-                                         (if (zulu (car mat) (row->func+ (row-perm 'now)) partitions (lambda (new-partitions) (_-*- (row-perm 'child) (cdr mat) new-partitions)))
-                                            (if (zulu (car mat) (row->func- (row-perm 'now)) partitions (lambda (new-partitions) (_-*- (row-perm 'child) (cdr mat) new-partitions)))
-                                               (let ((new-row-perm (row-perm 'brother)))
-                                                  (let ((__or_res (not new-row-perm)))
-                                                     (if __or_res
-                                                        __or_res
-                                                        (_-*- new-row-perm mat partitions))))
-                                               #f)
-                                            #f))))))
-                     _-*-)
-                     row-perm
-                     mat
-                     (list (miota number-of-cols)))))
+                  (<change>
+                     ((letrec ((_-*- (lambda (row-perm mat partitions)
+                                      (let ((__or_res (not row-perm)))
+                                         (if __or_res
+                                            __or_res
+                                            (if (zulu (car mat) (row->func+ (row-perm 'now)) partitions (lambda (new-partitions) (_-*- (row-perm 'child) (cdr mat) new-partitions)))
+                                               (if (zulu (car mat) (row->func- (row-perm 'now)) partitions (lambda (new-partitions) (_-*- (row-perm 'child) (cdr mat) new-partitions)))
+                                                  (let ((new-row-perm (row-perm 'brother)))
+                                                     (let ((__or_res (not new-row-perm)))
+                                                        (if __or_res
+                                                           __or_res
+                                                           (_-*- new-row-perm mat partitions))))
+                                                  #f)
+                                               #f))))))
+                        _-*-)
+                        row-perm
+                        mat
+                        (list (miota number-of-cols)))
+                     ((lambda (x) x)
+                        ((letrec ((_-*- (lambda (row-perm mat partitions)
+                                         (let ((__or_res (not row-perm)))
+                                            (if __or_res
+                                               __or_res
+                                               (if (zulu (car mat) (row->func+ (row-perm 'now)) partitions (lambda (new-partitions) (_-*- (row-perm 'child) (cdr mat) new-partitions)))
+                                                  (if (zulu (car mat) (row->func- (row-perm 'now)) partitions (lambda (new-partitions) (_-*- (row-perm 'child) (cdr mat) new-partitions)))
+                                                     (let ((new-row-perm (row-perm 'brother)))
+                                                        (let ((__or_res (not new-row-perm)))
+                                                           (if __or_res
+                                                              __or_res
+                                                              (_-*- new-row-perm mat partitions))))
+                                                     #f)
+                                                  #f))))))
+                           _-*-)
+                           row-perm
+                           mat
+                           (list (miota number-of-cols)))))))
          (zulu (let ((cons-if-not-null (lambda (lhs rhs)
-                                        (<change>
-                                           (if (null? lhs) rhs (cons lhs rhs))
-                                           ((lambda (x) x) (if (null? lhs) rhs (cons lhs rhs)))))))
+                                        (if (null? lhs) rhs (cons lhs rhs)))))
                  (lambda (old-row new-row-func partitions equal-cont)
                     ((letrec ((_-*- (lambda (p-in old-row rev-p-out)
                                      ((letrec ((_-split- (lambda (partition old-row plus minus)
@@ -145,33 +174,15 @@
          (miota (lambda (len)
                   ((letrec ((_-*- (lambda (i) (if (= i len) () (cons i (_-*- (+ i 1))))))) _-*-) 0)))
          (proc->vector (lambda (size proc)
-                         (<change>
-                            (let ((res (make-vector size 0)))
-                               (letrec ((__do_loop (lambda (i)
-                                                     (if (= i size)
-                                                        #f
-                                                        (begin
-                                                           (vector-set! res i (proc i))
-                                                           (__do_loop (+ i 1)))))))
-                                  (__do_loop 0))
-                               res)
-                            ((lambda (x) x)
-                               (let ((res (make-vector size 0)))
-                                  (letrec ((__do_loop (lambda (i)
-                                                        (if (= i size)
-                                                           #f
-                                                           (begin
-                                                              (<change>
-                                                                 (vector-set! res i (proc i))
-                                                                 (__do_loop (+ i 1)))
-                                                              (<change>
-                                                                 (__do_loop (+ i 1))
-                                                                 (vector-set! res i (proc i))))))))
-                                     (<change>
-                                        ()
-                                        __do_loop)
-                                     (__do_loop 0))
-                                  res)))))
+                         (let ((res (make-vector size 0)))
+                            (letrec ((__do_loop (lambda (i)
+                                                  (if (= i size)
+                                                     #f
+                                                     (begin
+                                                        (vector-set! res i (proc i))
+                                                        (__do_loop (+ i 1)))))))
+                               (__do_loop 0))
+                            res)))
          (make-modular (lambda (modulus)
                          (let* ((reduce (lambda (x)
                                           (modulo x modulus)))
@@ -180,9 +191,7 @@
                                 (coef-+ (lambda (x y)
                                           (reduce (+ x y))))
                                 (coef-negate (lambda (x)
-                                               (<change>
-                                                  (reduce (- x))
-                                                  ((lambda (x) x) (reduce (- x))))))
+                                               (reduce (- x))))
                                 (coef-* (lambda (x y)
                                           (reduce (* x y))))
                                 (coef-recip (let ((inverses (proc->vector
@@ -258,43 +267,69 @@
                                   _-*-)
                                   mat))))
          (make-in-row-space? (lambda (coef-zero coef-one coef-zero? coef-+ coef-negate coef-* coef-recip)
-                               (<change>
-                                  ()
-                                  coef-*)
                                (let ((row-reduce (make-row-reduce coef-zero coef-one coef-zero? coef-+ coef-negate coef-* coef-recip)))
-                                  (lambda (mat)
-                                     (<change>
-                                        ()
-                                        r-first)
-                                     (let ((mat (row-reduce mat)))
-                                        (lambda (row)
-                                           ((letrec ((_-*- (lambda (row mat)
-                                                            (if (null? row)
-                                                               #t
-                                                               (let ((r-first (car row))
-                                                                     (r-rest (cdr row)))
-                                                                  (if (coef-zero? r-first)
-                                                                     (_-*-
-                                                                        r-rest
-                                                                        (map
-                                                                           cdr
-                                                                           (if (let ((__or_res (null? mat))) (if __or_res __or_res (coef-zero? (caar mat))))
-                                                                              mat
-                                                                              (cdr mat))))
-                                                                     (if (null? mat)
-                                                                        #f
-                                                                        (let* ((zap-row (car mat))
-                                                                               (z-first (car zap-row))
-                                                                               (z-rest (cdr zap-row))
-                                                                               (mat (cdr mat)))
-                                                                           (if (coef-zero? z-first)
+                                  (<change>
+                                     (lambda (mat)
+                                        (let ((mat (row-reduce mat)))
+                                           (lambda (row)
+                                              ((letrec ((_-*- (lambda (row mat)
+                                                               (if (null? row)
+                                                                  #t
+                                                                  (let ((r-first (car row))
+                                                                        (r-rest (cdr row)))
+                                                                     (if (coef-zero? r-first)
+                                                                        (_-*-
+                                                                           r-rest
+                                                                           (map
+                                                                              cdr
+                                                                              (if (let ((__or_res (null? mat))) (if __or_res __or_res (coef-zero? (caar mat))))
+                                                                                 mat
+                                                                                 (cdr mat))))
+                                                                        (if (null? mat)
+                                                                           #f
+                                                                           (let* ((zap-row (car mat))
+                                                                                  (z-first (car zap-row))
+                                                                                  (z-rest (cdr zap-row))
+                                                                                  (mat (cdr mat)))
+                                                                              (if (coef-zero? z-first)
+                                                                                 #f
+                                                                                 (_-*-
+                                                                                    (map2 (let ((mult (coef-negate r-first))) (lambda (r z) (coef-+ r (coef-* mult z)))) r-rest z-rest)
+                                                                                    (map cdr mat)))))))))))
+                                                 _-*-)
+                                                 row
+                                                 mat))))
+                                     ((lambda (x) x)
+                                        (lambda (mat)
+                                           (let ((mat (row-reduce mat)))
+                                              (lambda (row)
+                                                 ((letrec ((_-*- (lambda (row mat)
+                                                                  (if (null? row)
+                                                                     #t
+                                                                     (let ((r-first (car row))
+                                                                           (r-rest (cdr row)))
+                                                                        (if (coef-zero? r-first)
+                                                                           (_-*-
+                                                                              r-rest
+                                                                              (map
+                                                                                 cdr
+                                                                                 (if (let ((__or_res (null? mat))) (if __or_res __or_res (coef-zero? (caar mat))))
+                                                                                    mat
+                                                                                    (cdr mat))))
+                                                                           (if (null? mat)
                                                                               #f
-                                                                              (_-*-
-                                                                                 (map2 (let ((mult (coef-negate r-first))) (lambda (r z) (coef-+ r (coef-* mult z)))) r-rest z-rest)
-                                                                                 (map cdr mat)))))))))))
-                                              _-*-)
-                                              row
-                                              mat)))))))
+                                                                              (let* ((zap-row (car mat))
+                                                                                     (z-first (car zap-row))
+                                                                                     (z-rest (cdr zap-row))
+                                                                                     (mat (cdr mat)))
+                                                                                 (if (coef-zero? z-first)
+                                                                                    #f
+                                                                                    (_-*-
+                                                                                       (map2 (let ((mult (coef-negate r-first))) (lambda (r z) (coef-+ r (coef-* mult z)))) r-rest z-rest)
+                                                                                       (map cdr mat)))))))))))
+                                                    _-*-)
+                                                    row
+                                                    mat)))))))))
          (make-modular-row-reduce (lambda (modulus)
                                     ((make-modular modulus) make-row-reduce)))
          (make-modular-in-row-space? (lambda (modulus)
@@ -316,9 +351,6 @@
                                                                                    #f)))))))))
                                                    _-*-)
                                                    primes))))
-                          (<change>
-                             ()
-                             (display (is-next-prime? trial)))
                           (if (> 2 bound)
                              2
                              ((letrec ((_-*- (lambda (trial)
@@ -342,50 +374,22 @@
          (go (lambda (number-of-cols inv-size folder state)
                (let* ((in-row-space? (make-modular-in-row-space? (find-prime (det-upper-bound inv-size))))
                       (make-tester (lambda (mat)
-                                     (<change>
-                                        (let ((tests (let ((old-mat (cdr mat))
-                                                          (new-row (car mat)))
-                                                       (fold-over-subs-of-size
-                                                          old-mat
-                                                          (- inv-size 2)
-                                                          (lambda (sub tests)
-                                                             (cons (in-row-space? (cons new-row sub)) tests))
-                                                          ()))))
-                                           (lambda (row)
-                                              ((letrec ((_-*- (lambda (tests)
-                                                               (if (not (null? tests))
-                                                                  (let ((__or_res ((car tests) row)))
-                                                                     (if __or_res __or_res (_-*- (cdr tests))))
-                                                                  #f))))
-                                                 _-*-)
-                                                 tests)))
-                                        ((lambda (x) x)
-                                           (let ((tests (let ((old-mat (cdr mat))
-                                                             (new-row (car mat)))
-                                                          (fold-over-subs-of-size
-                                                             old-mat
-                                                             (- inv-size 2)
-                                                             (lambda (sub tests)
-                                                                (cons (in-row-space? (cons new-row sub)) tests))
-                                                             ()))))
-                                              (<change>
-                                                 ()
-                                                 (display
-                                                    ((letrec ((_-*- (lambda (tests)
-                                                                     (if (not (null? tests))
-                                                                        (let ((__or_res ((car tests) row)))
-                                                                           (if __or_res __or_res (_-*- (cdr tests))))
-                                                                        #f))))
-                                                       _-*-)
-                                                       tests)))
-                                              (lambda (row)
-                                                 ((letrec ((_-*- (lambda (tests)
-                                                                  (if (not (null? tests))
-                                                                     (let ((__or_res ((car tests) row)))
-                                                                        (if __or_res __or_res (_-*- (cdr tests))))
-                                                                     #f))))
-                                                    _-*-)
-                                                    tests)))))))
+                                     (let ((tests (let ((old-mat (cdr mat))
+                                                       (new-row (car mat)))
+                                                    (fold-over-subs-of-size
+                                                       old-mat
+                                                       (- inv-size 2)
+                                                       (lambda (sub tests)
+                                                          (cons (in-row-space? (cons new-row sub)) tests))
+                                                       ()))))
+                                        (lambda (row)
+                                           ((letrec ((_-*- (lambda (tests)
+                                                            (if (not (null? tests))
+                                                               (let ((__or_res ((car tests) row)))
+                                                                  (if __or_res __or_res (_-*- (cdr tests))))
+                                                               #f))))
+                                              _-*-)
+                                              tests)))))
                       (all-rows (fold
                                   (fold-over-rows (- number-of-cols 1) cons ())
                                   (lambda (row rows)
@@ -427,36 +431,24 @@
                                   (blist (cddr bsize.blen.blist)))
                                (if (= size bsize)
                                   (let ((blen (+ blen 1)))
-                                     (<change>
-                                        (cons
-                                           bsize
-                                           (cons blen (if (< blen 3000) (cons mat blist) (if (= blen 3000) (cons "..." blist) blist))))
-                                        ((lambda (x) x)
-                                           (cons
-                                              bsize
-                                              (cons blen (if (< blen 3000) (cons mat blist) (if (= blen 3000) (cons "..." blist) blist)))))))
+                                     (cons
+                                        bsize
+                                        (cons blen (if (< blen 3000) (cons mat blist) (if (= blen 3000) (cons "..." blist) blist)))))
                                   (list size 1 mat)))))))
          (really-go (lambda (number-of-cols inv-size)
-                      (cddr (go number-of-cols inv-size go-folder (list -1 -1)))))
+                      (<change>
+                         (cddr (go number-of-cols inv-size go-folder (list -1 -1)))
+                         ((lambda (x) x) (cddr (go number-of-cols inv-size go-folder (list -1 -1)))))))
          (remove-in-order (lambda (remove? lst)
                             (reverse (fold lst (lambda (e lst) (if (remove? e) lst (cons e lst))) ()))))
          (fold-over-rows (lambda (number-of-cols folder state)
-                           (<change>
-                              (if (zero? number-of-cols)
-                                 (folder () state)
-                                 (fold-over-rows
-                                    (- number-of-cols 1)
-                                    (lambda (tail state)
-                                       (folder (cons -1 tail) state))
-                                    (fold-over-rows (- number-of-cols 1) (lambda (tail state) (folder (cons 1 tail) state)) state)))
-                              ((lambda (x) x)
-                                 (if (zero? number-of-cols)
-                                    (folder () state)
-                                    (fold-over-rows
-                                       (- number-of-cols 1)
-                                       (lambda (tail state)
-                                          (folder (cons -1 tail) state))
-                                       (fold-over-rows (- number-of-cols 1) (lambda (tail state) (folder (cons 1 tail) state)) state)))))))
+                           (if (zero? number-of-cols)
+                              (folder () state)
+                              (fold-over-rows
+                                 (- number-of-cols 1)
+                                 (lambda (tail state)
+                                    (folder (cons -1 tail) state))
+                                 (fold-over-rows (- number-of-cols 1) (lambda (tail state) (folder (cons 1 tail) state)) state)))))
          (fold-over-subs-of-size (lambda (universe size folder state)
                                    (let ((usize (length universe)))
                                       (if (< usize size)

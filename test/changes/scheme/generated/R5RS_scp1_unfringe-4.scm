@@ -1,8 +1,8 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 1
 ; * swapped branches: 0
 ; * calls to id fun: 0
 (letrec ((unfringe-1 (lambda (l)
@@ -15,12 +15,9 @@
                        (letrec ((pair (lambda (l)
                                         (if (null? l)
                                            ()
-                                           (if (null? (cdr l))
+                                           (if (<change> (null? (cdr l)) (not (null? (cdr l))))
                                               (list l)
                                               (cons (list (car l) (cadr l)) (pair (cddr l))))))))
-                          (<change>
-                             ()
-                             (display __or_res))
                           ((letrec ((loop (lambda (l)
                                            (if (let ((__or_res (null? l))) (if __or_res __or_res (null? (cdr l))))
                                               l

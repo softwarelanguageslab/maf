@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 1
+; * added: 0
 ; * swaps: 0
-; * negated predicates: 0
+; * negated predicates: 2
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((boom (__toplevel_cons
                  (__toplevel_cons 'blad (__toplevel_cons (__toplevel_cons 'appel 'golden) ()))
                  (__toplevel_cons
@@ -17,9 +17,7 @@
          (blad? (lambda (boom)
                   (eq? boom 'blad)))
          (appel? (lambda (boom)
-                   (<change>
-                      (if (pair? boom) (eq? (car boom) 'appel) #f)
-                      ((lambda (x) x) (if (pair? boom) (eq? (car boom) 'appel) #f)))))
+                   (if (pair? boom) (eq? (car boom) 'appel) #f)))
          (type (lambda (appel)
                  (cdr appel)))
          (leafs (lambda (boom)
@@ -47,7 +45,7 @@
          (apple-types (lambda (boom)
                         (if (null? boom)
                            ()
-                           (if (blad? boom)
+                           (if (<change> (blad? boom) (not (blad? boom)))
                               ()
                               (if (appel? boom)
                                  (list (type boom))
@@ -63,9 +61,6 @@
                                     (bewerk-boom (car boom) doe-blad doe-appel combiner init)
                                     (bewerk-boom (cdr boom) doe-blad doe-appel combiner init)))))))
          (leafs-dmv-bewerk (lambda (boom)
-                             (<change>
-                                ()
-                                boom)
                              (bewerk-boom boom (lambda (blad) 1) (lambda (appel) 0) + 0)))
          (all-apples-dmv-bewerk (lambda (boom)
                                   (bewerk-boom boom (lambda (blad) ()) (lambda (appel) (list (type appel))) append ())))
@@ -75,7 +70,7 @@
       (if (equal? (all-apples boom) (__toplevel_cons 'golden (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ())))))
          (if (equal? (apple-types boom) (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ()))))
             (if (= (leafs-dmv-bewerk boom) 4)
-               (if (equal? (all-apples-dmv-bewerk boom) (__toplevel_cons 'golden (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ())))))
+               (if (<change> (equal? (all-apples-dmv-bewerk boom) (__toplevel_cons 'golden (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ()))))) (not (equal? (all-apples-dmv-bewerk boom) (__toplevel_cons 'golden (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ())))))))
                   (equal?
                      (apple-types-dmv-bewerk boom)
                      (__toplevel_cons 'granny (__toplevel_cons 'golden (__toplevel_cons 'cox ()))))

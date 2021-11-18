@@ -91,10 +91,10 @@
                                     dispatch))))
          (table (create-hash-table 13 (lambda (key) (modulo key 13)))))
    (table 'insert 1 79)
-   (table 'insert 4 69)
    (<change>
-      (table 'insert 14 98)
+      (table 'insert 4 69)
       ())
+   (table 'insert 14 98)
    (<change>
       (table 'insert 7 72)
       ())

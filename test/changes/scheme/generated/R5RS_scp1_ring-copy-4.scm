@@ -2,21 +2,16 @@
 ; * removed: 1
 ; * added: 1
 ; * swaps: 0
-; * negated predicates: 1
+; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 0
+; * calls to id fun: 2
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
          (make-ring (lambda (n)
-                      (<change>
-                         ()
-                         ())
                       (let ((last (cons 0 ())))
                          (letrec ((build-list (lambda (n)
-                                                (if (<change> (= n 0) (not (= n 0)))
-                                                   last
-                                                   (cons n (build-list (- n 1)))))))
+                                                (if (= n 0) last (cons n (build-list (- n 1)))))))
                             (let ((ring (build-list n)))
                                (set-cdr! last ring)
                                ring)))))
@@ -25,8 +20,15 @@
                                        (if (not (null? l))
                                           (if (eq? (cdr l) r)
                                              (begin
-                                                (display " ")
-                                                (display (car l))
+                                                (<change>
+                                                   ()
+                                                   (display l))
+                                                (<change>
+                                                   (display " ")
+                                                   ((lambda (x) x) (display " ")))
+                                                (<change>
+                                                   (display (car l))
+                                                   ((lambda (x) x) (display (car l))))
                                                 (display "..."))
                                              (begin
                                                 (display " ")
@@ -48,10 +50,10 @@
                             first))))
          (r (make-ring 3))
          (s (copy-ring r)))
-   (print-ring s)
    (<change>
-      (set-car! s 999)
+      (print-ring s)
       ())
+   (set-car! s 999)
    (print-ring s)
    (print-ring r)
    (equal?

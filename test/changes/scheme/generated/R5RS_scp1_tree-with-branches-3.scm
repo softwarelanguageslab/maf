@@ -1,6 +1,6 @@
 ; Changes:
 ; * removed: 0
-; * added: 3
+; * added: 1
 ; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
@@ -16,22 +16,19 @@
          (geef-deelbomen (lambda (boom)
                            boom))
          (maak-hybride-tak (lambda (knopen)
+                             (<change>
+                                ()
+                                knopen)
                              knopen))
          (geef-knopen (lambda (tak)
-                        tak))
+                        (<change>
+                           tak
+                           ((lambda (x) x) tak))))
          (leeg? (lambda (boom)
                   (null? boom)))
          (knoop? (lambda (boom)
-                   (<change>
-                      ()
-                      (pair? boom))
-                   (<change>
-                      (pair? boom)
-                      ((lambda (x) x) (pair? boom)))))
+                   (pair? boom)))
          (blad? (lambda (boom)
-                  (<change>
-                     ()
-                     atom?)
                   (atom? boom)))
          (hybride-tak (maak-hybride-tak
                         (list
@@ -83,9 +80,6 @@
                                       #f)
                                    (check-normaal-in (geef-knopen boom)))))))
          (check-normaal-in (lambda (lst)
-                             (<change>
-                                ()
-                                (display (if (null? lst) #t (if (check-normaal (car lst)) (check-normaal-in (cdr lst)) #f))))
                              (if (null? lst)
                                 #t
                                 (if (check-normaal (car lst))

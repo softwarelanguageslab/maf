@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 2
-; * swaps: 0
+; * added: 3
+; * swaps: 1
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 3
+; * calls to id fun: 1
 (letrec ((result ())
          (output (lambda (i)
                    (set! result (cons i result))))
@@ -22,23 +22,25 @@
                                              (begin
                                                 (output " ")
                                                 (output (car l))
-                                                (<change>
-                                                   (output "...")
-                                                   ((lambda (x) x) (output "..."))))
+                                                (output "..."))
                                              (begin
+                                                (<change>
+                                                   ()
+                                                   (display l))
                                                 (output " ")
                                                 (output (car l))
                                                 (aux (cdr l))))
                                           #f))))
                           (aux r)
-                          (<change>
-                             #t
-                             ((lambda (x) x) #t)))))
+                          #t)))
          (copy-ring (lambda (r)
                       (letrec ((last ())
                                (aux (lambda (l)
                                       (if (eq? (cdr l) r)
                                          (begin
+                                            (<change>
+                                               ()
+                                               l)
                                             (set! last (cons (car l) ()))
                                             last)
                                          (cons (car l) (aux (cdr l)))))))
@@ -53,142 +55,262 @@
                      (letrec ((remove-nth! (lambda (l n)
                                              (if (<= n 2)
                                                 (begin
-                                                   (<change>
-                                                      (set-cdr! l (cddr l))
-                                                      ((lambda (x) x) (set-cdr! l (cddr l))))
+                                                   (set-cdr! l (cddr l))
                                                    (cdr l))
                                                 (remove-nth! (cdr l) (- n 1)))))
                               (iter (lambda (l)
                                       (<change>
-                                         ()
-                                         remove-nth!)
-                                      (print-ring l)
-                                      (if (eq? l (cdr l))
-                                         (car l)
-                                         (iter (remove-nth! l n))))))
+                                         (print-ring l)
+                                         (if (eq? l (cdr l))
+                                            (car l)
+                                            (iter (remove-nth! l n))))
+                                      (<change>
+                                         (if (eq? l (cdr l))
+                                            (car l)
+                                            (iter (remove-nth! l n)))
+                                         (print-ring l)))))
                         (if (= n 1)
                            (car (right-rotate r))
                            (iter (copy-ring r))))))
          (ring (make-ring 5)))
-   (<change>
-      ()
-      __toplevel_cons)
    (Josephus ring 5)
    (print-ring ring)
-   (equal?
-      result
-      (__toplevel_cons
-         "..."
+   (<change>
+      ()
+      equal?)
+   (<change>
+      (equal?
+         result
          (__toplevel_cons
-            0
+            "..."
             (__toplevel_cons
-               " "
+               0
                (__toplevel_cons
-                  1
+                  " "
+                  (__toplevel_cons
+                     1
+                     (__toplevel_cons
+                        " "
+                        (__toplevel_cons
+                           2
+                           (__toplevel_cons
+                              " "
+                              (__toplevel_cons
+                                 3
+                                 (__toplevel_cons
+                                    " "
+                                    (__toplevel_cons
+                                       4
+                                       (__toplevel_cons
+                                          " "
+                                          (__toplevel_cons
+                                             5
+                                             (__toplevel_cons
+                                                " "
+                                                (__toplevel_cons
+                                                   "..."
+                                                   (__toplevel_cons
+                                                      5
+                                                      (__toplevel_cons
+                                                         " "
+                                                         (__toplevel_cons
+                                                            "..."
+                                                            (__toplevel_cons
+                                                               5
+                                                               (__toplevel_cons
+                                                                  " "
+                                                                  (__toplevel_cons
+                                                                     3
+                                                                     (__toplevel_cons
+                                                                        " "
+                                                                        (__toplevel_cons
+                                                                           "..."
+                                                                           (__toplevel_cons
+                                                                              3
+                                                                              (__toplevel_cons
+                                                                                 " "
+                                                                                 (__toplevel_cons
+                                                                                    4
+                                                                                    (__toplevel_cons
+                                                                                       " "
+                                                                                       (__toplevel_cons
+                                                                                          5
+                                                                                          (__toplevel_cons
+                                                                                             " "
+                                                                                             (__toplevel_cons
+                                                                                                "..."
+                                                                                                (__toplevel_cons
+                                                                                                   3
+                                                                                                   (__toplevel_cons
+                                                                                                      " "
+                                                                                                      (__toplevel_cons
+                                                                                                         4
+                                                                                                         (__toplevel_cons
+                                                                                                            " "
+                                                                                                            (__toplevel_cons
+                                                                                                               5
+                                                                                                               (__toplevel_cons
+                                                                                                                  " "
+                                                                                                                  (__toplevel_cons
+                                                                                                                     0
+                                                                                                                     (__toplevel_cons
+                                                                                                                        " "
+                                                                                                                        (__toplevel_cons
+                                                                                                                           "..."
+                                                                                                                           (__toplevel_cons
+                                                                                                                              2
+                                                                                                                              (__toplevel_cons
+                                                                                                                                 " "
+                                                                                                                                 (__toplevel_cons
+                                                                                                                                    3
+                                                                                                                                    (__toplevel_cons
+                                                                                                                                       " "
+                                                                                                                                       (__toplevel_cons
+                                                                                                                                          4
+                                                                                                                                          (__toplevel_cons
+                                                                                                                                             " "
+                                                                                                                                             (__toplevel_cons
+                                                                                                                                                5
+                                                                                                                                                (__toplevel_cons
+                                                                                                                                                   " "
+                                                                                                                                                   (__toplevel_cons
+                                                                                                                                                      0
+                                                                                                                                                      (__toplevel_cons
+                                                                                                                                                         " "
+                                                                                                                                                         (__toplevel_cons
+                                                                                                                                                            "..."
+                                                                                                                                                            (__toplevel_cons
+                                                                                                                                                               0
+                                                                                                                                                               (__toplevel_cons
+                                                                                                                                                                  " "
+                                                                                                                                                                  (__toplevel_cons
+                                                                                                                                                                     1
+                                                                                                                                                                     (__toplevel_cons
+                                                                                                                                                                        " "
+                                                                                                                                                                        (__toplevel_cons
+                                                                                                                                                                           2
+                                                                                                                                                                           (__toplevel_cons
+                                                                                                                                                                              " "
+                                                                                                                                                                              (__toplevel_cons
+                                                                                                                                                                                 3
+                                                                                                                                                                                 (__toplevel_cons
+                                                                                                                                                                                    " "
+                                                                                                                                                                                    (__toplevel_cons 4 (__toplevel_cons " " (__toplevel_cons 5 (__toplevel_cons " " ()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+      ((lambda (x) x)
+         (equal?
+            result
+            (__toplevel_cons
+               "..."
+               (__toplevel_cons
+                  0
                   (__toplevel_cons
                      " "
                      (__toplevel_cons
-                        2
+                        1
                         (__toplevel_cons
                            " "
                            (__toplevel_cons
-                              3
+                              2
                               (__toplevel_cons
                                  " "
                                  (__toplevel_cons
-                                    4
+                                    3
                                     (__toplevel_cons
                                        " "
                                        (__toplevel_cons
-                                          5
+                                          4
                                           (__toplevel_cons
                                              " "
                                              (__toplevel_cons
-                                                "..."
+                                                5
                                                 (__toplevel_cons
-                                                   5
+                                                   " "
                                                    (__toplevel_cons
-                                                      " "
+                                                      "..."
                                                       (__toplevel_cons
-                                                         "..."
+                                                         5
                                                          (__toplevel_cons
-                                                            5
+                                                            " "
                                                             (__toplevel_cons
-                                                               " "
+                                                               "..."
                                                                (__toplevel_cons
-                                                                  3
+                                                                  5
                                                                   (__toplevel_cons
                                                                      " "
                                                                      (__toplevel_cons
-                                                                        "..."
+                                                                        3
                                                                         (__toplevel_cons
-                                                                           3
+                                                                           " "
                                                                            (__toplevel_cons
-                                                                              " "
+                                                                              "..."
                                                                               (__toplevel_cons
-                                                                                 4
+                                                                                 3
                                                                                  (__toplevel_cons
                                                                                     " "
                                                                                     (__toplevel_cons
-                                                                                       5
+                                                                                       4
                                                                                        (__toplevel_cons
                                                                                           " "
                                                                                           (__toplevel_cons
-                                                                                             "..."
+                                                                                             5
                                                                                              (__toplevel_cons
-                                                                                                3
+                                                                                                " "
                                                                                                 (__toplevel_cons
-                                                                                                   " "
+                                                                                                   "..."
                                                                                                    (__toplevel_cons
-                                                                                                      4
+                                                                                                      3
                                                                                                       (__toplevel_cons
                                                                                                          " "
                                                                                                          (__toplevel_cons
-                                                                                                            5
+                                                                                                            4
                                                                                                             (__toplevel_cons
                                                                                                                " "
                                                                                                                (__toplevel_cons
-                                                                                                                  0
+                                                                                                                  5
                                                                                                                   (__toplevel_cons
                                                                                                                      " "
                                                                                                                      (__toplevel_cons
-                                                                                                                        "..."
+                                                                                                                        0
                                                                                                                         (__toplevel_cons
-                                                                                                                           2
+                                                                                                                           " "
                                                                                                                            (__toplevel_cons
-                                                                                                                              " "
+                                                                                                                              "..."
                                                                                                                               (__toplevel_cons
-                                                                                                                                 3
+                                                                                                                                 2
                                                                                                                                  (__toplevel_cons
                                                                                                                                     " "
                                                                                                                                     (__toplevel_cons
-                                                                                                                                       4
+                                                                                                                                       3
                                                                                                                                        (__toplevel_cons
                                                                                                                                           " "
                                                                                                                                           (__toplevel_cons
-                                                                                                                                             5
+                                                                                                                                             4
                                                                                                                                              (__toplevel_cons
                                                                                                                                                 " "
                                                                                                                                                 (__toplevel_cons
-                                                                                                                                                   0
+                                                                                                                                                   5
                                                                                                                                                    (__toplevel_cons
                                                                                                                                                       " "
                                                                                                                                                       (__toplevel_cons
-                                                                                                                                                         "..."
+                                                                                                                                                         0
                                                                                                                                                          (__toplevel_cons
-                                                                                                                                                            0
+                                                                                                                                                            " "
                                                                                                                                                             (__toplevel_cons
-                                                                                                                                                               " "
+                                                                                                                                                               "..."
                                                                                                                                                                (__toplevel_cons
-                                                                                                                                                                  1
+                                                                                                                                                                  0
                                                                                                                                                                   (__toplevel_cons
                                                                                                                                                                      " "
                                                                                                                                                                      (__toplevel_cons
-                                                                                                                                                                        2
+                                                                                                                                                                        1
                                                                                                                                                                         (__toplevel_cons
                                                                                                                                                                            " "
                                                                                                                                                                            (__toplevel_cons
-                                                                                                                                                                              3
+                                                                                                                                                                              2
                                                                                                                                                                               (__toplevel_cons
                                                                                                                                                                                  " "
-                                                                                                                                                                                 (__toplevel_cons 4 (__toplevel_cons " " (__toplevel_cons 5 (__toplevel_cons " " ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+                                                                                                                                                                                 (__toplevel_cons
+                                                                                                                                                                                    3
+                                                                                                                                                                                    (__toplevel_cons
+                                                                                                                                                                                       " "
+                                                                                                                                                                                       (__toplevel_cons 4 (__toplevel_cons " " (__toplevel_cons 5 (__toplevel_cons " " ())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))

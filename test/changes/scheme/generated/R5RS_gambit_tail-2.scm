@@ -1,10 +1,10 @@
 ; Changes:
 ; * removed: 0
-; * added: 0
-; * swaps: 1
+; * added: 2
+; * swaps: 0
 ; * negated predicates: 0
 ; * swapped branches: 0
-; * calls to id fun: 1
+; * calls to id fun: 0
 (letrec ((inport #f)
          (outport #f)
          (readline (lambda (port line-so-far)
@@ -23,16 +23,16 @@
                                 (close-output-port outport))
                              (tail-r-aux port (cons x file-so-far))))))
          (tail-r (lambda (port)
+                   (<change>
+                      ()
+                      (display port))
+                   (<change>
+                      ()
+                      port)
                    (tail-r-aux port ())))
          (go (lambda ()
                (set! inport (open-input-file "input.txt"))
-               (<change>
-                  (set! outport (open-output-file "output.txt"))
-                  (tail-r inport))
-               (<change>
-                  (tail-r inport)
-                  (set! outport (open-output-file "output.txt")))
-               (<change>
-                  (close-input-port inport)
-                  ((lambda (x) x) (close-input-port inport))))))
+               (set! outport (open-output-file "output.txt"))
+               (tail-r inport)
+               (close-input-port inport))))
    (go))

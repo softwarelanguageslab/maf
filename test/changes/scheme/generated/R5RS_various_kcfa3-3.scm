@@ -9,10 +9,10 @@
              (lambda (x1)
                 ((lambda (f2) (letrec ((b (f2 #t))) (f2 #f)))
                    (lambda (x2)
-                      (<change>
-                         ()
-                         x1)
                       ((lambda (f3) (letrec ((c (f3 #t))) (f3 #f)))
                          (lambda (x3)
                             ((lambda (z) (z x1 x2 x3)) (lambda (y1 y2 y3) y1))))))))))
+   (<change>
+      ()
+      (display res))
    res)
