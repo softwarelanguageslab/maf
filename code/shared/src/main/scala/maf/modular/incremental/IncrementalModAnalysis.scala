@@ -82,15 +82,14 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
      *   and extend its functionality to remove the added state related to the deleted component (e.g., to remove the return value from the store).
      */
     def deleteComponent(cmp: Component): Unit =
-      if visited(cmp) then // Only do this if we have not yet encountered (deleted) the component. Note that this is not needed to prevent looping.
-          for dep <- cachedReadDeps(cmp) do deregister(cmp, dep) // Remove all dependencies related to this component.
-          visited = visited - cmp // Remove the component from the visited set.
-          // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
-          workList = workList - cmp
+        for dep <- cachedReadDeps(cmp) do deregister(cmp, dep) // Remove all dependencies related to this component.
+        visited = visited - cmp // Remove the component from the visited set.
+        // Remove the component from the work list, as it may be present there, to avoid it being analysed if it has been scheduled before.
+        workList = workList - cmp
 
-          // Delete the caches.
-          cachedReadDeps -= cmp
-          cachedSpawns -= cmp
+        // Delete the caches.
+        cachedReadDeps -= cmp
+        cachedSpawns -= cmp
 
     /** Computes the set of reachable components (tracing from the Main component). */
     def reachableComponents(): Set[Component] =
