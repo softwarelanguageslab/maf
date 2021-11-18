@@ -5,11 +5,13 @@ import maf.modular.scheme._
 import maf.modular.worklist._
 import maf.util.benchmarks.Timeout
 import maf.modular.AddrDependency
+import maf.core._
 
 trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeModFLocal with SequentialWorklistAlgorithm[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
     def debug(msg: => String) = ()
+    def debugAdvanced(msg: => String) = ()
 
     // THE WIDENED SET DETERMINES WHICH ADDRESSES ARE WIDENED
 
@@ -19,26 +21,31 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
 
     // BOOKKEEPING: keep track of all components per (lam, ctx)
     var cmps: Map[(Lam, Ctx), Set[Cll]] = Map.empty
-    def ratio: Double = (visited.size - 1) / Math.max(1, cmps.size)
+    val cut = Math.max(k * c, 1).toInt
 
     // THE SHADOW STORE (& DEPS)
     var shadowStore: Map[Adr, Val] = Map.empty
     var shadowDeps: Map[Adr, Set[Cmp]] = Map.empty
 
+    var toAdapt: Set[(Lam, Ctx)] = Set.empty
     override def step(t: Timeout.T) =
         super.step(t)
-        if ratio > k then
-            val oldRatio = ratio
-            debug("ADAPTING")
-            adaptAnalysis()
-            debug(s"--> ${widened.size} addresses have been widened in total.")
-            val newRatio = ratio
-            debug(s"Ratio: $oldRatio -> $newRatio")
+        if toAdapt.nonEmpty then
+            val wid = toAdapt.flatMap { (lam, ctx) =>
+                val cps = cmps((lam, ctx))
+                val sts = cps.map(_.sto)
+                pickAddrs(sts, cut)
+            }
+            addWidened(wid)
+            debug(s"=> Widened ${wid.size} addresses (total: ${widened.size})")
+            toAdapt = Set.empty
 
     override def spawn(cmp: Cmp) =
         if (!visited(cmp)) then
             val cll @ CallComponent(lam, _, ctx, sto) = cmp
-            cmps += (lam, ctx) -> (cmps.getOrElse((lam, ctx), Set.empty) + cll)
+            val cls = cmps.getOrElse((lam, ctx), Set.empty) + cll
+            cmps += (lam, ctx) -> cls
+            if cls.size > k then toAdapt += (lam, ctx)
         super.spawn(cmp)
 
     private def adaptAnalysis() =
@@ -49,26 +56,28 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         addWidened(wid)
 
     private def pickAddrs(sts: Set[Sto], cut: Int): Set[Adr] =
+        val kys = sts.flatMap(_.content.keySet)
         val ads = sts.foldLeft(Map.empty[Adr, Set[(Val, Cnt)]]) { (acc, sto) =>
-          sto.content.foldLeft(acc) { case (acc2, (adr, bnd)) =>
+          kys.foldLeft(acc) { case (acc2, adr) =>
+            val bnd = sto.content.getOrElse(adr, (lattice.bottom, CountZero))
             acc2.get(adr) match
                 case None      => acc2 + (adr -> Set(bnd))
                 case Some(bds) => acc2 + (adr -> (bds + bnd))
           }
         }
-        val lst = ads.toList.sortBy((_, bds) => bds.size)(Ordering[Int].reverse).map(_._1)
+        val lst = ads.toList.sortBy((adr, bds) => bds.size)(Ordering[Int].reverse)
         pickAddrsRec(lst, sts, cut)
 
-    private def pickAddrsRec(lst: List[Adr], sts: Set[Sto], cut: Int): Set[Adr] =
+    private def pickAddrsRec(lst: List[(Adr, Set[(Val, Cnt)])], sts: Set[Sto], cut: Int): Set[Adr] =
       if sts.size > cut then
-          val adr :: rst = lst
+          val (adr, _) :: rst = lst
           pickAddrsRec(rst, sts.map(_ - adr), cut) + adr
       else Set.empty
 
     // NOTE/TODO: not safe for parallelisation
-    override protected def lookupLocalV(cmp: Cmp, sto: Sto, adr: Adr): Option[Val] = 
+    override protected def lookupLocalV(cmp: Cmp, sto: Sto, adr: Adr): Option[Val] =
         shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
-        super.lookupLocalV(cmp, sto, adr) 
+        super.lookupLocalV(cmp, sto, adr)
 
     override protected def extendLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
         updateAddr(shadowStore, adr, vlu).foreach(upd => shadowStore = upd)
@@ -76,7 +85,7 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
 
     override protected def updateLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
         updateAddr(shadowStore, adr, vlu).foreach(upd => shadowStore = upd)
-        super.updateLocalV(cmp, sto, adr, vlu)      
+        super.updateLocalV(cmp, sto, adr, vlu)
 
     private def addWidened(wid: Set[Adr]) =
         // helper functions
@@ -109,12 +118,12 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         shadowDeps = shadowDeps.map((dep, cps) => (dep, cps.map(widenCmp)))
         // widen addresses (using shadow store & deps)
         widened.foreach { adr =>
-          writeAddr(adr, shadowStore.getOrElse(adr, lattice.bottom))
-          val cps = shadowDeps.getOrElse(adr, Set.empty)
-          deps += AddrDependency(adr) -> cps
-          addToWorkList(cps)
-          shadowStore -= adr
-          shadowDeps -= adr
+            writeAddr(adr, shadowStore.getOrElse(adr, lattice.bottom))
+            val cps = shadowDeps.getOrElse(adr, Set.empty)
+            deps += AddrDependency(adr) -> cps
+            addToWorkList(cps)
+            shadowStore -= adr
+            shadowDeps -= adr
         }
         // update results
         var merged: Set[Cmp] = Set.empty
@@ -129,4 +138,3 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
                 acc + (updatedCmp -> (lattice.join(othVlu, vlu), updatedCmp.sto.join(othDlt, updatedDlt)))
         }
         merged.foreach(cmp => trigger(ResultDependency(cmp)))
-      

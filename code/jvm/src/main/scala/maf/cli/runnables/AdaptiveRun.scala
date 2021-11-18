@@ -48,43 +48,45 @@ object AdaptiveRun:
         println(prg)
 
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/gambit/browse.scm")
+        val txt = Reader.loadFile("test/R5RS/various/mceval.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        val anl = new SchemeModFLocal(prg)
-          with SchemeConstantPropagationDomain
-          with SchemeModFLocalNoSensitivity
-          with FIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFLocalAdaptiveWidening(10)
-        def printStore(sto: anl.Sto) =
-          sto.content.view
-            //.filterKeys(!_.isInstanceOf[PrmAddr])
-            .toMap
-            .foreach { case (a, (v, _)) =>
-              println(s"$a -> $v")
-            }
-        def printDelta(dlt: anl.Dlt) =
-          dlt.delta.view.toMap
-            .foreach { case (a, (v, _)) =>
-              println(s"$a -> $v")
-            }
+        val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]:
+            var i = 0
+            override def step(t: Timeout.T): Unit =
+                i += 1
+                val cmp = workList.head
+                println(s"[$i] Analysing $cmp")
+                super.step(t)
+            def printStore(sto: Sto) =
+              sto.content.view.toMap
+                .foreach { case (a, (v, _)) =>
+                  println(s"$a -> $v")
+                }
+            def printDelta(dlt: Dlt) =
+              dlt.delta.view.toMap
+                .foreach { case (a, (v, _)) =>
+                  println(s"$a -> $v")
+                }
+            def printCmp(cmp: Cmp) =
+                val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
+                println()
+                println(s"COMPONENT $cmp WHERE")
+                printStore(cmp.sto)
+                println(s"==> RESULTS: $res")
+                println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
+                printDelta(dlt)
+                println()
+        //with SchemeModFLocalAdaptiveWidening(1000):
+        //override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
+        //override def debugAdvanced(msg: => String): Unit = println(s"[!!!] $msg")
         anl.analyzeWithTimeoutInSeconds(10)
-        anl.visited
-          .collect { case cll: anl.CallComponent => cll }
-          .foreach { case cmp @ anl.CallComponent(lam, _, ctx, sto) =>
-            val (res, dlt) = anl.results.getOrElse(cmp, (anl.lattice.bottom, Delta.empty)).asInstanceOf[(anl.Val, anl.Dlt)]
-            println()
-            println(s"COMPONENT ${lam.lambdaName} WHERE")
-            //printStore(sto)
-            println(s"==> RESULTS: $res")
-            println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
-            //printDelta(dlt)
-            println()
-          }
-        println(anl.finished)
-        println(anl.visited.size)
+        anl.visited.collect({ case cll: anl.CallComponent => cll })
+        //.foreach(printCall)
+        println(s"FINISHED: ${anl.finished}")
+        println(s"VISITED: ${anl.visited.size}")
 
     def testModConc(): Unit =
         val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")

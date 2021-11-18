@@ -39,15 +39,20 @@ sealed trait AbstractCount:
     def join(other: AbstractCount): AbstractCount
     def +(cnt: => AbstractCount): AbstractCount
     def inc: AbstractCount = this + CountOne
-case object CountOne extends AbstractCount:
+case object CountZero extends AbstractCount:
     def join(other: AbstractCount) = other
-    def +(cnt: => AbstractCount) = CountInf
+    def +(cnt: => AbstractCount) = cnt
+case object CountOne extends AbstractCount:
+    def join(other: AbstractCount) =
+      if other == CountZero then this else other
+    def +(cnt: => AbstractCount) =
+      if cnt == CountZero then this else CountInf
 case object CountInf extends AbstractCount:
     def join(other: AbstractCount) = this
     def +(cnt: => AbstractCount) = this
 
 case class Delta[A, V](delta: SmartMap[A, (V, AbstractCount)], updates: Set[A]):
-    def --(ads: Set[A]): Delta[A, V] = Delta(delta -- ads, updates -- ads)  
+    def --(ads: Set[A]): Delta[A, V] = Delta(delta -- ads, updates -- ads)
 object Delta:
     def empty[A, V]: Delta[A, V] = Delta(SmartMap.empty, Set.empty)
 
@@ -98,7 +103,7 @@ case class LocalStore[A, V](content: SmartMap[A, (V, AbstractCount)])(using lat:
         },
         d.updates
       )
-    
+
 object LocalStore:
     def empty[A, V](using Lattice[V], A => Boolean) =
       LocalStore(SmartMap.empty)

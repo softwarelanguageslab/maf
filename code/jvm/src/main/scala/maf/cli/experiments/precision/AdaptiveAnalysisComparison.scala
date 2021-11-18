@@ -37,10 +37,10 @@ abstract class AdaptiveAnalysisComparison[
       ): Unit =
       analyses.foreach { case (analysis, name) =>
         runAnalysis(analysis, name, program, path, Timeout.start(timeout)) match
-            case None => return // don't run the other analyses anymore
-            case Some(store) =>
+            case Terminated(store) =>
               val lessPrecise = compareOrdered(store, concreteResult).size
               results = results.add(path, name, Some(lessPrecise))
+            case _ => return // don't run the other analyses anymore
       }
 
     /**
