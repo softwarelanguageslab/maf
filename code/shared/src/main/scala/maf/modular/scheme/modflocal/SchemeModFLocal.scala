@@ -117,15 +117,16 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     protected def lookupLocalV(cmp: Cmp, sto: Sto, adr: Adr): Option[Val] = sto.lookup(adr)
     protected def extendLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.extend(adr, vlu)
     protected def updateLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.update(adr, vlu)
+    protected def lookupLocalC(cmp: Cmp, sto: Sto, adr: Adr): Cnt = sto.content.get(adr).map(_._2).getOrElse(CountZero)
 
-    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
+    def eqA(sto: Sto, anl: Anl): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
           if a1 == a2 then
               policy(a1) match
-                  case AddrPolicy.Local =>
-                    sto.content.get(a1) match
-                        case Some((_, CountOne)) => BoolLattice[B].inject(true)
-                        case _                   => BoolLattice[B].top
+                  case AddrPolicy.Local => 
+                    if lookupLocalC(anl.component, sto, a1) == CountOne 
+                    then BoolLattice[B].inject(true) 
+                    else BoolLattice[B].top
                   case AddrPolicy.Widened => BoolLattice[B].top
           else BoolLattice[B].inject(false)
 
@@ -188,7 +189,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
           mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-          (_, _, sto, _) => Some((eqA(sto), Delta.empty))
+          (anl, _, sto, _) => Some((eqA(sto, anl), Delta.empty))
         def extendSto(adr: Adr, vlu: Val) =
           (anl, _, sto, _) => Some(((), extendV(anl, sto, adr, vlu)))
         def updateSto(adr: Adr, vlu: Val) =

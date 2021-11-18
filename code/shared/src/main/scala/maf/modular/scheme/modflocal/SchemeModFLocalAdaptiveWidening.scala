@@ -78,6 +78,10 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
     override protected def lookupLocalV(cmp: Cmp, sto: Sto, adr: Adr): Option[Val] =
         shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
         super.lookupLocalV(cmp, sto, adr)
+  
+    override protected def lookupLocalC(cmp: Cmp, sto: Sto, adr: Adr): Cnt =
+        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp) //TODO: don't keep this in shadowdeps?
+        super.lookupLocalC(cmp, sto, adr)
 
     override protected def extendLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
         updateAddr(shadowStore, adr, vlu).foreach(upd => shadowStore = upd)
@@ -115,7 +119,7 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
           }
           .withDefaultValue(Set.empty)
         cmps = cmps.map((nod, cls) => (nod, cls.map(widenCll)))
-        shadowDeps = shadowDeps.map((dep, cps) => (dep, cps.map(widenCmp)))
+        shadowDeps = shadowDeps.map((adr, cps) => (adr, cps.map(widenCmp)))
         // widen addresses (using shadow store & deps)
         widened.foreach { adr =>
             writeAddr(adr, shadowStore.getOrElse(adr, lattice.bottom))
