@@ -11,6 +11,12 @@ object IncrementalSchemeBenchmarkPrograms:
       ".DS_Store"
     ) ++ cyclicValueReinforcement
 
+    lazy val sequentialGenerated: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/generated")(
+      ".DS_Store",
+      "fail.txt",
+      "info.csv"
+    )
+
     lazy val scam2020ModF: Set[String] = SchemeBenchmarkPrograms.toFolder("test/changes/scheme")(
       "leval.scm",
       "machine-simulator.scm",

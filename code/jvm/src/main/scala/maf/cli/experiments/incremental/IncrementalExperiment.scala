@@ -42,7 +42,7 @@ trait IncrementalExperiment[E <: Expression]:
 
     // Runs measurements on the benchmarks in a given trait, or uses specific benchmarks if passed as an argument.
     def measure(bench: Option[Set[String]] = None): Unit =
-      bench.getOrElse(benchmarks()).foreach { file =>
+      bench.getOrElse(benchmarks()).toList.sorted.foreach { file =>
           try onBenchmark(file)
           catch
               case e: Exception if catchErrors =>

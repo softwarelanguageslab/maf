@@ -3,15 +3,15 @@ package maf.cli.experiments.incremental
 import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import maf.core.Expression
 import maf.language.CScheme.CSchemeParser
-import maf.language.change.CodeVersion._
+import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
-import maf.modular.incremental.IncrementalConfiguration._
-import maf.modular.incremental._
-import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
-import maf.util.Reader
-import maf.util.benchmarks._
+import maf.modular.incremental.IncrementalConfiguration.*
+import maf.modular.incremental.*
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
+import maf.util.{Reader, Writer}
+import maf.util.benchmarks.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 // The results of the evaluation.
 sealed trait Result
@@ -80,9 +80,18 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
         println()
         Some(times)
 
+    val total = benchmarks().size
+    var count = 0
+    lazy val cols = (List(initS, reanS) ++ configurations.map(_.toString)).flatMap(c => List(columnName(timeS, c), columnName(stdS, c)))
+
     // A single program run with the analysis.
     def onBenchmark(file: String): Unit =
-        println(s"\nTesting $file")
+        count += 1
+        println(s"\nTesting $file ($count of $total)")
+        if count == 1 then
+            Writer.disableReporting()
+            Writer.writeln(results.toCSVString(columns = cols, rowName = "benchmark"))
+
         val program = parse(file)
 
         var times: Map[String, List[Double]] = Map().withDefaultValue(List.empty)
@@ -159,12 +168,12 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
                     .add(file, columnName(timeS, config.toString), Value(scala.math.round(stats.mean)))
                     .add(file, columnName(stdS, config.toString), Value(scala.math.round(stats.stddev)))
         }
+        val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
+        Writer.writeln(lst(1))
+        results = Table.empty.withDefaultValue(NotRun)
     end onBenchmark
 
-    def createOutput(): String =
-        val cols = (List(initS, reanS) ++ configurations.map(_.toString)).flatMap(c => List(columnName(timeS, c), columnName(stdS, c)))
-        //results.prettyString(columns = cols, rowName = "benchmark") ++ "\n\n" ++
-        results.toCSVString(columns = cols, rowName = "benchmark")
+    def createOutput(): String = "" // Results are written during benchmarking.
 
 /* ************************** */
 /* ***** Instantiations ***** */
@@ -176,7 +185,7 @@ trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFPerformance extends IncrementalSchemePerformance:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequentialGenerated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
     val outputFile: String = s"performance/modf-type.txt"
 
