@@ -196,10 +196,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
           println(s"... analysing $path using $name ...")
           anl.analyzeWithTimeout(timeout)
           val res = extract(anl)
-          if anl.finished then
-            Terminated(res)
-          else 
-            TimedOut(res)
+          if anl.finished then Terminated(res)
+          else TimedOut(res)
       catch
           case e: Exception =>
             println(s"Analyzer failed with exception $e")

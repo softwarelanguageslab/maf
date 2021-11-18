@@ -24,13 +24,13 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
 
     // keep the results of the benchmarks in a table
     enum Result:
-      case Success(abs: Int)
-      case Timeout(abs: Int)
-      case Errored
-      override def toString = this match
-        case Result.Success(abs) => s"$abs"
-        case Result.Timeout(abs) => s"TIMEOUT (>= $abs)"
-        case Result.Errored => "ERROR"
+        case Success(abs: Int)
+        case Timeout(abs: Int)
+        case Errored
+        override def toString = this match
+            case Result.Success(abs) => s"$abs"
+            case Result.Timeout(abs) => s"TIMEOUT (>= $abs)"
+            case Result.Errored      => "ERROR"
     var results: Table[Result] = Table.empty
 
     /**
@@ -49,9 +49,9 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
         analyses.foreach { case (analysis, name) =>
           val otherResult = runAnalysis(analysis, name, program, path, timeout())
           val lessPrecise = otherResult match
-            case Terminated(analysisResult) => Result.Success(compareOrdered(analysisResult, concreteResult).size)
-            case TimedOut(partialResult) => Result.Timeout(compareOrdered(partialResult, concreteResult).size)
-            case Errored(_) => Result.Errored 
+              case Terminated(analysisResult) => Result.Success(compareOrdered(analysisResult, concreteResult).size)
+              case TimedOut(partialResult)    => Result.Timeout(compareOrdered(partialResult, concreteResult).size)
+              case Errored(_)                 => Result.Errored
           results = results.add(path, name, lessPrecise)
         }
 
@@ -65,14 +65,14 @@ object AnalysisComparisonAlt1
       ConstantPropagation.Sym
     ]:
     def analyses =
-      val k = 0
-      val l = 1000
-      // run some adaptive analyses
-      List(
-        (SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
-        //(SchemeAnalyses.modflocalAnalysisAdaptive(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
-        (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF"),
-      )
+        val k = 0
+        val l = 1000
+        // run some adaptive analyses
+        List(
+          (SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
+          //(SchemeAnalyses.modflocalAnalysisAdaptive(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
+          (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF"),
+        )
     def main(args: Array[String]) = runBenchmarks(
       Set(
         //"test/R5RS/various/collatz.scm",

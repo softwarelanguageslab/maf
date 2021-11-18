@@ -53,19 +53,15 @@ object AdaptiveRun:
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        val anl = new SchemeModFLocal(prg)
-          with SchemeConstantPropagationDomain
-          with SchemeModFLocalNoSensitivity
-          with FIFOWorklistAlgorithm[SchemeExp]:
+        val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp]:
             var i = 0
-            override def step(t: Timeout.T): Unit = 
-              i += 1
-              val cmp = workList.head
-              println(s"[$i] Analysing $cmp")
-              super.step(t)
+            override def step(t: Timeout.T): Unit =
+                i += 1
+                val cmp = workList.head
+                println(s"[$i] Analysing $cmp")
+                super.step(t)
             def printStore(sto: Sto) =
-              sto.content.view
-                .toMap
+              sto.content.view.toMap
                 .foreach { case (a, (v, _)) =>
                   println(s"$a -> $v")
                 }
@@ -74,18 +70,18 @@ object AdaptiveRun:
                 .foreach { case (a, (v, _)) =>
                   println(s"$a -> $v")
                 }
-            def printCmp(cmp: Cmp) = 
-              val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
-              println()
-              println(s"COMPONENT $cmp WHERE")
-              printStore(cmp.sto)
-              println(s"==> RESULTS: $res")
-              println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
-              printDelta(dlt)
-              println()
-          //with SchemeModFLocalAdaptiveWidening(1000):
-            //override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
-            //override def debugAdvanced(msg: => String): Unit = println(s"[!!!] $msg")
+            def printCmp(cmp: Cmp) =
+                val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
+                println()
+                println(s"COMPONENT $cmp WHERE")
+                printStore(cmp.sto)
+                println(s"==> RESULTS: $res")
+                println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
+                printDelta(dlt)
+                println()
+        //with SchemeModFLocalAdaptiveWidening(1000):
+        //override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
+        //override def debugAdvanced(msg: => String): Unit = println(s"[!!!] $msg")
         anl.analyzeWithTimeoutInSeconds(10)
         anl.visited.collect({ case cll: anl.CallComponent => cll })
         //.foreach(printCall)

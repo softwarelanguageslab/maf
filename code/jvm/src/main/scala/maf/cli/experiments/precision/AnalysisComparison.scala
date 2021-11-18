@@ -39,14 +39,14 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
     protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit =
         // run the base analysis first
         val baseResult = runAnalysis(baseAnalysis, "base analysis", program, path) match
-          case Terminated(res) => res
-          case _ => throw new Exception("This should not happen for the base analysis!")
+            case Terminated(res) => res
+            case _               => throw new Exception("This should not happen for the base analysis!")
         // run the other analyses on the benchmark
         otherAnalyses().foreach { case (analysis, name) =>
           val otherResult = runAnalysis(analysis, name, program, path, analysisTimeout())
-          val refined = otherResult match 
-            case Terminated(store) => Some(compareOrdered(baseResult, store).size)
-            case _ => None
+          val refined = otherResult match
+              case Terminated(store) => Some(compareOrdered(baseResult, store).size)
+              case _                 => None
           results = results.add(path, name, refined)
         }
         // run a concrete interpreter on the benchmarks
@@ -85,8 +85,8 @@ object AnalysisComparison1
         val prg = SchemeParser.parseProgram(txt)
         val con = runInterpreter(prg, path).get
         val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_), "analysis", prg, path) match
-          case Terminated(res) => res
-          case _ => throw new Exception("This should not happen!")
+            case Terminated(res) => res
+            case _               => throw new Exception("This should not happen!")
         val allKeys = con.keys ++ abs.keys
         allKeys.foreach { k =>
             val absVal = abs.getOrElse(k, "⊥")

@@ -52,7 +52,7 @@ case object CountInf extends AbstractCount:
     def +(cnt: => AbstractCount) = this
 
 case class Delta[A, V](delta: SmartMap[A, (V, AbstractCount)], updates: Set[A]):
-    def --(ads: Set[A]): Delta[A, V] = Delta(delta -- ads, updates -- ads)  
+    def --(ads: Set[A]): Delta[A, V] = Delta(delta -- ads, updates -- ads)
 object Delta:
     def empty[A, V]: Delta[A, V] = Delta(SmartMap.empty, Set.empty)
 
@@ -103,7 +103,7 @@ case class LocalStore[A, V](content: SmartMap[A, (V, AbstractCount)])(using lat:
         },
         d.updates
       )
-    
+
 object LocalStore:
     def empty[A, V](using Lattice[V], A => Boolean) =
       LocalStore(SmartMap.empty)
