@@ -19,11 +19,19 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     def analyses: List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 30min.) and the number of concrete runs
-    def timeout() = Timeout.start(Duration(15, MINUTES)) // timeout for the analyses
+    def timeout() = Timeout.start(Duration(120, MINUTES)) // timeout for the analyses
     def runs = 3 // number of runs for the concrete interpreter
 
     // keep the results of the benchmarks in a table
-    var results: Table[Option[Int]] = Table.empty[Option[Int]]
+    enum Result:
+      case Success(abs: Int)
+      case Timeout(abs: Int)
+      case Errored
+      override def toString = this match
+        case Result.Success(abs) => s"$abs"
+        case Result.Timeout(abs) => s"TIMEOUT (>= $abs)"
+        case Result.Errored => "ERROR"
+    var results: Table[Result] = Table.empty
 
     /**
      * For a given benchmark, compare each analysis with the result of the concrete interpreter That is, count for each analysis how many values are
@@ -40,7 +48,10 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
         // run the other analyses on the benchmark
         analyses.foreach { case (analysis, name) =>
           val otherResult = runAnalysis(analysis, name, program, path, timeout())
-          val lessPrecise = otherResult.map(analysisResult => compareOrdered(analysisResult, concreteResult).size)
+          val lessPrecise = otherResult match
+            case Terminated(analysisResult) => Result.Success(compareOrdered(analysisResult, concreteResult).size)
+            case TimedOut(partialResult) => Result.Timeout(compareOrdered(partialResult, concreteResult).size)
+            case Errored(_) => Result.Errored 
           results = results.add(path, name, lessPrecise)
         }
 
@@ -54,12 +65,13 @@ object AnalysisComparisonAlt1
       ConstantPropagation.Sym
     ]:
     def analyses =
-      val l = 300
+      val k = 0
+      val l = 1000
       // run some adaptive analyses
       List(
-        //(SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
-        (SchemeAnalyses.modflocalAnalysisAdaptive(_, 0, l), s"0-CFA DSS w/ ASW (l = $l)"),
-        (SchemeAnalyses.kCFAAnalysis(_, 0), "0-CFA MODF"),
+        (SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
+        //(SchemeAnalyses.modflocalAnalysisAdaptive(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
+        (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF"),
       )
     def main(args: Array[String]) = runBenchmarks(
       Set(
@@ -95,7 +107,7 @@ object AnalysisComparisonAlt1
 
     def runBenchmarks(benchmarks: Set[Benchmark]) =
         benchmarks.foreach(runBenchmark)
-        println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
+        println(results.prettyString())
         Writer.setDefaultWriter(Writer.open("benchOutput/precision/precision-benchmarks.csv"))
-        Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
+        Writer.write(results.toCSVString(rowName = "benchmark"))
         Writer.closeDefaultWriter()

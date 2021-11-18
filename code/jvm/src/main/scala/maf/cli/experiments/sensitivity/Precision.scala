@@ -54,7 +54,7 @@ object PrecisionComparison
         val txt = Reader.loadFile(benchmark)
         val prg = SchemeParser.parseProgram(txt)
         val con = runInterpreter(prg, path).get
-        val abs = runAnalysis(baseAnalysis, "base analysis", prg, path).get
+        val Terminated(abs) = runAnalysis(baseAnalysis, "base analysis", prg, path)
         val allKeys = con.keys ++ abs.keys
         allKeys.foreach { k =>
           println(s"$k -> ${abs.getOrElse(k, "⊥")} ; ${con.getOrElse(k, "⊥")} ")

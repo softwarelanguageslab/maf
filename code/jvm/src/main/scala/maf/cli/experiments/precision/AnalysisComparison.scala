@@ -19,7 +19,7 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
     def otherAnalyses(): List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 5min.)
-    def analysisTimeout(): Timeout.T = Timeout.start(Duration(15, MINUTES)) //timeout for (non-base) analyses
+    def analysisTimeout(): Timeout.T = Timeout.start(Duration(45, MINUTES)) //timeout for (non-base) analyses
     def concreteTimeout(): Timeout.T = Timeout.none //timeout for concrete interpreter
 
     def concreteRuns() = 5
@@ -38,11 +38,15 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
      */
     protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit =
         // run the base analysis first
-        val baseResult = runAnalysis(baseAnalysis, "base analysis", program, path).get // no timeout set for the base analysis!
+        val baseResult = runAnalysis(baseAnalysis, "base analysis", program, path) match
+          case Terminated(res) => res
+          case _ => throw new Exception("This should not happen for the base analysis!")
         // run the other analyses on the benchmark
         otherAnalyses().foreach { case (analysis, name) =>
           val otherResult = runAnalysis(analysis, name, program, path, analysisTimeout())
-          val refined = otherResult.map(store => compareOrdered(baseResult, store).size)
+          val refined = otherResult match 
+            case Terminated(store) => Some(compareOrdered(baseResult, store).size)
+            case _ => None
           results = results.add(path, name, refined)
         }
         // run a concrete interpreter on the benchmarks
@@ -59,15 +63,16 @@ object AnalysisComparison1
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ]:
+    val k = 0
+    val l = 1000
     def baseAnalysis(prg: SchemeExp): Analysis =
-      SchemeAnalyses.contextInsensitiveAnalysis(prg)
+      SchemeAnalyses.kCFAAnalysis(prg, k)
     def otherAnalyses() =
       // run some regular k-cfa analyses
-      List(0, 1, 2, 3).map { k =>
-        ((e: SchemeExp) => SchemeAnalyses.kCFAAnalysis(e, k): Analysis, s"k-cfa (k = $k)")
-      } ++
-        // run some adaptive analyses
-        List.empty
+      List(
+        //(SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
+        (SchemeAnalyses.modflocalAnalysisAdaptive(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
+      )
 
     def main(args: Array[String]) = runBenchmarks(
       Set(
@@ -79,7 +84,9 @@ object AnalysisComparison1
         val txt = Reader.loadFile(path)
         val prg = SchemeParser.parseProgram(txt)
         val con = runInterpreter(prg, path).get
-        val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_), "analysis", prg, path).get
+        val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_), "analysis", prg, path) match
+          case Terminated(res) => res
+          case _ => throw new Exception("This should not happen!")
         val allKeys = con.keys ++ abs.keys
         allKeys.foreach { k =>
             val absVal = abs.getOrElse(k, "⊥")
