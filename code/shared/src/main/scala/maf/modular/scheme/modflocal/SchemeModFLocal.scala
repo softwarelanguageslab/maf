@@ -124,9 +124,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
           if a1 == a2 then
               policy(a1) match
-                  case AddrPolicy.Local => 
-                    if lookupLocal(anl.component, sto, a1).map(_._2).getOrElse(CountZero) == CountOne 
-                    then BoolLattice[B].inject(true) 
+                  case AddrPolicy.Local =>
+                    if lookupLocal(anl.component, sto, a1).map(_._2).getOrElse(CountZero) == CountOne then BoolLattice[B].inject(true)
                     else BoolLattice[B].top
                   case AddrPolicy.Widened => BoolLattice[B].top
           else BoolLattice[B].inject(false)

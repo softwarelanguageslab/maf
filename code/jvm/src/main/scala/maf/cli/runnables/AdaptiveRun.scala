@@ -53,7 +53,11 @@ object AdaptiveRun:
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        val anl = new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp] with SchemeModFLocalAdaptiveWidening(100):
+        val anl = new SchemeModFLocal(prg)
+          with SchemeConstantPropagationDomain
+          with SchemeModFLocalNoSensitivity
+          with FIFOWorklistAlgorithm[SchemeExp]
+          with SchemeModFLocalAdaptiveWidening(100):
             var i = 0
             override def step(t: Timeout.T): Unit =
                 i += 1

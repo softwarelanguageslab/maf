@@ -151,9 +151,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
               |       v2 = $value2 
             """.stripMargin
         val (_, morePrecise, lessPrecise, unrelated) = compare(r1, r2)
-        if check then 
-          assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
-          assert(unrelated.isEmpty, errorMessage(unrelated.head))
+        if check then
+            assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
+            assert(unrelated.isEmpty, errorMessage(unrelated.head))
         morePrecise
 
     /**

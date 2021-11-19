@@ -78,13 +78,13 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
     override protected def lookupLocalV(cmp: Cmp, sto: Sto, adr: Adr): Option[Val] =
         shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
         super.lookupLocalV(cmp, sto, adr)
-  
+
     //TODO: in some of these cases, keeping the dependency after widening may not be necessary
     override protected def lookupLocal(cmp: Cmp, sto: Sto, adr: Adr): Option[(Val, Cnt)] =
-        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp) 
+        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
         super.lookupLocal(cmp, sto, adr)
     override protected def lookupLocal(cmp: Cmp, dlt: Dlt, adr: Adr): Option[(Val, Cnt)] =
-        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp) 
+        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
         super.lookupLocal(cmp, dlt, adr)
 
     override protected def extendLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
@@ -119,8 +119,8 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
             val updatedCps = cps.map(widenCmp)
             val updatedDep = widenDep(dep)
             acc.get(updatedDep) match
-                case None      => acc + (updatedDep -> updatedCps)
-                case Some(oth) => 
+                case None => acc + (updatedDep -> updatedCps)
+                case Some(oth) =>
                   toTrigger += updatedDep
                   acc + (updatedDep -> (oth ++ updatedCps))
           }
@@ -149,10 +149,10 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         // trigger "merged" dependencies
         toTrigger.foreach(trigger)
 
-    // DEBUGGING CODE
+// DEBUGGING CODE
 
-    /*
-    private def checkForChanges(cmp: Cmp) = 
+/*
+    private def checkForChanges(cmp: Cmp) =
       val anl = new SchemeLocalIntraAnalysis(cmp)
       anl.analyzeWithTimeout(Timeout.none)
       assert(anl.C.filterNot(visited).isEmpty, {
@@ -161,10 +161,10 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         val sto1 = dsc.sto
         val diff = sto1.content.toSet -- sto0.content.toSet
         diff.foreach { (adr, vlu) =>
-          println(s"$adr -> $vlu (was: ${sto0(adr)})")  
+          println(s"$adr -> $vlu (was: ${sto0(adr)})")
         }
       })
 
-    private def checkWorklist() = 
+    private def checkWorklist() =
       (visited -- workList.toList).foreach(checkForChanges)
-    */
+ */
