@@ -117,14 +117,15 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     protected def lookupLocalV(cmp: Cmp, sto: Sto, adr: Adr): Option[Val] = sto.lookup(adr)
     protected def extendLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.extend(adr, vlu)
     protected def updateLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.update(adr, vlu)
-    protected def lookupLocalC(cmp: Cmp, sto: Sto, adr: Adr): Cnt = sto.content.get(adr).map(_._2).getOrElse(CountZero)
+    protected def lookupLocal(cmp: Cmp, sto: Sto, adr: Adr): Option[(Val, Cnt)] = sto.content.get(adr)
+    protected def lookupLocal(cmp: Cmp, dlt: Dlt, adr: Adr): Option[(Val, Cnt)] = dlt.delta.get(adr)
 
     def eqA(sto: Sto, anl: Anl): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
           if a1 == a2 then
               policy(a1) match
                   case AddrPolicy.Local => 
-                    if lookupLocalC(anl.component, sto, a1) == CountOne 
+                    if lookupLocal(anl.component, sto, a1).map(_._2).getOrElse(CountZero) == CountOne 
                     then BoolLattice[B].inject(true) 
                     else BoolLattice[B].top
                   case AddrPolicy.Widened => BoolLattice[B].top
@@ -255,16 +256,16 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         case object StoreGC extends AGC[Sto]:
             def fresh(cur: Sto) = LocalStore.empty
             def moveLocal(addr: Adr, from: Sto, to: Sto): (Sto, Set[Adr]) =
-              from.content.get(addr) match
+              lookupLocal(cmp, from, addr) match
                   case None             => (to, Set.empty)
                   case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
 
         case class DeltaGC(sto: Sto) extends AGC[Dlt]:
             def fresh(cur: Dlt) = cur.copy(delta = SmartMap.empty) //TODO: this always carries over the set of updated addrs
             def moveLocal(addr: Adr, from: Dlt, to: Dlt): (Dlt, Set[Adr]) =
-              from.delta.get(addr) match
+              lookupLocal(cmp, from, addr) match
                   case None =>
-                    sto.content.get(addr) match
+                    lookupLocal(cmp, sto, addr) match
                         case None         => (to, Set.empty)
                         case Some((v, _)) => (to, lattice.refs(v))
                   case Some(s @ (v, _)) => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))

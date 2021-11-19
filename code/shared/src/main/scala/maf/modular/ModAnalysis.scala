@@ -54,7 +54,8 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
 
   // parameterized by an 'intra-component analysis'
   def intraAnalysis(component: Component): IntraAnalysis
-  abstract class IntraAnalysis(val component: Component) { intra =>
+  abstract class IntraAnalysis(val component: Component):
+    intra =>
 
     /** Set of dependencies read by this intra-component analysis. */
     var R: Set[Dependency] = Set()
@@ -88,7 +89,6 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
 
     /** Called upon a commit for every written dependency. Returns a boolean indicating whether the global analysis state was modified. */
     def doWrite(dep: Dependency): Boolean = throw new Exception(s"Unknown dependency $dep") // `ModAnalysis` has no knowledge of dependencies it can commit.
-  }
 
   // Specific to the worklist algorithm:
 

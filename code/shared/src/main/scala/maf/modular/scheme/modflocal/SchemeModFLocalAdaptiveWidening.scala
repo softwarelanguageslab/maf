@@ -79,9 +79,13 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
         super.lookupLocalV(cmp, sto, adr)
   
-    override protected def lookupLocalC(cmp: Cmp, sto: Sto, adr: Adr): Cnt =
-        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp) //TODO: don't keep this in shadowdeps?
-        super.lookupLocalC(cmp, sto, adr)
+    //TODO: in some of these cases, keeping the dependency after widening may not be necessary
+    override protected def lookupLocal(cmp: Cmp, sto: Sto, adr: Adr): Option[(Val, Cnt)] =
+        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp) 
+        super.lookupLocal(cmp, sto, adr)
+    override protected def lookupLocal(cmp: Cmp, dlt: Dlt, adr: Adr): Option[(Val, Cnt)] =
+        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp) 
+        super.lookupLocal(cmp, dlt, adr)
 
     override protected def extendLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
         updateAddr(shadowStore, adr, vlu).foreach(upd => shadowStore = upd)
@@ -90,7 +94,7 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
     override protected def updateLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
         updateAddr(shadowStore, adr, vlu).foreach(upd => shadowStore = upd)
         super.updateLocalV(cmp, sto, adr, vlu)
-
+        
     private def addWidened(wid: Set[Adr]) =
         // helper functions
         def widenSto(sto: Sto): Sto = sto -- wid
