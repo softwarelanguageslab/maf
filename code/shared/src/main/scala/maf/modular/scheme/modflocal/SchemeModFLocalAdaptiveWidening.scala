@@ -94,7 +94,7 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
     override protected def updateLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
         updateAddr(shadowStore, adr, vlu).foreach(upd => shadowStore = upd)
         super.updateLocalV(cmp, sto, adr, vlu)
-        
+
     private def addWidened(wid: Set[Adr]) =
         // helper functions
         def widenSto(sto: Sto): Sto = sto -- wid
@@ -111,6 +111,7 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         // add widened addresses
         widened ++= wid
         // update analysis data
+        var toTrigger: Set[Dep] = Set.empty
         visited = visited.map(widenCmp)
         workList = workList.map(widenCmp)
         deps = deps
@@ -119,7 +120,9 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
             val updatedDep = widenDep(dep)
             acc.get(updatedDep) match
                 case None      => acc + (updatedDep -> updatedCps)
-                case Some(oth) => acc + (updatedDep -> (oth ++ updatedCps))
+                case Some(oth) => 
+                  toTrigger += updatedDep
+                  acc + (updatedDep -> (oth ++ updatedCps))
           }
           .withDefaultValue(Set.empty)
         cmps = cmps.map((nod, cls) => (nod, cls.map(widenCll)))
@@ -134,7 +137,6 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
             shadowDeps -= adr
         }
         // update results
-        var merged: Set[Cmp] = Set.empty
         results = results.foldLeft(Map.empty: Res) { case (acc, (cmp, (vlu, dlt))) =>
           val updatedCmp = widenCmp(cmp)
           val updatedDlt = widenDlt(dlt)
@@ -142,7 +144,27 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
               case None =>
                 acc + (updatedCmp -> (vlu, updatedDlt))
               case Some((othVlu, othDlt)) =>
-                merged += updatedCmp
                 acc + (updatedCmp -> (lattice.join(othVlu, vlu), updatedCmp.sto.join(othDlt, updatedDlt)))
         }
-        merged.foreach(cmp => trigger(ResultDependency(cmp)))
+        // trigger "merged" dependencies
+        toTrigger.foreach(trigger)
+
+    // DEBUGGING CODE
+
+    /*
+    private def checkForChanges(cmp: Cmp) = 
+      val anl = new SchemeLocalIntraAnalysis(cmp)
+      anl.analyzeWithTimeout(Timeout.none)
+      assert(anl.C.filterNot(visited).isEmpty, {
+        val dsc = anl.C.filterNot(visited).head
+        val sto0 = cmp.sto
+        val sto1 = dsc.sto
+        val diff = sto1.content.toSet -- sto0.content.toSet
+        diff.foreach { (adr, vlu) =>
+          println(s"$adr -> $vlu (was: ${sto0(adr)})")  
+        }
+      })
+
+    private def checkWorklist() = 
+      (visited -- workList.toList).foreach(checkForChanges)
+    */
