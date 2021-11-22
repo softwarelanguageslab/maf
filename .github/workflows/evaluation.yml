@@ -36,7 +36,7 @@ jobs:
           initial_comment: "Results of last night's precision evaluation."
   performance-evaluation:
     name: Execute performance evaluation with JMH
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 60
     strategy:
       fail-fast: false
