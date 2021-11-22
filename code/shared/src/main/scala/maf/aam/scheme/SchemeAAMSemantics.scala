@@ -247,6 +247,9 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         /** Instruction to apply the continuation that is on top of the continuation stack */
         case Ap(value: Val)
 
+        /** A control component at the boundary of the function call */
+        case Fn(c: Control)
+
     /** Provide a default "empty" extension to the state of the AAM-based analysis */
     protected def emptyExt: Ext
 
@@ -256,6 +259,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
             val control = c match {
               case Control.Ev(expr, env) => s"ev(${expr.toString})"
               case Control.Ap(vlu)       => s"ap(${vlu.toString})"
+              case Control.Fn(con)       => s"fn(${con})"
             }
 
             s"($control, ${s.content.size}, $k)"
@@ -303,13 +307,20 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     def asGraphElement(s: State): GraphElementAAM = s.c match
         case Control.Ev(e, _) => GraphElementAAM(s.hashCode, label = s"ev($e)", color = Colors.Yellow, data = "")
         case Control.Ap(v)    => GraphElementAAM(s.hashCode, label = s"ap($v)", color = Colors.Red, data = "")
+        case Control.Fn(c)    => asGraphElement(s.copy(c = c))
+
+    def stepDirect(ss: Set[State]): Set[State] = ss
 
     /** Step from one state to another */
     def step(s0: State): Set[State] =
         import Control.*
-        s0 match
+        val successors = s0 match
             case SchemeState(Ev(expr, env), sto, kont, t, ext) => eval(expr, env, sto, kont, t, ext)
             case SchemeState(Ap(value), sto, kont, t, ext)     => continue(value, sto, kont, t, ext)
+            case s @ SchemeState(Fn(contr), sto, kont, t, ext) => step(s.copy(c = contr))
+
+        // try to atomically step the successor
+        stepDirect(successors)
 
     /**
      * Push a frame on the conceptual stack of continuation frames
@@ -429,21 +440,28 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
         Set(SchemeState(Control.Ap(res), sto, kont, t, ext))
 
-    /** Evaluate a non-empty sequence of expression */
+    /**
+     * Evaluate a non-empty sequence of expression
+     *
+     * @param cross
+     *   set to true if the evaluation of the sequence crosses function boundaries (e.g. if this is the evaluation of the body of a function)
+     */
     private def evaluate_sequence(
         env: Env,
         sto: Sto,
         kont: Address,
         sequence: List[SchemeExp],
         t: Timestamp,
-        ext: Ext
+        ext: Ext,
+        cross: Boolean = false
       ): Set[State] =
-        assert(!sequence.isEmpty)
         val (sto1, frame, t1) = sequence match
             case List(x) => (sto, kont, t)
             case x :: xs => pushFrame(sequence.head, env, sto, kont, BegFrame(sequence.tail, env), t)
+            case Nil     => throw new Exception("malformed program: sequence cannot be empty")
 
-        Set(SchemeState(Control.Ev(sequence.head, env), sto1, frame, t1, ext))
+        val wrapControl: Control => Control = if cross then (c: Control) => Control.Fn(c) else identity
+        Set(SchemeState(wrapControl(Control.Ev(sequence.head, env)), sto1, frame, t1, ext))
 
     private def evaluateLet(
         evlBds: List[(Identifier, Val)],
@@ -563,7 +581,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           val pars = (lam.args ++ lam.varArgId.map(List(_)).getOrElse(List()))
           val env1 = pars.foldLeft(env)((env, par) => env.extend(par.name, VarAddr(par.idn, ctx)))
           // and evaluate the body
-          evaluate_sequence(env1, sto2, frame, lam.body, t0, ext)
+          evaluate_sequence(env1, sto2, frame, lam.body, t0, ext, true)
         case (lam, lex) =>
           println(s"Applied with invalid number of arguments ${argv.size}")
           Set()
