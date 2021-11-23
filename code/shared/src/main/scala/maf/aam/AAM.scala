@@ -35,11 +35,20 @@ trait AAMAnalysis:
     /** The type of the store */
     type Sto
 
+    /** The type of errors in our analysis */
+    type Error
+
+    /** An error state */
+    case class ErrorState(error: Error, state: State)
+
     /** A set of seen states in the analysis */
     private var seen: Set[State] = Set()
 
     /** A set of states still to visit */
     private var todo: Set[State] = Set()
+
+    /** A set of all errors in the program */
+    private var errors: Set[ErrorState] = Set()
 
     /** Initial timestamp */
     val initialTime: Timestamp
@@ -74,6 +83,10 @@ trait AAMAnalysis:
 
     /** Represents the given state als an element in the graph */
     def asGraphElement(state: State): GraphElementAAM
+
+    /** Register the error in the analysis */
+    def registerError(error: Error, state: State): Unit =
+      errors += ErrorState(error, state)
 
     def loop[G](
         work: List[State],

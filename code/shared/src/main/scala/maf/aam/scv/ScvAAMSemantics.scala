@@ -190,7 +190,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
             .getOrElse(Set())
 
           val blames = feasible(`false?`, vlu, ext.phi, ext.vars)
-            .map((phi1) => Set(blame(contract.contractIdn, expression.idn)))
+            .map((phi1) => Set(blame(contract.contractIdn, expression.idn, sto, next, t, ext)))
             .getOrElse(Set())
 
           nonblames ++ blames
@@ -208,7 +208,16 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
 
     /*=============================================================================================================================*/
 
-    protected def blame(blamer: Identity, blamed: Identity): State = ???
+    case class Blame(blamer: Identity, blamed: Identity) extends SchemeError
+    protected def blame(
+        blamer: Identity,
+        blamed: Identity,
+        sto: Sto,
+        kon: Address,
+        t: Timestamp,
+        extra: Ext
+      ): State =
+      SchemeState(Control.HltE(Blame(blamer, blamed)), sto, kon, t, extra)
 
     /**
      * Provides the semantics for a `mon` expression.
