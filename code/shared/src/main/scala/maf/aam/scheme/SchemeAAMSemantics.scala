@@ -27,6 +27,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     type State = SchemeState
     type Env = Environment[Address]
     type Ctx = Unit // TODO: fix
+    type Error = SchemeError
     type Ext
 
     lazy val initialEnv = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
@@ -70,6 +71,8 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
         /** We can also store continuations in the store */
         case K(k: Set[Kont])
+
+    trait SchemeError
 
     /** Inject the values from the lattice's abstract domain in the (possibly extended) domain of a sub analysis */
     def inject(v: LatVal): Val
@@ -250,6 +253,9 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         /** A control component at the boundary of the function call */
         case Fn(c: Control)
 
+        /** An error halting state */
+        case HltE(error: Error)
+
     /** Provide a default "empty" extension to the state of the AAM-based analysis */
     protected def emptyExt: Ext
 
@@ -260,6 +266,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
               case Control.Ev(expr, env) => s"ev(${expr.toString})"
               case Control.Ap(vlu)       => s"ap(${vlu.toString})"
               case Control.Fn(con)       => s"fn(${con})"
+              case Control.HltE(error)   => s"err(${error})"
             }
 
             s"($control, ${s.content.size}, $k)"
@@ -317,6 +324,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         val successors = s0 match
             case SchemeState(Ev(expr, env), sto, kont, t, ext) => eval(expr, env, sto, kont, t, ext)
             case SchemeState(Ap(value), sto, kont, t, ext)     => continue(value, sto, kont, t, ext)
+            case s @ SchemeState(HltE(error), _, _, _, _) =>
+              registerError(error, s)
+              Set() // HltE is a final state
+
             case s @ SchemeState(Fn(contr), sto, kont, t, ext) => step(s.copy(c = contr))
 
         // try to atomically step the successor
