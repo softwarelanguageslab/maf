@@ -548,7 +548,36 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         val functions = applyPrim(fexp, func, argv, env, sto, kon, t, ext)
         closures ++ functions
 
-    private def applyClo(
+    protected def bindArgs(
+        fexp: SchemeFuncall,
+        argv: List[Val],
+        lam: SchemeLambdaExp,
+        lex: Env,
+        sto0: Sto,
+        kon: Address,
+        t0: Timestamp,
+      ): (Env, Sto, Timestamp) =
+        // split in fixed an variable number of arguments
+        val (fx, vra) = argv.zip(fexp.args).splitAt(lam.args.length)
+        val ctx = ()
+
+        // add the fixed arguments on addresses in the store
+        val sto1 = lam.args.zip(fx).foldLeft(sto0) { case (sto, (par, (value, _))) =>
+          writeStoV(sto, VarAddr(par.idn, ctx), value)
+        }
+        // add variable arguments as a list to a particular address in the store
+        val sto2 = lam.varArgId match
+            case Some(id) =>
+              val (vlu, newsto) = allocList(vra, lex, sto1, kon, t0)
+              writeStoV(newsto, VarAddr(id.idn, ctx), vlu)
+            case _ => sto1
+
+        // extend the environment with the correct bindigs
+        val pars = (lam.args ++ lam.varArgId.map(List(_)).getOrElse(List()))
+        val env1 = pars.foldLeft(lex)((env, par) => env.extend(par.name, VarAddr(par.idn, ctx)))
+        (env1, sto2, t0)
+
+    protected def applyClo(
         fexp: SchemeFuncall,
         func: Val,
         argv: List[Val],
@@ -561,27 +590,9 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       // TODO: introduce contexts to support things like k-cfa
       lattice.getClosures(project(func)).flatMap {
         case (lam, lex: Env @unchecked) if lam.check(argv.size) =>
-          val (sto0, frame, t0) = (sto, kon, t)
-
-          // split in fixed an variable number of arguments
-          val (fx, vra) = argv.zip(fexp.args).splitAt(lam.args.length)
-          val ctx = () // TODO
-          // add the fixed arguments on addresses in the store
-          val sto1 = lam.args.zip(fx).foldLeft(sto0) { case (sto, (par, (value, _))) =>
-            writeStoV(sto, VarAddr(par.idn, ctx), value)
-          }
-          // add variable arguments as a list to a particular address in the store
-          val sto2 = lam.varArgId match
-              case Some(id) =>
-                val (vlu, newsto) = allocList(vra, env, sto1, kon, t0)
-                writeStoV(newsto, VarAddr(id.idn, ctx), vlu)
-              case _ => sto1
-
-          // extend the environment with the correct bindigs
-          val pars = (lam.args ++ lam.varArgId.map(List(_)).getOrElse(List()))
-          val env1 = pars.foldLeft(env)((env, par) => env.extend(par.name, VarAddr(par.idn, ctx)))
+          val (env1, sto2, t0) = bindArgs(fexp, argv, lam, lex, sto, kon, t)
           // and evaluate the body
-          evaluate_sequence(env1, sto2, frame, lam.body, t0, ext, true)
+          evaluate_sequence(env1, sto2, kon, lam.body, t0, ext, true)
         case (lam, lex) =>
           println(s"Applied with invalid number of arguments ${argv.size}")
           Set()
