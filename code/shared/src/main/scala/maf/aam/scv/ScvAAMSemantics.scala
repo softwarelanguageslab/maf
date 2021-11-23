@@ -20,7 +20,12 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
     type PC = PathStore
     type Val = (LatVal, Option[Symbolic])
 
-    case class ScvState(m: StoreCache, phi: PC, vars: List[String])
+    case class ScvState(m: StoreCache, phi: PC, vars: List[String], graph: CallGraph)
+
+    /** Initial SCV state */
+    def emptyExt: Ext =
+      // TODO: put information about the primitivesi n the store cache initially
+      ScvState(Map(), PathStore(), List(), CallGraph.empty)
 
     /*=============================================================================================================================*/
     /*===== Satisfiability (SMT) solver ===========================================================================================*/
@@ -62,11 +67,18 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         def link(kont: Address): MonFrame = this.copy(next = Some(kont))
 
     /** Frame that gets pushed when `contract` is a flat contract and when we are evaluating the expression in the monitor expression */
-    case class MonFlatFrame(contract: Flat[LatVal], idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
+    case class MonFlatFrame(contract: Flat[LatVal], expression: SchemeExp, idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
         def link(kont: Address): MonFlatFrame = this.copy(next = Some(kont))
 
     /** Frame that gets pushed when trying to apply the flat contract to the value of the expression */
-    case class MonFlatFrameRet(contract: Flat[LatVal], idn: Identity, vlu: Val, env: Env, next: Option[Address] = None) extends Frame:
+    case class MonFlatFrameRet(
+        contract: Flat[LatVal],
+        expression: SchemeExp,
+        idn: Identity,
+        vlu: Val,
+        env: Env,
+        next: Option[Address] = None)
+        extends Frame:
         def link(kont: Address): MonFlatFrameRet = this.copy(next = Some(kont))
 
     case class MonFunFrame(contract: Grd[LatVal], idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
@@ -147,7 +159,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
           val flats = lattice
             .getFlats(project(vlu))
             .map((flat) => {
-              val (sto1, frame, t1) = pushFrame(expression, env, sto, next, MonFlatFrame(flat, idn, env), t)
+              val (sto1, frame, t1) = pushFrame(expression, env, sto, next, MonFlatFrame(flat, expression, idn, env), t)
               SchemeState(Control.Ev(expression, env), sto1, frame, t1, ext)
             })
 
@@ -162,22 +174,23 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
           grds ++ flats
 
         // [MonFlat]
-        case MonFlatFrame(contract, idn, env, Some(next)) =>
-          val fexp = SchemeFuncall(contract.fexp, ???, ???) // TODO: add expression expr to continuation
+        case MonFlatFrame(contract, expression, idn, env, Some(next)) =>
+          val fexp = SchemeFuncall(contract.fexp, List(expression), idn) // TODO: add expression expr to continuation
           val func = contract.contract
           val args = List(vlu)
           // TODO: fix expression here so that we maintain proper call-return matching
-          val (sto1, frame, t1) = pushFrame(SchemeValue(Value.Nil, Identity.none), env, sto, next, MonFlatFrameRet(contract, idn, vlu, env), t)
+          val (sto1, frame, t1) =
+            pushFrame(SchemeValue(Value.Nil, Identity.none), env, sto, next, MonFlatFrameRet(contract, expression, idn, vlu, env), t)
           applyFun(fexp, inject(func), args, env, sto1, frame, t1, ext)
 
         // [MonFlat] checking whether expression satisfies contract, otherwise blame
-        case MonFlatFrameRet(contract, idn, expVlu, env, Some(next)) =>
+        case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
           val nonblames = feasible(`true?`, vlu, ext.phi, ext.vars)
             .map((phi1) => Set(SchemeState(Control.Ap(expVlu), sto, next, t, ext.copy(phi = phi1))))
             .getOrElse(Set())
 
           val blames = feasible(`false?`, vlu, ext.phi, ext.vars)
-            .map((phi1) => Set(blame(contract.contractIdn, ???))) // TODO: we also need the identity of the expression to blame
+            .map((phi1) => Set(blame(contract.contractIdn, expression.idn)))
             .getOrElse(Set())
 
           nonblames ++ blames
@@ -197,6 +210,18 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
 
     protected def blame(blamer: Identity, blamed: Identity): State = ???
 
+    /**
+     * Provides the semantics for a `mon` expression.
+     *
+     * Given the expression `(mon contract expression)`. Then we required the following parameters:
+     *
+     * @param contract
+     *   the contract of the mon expression
+     * @param expression
+     *   the expression of the mon expression
+     * @param idn
+     *   the identity of the entire mon expression
+     */
     protected def mon(
         contract: SchemeExp,
         expression: SchemeExp,
