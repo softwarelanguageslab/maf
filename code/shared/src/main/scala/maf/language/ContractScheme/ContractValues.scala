@@ -37,6 +37,9 @@ object ContractValues:
         e: L,
         topLevel: Boolean = false):
         def map[AL](f: L => AL): Arr[AL] = Arr(lcontract, lserver, contract.map(f), f(e), topLevel)
+        def checkArgs[A](l: List[A]): Boolean =
+          contract.domain.size == l.size
+        def expectedNumArgs: Int = contract.domain.size
 
     /**
      * A value that represents a flat contract, such that we can distribute blames correctly when a value of this type is applied.

@@ -73,6 +73,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         case K(k: Set[Kont])
 
     trait SchemeError
+    case class InvalidNumberOfArguments(fexp: SchemeFuncall, got: Int, expected: Int) extends SchemeError
 
     /** Inject the values from the lattice's abstract domain in the (possibly extended) domain of a sub analysis */
     def inject(v: LatVal): Val
@@ -559,6 +560,26 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         val functions = applyPrim(fexp, func, argv, env, sto, kon, t, ext)
         closures ++ functions
 
+    protected def invalidArity(
+        fexp: SchemeFuncall,
+        got: Int,
+        expected: Int,
+        sto: Sto,
+        kon: Address,
+        t: Timestamp,
+        ext: Ext
+      ): Set[State] =
+      Set(
+        SchemeState(Control.HltE(
+                      InvalidNumberOfArguments(fexp, got, expected)
+                    ),
+                    sto,
+                    kon,
+                    t,
+                    ext
+        )
+      )
+
     protected def bindArgs(
         fexp: SchemeFuncall,
         argv: List[Val],
@@ -605,8 +626,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           // and evaluate the body
           evaluate_sequence(env1, sto2, kon, lam.body, t0, ext, true)
         case (lam, lex) =>
-          println(s"Applied with invalid number of arguments ${argv.size}")
-          Set()
+          invalidArity(fexp, argv.size, lam.args.size + lam.varArgId.size, sto, kon, t, ext)
       }
 
     /** Call to the given primitive while ingoring the changes to the store */

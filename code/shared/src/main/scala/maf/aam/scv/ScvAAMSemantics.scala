@@ -48,6 +48,9 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
       // TODO: put information about the primitivesi n the store cache initially
       ScvState(Map(), PathStore(), List(), CallGraph.empty, Map(), Map())
 
+    // Errors
+    case class Blame(blamer: Identity, blamed: Identity) extends SchemeError
+
     /*=============================================================================================================================*/
     /*===== Satisfiability (SMT) solver ===========================================================================================*/
     /*=============================================================================================================================*/
@@ -102,12 +105,16 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         extends Frame:
         def link(kont: Address): MonFlatFrameRet = this.copy(next = Some(kont))
 
-    case class MonFunFrame(contract: Grd[LatVal], idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
+    case class MonFunFrame(contract: Grd[LatVal], epx: SchemeExp, idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
         def link(kont: Address): MonFunFrame = this.copy(next = Some(kont))
 
     /** Frame that gets pushed when we evaluate an expression in a (flat expression)/idn expression */
     case class FlatLitFrame(exp: SchemeExp, idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
         def link(kont: Address): FlatLitFrame = this.copy(next = Some(kont))
+
+    /** Frame that signifies what to do after the range maker of a monitored function is applied */
+    case class ArrRangeMakerFrame(fexp: SchemeFuncall, arr: Arr[LatVal], argv: List[Val], env: Env, next: Option[Address] = None) extends Frame:
+        def link(kont: Address): ArrRangeMakerFrame = this.copy(next = Some(kont))
 
     /*=============================================================================================================================*/
     /* ===== Extension points =====================================================================================================*/
@@ -199,9 +206,22 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
           // and evaluate the body
           evaluate_sequence(env1, sto2, kon, lam.body, t0, ext3, true)
         case (lam, lex) =>
-          println(s"Applied with invalid number of arguments ${argv.size}")
-          Set()
+          invalidArity(fexp, argv.size, lam.args.size + lam.varArgId.size, sto, kon, t, ext)
       }
+
+    override protected def applyFun(
+        fexp: SchemeFuncall,
+        func: Val,
+        argv: List[Val],
+        env: Env,
+        sto: Sto,
+        kon: Address,
+        t: Timestamp,
+        ext: Ext
+      ): Set[State] =
+        val others = super.applyFun(fexp, func, argv, env, sto, kon, t, ext)
+        val arrs = applyArrs(fexp, func, argv, env, sto, kon, t, ext)
+        others ++ arrs
 
     override def eval(
         exp: SchemeExp,
@@ -250,7 +270,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
           val grds = lattice
             .getGrds(project(vlu))
             .map((grd) =>
-                val (sto1, frame, t1) = pushFrame(expression, env, sto, next, MonFunFrame(grd, idn, env), t)
+                val (sto1, frame, t1) = pushFrame(expression, env, sto, next, MonFunFrame(grd, expression, idn, env), t)
                 SchemeState(Control.Ev(expression, env), sto1, frame, t1, ext)
             )
 
@@ -258,7 +278,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
 
         // [MonFlat]
         case MonFlatFrame(contract, expression, idn, env, Some(next)) =>
-          val fexp = SchemeFuncall(contract.fexp, List(expression), idn) // TODO: add expression expr to continuation
+          val fexp = SchemeFuncall(contract.fexp, List(expression), idn)
           val func = contract.contract
           val args = List(vlu)
           // TODO: fix expression here so that we maintain proper call-return matching
@@ -279,12 +299,19 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
           nonblames ++ blames
 
         // [MonFun]
-        case MonFunFrame(contract, idn, env, Some(next)) =>
-          ???
+        case MonFunFrame(contract, expression, idn, env, Some(next)) =>
+          val arr = Arr(idn, expression.idn, contract, project(vlu))
+          Set(SchemeState(Control.Ap(inject(lattice.arr(arr))), sto, kon, t, ext))
 
         // Rule added to evaluate flat contracts
         case FlatLitFrame(exp, idn, env, Some(next)) =>
-          Some(SchemeState(Control.Ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn)))), sto, next, t, ext))
+          Set(SchemeState(Control.Ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn)))), sto, next, t, ext))
+
+        // [MonArr]
+        case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
+          // The value of the range contract is in the value passed to this continuation
+          // Now apply mon on the arguments of the function to the domain contracts
+          checkDomains(fexp, arr, arr.contract.domain, argv, argv, env, sto, next, t, ext)
 
         case _ => super.continue(vlu, sto, kon, t, ext)
       }
@@ -303,7 +330,6 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
       // the path condition is set when the clojure is defined
       ext.pathStore.get(clo).get
 
-    case class Blame(blamer: Identity, blamed: Identity) extends SchemeError
     protected def blame(
         blamer: Identity,
         blamed: Identity,
@@ -358,3 +384,46 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
               if checkPc(phi1, vars)
             } yield phi1
         else None
+
+    /** Semantics for applying a function that is monitored by a contract */
+    protected def applyArrs(
+        fexp: SchemeFuncall,
+        func: Val,
+        argv: List[Val],
+        env: Env,
+        sto: Sto,
+        kon: Address,
+        t: Timestamp,
+        ext: Ext
+      ): Set[State] =
+      lattice.getArrs(project(func)).flatMap { arr =>
+          val contract = arr.contract
+          // first check whether a sufficient number of arguments was provided
+          if arr.checkArgs(argv) then
+              // then pass the function values to the rangeMaker
+              // TODO: fexp is probably not the right choice here as a return address
+              val (sto1, frame, t1) = pushFrame(fexp, env, sto, kon, ArrRangeMakerFrame(fexp, arr, argv, env), t)
+              applyFun(fexp, inject(contract.rangeMaker), argv, env, sto, kon, t, ext)
+          else invalidArity(fexp, argv.size, arr.expectedNumArgs, sto, kon, t, ext)
+      }
+
+    /** Given a list of remaining domains to check, check the domain contracts on the given values */
+    protected def checkDomains(
+        fexp: SchemeFuncall,
+        arr: Arr[LatVal],
+        domains: List[LatVal],
+        remainingArgv: List[Val],
+        argv: List[Val],
+        env: Env,
+        sto: Sto,
+        kon: Address,
+        t: Timestamp,
+        ext: Ext
+      ): Set[State] = domains match
+        case domain :: domains =>
+          // validate the next domain contract
+          ???
+        case _ =>
+          // if all the domain contracts have been validated, we can execute the monitored function
+          val monitoredFunction = inject(arr.e)
+          applyFun(fexp, monitoredFunction, argv, env, sto, kon, t, ext)
