@@ -74,6 +74,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
     trait SchemeError
     case class InvalidNumberOfArguments(fexp: SchemeFuncall, got: Int, expected: Int) extends SchemeError
+    case class AssertionFailed(location: Identity) extends SchemeError
+
+    protected def error(err: SchemeError, sto: Sto, kon: Address, t: Timestamp, ext: Ext): Set[State] =
+      Set(SchemeState(Control.HltE(err), sto, kon, t, ext))
 
     /** Inject the values from the lattice's abstract domain in the (possibly extended) domain of a sub analysis */
     def inject(v: LatVal): Val
@@ -217,6 +221,14 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         def link(next: Address): LetrecFrame =
           this.copy(next = Some(next))
 
+    case class AssertFrame(
+        idn: Identity,
+        env: Env,
+        next: Option[Address] = None)
+        extends Frame:
+        def link(next: Address): AssertFrame =
+          this.copy(next = Some(next))
+
     case object HltFrame extends Frame:
         def link(next: Address): Frame = this
 
@@ -313,9 +325,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
     /** Convert the given state to a node in a graph */
     def asGraphElement(s: State): GraphElementAAM = s.c match
-        case Control.Ev(e, _) => GraphElementAAM(s.hashCode, label = s"ev($e)", color = Colors.Yellow, data = "")
-        case Control.Ap(v)    => GraphElementAAM(s.hashCode, label = s"ap($v)", color = Colors.Red, data = "")
-        case Control.Fn(c)    => asGraphElement(s.copy(c = c))
+        case Control.Ev(e, _)  => GraphElementAAM(s.hashCode, label = s"ev($e)", color = Colors.Yellow, data = "")
+        case Control.Ap(v)     => GraphElementAAM(s.hashCode, label = s"ap($v)", color = Colors.Red, data = "")
+        case Control.Fn(c)     => asGraphElement(s.copy(c = c))
+        case Control.HltE(err) => GraphElementAAM(s.hashCode, label = s"err($err)", color = Colors.Pink, data = "")
 
     def stepDirect(ss: Set[State]): Set[State] = ss
 
@@ -326,6 +339,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
             case SchemeState(Ev(expr, env), sto, kont, t, ext) => eval(expr, env, sto, kont, t, ext)
             case SchemeState(Ap(value), sto, kont, t, ext)     => continue(value, sto, kont, t, ext)
             case s @ SchemeState(HltE(error), _, _, _, _) =>
+              println(s"ERR: ${error}")
               registerError(error, s)
               Set() // HltE is a final state
 
@@ -403,11 +417,23 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           val env1 = bindings.map(_._1).foldLeft(env)((newEnv, identifier) => newEnv.extend(identifier.name, alloc(identifier.idn, env, sto, kont, t)))
           evaluateLetrec(Nil, Nil, env1, sto, kont, bindings, body, t, ext)
 
-        // unsupported
-        case _: SchemeAssert =>
-          Set()
+        case SchemeAssert(exp, idn) =>
+          evalAssert(exp, idn, env, sto, kont, t, ext)
 
         case _ => throw new Exception("unsupported exception")
+
+    /** Evaluate an (assert exp) expression */
+    protected def evalAssert(
+        exp: SchemeExp,
+        idn: Identity,
+        env: Env,
+        sto: Sto,
+        kon: Address,
+        t: Timestamp,
+        ext: Ext
+      ): Set[State] =
+        val (sto1, frame, t1) = pushFrame(exp, env, sto, kon, AssertFrame(idn, env), t)
+        Set(SchemeState(Control.Ev(exp, env), sto1, frame, t1, ext))
 
     /**
      * Evaluate a literal value, these are evaluated to equivalent representations in the abstract domain. A string literal is allocated in the store
@@ -448,7 +474,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         val res: Val = env
           .lookup(id.name)
           .map(readStoV(sto, _, ext))
-          .getOrElse(inject(lattice.bottom))
+          .getOrElse {
+            println(s"ERR: undefined variable $id")
+            inject(lattice.bottom)
+          }
 
         Set(SchemeState(Control.Ap(res), sto, kont, t, ext))
 
@@ -488,7 +517,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       bindings match
           case List() =>
             val addresses =
-              bindings.map(_._1).map((current) => alloc(current.idn, env, sto, kont, t))
+              evlBds.map(_._1).map((current) => alloc(current.idn, env, sto, kont, t))
             val env1: Env =
               evlBds
                 .map(_._1)
@@ -769,9 +798,9 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
             applyFun(f, fv, (value :: argsV).reverse, env, sto, kont, t, ext)
           }
 
-        case LetFrame(evalBds, _ :: bindings, body, env, Some(addr)) =>
+        case LetFrame(evalBds, binding :: bindings, body, env, Some(addr)) =>
           continueWiths(sto, addr) { kont =>
-            evaluateLet(evalBds, env, sto, kont, bindings, body, t, ext)
+            evaluateLet((binding._1, value) :: evalBds, env, sto, kont, bindings, body, t, ext)
           }
 
         case LetStarFrame(currentIdentifier, restBindings, body, env, Some(addr)) =>
@@ -786,6 +815,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           continueWiths(sto, addr) { kont =>
             evaluateLetrec(addresses, value :: values, env, sto, kont, bindings, body, t, ext)
           }
+
+        case AssertFrame(idn, env, Some(next)) =>
+          if !lattice.isTrue(project(value)) then error(AssertionFailed(idn), sto, next, t, ext)
+          else Set(SchemeState(Control.Ap(inject(lattice.nil)), sto, next, t, ext))
 
         case HltFrame => Set()
       }

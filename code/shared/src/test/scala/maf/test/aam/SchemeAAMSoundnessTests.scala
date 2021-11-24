@@ -9,6 +9,7 @@ import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.test.VariousSequentialBenchmarks
 import maf.test.JSS2021Benchmarks
 import maf.util.benchmarks.Timeout
+import maf.bench.scheme.*
 
 import scala.concurrent.duration._
 import maf.util.graph.*
@@ -36,9 +37,11 @@ trait SchemeAAMSoundnessTests extends maf.test.aam.AAMSoundnessTests with DotGra
 class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with VariousSequentialBenchmarks:
 
     override val name: String = "Scheme AAM soundness tests"
-    override def benchmarks: Set[Benchmark] = Set(
-      "test/R5RS/various/fact.scm"
-    )
+    override def benchmarks: Set[Benchmark] =
+      Set(
+        "test/R5RS/various/fact.scm"
+      )
+
     override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(12, SECONDS))
     override def analysis(b: SchemeExp): Analysis =
       new SchemeAAMSemantics(b)
