@@ -457,7 +457,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
      * @param cross
      *   set to true if the evaluation of the sequence crosses function boundaries (e.g. if this is the evaluation of the body of a function)
      */
-    private def evaluate_sequence(
+    protected def evaluate_sequence(
         env: Env,
         sto: Sto,
         kont: Address,

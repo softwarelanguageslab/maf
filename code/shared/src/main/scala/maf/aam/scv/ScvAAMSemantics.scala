@@ -12,6 +12,7 @@ import maf.language.ContractScheme.*
 import maf.language.ContractScheme.ContractValues.*
 import maf.modular.scv.ScvSatSolver
 import maf.language.scheme.SchemeValue
+import maf.aam.scv.CallGraph.{Edge, Looped}
 
 trait ScvAAMSemantics extends SchemeAAMSemantics:
     /** We add SCV specific information to the each AAM state */
@@ -20,12 +21,32 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
     type PC = PathStore
     type Val = (LatVal, Option[Symbolic])
 
-    case class ScvState(m: StoreCache, phi: PC, vars: List[String], graph: CallGraph)
+    /**
+     * @param m
+     *   the store cache, a mapping from addresses to symbolic values
+     * @param phi
+     *   the path condition, represented as a conjunction of symbolic constraints
+     * @param vars
+     *   a list of variables that are in the current path condition
+     * @param graph
+     *   a graph of the current calling history
+     * @param pathStore
+     *   a mapping from closures to path conditions
+     * @param storeCacheClo
+     *   a mapping from a closure to the lexical store cache
+     */
+    case class ScvState(
+        m: StoreCache,
+        phi: PC,
+        vars: List[String],
+        graph: CallGraph,
+        pathStore: Map[(SchemeLambdaExp, Env), PC],
+        storeCacheClo: Map[(SchemeLambdaExp, Env), StoreCache])
 
     /** Initial SCV state */
     def emptyExt: Ext =
       // TODO: put information about the primitivesi n the store cache initially
-      ScvState(Map(), PathStore(), List(), CallGraph.empty)
+      ScvState(Map(), PathStore(), List(), CallGraph.empty, Map(), Map())
 
     /*=============================================================================================================================*/
     /*===== Satisfiability (SMT) solver ===========================================================================================*/
@@ -129,7 +150,58 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         t: Timestamp,
         ext: Ext
       ): Set[State] =
+      // apply the primitive and then add a symbolic application to the symbolic value
       super.applyPrim(fexp, func, argv, env, sto, kon, t, ext).map(_.mapValue(tagOption(ap(fexp, argv))))
+
+    override protected def applyClo(
+        fexp: SchemeFuncall,
+        func: Val,
+        argv: List[Val],
+        env: Env,
+        sto: Sto,
+        kon: Address,
+        t: Timestamp,
+        ext: Ext
+      ): Set[State] =
+      lattice.getClosures(project(func)).flatMap {
+        case (lam, lex: Env @unchecked) if lam.check(argv.size) =>
+          val (env1, sto2, t0) = bindArgs(fexp, argv, lam, lex, sto, kon, t)
+
+          // update the path condition and store cache, only share the path condition
+          // and store cache if it was not looped.
+          val ext1 = ext.graph.add(Edge((lam, lex))) match
+              case Looped.Safe(c) =>
+                ext.copy(graph = c) // TODO: gc store cache?
+
+              // Default behaviour from the paper: use the path condition and store
+              // cache from the closure. But conservatively update the store cache
+              // such that free variables are removed.
+              case Looped.Recursive(_) =>
+                // TODO: restore m and phi after function application
+                val m1 = ext.storeCacheClo((lam, lex)) -- lam.fv.map(lex.lookup(_).get)
+                ext.copy(phi = phiOfClo((lam, lex), ext), m = m1)
+
+          // then, add symbolic representations for the arguments of the function
+          val fixd = argv.take(lam.args.size) // only provide sym representation for fixed arguments
+          val (syms, ext2) = fixd.foldRight((List[Symbolic](), ext)) {
+            case ((_, Some(sym)), (syms, ext)) => (sym :: syms, ext)
+            case ((_, None), (syms, ext)) =>
+              val (sym, ext1) = fresh(ext)
+              (sym :: syms, ext1)
+          }
+
+          // finally, bind them in the store cache
+          val ext3 = ext2.copy(m = ext1.m ++ lam.args.zip(syms).map { case (arg: Identifier, sym) =>
+            // TODO: check if this is correct and ensures a terminating analysis
+            env1(arg.name) -> sym
+          })
+
+          // and evaluate the body
+          evaluate_sequence(env1, sto2, kon, lam.body, t0, ext3, true)
+        case (lam, lex) =>
+          println(s"Applied with invalid number of arguments ${argv.size}")
+          Set()
+      }
 
     override def eval(
         exp: SchemeExp,
@@ -142,6 +214,17 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         // [Lit]
         case lit: SchemeValue =>
           super.evalLiteralVal(lit, env, sto, kont, t, ext).map(_.mapValue(tag(lit)))
+
+        case lam: SchemeLambdaExp =>
+          val clo = (lam, env.restrictTo(lam.fv))
+
+          // register the lexical path condition and store cache that will be used at application time
+          val ext1 = ext.copy(
+            pathStore = ext.pathStore + (clo -> ext.phi),
+            storeCacheClo = ext.storeCacheClo + (clo -> ext.m)
+          )
+
+          Set(SchemeState(Control.Ap(inject(lattice.closure(clo))), sto, kont, t, ext1))
 
         case ContractSchemeMon(contract, expression, idn) =>
           mon(contract, expression, idn, env, sto, kont, t, ext)
@@ -207,6 +290,18 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
       }
 
     /*=============================================================================================================================*/
+
+    /** Generate a fresh symbolic variable */
+    private def fresh(ext: Ext): (Symbolic, Ext) =
+        val next = ext.vars.size + 1
+        val newName = s"x$next"
+        (Symbolic(SchemeVar(Identifier(newName, Identity.none))), ext.copy(vars = newName :: ext.vars))
+
+    /** Lookup the path condition of the given clojure */
+    protected def phiOfClo(clo: (SchemeLambdaExp, Env), ext: Ext): PC =
+      // SAFETY: .get will never result in an exception since
+      // the path condition is set when the clojure is defined
+      ext.pathStore.get(clo).get
 
     case class Blame(blamer: Identity, blamed: Identity) extends SchemeError
     protected def blame(
