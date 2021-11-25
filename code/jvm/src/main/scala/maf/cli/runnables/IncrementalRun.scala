@@ -89,7 +89,7 @@ object IncrementalRun extends App:
           {
           //override def focus(a: Addr): Boolean =
           //!a.toString.contains("PrmAddr") && (a.toString.contains("ret") || a.toString.contains("x2") || a.toString.contains("__"))
-          var configuration: IncrementalConfiguration = allOptimisations
+          var configuration: IncrementalConfiguration = ci_di_wi
           override def intraAnalysis(
               cmp: Component
             ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
@@ -105,6 +105,7 @@ object IncrementalRun extends App:
           val a = base(text)
           //   a.logger.logU("BASE + INC")
           a.analyzeWithTimeout(timeout())
+          a.configuration = wi
           //  a.flowInformationToDotGraph("logs/flowsA1.dot")
           a.updateAnalysis(timeout())
           //  a.flowInformationToDotGraph("logs/flowsA2.dot")
@@ -125,8 +126,10 @@ object IncrementalRun extends App:
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
-    val modFbenchmarks: List[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme/generated/erroneous")().toList //List("test/changes/scheme/generated/selsort-7.scm")
-    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(2, MINUTES))
+    val modFbenchmarks: List[String] = List(
+      "test/changes/scheme/generated/R5RS_WeiChenRompf2019_meta-circ-5.scm"
+    )
+    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(10, MINUTES))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
     modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
@@ -135,3 +138,12 @@ object IncrementalRun extends App:
     //createPNG("logs/flowsA2.dot", true)
     //createPNG("logs/flowsB.dot", true)
     println("Done")
+
+// Prints the maximal heap size.
+object Memorycheck extends App:
+    def formatSize(v: Long): String =
+        if v < 1024 then return v + " B"
+        val z = (63 - java.lang.Long.numberOfLeadingZeros(v)) / 10
+        s"${v.toDouble / (1L << (z * 10))} ${" KMGTPE".charAt(z)}B"
+
+    println(formatSize(Runtime.getRuntime.nn.maxMemory()))
