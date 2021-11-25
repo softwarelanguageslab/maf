@@ -50,7 +50,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
                 case V(v) => v
                 case _    => lattice.bottom
               }
-              .getOrElse(lattice.bottom)
+              .getOrElse {
+                println(s"WARN: Lookup of $a failed")
+                lattice.bottom
+              }
 
         def writeSto(a: Address, value: LatVal): Unit =
           sto = sto.extend(a, Storable.V(value))
@@ -154,7 +157,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         .collectFirst { case Storable.V(v) =>
           inject(v)
         }
-        .getOrElse(inject(lattice.bottom))
+        .getOrElse {
+          println(s"WARN: Lookup of $addr failed")
+          inject(lattice.bottom)
+        }
 
     /** Write to the given address in the store, returns the updated store */
     def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
@@ -211,8 +217,9 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           this.copy(next = Some(next))
 
     case class LetrecFrame(
+        currentAddress: Address,
         addresses: List[Address],
-        valeus: List[Val],
+        values: List[Val],
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
         env: Env,
@@ -567,12 +574,14 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       bindings match
           case List() =>
             // the enviroment already contains the necessary bindings
-            val sto1 = addresses.zip(values).foldLeft(sto)((sto, current) => writeStoV(sto, current._1, current._2))
-            evaluate_sequence(env, sto1, kont, body, t, ext)
+            // the store also already contains the necessary bindings
+            // val sto1 = addresses.zip(values).foldLeft(sto)((sto, current) => writeStoV(sto, current._1, current._2))
+            evaluate_sequence(env, sto, kont, body, t, ext)
 
           case binding :: bindings =>
-            val addresses1 = alloc(binding._1.idn, env, sto, kont, t) :: addresses
-            val (sto1, frame, t1) = pushFrame(binding._2, env, sto, kont, LetrecFrame(addresses1, values, bindings, body, env), t)
+            val address = alloc(binding._1.idn, env, sto, kont, t)
+            val addresses1 = address :: addresses
+            val (sto1, frame, t1) = pushFrame(binding._2, env, sto, kont, LetrecFrame(address, addresses1, values, bindings, body, env), t)
             Set(SchemeState(Control.Ev(binding._2, env), sto1, frame, t1, ext))
 
     protected def applyFun(
@@ -811,9 +820,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
               evaluateLetStar(env1, sto1, kont, restBindings, body, t, ext)
           }
 
-        case LetrecFrame(addresses, values, bindings, body, env, Some(addr)) =>
+        case LetrecFrame(currentAddr, addresses, values, bindings, body, env, Some(addr)) =>
           continueWiths(sto, addr) { kont =>
-            evaluateLetrec(addresses, value :: values, env, sto, kont, bindings, body, t, ext)
+              val sto1 = writeStoV(sto, currentAddr, value)
+              evaluateLetrec(addresses, value :: values, env, sto1, kont, bindings, body, t, ext)
           }
 
         case AssertFrame(idn, env, Some(next)) =>

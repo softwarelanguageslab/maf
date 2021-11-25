@@ -24,7 +24,7 @@ trait DotGraphOutput extends AAMSoundnessTests:
     implicit protected def graphInstance = graph.G.typeclass
     protected def emptyGraph = graph.G.typeclass.empty
     protected def saveGraph(benchmark: Benchmark, graph: G): Unit =
-        val outName = s"${benchmark.replace("/", "_")}.dot"
+        val outName = s"results/${benchmark.replace("/", "_")}.dot"
         graph.toFile(outName)
 
 trait SchemeAAMSoundnessTests extends maf.test.aam.AAMSoundnessTests with DotGraphOutput:
