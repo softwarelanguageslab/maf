@@ -84,9 +84,7 @@ object AnalysisComparison1
         val txt = Reader.loadFile(path)
         val prg = SchemeParser.parseProgram(txt)
         val con = runInterpreter(prg, path).get
-        val abs = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_), "analysis", prg, path) match
-            case Terminated(res) => res
-            case _               => throw new Exception("This should not happen!")
+        val Terminated(abs) = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_), "analysis", prg, path)
         val allKeys = con.keys ++ abs.keys
         allKeys.foreach { k =>
             val absVal = abs.getOrElse(k, "⊥")

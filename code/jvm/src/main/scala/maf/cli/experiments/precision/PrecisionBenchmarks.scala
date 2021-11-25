@@ -136,21 +136,24 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   the less precise resultMap
      * @param b2
      *   the more precise resultMap
+     * @param check
+     *   a boolean indicating whether it should be checked explicitly that b1 is less precise than b2 (default: true)
      * @return
      *   the set of addresses that have been refined in b2 w.r.t. b1
      */
-    protected def compareOrdered(r1: ResultMap, r2: ResultMap): Set[Identity] =
+    protected def compareOrdered(r1: ResultMap, r2: ResultMap, check: Boolean = true): Set[Identity] =
         def errorMessage(pos: Identity): String =
             val value1 = r1.getOrElse(pos, baseLattice.bottom)
             val value2 = r2.getOrElse(pos, baseLattice.bottom)
             s"""
-        | At addr $pos: value v2 of r2 is not subsumed by value v1 of r1.
-        | where v1 = $value1
-        |       v2 = $value2 
-      """.stripMargin
+              | At addr $pos: value v2 of r2 is not subsumed by value v1 of r1.
+              | where v1 = $value1
+              |       v2 = $value2 
+            """.stripMargin
         val (_, morePrecise, lessPrecise, unrelated) = compare(r1, r2)
-        //assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
-        //assert(unrelated.isEmpty, errorMessage(unrelated.head))
+        if check then
+            assert(lessPrecise.isEmpty, errorMessage(lessPrecise.head))
+            assert(unrelated.isEmpty, errorMessage(unrelated.head))
         morePrecise
 
     /**

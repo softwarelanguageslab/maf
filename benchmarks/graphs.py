@@ -34,6 +34,8 @@ for date, group in zip(dates, metrics):
 df = pd.DataFrame(sum(metrics, []))
 df["date"] = pd.to_datetime(df.date)
 
+import matplotlib as mpl
+mpl.use('Agg') # Needed to run without an X server, see here: https://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server
 import seaborn as sb
 import matplotlib.pyplot as plt
 

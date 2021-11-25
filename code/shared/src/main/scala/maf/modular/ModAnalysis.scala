@@ -54,41 +54,41 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
 
   // parameterized by an 'intra-component analysis'
   def intraAnalysis(component: Component): IntraAnalysis
-  abstract class IntraAnalysis(val component: Component) { intra =>
+  abstract class IntraAnalysis(val component: Component):
+      intra =>
 
-    /** Set of dependencies read by this intra-component analysis. */
-    var R: Set[Dependency] = Set()
+      /** Set of dependencies read by this intra-component analysis. */
+      var R: Set[Dependency] = Set()
 
-    /** Set of dependencies written (triggered) by this intra-component analysis. */
-    var W: Set[Dependency] = Set()
+      /** Set of dependencies written (triggered) by this intra-component analysis. */
+      var W: Set[Dependency] = Set()
 
-    /** Set of components discovered by this intra-component analysis. */
-    var C: Set[Component] = Set()
+      /** Set of components discovered by this intra-component analysis. */
+      var C: Set[Component] = Set()
 
-    /** Registers a read dependency. */
-    def register(dep: Dependency): Unit = R += dep
+      /** Registers a read dependency. */
+      def register(dep: Dependency): Unit = R += dep
 
-    /** Triggers a written dependency. */
-    def trigger(dep: Dependency): Unit = W += dep
+      /** Triggers a written dependency. */
+      def trigger(dep: Dependency): Unit = W += dep
 
-    /** Spawns a discovered component. */
-    def spawn(cmp: Component): Unit = C += cmp
+      /** Spawns a discovered component. */
+      def spawn(cmp: Component): Unit = C += cmp
 
-    /**
-     * Performs the intra-component analysis of the given component.<br> <b>Important:</b> should only update the *local* analysis state, and must not
-     * modify the global analysis state directly.
-     */
-    def analyzeWithTimeout(timeout: Timeout.T): Unit
+      /**
+       * Performs the intra-component analysis of the given component.<br> <b>Important:</b> should only update the *local* analysis state, and must
+       * not modify the global analysis state directly.
+       */
+      def analyzeWithTimeout(timeout: Timeout.T): Unit
 
-    /** Pushes the local changes to the global analysis state. */
-    def commit(): Unit =
-        R.foreach(inter.register(component, _))
-        W.foreach(dep => if doWrite(dep) then inter.trigger(dep))
-        C.foreach(inter.spawn(_, component))
+      /** Pushes the local changes to the global analysis state. */
+      def commit(): Unit =
+          R.foreach(inter.register(component, _))
+          W.foreach(dep => if doWrite(dep) then inter.trigger(dep))
+          C.foreach(inter.spawn(_, component))
 
-    /** Called upon a commit for every written dependency. Returns a boolean indicating whether the global analysis state was modified. */
-    def doWrite(dep: Dependency): Boolean = false // `ModAnalysis` has no knowledge of dependencies it can commit.
-  }
+      /** Called upon a commit for every written dependency. Returns a boolean indicating whether the global analysis state was modified. */
+      def doWrite(dep: Dependency): Boolean = throw new Exception(s"Unknown dependency $dep") // `ModAnalysis` has no knowledge of dependencies it can commit.
 
   // Specific to the worklist algorithm:
 

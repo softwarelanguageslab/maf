@@ -36,8 +36,8 @@ case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Envir
     def addrs = content.values.toSet
 
     /** Better printing. */
-    //override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
-    override def toString: String = "ENV"
+    override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
+//override def toString: String = "ENV"
 
 case class WrappedEnv[A <: Address, D](
     env: Environment[A],

@@ -20,6 +20,7 @@ object AAMTester:
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
+        with SchemeFunctionCallBoundary
 
     private def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)

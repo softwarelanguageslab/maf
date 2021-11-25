@@ -79,6 +79,14 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
         super.lookupLocalV(cmp, sto, adr)
 
+    //TODO: in some of these cases, keeping the dependency after widening may not be necessary
+    override protected def lookupLocal(cmp: Cmp, sto: Sto, adr: Adr): Option[(Val, Cnt)] =
+        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
+        super.lookupLocal(cmp, sto, adr)
+    override protected def lookupLocal(cmp: Cmp, dlt: Dlt, adr: Adr): Option[(Val, Cnt)] =
+        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
+        super.lookupLocal(cmp, dlt, adr)
+
     override protected def extendLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
         updateAddr(shadowStore, adr, vlu).foreach(upd => shadowStore = upd)
         super.extendLocalV(cmp, sto, adr, vlu)
@@ -103,6 +111,7 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         // add widened addresses
         widened ++= wid
         // update analysis data
+        var toTrigger: Set[Dep] = Set.empty
         visited = visited.map(widenCmp)
         workList = workList.map(widenCmp)
         deps = deps
@@ -110,12 +119,14 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
             val updatedCps = cps.map(widenCmp)
             val updatedDep = widenDep(dep)
             acc.get(updatedDep) match
-                case None      => acc + (updatedDep -> updatedCps)
-                case Some(oth) => acc + (updatedDep -> (oth ++ updatedCps))
+                case None => acc + (updatedDep -> updatedCps)
+                case Some(oth) =>
+                  toTrigger += updatedDep
+                  acc + (updatedDep -> (oth ++ updatedCps))
           }
           .withDefaultValue(Set.empty)
         cmps = cmps.map((nod, cls) => (nod, cls.map(widenCll)))
-        shadowDeps = shadowDeps.map((dep, cps) => (dep, cps.map(widenCmp)))
+        shadowDeps = shadowDeps.map((adr, cps) => (adr, cps.map(widenCmp)))
         // widen addresses (using shadow store & deps)
         widened.foreach { adr =>
             writeAddr(adr, shadowStore.getOrElse(adr, lattice.bottom))
@@ -126,7 +137,6 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
             shadowDeps -= adr
         }
         // update results
-        var merged: Set[Cmp] = Set.empty
         results = results.foldLeft(Map.empty: Res) { case (acc, (cmp, (vlu, dlt))) =>
           val updatedCmp = widenCmp(cmp)
           val updatedDlt = widenDlt(dlt)
@@ -134,7 +144,27 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
               case None =>
                 acc + (updatedCmp -> (vlu, updatedDlt))
               case Some((othVlu, othDlt)) =>
-                merged += updatedCmp
                 acc + (updatedCmp -> (lattice.join(othVlu, vlu), updatedCmp.sto.join(othDlt, updatedDlt)))
         }
-        merged.foreach(cmp => trigger(ResultDependency(cmp)))
+        // trigger "merged" dependencies
+        toTrigger.foreach(trigger)
+
+// DEBUGGING CODE
+
+/*
+    private def checkForChanges(cmp: Cmp) =
+      val anl = new SchemeLocalIntraAnalysis(cmp)
+      anl.analyzeWithTimeout(Timeout.none)
+      assert(anl.C.filterNot(visited).isEmpty, {
+        val dsc = anl.C.filterNot(visited).head
+        val sto0 = cmp.sto
+        val sto1 = dsc.sto
+        val diff = sto1.content.toSet -- sto0.content.toSet
+        diff.foreach { (adr, vlu) =>
+          println(s"$adr -> $vlu (was: ${sto0(adr)})")
+        }
+      })
+
+    private def checkWorklist() =
+      (visited -- workList.toList).foreach(checkForChanges)
+ */
