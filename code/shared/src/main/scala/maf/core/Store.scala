@@ -85,16 +85,16 @@ case class LocalStore[A, V](content: SmartMap[A, (V, AbstractCount)])(using lat:
     def integrate(d: Delta[A, V]): LocalStore[A, V] =
       LocalStore(content ++ d.delta)
     def join(d1: Delta[A, V], d2: Delta[A, V]): Delta[A, V] =
-      val ads = d1.delta.keys ++ d2.delta.keys
-      Delta(
-        ads.foldLeft(SmartMap.empty)((acc, adr) => 
-          lazy val prv = content.get(adr).getOrElse((lat.bottom, CountZero))
-          val (vlu1, cnt1) = d1.delta.get(adr).getOrElse(prv)
-          val (vlu2, cnt2) = d2.delta.get(adr).getOrElse(prv)
-          acc + (adr -> (lat.join(vlu1, vlu2), cnt1.join(cnt2)))
-        ),
-        d1.updates ++ d2.updates
-      )
+        val ads = d1.delta.keys ++ d2.delta.keys
+        Delta(
+          ads.foldLeft(SmartMap.empty)((acc, adr) =>
+              lazy val prv = content.get(adr).getOrElse((lat.bottom, CountZero))
+              val (vlu1, cnt1) = d1.delta.get(adr).getOrElse(prv)
+              val (vlu2, cnt2) = d2.delta.get(adr).getOrElse(prv)
+              acc + (adr -> (lat.join(vlu1, vlu2), cnt1.join(cnt2)))
+          ),
+          d1.updates ++ d2.updates
+        )
     def replay(gcs: LocalStore[A, V], d: Delta[A, V]): Delta[A, V] =
       Delta(
         d.delta.foldLeft(SmartMap.empty) { case (acc, (adr, s @ (v, c))) =>

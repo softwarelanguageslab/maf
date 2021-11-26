@@ -72,8 +72,8 @@ object AnalysisComparisonAlt1
         //(SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF") ::
         val default: List[(SchemeExp => Analysis, String)] = List(
           (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS"),
-          (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")        
-        ) 
+          (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")
+        )
         val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
           (SchemeAnalyses.modflocalAnalysisAdaptive(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
         }

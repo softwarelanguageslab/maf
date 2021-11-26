@@ -27,7 +27,7 @@ object AdaptiveRun:
     def main(args: Array[String]): Unit = testModFLocal()
 
     def testConcrete() =
-        val txt = 
+        val txt =
           """
           | (define x 2) 
           | x
@@ -86,7 +86,7 @@ object AdaptiveRun:
                 println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
                 printDelta(dlt)
                 println()
-          //override def debugAdvanced(msg: => String): Unit = println(s"[!!!] $msg")
+        //override def debugAdvanced(msg: => String): Unit = println(s"[!!!] $msg")
         anl.analyzeWithTimeoutInSeconds(60)
         //anl.visited.collect({ case cll: anl.CallComponent => cll })
         //.foreach(printCall)
