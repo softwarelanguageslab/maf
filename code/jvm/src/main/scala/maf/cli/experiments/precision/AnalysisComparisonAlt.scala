@@ -19,7 +19,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     def analyses: List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 30min.) and the number of concrete runs
-    def timeout() = Timeout.start(Duration(30, MINUTES)) // timeout for the analyses
+    def timeout() = Timeout.start(Duration(60, MINUTES)) // timeout for the analyses
     def runs = 3 // number of runs for the concrete interpreter
 
     // keep the results of the benchmarks in a table
@@ -66,13 +66,18 @@ object AnalysisComparisonAlt1
     ]:
     def analyses =
         val k = 0
-        val l = 100
+        val ls = List(100, 200, 300, 400)
         // run some adaptive analyses
-        List(
-          //(SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
+        //(SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS") ::
+        //(SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF") ::
+        val default: List[(SchemeExp => Analysis, String)] = List(
+          (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS"),
+          (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")        
+        ) 
+        val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
           (SchemeAnalyses.modflocalAnalysisAdaptive(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
-          (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF"),
-        )
+        }
+        default ++ adaptive
     def main(args: Array[String]) = runBenchmarks(
       Set(
         //"test/R5RS/various/collatz.scm",
@@ -90,10 +95,10 @@ object AnalysisComparisonAlt1
         //"test/R5RS/various/rsa.scm",
         //"test/R5RS/gambit/deriv.scm",
         //"test/R5RS/gambit/tak.scm",
-        "test/R5RS/gambit/browse.scm",
+        //"test/R5RS/gambit/browse.scm",
         //"test/R5RS/gambit/earley.scm",
-        //"test/R5RS/gambit/matrix.scm",
-        //"test/R5RS/gambit/mazefun.scm",
+        "test/R5RS/gambit/matrix.scm",
+        "test/R5RS/gambit/mazefun.scm",
         //"test/R5RS/gambit/nqueens.scm",
         //"test/R5RS/gambit/peval.scm",
       )

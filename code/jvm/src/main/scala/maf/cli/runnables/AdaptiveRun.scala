@@ -27,9 +27,11 @@ object AdaptiveRun:
     def main(args: Array[String]): Unit = testModFLocal()
 
     def testConcrete() =
-        val txt = """
-    (define x 2) x
-    """
+        val txt = 
+          """
+          | (define x 2) 
+          | x
+          """.stripMargin
         val prg = CSchemeParser.parseProgram(txt)
         val int = new SchemeInterpreter(io = new FileIO(Map()))
         int.run(prg, Timeout.none)
@@ -57,12 +59,13 @@ object AdaptiveRun:
           with SchemeConstantPropagationDomain
           with SchemeModFLocalNoSensitivity
           with FIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFLocalAdaptiveWidening(100):
+          with SchemeModFLocalAdaptiveWidening(800):
+            override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
             var i = 0
             override def step(t: Timeout.T): Unit =
                 i += 1
                 val cmp = workList.head
-                //println(s"[$i] Analysing $cmp")
+                println(s"[$i] Analysing $cmp")
                 super.step(t)
             def printStore(sto: Sto) =
               sto.content.view.toMap
@@ -83,10 +86,8 @@ object AdaptiveRun:
                 println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
                 printDelta(dlt)
                 println()
-        //with SchemeModFLocalAdaptiveWidening(1000):
-        //override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
-        //override def debugAdvanced(msg: => String): Unit = println(s"[!!!] $msg")
-        anl.analyzeWithTimeoutInSeconds(20)
+          //override def debugAdvanced(msg: => String): Unit = println(s"[!!!] $msg")
+        anl.analyzeWithTimeoutInSeconds(60)
         //anl.visited.collect({ case cll: anl.CallComponent => cll })
         //.foreach(printCall)
         println(s"FINISHED: ${anl.finished}")
