@@ -202,7 +202,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         // If `old ⊑ nw` we can just use join, which is probably more efficient.
         val newJoin = if lattice.subsumes(nw, old) then lattice.join(oldJoin, nw) else provenanceValue(addr)
         if configuration.checkAsserts then
-            assert(newJoin == provenanceValue(addr), s"$addr\n${lattice.compare(newJoin, provenanceValue(addr), "New join", "Provenance value")}")
+            assert(
+              lattice.removeAddresses(newJoin) == lattice.removeAddresses(provenanceValue(addr)),
+              s"$addr\n${lattice.compare(newJoin, provenanceValue(addr), "New join", "Provenance value")}"
+            )
         if oldJoin == newJoin then return false // Even with this component writing a different value to addr, the store does not change.
         inter.store = inter.store + (addr -> newJoin)
         true

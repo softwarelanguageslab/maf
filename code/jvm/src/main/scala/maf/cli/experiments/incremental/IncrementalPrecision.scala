@@ -69,7 +69,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         print(s"Testing $file ")
         val program = parse(file)
         // Initial analysis: analyse + update.
-        val a1 = analysis(program, allOptimisations) // Allow tracking for all optimisations.
+        val a1 = analysis(program, ci_di_wi) // Allow tracking for all optimisations.
 
         // Base case: analysis of new program version.
         val a2 = analysis(program, noOptimisations) // The configuration does not matter here.
@@ -94,7 +94,8 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     // Note, we could also compare to the initial analysis. This would give us an idea on how many addresses were refined (column "More precise").
 
     def interestingAddress[A <: Address](a: A): Boolean
-    def createOutput(): String = results.prettyString(columns = columns) ++ "\n\n" ++ results.toCSVString(columns = columns)
+    def createOutput(): String = //results.prettyString(columns = columns) ++ "\n\n" ++
+      results.toCSVString(columns = columns)
 
 /* ************************** */
 /* ***** Instantiations ***** */
@@ -105,11 +106,11 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
         case PrmAddr(_) => false
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFTypePrecision extends IncrementalSchemePrecision:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
     val outputFile: String = "precision/modf-type.txt"
 

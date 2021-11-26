@@ -11,6 +11,7 @@ import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 import akka.actor.ProviderSelection.Local
 import maf.util.datastructures.SmartMap
+import maf.modular.scheme.modf.SchemeModFComponent.Call
 
 abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics with GlobalStore[SchemeExp]:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
@@ -59,7 +60,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, ctx: Ctx, sto: Sto) extends Component:
         def exp = SchemeBody(lam.body)
-        override def toString = s"${lam.lambdaName} [$ctx]"
+        override def toString = s"${lam.lambdaName}@${lam.idn} [$ctx] [${sto.content.hc}]"
 
     def initialComponent: Cmp = MainComponent
     def expr(cmp: Cmp): Exp = cmp.exp

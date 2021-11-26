@@ -23,10 +23,11 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     final val an: String = "#Analyses" // Number of intra-component analyses
     final val ad: String = "|Store|" // Store size
     final val dp: String = "#Dependencies" // Number of dependencies
+    final val ic: String = "Dir. imp. Cmp." // Number of directly impacted components.
 
     final val propertiesS = List(ad, co, dp, an) // Properties
 
-    override lazy val columns: List[String] = propertiesS.cartesian(analysesS).map(e => columnName(e._1, e._2)).toList
+    override lazy val columns: List[String] = propertiesS.cartesian(analysesS).map(e => columnName(e._1, e._2)).toList ::: List(ic)
 
     var results: Table[String] = Table.empty.withDefaultValue(" ")
     val error: String = errS
@@ -57,7 +58,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
         val program = parse(file)
 
         // Initial analysis: analyse + update.
-        val a1 = analysis(program, allOptimisations) // Allow tracking for all configurations!
+        val a1 = analysis(program, ci_di_wi) // Allow tracking for all configurations!
 
         // Base case: analysis of new program version.
         val a2 = analysis(program, noOptimisations) // The configuration does not matter here.
@@ -67,6 +68,10 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
         if !runAnalysis(file, a1, timeOut => a1.analyzeWithTimeout(timeOut), initS) then return
 
         a1.resetIntraAnalysisCount()
+
+        // Count the number of immediately affected components.
+        val immediatelyAffected = a1.findUpdatedExpressions(program).flatMap(a1.mapping)
+        results = results.add(file, ic, s"${immediatelyAffected.size}")
 
         // Run the incremental updates for the different configurations.
         configurations.foreach { config =>
@@ -80,7 +85,8 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
 
     def interestingAddress[A <: Address](a: A): Boolean
 
-    def createOutput(): String = results.prettyString() ++ "\n\n" ++ results.toCSVString()
+    def createOutput(): String = //results.prettyString() ++ "\n\n" ++
+      results.toCSVString()
 
 /** Counts the number of intra-component analyses run by the analysis. */
 trait CountIntraAnalyses[Expr <: Expression] extends IncrementalModAnalysis[Expr]:
@@ -102,11 +108,11 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp]:
         case PrmAddr(_) => false
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
+    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFProperties extends IncrementalSchemeProperties:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
     val outputFile: String = s"properties/modf-type.txt"
