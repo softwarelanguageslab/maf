@@ -20,7 +20,8 @@ object AAMTester:
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
-        with SchemeFunctionCallBoundary
+        with SchemeStoreAllocateReturn
+    //with SchemeFunctionCallBoundary
 
     private def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)
@@ -51,7 +52,7 @@ object AAMTester:
                     case None => None
 
         val (time, (states, g)) = Timer.time {
-          theAnalysis.analyzeWithTimeout(Timeout.start(Duration(12, SECONDS)), graph.G.typeclass.empty)
+          theAnalysis.analyzeWithTimeout(Timeout.start(Duration(60, SECONDS)), graph.G.typeclass.empty)
         }
 
         g.toFile(name.replace("/", "_").nn + ".dot")
