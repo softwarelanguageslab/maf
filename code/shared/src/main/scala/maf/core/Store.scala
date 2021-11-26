@@ -39,6 +39,7 @@ sealed trait AbstractCount:
     def join(other: AbstractCount): AbstractCount
     def +(cnt: => AbstractCount): AbstractCount
     def inc: AbstractCount = this + CountOne
+    def subsumes(other: AbstractCount) = this.join(other) == this
 case object CountZero extends AbstractCount:
     def join(other: AbstractCount) = other
     def +(cnt: => AbstractCount) = cnt
@@ -84,12 +85,14 @@ case class LocalStore[A, V](content: SmartMap[A, (V, AbstractCount)])(using lat:
     def integrate(d: Delta[A, V]): LocalStore[A, V] =
       LocalStore(content ++ d.delta)
     def join(d1: Delta[A, V], d2: Delta[A, V]): Delta[A, V] =
+      val ads = d1.delta.keys ++ d2.delta.keys
       Delta(
-        d2.delta.foldLeft(d1.delta) { case (acc, (adr, (vlu, cnt))) =>
-          acc.get(adr) match
-              case None               => acc + (adr -> (vlu, cnt))
-              case Some((accV, accC)) => acc + (adr -> (lat.join(accV, vlu), accC.join(cnt)))
-        },
+        ads.foldLeft(SmartMap.empty)((acc, adr) => 
+          lazy val prv = content.get(adr).getOrElse((lat.bottom, CountZero))
+          val (vlu1, cnt1) = d1.delta.get(adr).getOrElse(prv)
+          val (vlu2, cnt2) = d2.delta.get(adr).getOrElse(prv)
+          acc + (adr -> (lat.join(vlu1, vlu2), cnt1.join(cnt2)))
+        ),
         d1.updates ++ d2.updates
       )
     def replay(gcs: LocalStore[A, V], d: Delta[A, V]): Delta[A, V] =
