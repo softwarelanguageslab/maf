@@ -37,10 +37,10 @@ trait SchemeAAMSoundnessTests extends maf.test.aam.AAMSoundnessTests with DotGra
 class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with VariousSequentialBenchmarks:
 
     override val name: String = "Scheme AAM soundness tests"
-    //override def benchmarks: Set[Benchmark] =
-    //  Set(
-    //    "test/R5RS/various/fact.scm"
-    //  )
+    override def benchmarks: Set[Benchmark] =
+      Set(
+        "test/R5RS/various/fact.scm"
+      )
 
     override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(12, SECONDS))
     override def analysis(b: SchemeExp): Analysis =
