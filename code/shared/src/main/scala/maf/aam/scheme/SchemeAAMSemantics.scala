@@ -118,6 +118,11 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         def printable = true
         override def toString = s"KontAddr(${expr} ${timestamp})"
 
+    case class FunRetAddr(expr: SchemeExp, env: Env, timestamp: Timestamp) extends Address:
+        def idn: Identity = expr.idn
+        def printable = true
+        override def toString = s"FunRetAddr(${expr} ${timestamp})"
+
     /** The location of the initial continuaton */
     case object Kont0Addr extends Address:
         def idn: Identity = Identity.none
@@ -178,6 +183,8 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
     protected trait Frame:
         def link(next: Address | Frame): Frame
+    case class EmptyFrame(next: Option[Address | Frame] = None) extends Frame:
+        def link(next: Address | Frame): EmptyFrame = this.copy(next = Some(next))
     case class AssFrame(id: Identifier, env: Env, next: Option[Address | Frame] = None) extends Frame:
         def link(next: Address | Frame): AssFrame =
           AssFrame(id, env, Some(next))
@@ -377,9 +384,28 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         next: KonA,
         frame: Kont,
         t: Timestamp
-      ): (Sto, Address, Timestamp) =
+      ): (Sto, KonA, Timestamp) =
         val timestamp = tick(t, e, sto, next)
         val addr = KontAddr(e, env, timestamp)
+        val sto1 = writeSto(sto, addr, Storable.K(Set(frame.link(next))))
+        (sto1, addr, timestamp)
+
+    /**
+     * Push a return frame on the conceptual stack of continuation frames
+     *
+     * @return
+     *   a pair of the updated store (since continuations are store allocated), and the address at which the continuation has been allocated
+     */
+    protected def pushFrameRet(
+        e: Expr,
+        env: Env,
+        sto: Sto,
+        next: KonA,
+        frame: Kont,
+        t: Timestamp
+      ): (Sto, Address, Timestamp) =
+        val timestamp = tick(t, e, sto, next)
+        val addr = FunRetAddr(e, env, timestamp)
         val sto1 = writeSto(sto, addr, Storable.K(Set(frame.link(next))))
         (sto1, addr, timestamp)
 
@@ -514,7 +540,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       ): Set[State] =
         val (sto1, frame, t1) = sequence match
             case List(x) => (sto, kont, t)
-            case x :: xs => pushFrame(sequence.head, env, sto, kont, BegFrame(sequence.tail, env, cross), t)
+            case x :: xs => pushFrame(sequence.head, env, sto, kont, BegFrame(sequence.tail, env, false), t)
             case Nil     => throw new Exception("malformed program: sequence cannot be empty")
 
         val wrapControl: Control => Control = if cross then (c: Control) => Control.Fn(c) else identity
@@ -670,8 +696,9 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
       lattice.getClosures(project(func)).flatMap {
         case (lam, lex: Env @unchecked) if lam.check(argv.size) =>
           val (env1, sto2, t0) = bindArgs(fexp, argv, lam, lex, sto, kon, t)
+          val (sto3, frame, t1) = pushFrameRet(fexp, env, sto2, kon, EmptyFrame(), t)
           // and evaluate the body
-          evaluate_sequence(env1, sto2, kon, lam.body, t0, ext, true)
+          evaluate_sequence(env1, sto3, frame, lam.body, t1, ext, true)
         case (lam, lex) =>
           invalidArity(fexp, argv.size, lam.args.size + lam.varArgId.size, sto, kon, t, ext)
       }
@@ -785,6 +812,9 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
     /** Apply the given continuation with the given value */
     def continue(value: Val, sto: Sto, kont: KonA, t: Timestamp, ext: Ext): Set[State] =
       readKonts(sto, kont).flatMap {
+        case EmptyFrame(Some(next)) =>
+          continueWith(sto, next)(ap(value, sto, _, t, ext))
+
         // (Ap(v), env, sto, assgn(x) :: k) ==> (Ap(nil), env, sto', k)
         //    where sto' = sto [ env(x) -> v ]
         case AssFrame(id, env, Some(next)) =>

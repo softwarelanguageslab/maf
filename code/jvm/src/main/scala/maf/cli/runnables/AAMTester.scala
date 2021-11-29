@@ -21,7 +21,7 @@ object AAMTester:
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
         with SchemeStoreAllocateReturn
-    //with SchemeFunctionCallBoundary
+        with SchemeFunctionCallBoundary
 
     private def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)
