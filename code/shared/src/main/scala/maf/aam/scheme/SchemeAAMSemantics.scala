@@ -398,7 +398,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
         // (Ev((lambda (x) e)), env, sto, kont) ==> (Ap(inj(closure(x, e))), env, sto, kont)
         case lam: SchemeLambdaExp =>
-          Set(retVal(inject(lattice.closure((lam, env.restrictTo(lam.fv)))), sto, kont, t, ext))
+          Set(ap(inject(lattice.closure((lam, env.restrictTo(lam.fv)))), sto, kont, t, ext))
 
         // (Ev(x), env, sto, kont) ==> (Ap(inj(v)), env, sto, kont)
         //    where: v = sto(env(x))
@@ -477,7 +477,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
             case sexp.Value.Nil          => (lattice.nil, sto)
             case lit                     => throw new Exception(s"Unsupported Scheme literal: $lit")
 
-        Set(retVal(inject(res), sto1, kont, t, ext))
+        Set(ap(inject(res), sto1, kont, t, ext))
 
     private def evalVariable(
         id: Identifier,
@@ -495,7 +495,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
             inject(lattice.bottom)
           }
 
-        Set(retVal(res, sto, kont, t, ext))
+        Set(ap(res, sto, kont, t, ext))
 
     /**
      * Evaluate a non-empty sequence of expression
@@ -711,10 +711,10 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
               // the primitive is successfull apply the continuation with the value returned from the primitive
               case MayFailSuccess(vlu) =>
                 val sto1 = bridge.updatedSto
-                Set(retVal(inject(vlu), sto1, kon, t, ext))
+                Set(ap(inject(vlu), sto1, kon, t, ext))
               case MayFailBoth(vlu, _) =>
                 val sto1 = bridge.updatedSto
-                Set(retVal(inject(vlu), sto1, kon, t, ext))
+                Set(ap(inject(vlu), sto1, kon, t, ext))
               // executing the primitive is unsuccessfull, no successors states are generated
               case MayFailError(_) => Set()
       }
@@ -765,9 +765,20 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
           case Storable.K(ks) => ks
           case _              => Set()
 
-    /** Return a value from the evaluation of a function body */
-    protected def retVal(value: Val, sto: Sto, kont: Address, t: Timestamp, ext: Ext): State =
+    /** Return a value to the next continuation */
+    protected def ap(value: Val, sto: Sto, kont: Address, t: Timestamp, ext: Ext): State =
       SchemeState(Control.Ap(value), sto, kont, t, ext)
+
+    /** Evaluate the given expression in the given environment */
+    protected def ev(
+        exp: SchemeExp,
+        env: Env,
+        sto: Sto,
+        kont: Address,
+        t: Timestamp,
+        ext: Ext
+      ): State =
+      SchemeState(Control.Ev(exp, env), sto, kont, t, ext)
 
     /** Apply the given continuation with the given value */
     def continue(value: Val, sto: Sto, kont: Address, t: Timestamp, ext: Ext): Set[State] =
@@ -776,19 +787,19 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         //    where sto' = sto [ env(x) -> v ]
         case AssFrame(id, env, Some(next)) =>
           val sto1 = writeSto(sto, env.lookup(id.name).get, Storable.V(project(value)))
-          continueWith(sto, next)(retVal(inject(lattice.nil), sto1, _, t, ext))
+          continueWith(sto, next)(ap(inject(lattice.nil), sto1, _, t, ext))
 
         // (Ap(v), env, sto, beg(e1 e2 ... en) :: k) ==> (Ev(e1), env, sto, beg(e2 .. en) :: k)
         case BegFrame(e1 :: exps, env, cross, Some(addr)) =>
           continueWith(sto, addr) { kont =>
               val (sto1, frame, t1) = pushFrame(e1, env, sto, kont, BegFrame(exps, env, cross), t)
-              SchemeState(Control.Ev(e1, env), sto1, frame, t1, ext)
+              ev(e1, env, sto1, frame, t1, ext)
           }
 
         // (Ap(v), env, sto, beg() :: k) ==> (Ap(v), env, sto, k)
         case BegFrame(List(), env, cross, Some(addr)) =>
           continueWith(sto, addr) { kont =>
-            retVal(value, sto, kont, t, ext)
+            ap(value, sto, kont, t, ext)
           }
 
         // (Ap(true), env, sto, ite(csq, alt) :: k) ==> (Ev(csq), env, sto, k)
@@ -800,7 +811,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         case FunFrame(f, arg :: args, env, Some(addr)) =>
           continueWith(sto, addr) { kont =>
               val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, value, List(), env), t)
-              SchemeState(Control.Ev(arg, env), sto1, frame, t1, ext)
+              ev(arg, env, sto1, frame, t1, ext)
           }
 
         // (Ap(fv), env, sto, fun(f, ()) :: k) ==> (Ev(a), env, sto, ret(env) :: k)
@@ -812,7 +823,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
         case ArgFrame(f, arg :: args, fv, argsV, env, Some(addr)) =>
           continueWith(sto, addr) { kont =>
               val (sto1, frame, t1) = pushFrame(arg, env, sto, kont, ArgFrame(f, args, fv, value :: argsV, env), t)
-              SchemeState(Control.Ev(arg, env), sto1, frame, t1, ext)
+              ev(arg, env, sto1, frame, t1, ext)
           }
 
         case ArgFrame(f, List(), fv, argsV, env, Some(addr)) =>
@@ -841,7 +852,7 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis with Sche
 
         case AssertFrame(idn, env, Some(next)) =>
           if !lattice.isTrue(project(value)) then error(AssertionFailed(idn), sto, next, t, ext)
-          else Set(retVal(inject(lattice.nil), sto, next, t, ext))
+          else Set(ap(inject(lattice.nil), sto, next, t, ext))
 
         case HltFrame => Set()
       }
