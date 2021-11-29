@@ -317,8 +317,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                   })
                 case IsProcedure =>
                   MayFail.success(args(0) match {
-                    case _: Clo => True
-                    case _      => False
+                    case _: Clo  => True
+                    case _: Prim => True
+                    case _       => False
                   })
                 case IsInputPort =>
                   MayFail.success(args(0) match {

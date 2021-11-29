@@ -824,8 +824,9 @@ trait ConcreteSchemePrimitives:
 
         object Procp extends SingleArgumentPrim("procedure?"):
             def fun =
-                case _: Value.Clo => Value.Bool(true)
-                case _            => Value.Bool(false)
+                case _: Value.Clo       => Value.Bool(true)
+                case _: Value.Primitive => Value.Bool(true)
+                case _                  => Value.Bool(false)
 
         /////////////
         // Strings //
