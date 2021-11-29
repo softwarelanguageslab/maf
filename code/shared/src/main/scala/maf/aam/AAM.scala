@@ -22,6 +22,7 @@ trait AAMAnalysis:
 
     /** The type of continuation that should be used in the analysis */
     type Kont
+    type KonA = Kont | Address
 
     /** The type of state that should be used in the analysis. */
     type State
@@ -54,7 +55,7 @@ trait AAMAnalysis:
     val initialTime: Timestamp
 
     /** Tick the time forward */
-    def tick(timestamp: Timestamp, e: Expr, sto: Sto, kont: Address): Timestamp
+    def tick(timestamp: Timestamp, e: Expr, sto: Sto, kont: KonA): Timestamp
 
     /** Inject the expression into the analysis state */
     def inject(expr: Expr): State
@@ -79,7 +80,7 @@ trait AAMAnalysis:
     def extractValue(st: State): Option[Val]
 
     /** Allocate a fresh address in the store */
-    def alloc(identity: Identity, env: Env, sto: Sto, kont: Address, ctx: Timestamp): Address
+    def alloc(identity: Identity, env: Env, sto: Sto, kont: KonA, ctx: Timestamp): Address
 
     /** Represents the given state als an element in the graph */
     def asGraphElement(state: State): GraphElementAAM

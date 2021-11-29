@@ -87,12 +87,12 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
     /*=============================================================================================================================*/
 
     /** Evaluation of (mon contract expression)/idn */
-    case class MonFrame(contract: SchemeExp, expression: SchemeExp, idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
-        def link(kont: Address): MonFrame = this.copy(next = Some(kont))
+    case class MonFrame(contract: SchemeExp, expression: SchemeExp, idn: Identity, env: Env, next: Option[KonA] = None) extends Frame:
+        def link(kont: KonA): MonFrame = this.copy(next = Some(kont))
 
     /** Frame that gets pushed when `contract` is a flat contract and when we are evaluating the expression in the monitor expression */
-    case class MonFlatFrame(contract: Flat[LatVal], expression: SchemeExp, idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
-        def link(kont: Address): MonFlatFrame = this.copy(next = Some(kont))
+    case class MonFlatFrame(contract: Flat[LatVal], expression: SchemeExp, idn: Identity, env: Env, next: Option[KonA] = None) extends Frame:
+        def link(kont: KonA): MonFlatFrame = this.copy(next = Some(kont))
 
     /** Frame that gets pushed when trying to apply the flat contract to the value of the expression */
     case class MonFlatFrameRet(
@@ -101,20 +101,20 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         idn: Identity,
         vlu: Val,
         env: Env,
-        next: Option[Address] = None)
+        next: Option[KonA] = None)
         extends Frame:
-        def link(kont: Address): MonFlatFrameRet = this.copy(next = Some(kont))
+        def link(kont: KonA): MonFlatFrameRet = this.copy(next = Some(kont))
 
-    case class MonFunFrame(contract: Grd[LatVal], epx: SchemeExp, idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
-        def link(kont: Address): MonFunFrame = this.copy(next = Some(kont))
+    case class MonFunFrame(contract: Grd[LatVal], epx: SchemeExp, idn: Identity, env: Env, next: Option[KonA] = None) extends Frame:
+        def link(kont: KonA): MonFunFrame = this.copy(next = Some(kont))
 
     /** Frame that gets pushed when we evaluate an expression in a (flat expression)/idn expression */
-    case class FlatLitFrame(exp: SchemeExp, idn: Identity, env: Env, next: Option[Address] = None) extends Frame:
-        def link(kont: Address): FlatLitFrame = this.copy(next = Some(kont))
+    case class FlatLitFrame(exp: SchemeExp, idn: Identity, env: Env, next: Option[KonA] = None) extends Frame:
+        def link(kont: KonA): FlatLitFrame = this.copy(next = Some(kont))
 
     /** Frame that signifies what to do after the range maker of a monitored function is applied */
-    case class ArrRangeMakerFrame(fexp: SchemeFuncall, arr: Arr[LatVal], argv: List[Val], env: Env, next: Option[Address] = None) extends Frame:
-        def link(kont: Address): ArrRangeMakerFrame = this.copy(next = Some(kont))
+    case class ArrRangeMakerFrame(fexp: SchemeFuncall, arr: Arr[LatVal], argv: List[Val], env: Env, next: Option[KonA] = None) extends Frame:
+        def link(kont: KonA): ArrRangeMakerFrame = this.copy(next = Some(kont))
 
     /*=============================================================================================================================*/
     /* ===== Extension points =====================================================================================================*/
@@ -126,7 +126,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         alt: Expr,
         env: Env,
         sto: Sto,
-        kont: Address,
+        kont: KonA,
         t: Timestamp,
         ext: Ext
       ): Set[State] =
@@ -153,7 +153,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         argv: List[Val],
         env: Env,
         sto: Sto,
-        kon: Address,
+        kon: KonA,
         t: Timestamp,
         ext: Ext
       ): Set[State] =
@@ -166,7 +166,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         argv: List[Val],
         env: Env,
         sto: Sto,
-        kon: Address,
+        kon: KonA,
         t: Timestamp,
         ext: Ext
       ): Set[State] =
@@ -215,7 +215,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         argv: List[Val],
         env: Env,
         sto: Sto,
-        kon: Address,
+        kon: KonA,
         t: Timestamp,
         ext: Ext
       ): Set[State] =
@@ -227,7 +227,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         exp: SchemeExp,
         env: Env,
         sto: Sto,
-        kont: Address,
+        kont: KonA,
         t: Timestamp,
         ext: Ext
       ): Set[State] = exp match
@@ -255,7 +255,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
 
         case _ => super.eval(exp, env, sto, kont, t, ext)
 
-    override def continue(vlu: Val, sto: Sto, kon: Address, t: Timestamp, ext: Ext): Set[State] =
+    override def continue(vlu: Val, sto: Sto, kon: KonA, t: Timestamp, ext: Ext): Set[State] =
       readKonts(sto, kon).flatMap {
         case MonFrame(contract, expression, idn, env, Some(next)) =>
           // feasible(phi, flat-contract?, w', phi') -> change: do not extend PC with this information
@@ -334,7 +334,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         blamer: Identity,
         blamed: Identity,
         sto: Sto,
-        kon: Address,
+        kon: KonA,
         t: Timestamp,
         extra: Ext
       ): State =
@@ -358,7 +358,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         idn: Identity,
         env: Env,
         sto: Sto,
-        kont: Address,
+        kont: KonA,
         t: Timestamp,
         ext: Ext
       ): Set[State] =
@@ -392,7 +392,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         argv: List[Val],
         env: Env,
         sto: Sto,
-        kon: Address,
+        kon: KonA,
         t: Timestamp,
         ext: Ext
       ): Set[State] =
@@ -416,7 +416,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         argv: List[Val],
         env: Env,
         sto: Sto,
-        kon: Address,
+        kon: KonA,
         t: Timestamp,
         ext: Ext
       ): Set[State] = domains match
