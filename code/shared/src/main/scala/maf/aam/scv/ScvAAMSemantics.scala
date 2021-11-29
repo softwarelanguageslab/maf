@@ -133,13 +133,13 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         // [CondTrue] for comparison wih the paper, "nonzero?" has been renamed to "true?"
         val csqSt =
           feasible(`true?`, value, ext.phi, ext.vars)
-            .map(phi1 => Set(SchemeState(Control.Ev(csq, env), sto, kont, t, ext.copy(phi = phi1))))
+            .map(phi1 => Set(ev(csq, env, sto, kont, t, ext.copy(phi = phi1))))
             .getOrElse(Set())
 
         // [CondTrue] for comparison wih the paper, "zero?" has been renamed to "false?"
         val altSt =
           feasible(`false?`, value, ext.phi, ext.vars)
-            .map(phi1 => Set(SchemeState(Control.Ev(csq, env), sto, kont, t, ext.copy(phi = phi1))))
+            .map(phi1 => Set(ev(alt, env, sto, kont, t, ext.copy(phi = phi1))))
             .getOrElse(Set())
 
         csqSt ++ altSt
@@ -244,14 +244,14 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
             storeCacheClo = ext.storeCacheClo + (clo -> ext.m)
           )
 
-          Set(SchemeState(Control.Ap(inject(lattice.closure(clo))), sto, kont, t, ext1))
+          Set(ap(inject(lattice.closure(clo)), sto, kont, t, ext1))
 
         case ContractSchemeMon(contract, expression, idn) =>
           mon(contract, expression, idn, env, sto, kont, t, ext)
 
         case ContractSchemeFlatContract(flat, idn) =>
           val (sto1, frame, t1) = pushFrame(flat, env, sto, kont, FlatLitFrame(flat, idn, env), t)
-          Set(SchemeState(Control.Ev(flat, env), sto1, frame, t1, ext))
+          Set(ev(flat, env, sto1, frame, t1, ext))
 
         case _ => super.eval(exp, env, sto, kont, t, ext)
 
@@ -263,7 +263,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
             .getFlats(project(vlu))
             .map((flat) => {
               val (sto1, frame, t1) = pushFrame(expression, env, sto, next, MonFlatFrame(flat, expression, idn, env), t)
-              SchemeState(Control.Ev(expression, env), sto1, frame, t1, ext)
+              ev(expression, env, sto1, frame, t1, ext)
             })
 
           // feasible(phi, dep-contract?, w', phi') -> change: do not extend PC with this information
@@ -271,7 +271,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
             .getGrds(project(vlu))
             .map((grd) =>
                 val (sto1, frame, t1) = pushFrame(expression, env, sto, next, MonFunFrame(grd, expression, idn, env), t)
-                SchemeState(Control.Ev(expression, env), sto1, frame, t1, ext)
+                ev(expression, env, sto1, frame, t1, ext)
             )
 
           grds ++ flats
@@ -289,7 +289,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         // [MonFlat] checking whether expression satisfies contract, otherwise blame
         case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
           val nonblames = feasible(`true?`, vlu, ext.phi, ext.vars)
-            .map((phi1) => Set(SchemeState(Control.Ap(expVlu), sto, next, t, ext.copy(phi = phi1))))
+            .map((phi1) => Set(ap(expVlu, sto, next, t, ext.copy(phi = phi1))))
             .getOrElse(Set())
 
           val blames = feasible(`false?`, vlu, ext.phi, ext.vars)
@@ -301,11 +301,11 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         // [MonFun]
         case MonFunFrame(contract, expression, idn, env, Some(next)) =>
           val arr = Arr(idn, expression.idn, contract, project(vlu))
-          Set(SchemeState(Control.Ap(inject(lattice.arr(arr))), sto, kon, t, ext))
+          Set(ap(inject(lattice.arr(arr)), sto, kon, t, ext))
 
         // Rule added to evaluate flat contracts
         case FlatLitFrame(exp, idn, env, Some(next)) =>
-          Set(SchemeState(Control.Ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn)))), sto, next, t, ext))
+          Set(ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext))
 
         // [MonArr]
         case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
@@ -363,7 +363,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         ext: Ext
       ): Set[State] =
         val (sto1, frame, t1) = pushFrame(contract, env, sto, kont, MonFrame(contract, expression, idn, env), t)
-        Set(SchemeState(Control.Ev(contract, env), sto, kont, t, ext))
+        Set(ev(contract, env, sto, kont, t, ext))
 
     /** Create a new post value from the given value where the symbolic representation is given by the given `SchemeExp` */
     protected def tag(e: SchemeExp)(v: Val): Val =
