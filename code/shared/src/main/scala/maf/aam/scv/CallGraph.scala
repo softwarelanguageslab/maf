@@ -40,3 +40,6 @@ case class CallGraph(stack: List[CallGraph.CallTarget]):
     def add(edge: Edge): Looped =
       if stack.contains(edge.target) then Looped.Recursive(stack.takeWhile(_ == edge.target))
       else Looped.Safe(this.copy(stack = edge.target :: stack))
+
+    def pop: CallGraph =
+      if stack.isEmpty then CallGraph(stack) else CallGraph(stack.tail)
