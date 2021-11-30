@@ -96,7 +96,7 @@ trait AAMAnalysis:
         timeout: Timeout.T
       )(using Graph[G, GraphElementAAM, GraphElement]
       ): (Set[State], G) =
-      if (work.isEmpty && newWork.isEmpty) || (timeout.reached) then (work.toSet ++ newWork.toSet, graph)
+      if (work.isEmpty && newWork.isEmpty) || (timeout.reached) || (false && (seen.size > 1000)) then (work.toSet ++ newWork.toSet, graph)
       else if work.isEmpty then loop(newWork, List(), graph, timeout)
       else if seen.contains(work.head) then loop(work.tail, newWork, graph, timeout)
       else

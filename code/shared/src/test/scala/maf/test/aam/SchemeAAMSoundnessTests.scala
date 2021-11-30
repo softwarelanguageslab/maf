@@ -24,8 +24,6 @@ trait DotGraphOutput extends AAMSoundnessTests:
     implicit protected def graphInstance = graph.G.typeclass
     protected def emptyGraph = graph.G.typeclass.empty
     protected def saveGraph(benchmark: Benchmark, graph: G): Unit = ()
-//val outName = s"results/${benchmark.replace("/", "_")}.dot"
-//graph.toFile(outName)
 
 trait SchemeAAMSoundnessTests extends maf.test.aam.AAMSoundnessTests with DotGraphOutput:
     override def parseProgram(txt: String): SchemeExp =
@@ -35,12 +33,11 @@ trait SchemeAAMSoundnessTests extends maf.test.aam.AAMSoundnessTests with DotGra
         SchemeParser.undefine(transf)
 
 class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with VariousSequentialBenchmarks:
-
     override val name: String = "Scheme AAM soundness tests"
-    override def benchmarks: Set[Benchmark] =
-      Set(
-        "test/R5RS/various/fact.scm"
-      )
+    //override def benchmarks: Set[Benchmark] =
+    //  Set(
+    //    "test/R5RS/various/procedure.scm"
+    //  )
 
     override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(12, SECONDS))
     override def analysis(b: SchemeExp): Analysis =
@@ -50,3 +47,5 @@ class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with Vario
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
+        with SchemeStoreAllocateReturn // important for termination of some programs
+        with SchemeFunctionCallBoundary
