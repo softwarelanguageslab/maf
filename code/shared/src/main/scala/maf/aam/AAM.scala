@@ -4,6 +4,7 @@ import maf.core.*
 import maf.util.graph.*
 import maf.util.graph.Graph.GraphOps
 import maf.util.benchmarks.Timeout
+import scala.annotation.tailrec
 
 case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) extends GraphElement:
     def metadata: GraphMetadata = GraphMetadataString(data)
@@ -89,7 +90,7 @@ trait AAMAnalysis:
     def registerError(error: Error, state: State): Unit =
       errors += ErrorState(error, state)
 
-    def loop[G](
+    @tailrec private def loop[G](
         work: List[State],
         newWork: List[State],
         graph: G,
