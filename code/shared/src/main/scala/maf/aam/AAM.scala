@@ -96,22 +96,23 @@ trait AAMAnalysis:
         timeout: Timeout.T
       )(using Graph[G, GraphElementAAM, GraphElement]
       ): (Set[State], G) =
-      if (work.isEmpty && newWork.isEmpty) || (timeout.reached) || (false && (seen.size > 1000)) then (work.toSet ++ newWork.toSet, graph)
-      else if work.isEmpty then loop(newWork, List(), graph, timeout)
-      else if seen.contains(work.head) then loop(work.tail, newWork, graph, timeout)
-      else
-          seen = seen + work.head
-          val todos = step(work.head)
-          val (updatedGraph, newWork1) = todos.foldLeft((graph, newWork)) { case ((g, newWork), todo) =>
-            val todoGe = asGraphElement(todo)
-            val workGe = asGraphElement(work.head)
-            val gUpdated = (if !seen.contains(todo) then g.addNode(todoGe) else g)
-              .addEdge(workGe, NoTransition(), todoGe)
+        println(s"working ${seen.size}")
+        if (work.isEmpty && newWork.isEmpty) || (timeout.reached) || (false && (seen.size > 1000)) then (work.toSet ++ newWork.toSet, graph)
+        else if work.isEmpty then loop(newWork, List(), graph, timeout)
+        else if seen.contains(work.head) then loop(work.tail, newWork, graph, timeout)
+        else
+            seen = seen + work.head
+            val todos = step(work.head)
+            val (updatedGraph, newWork1) = todos.foldLeft((graph, newWork)) { case ((g, newWork), todo) =>
+              val todoGe = asGraphElement(todo)
+              val workGe = asGraphElement(work.head)
+              val gUpdated = (if !seen.contains(todo) then g.addNode(todoGe) else g)
+                .addEdge(workGe, NoTransition(), todoGe)
 
-            (gUpdated, if !seen.contains(todo) then todo :: newWork else newWork)
-          }
+              (gUpdated, if !seen.contains(todo) then todo :: newWork else newWork)
+            }
 
-          loop(work.tail, newWork1, updatedGraph, timeout)
+            loop(work.tail, newWork1, updatedGraph, timeout)
 
     /** Analyze the given expression and return the set of (non-invalid) state */
     def analyze[G](expr: Expr, graph: G, timeout: Timeout.T = Timeout.none)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G) =

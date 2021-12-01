@@ -264,109 +264,115 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         kont: KonA,
         t: Timestamp,
         ext: Ext
-      ): Set[State] = exp match
-        // [Lit]
-        case lit: SchemeValue =>
-          super.evalLiteralVal(lit, env, sto, kont, t, ext).map(_.mapValue(tag(lit)))
+      ): Set[State] =
+        println(s"eval ${exp}")
+        exp match
+            // [Lit]
+            case lit: SchemeValue =>
+              super.evalLiteralVal(lit, env, sto, kont, t, ext).map(_.mapValue(tag(lit)))
 
-        case lam: SchemeLambdaExp =>
-          val clo = (lam, env.restrictTo(lam.fv))
+            case lam: SchemeLambdaExp =>
+              val clo = (lam, env.restrictTo(lam.fv))
 
-          // register the lexical path condition and store cache that will be used at application time
-          val ext1 = ext.copy(
-            pathStore = ext.pathStore + (clo -> ext.phi),
-            storeCacheClo = ext.storeCacheClo + (clo -> ext.m)
-          )
+              // register the lexical path condition and store cache that will be used at application time
+              val ext1 = ext.copy(
+                pathStore = ext.pathStore + (clo -> ext.phi),
+                storeCacheClo = ext.storeCacheClo + (clo -> ext.m)
+              )
 
-          Set(ap(inject(lattice.closure(clo)), sto, kont, t, ext1))
+              println(s"lam ${clo}")
 
-        case ContractSchemeMon(contract, expression, idn) =>
-          mon(contract, expression, idn, env, sto, kont, t, ext)
+              Set(ap(inject(lattice.closure(clo)), sto, kont, t, ext1))
 
-        case ContractSchemeDepContract(domains, rangeMaker, idn) =>
-          evaluateDepContract(domains, Some(rangeMaker), rangeMaker, env, sto, kont, t, ext)
+            case ContractSchemeMon(contract, expression, idn) =>
+              mon(contract, expression, idn, env, sto, kont, t, ext)
 
-        case ContractSchemeFlatContract(flat, idn) =>
-          val (sto1, frame, t1) = pushFrame(flat, env, sto, kont, FlatLitFrame(flat, idn, env), t)
-          Set(ev(flat, env, sto1, frame, t1, ext))
-        case _ => super.eval(exp, env, sto, kont, t, ext)
+            case ContractSchemeDepContract(domains, rangeMaker, idn) =>
+              evaluateDepContract(domains, Some(rangeMaker), rangeMaker, env, sto, kont, t, ext)
+
+            case ContractSchemeFlatContract(flat, idn) =>
+              val (sto1, frame, t1) = pushFrame(flat, env, sto, kont, FlatLitFrame(flat, idn, env), t)
+              Set(ev(flat, env, sto1, frame, t1, ext))
+            case _ => super.eval(exp, env, sto, kont, t, ext)
 
     override def continue(vlu: Val, sto: Sto, kon: KonA, t: Timestamp, ext: Ext): Set[State] =
-      readKonts(sto, kon).flatMap {
-        case MonFrame(contract, expression, idn, env, Some(next)) =>
-          applyMon(vlu, expression, None, idn, env, sto, next, ext, t)
+        println(s"cnt ${kon}")
+        readKonts(sto, kon).flatMap {
+          case MonFrame(contract, expression, idn, env, Some(next)) =>
+            println(s"mon ${vlu}")
+            applyMon(vlu, expression, None, idn, env, sto, next, ext, t)
 
-        // [MonFlat]
-        case MonFlatFrame(contract, expression, idn, env, Some(next)) =>
-          val fexp = SchemeFuncall(contract.fexp, List(expression), idn)
-          val func = contract.contract
-          val args = List(vlu)
-          // TODO: fix expression here so that we maintain proper call-return matching
-          val (sto1, frame, t1) =
-            pushFrame(SchemeValue(Value.Nil, Identity.none), env, sto, next, MonFlatFrameRet(contract, expression, idn, vlu, env), t)
-          applyFun(fexp, inject(func), args, env, sto1, frame, t1, ext)
+          // [MonFlat]
+          case MonFlatFrame(contract, expression, idn, env, Some(next)) =>
+            val fexp = SchemeFuncall(contract.fexp, List(expression), idn)
+            val func = contract.contract
+            val args = List(vlu)
+            // TODO: fix expression here so that we maintain proper call-return matching
+            val (sto1, frame, t1) =
+              pushFrame(SchemeValue(Value.Nil, Identity.none), env, sto, next, MonFlatFrameRet(contract, expression, idn, vlu, env), t)
+            applyFun(fexp, inject(func), args, env, sto1, frame, t1, ext)
 
-        // [MonFlat] checking whether expression satisfies contract, otherwise blame
-        case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
-          val nonblames = feasible(`true?`, vlu, ext.phi, ext.vars)
-            .map((phi1) => Set(ap(expVlu, sto, next, t, ext.copy(phi = phi1))))
-            .getOrElse(Set())
+          // [MonFlat] checking whether expression satisfies contract, otherwise blame
+          case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
+            val nonblames = feasible(`true?`, vlu, ext.phi, ext.vars)
+              .map((phi1) => Set(ap(expVlu, sto, next, t, ext.copy(phi = phi1))))
+              .getOrElse(Set())
 
-          val blames = feasible(`false?`, vlu, ext.phi, ext.vars)
-            .map((phi1) => Set(blame(contract.contractIdn, expression.idn, sto, next, t, ext)))
-            .getOrElse(Set())
+            val blames = feasible(`false?`, vlu, ext.phi, ext.vars)
+              .map((phi1) => Set(blame(contract.contractIdn, expression.idn, sto, next, t, ext)))
+              .getOrElse(Set())
 
-          nonblames ++ blames
+            nonblames ++ blames
 
-        // [MonFun]
-        case MonFunFrame(contract, expression, idn, env, Some(next)) =>
-          val arr = Arr(idn, expression.idn, contract, project(vlu))
-          Set(ap(inject(lattice.arr(arr)), sto, kon, t, ext))
+          // [MonFun]
+          case MonFunFrame(contract, expression, idn, env, Some(next)) =>
+            val arr = Arr(idn, expression.idn, contract, project(vlu))
+            Set(ap(inject(lattice.arr(arr)), sto, next, t, ext))
 
-        // Rule added to evaluate flat contracts
-        case FlatLitFrame(exp, idn, env, Some(next)) =>
-          Set(ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext))
+          // Rule added to evaluate flat contracts
+          case FlatLitFrame(exp, idn, env, Some(next)) =>
+            Set(ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext))
 
-        // [MonArr]
-        case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
-          // The value of the range contract is in the value passed to this continuation
-          // Now apply mon on the arguments of the function to the domain contracts
-          checkDomains(fexp, fexp.args, arr, vlu, arr.contract.domain, argv, List(), env, sto, next, t, ext)
+          // [MonArr]
+          case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
+            // The value of the range contract is in the value passed to this continuation
+            // Now apply mon on the arguments of the function to the domain contracts
+            checkDomains(fexp, fexp.args, arr, vlu, arr.contract.domain, argv, List(), env, sto, next, t, ext)
 
-        // Restore the context after a function call
-        case RestoreCtxFrame(phi, m, graph, looped, Some(next)) =>
-          Set(
-            ap(
-              vlu,
-              sto,
-              kon,
-              t,
-              // only restore path condition and store cache if the function call was looping
-              if looped then ext.copy(phi = phi, m = m)
-              else ext.copy(graph = graph.pop)
+          // Restore the context after a function call
+          case RestoreCtxFrame(phi, m, graph, looped, Some(next)) =>
+            Set(
+              ap(
+                vlu,
+                sto,
+                kon,
+                t,
+                // only restore path condition and store cache if the function call was looping
+                if looped then ext.copy(phi = phi, m = m)
+                else ext.copy(graph = graph.pop)
+              )
             )
-          )
 
-        case CheckDomainFrame(fexp, remainingArgv, remainingSyntacticArguments, arr, rangeContract, remainingDomains, argv, env, Some(next)) =>
-          checkDomains(fexp, remainingSyntacticArguments, arr, rangeContract, remainingDomains, remainingArgv, vlu :: argv, env, sto, next, t, ext)
+          case CheckDomainFrame(fexp, remainingArgv, remainingSyntacticArguments, arr, rangeContract, remainingDomains, argv, env, Some(next)) =>
+            checkDomains(fexp, remainingSyntacticArguments, arr, rangeContract, remainingDomains, remainingArgv, vlu :: argv, env, sto, next, t, ext)
 
-        case DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domainIdn, rangeMakerExp, env, Some(next)) =>
-          evaluateDepContract(
-            domains,
-            rangeMaker,
-            rangeMakerExp,
-            env,
-            sto,
-            kon,
-            t,
-            ext,
-            if rangeMaker.isDefined then vlu :: domainsV else domainsV,
-            if rangeMaker.isEmpty then Some(vlu) else rangeMakerV,
-            domainIdn
-          )
+          case DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domainIdn, rangeMakerExp, env, Some(next)) =>
+            evaluateDepContract(
+              domains,
+              rangeMaker,
+              rangeMakerExp,
+              env,
+              sto,
+              next,
+              t,
+              ext,
+              if rangeMaker.isDefined then vlu :: domainsV else domainsV,
+              if rangeMaker.isEmpty then Some(vlu) else rangeMakerV,
+              domainIdn
+            )
 
-        case _ => super.continue(vlu, sto, kon, t, ext)
-      }
+          case _ => super.continue(vlu, sto, kon, t, ext)
+        }
 
     /*=============================================================================================================================*/
 
@@ -415,7 +421,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         ext: Ext
       ): Set[State] =
         val (sto1, frame, t1) = pushFrame(contract, env, sto, kont, MonFrame(contract, expression, idn, env), t)
-        Set(ev(contract, env, sto, kont, t, ext))
+        Set(ev(contract, env, sto1, frame, t1, ext))
 
     /** Create a new post value from the given value where the symbolic representation is given by the given `SchemeExp` */
     protected def tag(e: SchemeExp)(v: Val): Val =
@@ -476,7 +482,8 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
           if arr.checkArgs(argv) then
               // then pass the function values to the rangeMaker
               // TODO: fexp is probably not the right choice here as a return address
-              val (sto1, frame, t1) = pushFrame(fexp, env, sto, kon, ArrRangeMakerFrame(fexp, arr, argv, env), t)
+              val frame = ArrRangeMakerFrame(fexp, arr, argv, env).link(kon)
+              println(s"app ${contract.rangeMaker}")
               applyFun(fexp, inject(contract.rangeMaker), argv, env, sto, kon, t, ext)
           else invalidArity(fexp, argv.size, arr.expectedNumArgs, sto, kon, t, ext)
       }
