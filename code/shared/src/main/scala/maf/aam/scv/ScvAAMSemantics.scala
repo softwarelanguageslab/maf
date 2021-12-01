@@ -59,7 +59,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
     private lazy val `true?` : Prim = primitives.allPrimitives("true?")
     private lazy val `false?` : Prim = primitives.allPrimitives("false?")
 
-    protected val satSolver: ScvSatSolver[LatVal]
+    protected lazy val satSolver: ScvSatSolver[LatVal]
     protected def checkPc(phi: PC, variables: List[String]): Boolean =
       satSolver.feasible(phi.pc, variables)
 

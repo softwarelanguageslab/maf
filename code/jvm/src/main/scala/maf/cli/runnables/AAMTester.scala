@@ -12,18 +12,11 @@ import scala.concurrent.duration._
 import scala.io.StdIn
 import maf.util.benchmarks.Timer
 
-object AAMTester:
-    private def analysis(b: SchemeExp): SchemeAAMSemantics =
-      new SchemeAAMSemantics(b)
-        with AAMAnalysis
-        with SchemeAAMAnalysisResults
-        with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMNoExt
-        with SchemeStoreAllocateReturn
-        with SchemeFunctionCallBoundary
-
-    private def parseProgram(txt: String): SchemeExp =
+/** Base trait that provides analysis functionality to analyze single programs */
+trait AAMTesterT:
+    type Analysis <: SchemeAAMSemantics
+    protected def analysis(b: SchemeExp): Analysis
+    protected def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -74,6 +67,18 @@ object AAMTester:
 
             print("query>>> ")
             input = StdIn.readLine()
+
+object AAMTester extends AAMTesterT:
+    type Analysis = SchemeAAMSemantics
+    protected def analysis(b: SchemeExp): Analysis =
+      new SchemeAAMSemantics(b)
+        with AAMAnalysis
+        with SchemeAAMAnalysisResults
+        with SchemeAAMContextInsensitivity
+        with SchemeConstantPropagationDomain
+        with SchemeAAMNoExt
+        with SchemeStoreAllocateReturn
+        with SchemeFunctionCallBoundary
 
     def main(args: Array[String]): Unit =
       if args.size > 0 then run(args(0)) else println("Please provide a file")
