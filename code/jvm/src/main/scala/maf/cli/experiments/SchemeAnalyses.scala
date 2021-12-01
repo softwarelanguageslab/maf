@@ -70,22 +70,6 @@ object SchemeAnalyses:
       with FIFOWorklistAlgorithm[SchemeExp] {
       override def toString = "full-argument-sensitivity"
     }
-    def adaptiveAnalysis(
-        prg: SchemeExp,
-        pn: Int,
-        pt: Int
-      ) = new AdaptiveModAnalysis(prg)
-      with AdaptiveSchemeModFSemantics
-      with AdaptiveContextSensitivity
-      with AdaptiveArgSensitivity
-      with SchemeConstantPropagationDomain
-      with FIFOWorklistAlgorithm[SchemeExp] {
-      lazy val n = pn
-      lazy val t = pt
-      override val cutoffFactor: Double = 0.25
-      override val reduceFactor: Double = 0.25
-      override def toString = s"adaptive-analysis (n = $n; t = $t)"
-    }
     def parallelKCFAAnalysis(
         prg: SchemeExp,
         n: Int,
@@ -139,25 +123,28 @@ object SchemeAnalyses:
         override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra
       }
     }
-    def modflocalAnalysisAdaptive(prg: SchemeExp, k: Int, l: Int) =
-      new SchemeModFLocal(prg)
-        with SchemeConstantPropagationDomain
-        with SchemeModFLocalCallSiteSensitivity(k)
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFLocalAnalysisResults
-        with SchemeModFLocalAdaptiveWidening(l)
+
     def modflocalAnalysis(prg: SchemeExp, k: Int) =
       new SchemeModFLocal(prg)
         with SchemeConstantPropagationDomain
         with SchemeModFLocalCallSiteSensitivity(k)
         with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
-    def modflocalFSAnalysis(prg: SchemeExp, k: Int) =
-      new SchemeModFLocalFS(prg)
+    def modflocalAnalysisAdaptiveA(prg: SchemeExp, k: Int, n: Int) =
+      new SchemeModFLocal(prg)
         with SchemeConstantPropagationDomain
         with SchemeModFLocalCallSiteSensitivity(k)
         with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFLocalFSAnalysisResults
+        with SchemeModFLocalAnalysisResults
+        with SchemeModFLocalAdaptiveWideningPolicyA(n)
+    def modFlocalAnalysisSelective(prg: SchemeExp, k: Int, widened: Set[Address]) =
+      new SchemeModFLocal(prg)
+        with SchemeConstantPropagationDomain
+        with SchemeModFLocalCallSiteSensitivity(k)
+        with FIFOWorklistAlgorithm[SchemeExp]
+        with SchemeModFLocalAnalysisResults:
+          override def customPolicy(adr: Adr): AddrPolicy =
+            if widened(adr) then AddrPolicy.Widened else AddrPolicy.Local
 
     def scvModAnalysis(prg: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given

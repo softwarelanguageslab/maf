@@ -5,10 +5,11 @@ import maf.language.scheme._
 import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util.benchmarks._
-import maf.util.Writer
+import maf.util.{Reader, Writer}
 import maf.language.scheme.primitives.SchemePrelude
 
 import scala.concurrent.duration._
+import maf.modular.scheme.modflocal.SchemeModFLocalAdaptiveWidening
 
 abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]
     extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]:
@@ -19,7 +20,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     def analyses: List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 30min.) and the number of concrete runs
-    def timeout() = Timeout.start(Duration(60, MINUTES)) // timeout for the analyses
+    def timeout() = Timeout.start(Duration(10, MINUTES)) // timeout for the analyses
     def runs = 3 // number of runs for the concrete interpreter
 
     // keep the results of the benchmarks in a table
@@ -66,19 +67,18 @@ object AnalysisComparisonAlt1
     ]:
     def analyses =
         val k = 0
-        val ls = List(100, 200, 300, 400)
+        val ls = List(900, 1000, 1200, 1500, 2000, 3000, 4000, 5000)
         // run some adaptive analyses
-        //(SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS") ::
-        //(SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF") ::
         val default: List[(SchemeExp => Analysis, String)] = List(
           (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS"),
           (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")
         )
         val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
-          (SchemeAnalyses.modflocalAnalysisAdaptive(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
+          (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
         }
         default ++ adaptive
-    def main(args: Array[String]) = runBenchmarks(
+    def main(args: Array[String]) = check("test/R5RS/gambit/matrix.scm")
+    def main0(args: Array[String]) = runBenchmarks(
       Set(
         //"test/R5RS/various/collatz.scm",
         //"test/R5RS/various/mceval.scm",
@@ -98,11 +98,28 @@ object AnalysisComparisonAlt1
         //"test/R5RS/gambit/browse.scm",
         //"test/R5RS/gambit/earley.scm",
         "test/R5RS/gambit/matrix.scm",
-        "test/R5RS/gambit/mazefun.scm",
+        //"test/R5RS/gambit/mazefun.scm",
         //"test/R5RS/gambit/nqueens.scm",
         //"test/R5RS/gambit/peval.scm",
       )
     )
+
+    def check(path: String) =
+        val prg = parseProgram(Reader.loadFile(path))
+        var prv1: SchemeModFLocalAdaptiveWidening | Null = null
+        val anl1: SchemeExp => Analysis = (prg: SchemeExp) =>
+            prv1 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 900)
+            prv1.asInstanceOf[Analysis]
+        var prv2: SchemeModFLocalAdaptiveWidening | Null = null
+        val anl2: SchemeExp => Analysis = (prg: SchemeExp) =>
+            prv2 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 1000)
+            prv2.asInstanceOf[Analysis]
+        //val sel1: SchemeExp => Analysis = SchemeAnalyses.modFlocalAnalysisSelective(_, 0, prv1.nn.widened)
+        //val sel2: SchemeExp => Analysis = SchemeAnalyses.modFlocalAnalysisSelective(_, 0, prv2.nn.widened)
+        //val concrete = runInterpreter(prg, path, Timeout.none, runs).get
+        val Terminated(res1) = runAnalysis(anl1, "adaptive analysis (l = 900)", prg, "test/R5RS/gambit/matrix.scm")
+        val Terminated(res2) = runAnalysis(anl2, "selective analysis (l = 1000)", prg, "test/R5RS/gambit/matrix.scm")
+        println(s"SUBSET?: ${prv1.nn.widened.subsetOf(prv2.nn.widened)} (${prv2.nn.widened.size} vs ${prv1.nn.widened.size})")
 
     override def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)

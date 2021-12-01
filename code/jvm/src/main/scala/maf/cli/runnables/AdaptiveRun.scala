@@ -49,49 +49,48 @@ object AdaptiveRun:
         val prg = CSchemeParser.undefine(transf)
         println(prg)
 
+    def adaptiveAnalysisA(prg: SchemeExp, n: Int) =
+      new SchemeModFLocal(prg)
+        with SchemeConstantPropagationDomain
+        with SchemeModFLocalCallSiteSensitivity(0)
+        with FIFOWorklistAlgorithm[SchemeExp]
+        with SchemeModFLocalAdaptiveWideningPolicyA(n):
+          override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
+          var i = 0
+          override def step(t: Timeout.T): Unit =
+              i += 1
+              val cmp = workList.head
+              //println(s"[$i] Analysing $cmp")
+              super.step(t)
+          def printStore(sto: Sto) =
+            sto.content.view.toMap
+              .foreach { case (a, (v, _)) => println(s"$a -> $v") }
+          def printDelta(dlt: Dlt) =
+            dlt.delta.view.toMap
+              .foreach { case (a, (v, _)) => println(s"$a -> $v") }
+          def printCmp(cmp: Cmp) =
+              val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
+              println()
+              println(s"COMPONENT $cmp WHERE")
+              printStore(cmp.sto)
+              println(s"==> RESULTS: $res")
+              println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
+              printDelta(dlt)
+              println()
+
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/gambit/browse.scm")
+        val txt = Reader.loadFile("test/R5RS/gambit/matrix.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        val anl = new SchemeModFLocal(prg)
-          with SchemeConstantPropagationDomain
-          with SchemeModFLocalNoSensitivity
-          with FIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFLocalAdaptiveWidening(800):
-            override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
-            var i = 0
-            override def step(t: Timeout.T): Unit =
-                i += 1
-                val cmp = workList.head
-                println(s"[$i] Analysing $cmp")
-                super.step(t)
-            def printStore(sto: Sto) =
-              sto.content.view.toMap
-                .foreach { case (a, (v, _)) =>
-                  println(s"$a -> $v")
-                }
-            def printDelta(dlt: Dlt) =
-              dlt.delta.view.toMap
-                .foreach { case (a, (v, _)) =>
-                  println(s"$a -> $v")
-                }
-            def printCmp(cmp: Cmp) =
-                val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
-                println()
-                println(s"COMPONENT $cmp WHERE")
-                printStore(cmp.sto)
-                println(s"==> RESULTS: $res")
-                println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
-                printDelta(dlt)
-                println()
-        //override def debugAdvanced(msg: => String): Unit = println(s"[!!!] $msg")
-        anl.analyzeWithTimeoutInSeconds(60)
-        //anl.visited.collect({ case cll: anl.CallComponent => cll })
-        //.foreach(printCall)
-        println(s"FINISHED: ${anl.finished}")
-        println(s"VISITED: ${anl.visited.size}")
+        val anl1 = adaptiveAnalysisA(prg, 900)
+        val anl2 = adaptiveAnalysisA(prg, 1000)
+        anl1.analyzeWithTimeoutInSeconds(120)
+        anl2.analyzeWithTimeoutInSeconds(120)
+        println(s"WIDENED(ANL1) is superset of WIDENED(ANL2): ${anl2.widened.subsetOf(anl1.widened)} (${anl1.widened.size} vs ${anl2.widened.size})")
+        println(s"FINISHED: ${anl1.finished} / ${anl2.finished}")
+        println(s"VISITED: ${anl1.visited.size} / ${anl2.visited.size}")
 
     def testModConc(): Unit =
         val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")
