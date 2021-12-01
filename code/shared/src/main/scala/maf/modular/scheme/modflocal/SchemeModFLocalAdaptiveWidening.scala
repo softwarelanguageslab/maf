@@ -22,12 +22,12 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
     var cmps: Map[(Lam, Ctx), Set[Cll]] = Map.empty
     protected def onNewComponent(cll: Cll, cls: Set[Cll]): Unit = ()
     override def spawn(cmp: Cmp) =
-      if (!visited(cmp)) then
-          val cll @ CallComponent(lam, _, ctx, sto) = cmp
-          val cls = cmps.getOrElse((lam, ctx), Set.empty) + cll
-          cmps += (lam, ctx) -> cls
-          onNewComponent(cll, cls)
-      super.spawn(cmp)
+        if (!visited(cmp)) then
+            val cll @ CallComponent(lam, _, ctx, sto) = cmp
+            val cls = cmps.getOrElse((lam, ctx), Set.empty) + cll
+            cmps += (lam, ctx) -> cls
+            onNewComponent(cll, cls)
+        super.spawn(cmp)
 
     // THE SHADOW STORE (& DEPS)
     var shadowStore: Map[Adr, Val] = Map.empty
@@ -108,27 +108,27 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
     // HELPERS
 
     protected def pickAddrs(sts: Set[Sto], cut: Int): Set[Adr] =
-      val kys = sts.flatMap(_.content.keySet)
-      val ads = sts.foldLeft(Map.empty[Adr, Set[(Val, Cnt)]]) { (acc, sto) =>
-        kys.foldLeft(acc) { case (acc2, adr) =>
-          val bnd = sto.content.getOrElse(adr, (lattice.bottom, CountZero))
-          acc2.get(adr) match
-              case None      => acc2 + (adr -> Set(bnd))
-              case Some(bds) => acc2 + (adr -> (bds + bnd))
+        val kys = sts.flatMap(_.content.keySet)
+        val ads = sts.foldLeft(Map.empty[Adr, Set[(Val, Cnt)]]) { (acc, sto) =>
+          kys.foldLeft(acc) { case (acc2, adr) =>
+            val bnd = sto.content.getOrElse(adr, (lattice.bottom, CountZero))
+            acc2.get(adr) match
+                case None      => acc2 + (adr -> Set(bnd))
+                case Some(bds) => acc2 + (adr -> (bds + bnd))
+          }
         }
-      }
-      val lst = ads.toList.sortBy((adr, bds) => bds.size)(Ordering[Int].reverse)
-      pickAddrsRec(lst, sts, cut)
+        val lst = ads.toList.sortBy((adr, bds) => bds.size)(Ordering[Int].reverse)
+        pickAddrsRec(lst, sts, cut)
 
     private def pickAddrsRec(lst: List[(Adr, Set[(Val, Cnt)])], sts: Set[Sto], cut: Int): Set[Adr] =
       if sts.size > cut then
           val (adr, _) :: rst = lst
           pickAddrsRec(rst, sts.map(_ - adr), cut) + adr
       else Set.empty
- 
-  // DEBUGGING CODE
 
-  /*
+// DEBUGGING CODE
+
+/*
     private def checkForChanges(cmp: Cmp) =
       val anl = new SchemeLocalIntraAnalysis(cmp)
       anl.analyzeWithTimeout(Timeout.none)
@@ -146,7 +146,6 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
       (visited -- workList.toList).foreach(checkForChanges)
  */
 
-
 //
 // POLICY A
 //
@@ -157,10 +156,9 @@ trait SchemeModFLocalAdaptiveWideningPolicyA(n: Int, c: Double = 0.5) extends Sc
     val cut = Math.max(n * c, 1).toInt
 
     private var toAdapt: Set[(Lam, Ctx)] = Set.empty
-    override def onNewComponent(cll: Cll, cls: Set[Cll]) = 
-      super.onNewComponent(cll, cls)
-      if cls.size > n then 
-        toAdapt += (cll.lam, cll.ctx)
+    override def onNewComponent(cll: Cll, cls: Set[Cll]) =
+        super.onNewComponent(cll, cls)
+        if cls.size > n then toAdapt += (cll.lam, cll.ctx)
 
     override def step(t: Timeout.T) =
         super.step(t)
@@ -173,7 +171,6 @@ trait SchemeModFLocalAdaptiveWideningPolicyA(n: Int, c: Double = 0.5) extends Sc
             addWidened(wid)
             debug(s"=> Widened ${wid.size} addresses (total: ${widened.size})")
             toAdapt = Set.empty
-
 
 //
 // POLICY B

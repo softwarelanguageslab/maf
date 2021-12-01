@@ -49,34 +49,34 @@ object AdaptiveRun:
         val prg = CSchemeParser.undefine(transf)
         println(prg)
 
-    def adaptiveAnalysisA(prg: SchemeExp, n: Int) = 
-       new SchemeModFLocal(prg)
-          with SchemeConstantPropagationDomain
-          with SchemeModFLocalCallSiteSensitivity(0)
-          with FIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFLocalAdaptiveWideningPolicyA(n):
-            override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
-            var i = 0
-            override def step(t: Timeout.T): Unit =
-                i += 1
-                val cmp = workList.head
-                //println(s"[$i] Analysing $cmp")
-                super.step(t)
-            def printStore(sto: Sto) =
-              sto.content.view.toMap
-                .foreach { case (a, (v, _)) => println(s"$a -> $v") }
-            def printDelta(dlt: Dlt) =
-              dlt.delta.view.toMap
-                .foreach { case (a, (v, _)) => println(s"$a -> $v") }
-            def printCmp(cmp: Cmp) =
-                val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
-                println()
-                println(s"COMPONENT $cmp WHERE")
-                printStore(cmp.sto)
-                println(s"==> RESULTS: $res")
-                println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
-                printDelta(dlt)
-                println()
+    def adaptiveAnalysisA(prg: SchemeExp, n: Int) =
+      new SchemeModFLocal(prg)
+        with SchemeConstantPropagationDomain
+        with SchemeModFLocalCallSiteSensitivity(0)
+        with FIFOWorklistAlgorithm[SchemeExp]
+        with SchemeModFLocalAdaptiveWideningPolicyA(n):
+          override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
+          var i = 0
+          override def step(t: Timeout.T): Unit =
+              i += 1
+              val cmp = workList.head
+              //println(s"[$i] Analysing $cmp")
+              super.step(t)
+          def printStore(sto: Sto) =
+            sto.content.view.toMap
+              .foreach { case (a, (v, _)) => println(s"$a -> $v") }
+          def printDelta(dlt: Dlt) =
+            dlt.delta.view.toMap
+              .foreach { case (a, (v, _)) => println(s"$a -> $v") }
+          def printCmp(cmp: Cmp) =
+              val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
+              println()
+              println(s"COMPONENT $cmp WHERE")
+              printStore(cmp.sto)
+              println(s"==> RESULTS: $res")
+              println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
+              printDelta(dlt)
+              println()
 
     def testModFLocal(): Unit =
         val txt = Reader.loadFile("test/R5RS/gambit/matrix.scm")

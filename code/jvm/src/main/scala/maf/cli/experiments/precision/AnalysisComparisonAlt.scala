@@ -106,17 +106,17 @@ object AnalysisComparisonAlt1
 
     def check(path: String) =
         val prg = parseProgram(Reader.loadFile(path))
-        var prv1: SchemeModFLocalAdaptiveWidening | Null = null 
-        val anl1: SchemeExp => Analysis = (prg: SchemeExp) => 
-          prv1 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 900)
-          prv1.asInstanceOf[Analysis]
-        var prv2: SchemeModFLocalAdaptiveWidening | Null = null 
-        val anl2: SchemeExp => Analysis = (prg: SchemeExp) => 
-          prv2 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 1000)
-          prv2.asInstanceOf[Analysis]
+        var prv1: SchemeModFLocalAdaptiveWidening | Null = null
+        val anl1: SchemeExp => Analysis = (prg: SchemeExp) =>
+            prv1 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 900)
+            prv1.asInstanceOf[Analysis]
+        var prv2: SchemeModFLocalAdaptiveWidening | Null = null
+        val anl2: SchemeExp => Analysis = (prg: SchemeExp) =>
+            prv2 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 1000)
+            prv2.asInstanceOf[Analysis]
         //val sel1: SchemeExp => Analysis = SchemeAnalyses.modFlocalAnalysisSelective(_, 0, prv1.nn.widened)
         //val sel2: SchemeExp => Analysis = SchemeAnalyses.modFlocalAnalysisSelective(_, 0, prv2.nn.widened)
-        //val concrete = runInterpreter(prg, path, Timeout.none, runs).get 
+        //val concrete = runInterpreter(prg, path, Timeout.none, runs).get
         val Terminated(res1) = runAnalysis(anl1, "adaptive analysis (l = 900)", prg, "test/R5RS/gambit/matrix.scm")
         val Terminated(res2) = runAnalysis(anl2, "selective analysis (l = 1000)", prg, "test/R5RS/gambit/matrix.scm")
         println(s"SUBSET?: ${prv1.nn.widened.subsetOf(prv2.nn.widened)} (${prv2.nn.widened.size} vs ${prv1.nn.widened.size})")

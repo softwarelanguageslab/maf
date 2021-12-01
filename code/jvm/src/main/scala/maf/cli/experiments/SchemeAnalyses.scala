@@ -137,7 +137,7 @@ object SchemeAnalyses:
         with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
         with SchemeModFLocalAdaptiveWideningPolicyA(n)
-    def modFlocalAnalysisSelective(prg: SchemeExp, k: Int, widened: Set[Address]) = 
+    def modFlocalAnalysisSelective(prg: SchemeExp, k: Int, widened: Set[Address]) =
       new SchemeModFLocal(prg)
         with SchemeConstantPropagationDomain
         with SchemeModFLocalCallSiteSensitivity(k)
