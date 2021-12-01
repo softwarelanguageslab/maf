@@ -2,7 +2,7 @@ package maf.aam.scheme
 
 import maf.core.*
 
-trait SchemeStoreAllocateReturn extends SchemeAAMSemantics:
+trait SchemeStoreAllocateReturn extends BaseSchemeAAMSemantics:
     case class RetAddr(kont: KonA) extends Address:
         def idn: Identity = Identity.none
         def printable = true
