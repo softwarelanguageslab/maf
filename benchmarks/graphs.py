@@ -41,4 +41,5 @@ import matplotlib.pyplot as plt
 
 sb.set(rc={'figure.figsize':(11.7,8.27)})
 sb.lineplot(x = "date", y = "time", hue = "name", data = df, marker = "o", ci = "sd")
+sb.lineplot(x = "date", y = "time", data = df.rolling(7).mean(), marker = "o", ci = "sd")
 plt.savefig("output.pdf")
