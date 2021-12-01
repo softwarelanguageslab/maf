@@ -134,6 +134,18 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         extends Frame:
         def link(kont: KonA): CheckDomainFrame = this.copy(next = Some(kont))
 
+    case class DepContractFrame(
+        domains: List[SchemeExp],
+        rangeMaker: Option[SchemeExp],
+        domainsV: List[Val],
+        rangeMakerV: Option[Val],
+        domainIdn: List[Identity],
+        rangeMakerExp: SchemeExp,
+        env: Env,
+        next: Option[KonA] = None)
+        extends Frame:
+        def link(kont: KonA): DepContractFrame = this.copy(next = Some(kont))
+
     /*=============================================================================================================================*/
     /* ===== Extension points =====================================================================================================*/
     /*=============================================================================================================================*/
@@ -271,6 +283,9 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         case ContractSchemeMon(contract, expression, idn) =>
           mon(contract, expression, idn, env, sto, kont, t, ext)
 
+        case ContractSchemeDepContract(domains, rangeMaker, idn) =>
+          evaluateDepContract(domains, Some(rangeMaker), rangeMaker, env, sto, kont, t, ext)
+
         case ContractSchemeFlatContract(flat, idn) =>
           val (sto1, frame, t1) = pushFrame(flat, env, sto, kont, FlatLitFrame(flat, idn, env), t)
           Set(ev(flat, env, sto1, frame, t1, ext))
@@ -335,6 +350,21 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         case CheckDomainFrame(fexp, remainingArgv, remainingSyntacticArguments, arr, rangeContract, remainingDomains, argv, env, Some(next)) =>
           checkDomains(fexp, remainingSyntacticArguments, arr, rangeContract, remainingDomains, remainingArgv, vlu :: argv, env, sto, next, t, ext)
 
+        case DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domainIdn, rangeMakerExp, env, Some(next)) =>
+          evaluateDepContract(
+            domains,
+            rangeMaker,
+            rangeMakerExp,
+            env,
+            sto,
+            kon,
+            t,
+            ext,
+            if rangeMaker.isDefined then vlu :: domainsV else domainsV,
+            if rangeMaker.isEmpty then Some(vlu) else rangeMakerV,
+            domainIdn
+          )
+
         case _ => super.continue(vlu, sto, kon, t, ext)
       }
 
@@ -394,6 +424,28 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
     protected def tagOption(e: Option[SchemeExp])(v: Val): Val = e match
         case Some(exp) => tag(exp)(v)
         case None      => v
+
+    protected def evaluateDepContract(
+        remainingDomains: List[SchemeExp],
+        rangeMaker: Option[SchemeExp],
+        rangeMakerExp: SchemeExp,
+        env: Env,
+        sto: Sto,
+        kon: KonA,
+        t: Timestamp,
+        ext: Ext,
+        domainsV: List[Val] = List(),
+        rangeMakerV: Option[Val] = None,
+        domainsIdn: List[Identity] = List(),
+      ): Set[SchemeState] = (remainingDomains, rangeMaker) match
+        case (domain :: domains, _) =>
+          val next = DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domain.idn :: domainsIdn, rangeMakerExp, env).link(kon)
+          Set(ev(domain, env, sto, next, t, ext))
+        case (List(), Some(rangeContract)) =>
+          val next = DepContractFrame(List(), None, domainsV, rangeMakerV, domainsIdn, rangeMakerExp, env).link(kon)
+          Set(ev(rangeContract, env, sto, next, t, ext))
+        case (List(), None) =>
+          Set(ap(inject(lattice.grd(Grd(domainsV.map(project), project(rangeMakerV.get), domainsIdn, rangeMakerExp))), sto, kon, t, ext))
 
     /** Check whether the given value possibly satisfies the given condition */
     protected def feasible(cond: SchemePrimitive[LatVal, Address], value: Val, phi: PC, vars: List[String]): Option[PC] =
