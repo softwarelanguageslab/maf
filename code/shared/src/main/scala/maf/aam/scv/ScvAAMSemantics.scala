@@ -14,7 +14,7 @@ import maf.modular.scv.ScvSatSolver
 import maf.language.scheme.SchemeValue
 import maf.aam.scv.CallGraph.{Edge, Looped}
 
-trait ScvAAMSemantics extends SchemeAAMSemantics:
+trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
     /** We add SCV specific information to the each AAM state */
     type Ext = ScvState
     type StoreCache = Map[Address, Symbolic]
@@ -269,7 +269,12 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         exp match
             // [Lit]
             case lit: SchemeValue =>
-              super.evalLiteralVal(lit, env, sto, kont, t, ext).map(_.mapValue(tag(lit)))
+              super
+                .evalLiteralVal(lit, env, sto, kont, t, ext)
+                .map(s => {
+                  println(s"tagggin ${s} with ${lit}")
+                  s.mapValue(tag(lit))
+                })
 
             case lam: SchemeLambdaExp =>
               val clo = (lam, env.restrictTo(lam.fv))
@@ -296,7 +301,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
             case _ => super.eval(exp, env, sto, kont, t, ext)
 
     override def continue(vlu: Val, sto: Sto, kon: KonA, t: Timestamp, ext: Ext): Set[State] =
-        println(s"cnt ${kon}")
+        println(s"cnt ${readKonts(sto, kon)}")
         readKonts(sto, kon).flatMap {
           case MonFrame(contract, expression, idn, env, Some(next)) =>
             println(s"mon ${vlu}")
@@ -335,6 +340,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
 
           // [MonArr]
           case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
+            println("cnt arr range maker frame")
             // The value of the range contract is in the value passed to this continuation
             // Now apply mon on the arguments of the function to the domain contracts
             checkDomains(fexp, fexp.args, arr, vlu, arr.contract.domain, argv, List(), env, sto, next, t, ext)
@@ -345,7 +351,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
               ap(
                 vlu,
                 sto,
-                kon,
+                next,
                 t,
                 // only restore path condition and store cache if the function call was looping
                 if looped then ext.copy(phi = phi, m = m)
@@ -371,7 +377,9 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
               domainIdn
             )
 
-          case _ => super.continue(vlu, sto, kon, t, ext)
+          case frm =>
+            println(s"unknown frame ${readKonts(sto, kon)}")
+            super.continue(vlu, sto, frm, t, ext)
         }
 
     /*=============================================================================================================================*/
@@ -484,7 +492,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
               // TODO: fexp is probably not the right choice here as a return address
               val frame = ArrRangeMakerFrame(fexp, arr, argv, env).link(kon)
               println(s"app ${contract.rangeMaker}")
-              applyFun(fexp, inject(contract.rangeMaker), argv, env, sto, kon, t, ext)
+              applyFun(fexp, inject(contract.rangeMaker), argv, env, sto, frame, t, ext)
           else invalidArity(fexp, argv.size, arr.expectedNumArgs, sto, kon, t, ext)
       }
 
@@ -503,11 +511,10 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         val flats = lattice
           .getFlats(project(contractVlu))
           .map((flat) => {
-            val newFrame = MonFlatFrame(flat, expression, monIdn, env)
-            val (sto1, frame, t1) = pushFrame(expression, env, sto, next, newFrame, t)
+            val newFrame = MonFlatFrame(flat, expression, monIdn, env).link(next)
             expressionVlu match
-                case Some(vlu) => ap(vlu, sto1, frame, t1, ext) // continue if we have an exp value
-                case None      => ev(expression, env, sto1, frame, t1, ext) // evaluate exp value first
+                case Some(vlu) => ap(vlu, sto, newFrame, t, ext) // continue if we have an exp value
+                case None      => ev(expression, env, sto, newFrame, t, ext) // evaluate exp value first
           })
 
         // feasible(phi, dep-contract?, w', phi') -> change: do not extend PC with this information
@@ -541,7 +548,7 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
         case domain :: domains =>
           // push a frame so that the next domains can be evaluated
           val nextFrame =
-            CheckDomainFrame(fexp, remainingArgv.tail, remainingSyntacticArguments.tail, arr, rangeContract, domains.tail, argv, env).link(kon)
+            CheckDomainFrame(fexp, remainingArgv.tail, remainingSyntacticArguments.tail, arr, rangeContract, domains, argv, env).link(kon)
           // validate the next domain contract
           applyMon(inject(domain), remainingSyntacticArguments.head, remainingArgv.headOption, fexp.idn, env, sto, kon, ext, t)
 
@@ -549,3 +556,5 @@ trait ScvAAMSemantics extends SchemeAAMSemantics:
           // if all the domain contracts have been validated, we can execute the monitored function
           val monitoredFunction = inject(arr.e)
           applyFun(fexp, monitoredFunction, argv, env, sto, kon, t, ext)
+
+abstract class ScvAAMSemantics(b: SchemeExp) extends BaseSchemeAAMSemantics(b), BaseScvAAMSemantics

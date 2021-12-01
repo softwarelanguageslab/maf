@@ -2,7 +2,7 @@ package maf.aam.scheme
 
 import maf.core.Address
 
-trait SchemeAAMAnalysisResults extends SchemeAAMSemantics with maf.aam.AnalysisResults:
+trait SchemeAAMAnalysisResults extends BaseSchemeAAMSemantics with maf.aam.AnalysisResults:
     var resultsPerIdn = Map().withDefaultValue(Set.empty[LatVal])
 
     override def writeSto(sto: Sto, addr: Address, value: Storable): Sto =

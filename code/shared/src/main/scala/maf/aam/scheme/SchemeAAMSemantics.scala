@@ -17,7 +17,7 @@ import maf.util.graph.{Graph, GraphElement}
 import maf.util.graph.Colors
 
 /** An AAM style semantics for Scheme */
-abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain { outer =>
+trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain { outer =>
   type Val
   type LatVal = Value
   type Expr = SchemeExp
@@ -889,3 +889,5 @@ abstract class SchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDo
       case HltFrame => Set()
     }
 }
+
+abstract class SchemeAAMSemantics(b: SchemeExp) extends BaseSchemeAAMSemantics(b)
