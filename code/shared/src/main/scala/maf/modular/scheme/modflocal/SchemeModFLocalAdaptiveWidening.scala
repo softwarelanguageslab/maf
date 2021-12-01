@@ -157,7 +157,6 @@ trait SchemeModFLocalAdaptiveWideningPolicyA(n: Int, c: Double = 0.5) extends Sc
     val cut = Math.max(n * c, 1).toInt
 
     private var toAdapt: Set[(Lam, Ctx)] = Set.empty
-
     override def onNewComponent(cll: Cll, cls: Set[Cll]) = 
       super.onNewComponent(cll, cls)
       if cls.size > n then 
@@ -174,6 +173,25 @@ trait SchemeModFLocalAdaptiveWideningPolicyA(n: Int, c: Double = 0.5) extends Sc
             addWidened(wid)
             debug(s"=> Widened ${wid.size} addresses (total: ${widened.size})")
             toAdapt = Set.empty
+
+
+//
+// POLICY B
+//
+
+trait SchemeModFLocalAdaptiveWideningPolicyB(l: Int, c: Double = 0.5) extends SchemeModFLocalAdaptiveWidening:
+    this: SchemeModFLocalSensitivity with SchemeDomain =>
+
+    def ratio: Double = (visited.size - 1) / Math.max(1, cmps.size)
+
+    override def step(t: Timeout.T) =
+        super.step(t)
+        if ratio > l then
+            val oldRatio = ratio
+            adaptAnalysis()
+            debug(s"=> ${widened.size} addresses have been widened in total.")
+            val newRatio = ratio
+            debug(s"Ratio: $oldRatio -> $newRatio")
 
     private def adaptAnalysis() =
         val max = cmps.maxBy((_, cls) => cls.size)._2.size
