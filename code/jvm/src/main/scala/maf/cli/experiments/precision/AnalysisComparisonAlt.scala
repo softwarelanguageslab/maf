@@ -74,7 +74,7 @@ object AnalysisComparisonAlt1
           (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")
         )
         val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
-          (SchemeAnalyses.modflocalAnalysisAdaptive(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
+          (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
         }
         default ++ adaptive
     def main(args: Array[String]) = check("test/R5RS/gambit/matrix.scm")
@@ -108,11 +108,11 @@ object AnalysisComparisonAlt1
         val prg = parseProgram(Reader.loadFile(path))
         var prv1: SchemeModFLocalAdaptiveWidening | Null = null 
         val anl1: SchemeExp => Analysis = (prg: SchemeExp) => 
-          prv1 = SchemeAnalyses.modflocalAnalysisAdaptive(prg, 0, 900)
+          prv1 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 900)
           prv1.asInstanceOf[Analysis]
         var prv2: SchemeModFLocalAdaptiveWidening | Null = null 
         val anl2: SchemeExp => Analysis = (prg: SchemeExp) => 
-          prv2 = SchemeAnalyses.modflocalAnalysisAdaptive(prg, 0, 1000)
+          prv2 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 1000)
           prv2.asInstanceOf[Analysis]
         //val sel1: SchemeExp => Analysis = SchemeAnalyses.modFlocalAnalysisSelective(_, 0, prv1.nn.widened)
         //val sel2: SchemeExp => Analysis = SchemeAnalyses.modFlocalAnalysisSelective(_, 0, prv2.nn.widened)

@@ -130,13 +130,13 @@ object SchemeAnalyses:
         with SchemeModFLocalCallSiteSensitivity(k)
         with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
-    def modflocalAnalysisAdaptive(prg: SchemeExp, k: Int, l: Int) =
+    def modflocalAnalysisAdaptiveA(prg: SchemeExp, k: Int, n: Int) =
       new SchemeModFLocal(prg)
         with SchemeConstantPropagationDomain
         with SchemeModFLocalCallSiteSensitivity(k)
         with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
-        with SchemeModFLocalAdaptiveWidening(l)
+        with SchemeModFLocalAdaptiveWideningPolicyA(n)
     def modFlocalAnalysisSelective(prg: SchemeExp, k: Int, widened: Set[Address]) = 
       new SchemeModFLocal(prg)
         with SchemeConstantPropagationDomain

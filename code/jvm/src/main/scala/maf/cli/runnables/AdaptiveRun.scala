@@ -49,12 +49,12 @@ object AdaptiveRun:
         val prg = CSchemeParser.undefine(transf)
         println(prg)
 
-    def adaptiveAnalysis(prg: SchemeExp, l: Int) = 
+    def adaptiveAnalysisA(prg: SchemeExp, n: Int) = 
        new SchemeModFLocal(prg)
           with SchemeConstantPropagationDomain
           with SchemeModFLocalCallSiteSensitivity(0)
           with FIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFLocalAdaptiveWidening(l):
+          with SchemeModFLocalAdaptiveWideningPolicyA(n):
             override def debug(msg: => String): Unit = println(s"[DEBUG] $msg")
             var i = 0
             override def step(t: Timeout.T): Unit =
@@ -84,8 +84,8 @@ object AdaptiveRun:
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        val anl1 = adaptiveAnalysis(prg, 900)
-        val anl2 = adaptiveAnalysis(prg, 1000)
+        val anl1 = adaptiveAnalysisA(prg, 900)
+        val anl2 = adaptiveAnalysisA(prg, 1000)
         anl1.analyzeWithTimeoutInSeconds(120)
         anl2.analyzeWithTimeoutInSeconds(120)
         println(s"WIDENED(ANL1) is superset of WIDENED(ANL2): ${anl2.widened.subsetOf(anl1.widened)} (${anl1.widened.size} vs ${anl2.widened.size})")

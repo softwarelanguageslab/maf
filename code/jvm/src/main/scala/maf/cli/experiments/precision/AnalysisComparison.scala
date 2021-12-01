@@ -71,7 +71,7 @@ object AnalysisComparison1
       // run some regular k-cfa analyses
       List(
         //(SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
-        (SchemeAnalyses.modflocalAnalysisAdaptive(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
+        (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
       )
 
     def main(args: Array[String]) = runBenchmarks(
