@@ -60,34 +60,3 @@ abstract class AdaptiveAnalysisComparison[
         compareUntilTimeout(baseAnalyses, path, program, concreteResult)
         // find the most precise adaptive analysis
         compareUntilTimeout(adaptiveAnalyses, path, program, concreteResult)
-
-object AdaptiveAnalysisComparison1
-    extends AdaptiveAnalysisComparison[
-      ConstantPropagation.I,
-      ConstantPropagation.R,
-      ConstantPropagation.B,
-      ConstantPropagation.C,
-      ConstantPropagation.S,
-      ConstantPropagation.Sym
-    ]:
-    // some regular k-cfa analyses
-    val baseAnalyses = (0 to 10).toList.map { k =>
-      (SchemeAnalyses.kCFAAnalysis(_, k), s"k-cfa (k = $k)")
-    }
-    // some adaptive analyses
-    val adaptiveAnalyses = List(50, 100, 150, 200, 250, 300).map { nt =>
-      (SchemeAnalyses.adaptiveAnalysis(_, nt, nt), s"adaptive (nt = $nt)")
-    }
-
-    def main(args: Array[String]) = runBenchmarks(
-      Set(
-        "test/R5RS/various/mceval.scm"
-      )
-    )
-
-    def runBenchmarks(benchmarks: Set[Benchmark]) =
-        benchmarks.foreach(runBenchmark)
-        println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
-        Writer.setDefaultWriter(Writer.open("benchOutput/precision/adaptive-precision-benchmarks.csv"))
-        Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
-        Writer.closeDefaultWriter()

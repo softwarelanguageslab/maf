@@ -111,7 +111,7 @@ trait SchemeModFLocalAdaptiveWidening(k: Int, c: Double = 0.5) extends SchemeMod
         // add widened addresses
         widened ++= wid
         // update analysis data
-        var toTrigger: Set[Dep] = Set.empty
+        var toTrigger: Set[Dep] = Set.empty //TODO: this only works when forall cmp: |deps(ResultDependency(cmp))| > 0
         visited = visited.map(widenCmp)
         workList = workList.map(widenCmp)
         deps = deps
