@@ -146,25 +146,25 @@ object PathStore:
  *   - Cutting of parts of the path condition that are not used any more
  *   - Making sure that symbolic representations cannot grow infinitely and that names of identifier are not infinite
  */
-case class PathStore(pcs: Map[String, List[Symbolic]] = Map(), cachedPc: List[Symbolic] = List()):
+case class PathStore(pcs: Map[String, Set[Symbolic]] = Map(), cachedPc: Set[Symbolic] = Set()):
     import Symbolic.Implicits.*
 
-    private def computeMapExtension(condition: Symbolic): Set[(String, List[Symbolic])] =
-      condition.identifiers.map(_ -> List(condition))
+    private def computeMapExtension(condition: Symbolic): Set[(String, Set[Symbolic])] =
+      condition.identifiers.map(_ -> Set(condition))
 
-    private def extendMap(condition: Symbolic, pcs: Map[String, List[Symbolic]]): Map[String, List[Symbolic]] =
+    private def extendMap(condition: Symbolic, pcs: Map[String, Set[Symbolic]]): Map[String, Set[Symbolic]] =
       pcs
         .foldLeft(computeMapExtension(condition)) { case (acc, (k, v)) =>
           acc + (k -> v)
         }
         .toMap
 
-    private def computeMap(path: List[Symbolic]): Map[String, List[Symbolic]] =
-      path.foldLeft(Map[String, List[Symbolic]]())((acc, cnd) => extendMap(cnd, acc))
+    private def computeMap(path: Set[Symbolic]): Map[String, Set[Symbolic]] =
+      path.foldLeft(Map[String, Set[Symbolic]]())((acc, cnd) => extendMap(cnd, acc))
 
     /** Extend the path condition with the given constraint */
     def extendPc(addition: Symbolic): PathStore =
-        val newCachedPc = addition :: cachedPc
+        val newCachedPc = cachedPc + addition
         val newPcs = extendMap(addition, pcs)
         this.copy(pcs = newPcs, cachedPc = newCachedPc)
 
@@ -174,7 +174,7 @@ case class PathStore(pcs: Map[String, List[Symbolic]] = Map(), cachedPc: List[Sy
 
     /** Compute the linear version of the path condition (excluding duplicates) */
     def pc: List[SchemeExp] =
-      cachedPc.map(_.expr)
+      cachedPc.map(_.expr).toList
 
     def vars: List[String] =
       pcs.keySet.toList
@@ -182,7 +182,7 @@ case class PathStore(pcs: Map[String, List[Symbolic]] = Map(), cachedPc: List[Sy
     /** Garbage collect the path condition, based on the variables that are required */
     def gc(roots: Set[String]): PathStore =
         val gced = pcs.filterKeys(k => roots.contains(k)).toMap
-        val newCachedPc = gced.values.toSet.flatten.toList
+        val newCachedPc = gced.values.toSet.flatten
         this.copy(pcs = gced, cachedPc = newCachedPc)
 
     /** Find the lowest identifier (ie. x1 < x3) in the current path condition */
@@ -195,7 +195,7 @@ case class PathStore(pcs: Map[String, List[Symbolic]] = Map(), cachedPc: List[Sy
     private def reindex(lowest: Int, sym: Symbolic): Symbolic =
       sym.reindex(lowest)
 
-    private def reindex(lowest: Int, pc: List[Symbolic]): List[Symbolic] =
+    private def reindex(lowest: Int, pc: Set[Symbolic]): Set[Symbolic] =
       pc.map(cnd => reindex(lowest, cnd))
 
     def lowest: Int = findLowest
