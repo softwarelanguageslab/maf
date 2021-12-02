@@ -183,17 +183,25 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
 
   protected trait Frame:
       def link(next: Address | Frame): Frame
+      def name: String = "unknown frame"
+
   case class EmptyFrame(next: Option[Address | Frame] = None) extends Frame:
       def link(next: Address | Frame): EmptyFrame = this.copy(next = Some(next))
+      override def name: String = "EmptyFrame"
+
   case class AssFrame(id: Identifier, env: Env, next: Option[Address | Frame] = None) extends Frame:
       def link(next: Address | Frame): AssFrame =
         AssFrame(id, env, Some(next))
+      override def name: String = "AssFrame"
+
   case class BegFrame(exps: List[Expr], env: Env, cross: Boolean, next: Option[Address | Frame] = None) extends Frame:
       def link(next: Address | Frame): BegFrame =
         this.copy(next = Some(next))
+      override def name: String = "BegFrame"
   case class IteFrame(csq: Expr, alt: Expr, env: Env, next: Option[Address | Frame] = None) extends Frame:
       def link(next: Address | Frame): IteFrame =
         this.copy(next = Some(next))
+      override def name: String = "IteFrame"
   case class LetFrame(
       // evaluated bindings
       evalBds: List[(Identifier, Val)],
@@ -208,6 +216,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       def link(next: Address | Frame): LetFrame =
         this.copy(next = Some(next))
 
+      override def name: String = "LetFrame"
+
   case class LetStarFrame(
       currentIdentifier: Identifier,
       bindings: List[(Identifier, SchemeExp)],
@@ -217,6 +227,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       extends Frame:
       def link(next: Address | Frame): LetStarFrame =
         this.copy(next = Some(next))
+
+      override def name: String = "LetStarFrame"
 
   case class LetrecFrame(
       currentAddress: Address,
@@ -230,6 +242,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       def link(next: Address | Frame): LetrecFrame =
         this.copy(next = Some(next))
 
+      override def name: String = "LetRecFrame"
+
   case class AssertFrame(
       idn: Identity,
       env: Env,
@@ -238,8 +252,11 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       def link(next: Address | Frame): AssertFrame =
         this.copy(next = Some(next))
 
+      override def name: String = "AssertFrame"
+
   case object HltFrame extends Frame:
       def link(next: Address | Frame): Frame = this
+      override def name: String = "Hlt"
 
   /**
    * A continuation for evaluating a function.
@@ -253,6 +270,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       def link(next: Address | Frame): FunFrame =
         this.copy(next = Some(next))
 
+      override def name: String = "FunFrame"
+
   case class ArgFrame(
       f: SchemeFuncall,
       args: List[SchemeExp],
@@ -263,6 +282,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       extends Frame:
       def link(next: Address | Frame): ArgFrame =
         this.copy(next = Some(next))
+
+      override def name: String = "ArgFrame"
 
   /** The control of the CESK* machine */
   enum Control:
@@ -344,7 +365,9 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
   /** Convert the given state to a node in a graph */
   def asGraphElement(s: State): GraphElementAAM = s.c match
       case Control.Ev(e, _) => GraphElementAAM(s.hashCode, label = s"ev($e)", color = Colors.Yellow, data = "")
-      case Control.Ap(v)    => GraphElementAAM(s.hashCode, label = s"ap($v)", color = Colors.Red, data = "")
+      case Control.Ap(v) =>
+        val kontName = readKonts(s.s, s.k).map(_.name).mkString(",")
+        GraphElementAAM(s.hashCode, label = s"ap($v, $kontName)", color = Colors.Red, data = "")
       case Control.Ret(addr) =>
         val vlu = readStoV(s.s, addr, s.extra)
         GraphElementAAM(s.hashCode, label = s"ret($vlu)", color = Colors.Red, data = "")
