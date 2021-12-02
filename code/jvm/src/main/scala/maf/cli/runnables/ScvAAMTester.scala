@@ -22,8 +22,7 @@ object ScvAAMTester extends AAMTesterT:
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         //with SchemeStoreAllocateReturn
-        //with SchemeFunctionCallBoundary
-        {
+        with SchemeFunctionCallBoundary {
         lazy val satSolver: ScvSatSolver[LatVal] =
             given lat: SchemeLattice[LatVal, Address] = lattice
             new JVMSatSolver

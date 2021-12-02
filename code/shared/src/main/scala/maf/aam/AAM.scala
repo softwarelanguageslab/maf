@@ -98,7 +98,7 @@ trait AAMAnalysis:
       )(using Graph[G, GraphElementAAM, GraphElement]
       ): (Set[State], G) =
         println(s"working ${seen.size}")
-        if (work.isEmpty && newWork.isEmpty) || (timeout.reached) || (false && (seen.size > 1000)) then (work.toSet ++ newWork.toSet, graph)
+        if (work.isEmpty && newWork.isEmpty) || (timeout.reached) || (false && (seen.size > 100)) then (work.toSet ++ newWork.toSet, graph)
         else if work.isEmpty then loop(newWork, List(), graph, timeout)
         else if seen.contains(work.head) then loop(work.tail, newWork, graph, timeout)
         else

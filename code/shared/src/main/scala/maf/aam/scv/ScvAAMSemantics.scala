@@ -89,10 +89,12 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
     /** Evaluation of (mon contract expression)/idn */
     case class MonFrame(contract: SchemeExp, expression: SchemeExp, idn: Identity, env: Env, next: Option[KonA] = None) extends Frame:
         def link(kont: KonA): MonFrame = this.copy(next = Some(kont))
+        override def name: String = "MonFrame"
 
     /** Frame that gets pushed when `contract` is a flat contract and when we are evaluating the expression in the monitor expression */
     case class MonFlatFrame(contract: Flat[LatVal], expression: SchemeExp, idn: Identity, env: Env, next: Option[KonA] = None) extends Frame:
         def link(kont: KonA): MonFlatFrame = this.copy(next = Some(kont))
+        override def name: String = "MonFlatFrame"
 
     /** Frame that gets pushed when trying to apply the flat contract to the value of the expression */
     case class MonFlatFrameRet(
@@ -104,21 +106,26 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         next: Option[KonA] = None)
         extends Frame:
         def link(kont: KonA): MonFlatFrameRet = this.copy(next = Some(kont))
+        override def name: String = "MonFlatFrameRet"
 
     case class MonFunFrame(contract: Grd[LatVal], epx: SchemeExp, idn: Identity, env: Env, next: Option[KonA] = None) extends Frame:
         def link(kont: KonA): MonFunFrame = this.copy(next = Some(kont))
+        override def name: String = "MonFunFrame"
 
     /** Frame that gets pushed when we evaluate an expression in a (flat expression)/idn expression */
     case class FlatLitFrame(exp: SchemeExp, idn: Identity, env: Env, next: Option[KonA] = None) extends Frame:
         def link(kont: KonA): FlatLitFrame = this.copy(next = Some(kont))
+        override def name: String = "FlatLitFrame"
 
     /** Frame that signifies what to do after the range maker of a monitored function is applied */
     case class ArrRangeMakerFrame(fexp: SchemeFuncall, arr: Arr[LatVal], argv: List[Val], env: Env, next: Option[KonA] = None) extends Frame:
         def link(kont: KonA): ArrRangeMakerFrame = this.copy(next = Some(kont))
+        override def name: String = "ArrRangeMakerFrame"
 
     /** Continuation frame to restore the context (path condition, store cache, call graph) after function call */
     case class RestoreCtxFrame(phi: PC, m: StoreCache, graph: CallGraph, looped: Boolean, next: Option[KonA] = None) extends Frame:
         def link(kont: KonA): RestoreCtxFrame = this.copy(next = Some(kont))
+        override def name: String = "RestoreCtxFrame"
 
     /** Continuation frame to continue checking the domain contracts of a function guarded by a contract */
     case class CheckDomainFrame(
@@ -133,6 +140,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         next: Option[KonA] = None)
         extends Frame:
         def link(kont: KonA): CheckDomainFrame = this.copy(next = Some(kont))
+        override def name: String = "CheckDomainFrame"
 
     case class DepContractFrame(
         domains: List[SchemeExp],
@@ -145,6 +153,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         next: Option[KonA] = None)
         extends Frame:
         def link(kont: KonA): DepContractFrame = this.copy(next = Some(kont))
+        override def name: String = "DepContractFrame"
 
     /*=============================================================================================================================*/
     /* ===== Extension points =====================================================================================================*/
@@ -235,7 +244,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
           // push a return continuation on the continuation stack to restore the path condition
           // and the store cache
-          val (sto3, frame, t1) = pushFrameRet(fexp, env, sto, kon, RestoreCtxFrame(ext.phi, ext.m, ext.graph, looped), t0)
+          val (sto3, frame, t1) = pushFrameRet(fexp, env, sto2, kon, RestoreCtxFrame(ext.phi, ext.m, ext.graph, looped), t0)
 
           // and evaluate the body
           evaluate_sequence(env1, sto3, frame, lam.body, t1, ext3, true)
@@ -301,7 +310,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
             case _ => super.eval(exp, env, sto, kont, t, ext)
 
     override def continue(vlu: Val, sto: Sto, kon: KonA, t: Timestamp, ext: Ext): Set[State] =
-        println(s"cnt ${readKonts(sto, kon)}")
+        println(s"cnt ${readKonts(sto, kon)} with $vlu")
         readKonts(sto, kon).flatMap {
           case MonFrame(contract, expression, idn, env, Some(next)) =>
             println(s"mon ${vlu}")
@@ -340,13 +349,13 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
           // [MonArr]
           case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
-            println("cnt arr range maker frame")
             // The value of the range contract is in the value passed to this continuation
             // Now apply mon on the arguments of the function to the domain contracts
             checkDomains(fexp, fexp.args, arr, vlu, arr.contract.domain, argv, List(), env, sto, next, t, ext)
 
           // Restore the context after a function call
           case RestoreCtxFrame(phi, m, graph, looped, Some(next)) =>
+            println("==========RESTORING CONTEXT============")
             Set(
               ap(
                 vlu,
@@ -377,9 +386,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
               domainIdn
             )
 
-          case frm =>
-            println(s"unknown frame ${readKonts(sto, kon)}")
-            super.continue(vlu, sto, frm, t, ext)
+          case frm => super.continue(vlu, sto, frm, t, ext)
         }
 
     /*=============================================================================================================================*/
@@ -492,7 +499,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
               // TODO: fexp is probably not the right choice here as a return address
               val frame = ArrRangeMakerFrame(fexp, arr, argv, env).link(kon)
               println(s"app ${contract.rangeMaker}")
-              applyFun(fexp, inject(contract.rangeMaker), argv, env, sto, frame, t, ext)
+              applyFun(SchemeFuncall(contract.rangeMakerExpr, fexp.args, fexp.idn), inject(contract.rangeMaker), argv, env, sto, frame, t, ext)
           else invalidArity(fexp, argv.size, arr.expectedNumArgs, sto, kon, t, ext)
       }
 
@@ -550,9 +557,10 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
           val nextFrame =
             CheckDomainFrame(fexp, remainingArgv.tail, remainingSyntacticArguments.tail, arr, rangeContract, domains, argv, env).link(kon)
           // validate the next domain contract
-          applyMon(inject(domain), remainingSyntacticArguments.head, remainingArgv.headOption, fexp.idn, env, sto, kon, ext, t)
+          applyMon(inject(domain), remainingSyntacticArguments.head, remainingArgv.headOption, fexp.idn, env, sto, nextFrame, ext, t)
 
         case _ =>
+          println("Applying the function")
           // if all the domain contracts have been validated, we can execute the monitored function
           val monitoredFunction = inject(arr.e)
           applyFun(fexp, monitoredFunction, argv, env, sto, kon, t, ext)
