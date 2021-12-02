@@ -155,6 +155,9 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         def link(kont: KonA): DepContractFrame = this.copy(next = Some(kont))
         override def name: String = "DepContractFrame"
 
+    case class RetCheckRangeFrame(rangeContract: Val, fexp: SchemeExp, env: Env, next: Option[KonA] = None) extends Frame:
+        def link(kont: KonA): RetCheckRangeFrame = this.copy(next = Some(kont))
+
     /*=============================================================================================================================*/
     /* ===== Extension points =====================================================================================================*/
     /*=============================================================================================================================*/
@@ -355,7 +358,6 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
           // Restore the context after a function call
           case RestoreCtxFrame(phi, m, graph, looped, Some(next)) =>
-            println("==========RESTORING CONTEXT============")
             Set(
               ap(
                 vlu,
@@ -385,6 +387,9 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
               if rangeMaker.isEmpty then Some(vlu) else rangeMakerV,
               domainIdn
             )
+
+          case RetCheckRangeFrame(contract, exp, env, Some(next)) =>
+            applyMon(contract, exp, Some(vlu), Identity.none, env, sto, next, ext, t)
 
           case frm => super.continue(vlu, sto, frm, t, ext)
         }
@@ -563,6 +568,8 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
           println("Applying the function")
           // if all the domain contracts have been validated, we can execute the monitored function
           val monitoredFunction = inject(arr.e)
-          applyFun(fexp, monitoredFunction, argv, env, sto, kon, t, ext)
+          // but first we need to push a continuation to apply the range contract on the result of the function
+          val nextFrame = RetCheckRangeFrame(rangeContract, fexp, env).link(kon)
+          applyFun(fexp, monitoredFunction, argv, env, sto, nextFrame, t, ext)
 
 abstract class ScvAAMSemantics(b: SchemeExp) extends BaseSchemeAAMSemantics(b), BaseScvAAMSemantics
