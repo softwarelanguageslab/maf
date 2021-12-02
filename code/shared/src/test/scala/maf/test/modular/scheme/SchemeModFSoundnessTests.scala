@@ -69,5 +69,5 @@ class ParallelSchemeModFSoundnessTests extends ParallelSchemeModF with AllSequen
     override def isSlow(b: Benchmark) = true
 
 // At the moment we check whether our extensions do not conflict with the soundness of regular Scheme programs (without contracts)
-class ScvModFTests extends ScvModF with AllSequentialBenchmarks:
-    override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
+//class ScvModFTests extends ScvModF with AllSequentialBenchmarks:
+//    override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
