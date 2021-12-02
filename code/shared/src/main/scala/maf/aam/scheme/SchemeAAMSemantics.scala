@@ -167,8 +167,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
     sto.extend(addr, value)
 
   /** Write a value to the given address in the store, returns the updated store */
-  def writeStoV(sto: Sto, addr: Address, value: Val): Sto =
-    writeSto(sto, addr, Storable.V(project(value)))
+  def writeStoV(sto: Sto, addr: Address, value: Val, ext: Ext): (Sto, Ext) =
+    (writeSto(sto, addr, Storable.V(project(value))), ext)
 
   private def preprocessProgram(program: List[SchemeExp]): SchemeExp =
       val originalProgram = program
@@ -512,21 +512,22 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       t: Timestamp,
       ext: Ext
     ): Set[State] =
-      val (res, sto1) = lit.value match
+      println(s"literal val $lit")
+      val (res, sto1, ext1) = lit.value match
           case sexp.Value.String(s) =>
             val address = alloc(lit.idn, env, sto, kont, t)
-            val sto1 = writeStoV(sto, address, inject(lattice.string(s)))
-            (lattice.pointer(address), sto1)
+            val (sto1, ext1) = writeStoV(sto, address, inject(lattice.string(s)), ext)
+            (lattice.pointer(address), sto1, ext1)
 
-          case sexp.Value.Integer(n)   => (lattice.number(n), sto)
-          case sexp.Value.Real(r)      => (lattice.real(r), sto)
-          case sexp.Value.Boolean(b)   => (lattice.bool(b), sto)
-          case sexp.Value.Character(c) => (lattice.char(c), sto)
-          case sexp.Value.Symbol(s)    => (lattice.symbol(s), sto)
-          case sexp.Value.Nil          => (lattice.nil, sto)
+          case sexp.Value.Integer(n)   => (lattice.number(n), sto, ext)
+          case sexp.Value.Real(r)      => (lattice.real(r), sto, ext)
+          case sexp.Value.Boolean(b)   => (lattice.bool(b), sto, ext)
+          case sexp.Value.Character(c) => (lattice.char(c), sto, ext)
+          case sexp.Value.Symbol(s)    => (lattice.symbol(s), sto, ext)
+          case sexp.Value.Nil          => (lattice.nil, sto, ext)
           case lit                     => throw new Exception(s"Unsupported Scheme literal: $lit")
 
-      Set(ap(inject(res), sto1, kont, t, ext))
+      Set(ap(inject(res), sto1, kont, t, ext1))
 
   private def evalVariable(
       id: Identifier,
@@ -588,13 +589,15 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
               .map(_._1)
               .zip(addresses)
               .foldLeft(env)((envNew, current) => envNew.extend(current._1.name, current._2))
-          val sto1: Sto =
+          val (sto1, ext1): (Sto, Ext) =
             evlBds
               .map(_._2)
               .zip(addresses)
-              .foldLeft(sto)((sto, current) => writeStoV(sto, current._2, current._1))
+              .foldLeft((sto, ext)) { case ((sto, ext), current) =>
+                writeStoV(sto, current._2, current._1, ext)
+              }
 
-          evaluate_sequence(env1, sto1, kont, body, t, ext)
+          evaluate_sequence(env1, sto1, kont, body, t, ext1)
 
         case binding :: bindings =>
           val (sto1, frame, t1) = pushFrame(binding._2, env, sto, kont, LetFrame(evlBds, binding :: bindings, body, env), t)
@@ -684,26 +687,27 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       sto0: Sto,
       kon: KonA,
       t0: Timestamp,
-    ): (Env, Sto, Timestamp) =
+      ext: Ext,
+    ): (Env, Sto, Timestamp, Ext) =
       // split in fixed an variable number of arguments
       val (fx, vra) = argv.zip(fexp.args).splitAt(lam.args.length)
       val ctx = ()
 
       // add the fixed arguments on addresses in the store
-      val sto1 = lam.args.zip(fx).foldLeft(sto0) { case (sto, (par, (value, _))) =>
-        writeStoV(sto, VarAddr(par.idn, ctx), value)
+      val (sto1, ext1) = lam.args.zip(fx).foldLeft((sto0, ext)) { case ((sto, ext), (par, (value, _))) =>
+        writeStoV(sto, VarAddr(par.idn, ctx), value, ext)
       }
       // add variable arguments as a list to a particular address in the store
-      val sto2 = lam.varArgId match
+      val (sto2, ext2) = lam.varArgId match
           case Some(id) =>
             val (vlu, newsto) = allocList(vra, lex, sto1, kon, t0)
-            writeStoV(newsto, VarAddr(id.idn, ctx), vlu)
-          case _ => sto1
+            writeStoV(newsto, VarAddr(id.idn, ctx), vlu, ext)
+          case _ => (sto1, ext1)
 
       // extend the environment with the correct bindigs
       val pars = (lam.args ++ lam.varArgId.map(List(_)).getOrElse(List()))
       val env1 = pars.foldLeft(lex)((env, par) => env.extend(par.name, VarAddr(par.idn, ctx)))
-      (env1, sto2, t0)
+      (env1, sto2, t0, ext2)
 
   protected def applyClo(
       fexp: SchemeFuncall,
@@ -718,10 +722,10 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
     // TODO: introduce contexts to support things like k-cfa
     lattice.getClosures(project(func)).flatMap {
       case (lam, lex: Env @unchecked) if lam.check(argv.size) =>
-        val (env1, sto2, t0) = bindArgs(fexp, argv, lam, lex, sto, kon, t)
+        val (env1, sto2, t0, ext1) = bindArgs(fexp, argv, lam, lex, sto, kon, t, ext)
         val (sto3, frame, t1) = pushFrameRet(fexp, env, sto2, kon, EmptyFrame(), t)
         // and evaluate the body
-        evaluate_sequence(env1, sto3, frame, lam.body, t1, ext, true)
+        evaluate_sequence(env1, sto3, frame, lam.body, t1, ext1, true)
       case (lam, lex) =>
         invalidArity(fexp, argv.size, lam.args.size + lam.varArgId.size, sto, kon, t, ext)
     }
@@ -895,14 +899,14 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
         continueWiths(sto, addr) { kont =>
             val addr = alloc(currentIdentifier.idn, env, sto, kont, t)
             val env1 = env.extend(currentIdentifier.name, addr)
-            val sto1 = writeStoV(sto, addr, value)
-            evaluateLetStar(env1, sto1, kont, restBindings, body, t, ext)
+            val (sto1, ext1) = writeStoV(sto, addr, value, ext)
+            evaluateLetStar(env1, sto1, kont, restBindings, body, t, ext1)
         }
 
       case LetrecFrame(currentAddr, addresses, values, bindings, body, env, Some(addr)) =>
         continueWiths(sto, addr) { kont =>
-            val sto1 = writeStoV(sto, currentAddr, value)
-            evaluateLetrec(addresses, value :: values, env, sto1, kont, bindings, body, t, ext)
+            val (sto1, ext1) = writeStoV(sto, currentAddr, value, ext)
+            evaluateLetrec(addresses, value :: values, env, sto1, kont, bindings, body, t, ext1)
         }
 
       case AssertFrame(idn, env, Some(next)) =>

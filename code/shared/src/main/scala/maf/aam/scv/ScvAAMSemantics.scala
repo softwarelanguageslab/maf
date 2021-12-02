@@ -13,6 +13,7 @@ import maf.language.ContractScheme.ContractValues.*
 import maf.modular.scv.ScvSatSolver
 import maf.language.scheme.SchemeValue
 import maf.aam.scv.CallGraph.{Edge, Looped}
+import maf.util.MonoidImplicits.*
 
 trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
     /** We add SCV specific information to the each AAM state */
@@ -61,7 +62,9 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
     protected lazy val satSolver: ScvSatSolver[LatVal]
     protected def checkPc(phi: PC, variables: List[String]): Boolean =
-      satSolver.feasible(phi.pc, variables)
+        val res = satSolver.feasible(phi.pc, variables)
+        println(s"res of sat solver $res")
+        res
 
     def ap(fexp: SchemeFuncall, argv: List[Val]): Option[SchemeExp] =
         import maf.core.Monad.MonadIterableOps
@@ -172,6 +175,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         t: Timestamp,
         ext: Ext
       ): Set[State] =
+        println("in cond")
         // [CondTrue] for comparison wih the paper, "nonzero?" has been renamed to "true?"
         val csqSt =
           feasible(`true?`, value, ext.phi, ext.vars)
@@ -184,10 +188,20 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
             .map(phi1 => Set(ev(alt, env, sto, kont, t, ext.copy(phi = phi1))))
             .getOrElse(Set())
 
+        println(s"out $csqSt and $altSt")
+
         csqSt ++ altSt
 
     override def readStoV(sto: Sto, addr: Address, ext: Ext): Val =
       tagOption(ext.m.get(addr).map(_.expr))(super.readStoV(sto, addr, ext))
+
+    override def writeStoV(sto: Sto, addr: Address, value: Val, ext: Ext): (Sto, Ext) =
+      (super.writeStoV(sto, addr, value, ext)._1,
+       ext.copy(m = value._2 match
+           case Some(sym) => ext.m + (addr -> sym)
+           case None      => ext.m
+       )
+      )
 
     override def applyPrim(
         fexp: SchemeFuncall,
@@ -199,8 +213,14 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         t: Timestamp,
         ext: Ext
       ): Set[State] =
-      // apply the primitive and then add a symbolic application to the symbolic value
-      super.applyPrim(fexp, func, argv, env, sto, kon, t, ext).map(_.mapValue(tagOption(ap(fexp, argv))))
+        val v1 = super.applyPrim(fexp, func, argv, env, sto, kon, t, ext)
+        val v2 =
+          if OpqOps.eligible(argv.map(project)) then lattice.getPrimitives(project(func)).foldMap(prim => OpqOps.compute(prim, argv.map(project)))
+          else lattice.bottom
+        v1.map(_.mapValue(v =>
+            val v3 = lattice.join(project(v), v2)
+            tagOption(ap(fexp, argv))(inject(v3))
+        ))
 
     override protected def applyClo(
         fexp: SchemeFuncall,
@@ -214,7 +234,8 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
       ): Set[State] =
       lattice.getClosures(project(func)).flatMap {
         case (lam, lex: Env @unchecked) if lam.check(argv.size) =>
-          val (env1, sto2, t0) = bindArgs(fexp, argv, lam, lex, sto, kon, t)
+          // we will ignore this ext as we will manually update it later
+          val (env1, sto2, t0, ext_) = bindArgs(fexp, argv, lam, lex, sto, kon, t, ext)
 
           // update the path condition and store cache, only share the path condition
           // and store cache if it was not looped.
@@ -297,9 +318,11 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
                 storeCacheClo = ext.storeCacheClo + (clo -> ext.m)
               )
 
-              println(s"lam ${clo}")
-
               Set(ap(inject(lattice.closure(clo)), sto, kont, t, ext1))
+
+            case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) =>
+              val (vrr, ext1) = fresh(ext)
+              Set(ap(tag(vrr.expr)(inject(lattice.opq(Opq()))), sto, kont, t, ext1))
 
             case ContractSchemeMon(contract, expression, idn) =>
               mon(contract, expression, idn, env, sto, kont, t, ext)
@@ -476,13 +499,14 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
     /** Check whether the given value possibly satisfies the given condition */
     protected def feasible(cond: SchemePrimitive[LatVal, Address], value: Val, phi: PC, vars: List[String]): Option[PC] =
         val res = callPrimitive(SchemeValue(Value.Nil, Identity.none), cond, List(value))
+        println(s"feasible res $res it is NONE? ${value}")
         if lattice.isTrue(res) then
-            for {
-              sym <- value._2
-              arg = sym.expr
-              phi1 = phi.extendPc(Symbolic(SchemeFuncall(SchemeVar(Identifier(cond.name, Identity.none)), List(arg), Identity.none)))
-              if checkPc(phi1, vars)
-            } yield phi1
+            value._2 match
+                case Some(sym) =>
+                  val arg = sym.expr
+                  val phi1 = phi.extendPc(Symbolic(SchemeFuncall(SchemeVar(Identifier(cond.name, Identity.none)), List(arg), Identity.none)))
+                  if checkPc(phi1, vars) then Some(phi1) else None
+                case None => Some(phi)
         else None
 
     /** Semantics for applying a function that is monitored by a contract */
@@ -501,9 +525,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
           // first check whether a sufficient number of arguments was provided
           if arr.checkArgs(argv) then
               // then pass the function values to the rangeMaker
-              // TODO: fexp is probably not the right choice here as a return address
               val frame = ArrRangeMakerFrame(fexp, arr, argv, env).link(kon)
-              println(s"app ${contract.rangeMaker}")
               applyFun(SchemeFuncall(contract.rangeMakerExpr, fexp.args, fexp.idn), inject(contract.rangeMaker), argv, env, sto, frame, t, ext)
           else invalidArity(fexp, argv.size, arr.expectedNumArgs, sto, kon, t, ext)
       }

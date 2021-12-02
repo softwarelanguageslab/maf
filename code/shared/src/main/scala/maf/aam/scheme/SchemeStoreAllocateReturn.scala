@@ -13,5 +13,5 @@ trait SchemeStoreAllocateReturn extends BaseSchemeAAMSemantics:
 
     override def ap(value: Val, sto: Sto, kont: KonA, t: Timestamp, ext: Ext): State =
         val addr = allocRet(kont)
-        val sto1 = writeStoV(sto, addr, value)
-        SchemeState(Control.Ret(addr), sto1, kont, t, ext)
+        val (sto1, ext1) = writeStoV(sto, addr, value, ext)
+        SchemeState(Control.Ret(addr), sto1, kont, t, ext1)
