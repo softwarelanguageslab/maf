@@ -14,7 +14,7 @@ import maf.util.benchmarks.Timer
 
 /** Base trait that provides analysis functionality to analyze single programs */
 trait AAMTesterT:
-    type Analysis <: SchemeAAMSemantics
+    type Analysis <: BaseSchemeAAMSemantics
     protected def analysis(b: SchemeExp): Analysis
     protected def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)

@@ -15,14 +15,15 @@ object ScvAAMTester extends AAMTesterT:
     type Analysis = ScvAAMSemantics
 
     protected def analysis(b: SchemeExp): Analysis =
-      new SchemeAAMSemantics(b)
+      new ScvAAMSemantics(b)
+        with BaseSchemeAAMSemantics
         with AAMAnalysis
         with SchemeAAMAnalysisResults
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
-        with SchemeStoreAllocateReturn
-        with SchemeFunctionCallBoundary
-        with ScvAAMSemantics {
+        //with SchemeStoreAllocateReturn
+        //with SchemeFunctionCallBoundary
+        {
         lazy val satSolver: ScvSatSolver[LatVal] =
             given lat: SchemeLattice[LatVal, Address] = lattice
             new JVMSatSolver
