@@ -167,6 +167,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
     case class RetCheckRangeFrame(rangeContract: Val, fexp: SchemeExp, env: Env, next: Option[KonA] = None) extends Frame:
         def link(kont: KonA): RetCheckRangeFrame = this.copy(next = Some(kont))
+        override def name: String = "RetCheckRangeFrame"
 
     /*=============================================================================================================================*/
     /* ===== Extension points =====================================================================================================*/
@@ -255,7 +256,6 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
               // cache from the closure. But conservatively update the store cache
               // such that free variables are removed.
               case Looped.Recursive(_) =>
-                // TODO: restore m and phi after function application
                 val m1 = ext.storeCacheClo((lam, lex)) -- lam.fv.map(lex.lookup(_).get)
                 val vars = ext.varsClo((lam, lex))
                 (ext.copy(phi = phiOfClo((lam, lex), ext), m = m1, vars = vars), true)
@@ -271,8 +271,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
           // finally, bind them in the store cache
           val ext3 = ext2.copy(m = ext1.m ++ lam.args.zip(syms).map { case (arg: Identifier, sym) =>
-            // TODO: check if this is correct and ensures a terminating analysis, maybe we need to clean up the store cache
-            env1(arg.name) -> sym
+            env1(arg.name) -> sym // in the previous step we ensured that we have a finite number of symbolic names in the store cache
           })
 
           // push a return continuation on the continuation stack to restore the path condition
@@ -352,9 +351,8 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
           val func = contract.contract
           val args = List(vlu)
           // TODO: fix expression here so that we maintain proper call-return matching
-          val (sto1, frame, t1) =
-            pushFrame(SchemeValue(Value.Nil, Identity.none), env, sto, next, MonFlatFrameRet(contract, expression, idn, vlu, env), t)
-          applyFun(fexp, inject(func), args, env, sto1, frame, t1, ext)
+          val frame = MonFlatFrameRet(contract, expression, idn, vlu, env).link(next)
+          applyFun(fexp, inject(func), args, env, sto, frame, t, ext)
 
         // [MonFlat] checking whether expression satisfies contract, otherwise blame
         case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
