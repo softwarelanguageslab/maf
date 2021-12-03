@@ -213,14 +213,18 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         t: Timestamp,
         ext: Ext
       ): Set[State] =
-        val v1 = super.applyPrim(fexp, func, argv, env, sto, kon, t, ext)
-        val v2 =
-          if OpqOps.eligible(argv.map(project)) then lattice.getPrimitives(project(func)).foldMap(prim => OpqOps.compute(prim, argv.map(project)))
-          else lattice.bottom
-        v1.map(_.mapValue(v =>
-            val v3 = lattice.join(project(v), v2)
-            tagOption(ap(fexp, argv))(inject(v3))
-        ))
+        val s1 = super.applyPrim(fexp, func, argv, env, sto, kon, t, ext).map(_.mapValue(tagOption(ap(fexp, argv))))
+        val s2 =
+          if OpqOps.eligible(argv.map(project)) then
+              val opqValue = lattice
+                .getPrimitives(project(func))
+                .foldMap(prim => OpqOps.compute(prim, argv.map(project)))
+
+              val taggedValue = tagOption(ap(fexp, argv))(inject(opqValue))
+              Set(ap(taggedValue, sto, kon, t, ext))
+          else Set()
+
+        s1 ++ s2
 
     override protected def applyClo(
         fexp: SchemeFuncall,
