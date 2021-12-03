@@ -3,8 +3,10 @@ package maf.cli.experiments.performance
 import maf.cli.experiments.SchemeAnalyses
 import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.language.scheme.primitives.SchemePrelude
+import maf.modular.ModAnalysis
 
 object ModFLocalPerformance extends PerformanceEvaluation:
+    type Analysis = ModAnalysis[SchemeExp]
     def benchmarks =
       List(
       )

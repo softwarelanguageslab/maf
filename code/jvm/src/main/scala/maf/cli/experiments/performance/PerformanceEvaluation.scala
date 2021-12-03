@@ -7,6 +7,7 @@ import maf.util._
 import maf.util.benchmarks._
 
 import scala.concurrent.duration._
+import maf.aam.AAMAnalysis
 
 // A variable that holds the results
 sealed trait PerformanceResult
@@ -14,9 +15,27 @@ case class Completed(results: Statistics.Stats) extends PerformanceResult
 case object TimedOut extends PerformanceResult
 case object NoData extends PerformanceResult
 
-trait PerformanceEvaluation:
+trait AnalysisIsFinished[T]:
+    def isFinished(analysis: T): Boolean
+    def doAnalyzeWithTimeout(analysis: T, timeout: Timeout.T): Any
 
-    type Analysis = ModAnalysis[SchemeExp]
+    extension (analysis: T)
+        def finished: Boolean = isFinished(analysis)
+        def analyzeWithTimeout(timeout: Timeout.T): Any = doAnalyzeWithTimeout(analysis, timeout)
+
+object AnalysisIsFinished:
+    given AnalysisIsFinished[ModAnalysis[SchemeExp]] with
+        def isFinished(analysis: ModAnalysis[SchemeExp]): Boolean = analysis.finished
+        def doAnalyzeWithTimeout(analysis: ModAnalysis[SchemeExp], timeout: Timeout.T): Any =
+          analysis.analyzeWithTimeout(timeout)
+
+    given AnalysisIsFinished[AAMAnalysis] with
+        def isFinished(analysis: AAMAnalysis): Boolean = analysis.finished
+        def doAnalyzeWithTimeout(analysis: AAMAnalysis, timeout: Timeout.T): Any =
+          analysis.analyzeWithTimeout(timeout)
+
+trait PerformanceEvaluation:
+    type Analysis
 
     // Configuring the warm-up
     def maxWarmupRuns = 10 // maximum number of warm-up runs
@@ -47,7 +66,7 @@ trait PerformanceEvaluation:
     def parseProgram(txt: String): SchemeExp = CSchemeParser.parseProgram(txt)
 
     // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
-    def measureAnalysis(file: String, analysis: SchemeExp => Analysis): PerformanceResult =
+    def measureAnalysis(file: String, analysis: SchemeExp => Analysis)(using AnalysisIsFinished[Analysis]): PerformanceResult =
         // Parse the program
         val program = parseProgram(Reader.loadFile(file))
         // Warm-up
@@ -82,6 +101,7 @@ trait PerformanceEvaluation:
         total: Int,
         timeoutFast: Boolean,
         failFast: Boolean
+      )(using AnalysisIsFinished[Analysis]
       ): Unit =
       analyses.foreach { case (analysis, name) =>
         try
@@ -101,7 +121,7 @@ trait PerformanceEvaluation:
               if failFast then return
       }
 
-    def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true) =
+    def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using AnalysisIsFinished[Analysis]) =
         var current = 0
         val total = benchmarks.size
         benchmarks.foreach { b =>
@@ -125,6 +145,7 @@ trait PerformanceEvaluation:
         path: String = "benchOutput/performance/output.csv",
         timeoutFast: Boolean = true,
         failFast: Boolean = true
+      )(using AnalysisIsFinished[Analysis]
       ) =
         measureBenchmarks(timeoutFast, failFast)
         printResults()

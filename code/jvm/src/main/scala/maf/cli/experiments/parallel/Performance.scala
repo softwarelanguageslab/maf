@@ -251,6 +251,7 @@ object ParallelModFBenchmarks:
     def for2CFA = all.filter(b => !(excludedFor2CFA.contains(b)))
 
 trait BaseResultsModFSetup extends PerformanceEvaluation:
+    type Analysis = ModAnalysis[SchemeExp]
     override def analysisRuns = 10 // reduced for getting results faster
     override def analysisTime = Timeout.start(Duration(10, MINUTES))
     def k: Int
@@ -296,6 +297,7 @@ object BaseResultsModF:
         }
 
 trait ParallelModFPerformance extends PerformanceEvaluation:
+    type Analysis = ModAnalysis[SchemeExp]
     override def analysisRuns = 10 // reduced for getting results faster
     override def analysisTime = Timeout.start(Duration(10, MINUTES))
     def k: Int
@@ -345,6 +347,7 @@ object ParallelPerformanceMetrics2CFA extends ParallelModFPerformanceMetrics:
     def benchmarks = ParallelModFBenchmarks.for2CFA
 
 object ParallelPerformanceModConc extends PerformanceEvaluation:
+    type Analysis = ModAnalysis[SchemeExp]
     override def analysisRuns = 10 // reduced for getting results faster
     override def analysisTime = Timeout.start(Duration(10, MINUTES))
     def benchmarks: Iterable[String] = List(
