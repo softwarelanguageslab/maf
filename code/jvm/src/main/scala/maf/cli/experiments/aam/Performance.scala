@@ -53,7 +53,7 @@ object AAMModFPerformanceComparison extends AAMPerformanceComparison:
         (wrapModF(SchemeAnalyses.kCFAAnalysis(_, 0)), "0cfaModf")
       )
     def main(args: Array[String]): Unit =
-      run()
+      run(timeoutFast = false)
 
 object ScvPerformanceComparison extends AAMPerformanceComparison:
     override def parseProgram(txt: String): SchemeExp =
@@ -65,4 +65,4 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
       List((wrap(AAMAnalyses.scvAAMbase), "scvAAMbase"), (wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"))
 
     def main(args: Array[String]): Unit =
-      run()
+      run(timeoutFast = false)
