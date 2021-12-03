@@ -1,5 +1,7 @@
 package maf.aam.scheme
 
+import maf.language.scheme.*
+
 /**
  * Trait that internally steps if the given state does not cross function boundaries. This greatly reduces the number of elements in the set of seen
  * states of the analysis, which should help with performance.
@@ -13,8 +15,31 @@ trait SchemeFunctionCallBoundary extends BaseSchemeAAMSemantics:
           case s @ SchemeState(Ap(_) | Ret(_), _, _: FunRetAddr, _, _) =>
             Set(s) // return from function
           case s @ SchemeState(Fn(_), _, _, _, _) => Set(s) // enter function
-          case s                                  => step(s) // al others can step internally without generating states
+          case s =>
+            println(s"trying to step $s")
+            step(s) // al others can step internally without generating states
         }
+
+    override def ap(value: Val, sto: Sto, kont: KonA, t: Timestamp, ext: Ext): Set[State] =
+      // unless we continue with a function return address or are at a halting frame, we can simply
+      // pas this information to the `continue` function, avoiding allocating a seperate state in memory.
+      kont match
+          case _: FunRetAddr => super.ap(value, sto, kont, t, ext) // function return
+          case _ if readKonts(sto, kont).collectFirst { case HltFrame => }.isDefined => super.ap(value, sto, kont, t, ext) // halting frame
+          case _ => continue(value, sto, kont, t, ext) // continue directly if we can without allocating a new state
+
+    override def ev(
+        exp: SchemeExp,
+        env: Env,
+        sto: Sto,
+        kont: KonA,
+        timestamp: Timestamp,
+        ext: Ext,
+        call: Boolean = false
+      ): Set[State] =
+      // unless we enter a function, we can directly jump to the evaluation function without generating a new state
+      if call then Set(SchemeState(Control.Fn(Control.Ev(exp, env)), sto, kont, timestamp, ext))
+      else eval(exp, env, sto, kont, timestamp, ext)
 
     override def pushFrame(
         e: Expr,

@@ -186,13 +186,13 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         // [CondTrue] for comparison wih the paper, "nonzero?" has been renamed to "true?"
         val csqSt =
           feasible(`true?`, value, ext.phi, ext.vars)
-            .map(phi1 => Set(ev(csq, env, sto, kont, t, ext.copy(phi = phi1))))
+            .map(phi1 => ev(csq, env, sto, kont, t, ext.copy(phi = phi1)))
             .getOrElse(Set())
 
         // [CondTrue] for comparison wih the paper, "zero?" has been renamed to "false?"
         val altSt =
           feasible(`false?`, value, ext.phi, ext.vars)
-            .map(phi1 => Set(ev(alt, env, sto, kont, t, ext.copy(phi = phi1))))
+            .map(phi1 => ev(alt, env, sto, kont, t, ext.copy(phi = phi1)))
             .getOrElse(Set())
 
         csqSt ++ altSt
@@ -226,7 +226,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
                 .foldMap(prim => OpqOps.compute(prim, argv.map(project)))
 
               val taggedValue = tagOption(ap(fexp, argv))(inject(opqValue))
-              Set(ap(taggedValue, sto, kon, t, ext))
+              ap(taggedValue, sto, kon, t, ext)
           else Set()
 
         s1 ++ s2
@@ -323,11 +323,11 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
               varsClo = ext.varsClo + (clo -> ext.vars)
             )
 
-            Set(ap(inject(lattice.closure(clo)), sto, kont, t, ext1))
+            ap(inject(lattice.closure(clo)), sto, kont, t, ext1)
 
           case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) =>
             val (vrr, ext1) = fresh(ext)
-            Set(ap(tag(vrr.expr)(inject(lattice.opq(Opq()))), sto, kont, t, ext1))
+            ap(tag(vrr.expr)(inject(lattice.opq(Opq()))), sto, kont, t, ext1)
 
           case ContractSchemeMon(contract, expression, idn) =>
             mon(contract, expression, idn, env, sto, kont, t, ext)
@@ -337,7 +337,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
           case ContractSchemeFlatContract(flat, idn) =>
             val (sto1, frame, t1) = pushFrame(flat, env, sto, kont, FlatLitFrame(flat, idn, env), t)
-            Set(ev(flat, env, sto1, frame, t1, ext))
+            ev(flat, env, sto1, frame, t1, ext)
           case _ => super.eval(exp, env, sto, kont, t, ext)
 
     override def continue(vlu: Val, sto: Sto, kon: KonA, t: Timestamp, ext: Ext): Set[State] =
@@ -357,7 +357,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         // [MonFlat] checking whether expression satisfies contract, otherwise blame
         case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
           val nonblames = feasible(`true?`, vlu, ext.phi, ext.vars)
-            .map((phi1) => Set(ap(expVlu, sto, next, t, ext.copy(phi = phi1))))
+            .map((phi1) => ap(expVlu, sto, next, t, ext.copy(phi = phi1)))
             .getOrElse(Set())
 
           val blames = feasible(`false?`, vlu, ext.phi, ext.vars)
@@ -369,11 +369,11 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         // [MonFun]
         case MonFunFrame(contract, expression, idn, env, Some(next)) =>
           val arr = Arr(idn, expression.idn, contract, project(vlu))
-          Set(ap(inject(lattice.arr(arr)), sto, next, t, ext))
+          ap(inject(lattice.arr(arr)), sto, next, t, ext)
 
         // Rule added to evaluate flat contracts
         case FlatLitFrame(exp, idn, env, Some(next)) =>
-          Set(ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext))
+          ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext)
 
         // [MonArr]
         case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
@@ -387,14 +387,12 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
           // TODO: check Nguyen implementation to see whether a fresh sym value is generated when looped for the return value
           val (vlu1, ext2) = (if looped then (vlu._1, None) else vlu, ext1)
 
-          Set(
-            ap(
-              vlu1,
-              sto,
-              next,
-              t,
-              ext2
-            )
+          ap(
+            vlu1,
+            sto,
+            next,
+            t,
+            ext2
           )
 
         case CheckDomainFrame(fexp, remainingArgv, remainingSyntacticArguments, arr, rangeContract, remainingDomains, argv, env, Some(next)) =>
@@ -468,7 +466,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         ext: Ext
       ): Set[State] =
         val (sto1, frame, t1) = pushFrame(contract, env, sto, kont, MonFrame(contract, expression, idn, env), t)
-        Set(ev(contract, env, sto1, frame, t1, ext))
+        ev(contract, env, sto1, frame, t1, ext)
 
     /** Create a new post value from the given value where the symbolic representation is given by the given `SchemeExp` */
     protected def tag(e: SchemeExp)(v: Val): Val =
@@ -493,12 +491,12 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
       ): Set[SchemeState] = (remainingDomains, rangeMaker) match
         case (domain :: domains, _) =>
           val next = DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domain.idn :: domainsIdn, rangeMakerExp, env).link(kon)
-          Set(ev(domain, env, sto, next, t, ext))
+          ev(domain, env, sto, next, t, ext)
         case (List(), Some(rangeContract)) =>
           val next = DepContractFrame(List(), None, domainsV, rangeMakerV, domainsIdn, rangeMakerExp, env).link(kon)
-          Set(ev(rangeContract, env, sto, next, t, ext))
+          ev(rangeContract, env, sto, next, t, ext)
         case (List(), None) =>
-          Set(ap(inject(lattice.grd(Grd(domainsV.map(project), project(rangeMakerV.get), domainsIdn, rangeMakerExp))), sto, kon, t, ext))
+          ap(inject(lattice.grd(Grd(domainsV.map(project), project(rangeMakerV.get), domainsIdn, rangeMakerExp))), sto, kon, t, ext)
 
     /** Check whether the given value possibly satisfies the given condition */
     protected def feasible(cond: SchemePrimitive[LatVal, Address], value: Val, phi: PC, vars: List[String]): Option[PC] =
@@ -547,7 +545,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         // feasible(phi, flat-contract?, w', phi') -> change: do not extend PC with this information
         val flats = lattice
           .getFlats(project(contractVlu))
-          .map((flat) => {
+          .flatMap((flat) => {
             val newFrame = MonFlatFrame(flat, expression, monIdn, env).link(next)
             expressionVlu match
                 case Some(vlu) => ap(vlu, sto, newFrame, t, ext) // continue if we have an exp value
@@ -557,7 +555,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         // feasible(phi, dep-contract?, w', phi') -> change: do not extend PC with this information
         val grds = lattice
           .getGrds(project(contractVlu))
-          .map((grd) =>
+          .flatMap((grd) =>
               val newFrame = MonFunFrame(grd, expression, monIdn, env)
               val (sto1, frame, t1) = pushFrame(expression, env, sto, next, newFrame, t)
               expressionVlu match
