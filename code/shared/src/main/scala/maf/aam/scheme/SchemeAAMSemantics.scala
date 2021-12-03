@@ -512,7 +512,6 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       t: Timestamp,
       ext: Ext
     ): Set[State] =
-      println(s"literal val $lit")
       val (res, sto1, ext1) = lit.value match
           case sexp.Value.String(s) =>
             val address = alloc(lit.idn, env, sto, kont, t)
