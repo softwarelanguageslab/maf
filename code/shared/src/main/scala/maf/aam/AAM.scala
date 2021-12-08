@@ -64,9 +64,6 @@ trait AAMAnalysis:
             f
         def reset(): Unit = hasChanged = false
 
-    /** Decide what to do with the successor states */
-    protected def decideSuccessors(succ: Set[State], sys: System): System
-
     /** A set of all errors in the program */
     private var errors: Set[ErrorState] = Set()
 

@@ -1,7 +1,8 @@
 package maf.aam
 
-trait SimpleWorklistSystem extends AAMAnalysis:
-    class SeenStateSystem extends BaseSystem:
+trait BaseSimpleWorklistSystem extends AAMAnalysis:
+    trait SeenStateSystem extends BaseSystem:
+        this: System =>
         var seen: Set[Conf] = Set()
         var work: List[Conf] = List()
         var newWork: List[Conf] = List()
@@ -38,17 +39,17 @@ trait SimpleWorklistSystem extends AAMAnalysis:
         def finalStates: Set[State] =
           seen.map(asState(_, this)).filter(isFinal)
 
-    type System = SeenStateSystem
+    type System <: SeenStateSystem
 
-    override protected def inject(e: Expr): System =
-      SeenStateSystem().pushWork(injectConf(e))
+    protected def integrate(st: State, sys: System): (Conf, System) =
+      (asConf(st, sys), sys)
 
-    override protected def decideSuccessors(successors: Set[State], sys: System): System =
+    protected def decideSuccessors(successors: Set[State], sys: System): System =
         successors.foreach { successor =>
-            val conf = asConf(successor, sys)
-            if !sys.seen.contains(conf) then
-                sys.pushWork(conf)
-                sys.addSeen(conf)
+            val (conf, sys1) = integrate(successor, sys)
+            if !sys1.seen.contains(conf) then
+                sys1.pushWork(conf)
+                sys1.addSeen(conf)
         }
 
         sys
@@ -61,3 +62,8 @@ trait SimpleWorklistSystem extends AAMAnalysis:
             // candidate successors
             val successors = step(asState(conf.get, system))
             decideSuccessors(successors, system)
+
+trait SimpleWorklistSystem extends BaseSimpleWorklistSystem:
+    type System = SeenStateSystem
+    override def inject(expr: Expr): System =
+      new SeenStateSystem {}.pushWork(injectConf(expr))
