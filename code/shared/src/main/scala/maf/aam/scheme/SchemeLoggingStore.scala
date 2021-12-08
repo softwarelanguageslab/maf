@@ -17,6 +17,12 @@ case class LoggingStore[V: Lattice](originalSto: BasicStore[Address, V], changes
 
     def contains(addr: Address): Boolean = changes.contains(addr)
 
+    def lookup(addr: Address): V =
+      changes
+        .get(addr)
+        .getOrElse(List())
+        .foldLeft(Lattice[V].bottom)((joined, vlu) => Lattice[V].join(joined, vlu))
+
 trait BaseSchemeLoggingLocalStore extends BaseSchemeAAMSemantics, BaseSimpleWorklistSystem:
     type Sto = LoggingStore[Storable]
     type System = LoggingLocalStoreSystem
@@ -41,8 +47,9 @@ trait BaseSchemeLoggingLocalStore extends BaseSchemeAAMSemantics, BaseSimpleWork
 
     class LoggingLocalStoreSystem extends SeenStateSystem:
         /** Imperative global store */
-        var sto: BasicStore[Address, Storable] = BasicStore(Map())
+        var sto: BasicStore[Address, Storable] = originalSto
         var logs: Set[LoggingStore[Storable]] = Set()
+        var tt: Int = 0
 
         private def appendAll(logs: Set[LoggingStore[Storable]]): Boolean =
             val (sto1, changed) = logs.foldLeft((sto, false)) { case ((sto, hasChanged), log) =>
@@ -66,23 +73,34 @@ trait BaseSchemeLoggingLocalStore extends BaseSchemeAAMSemantics, BaseSimpleWork
                              else newWork).filter(!seen.contains(_))
                   // mark the ones scheduled to be analyzed as seen.
                   newWork.foreach(conf => seen = seen + conf)
+                  tt = tt + (if hasChanged then 1 else 0)
                 }
             super.popWork()
 
         def addLog(log: LoggingStore[Storable]): Unit =
           logs = logs + log
 
+    private var originalSto = BasicStore(initialBds.map(p => (p._2, p._3)).toMap).extend(Kont0Addr, Storable.K(Set(HltFrame)))
+
     override def asState(conf: Conf, sys: System): State =
       SchemeState(conf.c, LoggingStore(sys.sto), conf.k, conf.t, conf.extra)
 
-    override protected def integrate(st: State, sys: System): (Conf, System) =
-        sys.addLog(st.s)
-        super.integrate(st, sys)
+    override def asConf(state: State, sys: System): Conf =
+      SchemeConf(state.c, state.k, state.t, state.extra, sys.tt)
+
+    override def injectConf(e: Expr): Conf =
+      SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt, 0)
+
+    override def inject(e: Expr): System =
+      LoggingLocalStoreSystem().pushWork(injectConf(e))
+
+    override lazy val initialStore: Sto = LoggingStore(originalSto)
 
     override protected def decideSuccessors(successors: Set[State], sys: System): System =
         successors.foreach { successor =>
-            val (conf, sys1) = integrate(successor, sys)
-            sys1.pushWork(conf)
+            val conf = asConf(successor, sys)
+            sys.pushWork(conf)
+            sys.addLog(successor.s)
         }
 
         sys
@@ -91,6 +109,8 @@ trait BaseSchemeLoggingLocalStore extends BaseSchemeAAMSemantics, BaseSimpleWork
       sto.append(addr, value)
 
     override def readSto(sto: Sto, addr: Address): Storable =
-        if sto.contains(addr) then println(s"WARN: potentially trying to read from the log at address $addr, returning old value")
-
-        sto.originalSto.lookup(addr).getOrElse(Storable.V(lattice.bottom))
+      if sto.contains(addr) then
+          // look in the log for the value, this is different in the Optimizing AAM paper
+          // as we assume there that the invriant holds that states do not read from the log
+          sto.lookup(addr)
+      else sto.originalSto.lookup(addr).getOrElse(Storable.V(lattice.bottom))

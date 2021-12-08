@@ -25,7 +25,7 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis:
               }
           else None
 
-        def pushWork(work: Conf): SeenStateSystem = change {
+        def pushWork(work: Conf): this.type = change {
           newWork = work :: newWork
           this
         }
