@@ -79,18 +79,17 @@ object AdaptiveRun:
               println()
 
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/gambit/matrix.scm")
+        val txt = Reader.loadFile("test/R5RS/gambit/peval.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        val anl1 = adaptiveAnalysisA(prg, 900)
-        val anl2 = adaptiveAnalysisA(prg, 1000)
-        anl1.analyzeWithTimeoutInSeconds(120)
-        anl2.analyzeWithTimeoutInSeconds(120)
-        println(s"WIDENED(ANL1) is superset of WIDENED(ANL2): ${anl2.widened.subsetOf(anl1.widened)} (${anl1.widened.size} vs ${anl2.widened.size})")
-        println(s"FINISHED: ${anl1.finished} / ${anl2.finished}")
-        println(s"VISITED: ${anl1.visited.size} / ${anl2.visited.size}")
+        //val anl1 = SchemeAnalyses.contextInsensitiveAnalysis(prg)
+        val anl2 = SchemeAnalyses.modFlocalAnalysisWidened(prg, 0)
+        //anl1.analyze()
+        anl2.analyze()
+        //println(s"FINISHED: ${anl1.finished} / ${anl2.finished}")
+        //println(s"VISITED: ${anl1.visited.size} / ${anl2.visited.size}")
 
     def testModConc(): Unit =
         val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")

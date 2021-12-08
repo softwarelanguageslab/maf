@@ -32,11 +32,9 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     lazy val initialExp: Exp = program
     lazy val initialEnv: Env = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
 
-    private def shouldCount(adr: Adr): Boolean = adr match
+    given shouldCount: (Adr => Boolean) =
         case _: PtrAddr[_] => true
         case _             => false
-
-    given p: (Adr => Boolean) = shouldCount
 
     private lazy val initialBds: Iterable[(String, Adr, Val)] =
       primitives.allPrimitives.view
