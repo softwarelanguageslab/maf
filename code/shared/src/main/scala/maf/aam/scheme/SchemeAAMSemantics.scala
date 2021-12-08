@@ -1,6 +1,6 @@
 package maf.aam.scheme
 
-import maf.aam.{AAMAnalysis, GraphElementAAM}
+import maf.aam.{AAMAnalysis, AnalysisResult, GraphElementAAM}
 
 import maf.util.*
 import maf.modular.scheme._
@@ -22,7 +22,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
   type LatVal = Value
   type Expr = SchemeExp
   type Kont = Frame
-  type Sto = BasicStore[Address, Storable]
+  // type Sto = BasicStore[Address, Storable]
   type Lam = SchemeLambdaExp
   type State = SchemeState
   type Env = Environment[Address]
@@ -31,29 +31,19 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
   type Ext
 
   lazy val initialEnv = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
-  lazy val initialStore = BasicStore(initialBds.map(p => (p._2, p._3)).toMap).extend(Kont0Addr, Storable.K(Set(HltFrame)))
+  lazy val initialStore: Sto
 
-  override def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G) =
+  override def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): AnalysisResult[G, Val, Conf] =
     analyze(prog, graph, timeout)
 
   /** An instantation of the <code>SchemeInterpreterBridge</code> trait to support the builtin MAF Scheme primitives */
-  private class InterpreterBridge(env: Env, private var sto: Sto, kont: KonA, t: Timestamp) extends SchemeInterpreterBridge[LatVal, Address]:
+  private class InterpreterBridge(env: Env, private var sto: Sto, kont: KonA, t: Timestamp, ext: Ext) extends SchemeInterpreterBridge[LatVal, Address]:
       def pointer(exp: SchemeExp): Address =
         alloc(exp.idn, env, sto, kont, t)
 
       def callcc(clo: Closure, pos: Position): LatVal = throw new Exception("not supported")
       def readSto(a: Address): LatVal =
-          import Storable.*
-          sto
-            .lookup(a)
-            .map {
-              case V(v) => v
-              case _    => lattice.bottom
-            }
-            .getOrElse {
-              println(s"WARN: Lookup of $a failed")
-              lattice.bottom
-            }
+        project(readStoV(sto, a, ext))
 
       def writeSto(a: Address, value: LatVal): Unit =
         sto = outer.writeSto(sto, a, Storable.V(value))
@@ -148,23 +138,15 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       override def toString = s"PrimAddr($name)"
 
   /** Read from the given address in the store, returns V(bottom) if no value is found at the given address. */
-  def readSto(sto: Sto, addr: Address): Storable =
-    sto.lookup(addr).getOrElse(Storable.V(lattice.bottom))
+  def readSto(sto: Sto, addr: Address): Storable
 
   def readStoV(sto: Sto, addr: Address, ext: Ext): Val =
-    sto
-      .lookup(addr)
-      .collectFirst { case Storable.V(v) =>
-        inject(v)
-      }
-      .getOrElse {
-        println(s"WARN: Lookup of $addr failed")
-        inject(lattice.bottom)
-      }
+    readSto(sto, addr) match
+        case Storable.V(v) => inject(v)
+        case _             => inject(lattice.bottom)
 
   /** Write to the given address in the store, returns the updated store */
-  def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
-    sto.extend(addr, value)
+  def writeSto(sto: Sto, addr: Address, value: Storable): Sto
 
   /** Write a value to the given address in the store, returns the updated store */
   def writeStoV(sto: Sto, addr: Address, value: Val, ext: Ext): (Sto, Ext) =
@@ -318,7 +300,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
               s"addr($vlu)"
           }
 
-          s"($control, ${s.content.size}, $k)"
+          s"($control, $k)"
 
       /** Map the given function to the value, only if it is an Ap control */
       def mapValue(f: Val => Val): SchemeState =
@@ -326,29 +308,16 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
             case Control.Ap(vlu) => this.copy(c = Control.Ap(f(vlu)))
             case _               => this
 
-  /** Inject the initial state for the given expression */
-  def inject(expr: Expr): State =
-    SchemeState(Control.Ev(expr, initialEnv), initialStore, Kont0Addr, initialTime, emptyExt)
-
   /** Returns a string representation of the store. */
   def storeString(store: Sto, primitives: Boolean = false): String =
-      val strings = store.content.map({ case (a, v) => s"${StringUtil.toWidth(a.toString, 50)}: $v" })
-      val filtered = if primitives then strings else strings.filterNot(_.toLowerCase.nn.startsWith("prm"))
-      val size = filtered.size
-      val infoString = "σ" * 150 + s"\nThe store contains $size addresses (primitive addresses ${if primitives then "included" else "excluded"}).\n"
-      filtered.toList.sorted.mkString(infoString, "\n", "\n" + "σ" * 150)
+    "cannot print store in base analysis"
 
   /** Print a debug version of the given state */
-  def printDebug(s: State, printStore: Boolean = false): Unit =
-      println(s)
-      if printStore then println(storeString(s.s, false))
+  def printDebug(s: Conf, printStore: Boolean = false): Unit =
+    println("printDebug not supported in base analysis")
 
   def compareStates(s1: State, s2: State): Boolean =
-      println("==================================================================================")
-      for (k, v) <- s1.s.content do
-          if s2.s.content.contains(k) && v != s2.s.content(k) then println(s"Difference detected at $k of $v and ${s2.s.content(k)}")
-      println("==================================================================================")
-
+      println("comparison not supported in base analysis")
       true
 
   def isFinal(st: State): Boolean =
@@ -734,7 +703,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       func: SchemePrimitive[LatVal, Address],
       argv: List[Val],
     ): LatVal =
-      given bridge: InterpreterBridge = InterpreterBridge(initialEnv, initialStore, Kont0Addr, initialTime)
+      given bridge: InterpreterBridge = InterpreterBridge(initialEnv, initialStore, Kont0Addr, initialTime, emptyExt)
       func.callMF(fexp, argv.map(project)) match
           case MayFailSuccess(vlu) =>
             val sto1 = bridge.updatedSto
@@ -758,7 +727,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
     ): Set[State] =
     lattice.getPrimitives(project(func)).flatMap { name =>
         val primitive = primitives(name)
-        given bridge: InterpreterBridge = InterpreterBridge(env, sto, kon, t)
+        given bridge: InterpreterBridge = InterpreterBridge(env, sto, kon, t, ext)
         primitive.callMF(fexp, argv.map(project)) match
             // the primitive is successfull apply the continuation with the value returned from the primitive
             case MayFailSuccess(vlu) =>

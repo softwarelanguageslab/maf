@@ -73,8 +73,8 @@ trait AAMSoundnessTests extends SchemeBenchmarkTests:
           val anl = analysis(program)
           val timeout = analysisTimeout(benchmark)
           given instance: maf.util.graph.Graph[G, N, E] = graphInstance
-          val (_, graph) = anl.analyzeWithTimeout(timeout, emptyGraph)
-          saveGraph(benchmark, graph)
+          val result = anl.analyzeWithTimeout(timeout, emptyGraph)
+          saveGraph(benchmark, result.dependencyGraph)
 
           assume(anl.finished, "Analysis timed out")
           anl

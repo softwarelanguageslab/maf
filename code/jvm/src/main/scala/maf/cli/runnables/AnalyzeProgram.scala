@@ -42,7 +42,7 @@ object AnalyzeProgram extends App:
         a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) }).foreach(println)
 
     val bench: List[String] = List(
-      "test/DEBUG2.scm"
+      "test/R5RS/various/procedure.scm"
     )
 
     // Used by webviz.

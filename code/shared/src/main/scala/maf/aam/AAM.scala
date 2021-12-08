@@ -9,6 +9,8 @@ import scala.annotation.tailrec
 case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) extends GraphElement:
     def metadata: GraphMetadata = GraphMetadataString(data)
 
+case class AnalysisResult[G, V, C](dependencyGraph: G, values: Set[V], allConfs: Set[C])
+
 /** Provides functionality for a full AAM style analysis */
 trait AAMAnalysis:
     /** The type of the abstract values for the analysis */
@@ -28,6 +30,15 @@ trait AAMAnalysis:
     /** The type of state that should be used in the analysis. */
     type State
 
+    /**
+     * The type of configuration, in classic AAM w/o otimisations this is equal to the state. In optimized AAM ,various parts of the state that is
+     * passed to the `step` function might be removed.
+     */
+    type Conf
+
+    /** The components of our fixpoint system */
+    type System <: BaseSystem
+
     /** The type of expression to use in the analysis */
     type Expr
 
@@ -43,11 +54,18 @@ trait AAMAnalysis:
     /** An error state */
     case class ErrorState(error: Error, state: State)
 
-    /** A set of seen states in the analysis */
-    private var seen: Set[State] = Set()
+    /** Base system */
+    trait BaseSystem:
+        def finalStates: Set[State]
+        def allConfs: Set[Conf]
+        var hasChanged: Boolean = false
+        def change[X](f: => X): X =
+            hasChanged = true
+            f
+        def reset(): Unit = hasChanged = false
 
-    /** A set of states still to visit */
-    private var todo: Set[State] = Set()
+    /** Decide what to do with the successor states */
+    protected def decideSuccessors(succ: Set[State], sys: System): System
 
     /** A set of all errors in the program */
     private var errors: Set[ErrorState] = Set()
@@ -58,18 +76,17 @@ trait AAMAnalysis:
     /** Tick the time forward */
     def tick(timestamp: Timestamp, e: Expr, sto: Sto, kont: KonA): Timestamp
 
+    /** Inject the expression into the analysis system */
+    protected def inject(expr: Expr): System
+
     /** Inject the expression into the analysis state */
-    def inject(expr: Expr): State
+    def injectConf(expr: Expr): Conf
 
     /** Step the analysis state */
     def step(start: State): Set[State]
 
-    /** Invalidate the set of seen states */
-    def invalidate(): Unit =
-      seen = Set()
-
     /** Print a debug version of the given state */
-    def printDebug(s: State, printStore: Boolean = false): Unit
+    def printDebug(s: Conf, printStore: Boolean = false): Unit
 
     /** Compare two states, return true if they are equal */
     def compareStates(s1: State, s2: State): Boolean
@@ -90,37 +107,40 @@ trait AAMAnalysis:
     def registerError(error: Error, state: State): Unit =
       errors += ErrorState(error, state)
 
-    @tailrec private def loop[G](
-        work: List[State],
-        newWork: List[State],
-        graph: G,
-        timeout: Timeout.T
-      )(using Graph[G, GraphElementAAM, GraphElement]
-      ): (Set[State], G) =
-      if (work.isEmpty && newWork.isEmpty) || (timeout.reached) || (false && (seen.size > 2000)) then (work.toSet ++ newWork.toSet, graph)
-      else if work.isEmpty then loop(newWork, List(), graph, timeout)
-      else if seen.contains(work.head) then loop(work.tail, newWork, graph, timeout)
-      else
-          seen = seen + work.head
-          val todos = step(work.head)
-          val (updatedGraph, newWork1) = todos.foldLeft((graph, newWork)) { case ((g, newWork), todo) =>
-            val todoGe = asGraphElement(todo)
-            val workGe = asGraphElement(work.head)
-            val gUpdated = (if !seen.contains(todo) then g.addNode(todoGe) else g)
-              .addEdge(workGe, NoTransition(), todoGe)
+    /** Transition from one system to another (step the semantics) */
+    protected def transition(sys: System): System
 
-            (gUpdated, if !seen.contains(todo) then todo :: newWork else newWork)
-          }
+    /** Compute the fix point of the given system */
+    protected def fix(timeout: Timeout.T)(sys: System): System =
+        sys.reset()
+        val next = transition(sys)
+        if !next.hasChanged then
+            /* fixpoint */
+            finished = true
+            sys
+        else if timeout.reached then
+            /* timeout */
+            finished = false
+            sys
+        else fix(timeout)(next)
 
-          loop(work.tail, newWork1, updatedGraph, timeout)
+    /** Inject the configuration into a state that can be used for the small step semantics */
+    protected def asState(conf: Conf, sys: System): State
+
+    /** Reduces a state to a configuration */
+    protected def asConf(state: State, sys: System): Conf
 
     /** Analyze the given expression and return the set of (non-invalid) state */
-    def analyze[G](expr: Expr, graph: G, timeout: Timeout.T = Timeout.none)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G) =
+    def analyze[G](
+        expr: Expr,
+        graph: G,
+        timeout: Timeout.T = Timeout.none
+      )(using Graph[G, GraphElementAAM, GraphElement]
+      ): AnalysisResult[G, Val, Conf] =
         val s0 = inject(expr)
-        val (todos, g) = loop(List(s0), List(), graph, timeout)
-        todo = todos
-        (seen, g)
+        val sys = fix(timeout)(s0)
+        AnalysisResult(graph, sys.finalStates.flatMap(extractValue(_)), sys.allConfs)
 
-    def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): (Set[State], G)
+    def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): AnalysisResult[G, Val, Conf]
 
-    def finished: Boolean = todo.isEmpty
+    var finished: Boolean = false
