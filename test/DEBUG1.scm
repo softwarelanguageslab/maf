@@ -1,3 +1,11 @@
-(define (phi x2)
-  (<change> (abs x2) x2))
-(or (phi -1) (phi 1))
+(define test-cons-in-vec
+  (lambda (a)
+    (<change>
+     (let ((vec (make-vector 1))
+           (b 5))
+       (vector-set! vec 0 (cons a b)))
+     (let ((vec (make-vector 1))
+           (c 5))
+       (vector-set! vec 0 (cons a c))))))
+
+(test-cons-in-vec 5)

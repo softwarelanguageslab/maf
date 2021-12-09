@@ -111,7 +111,7 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp]:
     override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
-object IncrementalSchemeModFProperties extends IncrementalSchemeProperties:
+object IncrementalSchemeModFTypeProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
@@ -123,7 +123,7 @@ object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties:
       with CountIntraAnalyses[SchemeExp]
     val outputFile: String = s"properties/modf-CP.txt"
 
-object IncrementalSchemeModConcProperties extends IncrementalSchemeProperties:
+object IncrementalSchemeModConcTypeProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
@@ -139,7 +139,7 @@ object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties:
 
 object IncrementalSchemeModXProperties:
     def main(args: Array[String]): Unit =
-        IncrementalSchemeModFProperties.main(args)
-        IncrementalSchemeModFCPProperties.main(args)
-        IncrementalSchemeModConcProperties.main(args)
-        IncrementalSchemeModConcCPProperties.main(args)
+      IncrementalSchemeModFTypeProperties.main(args)
+//IncrementalSchemeModFCPProperties.main(args)
+//IncrementalSchemeModConcTypeProperties.main(args)
+//IncrementalSchemeModConcCPProperties.main(args)
