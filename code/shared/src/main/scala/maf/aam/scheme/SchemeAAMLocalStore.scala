@@ -47,3 +47,6 @@ trait SchemeAAMLocalStore extends BaseSchemeAAMSemantics:
     /** Inject the initial state for the given expression */
     def injectConf(expr: Expr): Conf =
       SchemeState(Control.Ev(expr, initialEnv), initialStore, Kont0Addr, initialTime, emptyExt)
+
+    override def asGraphElement(c: Conf, sys: System): GraphElementAAM =
+      asGraphElement(c.c, c.k, c.s, c.extra, c.hashCode)

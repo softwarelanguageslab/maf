@@ -1,6 +1,6 @@
 package maf.cli.runnables
 
-import maf.aam.{BaseSimpleWorklistSystem, GraphElementAAM}
+import maf.aam.{BaseSimpleWorklistSystem, GraphElementAAM, SimpleWorklistSystem}
 import maf.aam.scheme.*
 import maf.language.scheme.*
 import maf.language.scheme.primitives.SchemePrelude
@@ -87,7 +87,7 @@ object AAMTester extends AAMTesterT:
         with SchemeFunctionCallBoundary
         with BaseSimpleWorklistSystem
         with SchemeAAMAnalysisResults {
-      override type System = LoggingLocalStoreSystem
+      //override type System = LoggingLocalStoreSystem
     }
 
     protected def analysis(b: SchemeExp): Analysis = SimpleAnalysis(b)

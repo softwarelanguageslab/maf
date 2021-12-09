@@ -11,6 +11,8 @@ case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) 
 
 case class AnalysisResult[G, V, C](dependencyGraph: G, values: Set[V], allConfs: Set[C])
 
+type AAMGraph[G] = Graph[G, GraphElementAAM, GraphElement]
+
 /** Provides functionality for a full AAM style analysis */
 trait AAMAnalysis:
     /** The type of the abstract values for the analysis */
@@ -98,28 +100,28 @@ trait AAMAnalysis:
     def alloc(identity: Identity, env: Env, sto: Sto, kont: KonA, ctx: Timestamp): Address
 
     /** Represents the given state als an element in the graph */
-    def asGraphElement(state: State): GraphElementAAM
+    def asGraphElement(state: Conf, sys: System): GraphElementAAM
 
     /** Register the error in the analysis */
     def registerError(error: Error, state: State): Unit =
       errors += ErrorState(error, state)
 
     /** Transition from one system to another (step the semantics) */
-    protected def transition(sys: System): System
+    protected def transition[G](sys: System, dependencyGraph: G)(using AAMGraph[G]): (System, G)
 
     /** Compute the fix point of the given system */
-    protected def fix(timeout: Timeout.T)(sys: System): System =
+    protected def fix[G](timeout: Timeout.T)(sys: System, dependencyGraph: G)(using AAMGraph[G]): (System, G) =
         sys.reset()
-        val next = transition(sys)
+        val (next, fpdg) = transition(sys, dependencyGraph)
         if !next.hasChanged then
             /* fixpoint */
             finished = true
-            sys
+            (sys, dependencyGraph)
         else if timeout.reached then
             /* timeout */
             finished = false
-            sys
-        else fix(timeout)(next)
+            (sys, dependencyGraph)
+        else fix(timeout)(next, fpdg)
 
     /** Inject the configuration into a state that can be used for the small step semantics */
     protected def asState(conf: Conf, sys: System): State
@@ -135,8 +137,8 @@ trait AAMAnalysis:
       )(using Graph[G, GraphElementAAM, GraphElement]
       ): AnalysisResult[G, Val, Conf] =
         val s0 = inject(expr)
-        val sys = fix(timeout)(s0)
-        AnalysisResult(graph, sys.finalStates.flatMap(extractValue(_)), sys.allConfs)
+        val (sys, graph1) = fix(timeout)(s0, graph)
+        AnalysisResult(graph1, sys.finalStates.flatMap(extractValue(_)), sys.allConfs)
 
     def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): AnalysisResult[G, Val, Conf]
 

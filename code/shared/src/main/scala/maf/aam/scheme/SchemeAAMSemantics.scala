@@ -331,16 +331,15 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
           if lattice.isBottom(project(vlu)) then None else Some(vlu)
         case _ => None
 
-  /** Convert the given state to a node in a graph */
-  def asGraphElement(s: State): GraphElementAAM = s.c match
-      case Control.Ev(e, _) => GraphElementAAM(s.hashCode, label = s"ev($e)", color = Colors.Yellow, data = "")
+  protected def asGraphElement(c: Control, k: KonA, s: Sto, ext: Ext, hsh: Int): GraphElementAAM = c match
+      case Control.Ev(e, _) => GraphElementAAM(hsh, label = s"ev($e)", color = Colors.Yellow, data = "")
       case Control.Ap(v) =>
-        val kontName = readKonts(s.s, s.k).map(_.name).mkString(",")
+        val kontName = readKonts(s, k).map(_.name).mkString(",")
         GraphElementAAM(s.hashCode, label = s"ap($v, $kontName)", color = Colors.Red, data = "")
       case Control.Ret(addr) =>
-        val vlu = readStoV(s.s, addr, s.extra)
+        val vlu = readStoV(s, addr, ext)
         GraphElementAAM(s.hashCode, label = s"ret($vlu)", color = Colors.Red, data = "")
-      case Control.Fn(c)     => asGraphElement(s.copy(c = c))
+      case Control.Fn(c)     => asGraphElement(c, k, s, ext, hsh)
       case Control.HltE(err) => GraphElementAAM(s.hashCode, label = s"err($err)", color = Colors.Pink, data = "")
 
   def stepDirect(ss: Set[State]): Set[State] = ss
