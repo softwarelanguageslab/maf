@@ -40,12 +40,12 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         block(timeOut)
         timeOut.reached // We do not use the test `analysis.finished`, as even though the WL can be empty, an intra-component analysis may also have been aborted.
 
-    def compareAnalyses[E](
+    def compareAnalyses(
         file: String,
         inc: Analysis,
         rean: Analysis,
-        table: Table[E]
-      ): Table[E] =
+        table: Table[String]
+      ): Table[String] =
         val cName = inc.configuration.toString
         // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
         val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
@@ -67,7 +67,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
               m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
             }
         })
-        table = table
+        table
           .add(file, columnName(eqS, cName), Formatter.withPercent(e, t))
           .add(file, columnName(lpS, cName), Formatter.withPercent(l, t))
           .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
@@ -172,7 +172,8 @@ object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision:
 
 object IncrementalSchemeModXPrecision:
     def main(args: Array[String]): Unit =
-      IncrementalSchemeModFTypePrecision.main(args)
+        IncrementalSchemeModFTypePrecision.main(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+        IncrementalSchemeModFTypePrecision.main(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
 //IncrementalSchemeModFCPPrecision.main(args)
 //IncrementalSchemeModConcTypePrecision.main(args)
 //IncrementalSchemeModConcCPPrecision.main(args)
