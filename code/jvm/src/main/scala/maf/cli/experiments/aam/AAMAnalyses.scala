@@ -2,7 +2,7 @@ package maf.cli.experiments.aam
 
 import maf.aam.scv.*
 import maf.aam.scheme.*
-import maf.aam.*
+import maf.aam.SimpleWorklistSystem
 import maf.language.scheme.*
 import maf.modular.scv.*
 import maf.modular.scheme.*
@@ -14,31 +14,37 @@ import maf.aam.AAMAnalysis
 
 object AAMAnalyses:
     def aamBase(b: SchemeExp): AAMAnalysis =
-      new SchemeAAMSemantics(b)
+      new BaseSchemeAAMSemantics(b)
         with AAMAnalysis
-        with SchemeAAMAnalysisResults
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
         with SchemeStoreAllocateReturn
+        with SchemeAAMLocalStore
+        with SimpleWorklistSystem
+        with SchemeAAMAnalysisResults
 
     def aamBaseFnBoundaries(b: SchemeExp): AAMAnalysis =
       new SchemeAAMSemantics(b)
         with AAMAnalysis
-        with SchemeAAMAnalysisResults
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
         with SchemeStoreAllocateReturn
         with SchemeFunctionCallBoundary
+        with SchemeAAMLocalStore
+        with SimpleWorklistSystem
+        with SchemeAAMAnalysisResults
 
     def scvAAMbase(b: SchemeExp): ScvAAMSemantics =
       new ScvAAMSemantics(b)
         with BaseSchemeAAMSemantics
         with AAMAnalysis
-        with SchemeAAMAnalysisResults
         with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain {
+        with SchemeConstantPropagationDomain
+        with SchemeAAMLocalStore
+        with SimpleWorklistSystem
+        with SchemeAAMAnalysisResults {
         //with SchemeStoreAllocateReturn
         lazy val satSolver: ScvSatSolver[LatVal] =
             given lat: SchemeLattice[LatVal, Address] = lattice
@@ -49,10 +55,12 @@ object AAMAnalyses:
       new ScvAAMSemantics(b)
         with BaseSchemeAAMSemantics
         with AAMAnalysis
-        with SchemeAAMAnalysisResults
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
-        with SchemeFunctionCallBoundary {
+        with SchemeFunctionCallBoundary
+        with SchemeAAMLocalStore
+        with SimpleWorklistSystem
+        with SchemeAAMAnalysisResults {
         //with SchemeStoreAllocateReturn
         lazy val satSolver: ScvSatSolver[LatVal] =
             given lat: SchemeLattice[LatVal, Address] = lattice

@@ -3,7 +3,7 @@ package maf.cli.runnables
 import maf.core.*
 import maf.cli.modular.scv.*
 import maf.aam.scv.*
-import maf.aam.AAMAnalysis
+import maf.aam.{AAMAnalysis, SimpleWorklistSystem}
 import maf.aam.scheme.*
 import maf.language.scheme.*
 import maf.modular.scheme.*
@@ -18,11 +18,13 @@ object ScvAAMTester extends AAMTesterT:
       new ScvAAMSemantics(b)
         with BaseSchemeAAMSemantics
         with AAMAnalysis
-        with SchemeAAMAnalysisResults
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         //with SchemeStoreAllocateReturn
-        with SchemeFunctionCallBoundary {
+        with SchemeFunctionCallBoundary
+        with SchemeAAMLocalStore
+        with SimpleWorklistSystem
+        with SchemeAAMAnalysisResults {
         lazy val satSolver: ScvSatSolver[LatVal] =
             given lat: SchemeLattice[LatVal, Address] = lattice
             new JVMSatSolver

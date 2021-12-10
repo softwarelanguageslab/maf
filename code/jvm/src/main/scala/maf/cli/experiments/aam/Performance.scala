@@ -38,17 +38,17 @@ trait AAMPerformanceComparison extends PerformanceEvaluation:
     protected def wrapModF(f: SchemeExp => ModAnalysis[SchemeExp]): SchemeExp => Analysis = (exp) => AllAnalyisTypes.ModF(f(exp))
 
 object AAMModFPerformanceComparison extends AAMPerformanceComparison:
-    def benchmarks = SchemeBenchmarkPrograms.fromFolder("test/R5RS/various")(
-      ".DS_Store",
-      "loop2.scm", // weirdly seems to be stuck for classic AAM
-      "grid.scm", // timeout even with function boundaries
-      "pico.scm", // weird errors about continuations
-      "regex.scm", // time-out? why?
+    def benchmarks = SchemeBenchmarkPrograms.various -- Set(
+      "test/R5RS/various/loop2.scm", // weirdly seems to be stuck for classic AAM
+      "test/R5RS/various/grid.scm", // timeout even with function boundaries
+      "test/R5RS/various/pico.scm", // weird errors about continuations
+      "test/R5RS/various/regex.scm", // time-out? why?
+      "test/R5RS/various/mceval.scm"
     )
 
     def analyses: List[(SchemeExp => Analysis, String)] =
       List(
-        //(wrap(AAMAnalyses.aamBase), "aamBase"),
+        (wrap(AAMAnalyses.aamBase), "aamBase"),
         (wrap(AAMAnalyses.aamBaseFnBoundaries), "aamFn"),
         (wrapModF(SchemeAnalyses.kCFAAnalysis(_, 0)), "0cfaModf")
       )
