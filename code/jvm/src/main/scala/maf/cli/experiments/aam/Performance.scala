@@ -66,3 +66,12 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
 
     def main(args: Array[String]): Unit =
       run(timeoutFast = false)
+
+object ModFSingleBenchmark extends AAMPerformanceComparison:
+    def benchmarks = SchemeBenchmarkPrograms.various
+
+    def analyses: List[(SchemeExp => Analysis, String)] =
+      List((wrapModF(SchemeAnalyses.kCFAAnalysis(_, 0)), "0cfaModf"))
+
+    def main(args: Array[String]): Unit =
+      run(timeoutFast = false)

@@ -7,7 +7,10 @@ import maf.util._
 import maf.util.benchmarks._
 
 import scala.concurrent.duration._
+import scala.concurrent.Future
 import maf.aam.AAMAnalysis
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Await
 
 // A variable that holds the results
 sealed trait PerformanceResult
@@ -66,33 +69,40 @@ trait PerformanceEvaluation:
     def parseProgram(txt: String): SchemeExp = CSchemeParser.parseProgram(txt)
 
     // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
-    def measureAnalysis(file: String, analysis: SchemeExp => Analysis)(using AnalysisIsFinished[Analysis]): PerformanceResult =
-        // Parse the program
-        val program = parseProgram(Reader.loadFile(file))
-        // Warm-up
-        print(s"* WARM-UP ($maxWarmupRuns) - ")
-        val warmupTimeout = maxWarmupTime
-        for i <- 1 to maxWarmupRuns do
-            print(s"$i ")
-            System.gc() // It never hurts (hopefully, because it may cause GC errors...)
-            analysis(program).analyzeWithTimeout(warmupTimeout)
-        print("\n")
-        // Actual timing
-        print(s"* RUNS ($analysisRuns) - ")
-        var times: List[Double] = List()
-        for i <- 1 to analysisRuns do
-            print(s"$i ")
-            val a = analysis(program)
-            System.gc()
-            val t = Timer.timeOnly(a.analyzeWithTimeout(analysisTime))
-            if a.finished then times = (t.toDouble / 1000000) :: times
-            else return TimedOut // immediately return
-        print("\n")
-        // Compute, print and return the results
-        val result = Statistics.all(times)
-        println(times.mkString("[", ",", "]"))
-        println(result)
-        Completed(result)
+    def measureAnalysis(
+        file: String,
+        analysis: SchemeExp => Analysis
+      )(using af: AnalysisIsFinished[Analysis],
+        ex: ExecutionContext
+      ): Future[PerformanceResult] =
+        def run(): PerformanceResult =
+            // Parse the program
+            val program = parseProgram(Reader.loadFile(file))
+            // Warm-up
+            print(s"* WARM-UP ($maxWarmupRuns) - ")
+            val warmupTimeout = maxWarmupTime
+            for i <- 1 to maxWarmupRuns do
+                print(s"$i ")
+                System.gc() // It never hurts (hopefully, because it may cause GC errors...)
+                analysis(program).analyzeWithTimeout(warmupTimeout)
+            print("\n")
+            // Actual timing
+            print(s"* RUNS ($analysisRuns) - ")
+            var times: List[Double] = List()
+            for i <- 1 to analysisRuns do
+                print(s"$i ")
+                val a = analysis(program)
+                System.gc()
+                val t = Timer.timeOnly(a.analyzeWithTimeout(analysisTime))
+                if a.finished then times = (t.toDouble / 1000000) :: times
+                else return TimedOut // immediately return
+            print("\n")
+            // Compute, print and return the results
+            val result = Statistics.all(times)
+            println(times.mkString("[", ",", "]"))
+            println(result)
+            Completed(result)
+        Future { run() }
 
     // Runs the evaluation
     def measureBenchmark(
@@ -101,12 +111,13 @@ trait PerformanceEvaluation:
         total: Int,
         timeoutFast: Boolean,
         failFast: Boolean
-      )(using AnalysisIsFinished[Analysis]
+      )(using AnalysisIsFinished[Analysis],
+        ExecutionContext
       ): Unit =
       analyses.foreach { case (analysis, name) =>
         try
             println(s"***** Running $name on $benchmark [$current/$total] *****")
-            val result = measureAnalysis(benchmark, analysis)
+            val result = Await.result(measureAnalysis(benchmark, analysis), Duration.Inf)
             results = results.add(benchmark, name, result)
             result match
                 case TimedOut if timeoutFast => return
@@ -121,7 +132,7 @@ trait PerformanceEvaluation:
               if failFast then return
       }
 
-    def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using AnalysisIsFinished[Analysis]) =
+    def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using AnalysisIsFinished[Analysis], ExecutionContext) =
         var current = 0
         val total = benchmarks.size
         benchmarks.foreach { b =>
@@ -147,6 +158,9 @@ trait PerformanceEvaluation:
         failFast: Boolean = true
       )(using AnalysisIsFinished[Analysis]
       ) =
+        given ExecutionContext with
+            def execute(runnable: Runnable): Unit = runnable.run
+            def reportFailure(cause: Throwable): Unit = throw cause
         measureBenchmarks(timeoutFast, failFast)
         printResults()
         exportCSV(path, format _)
