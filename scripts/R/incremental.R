@@ -1,11 +1,11 @@
-perf_cur = read.csv("scripts/R/data/performance curated.txt")
-perf_gen = read.csv("scripts/R/data/performance generated.txt")
+perf_cur <- read.csv("scripts/R/data/performance curated.txt")
+perf_gen <- read.csv("scripts/R/data/performance generated.txt")
 
-prec_cur = read.csv("scripts/R/data/precision curated.txt")
-prec_gen = read.csv("scripts/R/data/precision generated.txt")
+prec_cur <- read.csv("scripts/R/data/precision curated.txt")
+prec_gen <- read.csv("scripts/R/data/precision generated.txt")
 
-prop_cur = read.csv("scripts/R/data/properties curated.txt")
-prop_gen = read.csv("scripts/R/data/properties generated.txt")
+prop_cur <- read.csv("scripts/R/data/properties curated.txt")
+prop_gen <- read.csv("scripts/R/data/properties generated.txt")
 
 library(dplyr)
 library(tidyr)
@@ -14,23 +14,22 @@ library(ggplot2)
 
 ##### Performance #####
 
-min_init_time = 100 # The initial analysis must run at least 100 seconds.
-mutations_per_file = 5
+min_init_time <- 100 # The initial analysis must run at least 100 seconds.
+mutations_per_file <- 5
 
-filter_times = function(perf_data, mutations) {
+filter_times <- function(perf_data, mutations) {
   # First, omit entries that are not complete.
-  data_complete = na.omit(perf_data)
+  data_complete <- na.omit(perf_data)
   # Second, remove the standard deviations.
-  times = data_complete %>% select(starts_with("benchmark") | starts_with("ms"))
+  times <- data_complete %>% select(starts_with("benchmark") | starts_with("ms"))
   # Third, remove benchmarks for which the initial time was under the min_init_time.
-  times_slow = times[(times$ms..init.>=min_init_time),]
+  times_slow <- times[(times$ms..init.>=min_init_time),]
   # Lastly, only keep entries for which all 5 variations are present if these are the generated benchmarks.
   if (mutations) {
-    drop = c()
-    original_sources = substr(times_slow[,1], 1, nchar(times_slow[,1])-6)
-    for (row in 1:nrow(times_slow)) {
-      cut_name = substr(times_slow[row, 1], 1, nchar(times_slow[row, 1])-6)
-      filtered = times_slow %>% filter(startsWith(benchmark, cut_name))
+    drop <- c()
+    for (row in seq_len(nrow(times_slow))) {
+      cut_name <- substr(times_slow[row, 1], 1, nchar(times_slow[row, 1])-6)
+      filtered <- times_slow %>% filter(startsWith(benchmark, cut_name))
       if (nrow(filtered) != mutations_per_file) {
         drop <- c(row, drop)
       }
@@ -42,9 +41,9 @@ filter_times = function(perf_data, mutations) {
 
 # Ridgelineplot
 
-plotRidgeLine = function(perf_data) {
-  filtered_data = filter_times(perf_data, TRUE)
-  div = filtered_data[,2:length(filtered_data)] / filtered_data[,3]
+plotRidgeLine <- function(perf_data) {
+  filtered_data <- filter_times(perf_data, TRUE)
+  div <- filtered_data[, 2:length(filtered_data)] / filtered_data[, 3]
   div %>% gather(key="Configuration", value="Comparison") %>%
     ggplot(aes(x = Comparison, y = Configuration, fill = Configuration)) +
     geom_density_ridges(alpha=0.6, stat="binline", bins=100) +
@@ -56,11 +55,11 @@ plotRidgeLine(perf_gen)
 
 ##### Precision #####
 
-getAbsValue = function(string) {
+getAbsValue <- function(string) {
   as.integer(gsub(" ", "", (strsplit(string, split="[(]"))[[1]][1]))
 }
 
-getRelValue = function (string) {
+getRelValue <- function (string) {
   as.double(gsub(" ", "", (strsplit(string, split="[(%)]"))[[1]][2]))
 }
 
@@ -69,11 +68,11 @@ applyToColumn <- function(column) {
 }
 
 #library(purrr)
-filter_precision = function(prec_data, filtered_times) {
+filter_precision <- function(prec_data, filtered_times) {
   # First, only keep the benchmarks for which we have retained timing information.
-  drop = c()
-  for (row in 1:nrow(prec_data)) {
-    find = filtered_times %>% filter(startsWith(benchmark, prec_data[row, 1]))
+  drop <- c()
+  for (row in seq_len(nrow(prec_data))) {
+    find <- filtered_times %>% filter(startsWith(benchmark, prec_data[row, 1]))
     if (nrow(find) != 1) {
       drop <- c(row, drop)
     }
@@ -86,8 +85,8 @@ filter_precision = function(prec_data, filtered_times) {
   return(prec_data)
 }
 
-plotRidgeLinePrec = function(prec_data) {
-  div = prec_data[,2:length(prec_data)]
+plotRidgeLinePrec <- function(prec_data) {
+  div <- prec_data[, 2:length(prec_data)]
   div %>% gather(key="Configuration", value="Comparison") %>%
     ggplot(aes(x = Comparison, y = Configuration, fill = Configuration)) +
     geom_density_ridges(alpha=0.6, stat="binline", bins=15) +
