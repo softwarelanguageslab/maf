@@ -111,7 +111,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
   case class FunRetAddr(expr: SchemeExp, env: Env, timestamp: Timestamp) extends Address:
       def idn: Identity = expr.idn
       def printable = true
-      override def toString = s"FunRetAddr(${expr} ${timestamp})"
+      override def toString = s"FunRetAddr(${expr}, ${expr.idn} ${timestamp})"
 
   /** The location of the initial continuaton */
   case object Kont0Addr extends Address:
@@ -166,24 +166,51 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
   protected trait Frame:
       def link(next: Address | Frame): Frame
       def name: String = "unknown frame"
+      def stackString: String = "<undefined>"
+
+      override def toString: String = stackString
 
   case class EmptyFrame(next: Option[Address | Frame] = None) extends Frame:
       def link(next: Address | Frame): EmptyFrame = this.copy(next = Some(next))
       override def name: String = "EmptyFrame"
 
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
+
   case class AssFrame(id: Identifier, env: Env, next: Option[Address | Frame] = None) extends Frame:
       def link(next: Address | Frame): AssFrame =
         AssFrame(id, env, Some(next))
       override def name: String = "AssFrame"
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
 
   case class BegFrame(exps: List[Expr], env: Env, cross: Boolean, next: Option[Address | Frame] = None) extends Frame:
       def link(next: Address | Frame): BegFrame =
         this.copy(next = Some(next))
       override def name: String = "BegFrame"
+
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
+
   case class IteFrame(csq: Expr, alt: Expr, env: Env, next: Option[Address | Frame] = None) extends Frame:
       def link(next: Address | Frame): IteFrame =
         this.copy(next = Some(next))
       override def name: String = "IteFrame"
+
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
   case class LetFrame(
       // evaluated bindings
       evalBds: List[(Identifier, Val)],
@@ -200,6 +227,12 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
 
       override def name: String = "LetFrame"
 
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
+
   case class LetStarFrame(
       currentIdentifier: Identifier,
       bindings: List[(Identifier, SchemeExp)],
@@ -211,6 +244,12 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
         this.copy(next = Some(next))
 
       override def name: String = "LetStarFrame"
+
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
 
   case class LetrecFrame(
       currentAddress: Address,
@@ -226,6 +265,12 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
 
       override def name: String = "LetRecFrame"
 
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
+
   case class AssertFrame(
       idn: Identity,
       env: Env,
@@ -236,9 +281,16 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
 
       override def name: String = "AssertFrame"
 
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
+
   case object HltFrame extends Frame:
       def link(next: Address | Frame): Frame = this
       override def name: String = "Hlt"
+      override def stackString: String = name
 
   /**
    * A continuation for evaluating a function.
@@ -254,6 +306,12 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
 
       override def name: String = "FunFrame"
 
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
+
   case class ArgFrame(
       f: SchemeFuncall,
       args: List[SchemeExp],
@@ -266,6 +324,12 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
         this.copy(next = Some(next))
 
       override def name: String = "ArgFrame"
+
+      override def stackString: String =
+          val nextString = next match
+              case f: Frame => f.stackString
+              case _        => next
+          s"$name -> $nextString"
 
   /** The control of the CESK* machine */
   enum Control:
@@ -316,7 +380,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
   def printDebug(s: Conf, printStore: Boolean = false): Unit =
     println("printDebug not supported in base analysis")
 
-  def compareStates(s1: State, s2: State): Boolean =
+  def compareStates(s1: Conf, s2: Conf): Boolean =
       println("comparison not supported in base analysis")
       true
 
@@ -332,15 +396,16 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
         case _ => None
 
   protected def asGraphElement(c: Control, k: KonA, s: Sto, ext: Ext, hsh: Int): GraphElementAAM = c match
-      case Control.Ev(e, _) => GraphElementAAM(hsh, label = s"ev($e)", color = Colors.Yellow, data = "")
+      case Control.Ev(e, _) => GraphElementAAM(hsh, label = s"ev($e, ${e.idn})", color = Colors.Yellow, data = "")
       case Control.Ap(v) =>
         val kontName = readKonts(s, k).map(_.name).mkString(",")
-        GraphElementAAM(s.hashCode, label = s"ap($v, $kontName)", color = Colors.Red, data = "")
+        GraphElementAAM(hsh, label = s"ap($v, $kontName)", color = Colors.Red, data = "")
       case Control.Ret(addr) =>
         val vlu = readStoV(s, addr, ext)
-        GraphElementAAM(s.hashCode, label = s"ret($vlu)", color = Colors.Red, data = "")
+        val kontName = readKonts(s, k).map(_.name).mkString(",")
+        GraphElementAAM(hsh, label = s"ret($vlu, $kontName)", color = Colors.Red, data = "")
       case Control.Fn(c)     => asGraphElement(c, k, s, ext, hsh)
-      case Control.HltE(err) => GraphElementAAM(s.hashCode, label = s"err($err)", color = Colors.Pink, data = "")
+      case Control.HltE(err) => GraphElementAAM(hsh, label = s"err($err)", color = Colors.Pink, data = "")
 
   def stepDirect(ss: Set[State]): Set[State] = ss
 
@@ -380,6 +445,20 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       val addr = KontAddr(e, env, timestamp)
       val sto1 = writeSto(sto, addr, Storable.K(Set(frame.link(next))))
       (sto1, addr, timestamp)
+
+  /** Push a frame (if required) and then evaluate the given expression */
+  protected def pushFrameEv(
+      e: Expr,
+      env: Env,
+      sto: Sto,
+      next: KonA,
+      frame: Kont,
+      t: Timestamp,
+      ext: Ext
+    ): Set[State] =
+      /** No optimizations, just a push of a frame */
+      val (sto1, newFrame, t1) = pushFrame(e, env, sto, next, frame, t)
+      ev(e, env, sto1, newFrame, t1, ext)
 
   /**
    * Push a return frame on the conceptual stack of continuation frames
@@ -423,8 +502,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
         evalVariable(id, env, sto, kont, t, ext)
       // (Ev((set! x e)), env, sto, kont) ==> (Ev(e), env, sto, assgn(x) :: kont)
       case SchemeSet(id, exp, _) =>
-        val (sto1, frame, t1) = pushFrame(exp, env, sto, kont, AssFrame(id, env), t)
-        ev(exp, env, sto1, frame, t1, ext)
+        pushFrameEv(exp, env, sto, kont, AssFrame(id, env), t, ext)
 
       // (Ev((begin e1 e2 ... en)), env, sto, kont) ==> (Ev(e1), env, sto, beg(e2 ... en) :: kont)
       case SchemeBegin(exps, _) =>
@@ -432,13 +510,11 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
 
       // (Ev((if prd csq alt)), env, sto, kont) ==> (Ev(prd), env, sto, ite(csq, alt) :: kont)
       case SchemeIf(prd, csq, alt, _) =>
-        val (sto1, frame, t1) = pushFrame(prd, env, sto, kont, IteFrame(csq, alt, env), t)
-        ev(prd, env, sto1, frame, t1, ext)
+        pushFrameEv(prd, env, sto, kont, IteFrame(csq, alt, env), t, ext)
 
       // (Ev((f x1 x2 ... xn), env, sto, kont) ==> (Ev(f), env, sto, fun(f, x1, ..., xn, bot, ()) :: kont)
       case fun @ SchemeFuncall(f, args, _) =>
-        val (sto1, frame, t1) = pushFrame(f, env, sto, kont, FunFrame(fun, args, env), t)
-        ev(f, env, sto1, frame, t1, ext)
+        pushFrameEv(f, env, sto, kont, FunFrame(fun, args, env), t, ext)
 
       case SchemeLet(bindings, body, _) =>
         evaluateLet(List(), env, sto, kont, bindings, body, t, ext)
@@ -468,6 +544,28 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       val (sto1, frame, t1) = pushFrame(exp, env, sto, kon, AssertFrame(idn, env), t)
       ev(exp, env, sto1, frame, t1, ext)
 
+  protected def evalLiteralValToVal(
+      lit: SchemeValue,
+      env: Env,
+      sto: Sto,
+      kont: KonA,
+      t: Timestamp,
+      ext: Ext
+    ): (LatVal, Sto, Ext) =
+    lit.value match
+        case sexp.Value.String(s) =>
+          val address = alloc(lit.idn, env, sto, kont, t)
+          val (sto1, ext1) = writeStoV(sto, address, inject(lattice.string(s)), ext)
+          (lattice.pointer(address), sto1, ext1)
+
+        case sexp.Value.Integer(n)   => (lattice.number(n), sto, ext)
+        case sexp.Value.Real(r)      => (lattice.real(r), sto, ext)
+        case sexp.Value.Boolean(b)   => (lattice.bool(b), sto, ext)
+        case sexp.Value.Character(c) => (lattice.char(c), sto, ext)
+        case sexp.Value.Symbol(s)    => (lattice.symbol(s), sto, ext)
+        case sexp.Value.Nil          => (lattice.nil, sto, ext)
+        case lit                     => throw new Exception(s"Unsupported Scheme literal: $lit")
+
   /**
    * Evaluate a literal value, these are evaluated to equivalent representations in the abstract domain. A string literal is allocated in the store at
    * a value address
@@ -480,20 +578,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       t: Timestamp,
       ext: Ext
     ): Set[State] =
-      val (res, sto1, ext1) = lit.value match
-          case sexp.Value.String(s) =>
-            val address = alloc(lit.idn, env, sto, kont, t)
-            val (sto1, ext1) = writeStoV(sto, address, inject(lattice.string(s)), ext)
-            (lattice.pointer(address), sto1, ext1)
-
-          case sexp.Value.Integer(n)   => (lattice.number(n), sto, ext)
-          case sexp.Value.Real(r)      => (lattice.real(r), sto, ext)
-          case sexp.Value.Boolean(b)   => (lattice.bool(b), sto, ext)
-          case sexp.Value.Character(c) => (lattice.char(c), sto, ext)
-          case sexp.Value.Symbol(s)    => (lattice.symbol(s), sto, ext)
-          case sexp.Value.Nil          => (lattice.nil, sto, ext)
-          case lit                     => throw new Exception(s"Unsupported Scheme literal: $lit")
-
+      val (res, sto1, ext1) = evalLiteralValToVal(lit, env, sto, kont, t, ext)
       ap(inject(res), sto1, kont, t, ext1)
 
   private def evalVariable(
@@ -529,12 +614,12 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
       ext: Ext,
       cross: Boolean = false
     ): Set[State] =
-      val (sto1, frame, t1) = sequence match
-          case List(x) => (sto, kont, t)
-          case x :: xs => pushFrame(sequence.head, env, sto, kont, BegFrame(sequence.tail, env, false), t)
-          case Nil     => throw new Exception("malformed program: sequence cannot be empty")
-
-      ev(sequence.head, env, sto1, frame, t1, ext, cross)
+    sequence match
+        case List(x) =>
+          ev(x, env, sto, kont, t, ext, cross)
+        case x :: xs =>
+          pushFrameEv(x, env, sto, kont, BegFrame(xs, env, false), t, ext)
+        case Nil => throw new Exception("malformed program: sequence cannot be empty")
 
   private def evaluateLet(
       evlBds: List[(Identifier, Val)],
@@ -566,8 +651,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
           evaluate_sequence(env1, sto1, kont, body, t, ext1)
 
         case binding :: bindings =>
-          val (sto1, frame, t1) = pushFrame(binding._2, env, sto, kont, LetFrame(evlBds, binding :: bindings, body, env), t)
-          ev(binding._2, env, sto1, frame, t1, ext)
+          pushFrameEv(binding._2, env, sto, kont, LetFrame(evlBds, binding :: bindings, body, env), t, ext)
 
   private def evaluateLetStar(
       env: Env,
@@ -584,8 +668,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
           evaluate_sequence(env, sto, kont, body, t, ext)
         case binding :: bindings =>
           // the environment is already extended (or should be) in the "continue" function
-          val (sto1, frame, t1) = pushFrame(binding._2, env, sto, kont, LetStarFrame(binding._1, bindings, body, env), t)
-          ev(binding._2, env, sto1, frame, t1, ext)
+          pushFrameEv(binding._2, env, sto, kont, LetStarFrame(binding._1, bindings, body, env), t, ext)
 
   private def evaluateLetrec(
       addresses: List[Address],
@@ -608,8 +691,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends AAMAnalysis, SchemeDomain 
         case binding :: bindings =>
           val address = alloc(binding._1.idn, env, sto, kont, t)
           val addresses1 = address :: addresses
-          val (sto1, frame, t1) = pushFrame(binding._2, env, sto, kont, LetrecFrame(address, addresses1, values, bindings, body, env), t)
-          ev(binding._2, env, sto1, frame, t1, ext)
+          pushFrameEv(binding._2, env, sto, kont, LetrecFrame(address, addresses1, values, bindings, body, env), t, ext)
 
   protected def applyFun(
       fexp: SchemeFuncall,
