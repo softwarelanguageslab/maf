@@ -26,4 +26,4 @@ trait ScvSoundnessTests extends ScvAnalysisTests:
         }
       }
 
-// class ScvManualSoundnessTests extends ContractSoundnessTestsBenchmarks with ScvSoundnessTests
+class ScvManualSoundnessTests extends ContractSoundnessTestsBenchmarks with ScvSoundnessTests
