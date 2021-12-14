@@ -88,7 +88,7 @@ trait AAMAnalysis:
     def printDebug(s: Conf, printStore: Boolean = false): Unit
 
     /** Compare two states, return true if they are equal */
-    def compareStates(s1: State, s2: State): Boolean
+    def compareStates(s1: Conf, s2: Conf): Boolean
 
     /** Checks whether the given state is a final state */
     def isFinal(st: State): Boolean
@@ -110,7 +110,7 @@ trait AAMAnalysis:
     protected def transition[G](sys: System, dependencyGraph: G)(using AAMGraph[G]): (System, G)
 
     /** Compute the fix point of the given system */
-    protected def fix[G](timeout: Timeout.T)(sys: System, dependencyGraph: G)(using AAMGraph[G]): (System, G) =
+    protected def fix[G](timeout: Timeout.T)(sys: System, dependencyGraph: G, iters: Int = 0)(using AAMGraph[G]): (System, G) =
         sys.reset()
         val (next, fpdg) = transition(sys, dependencyGraph)
         if !next.hasChanged then
@@ -121,7 +121,7 @@ trait AAMAnalysis:
             /* timeout */
             finished = false
             (sys, dependencyGraph)
-        else fix(timeout)(next, fpdg)
+        else fix(timeout)(next, fpdg, iters + 1)
 
     /** Inject the configuration into a state that can be used for the small step semantics */
     protected def asState(conf: Conf, sys: System): State
