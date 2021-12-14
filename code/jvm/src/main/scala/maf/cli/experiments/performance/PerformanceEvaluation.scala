@@ -18,13 +18,21 @@ case class Completed(results: Statistics.Stats) extends PerformanceResult
 case object TimedOut extends PerformanceResult
 case object NoData extends PerformanceResult
 
+// A variable that holds additional metrics
+case class Metric(name: String, result: Double)
+case class Metrics(name: String, results: Statistics.Stats)
+
 trait AnalysisIsFinished[T]:
     def isFinished(analysis: T): Boolean
     def doAnalyzeWithTimeout(analysis: T, timeout: Timeout.T): Any
 
+    /** Let the analysis decide what additional metrics to report */
+    def getMetrics(analysis: T): List[Metric] = List()
+
     extension (analysis: T)
         def finished: Boolean = isFinished(analysis)
         def analyzeWithTimeout(timeout: Timeout.T): Any = doAnalyzeWithTimeout(analysis, timeout)
+        def metrics: List[Metric] = getMetrics(analysis)
 
 object AnalysisIsFinished:
     given AnalysisIsFinished[ModAnalysis[SchemeExp]] with
@@ -74,8 +82,8 @@ trait PerformanceEvaluation:
         analysis: SchemeExp => Analysis
       )(using af: AnalysisIsFinished[Analysis],
         ex: ExecutionContext
-      ): Future[PerformanceResult] =
-        def run(): PerformanceResult =
+      ): Future[(PerformanceResult, List[Metrics])] =
+        def run(): (PerformanceResult, List[Metrics]) =
             // Parse the program
             val program = parseProgram(Reader.loadFile(file))
             // Warm-up
@@ -89,20 +97,38 @@ trait PerformanceEvaluation:
             // Actual timing
             print(s"* RUNS ($analysisRuns) - ")
             var times: List[Double] = List()
+            var metrics: Map[String, List[Double]] = Map()
+
             for i <- 1 to analysisRuns do
                 print(s"$i ")
                 val a = analysis(program)
                 System.gc()
                 val t = Timer.timeOnly(a.analyzeWithTimeout(analysisTime))
-                if a.finished then times = (t.toDouble / 1000000) :: times
-                else return TimedOut // immediately return
+                if a.finished then
+                    val analysisMetrics = a.metrics
+                    analysisMetrics.foldLeft(metrics)((metrics, metric) =>
+                      metrics + (metric.name -> (metric.result :: metrics.get(metric.name).getOrElse(List())))
+                    )
+
+                    times = (t.toDouble / 1000000) :: times
+                else return (TimedOut, List()) // immediately return
             print("\n")
             // Compute, print and return the results
             val result = Statistics.all(times)
             println(times.mkString("[", ",", "]"))
             println(result)
-            Completed(result)
+
+            // Also compute statistics about additional metrics reported by the analysis
+            val resultMetrics = metrics.map { case (name, metrics) =>
+              Metrics(name, Statistics.all(metrics))
+            }.toList
+
+            (Completed(result), resultMetrics)
         Future { run() }
+
+    protected def addResult(name: String, benchmark: Benchmark, result: PerformanceResult, metrics: List[Metrics]): Unit =
+        results = results.add(benchmark, name, result)
+        metrics.foreach(metric => results = results.add(benchmark, s"$name (${metric.name})", Completed(metric.results)))
 
     // Runs the evaluation
     def measureBenchmark(
@@ -117,8 +143,8 @@ trait PerformanceEvaluation:
       analyses.foreach { case (analysis, name) =>
         try
             println(s"***** Running $name on $benchmark [$current/$total] *****")
-            val result = Await.result(measureAnalysis(benchmark, analysis), Duration.Inf)
-            results = results.add(benchmark, name, result)
+            val (result, metrics) = Await.result(measureAnalysis(benchmark, analysis), Duration.Inf)
+            addResult(name, benchmark, result, metrics)
             result match
                 case TimedOut if timeoutFast => return
                 case _                       => ()

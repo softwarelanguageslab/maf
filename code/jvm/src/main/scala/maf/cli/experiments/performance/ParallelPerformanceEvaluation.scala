@@ -7,9 +7,9 @@ import scala.concurrent.duration.*
 import net.openhft.affinity.{AffinityLock, AffinityStrategies, AffinityThreadFactory}
 
 trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
-    private def addResult(name: String, benchmark: Benchmark, result: PerformanceResult): Unit =
-      this.synchronized {
-        results = results.add(benchmark, name, result)
+    override def addResult(name: String, benchmark: Benchmark, result: PerformanceResult, metrics: List[Metrics]): Unit =
+      synchronized {
+        super.addResult(name, benchmark, result, metrics)
       }
 
     private def measureBenchmarkFuture(
@@ -23,10 +23,10 @@ trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
       analyses.map { case (analysis, name) =>
         println(s"***** Scheduling $name on $benchmark [$current/$total] (futures) *****")
         measureAnalysis(benchmark, analysis)
-          .map(result =>
-              println(s"Analysis $name on $benchmark done, with result $result")
-              addResult(name, benchmark, result)
-          )
+          .map { case (result, metrics) =>
+            println(s"Analysis $name on $benchmark done, with result $result")
+            addResult(name, benchmark, result, metrics)
+          }
           .recover { case cause =>
             println(s"$name of $benchmark encountered exception ${cause.getMessage}")
           }
