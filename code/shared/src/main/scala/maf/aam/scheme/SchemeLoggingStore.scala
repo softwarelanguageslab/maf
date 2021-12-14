@@ -78,7 +78,10 @@ trait BaseSchemeLoggingLocalStore extends BaseSchemeAAMSemantics, BaseSimpleWork
                   if !seen.contains(conf._2) then
                       seen = seen + conf._2
                       newWork = conf :: newWork
+                  else increment(Bump) // logging
                 }
+
+                report(Seen, seen.size) // logging
 
                 tt = tt + (if hasChanged then 1 else 0)
             super.popWork()

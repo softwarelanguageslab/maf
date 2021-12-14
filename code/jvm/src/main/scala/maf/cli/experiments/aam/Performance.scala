@@ -10,10 +10,11 @@ import maf.util.benchmarks.*
 import maf.modular.*
 import maf.util.graph.*
 import maf.cli.experiments.SchemeAnalyses
+import maf.aam.scheme.AAMPeformanceMetrics
 
 enum AllAnalyisTypes:
     case ModF(analysis: ModAnalysis[SchemeExp])
-    case AAM(analysis: AAMAnalysis)
+    case AAM(analysis: AAMPeformanceMetrics)
 
 object AllAnalyisTypes:
     given AnalysisIsFinished[AllAnalyisTypes] with
@@ -30,15 +31,22 @@ object AllAnalyisTypes:
                 val g = new NoGraph[GraphElementAAM, GraphElement]
                 anl.analyzeWithTimeout(timeout, g.G())(using g.G.typeclass)
 
+        override def getMetrics(analysis: T): List[Metric] =
+          analysis match
+              case AAM(anl) =>
+                anl.reportMetrics.map(Metric.apply.tupled)
+              case _ => List() // no support for metrics in ModF yet
+
 /** Compare the performance of AAM with a ModF style analysis */
 trait AAMPerformanceComparison extends PerformanceEvaluation:
     type Analysis = AllAnalyisTypes
 
-    protected def wrap(f: SchemeExp => AAMAnalysis): SchemeExp => Analysis = (exp) => AllAnalyisTypes.AAM(f(exp))
+    protected def wrap(f: SchemeExp => AAMPeformanceMetrics): SchemeExp => Analysis = (exp) => AllAnalyisTypes.AAM(f(exp))
     protected def wrapModF(f: SchemeExp => ModAnalysis[SchemeExp]): SchemeExp => Analysis = (exp) => AllAnalyisTypes.ModF(f(exp))
 
 object AAMModFPerformanceComparison extends AAMPerformanceComparison:
-    def benchmarks = SchemeBenchmarkPrograms.various -- Set(
+    def benchmarks = Set("test.scm")
+    def _benchmarks = SchemeBenchmarkPrograms.various -- Set(
       "test/R5RS/various/loop2.scm", // weirdly seems to be stuck for classic AAM
       "test/R5RS/various/grid.scm", // timeout even with function boundaries
       "test/R5RS/various/pico.scm", // weird errors about continuations
@@ -49,7 +57,10 @@ object AAMModFPerformanceComparison extends AAMPerformanceComparison:
     def analyses: List[(SchemeExp => Analysis, String)] =
       List(
         (wrap(AAMAnalyses.aamBase), "aamBase"),
-        (wrap(AAMAnalyses.aamBaseFnBoundaries), "aamFn"),
+        (wrap(AAMAnalyses.aamConf1), "aamConf1"),
+        (wrap(AAMAnalyses.aamConf2), "aamConf2"),
+        (wrap(AAMAnalyses.aamConf3), "aamConf3"),
+        (wrap(AAMAnalyses.aamConf4), "aamConf4"),
         (wrapModF(SchemeAnalyses.kCFAAnalysis(_, 0)), "0cfaModf")
       )
     def main(args: Array[String]): Unit =
@@ -67,7 +78,7 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
     def main(args: Array[String]): Unit =
       run(timeoutFast = false)
 
-object ModFSingleBenchmark extends AAMPerformanceComparison:
+object ModFSingleBenchmark extends AAMPerformanceComparison with ParallelPerformanceEvaluation(6):
     def benchmarks = SchemeBenchmarkPrograms.various
 
     def analyses: List[(SchemeExp => Analysis, String)] =

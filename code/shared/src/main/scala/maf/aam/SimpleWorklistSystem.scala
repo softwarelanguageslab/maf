@@ -2,8 +2,9 @@ package maf.aam
 
 import maf.util.graph.*
 import scala.collection.immutable.HashSet
+import maf.aam.scheme.AAMPeformanceMetrics
 
-trait BaseSimpleWorklistSystem extends AAMAnalysis:
+trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
     trait SeenStateSystem extends BaseSystem:
         this: System =>
         var seen: HashSet[Conf] = HashSet()
@@ -34,6 +35,7 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis:
         }
 
         def addSeen(work: Conf): Unit = change {
+          report(Seen, seen.size) // logging
           seen = seen + work
         }
 
@@ -53,11 +55,10 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis:
         successors.foreach { successor =>
             val (conf, sys1) = integrate(successor, sys)
             if !sys1.seen.contains(conf) then
-                //println(s"prev $prev, succ $conf")
                 sys1.pushWork(Some(prev), conf)
                 sys1.addSeen(conf)
             else
-                //println(s"already seen $prev $conf")
+                increment(Bump) // logging
                 val n1 = asGraphElement(prev, sys1)
                 val n2 = asGraphElement(conf, sys1)
                 depGraph2 = g.addEdge(depGraph2, n1, NoTransition(), n2)
