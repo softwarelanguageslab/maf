@@ -1,7 +1,7 @@
 package maf.aam.scheme
 
 import maf.core.{Address, BasicStore, Lattice}
-import maf.aam.{BaseSimpleWorklistSystem, GraphElementAAM}
+import maf.aam.{AAMGraph, BaseSimpleWorklistSystem, GraphElementAAM}
 
 case class LoggingStore[V: Lattice](originalSto: BasicStore[Address, V], changes: Map[Address, List[V]] = Map()):
     def replay(store: BasicStore[Address, V]): (BasicStore[Address, V], Boolean) =
@@ -62,19 +62,25 @@ trait BaseSchemeLoggingLocalStore extends BaseSchemeAAMSemantics, BaseSimpleWork
         /** When we serve work, we check whether the changes to the store need to be applied */
         override def popWork(): Option[(Option[Conf], Conf)] =
             if work.isEmpty && newWork.nonEmpty then
-                change {
-                  // if the current "turn" is finished we can apply the logs together
-                  // into the global store.
-                  val hasChanged = appendAll(logs)
-                  // we may now forget the logs
-                  logs = Set()
-                  // increase the `tt` value if the predecessors caused changes to the store
-                  newWork = (if hasChanged then newWork.map(conf => (conf._1, conf._2.copy(tt = conf._2.tt + 1)))
-                             else newWork).filter(conf => !seen.contains(conf._2))
-                  // mark the ones scheduled to be analyzed as seen.
-                  newWork.foreach(conf => seen = seen + conf._2)
-                  tt = tt + (if hasChanged then 1 else 0)
+                // if the current "turn" is finished we can apply the logs together
+                // into the global store.
+                val hasChanged = appendAll(logs)
+                // we may now forget the logs
+                logs = Set()
+                // increase the `tt` value if the predecessors caused changes to the store
+                val tmpWork =
+                  (if hasChanged then newWork.map(conf => (conf._1, conf._2.copy(tt = conf._2.tt + 1)))
+                   else newWork)
+
+                newWork = List()
+                // mark the ones scheduled to be analyzed as seen.
+                tmpWork.foreach { conf =>
+                  if !seen.contains(conf._2) then
+                      seen = seen + conf._2
+                      newWork = conf :: newWork
                 }
+
+                tt = tt + (if hasChanged then 1 else 0)
             super.popWork()
 
         def addLog(log: LoggingStore[Storable]): Unit =
@@ -96,14 +102,14 @@ trait BaseSchemeLoggingLocalStore extends BaseSchemeAAMSemantics, BaseSimpleWork
 
     override lazy val initialStore: Sto = LoggingStore(originalSto)
 
-    override protected def decideSuccessors(prev: Conf, successors: Set[State], sys: System): System =
+    override protected def decideSuccessors[G](depGraph: G, prev: Conf, successors: Set[State], sys: System)(using AAMGraph[G]): (System, G) =
         successors.foreach { successor =>
             val conf = asConf(successor, sys)
             sys.pushWork(Some(prev), conf)
             sys.addLog(successor.s)
         }
 
-        sys
+        (sys, depGraph)
 
     override def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
       sto.append(addr, value)
