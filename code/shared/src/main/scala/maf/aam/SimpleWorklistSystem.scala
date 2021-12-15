@@ -2,6 +2,7 @@ package maf.aam
 
 import maf.util.graph.*
 import scala.collection.immutable.HashSet
+import maf.util.Trampoline.run
 import maf.aam.scheme.AAMPeformanceMetrics
 
 trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
@@ -83,7 +84,7 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
             else dependencyGraph
 
             // candidate successors
-            val successors = step(asState(conf.get._2, system))
+            val successors = run(step(asState(conf.get._2, system)))
             decideSuccessors(fdpg, conf.get._2, successors, system)
 
 trait SimpleWorklistSystem extends BaseSimpleWorklistSystem:

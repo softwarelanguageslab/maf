@@ -2,6 +2,7 @@ package maf.aam.scheme
 
 import maf.language.scheme.*
 import maf.core.Identifier
+import maf.util.Trampoline.*
 
 /**
  * The optimisation here is that we do allocate the continuation to the other continuations in the case that we are evaluating an atom. This could
@@ -21,10 +22,10 @@ trait SchemeAtomicEvaluation extends BaseSchemeAAMSemantics:
         frame: Kont,
         t: Timestamp,
         ext: Ext
-      ): Set[State] = e match
+      ): Result = e match
         case lit: SchemeValue =>
           val (res, sto1, ext1) = super.evalLiteralValToVal(lit, env, sto, frame.link(next), t, ext)
-          continue(inject(res), sto1, frame.link(next), t, ext)
+          tailcall(continue(inject(res), sto1, frame.link(next), t, ext))
         case SchemeVar(id) =>
           val res: Val = env
             .lookup(id.name)
@@ -34,6 +35,6 @@ trait SchemeAtomicEvaluation extends BaseSchemeAAMSemantics:
               inject(lattice.bottom)
             }
 
-          continue(res, sto, frame.link(next), t, ext)
+          tailcall(continue(res, sto, frame.link(next), t, ext))
 
         case _ => super.pushFrameEv(e, env, sto, next, frame, t, ext)

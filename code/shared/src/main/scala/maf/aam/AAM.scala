@@ -5,6 +5,7 @@ import maf.util.graph.*
 import maf.util.graph.Graph.GraphOps
 import maf.util.benchmarks.Timeout
 import scala.annotation.tailrec
+import maf.util.Trampoline
 
 case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) extends GraphElement:
     def metadata: GraphMetadata = GraphMetadataString(data)
@@ -31,6 +32,10 @@ trait AAMAnalysis:
 
     /** The type of state that should be used in the analysis. */
     type State
+
+    /** The type of the result, we use trampolines here to avoid stackoverflow exceptions */
+    protected type Result = Trampoline[Set[State]]
+    protected type SingleResult = Trampoline[State]
 
     /**
      * The type of configuration, in classic AAM w/o otimisations this is equal to the state. In optimized AAM ,various parts of the state that is
@@ -82,7 +87,7 @@ trait AAMAnalysis:
     def injectConf(expr: Expr): Conf
 
     /** Step the analysis state */
-    def step(start: State): Set[State]
+    def step(start: State): Result
 
     /** Print a debug version of the given state */
     def printDebug(s: Conf, printStore: Boolean = false): Unit

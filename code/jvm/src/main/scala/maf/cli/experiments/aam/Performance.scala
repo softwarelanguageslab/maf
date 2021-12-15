@@ -45,8 +45,8 @@ trait AAMPerformanceComparison extends PerformanceEvaluation:
     protected def wrapModF(f: SchemeExp => ModAnalysis[SchemeExp]): SchemeExp => Analysis = (exp) => AllAnalyisTypes.ModF(f(exp))
 
 object AAMModFPerformanceComparison extends AAMPerformanceComparison:
-    def benchmarks = Set("test.scm")
-    def _benchmarks = SchemeBenchmarkPrograms.various -- Set(
+    def benchmarks = Set("test/R5RS/various/blur.scm")
+    def __benchmarks = SchemeBenchmarkPrograms.various -- Set(
       "test/R5RS/various/loop2.scm", // weirdly seems to be stuck for classic AAM
       "test/R5RS/various/grid.scm", // timeout even with function boundaries
       "test/R5RS/various/pico.scm", // weird errors about continuations
@@ -54,9 +54,11 @@ object AAMModFPerformanceComparison extends AAMPerformanceComparison:
       "test/R5RS/various/mceval.scm"
     )
 
+    def _benchmarks: Set[String] = SchemeBenchmarkPrograms.jss2021
+
     def analyses: List[(SchemeExp => Analysis, String)] =
       List(
-        (wrap(AAMAnalyses.aamBase), "aamBase"),
+        //(wrap(AAMAnalyses.aamBase), "aamBase"),
         (wrap(AAMAnalyses.aamConf1), "aamConf1"),
         (wrap(AAMAnalyses.aamConf2), "aamConf2"),
         (wrap(AAMAnalyses.aamConf3), "aamConf3"),

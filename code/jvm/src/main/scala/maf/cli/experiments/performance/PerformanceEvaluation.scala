@@ -106,7 +106,7 @@ trait PerformanceEvaluation:
                 val t = Timer.timeOnly(a.analyzeWithTimeout(analysisTime))
                 if a.finished then
                     val analysisMetrics = a.metrics
-                    analysisMetrics.foldLeft(metrics)((metrics, metric) =>
+                    metrics = analysisMetrics.foldLeft(metrics)((metrics, metric) =>
                       metrics + (metric.name -> (metric.result :: metrics.get(metric.name).getOrElse(List())))
                     )
 
@@ -151,10 +151,12 @@ trait PerformanceEvaluation:
         catch
             case e: Exception =>
               println(s"Encountered an exception: ${e.getMessage}")
+              e.printStackTrace()
               if failFast then return
             case e: VirtualMachineError =>
               System.gc()
               println(s"Running $benchmark resulted in an error: ${e.getMessage}")
+              e.printStackTrace()
               if failFast then return
       }
 
