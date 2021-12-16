@@ -26,7 +26,13 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     override lazy val analysesS: List[String] = configurations.map(_.toString)
 
     var results: Table[String] = Table.empty.withDefaultValue(" ")
+    var resultsNoOpt: Table[String] = Table.empty.withDefaultValue(" ")
     val error: String = errS
+
+    override def reportError(file: String): Unit = columns.foreach { c =>
+        results = results.add(file, c, error)
+        resultsNoOpt = resultsNoOpt.add(file, c, error)
+    }
 
     def runAnalysis(name: String, block: Timeout.T => Unit): Boolean =
         print(name)
@@ -37,8 +43,9 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
     def compareAnalyses(
         file: String,
         inc: Analysis,
-        rean: Analysis
-      ): Unit =
+        rean: Analysis,
+        table: Table[String]
+      ): Table[String] =
         val cName = inc.configuration.toString
         // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
         val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
@@ -60,13 +67,18 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
               m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
             }
         })
-        results = results
+        table
           .add(file, columnName(eqS, cName), Formatter.withPercent(e, t))
           .add(file, columnName(lpS, cName), Formatter.withPercent(l, t))
           .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
 
     def onBenchmark(file: String): Unit =
-        print(s"Testing $file ")
+        compareToFullReanalysis(file)
+        println()
+        compareToNoOptimisations(file)
+
+    def compareToFullReanalysis(file: String): Unit =
+        print(s"Testing $file (full R) ")
         val program = parse(file)
         // Initial analysis: analyse + update.
         val a1 = analysis(program, ci_di_wi) // Allow tracking for all optimisations.
@@ -84,18 +96,45 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         configurations.foreach { config =>
             val copy = a1.deepCopy()
             copy.configuration = config
-
-            if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then compareAnalyses(file, copy, a2)
+            if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then results = compareAnalyses(file, copy, a2, results)
             else
                 propertiesS.foreach(o => results = results.add(file, columnName(o, config.toString), infS))
                 print(" timed out - ")
         }
 
-    // Note, we could also compare to the initial analysis. This would give us an idea on how many addresses were refined (column "More precise").
+    def compareToNoOptimisations(file: String): Unit =
+        print(s"Testing $file (noOpt) ")
+        val program = parse(file)
+        // Initial analysis: analyse + update.
+        val a1 = analysis(program, ci_di_wi) // Allow tracking for all optimisations.
+
+        // Run the initial analysis which needs to finish.
+        if runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) then
+            print("timed out.")
+            columns.foreach(c => resultsNoOpt = resultsNoOpt.add(file, c, infS))
+            return
+
+        // Update the analysis without optimisations. Needs to finish as well.
+        val a2 = a1.deepCopy()
+        a2.configuration = noOptimisations
+        if runAnalysis("noOpt ", timeOut => a2.updateAnalysis(timeOut)) then
+            print("timed out.")
+            columns.foreach(c => resultsNoOpt = resultsNoOpt.add(file, c, infS))
+            return
+
+        configurations.foreach { config =>
+            val copy = a1.deepCopy()
+            copy.configuration = config
+            if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then
+                resultsNoOpt = compareAnalyses(file, copy, a2, resultsNoOpt)
+            else
+                propertiesS.foreach(o => resultsNoOpt = resultsNoOpt.add(file, columnName(o, config.toString), infS))
+                print(" timed out - ")
+        }
 
     def interestingAddress[A <: Address](a: A): Boolean
     def createOutput(): String = //results.prettyString(columns = columns) ++ "\n\n" ++
-      results.toCSVString(columns = columns)
+      s"Compared to full reanalysis:\n${results.toCSVString(columns = columns)}\n\nCompared to noOpt:\n${resultsNoOpt.toCSVString(columns = columns)}"
 
 /* ************************** */
 /* ***** Instantiations ***** */
@@ -133,7 +172,8 @@ object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision:
 
 object IncrementalSchemeModXPrecision:
     def main(args: Array[String]): Unit =
-        IncrementalSchemeModFTypePrecision.main(args)
-        IncrementalSchemeModFCPPrecision.main(args)
-        IncrementalSchemeModConcTypePrecision.main(args)
-        IncrementalSchemeModConcCPPrecision.main(args)
+        IncrementalSchemeModFTypePrecision.main(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+        IncrementalSchemeModFTypePrecision.main(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+//IncrementalSchemeModFCPPrecision.main(args)
+//IncrementalSchemeModConcTypePrecision.main(args)
+//IncrementalSchemeModConcCPPrecision.main(args)

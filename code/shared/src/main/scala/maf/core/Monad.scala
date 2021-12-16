@@ -43,6 +43,18 @@ object Monad:
           if xs.isEmpty then Monad[M].unit(nil)
           else xs.tail.foldRightM(nil)(f) >>= { f(xs.head, _) }
 
+    implicit class MonadSequenceOps[M[_]: Monad, X](xs: Iterable[M[X]]):
+        def foldSequence[Y](nil: Y)(f: (X, Y) => M[Y]): M[Y] =
+          if xs.isEmpty then Monad[M].unit(nil)
+          else
+              xs.tail.foldSequence(nil)(f) >>= { rest =>
+                xs.head >>= { head => f(head, rest) }
+              }
+
+    extension [M[_]: Monad, X](xs: Iterable[M[Set[X]]])
+      def flattenM: M[Set[X]] =
+        xs.foldSequence(Set())((all, rest) => Monad[M].unit(all ++ rest))
+
     def sequence[M[_]: Monad, X](ms: List[M[X]]): M[List[X]] =
         import maf.core.Monad.MonadSyntaxOps
         ms match

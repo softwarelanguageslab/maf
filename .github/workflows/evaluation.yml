@@ -87,3 +87,13 @@ jobs:
           path: output.pdf
           channel: maf-logs
           initial_comment: "Results of last night's performance evaluation."
+      - name: Notify slack fail
+        if: failure() || cancelled()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf-logs
+          status: FAILED
+          color: danger

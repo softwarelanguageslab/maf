@@ -1,6 +1,6 @@
 package maf.aam.scheme
 
-trait SchemeAAMNoExt extends SchemeAAMSemantics:
+trait SchemeAAMNoExt extends BaseSchemeAAMSemantics:
     type Ext = Unit
     type Val = LatVal
     def emptyExt: Ext = ()

@@ -17,13 +17,13 @@ import maf.util._
  *
  * Precision in this case is measured whether it is able to elliminate program paths that introduce blames but that are actually infeasible at runtime
  */
-//trait ScvSafetyTests extends ScvAnalysisTests:
-//    override def onBenchmark(b: Benchmark): Unit =
-//      property(s"$b should contain no contract violations") {
-//        runFromFile(b) { an =>
-//            assert(an.summary.blames.size == 0)
-//            assert(an.returnValue(an.initialComponent) != an.lattice.bottom)
-//        }
-//      }
-//
-//class SimpleSafetyTests extends ScvSafetyTests with ContractSafetyTestsBenchmarks
+trait ScvSafetyTests extends ScvAnalysisTests:
+    override def onBenchmark(b: Benchmark): Unit =
+      property(s"$b should contain no contract violations") {
+        runFromFile(b) { an =>
+            assert(an.summary.blames.size == 0)
+            assert(an.returnValue(an.initialComponent) != an.lattice.bottom)
+        }
+      }
+
+class SimpleSafetyTests extends ScvSafetyTests with ContractSafetyTestsBenchmarks

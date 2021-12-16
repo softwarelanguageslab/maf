@@ -5,7 +5,7 @@ import maf.core.Address
 trait SchemeAAMAnalysisResults extends BaseSchemeAAMSemantics with maf.aam.AnalysisResults:
     var resultsPerIdn = Map().withDefaultValue(Set.empty[LatVal])
 
-    override def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
+    abstract override def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
         (addr, value) match
             case (_: VarAddr, Storable.V(value)) =>
               resultsPerIdn += addr.idn -> (resultsPerIdn(addr.idn) + value)

@@ -13,6 +13,7 @@ import maf.modular.incremental.*
 import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
+import maf.modular.scheme.PrmAddr
 import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.util.{Reader, Writer}
 import maf.util.Writer.Writer
@@ -105,7 +106,8 @@ object IncrementalRun extends App:
           val a = base(text)
           //   a.logger.logU("BASE + INC")
           a.analyzeWithTimeout(timeout())
-          a.configuration = wi
+          println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
+          a.configuration = wi_cy
           //  a.flowInformationToDotGraph("logs/flowsA1.dot")
           a.updateAnalysis(timeout())
           //  a.flowInformationToDotGraph("logs/flowsA2.dot")
@@ -116,6 +118,7 @@ object IncrementalRun extends App:
           //b.analyzeWithTimeout(timeout())
           // b.flowInformationToDotGraph("logs/flowsB.dot")
           // println("Done")
+          println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
         } catch {
           case e: Exception =>
             e.printStackTrace(System.out)
@@ -127,7 +130,8 @@ object IncrementalRun extends App:
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/changes/scheme/generated/R5RS_WeiChenRompf2019_meta-circ-5.scm"
+      "test/DEBUG1.scm",
+      "test/DEBUG2.scm"
     )
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(10, MINUTES))
 
@@ -142,7 +146,7 @@ object IncrementalRun extends App:
 // Prints the maximal heap size.
 object Memorycheck extends App:
     def formatSize(v: Long): String =
-        if v < 1024 then return v + " B"
+        if v < 1024 then return s"$v B"
         val z = (63 - java.lang.Long.numberOfLeadingZeros(v)) / 10
         s"${v.toDouble / (1L << (z * 10))} ${" KMGTPE".charAt(z)}B"
 
