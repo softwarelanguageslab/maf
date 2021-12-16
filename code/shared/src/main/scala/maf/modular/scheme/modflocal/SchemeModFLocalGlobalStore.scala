@@ -10,8 +10,8 @@ trait SchemeModFLocalGlobalStore extends GlobalStore[SchemeExp]:
     this: SchemeDomain with SchemeModFLocalSensitivity with SchemeModFLocal =>
 
     var refs: Map[Adr, Set[Adr]] = Map.empty
-    var lcls: Map[Adr, Set[Adr]] = Map.empty 
-        
+    var lcls: Map[Adr, Set[Adr]] = Map.empty
+
     // NOTE: not suitable for parallelisation
     // TODO: writeAddr only happens after the analysis?
     override def writeAddr(adr: Adr, vlu: Val): Boolean =
@@ -20,18 +20,18 @@ trait SchemeModFLocalGlobalStore extends GlobalStore[SchemeExp]:
             val addrs = lattice.refs(vlu)
             // update refs
             addrs.foreach { oth =>
-                refs += oth -> (refs.getOrElse(oth, Set.empty) + adr)   
+              refs += oth -> (refs.getOrElse(oth, Set.empty) + adr)
             }
             // update lcls
             val cur = addrs.flatMap { oth =>
-                policy(oth) match
-                    case AddrPolicy.Local => Set(oth)
-                    case AddrPolicy.Widened => lcls.getOrElse(oth, Set.empty)
+              policy(oth) match
+                  case AddrPolicy.Local   => Set(oth)
+                  case AddrPolicy.Widened => lcls.getOrElse(oth, Set.empty)
             }
             propagate(adr, cur)
-        hasChanged 
+        hasChanged
 
-    private def propagate(adr: Adr, upd: Set[Adr]): Unit =  
+    private def propagate(adr: Adr, upd: Set[Adr]): Unit =
         val prv = lcls.getOrElse(adr, Set.empty)
         val pro = upd -- prv
         if pro.nonEmpty then
