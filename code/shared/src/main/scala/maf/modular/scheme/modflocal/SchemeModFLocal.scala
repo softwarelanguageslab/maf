@@ -13,7 +13,7 @@ import akka.actor.ProviderSelection.Local
 import maf.util.datastructures.SmartMap
 import maf.modular.scheme.modf.SchemeModFComponent.Call
 
-abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics with GlobalStore[SchemeExp]:
+abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics with SchemeModFLocalGlobalStore:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -102,29 +102,29 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     def extendV(anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt =
       policy(adr) match
-          case AddrPolicy.Local   => extendLocalV(anl.component, sto, adr, vlu)
+          case AddrPolicy.Local   => extendLocal(anl.component, sto, adr, vlu)
           case AddrPolicy.Widened => anl.writeAddr(adr, vlu); Delta.empty
     def updateV(anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt =
       policy(adr) match
-          case AddrPolicy.Local   => updateLocalV(anl.component, sto, adr, vlu)
+          case AddrPolicy.Local   => updateLocal(anl.component, sto, adr, vlu)
           case AddrPolicy.Widened => anl.writeAddr(adr, vlu); Delta.empty
     def lookupV(anl: Anl, sto: Sto, adr: Adr): Option[Val] =
       policy(adr) match
-          case AddrPolicy.Local   => lookupLocalV(anl.component, sto, adr)
+          case AddrPolicy.Local   => lookupLocal(anl.component, sto, adr).map(_._1)
           case AddrPolicy.Widened => Some(anl.readAddr(adr))
 
-    protected def lookupLocalV(cmp: Cmp, sto: Sto, adr: Adr): Option[Val] = sto.lookup(adr)
-    protected def extendLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.extend(adr, vlu)
-    protected def updateLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.update(adr, vlu)
     protected def lookupLocal(cmp: Cmp, sto: Sto, adr: Adr): Option[(Val, Cnt)] = sto.content.get(adr)
     protected def lookupLocal(cmp: Cmp, dlt: Dlt, adr: Adr): Option[(Val, Cnt)] = dlt.delta.get(adr)
+    protected def extendLocal(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.extend(adr, vlu)
+    protected def updateLocal(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.update(adr, vlu)
 
     def eqA(sto: Sto, anl: Anl): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
           if a1 == a2 then
               policy(a1) match
                   case AddrPolicy.Local =>
-                    if lookupLocal(anl.component, sto, a1).map(_._2).getOrElse(CountZero) == CountOne then BoolLattice[B].inject(true)
+                    if lookupLocal(anl.component, sto, a1).map(_._2).getOrElse(CountZero) == CountOne 
+                    then BoolLattice[B].inject(true)
                     else BoolLattice[B].top
                   case AddrPolicy.Widened => BoolLattice[B].top
           else BoolLattice[B].inject(false)
@@ -214,7 +214,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     //
 
     def intraAnalysis(cmp: Component) = new SchemeLocalIntraAnalysis(cmp)
-    class SchemeLocalIntraAnalysis(cmp: Cmp) extends IntraAnalysis(cmp) with GlobalStoreIntra:
+    class SchemeLocalIntraAnalysis(cmp: Cmp) extends IntraAnalysis(cmp) with SchemeModFLocalGlobalStoreIntra:
         intra =>
 
         // local state
@@ -249,7 +249,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             def move(addr: Adr, from: X, to: X): (X, Set[Adr]) =
               policy(addr) match
                   case AddrPolicy.Local   => moveLocal(addr, from, to)
-                  case AddrPolicy.Widened => (to, lattice.refs(readAddr(addr)))
+                  case AddrPolicy.Widened => (to, readRefs(addr))
 
         case object StoreGC extends AGC[Sto]:
             def fresh(cur: Sto) = LocalStore.empty
@@ -287,6 +287,4 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
             case _ => ()
         super.updateV(anl, sto, adr, vlu)
 
-// TODO: pre-compute refs in global store
-// TODO: hashcode optimisation for stores (+ profiling?)
 // TODO: GC at every step?

@@ -34,22 +34,18 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
     var shadowDeps: Map[Adr, Set[Cmp]] = Map.empty
 
     // NOTE/TODO: not safe for parallelisation
-    override protected def lookupLocalV(cmp: Cmp, sto: Sto, adr: Adr): Option[Val] =
-        shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
-        super.lookupLocalV(cmp, sto, adr)
-    //TODO: in some of these cases, keeping the dependency after widening may not be necessary
     override protected def lookupLocal(cmp: Cmp, sto: Sto, adr: Adr): Option[(Val, Cnt)] =
         shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
         super.lookupLocal(cmp, sto, adr)
     override protected def lookupLocal(cmp: Cmp, dlt: Dlt, adr: Adr): Option[(Val, Cnt)] =
         shadowDeps += adr -> (shadowDeps.getOrElse(adr, Set.empty) + cmp)
         super.lookupLocal(cmp, dlt, adr)
-    override protected def extendLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
+    override protected def extendLocal(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
         updateAddr(shadowStore, adr, vlu).foreach(upd => shadowStore = upd)
-        super.extendLocalV(cmp, sto, adr, vlu)
-    override protected def updateLocalV(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
+        super.extendLocal(cmp, sto, adr, vlu)
+    override protected def updateLocal(cmp: Cmp, sto: Sto, adr: Adr, vlu: Val): Dlt =
         updateAddr(shadowStore, adr, vlu).foreach(upd => shadowStore = upd)
-        super.updateLocalV(cmp, sto, adr, vlu)
+        super.updateLocal(cmp, sto, adr, vlu)
 
     protected def addWidened(wid: Set[Adr]) =
         // helper functions
@@ -81,14 +77,13 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
                   acc + (updatedDep -> (oth ++ updatedCps))
           }
           .withDefaultValue(Set.empty)
+        lcls = lcls.map((adr, rfs) => (adr, rfs -- wid))
         cmps = cmps.map((nod, cls) => (nod, cls.map(widenCll)))
         shadowDeps = shadowDeps.map((adr, cps) => (adr, cps.map(widenCmp)))
         // widen addresses (using shadow store & deps)
         widened.foreach { adr =>
             writeAddr(adr, shadowStore.getOrElse(adr, lattice.bottom))
-            val cps = shadowDeps.getOrElse(adr, Set.empty)
-            deps += AddrDependency(adr) -> cps
-            addToWorkList(cps)
+            addToWorkList(shadowDeps.getOrElse(adr, Set.empty))
             shadowStore -= adr
             shadowDeps -= adr
         }

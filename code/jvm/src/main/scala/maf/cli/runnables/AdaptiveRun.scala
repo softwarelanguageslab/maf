@@ -79,17 +79,13 @@ object AdaptiveRun:
               println()
 
     def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/gambit/peval.scm")
+        val txt = Reader.loadFile("test/R5RS/various/four-in-a-row.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        //val anl1 = SchemeAnalyses.contextInsensitiveAnalysis(prg)
-        val anl2 = SchemeAnalyses.modFlocalAnalysisWidened(prg, 0)
-        //anl1.analyze()
-        anl2.analyze()
-        //println(s"FINISHED: ${anl1.finished} / ${anl2.finished}")
-        //println(s"VISITED: ${anl1.visited.size} / ${anl2.visited.size}")
+        val anl = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 100)
+        anl.analyze()
 
     def testModConc(): Unit =
         val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")
