@@ -145,6 +145,13 @@ object SchemeAnalyses:
         with SchemeModFLocalAnalysisResults:
           override def customPolicy(adr: Adr): AddrPolicy =
             if widened(adr) then AddrPolicy.Widened else AddrPolicy.Local
+    def modFlocalAnalysisWidened(prg: SchemeExp, k: Int) =
+      new SchemeModFLocal(prg)
+        with SchemeConstantPropagationDomain
+        with SchemeModFLocalCallSiteSensitivity(k)
+        with FIFOWorklistAlgorithm[SchemeExp]
+        with SchemeModFLocalAnalysisResults:
+          override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
 
     def scvModAnalysis(prg: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given
