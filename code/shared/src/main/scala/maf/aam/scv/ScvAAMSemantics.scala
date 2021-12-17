@@ -184,7 +184,8 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         sto: Sto,
         kont: KonA,
         t: Timestamp,
-        ext: Ext
+        ext: Ext,
+        ifIdn: Identity
       ): Result =
       for
           // [CondTrue] for comparison wih the paper, "nonzero?" has been renamed to "true?"
@@ -200,8 +201,9 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
               .getOrElse(done(Set()))
       yield csqSt ++ altSt
 
-    override def readStoV(sto: Sto, addr: Address, ext: Ext): Val =
-      tagOption(ext.m.get(addr).map(_.expr))(super.readStoV(sto, addr, ext))
+    override def readStoV(sto: Sto, addr: Address, ext: Ext): (Val, Sto) =
+        val (vlu, sto1) = super.readStoV(sto, addr, ext)
+        (tagOption(ext.m.get(addr).map(_.expr))(vlu), sto1)
 
     override def writeStoV(sto: Sto, addr: Address, value: Val, ext: Ext): (Sto, Ext) =
       (super.writeStoV(sto, addr, value, ext)._1,
@@ -348,82 +350,83 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
           case _ => super.eval(exp, env, sto, kont, t, ext)
 
     override def continue(vlu: Val, sto: Sto, kon: KonA, t: Timestamp, ext: Ext): Result =
-      readKonts(sto, kon).map {
-        case MonFrame(contract, expression, idn, env, Some(next)) =>
-          applyMon(vlu, expression, None, idn, env, sto, next, ext, t)
+      readKonts(sto, kon).map { (kont, sto) =>
+        kont match
+            case MonFrame(contract, expression, idn, env, Some(next)) =>
+              applyMon(vlu, expression, None, idn, env, sto, next, ext, t)
 
-        // [MonFlat]
-        case MonFlatFrame(contract, expression, idn, env, Some(next)) =>
-          val fexp = SchemeFuncall(contract.fexp, List(expression), idn)
-          val func = contract.contract
-          val args = List(vlu)
-          // TODO: fix expression here so that we maintain proper call-return matching
-          val frame = MonFlatFrameRet(contract, expression, idn, vlu, env).link(next)
-          applyFun(fexp, inject(func), args, env, sto, frame, t, ext)
+            // [MonFlat]
+            case MonFlatFrame(contract, expression, idn, env, Some(next)) =>
+              val fexp = SchemeFuncall(contract.fexp, List(expression), idn)
+              val func = contract.contract
+              val args = List(vlu)
+              // TODO: fix expression here so that we maintain proper call-return matching
+              val frame = MonFlatFrameRet(contract, expression, idn, vlu, env).link(next)
+              applyFun(fexp, inject(func), args, env, sto, frame, t, ext)
 
-        // [MonFlat] checking whether expression satisfies contract, otherwise blame
-        case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
-          for
-              nonblames <- feasible(`true?`, vlu, ext.phi, ext.vars)
-                .map((phi1) => ap(expVlu, sto, next, t, ext.copy(phi = phi1)))
-                .getOrElse(done(Set()))
+            // [MonFlat] checking whether expression satisfies contract, otherwise blame
+            case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
+              for
+                  nonblames <- feasible(`true?`, vlu, ext.phi, ext.vars)
+                    .map((phi1) => ap(expVlu, sto, next, t, ext.copy(phi = phi1)))
+                    .getOrElse(done(Set()))
 
-              blames <- feasible(`false?`, vlu, ext.phi, ext.vars)
-                .map((phi1) => done(Set(blame(contract.contractIdn, expression.idn, sto, next, t, ext))))
-                .getOrElse(done(Set()))
-          yield nonblames ++ blames
+                  blames <- feasible(`false?`, vlu, ext.phi, ext.vars)
+                    .map((phi1) => done(Set(blame(contract.contractIdn, expression.idn, sto, next, t, ext))))
+                    .getOrElse(done(Set()))
+              yield nonblames ++ blames
 
-        // [MonFun]
-        case MonFunFrame(contract, expression, idn, env, Some(next)) =>
-          val arr = Arr(idn, expression.idn, contract, project(vlu))
-          ap(inject(lattice.arr(arr)), sto, next, t, ext)
+            // [MonFun]
+            case MonFunFrame(contract, expression, idn, env, Some(next)) =>
+              val arr = Arr(idn, expression.idn, contract, project(vlu))
+              ap(inject(lattice.arr(arr)), sto, next, t, ext)
 
-        // Rule added to evaluate flat contracts
-        case FlatLitFrame(exp, idn, env, Some(next)) =>
-          ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext)
+            // Rule added to evaluate flat contracts
+            case FlatLitFrame(exp, idn, env, Some(next)) =>
+              ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext)
 
-        // [MonArr]
-        case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
-          // The value of the range contract is in the value passed to this continuation
-          // Now apply mon on the arguments of the function to the domain contracts
-          checkDomains(fexp, fexp.args, arr, vlu, arr.contract.domain, argv, List(), env, sto, next, t, ext)
+            // [MonArr]
+            case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
+              // The value of the range contract is in the value passed to this continuation
+              // Now apply mon on the arguments of the function to the domain contracts
+              checkDomains(fexp, fexp.args, arr, vlu, arr.contract.domain, argv, List(), env, sto, next, t, ext)
 
-        // Restore the context after a function call
-        case RestoreCtxFrame(phi, m, vars, graph, looped, Some(next)) =>
-          val ext1 = if looped then ext.copy(phi = phi, m = m, vars = vars) else ext
-          // TODO: check Nguyen implementation to see whether a fresh sym value is generated when looped for the return value
-          val (vlu1, ext2) = (if looped then (vlu._1, None) else vlu, ext1)
+            // Restore the context after a function call
+            case RestoreCtxFrame(phi, m, vars, graph, looped, Some(next)) =>
+              val ext1 = if looped then ext.copy(phi = phi, m = m, vars = vars) else ext
+              // TODO: check Nguyen implementation to see whether a fresh sym value is generated when looped for the return value
+              val (vlu1, ext2) = (if looped then (vlu._1, None) else vlu, ext1)
 
-          ap(
-            vlu1,
-            sto,
-            next,
-            t,
-            ext2
-          )
+              ap(
+                vlu1,
+                sto,
+                next,
+                t,
+                ext2
+              )
 
-        case CheckDomainFrame(fexp, remainingArgv, remainingSyntacticArguments, arr, rangeContract, remainingDomains, argv, env, Some(next)) =>
-          checkDomains(fexp, remainingSyntacticArguments, arr, rangeContract, remainingDomains, remainingArgv, vlu :: argv, env, sto, next, t, ext)
+            case CheckDomainFrame(fexp, remainingArgv, remainingSyntacticArguments, arr, rangeContract, remainingDomains, argv, env, Some(next)) =>
+              checkDomains(fexp, remainingSyntacticArguments, arr, rangeContract, remainingDomains, remainingArgv, vlu :: argv, env, sto, next, t, ext)
 
-        case DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domainIdn, rangeMakerExp, env, Some(next)) =>
-          evaluateDepContract(
-            domains,
-            rangeMaker,
-            rangeMakerExp,
-            env,
-            sto,
-            next,
-            t,
-            ext,
-            if rangeMaker.isDefined then vlu :: domainsV else domainsV,
-            if rangeMaker.isEmpty then Some(vlu) else rangeMakerV,
-            domainIdn
-          )
+            case DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domainIdn, rangeMakerExp, env, Some(next)) =>
+              evaluateDepContract(
+                domains,
+                rangeMaker,
+                rangeMakerExp,
+                env,
+                sto,
+                next,
+                t,
+                ext,
+                if rangeMaker.isDefined then vlu :: domainsV else domainsV,
+                if rangeMaker.isEmpty then Some(vlu) else rangeMakerV,
+                domainIdn
+              )
 
-        case RetCheckRangeFrame(contract, exp, env, Some(next)) =>
-          applyMon(contract, exp, Some(vlu), Identity.none, env, sto, next, ext, t)
+            case RetCheckRangeFrame(contract, exp, env, Some(next)) =>
+              applyMon(contract, exp, Some(vlu), Identity.none, env, sto, next, ext, t)
 
-        case frm => super.continue(vlu, sto, frm, t, ext)
+            case frm => super.continue(vlu, sto, frm, t, ext)
       }.flattenM
 
     /*=============================================================================================================================*/
