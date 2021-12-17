@@ -54,13 +54,12 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics:
         /** Register a read dependency */
         def register(r: Set[Address], conf: Conf): Unit =
           change {
-            r.foreach(adr => R + (adr -> (R(adr) + conf)))
+            r.foreach(adr => R = R + (adr -> (R(adr) + conf)))
           }
 
         /** Spawn a configuration */
         def spawn(conf: Conf): Unit =
           if !seen.contains(conf) then
-              println(s"spawning $conf")
               change {
                 seen = seen + conf
                 worklist.enqueue(conf)
