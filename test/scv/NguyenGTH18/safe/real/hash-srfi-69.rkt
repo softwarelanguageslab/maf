@@ -269,8 +269,8 @@
 
 (define (hash-on/c key/c)
   (case->
-   [key/c . -> . exact-nonnegative-integer?]
-   [key/c exact-positive-integer? . -> . exact-nonnegative-integer?]))
+   [-> key/c exact-nonnegative-integer?]
+   [-> key/c exact-positive-integer? exact-nonnegative-integer?]))
 
 (provide
  (contract-out
@@ -279,40 +279,40 @@
   [symbol-hash (hash-on/c symbol?)]
   [hash (hash-on/c any/c)]
   [hash-by-identity (hash-on/c any/c)]
-  [vector-hash (vector? exact-positive-integer? . -> . exact-nonnegative-integer?)]
+  [vector-hash (-> vector? exact-positive-integer? exact-nonnegative-integer?)]
   [make-hash-table
    (case->
     [-> hash-table?]
-    [(any/c any/c . -> . boolean?) . -> . hash-table?]
-    [(any/c any/c . -> . boolean?) (hash-on/c any/c) . -> . hash-table?]
-    [(any/c any/c . -> . boolean?) (hash-on/c any/c) exact-positive-integer? . -> . hash-table?])]
+    [-> (-> any/c any/c  boolean?) hash-table?]
+    [-> (-> any/c any/c  boolean?) (hash-on/c any/c) hash-table?]
+    [-> (-> any/c any/c  boolean?) (-> hash-on/c any/c) exact-positive-integer? hash-table?])]
   [make-hash-table-maker
-   ((any/c any/c . -> . boolean?) (hash-on/c any/c) . -> .
-    (exact-positive-integer? . -> . hash-table?))]
-  [make-symbol-hash-table (exact-positive-integer? . -> . hash-table?)]
-  [make-string-hash-table (exact-positive-integer? . -> . hash-table?)]
-  [make-string-ci-hash-table (exact-positive-integer? . -> . hash-table?)]
-  [make-integer-hash-table (exact-positive-integer? . -> . hash-table?)]
+    (-> (any/c any/c boolean?) (hash-on/c any/c)) ;; TODO: check 
+    (-> exact-positive-integer? hash-table?))]
+  [make-symbol-hash-table (-> exact-positive-integer? hash-table?)]
+  [make-string-hash-table (-> exact-positive-integer? hash-table?)]
+  [make-string-ci-hash-table (-> exact-positive-integer? hash-table?)]
+  [make-integer-hash-table (-> exact-positive-integer? hash-table?)]
   [hash-table-ref
    (case->
-    [hash-table? any/c . -> . any/c]
-    [hash-table? any/c (-> any/c) . -> . any/c])]
-  [hash-table-ref/default (hash-table? any/c any/c . -> . any/c)]
-  [hash-table-set! (hash-table? any/c any/c . -> . void?)]
+    [-> hash-table? any/c any/c]
+    [-> hash-table? any/c (-> any/c) any/c])]
+  [hash-table-ref/default (-> hash-table? any/c any/c any/c)]
+  [hash-table-set! (-> hash-table? any/c any/c void?)]
   [hash-table-update!
    (case->
-    [hash-table? any/c (any/c . -> . any/c) . -> . void?]
-    [hash-table? any/c (any/c . -> . any/c) (-> any/c) . -> . void?])]
+    [-> hash-table? any/c (-> any/c any/c) void?]
+    [-> hash-table? any/c (-> any/c any/c) (-> any/c) void?])]
   [hash-table-update!/default
-   (hash-table? any/c (any/c . -> . any/c) any/c . -> . void?)]
-  [hash-table-delete! (hash-table? any/c . -> . void?)]
-  [hash-table-exists? (hash-table? any/c . -> . boolean?)]
-  [hash-table-walk (hash-table? char? . -> . void?)]
-  [hash-table-fold (hash-table? (any/c any/c . -> . any/c) any/c . -> . any/c)]
-  [alist->hash-table ([(listof cons?)] #:rest list? . ->* . hash-table?)]
-  [hash-table->alist (hash-table? . -> . (listof cons?))]
-  [hash-table-copy (hash-table? . -> . hash-table?)]
-  [hash-table-merge! (hash-table? hash-table? . -> . hash-table?)]
-  [hash-table-keys (hash-table? . -> . list?)]
-  [hash-table-values (hash-table? . -> . list?)]
+   (-> hash-table? any/c (-> any/c any/c) any/c void?)]
+  [hash-table-delete! (-> hash-table? any/c void?)]
+  [hash-table-exists? (-> hash-table? any/c boolean?)]
+  [hash-table-walk (-> hash-table? char? void?)]
+  [hash-table-fold (-> hash-table? (-> any/c any/c any/c) any/c any/c)]
+  ;TODO: [alist->hash-table ([(listof cons?)] #:rest list? . ->* . hash-table?)]
+  [hash-table->alist (-> hash-table? (listof cons?))]
+  [hash-table-copy (-> hash-table? hash-table?)]
+  [hash-table-merge! (-> hash-table? hash-table? hash-table?)]
+  [hash-table-keys (-> hash-table? list?)]
+  [hash-table-values (-> hash-table? list?)]
   ))

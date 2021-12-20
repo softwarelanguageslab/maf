@@ -12,4 +12,4 @@
 
 (define (main n) (s n 0))
 
-(provide/contract [main (integer? . -> . any/c)])
+(provide/contract [main (-> integer? any/c)])

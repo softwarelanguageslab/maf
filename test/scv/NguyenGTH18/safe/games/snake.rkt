@@ -21,26 +21,26 @@
   [BOARD-WIDTH real?]
   [BOARD-HEIGHT real?]
   ;; collide
-  [snake-wall-collide? (SNAKE/C . -> . boolean?)]
-  [snake-self-collide? (SNAKE/C . -> . boolean?)]
+  [snake-wall-collide? (-> SNAKE/C boolean?)]
+  [snake-self-collide? (-> SNAKE/C boolean?)]
   ;; cut-tail
-  [cut-tail ((and/c cons? (listof POSN/C)) . -> . (listof POSN/C))]
+  [cut-tail (-> (and/c cons? (listof POSN/C)) (listof POSN/C))]
   ;; motion-help
-  [snake-slither (SNAKE/C . -> . SNAKE/C)]
-  [snake-grow (SNAKE/C . -> . SNAKE/C)]
+  [snake-slither (-> SNAKE/C SNAKE/C)]
+  [snake-grow (-> SNAKE/C SNAKE/C)]
   ;; motion
-  [world-change-dir (WORLD/C DIR/C . -> . WORLD/C)]
-  [world->world (WORLD/C . -> . WORLD/C)]
+  [world-change-dir (-> WORLD/C DIR/C WORLD/C)]
+  [world->world (-> WORLD/C WORLD/C)]
   ;; handlers
-  [handle-key (WORLD/C string? . -> . WORLD/C)]
-  [game-over? (WORLD/C . -> . boolean?)]
+  [handle-key (-> WORLD/C string? WORLD/C)]
+  [game-over? (-> WORLD/C boolean?)]
   ;; scenes
-  [world->scene (WORLD/C . -> . image/c)]
-  [food+scene (POSN/C image/c . -> . image/c)]
-  [place-image-on-grid (image/c real? real? image/c . -> . image/c)]
-  [snake+scene (SNAKE/C image/c . -> . image/c)]
-  [segments+scene ((listof POSN/C) image/c . -> . image/c)]
-  [segment+scene (POSN/C image/c . -> . image/c)]
+  [world->scene (-> WORLD/C image/c)]
+  [food+scene (-> POSN/C image/c image/c)]
+  [place-image-on-grid (-> image/c real? real? image/c image/c)]
+  [snake+scene (-> SNAKE/C image/c  image/c)]
+  [segments+scene (-> (listof POSN/C) image/c image/c)]
+  [segment+scene (-> POSN/C image/c  image/c)]
   ))
 
 

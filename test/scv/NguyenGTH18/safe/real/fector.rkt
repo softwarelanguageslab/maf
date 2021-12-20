@@ -120,14 +120,14 @@
 
 (provide
  (contract-out
-  [fector? (any/c . -> . boolean?)]
-  [make-fector (exact-nonnegative-integer? any/c . -> . fector?)]
-  [fector (() #:rest list? . ->* . fector?)]
+  [fector? (-> any/c boolean?)]
+  [make-fector (-> exact-nonnegative-integer? any/c fector?)]
+  [fector (->* list? vector?)]
   [fector-length
-   (fector? . -> . exact-nonnegative-integer?)]
+   (-> fector? exact-nonnegative-integer?)]
   [build-fector
-   (exact-nonnegative-integer? (exact-nonnegative-integer? . -> . any/c) . -> . fector?)]
+   (-> exact-nonnegative-integer? (-> exact-nonnegative-integer? any/c) fector?)]
   [fector-ref
-   (fector? exact-nonnegative-integer? . -> . any/c)]
+   (-> fector? exact-nonnegative-integer? any/c)]
   [fector-set
-   (fector? exact-nonnegative-integer? any/c . -> . any/c)]))
+   (-> fector? exact-nonnegative-integer? any/c any/c)]))
