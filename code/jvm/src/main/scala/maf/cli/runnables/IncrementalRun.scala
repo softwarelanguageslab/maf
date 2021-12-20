@@ -85,32 +85,32 @@ object IncrementalRun extends App:
           with IncrementalSchemeModFBigStepSemantics
           with IncrementalSchemeTypeDomain // IncrementalSchemeConstantPropagationDomain
           with IncrementalGlobalStore[SchemeExp]
-          // with IncrementalLogging[SchemeExp]
-          // with IncrementalDataFlowVisualisation[SchemeExp]
-          {
-          //override def focus(a: Addr): Boolean =
-          //!a.toString.contains("PrmAddr") && (a.toString.contains("ret") || a.toString.contains("x2") || a.toString.contains("__"))
-          var configuration: IncrementalConfiguration = ci_di_wi
+          with IncrementalLogging[SchemeExp]
+          with IncrementalDataFlowVisualisation[SchemeExp] {
+          override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(n")
+          var configuration: IncrementalConfiguration = wi_cy
           override def intraAnalysis(
               cmp: Component
-            ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
-          // with IncrementalLoggingIntra
-          // with IncrementalVisualIntra
+            ) = new IntraAnalysis(cmp)
+            with IncrementalSchemeModFBigStepIntra
+            with IncrementalGlobalStoreIntraAnalysis
+            with IncrementalLoggingIntra
+            with IncrementalVisualIntra
         }
 
         try {
           println(s"***** $bench *****")
           interpretProgram(bench)
           val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-          //  println(text.prettyString())
+          println(text.prettyString())
           val a = base(text)
           //   a.logger.logU("BASE + INC")
           a.analyzeWithTimeout(timeout())
-          println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
-          a.configuration = wi_cy
-          //  a.flowInformationToDotGraph("logs/flowsA1.dot")
+          //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
+          a.configuration = wi
+          a.flowInformationToDotGraph("logs/flowsA1.dot")
           a.updateAnalysis(timeout())
-          //  a.flowInformationToDotGraph("logs/flowsA2.dot")
+          a.flowInformationToDotGraph("logs/flowsA2.dot")
           //Thread.sleep(1000)
           //val b = base(text)
           //b.version = New
@@ -118,7 +118,7 @@ object IncrementalRun extends App:
           //b.analyzeWithTimeout(timeout())
           // b.flowInformationToDotGraph("logs/flowsB.dot")
           // println("Done")
-          println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
+          //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
         } catch {
           case e: Exception =>
             e.printStackTrace(System.out)
@@ -130,16 +130,16 @@ object IncrementalRun extends App:
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/DEBUG1.scm",
-      "test/DEBUG2.scm"
+      "test/DEBUG3.scm",
+      //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
     )
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(10, MINUTES))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
     modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
     //println("Creating graphs")
-    //createPNG("logs/flowsA1.dot", true)
-    //createPNG("logs/flowsA2.dot", true)
+    createPNG("logs/flowsA1.dot", true)
+    createPNG("logs/flowsA2.dot", true)
     //createPNG("logs/flowsB.dot", true)
     println("Done")
 
@@ -151,3 +151,12 @@ object Memorycheck extends App:
         s"${v.toDouble / (1L << (z * 10))} ${" KMGTPE".charAt(z)}B"
 
     println(formatSize(Runtime.getRuntime.nn.maxMemory()))
+
+object R:
+
+    // Script must be a pathname relative to the root of the project.
+    def runScript(script: String): Boolean =
+        if !script.endsWith(".R") then return false
+        val escapeSpaces = script.replace(" ", "\\ ").nn
+        import sys.process.*
+        s"Rscript --vanilla $escapeSpaces".! == 0
