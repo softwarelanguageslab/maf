@@ -115,6 +115,31 @@ object SchemeBenchmarkPrograms:
 
     def selectRandomPar(n: Int): Set[String] = Random.shuffle(concurrentBenchmarks).take(n)
 
+    //  SCV ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Benchmarks from the "Soft Contract Verification for Higher-Order Stateful Programs" by Nguyen et al.
+     *
+     * Modified in a semantic preserving way in order to support them in the more minimal ContractScheme Language
+     */
+    lazy val scvNguyenBenchmarks: Set[String] = Set(
+      "test/scv/NguyenGTH18/safe/games/tetris.rkt",
+      "test/scv/NguyenGTH18/safe/games/snake.rkt",
+      "test/scv/NguyenGTH18/safe/games/zombie.rkt",
+      "test/scv/NguyenGTH18/safe/larceny/slatex.rkt",
+      "test/scv/NguyenGTH18/safe/real/slatex.rkt", // what is the difference with the other slatex?
+      "test/scv/NguyenGTH18/safe/real/slatex.rkt",
+      "test/scv/NguyenGTH18/safe/real/fector.rkt",
+      "test/scv/NguyenGTH18/safe/real/nucleic2-modular-fixed.rkt", // nuclei2-modular* from paper
+      "test/scv/NguyenGTH18/safe/real/nucleic2-modular.rkt",
+      "test/scv/NguyenGTH18/safe/real/ring-buffer.rkt",
+      "test/scv/NguyenGTH18/safe/real/leftist-tree.rkt", // leftist-tree
+      "test/scv/NguyenGTH18/safe/real/protected-leftist-tree.rkt", // leftist-tree* from paper
+      "test/scv/NguyenGTH18/safe/mochi/hors.rkt", // quite small
+      "test/scv/NguyenGTH18/safe/real/hash-srfi-69.rkt",
+      // TODO: missing? soft-typing, occurence-typing, ring-bufer*, morsecode
+    )
+
     // Publications ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     lazy val jss2021: Set[String] =
