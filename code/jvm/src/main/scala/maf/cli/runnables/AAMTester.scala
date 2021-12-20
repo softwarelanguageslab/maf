@@ -34,11 +34,12 @@ trait AAMTesterT:
         given gInst: Graph[graph.G, GraphElementAAM, GraphElement] = graph.G.typeclass
         val theAnalysis = analysis(program)
 
-        def findConf(states: Set[theAnalysis.Conf], g: graph.G, id: String): Option[theAnalysis.Conf] =
+        def findConf[T](states: Set[T], g: graph.G, id: String): Option[T] =
             val stateId = id.toIntOption
             if stateId.isEmpty then None
             else
                 val state = gInst.findNodeById(g, stateId.get)
+                println(s"state $state ${state.map(_.hsh)}")
                 state match
                     case Some(state) =>
                       states.find(state.hsh == _.hashCode)
@@ -57,21 +58,20 @@ trait AAMTesterT:
             println(s"Set of answers ${analysisResult.values}")
         else println(s"The analysis timed-out in ${time / (1000 * 1000)} millisconds")
 
-        println("query>>> ")
-/*
+        print("query>>> ")
         var input = StdIn.readLine()
 
         while (input != ":q") do
             println(input.nn.split('.').nn.mkString("::"))
-            val parts = input.split('.').nn.flatMap(s => findConf(states, g, s.nn))
+            val parts = input.split('.').nn.toList.flatMap(s => findConf(states, g, s.nn))
             for window <- parts.sliding(2, 1) do
                 println("== New comparison ==")
+                println(s"window $window")
                 window.foreach(state => theAnalysis.printDebug(state, false))
                 if window.size == 2 then theAnalysis.compareStates(window(0), window(1))
 
             print("query>>> ")
             input = StdIn.readLine()
- */
 
 object AAMTester extends AAMTesterT:
     type Analysis = BaseSchemeAAMSemantics
@@ -86,6 +86,7 @@ object AAMTester extends AAMTesterT:
         with SchemeStoreAllocateReturn
         with SchemeFunctionCallBoundary
         with BaseSimpleWorklistSystem
+        //with SchemeAtomicEvaluation
         with SchemeAAMAnalysisResults {
       //override type System = LoggingLocalStoreSystem
     }

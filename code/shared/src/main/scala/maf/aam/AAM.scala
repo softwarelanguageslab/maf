@@ -5,6 +5,7 @@ import maf.util.graph.*
 import maf.util.graph.Graph.GraphOps
 import maf.util.benchmarks.Timeout
 import scala.annotation.tailrec
+import maf.util.Trampoline
 
 case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) extends GraphElement:
     def metadata: GraphMetadata = GraphMetadataString(data)
@@ -31,6 +32,10 @@ trait AAMAnalysis:
 
     /** The type of state that should be used in the analysis. */
     type State
+
+    /** The type of the result, we use trampolines here to avoid stackoverflow exceptions */
+    protected type Result = Trampoline[Set[State]]
+    protected type SingleResult = Trampoline[State]
 
     /**
      * The type of configuration, in classic AAM w/o otimisations this is equal to the state. In optimized AAM ,various parts of the state that is
@@ -82,13 +87,13 @@ trait AAMAnalysis:
     def injectConf(expr: Expr): Conf
 
     /** Step the analysis state */
-    def step(start: State): Set[State]
+    def step(start: State): Result
 
     /** Print a debug version of the given state */
     def printDebug(s: Conf, printStore: Boolean = false): Unit
 
     /** Compare two states, return true if they are equal */
-    def compareStates(s1: State, s2: State): Boolean
+    def compareStates(s1: Conf, s2: Conf): Boolean
 
     /** Checks whether the given state is a final state */
     def isFinal(st: State): Boolean
@@ -110,7 +115,7 @@ trait AAMAnalysis:
     protected def transition[G](sys: System, dependencyGraph: G)(using AAMGraph[G]): (System, G)
 
     /** Compute the fix point of the given system */
-    protected def fix[G](timeout: Timeout.T)(sys: System, dependencyGraph: G)(using AAMGraph[G]): (System, G) =
+    protected def fix[G](timeout: Timeout.T)(sys: System, dependencyGraph: G, iters: Int = 0)(using AAMGraph[G]): (System, G) =
         sys.reset()
         val (next, fpdg) = transition(sys, dependencyGraph)
         if !next.hasChanged then
@@ -121,7 +126,7 @@ trait AAMAnalysis:
             /* timeout */
             finished = false
             (sys, dependencyGraph)
-        else fix(timeout)(next, fpdg)
+        else fix(timeout)(next, fpdg, iters + 1)
 
     /** Inject the configuration into a state that can be used for the small step semantics */
     protected def asState(conf: Conf, sys: System): State

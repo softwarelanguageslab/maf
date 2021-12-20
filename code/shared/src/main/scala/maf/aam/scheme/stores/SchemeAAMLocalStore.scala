@@ -1,4 +1,6 @@
-package maf.aam.scheme
+package maf.aam.scheme.stores
+
+import maf.aam.scheme.*
 
 import maf.aam.*
 import maf.core.*
@@ -19,18 +21,19 @@ trait SchemeAAMLocalStore extends BaseSchemeAAMSemantics:
 
     override lazy val initialStore: Sto = BasicStore(initialBds.map(p => (p._2, p._3)).toMap).extend(Kont0Addr, Storable.K(Set(HltFrame)))
 
-    def readSto(sto: Sto, addr: Address): Storable =
-      sto.lookup(addr).getOrElse(Storable.V(lattice.bottom))
+    def readSto(sto: Sto, addr: Address): (Storable, Sto) =
+      (sto.lookup(addr).getOrElse(Storable.V(lattice.bottom)), sto)
 
     /** Write to the given address in the store, returns the updated store */
     override def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
       sto.extend(addr, value)
 
-    override def compareStates(s1: State, s2: State): Boolean =
+    override def compareStates(s1: Conf, s2: Conf): Boolean =
         println("==================================================================================")
         for (k, v) <- s1.s.content do
             if s2.s.content.contains(k) && v != s2.s.content(k) then println(s"Difference detected at $k of $v and ${s2.s.content(k)}")
         println("==================================================================================")
+        if s1.k != s2.k then println(s"**** difference in cnts ${s1.k} <======> ${s2.k}")
         true
 
     override def storeString(store: Sto, primitives: Boolean = true): String =

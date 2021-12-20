@@ -20,7 +20,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     def analyses: List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 30min.) and the number of concrete runs
-    def timeout() = Timeout.start(Duration(10, MINUTES)) // timeout for the analyses
+    def timeout() = Timeout.start(Duration(30, MINUTES)) // timeout for the analyses
     def runs = 3 // number of runs for the concrete interpreter
 
     // keep the results of the benchmarks in a table
@@ -65,20 +65,17 @@ object AnalysisComparisonAlt1
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ]:
-    def analyses =
-        val k = 0
-        val ls = List(900, 1000, 1200, 1500, 2000, 3000, 4000, 5000)
-        // run some adaptive analyses
-        val default: List[(SchemeExp => Analysis, String)] = List(
-          (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS"),
-          (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")
-        )
-        val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
-          (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)"),
-        }
-        default ++ adaptive
-    def main(args: Array[String]) = check("test/R5RS/gambit/matrix.scm")
-    def main0(args: Array[String]) = runBenchmarks(
+    def k = 0
+    def ls = List(5)
+    lazy val modf: (SchemeExp => Analysis, String) = (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")
+    lazy val dss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS")
+    lazy val wdss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modFlocalAnalysisWidened(_, k), s"$k-CFA WDSS")
+    lazy val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
+      (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
+    }
+    def analyses = List(modf) // :: List(wdss)
+    def main0(args: Array[String]) = check("test/R5RS/gambit/matrix.scm")
+    def main(args: Array[String]) = runBenchmarks(
       Set(
         //"test/R5RS/various/collatz.scm",
         //"test/R5RS/various/mceval.scm",
@@ -97,10 +94,10 @@ object AnalysisComparisonAlt1
         //"test/R5RS/gambit/tak.scm",
         //"test/R5RS/gambit/browse.scm",
         //"test/R5RS/gambit/earley.scm",
-        "test/R5RS/gambit/matrix.scm",
+        //"test/R5RS/gambit/matrix.scm",
         //"test/R5RS/gambit/mazefun.scm",
         //"test/R5RS/gambit/nqueens.scm",
-        //"test/R5RS/gambit/peval.scm",
+        "test/R5RS/gambit/peval.scm",
       )
     )
 
@@ -129,7 +126,8 @@ object AnalysisComparisonAlt1
 
     def runBenchmarks(benchmarks: Set[Benchmark]) =
         benchmarks.foreach(runBenchmark)
-        println(results.prettyString())
+        val cols = analyses.map(_._2)
+        println(results.prettyString(columns = cols))
         Writer.setDefaultWriter(Writer.open("benchOutput/precision/precision-benchmarks.csv"))
-        Writer.write(results.toCSVString(rowName = "benchmark"))
+        Writer.write(results.toCSVString(rowName = "benchmark", columns = cols))
         Writer.closeDefaultWriter()

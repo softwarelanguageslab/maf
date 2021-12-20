@@ -4,7 +4,9 @@ import maf.aam.scheme.*
 import maf.core.Address
 import maf.core.{Identifier, Identity}
 import maf.modular.scv.*
+import maf.core.Monad.*
 import maf.modular.scv.Symbolic.Implicits
+import maf.util.Trampoline.{given, *}
 import maf.language.scheme.*
 import maf.language.scheme.primitives.*
 import maf.language.sexp.*
@@ -14,6 +16,7 @@ import maf.modular.scv.ScvSatSolver
 import maf.language.scheme.SchemeValue
 import maf.aam.scv.CallGraph.{Edge, Looped}
 import maf.util.MonoidImplicits.*
+import maf.core.Monad.*
 
 trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
     /** We add SCV specific information to the each AAM state */
@@ -181,24 +184,26 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         sto: Sto,
         kont: KonA,
         t: Timestamp,
-        ext: Ext
-      ): Set[State] =
-        // [CondTrue] for comparison wih the paper, "nonzero?" has been renamed to "true?"
-        val csqSt =
-          feasible(`true?`, value, ext.phi, ext.vars)
-            .map(phi1 => ev(csq, env, sto, kont, t, ext.copy(phi = phi1)))
-            .getOrElse(Set())
+        ext: Ext,
+        ifIdn: Identity
+      ): Result =
+      for
+          // [CondTrue] for comparison wih the paper, "nonzero?" has been renamed to "true?"
+          csqSt <-
+            feasible(`true?`, value, ext.phi, ext.vars)
+              .map(phi1 => ev(csq, env, sto, kont, t, ext.copy(phi = phi1)))
+              .getOrElse(done(Set()))
 
-        // [CondTrue] for comparison wih the paper, "zero?" has been renamed to "false?"
-        val altSt =
-          feasible(`false?`, value, ext.phi, ext.vars)
-            .map(phi1 => ev(alt, env, sto, kont, t, ext.copy(phi = phi1)))
-            .getOrElse(Set())
+          // [CondTrue] for comparison wih the paper, "zero?" has been renamed to "false?"
+          altSt <-
+            feasible(`false?`, value, ext.phi, ext.vars)
+              .map(phi1 => ev(alt, env, sto, kont, t, ext.copy(phi = phi1)))
+              .getOrElse(done(Set()))
+      yield csqSt ++ altSt
 
-        csqSt ++ altSt
-
-    override def readStoV(sto: Sto, addr: Address, ext: Ext): Val =
-      tagOption(ext.m.get(addr).map(_.expr))(super.readStoV(sto, addr, ext))
+    override def readStoV(sto: Sto, addr: Address, ext: Ext): (Val, Sto) =
+        val (vlu, sto1) = super.readStoV(sto, addr, ext)
+        (tagOption(ext.m.get(addr).map(_.expr))(vlu), sto1)
 
     override def writeStoV(sto: Sto, addr: Address, value: Val, ext: Ext): (Sto, Ext) =
       (super.writeStoV(sto, addr, value, ext)._1,
@@ -217,19 +222,19 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         kon: KonA,
         t: Timestamp,
         ext: Ext
-      ): Set[State] =
-        val s1 = super.applyPrim(fexp, func, argv, env, sto, kon, t, ext).map(_.mapValue(tagOption(ap(fexp, argv))))
-        val s2 =
-          if OpqOps.eligible(argv.map(project)) then
-              val opqValue = lattice
-                .getPrimitives(project(func))
-                .foldMap(prim => OpqOps.compute(prim, argv.map(project)))
+      ): Result =
+      for
+          s1 <- super.applyPrim(fexp, func, argv, env, sto, kon, t, ext).map(_.map(_.mapValue(tagOption(ap(fexp, argv)))))
+          s2 <-
+            if OpqOps.eligible(argv.map(project)) then
+                val opqValue = lattice
+                  .getPrimitives(project(func))
+                  .foldMap(prim => OpqOps.compute(prim, argv.map(project)))
 
-              val taggedValue = tagOption(ap(fexp, argv))(inject(opqValue))
-              ap(taggedValue, sto, kon, t, ext)
-          else Set()
-
-        s1 ++ s2
+                val taggedValue = tagOption(ap(fexp, argv))(inject(opqValue))
+                ap(taggedValue, sto, kon, t, ext)
+            else done(Set())
+      yield s1 ++ s2
 
     override protected def applyClo(
         fexp: SchemeFuncall,
@@ -240,49 +245,52 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         kon: KonA,
         t: Timestamp,
         ext: Ext
-      ): Set[State] =
-      lattice.getClosures(project(func)).flatMap {
-        case (lam, lex: Env @unchecked) if lam.check(argv.size) =>
-          // we will ignore this ext as we will manually update it later
-          val (env1, sto2, t0, ext_) = bindArgs(fexp, argv, lam, lex, sto, kon, t, ext)
+      ): Result =
+      lattice
+        .getClosures(project(func))
+        .map {
+          case (lam, lex: Env @unchecked) if lam.check(argv.size) =>
+            // we will ignore this ext as we will manually update it later
+            val (env1, sto2, t0, ext_) = bindArgs(fexp, argv, lam, lex, sto, kon, t, ext)
 
-          // update the path condition and store cache, only share the path condition
-          // and store cache if it was not looped.
-          val (ext1, looped) = ext.graph.add(Edge((lam, lex))) match
-              case Looped.Safe(c) =>
-                (ext.copy(graph = c), false) // TODO: gc store cache?
+            // update the path condition and store cache, only share the path condition
+            // and store cache if it was not looped.
+            val (ext1, looped) = ext.graph.add(Edge((lam, lex))) match
+                case Looped.Safe(c) =>
+                  (ext.copy(graph = c), false) // TODO: gc store cache?
 
-              // Default behaviour from the paper: use the path condition and store
-              // cache from the closure. But conservatively update the store cache
-              // such that free variables are removed.
-              case Looped.Recursive(_) =>
-                val m1 = ext.storeCacheClo((lam, lex)) -- lam.fv.map(lex.lookup(_).get)
-                val vars = ext.varsClo((lam, lex))
-                (ext.copy(phi = phiOfClo((lam, lex), ext), m = m1, vars = vars), true)
+                // Default behaviour from the paper: use the path condition and store
+                // cache from the closure. But conservatively update the store cache
+                // such that free variables are removed.
+                case Looped.Recursive(_) =>
+                  val m1 = ext.storeCacheClo((lam, lex)) -- lam.fv.map(lex.lookup(_).get)
+                  val vars = ext.varsClo((lam, lex))
+                  (ext.copy(phi = phiOfClo((lam, lex), ext), m = m1, vars = vars), true)
 
-          // then, add symbolic representations for the arguments of the function
-          val fixd = argv.take(lam.args.size) // only provide sym representation for fixed arguments
-          val (syms, ext2) = fixd.foldRight((List[Symbolic](), ext1)) {
-            case ((_, Some(sym)), (syms, ext)) if !looped => (sym :: syms, ext)
-            case ((_, _), (syms, ext)) =>
-              val (sym, ext1) = fresh(ext)
-              (sym :: syms, ext1)
-          }
+            // then, add symbolic representations for the arguments of the function
+            val fixd = argv.take(lam.args.size) // only provide sym representation for fixed arguments
+            val (syms, ext2) = fixd.foldRight((List[Symbolic](), ext1)) {
+              case ((_, Some(sym)), (syms, ext)) if !looped => (sym :: syms, ext)
+              case ((_, _), (syms, ext)) =>
+                val (sym, ext1) = fresh(ext)
+                (sym :: syms, ext1)
+            }
 
-          // finally, bind them in the store cache
-          val ext3 = ext2.copy(m = ext1.m ++ lam.args.zip(syms).map { case (arg: Identifier, sym) =>
-            env1(arg.name) -> sym // in the previous step we ensured that we have a finite number of symbolic names in the store cache
-          })
+            // finally, bind them in the store cache
+            val ext3 = ext2.copy(m = ext1.m ++ lam.args.zip(syms).map { case (arg: Identifier, sym) =>
+              env1(arg.name) -> sym // in the previous step we ensured that we have a finite number of symbolic names in the store cache
+            })
 
-          // push a return continuation on the continuation stack to restore the path condition
-          // and the store cache
-          val (sto3, frame, t1) = pushFrameRet(fexp, env, sto2, kon, RestoreCtxFrame(ext.phi, ext.m, ext.vars, ext.graph, looped), t0)
+            // push a return continuation on the continuation stack to restore the path condition
+            // and the store cache
+            val (sto3, frame, t1) = pushFrameRet(fexp, env, sto2, kon, RestoreCtxFrame(ext.phi, ext.m, ext.vars, ext.graph, looped), t0)
 
-          // and evaluate the body
-          evaluate_sequence(env1, sto3, frame, lam.body, t1, ext3, true)
-        case (lam, lex) =>
-          invalidArity(fexp, argv.size, lam.args.size + lam.varArgId.size, sto, kon, t, ext)
-      }
+            // and evaluate the body
+            evaluate_sequence(env1, sto3, frame, lam.body, t1, ext3, true)
+          case (lam, lex) =>
+            invalidArity(fexp, argv.size, lam.args.size + lam.varArgId.size, sto, kon, t, ext)
+        }
+        .foldSequence(Set())((all, rest) => done(all ++ rest))
 
     override protected def applyFun(
         fexp: SchemeFuncall,
@@ -293,10 +301,11 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         kon: KonA,
         t: Timestamp,
         ext: Ext
-      ): Set[State] =
-        val others = super.applyFun(fexp, func, argv, env, sto, kon, t, ext)
-        val arrs = applyArrs(fexp, func, argv, env, sto, kon, t, ext)
-        others ++ arrs
+      ): Result =
+      for
+          others <- super.applyFun(fexp, func, argv, env, sto, kon, t, ext)
+          arrs <- applyArrs(fexp, func, argv, env, sto, kon, t, ext)
+      yield others ++ arrs
 
     override def eval(
         exp: SchemeExp,
@@ -305,13 +314,13 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         kont: KonA,
         t: Timestamp,
         ext: Ext
-      ): Set[State] =
+      ): Result =
       exp match
           // [Lit]
           case lit: SchemeValue =>
             super
               .evalLiteralVal(lit, env, sto, kont, t, ext)
-              .map(s => s.mapValue(tag(lit)))
+              .map(_.map(s => s.mapValue(tag(lit))))
 
           case lam: SchemeLambdaExp =>
             val clo = (lam, env.restrictTo(lam.fv))
@@ -340,84 +349,85 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
             ev(flat, env, sto1, frame, t1, ext)
           case _ => super.eval(exp, env, sto, kont, t, ext)
 
-    override def continue(vlu: Val, sto: Sto, kon: KonA, t: Timestamp, ext: Ext): Set[State] =
-      readKonts(sto, kon).flatMap {
-        case MonFrame(contract, expression, idn, env, Some(next)) =>
-          applyMon(vlu, expression, None, idn, env, sto, next, ext, t)
+    override def continue(vlu: Val, sto: Sto, kon: KonA, t: Timestamp, ext: Ext): Result =
+      readKonts(sto, kon).map { (kont, sto) =>
+        kont match
+            case MonFrame(contract, expression, idn, env, Some(next)) =>
+              applyMon(vlu, expression, None, idn, env, sto, next, ext, t)
 
-        // [MonFlat]
-        case MonFlatFrame(contract, expression, idn, env, Some(next)) =>
-          val fexp = SchemeFuncall(contract.fexp, List(expression), idn)
-          val func = contract.contract
-          val args = List(vlu)
-          // TODO: fix expression here so that we maintain proper call-return matching
-          val frame = MonFlatFrameRet(contract, expression, idn, vlu, env).link(next)
-          applyFun(fexp, inject(func), args, env, sto, frame, t, ext)
+            // [MonFlat]
+            case MonFlatFrame(contract, expression, idn, env, Some(next)) =>
+              val fexp = SchemeFuncall(contract.fexp, List(expression), idn)
+              val func = contract.contract
+              val args = List(vlu)
+              // TODO: fix expression here so that we maintain proper call-return matching
+              val frame = MonFlatFrameRet(contract, expression, idn, vlu, env).link(next)
+              applyFun(fexp, inject(func), args, env, sto, frame, t, ext)
 
-        // [MonFlat] checking whether expression satisfies contract, otherwise blame
-        case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
-          val nonblames = feasible(`true?`, vlu, ext.phi, ext.vars)
-            .map((phi1) => ap(expVlu, sto, next, t, ext.copy(phi = phi1)))
-            .getOrElse(Set())
+            // [MonFlat] checking whether expression satisfies contract, otherwise blame
+            case MonFlatFrameRet(contract, expression, idn, expVlu, env, Some(next)) =>
+              for
+                  nonblames <- feasible(`true?`, vlu, ext.phi, ext.vars)
+                    .map((phi1) => ap(expVlu, sto, next, t, ext.copy(phi = phi1)))
+                    .getOrElse(done(Set()))
 
-          val blames = feasible(`false?`, vlu, ext.phi, ext.vars)
-            .map((phi1) => Set(blame(contract.contractIdn, expression.idn, sto, next, t, ext)))
-            .getOrElse(Set())
+                  blames <- feasible(`false?`, vlu, ext.phi, ext.vars)
+                    .map((phi1) => done(Set(blame(contract.contractIdn, expression.idn, sto, next, t, ext))))
+                    .getOrElse(done(Set()))
+              yield nonblames ++ blames
 
-          nonblames ++ blames
+            // [MonFun]
+            case MonFunFrame(contract, expression, idn, env, Some(next)) =>
+              val arr = Arr(idn, expression.idn, contract, project(vlu))
+              ap(inject(lattice.arr(arr)), sto, next, t, ext)
 
-        // [MonFun]
-        case MonFunFrame(contract, expression, idn, env, Some(next)) =>
-          val arr = Arr(idn, expression.idn, contract, project(vlu))
-          ap(inject(lattice.arr(arr)), sto, next, t, ext)
+            // Rule added to evaluate flat contracts
+            case FlatLitFrame(exp, idn, env, Some(next)) =>
+              ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext)
 
-        // Rule added to evaluate flat contracts
-        case FlatLitFrame(exp, idn, env, Some(next)) =>
-          ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext)
+            // [MonArr]
+            case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
+              // The value of the range contract is in the value passed to this continuation
+              // Now apply mon on the arguments of the function to the domain contracts
+              checkDomains(fexp, fexp.args, arr, vlu, arr.contract.domain, argv, List(), env, sto, next, t, ext)
 
-        // [MonArr]
-        case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
-          // The value of the range contract is in the value passed to this continuation
-          // Now apply mon on the arguments of the function to the domain contracts
-          checkDomains(fexp, fexp.args, arr, vlu, arr.contract.domain, argv, List(), env, sto, next, t, ext)
+            // Restore the context after a function call
+            case RestoreCtxFrame(phi, m, vars, graph, looped, Some(next)) =>
+              val ext1 = if looped then ext.copy(phi = phi, m = m, vars = vars) else ext
+              // TODO: check Nguyen implementation to see whether a fresh sym value is generated when looped for the return value
+              val (vlu1, ext2) = (if looped then (vlu._1, None) else vlu, ext1)
 
-        // Restore the context after a function call
-        case RestoreCtxFrame(phi, m, vars, graph, looped, Some(next)) =>
-          val ext1 = if looped then ext.copy(phi = phi, m = m, vars = vars) else ext
-          // TODO: check Nguyen implementation to see whether a fresh sym value is generated when looped for the return value
-          val (vlu1, ext2) = (if looped then (vlu._1, None) else vlu, ext1)
+              ap(
+                vlu1,
+                sto,
+                next,
+                t,
+                ext2
+              )
 
-          ap(
-            vlu1,
-            sto,
-            next,
-            t,
-            ext2
-          )
+            case CheckDomainFrame(fexp, remainingArgv, remainingSyntacticArguments, arr, rangeContract, remainingDomains, argv, env, Some(next)) =>
+              checkDomains(fexp, remainingSyntacticArguments, arr, rangeContract, remainingDomains, remainingArgv, vlu :: argv, env, sto, next, t, ext)
 
-        case CheckDomainFrame(fexp, remainingArgv, remainingSyntacticArguments, arr, rangeContract, remainingDomains, argv, env, Some(next)) =>
-          checkDomains(fexp, remainingSyntacticArguments, arr, rangeContract, remainingDomains, remainingArgv, vlu :: argv, env, sto, next, t, ext)
+            case DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domainIdn, rangeMakerExp, env, Some(next)) =>
+              evaluateDepContract(
+                domains,
+                rangeMaker,
+                rangeMakerExp,
+                env,
+                sto,
+                next,
+                t,
+                ext,
+                if rangeMaker.isDefined then vlu :: domainsV else domainsV,
+                if rangeMaker.isEmpty then Some(vlu) else rangeMakerV,
+                domainIdn
+              )
 
-        case DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domainIdn, rangeMakerExp, env, Some(next)) =>
-          evaluateDepContract(
-            domains,
-            rangeMaker,
-            rangeMakerExp,
-            env,
-            sto,
-            next,
-            t,
-            ext,
-            if rangeMaker.isDefined then vlu :: domainsV else domainsV,
-            if rangeMaker.isEmpty then Some(vlu) else rangeMakerV,
-            domainIdn
-          )
+            case RetCheckRangeFrame(contract, exp, env, Some(next)) =>
+              applyMon(contract, exp, Some(vlu), Identity.none, env, sto, next, ext, t)
 
-        case RetCheckRangeFrame(contract, exp, env, Some(next)) =>
-          applyMon(contract, exp, Some(vlu), Identity.none, env, sto, next, ext, t)
-
-        case frm => super.continue(vlu, sto, frm, t, ext)
-      }
+            case frm => super.continue(vlu, sto, frm, t, ext)
+      }.flattenM
 
     /*=============================================================================================================================*/
 
@@ -464,7 +474,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         kont: KonA,
         t: Timestamp,
         ext: Ext
-      ): Set[State] =
+      ): Result =
         val (sto1, frame, t1) = pushFrame(contract, env, sto, kont, MonFrame(contract, expression, idn, env), t)
         ev(contract, env, sto1, frame, t1, ext)
 
@@ -488,7 +498,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         domainsV: List[Val] = List(),
         rangeMakerV: Option[Val] = None,
         domainsIdn: List[Identity] = List(),
-      ): Set[SchemeState] = (remainingDomains, rangeMaker) match
+      ): Result = (remainingDomains, rangeMaker) match
         case (domain :: domains, _) =>
           val next = DepContractFrame(domains, rangeMaker, domainsV, rangeMakerV, domain.idn :: domainsIdn, rangeMakerExp, env).link(kon)
           ev(domain, env, sto, next, t, ext)
@@ -520,16 +530,19 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         kon: KonA,
         t: Timestamp,
         ext: Ext
-      ): Set[State] =
-      lattice.getArrs(project(func)).flatMap { arr =>
-          val contract = arr.contract
-          // first check whether a sufficient number of arguments was provided
-          if arr.checkArgs(argv) then
-              // then pass the function values to the rangeMaker
-              val frame = ArrRangeMakerFrame(fexp, arr, argv, env).link(kon)
-              applyFun(SchemeFuncall(contract.rangeMakerExpr, fexp.args, fexp.idn), inject(contract.rangeMaker), argv, env, sto, frame, t, ext)
-          else invalidArity(fexp, argv.size, arr.expectedNumArgs, sto, kon, t, ext)
-      }
+      ): Result =
+      lattice
+        .getArrs(project(func))
+        .map { arr =>
+            val contract = arr.contract
+            // first check whether a sufficient number of arguments was provided
+            if arr.checkArgs(argv) then
+                // then pass the function values to the rangeMaker
+                val frame = ArrRangeMakerFrame(fexp, arr, argv, env).link(kon)
+                applyFun(SchemeFuncall(contract.rangeMakerExpr, fexp.args, fexp.idn), inject(contract.rangeMaker), argv, env, sto, frame, t, ext)
+            else invalidArity(fexp, argv.size, arr.expectedNumArgs, sto, kon, t, ext)
+        }
+        .flattenM
 
     protected def applyMon(
         contractVlu: Val,
@@ -541,29 +554,31 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         next: KonA,
         ext: Ext,
         t: Timestamp
-      ): Set[State] =
-        // feasible(phi, flat-contract?, w', phi') -> change: do not extend PC with this information
-        val flats = lattice
-          .getFlats(project(contractVlu))
-          .flatMap((flat) => {
-            val newFrame = MonFlatFrame(flat, expression, monIdn, env).link(next)
-            expressionVlu match
-                case Some(vlu) => ap(vlu, sto, newFrame, t, ext) // continue if we have an exp value
-                case None      => ev(expression, env, sto, newFrame, t, ext) // evaluate exp value first
-          })
-
-        // feasible(phi, dep-contract?, w', phi') -> change: do not extend PC with this information
-        val grds = lattice
-          .getGrds(project(contractVlu))
-          .flatMap((grd) =>
-              val newFrame = MonFunFrame(grd, expression, monIdn, env)
-              val (sto1, frame, t1) = pushFrame(expression, env, sto, next, newFrame, t)
+      ): Result =
+      for
+          // feasible(phi, flat-contract?, w', phi') -> change: do not extend PC with this information
+          flats <- lattice
+            .getFlats(project(contractVlu))
+            .map((flat) => {
+              val newFrame = MonFlatFrame(flat, expression, monIdn, env).link(next)
               expressionVlu match
-                  case Some(vlu) => ap(vlu, sto1, frame, t1, ext)
-                  case None      => ev(expression, env, sto1, frame, t1, ext)
-          )
+                  case Some(vlu) => ap(vlu, sto, newFrame, t, ext) // continue if we have an exp value
+                  case None      => ev(expression, env, sto, newFrame, t, ext) // evaluate exp value first
+            })
+            .flattenM
 
-        grds ++ flats
+          // feasible(phi, dep-contract?, w', phi') -> change: do not extend PC with this information
+          grds <- lattice
+            .getGrds(project(contractVlu))
+            .map((grd) =>
+                val newFrame = MonFunFrame(grd, expression, monIdn, env)
+                val (sto1, frame, t1) = pushFrame(expression, env, sto, next, newFrame, t)
+                expressionVlu match
+                    case Some(vlu) => ap(vlu, sto1, frame, t1, ext)
+                    case None      => ev(expression, env, sto1, frame, t1, ext)
+            )
+            .flattenM
+      yield grds ++ flats
 
     /** Given a list of remaining domains to check, check the domain contracts on the given values */
     protected def checkDomains(
@@ -579,7 +594,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         kon: KonA,
         t: Timestamp,
         ext: Ext
-      ): Set[State] = domains match
+      ): Result = domains match
         case domain :: domains =>
           // push a frame so that the next domains can be evaluated
           val nextFrame =

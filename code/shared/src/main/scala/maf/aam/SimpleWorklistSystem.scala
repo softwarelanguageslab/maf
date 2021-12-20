@@ -1,11 +1,14 @@
 package maf.aam
 
 import maf.util.graph.*
+import scala.collection.immutable.HashSet
+import maf.util.Trampoline.run
+import maf.aam.scheme.AAMPeformanceMetrics
 
-trait BaseSimpleWorklistSystem extends AAMAnalysis:
+trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
     trait SeenStateSystem extends BaseSystem:
         this: System =>
-        var seen: Set[Conf] = Set()
+        var seen: HashSet[Conf] = HashSet()
         var work: List[(Option[Conf], Conf)] = List()
         var newWork: List[(Option[Conf], Conf)] = List()
 
@@ -33,6 +36,7 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis:
         }
 
         def addSeen(work: Conf): Unit = change {
+          report(Seen, seen.size) // logging
           seen = seen + work
         }
 
@@ -46,17 +50,27 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis:
     protected def integrate(st: State, sys: System): (Conf, System) =
       (asConf(st, sys), sys)
 
-    protected def decideSuccessors(prev: Conf, successors: Set[State], sys: System): System =
+    protected def decideSuccessors[G](depGraph: G, prev: Conf, successors: Set[State], sys: System)(using g: AAMGraph[G]): (System, G) =
+        var depGraph2 = depGraph
+        var sys2 = sys
         successors.foreach { successor =>
             val (conf, sys1) = integrate(successor, sys)
             if !sys1.seen.contains(conf) then
                 sys1.pushWork(Some(prev), conf)
                 sys1.addSeen(conf)
+            else
+                increment(Bump) // logging
+                val n1 = asGraphElement(prev, sys1)
+                val n2 = asGraphElement(conf, sys1)
+                depGraph2 = g.addEdge(depGraph2, n1, NoTransition(), n2)
+
+            sys2 = sys1
         }
 
-        sys
+        (sys2, depGraph2)
 
     override protected def transition[G](system: System, dependencyGraph: G)(using g: AAMGraph[G]): (System, G) =
+        //println(s"seen ${system.seen.size}, work ${system.work.size}, newWork ${system.newWork.size}")
         val conf = system.popWork()
         // no more work; reached fixed point
         if conf.isEmpty then (system, dependencyGraph)
@@ -70,9 +84,8 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis:
             else dependencyGraph
 
             // candidate successors
-            val successors = step(asState(conf.get._2, system))
-            val next = decideSuccessors(conf.get._2, successors, system)
-            (next, fdpg)
+            val successors = run(step(asState(conf.get._2, system)))
+            decideSuccessors(fdpg, conf.get._2, successors, system)
 
 trait SimpleWorklistSystem extends BaseSimpleWorklistSystem:
     type System = SeenStateSystem
