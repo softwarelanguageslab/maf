@@ -1,45 +1,72 @@
-#lang racket
+;#lang racket
 
 ;; fluid-let definition translated from
 ;; https://ds26gte.github.io/tyscheme/index-Z-H-10.html#node_sec_8.3
 
-(require (for-syntax racket/syntax syntax/parse)
-         (only-in racket/base [if if.old]))
+;(require (for-syntax racket/syntax syntax/parse)
+;         (only-in racket/base [if if.old]))
 
-(define-syntax (fluid-let stx)
-  (syntax-parse stx
-    [(_ ([x eₓ] ...) e ...)
-     (define-values (savings settings restorings)
-       (for/lists (savings settings restorings)
-                  ([xᵢ (syntax->list #'(x ...))]
-                   [exᵢ (syntax->list #'(eₓ ...))])
-         (define old-xᵢ (datum->syntax #f (format-symbol "old-~a" (syntax-e xᵢ))))
-         (values #`(#,old-xᵢ #,xᵢ)
-                 #`(set! #,xᵢ #,exᵢ)
-                 #`(set! #,xᵢ #,old-xᵢ))))
-     #`(let #,savings
-         #,@settings
-         (begin0 (begin e ...)
-           #,@restorings))]))
+;(define-syntax fluid-let
+;  (syntax-rules ()
+;    [(_ ([x eₓ] ...) e ...)
+;     (define-values (savings settings restorings)
+;       (for/lists (savings settings restorings)
+;                  ([xᵢ (syntax->list #'(x ...))]
+;                   [exᵢ (syntax->list #'(eₓ ...))])
+;         (define old-xᵢ (datum->syntax #f (format-symbol "old-~a" (syntax-e xᵢ))))
+;         (values #`(#,old-xᵢ #,xᵢ)
+;                 #`(set! #,xᵢ #,exᵢ)
+;                 #`(set! #,xᵢ #,old-xᵢ))))
+;     #`(let #,savings
+;         #,@settings
+;         (begin0 (begin e ...)
+;           #,@restorings))]))
+
+;; adapted from https://srfi.schemers.org/srfi-15/srfi-15.html 
+;; removed usage of dynamic-wind. Only important to make sure
+;; that it works correctly with exceptions and call/cc 
+;; but since we do not support them in our contract language
+;; we can simply sequence the expressions together
+(define-syntax fluid-let
+  (syntax-rules ()
+    ((_ ((v1 e1) ...) b1 b2 ...)
+     (fluid-let "temps" () ((v1 e1) ...) b1 b2 ...))
+    ((_ "temps" (t ...) ((v1 e1) x ...) b1 b2 ...)
+     (let ((temp e1))
+       (fluid-let "temps" ((temp e1 v1) t ...) (x ...) b1 b2 ...)))
+    ((_ "temps" ((t e v) ...) () b1 b2 ...)
+     (let-syntax ((swap!
+                   (syntax-rules ()
+                     ((swap! a b)
+                      (let ((tmp a))
+                        (set! a b)
+                        (set! b tmp))))))
+
+       (begin 
+         (begin 
+            (swap! t v)
+            ...)
+         (begin b1 b2 ...)
+         (begin (swap! t v) ...))))))
 
 ;; Overriding `case` just for precision.
 ;; The system currently doesn't handle hash tables precisely
-(define-syntax case
-  (syntax-parser
-    [(case x:id
-       [(lhs ...) rhs ...]
-       ...
-       [(~literal else) rhs-else])
-     #'(cond
-         [(or (equal? x 'lhs) ...) rhs ...]
-         ...
-         [else rhs-else])]))
+;(define-syntax case
+;  (syntax-parser
+;    [(case x:id
+;       [(lhs ...) rhs ...]
+;       ...
+;       [(~literal else) rhs-else])
+;     #'(cond
+;         [(or (equal? x 'lhs) ...) rhs ...]
+;         ...
+;         [else rhs-else])]))
 
 ;; Redefine if for 1-arm
-(define-syntax if
-  (syntax-rules ()
-    [(_ test then else) (if.old test then else)]
-    [(_ test then     ) (if.old test then #f  )]))
+;(define-syntax if
+;  (syntax-rules ()
+;    [(_ test then else) (if.old test then else)]
+;    [(_ test then     ) (if.old test then #f  )]))
 
 (define (map f xs)
   (cond [(null? xs) null]
