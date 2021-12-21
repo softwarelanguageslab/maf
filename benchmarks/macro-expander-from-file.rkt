@@ -6,13 +6,21 @@
 
 (require "./macro-expander.rkt")
 
+;; Use Racket's `read` function as long as the input port keeps 
+;; producing input 
+(define (read-until-eof input)
+  (let ((in (read input)))
+    (if (eof-object? in)
+        '()
+        (cons in (read-until-eof input)))))
+
 (define argv (current-command-line-arguments))
 
-(unless (>= (vector-length argv) 3)
+(unless (>= (vector-length argv) 2)
   (error "not enough arguments supplied to this program"))
 
-(define input-name (vector-ref argv 1))
-(define output-name (vector-ref argv 2))
+(define input-name (vector-ref argv 0))
+(define output-name (vector-ref argv 1))
 
 (displayln (format "Input file: ~s" input-name))
 (displayln (format "Output file: ~s" output-name))
@@ -20,7 +28,8 @@
 (define input-file (open-input-file input-name))
 (define output-file (open-output-file output-name))
 
-(define output (expand-program (read input-file)))
+(define input-program (read-until-eof input-file))
+(define output (expand-program input-program))
 (write output output-file)
 
 (close-input-port input-file)
