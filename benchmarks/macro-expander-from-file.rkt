@@ -30,7 +30,7 @@
 
 (define input-program (read-until-eof input-file))
 (define output (expand-program input-program))
-(write output output-file)
+(pretty-write output output-file)
 
 (close-input-port input-file)
 (close-output-port output-file)
