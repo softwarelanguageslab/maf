@@ -1,4 +1,4 @@
-#lang racket
+; #lang racket
 ; File: "nucleic2.scm"
 ;
 ; Author: Marc Feeley (feeley@iro.umontreal.ca)
