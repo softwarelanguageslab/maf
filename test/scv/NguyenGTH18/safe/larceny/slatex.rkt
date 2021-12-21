@@ -6,8 +6,8 @@
 (require (for-syntax racket/syntax syntax/parse)
          (only-in racket/base [if if.old]))
 
-(define-syntax (fluid-let stx)
-  (syntax-parse stx
+(define-syntax fluid-let
+  (syntax-rules ()
     [(_ ([x eₓ] ...) e ...)
      (define-values (savings settings restorings)
        (for/lists (savings settings restorings)
