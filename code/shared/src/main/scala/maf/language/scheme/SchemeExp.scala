@@ -582,3 +582,32 @@ case class ContractSchemeCheck(
     def label: Label = CHK
     def subexpressions: List[Expression] = List(contract, valueExpression)
     override def toString: String = s"(check $contract $valueExpression)"
+
+/**
+ * A racket provide expression.
+ *
+ * (provide (contract-out (name contract) ...))
+ *
+ * The form is more expressive in actual Racket programs, but in this analysis it is only included to kickstart the analysis of the contracts.
+ *
+ * A contract-out expression exposes a function named `name` to external modules and guards it with the given contract.
+ */
+case class ContractSchemeProvide(
+    outs: List[ContractSchemeProvideOut],
+    idn: Identity)
+    extends ContractSchemeExp:
+    def fv: Set[String] = outs.flatMap(_.fv).toSet
+    def label: Label = PROV
+    def subexpressions: List[Expression] = outs.flatMap(_.subexpressions)
+
+abstract class ContractSchemeProvideOut extends ContractSchemeExp
+
+/** An element of (contract-out ...) */
+case class ContractSchemeContractOut(
+    name: Identifier,
+    contract: SchemeExp,
+    idn: Identity)
+    extends ContractSchemeProvideOut:
+    def fv: Set[String] = contract.fv
+    def label: Label = PCO
+    def subexpressions: List[Expression] = List(contract)

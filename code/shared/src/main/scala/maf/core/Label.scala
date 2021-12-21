@@ -35,3 +35,7 @@ enum Label:
     case FLC // Flat contract
     case MON // Monitor
     case CHK // Check expression
+
+    // Racket module system (used in the contract language)
+    case PROV // Provide expression
+    case PCO // Provide contract-out element

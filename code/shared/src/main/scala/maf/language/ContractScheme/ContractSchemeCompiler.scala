@@ -23,6 +23,24 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
           Identifier(name, idn) :: compile_params(rest)
         case snil => List()
 
+    private def compileContractOut(binding: SExp): TailRec[ContractSchemeProvideOut] = binding match
+        case IdentWithIdentity(name, idn) :::: contract :::: snil =>
+          val compiled_name = Identifier(name, idn)
+          for compiled_contract <- _compile(contract)
+          yield ContractSchemeContractOut(compiled_name, compiled_contract, binding.idn)
+
+        case _ => throw new Exception(s"invalid syntax for contract-out item at ${binding.idn}")
+
+    private def compile_provides(out: SExp): TailRec[List[ContractSchemeProvideOut]] = out match
+        case Ident("contract-out") :::: contractsWithIdentifiers =>
+          sequence(smap(contractsWithIdentifiers, compileContractOut))
+        /** Export something with another modifier than contract-out */
+        case Ident(_) :::: outs => throw new Exception("only support for contract-out in provides")
+        /** Export particular identifier */
+        case Ident(_) => throw new Exception("only support for contract-out in provides")
+        /** All other things are syntax errors */
+        case _ => throw new Exception(s"syntax error at ${out.idn}")
+
     override def _compile(exp: SExp): TailRec[SchemeExp] = exp match
         // (-> contract1 contract2 range)
         case Ident("->" | "~>") :::: contracts =>
@@ -69,6 +87,12 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
             ContractSchemeMon(compiledContract, SchemeLambda(Some(f), compiledParams, compiledExpressions, exp.idn), exp.idn),
             exp.idn
           )
+
+        // In Racket, files are modules and can provide certain
+        // functions to the outside world, using the `provide` expression.
+        case Ident("provide") :::: outs =>
+          for compiled_outs <- sequence(smap(outs, compile_provides)).map(_.flatten)
+          yield ContractSchemeProvide(compiled_outs, exp.idn)
 
         // (check contract valueExpression)
         case Ident("check") :::: contract :::: expression :::: snil =>

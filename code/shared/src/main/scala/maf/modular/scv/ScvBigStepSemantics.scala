@@ -262,7 +262,7 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
         // TODO: check that the value is indeed a function value, otherwise this should result in a blame (also check which blame)
         unit(lattice.arr(ContractValues.Arr(monIdn, expression.idn, contract, value.value)))
 
-      private def applyArr(fc: SchemeFuncall, fv: PostValue): EvalM[Value] = nondets {
+      protected def applyArr(fc: SchemeFuncall, fv: PostValue): EvalM[Value] = nondets {
         lattice.getArrs(fv.value).map { arr =>
           for
               argsV <- fc.args.mapM(eval andThen extract)
