@@ -93,16 +93,11 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
                 val n1 = asGraphElement(conf.get._1.get, system)
                 val n2 = asGraphElement(conf.get._2, system)
 
-                println(s"from $n1")
-                println(s"to $n2")
                 g.addEdge(dependencyGraph, n1, NoTransitionBetween(n1, n2), n2)
-            else
-                println(s"No predecessor for ${conf.get._2}")
-                dependencyGraph
+            else dependencyGraph
 
             // candidate successors
             val successors = run(step(asState(conf.get._2, system)))
-            println(s"Succcessors of $conf ${successors.map(asConf(_, system))}")
             decideSuccessors(fdpg, conf.get._2, successors, system)
 
 trait SimpleWorklistSystem extends BaseSimpleWorklistSystem:

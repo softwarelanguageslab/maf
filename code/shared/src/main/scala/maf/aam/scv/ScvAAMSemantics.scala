@@ -347,6 +347,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
           case ContractSchemeFlatContract(flat, idn) =>
             val (sto1, frame, t1) = pushFrame(flat, env, sto, kont, FlatLitFrame(flat, idn, env), t)
             ev(flat, env, sto1, frame, t1, ext)
+
           case _ => super.eval(exp, env, sto, kont, t, ext)
 
     override def continue(vlu: Val, sto: Sto, kon: KonA, t: Timestamp, ext: Ext): Result =

@@ -11,6 +11,7 @@ import maf.util.benchmarks.Timeout
 import scala.concurrent.duration._
 import scala.io.StdIn
 import maf.util.benchmarks.Timer
+import maf.aam.scheme.stores.SchemeImperativeStoreWidening
 
 /** Base trait that provides analysis functionality to analyze single programs */
 trait AAMTesterT:
@@ -83,7 +84,10 @@ object AAMTester extends AAMTesterT:
         with SchemeAAMNoExt
         //with SchemeAAMLocalStore
         with BaseSchemeLoggingLocalStore
+        //with SchemeImperativeStoreWidening
+        //with maf.aam.scheme.stores.BaseSchemeDependencyLoggingStore
         with SchemeStoreAllocateReturn
+        //with SchemeWideningAfterCondition
         with SchemeFunctionCallBoundary
         with BaseSimpleWorklistSystem
         //with SchemeAtomicEvaluation

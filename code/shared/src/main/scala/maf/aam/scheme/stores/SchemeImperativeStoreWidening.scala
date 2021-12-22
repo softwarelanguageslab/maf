@@ -6,10 +6,12 @@ import maf.aam.{AAMAnalysis, AAMGraph, GraphElementAAM}
 import maf.aam.scheme.BaseSchemeAAMSemantics
 import maf.util.Trampoline.run
 import scala.collection.mutable.Queue
+import maf.aam.scheme.AAMPeformanceMetrics
+import maf.util.graph.NoTransition
 
 /** An effect driven imperative store */
-trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics:
-    case class SchemeConf(c: Control, k: KonA, t: Timestamp, extra: Ext)
+trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics, AAMPeformanceMetrics:
+    case class SchemeConf(c: Control, k: KonA, t: Timestamp, extra: Ext, tt: Int)
     type Conf = SchemeConf
     type Sto = EffectSto
     override type System = EffectDrivenAnalysisSystem
@@ -29,6 +31,9 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics:
         def readDep(a: Address): EffectSto =
           this.copy(r = r + a)
 
+        override def toString: String =
+          s"EffectSto { w = ${w.size}, r = ${r.size})"
+
     class EffectDrivenAnalysisSystem extends BaseSystem:
         def allConfs: Set[Conf] = seen
 
@@ -37,18 +42,18 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics:
 
         private var seen: Set[Conf] = Set()
         private var R: Map[Address, Set[Conf]] = Map().withDefaultValue(Set())
-        private val worklist: Queue[Conf] = Queue()
+        private val worklist: Queue[(Option[Conf], Conf)] = Queue()
 
-        def popWork(): Option[Conf] =
+        def popWork(): Option[(Option[Conf], Conf)] =
           if worklist.nonEmpty then
               val conf = worklist.dequeue
               Some(conf)
           else None
 
         /** Trigger some read dependencies */
-        def trigger(w: Set[Address]): Unit =
+        def trigger(w: Set[Address], from: Conf): Unit =
           change {
-            w.foreach(adr => R(adr).foreach(worklist.enqueue))
+            w.foreach(adr => R(adr).foreach(conf => worklist.enqueue((Some(from), conf))))
           }
 
         /** Register a read dependency */
@@ -58,12 +63,18 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics:
           }
 
         /** Spawn a configuration */
-        def spawn(conf: Conf): Unit =
-          if !seen.contains(conf) then
-              change {
-                seen = seen + conf
-                worklist.enqueue(conf)
-              }
+        def spawn(conf: Conf, from: Conf): Boolean =
+          spawn(conf, Some(from))
+
+        def spawn(conf: Conf, from: Option[Conf]): Boolean =
+            if !seen.contains(conf) then
+                increment(Seen)
+                change {
+                  seen = seen + conf
+                  worklist.enqueue((from, conf))
+                }
+                true
+            else increment(Bump); false
 
     override def writeSto(sto: Sto, a: Address, value: Storable): Sto =
         // directly write it to the global store
@@ -75,20 +86,34 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics:
         val workOption = system.popWork()
         if workOption.isEmpty then (system, dependencyGraph)
         else
-            val work = workOption.get
+            val (from, work) = workOption.get
+            var graph = dependencyGraph
+
+            if from.isDefined then
+                graph = g.addEdge(graph, asGraphElement(from.get, system), NoTransition(), asGraphElement(work, system))
+                println(s"stepping into $work")
+
             val successors = run(step(asState(work, system)))
             successors.foreach { next =>
+                println(s"next $next")
                 val sto = next.s
                 val nextConf = asConf(next, system)
-                system.spawn(nextConf)
-                system.register(sto.r, work)
-                system.trigger(sto.w)
-            }
+                println(sto)
 
-            (system, dependencyGraph)
+                system.spawn(nextConf, work)
+                graph = g.addNode(graph, asGraphElement(nextConf, system))
+
+                system.register(sto.r, work)
+                system.trigger(sto.w, work)
+            }
+            println("=====================")
+
+            (system, graph)
 
     override def readSto(sto: Sto, addr: Address): (Storable, Sto) =
-      (store.lookup(addr).getOrElse(Storable.V(lattice.bottom)), sto.readDep(addr))
+        val vlu = store.lookup(addr).getOrElse(Storable.V(lattice.bottom))
+        if vlu == Storable.V(lattice.bottom) then println("reading bottom")
+        (vlu, sto.readDep(addr))
 
     override def asState(conf: Conf, system: System): State =
       SchemeState(conf.c, EffectSto(Set(), Set()), conf.k, conf.t, conf.extra)
@@ -100,6 +125,7 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics:
       SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt)
 
     override def inject(expr: Expr): System =
+        println("creating system")
         val sys = EffectDrivenAnalysisSystem()
-        sys.spawn(injectConf(expr))
+        sys.spawn(injectConf(expr), None)
         sys

@@ -48,6 +48,7 @@ class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with Vario
         with SchemeAAMNoExt
         with SchemeStoreAllocateReturn // important for termination of some programs
         with SchemeFunctionCallBoundary
-        with SchemeAAMLocalStore
-        with SimpleWorklistSystem
+        // with SchemeAAMLocalStore
+        //with SimpleWorklistSystem
+        with maf.aam.scheme.stores.SchemeImperativeStoreWidening
         with SchemeAAMAnalysisResults

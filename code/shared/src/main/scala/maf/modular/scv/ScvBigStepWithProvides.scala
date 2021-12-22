@@ -54,7 +54,7 @@ trait ScvBigStepWithProvides extends ScvBigStepSemantics:
               for
                   // first evaluate the names to values and monitor them
                   monitoredFunctions <- Monad.sequence(outs.map(evalProvideOut(_)))
-                  // then we apply the ones that are functions with opaque values as arguments
+                  // then we apply the ones that are functions with opaque values as arguments, note that this is not the actual semantics of the program, but those functions need to be analyzed seperately
                   _ <- callWithOpq(monitoredFunctions)
               // ignore the results, the effects will be registered in blames if necessary
               yield lattice.nil
