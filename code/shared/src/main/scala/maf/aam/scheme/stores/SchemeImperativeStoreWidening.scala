@@ -119,10 +119,10 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
       SchemeState(conf.c, EffectSto(Set(), Set()), conf.k, conf.t, conf.extra)
 
     override def asConf(s: State, system: System): Conf =
-      SchemeConf(s.c, s.k, s.t, s.extra)
+      SchemeConf(s.c, s.k, s.t, s.extra, 0)
 
     override def injectConf(e: Expr): Conf =
-      SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt)
+      SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt, 0)
 
     override def inject(expr: Expr): System =
         println("creating system")
