@@ -4,6 +4,8 @@ args <- commandArgs(TRUE)
 if (length(args) == 0) {
   perf_cur_in <- read.csv(performance_curated_source)
   perf_gen_in <- read.csv(performance_generated_source)
+  perf_cur_out <- performance_curated_graph
+  perf_gen_out <- performance_generated_graph
 } else if (length(args) == 2) {
   perf_cur_in <- read.csv(args[1])
   perf_gen_in <- read.csv(args[2])
@@ -62,10 +64,10 @@ plotRidgeLine <- function(filtered_data, out, bins = 25, max = 5) {
     geom_density_ridges(alpha=0.6, stat="binline", bins=bins) +
     theme_ridges() +
     theme(legend.position = "none") +
-    xlim(-0.15, max)
+    xlim(-0.15, max(div) + 0.05*max(div)) # max)
   print(plot)
   dev.off()
 }
 
-plotRidgeLine(perf_cur_filtered, performance_curated_out, 50, 2)
-plotRidgeLine(perf_gen_filtered, performance_generated_out)
+plotRidgeLine(perf_cur_filtered, perf_cur_out, 50, 2)
+plotRidgeLine(perf_gen_filtered, perf_gen_out)
