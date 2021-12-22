@@ -1,5 +1,5 @@
-# table = read.csv("scripts/R/data/performance generated.txt")
-# table = read.csv("scripts/R/data/performance curated.txt")
+# table = read.csv("scripts/R/data/performance generated.csv")
+# table = read.csv("scripts/R/data/performance curated.csv")
 # table_complete = na.omit(table) # Remove rows with missing values (there should be none but there are...).
 # library(dplyr)
 # times = table_complete %>% select(starts_with("ms")) # Remove the standard deviations.
