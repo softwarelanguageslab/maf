@@ -39,7 +39,6 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
             writer.write("digraph G {\n")
             _nodes.foreach { (n) =>
                 val id = ids(n)
-                println(id)
                 val label =
                   n.label.replace("<", "&lt;").nn.replace(">", "&gt;").nn.replace("&lt;br/&gt;", "<br/>").nn
                 val color = n.color
@@ -52,7 +51,16 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
               ns.foreach({ case (annot, n2) =>
                 val annotstr = annot.label
                 val color = annot.color
-                writer.write(s"node_${ids(n1)} -> node_${ids(n2)} [label=<$annotstr>, color=<$color>]\n")
+                val constrain = if !annot.constrain then ",constraint = false" else ""
+                val options = Map(
+                  "color" -> s"<$color>",
+                  "label" -> s"<$annotstr>",
+                  "constraint" -> (if annot.constrain then "true" else "false")
+                )
+
+                val optionsText = options.map { case (key, value) => s"$key=$value" }.mkString(",")
+
+                writer.write(s"node_${ids(n1)} -> node_${ids(n2)} [$optionsText]\n")
               })
             })
             writer.write("}")
