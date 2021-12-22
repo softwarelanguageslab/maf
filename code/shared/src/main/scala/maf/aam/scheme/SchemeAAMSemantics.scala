@@ -116,7 +116,11 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
   case class FunRetAddr(expr: SchemeExp, env: Env, timestamp: Timestamp) extends Address:
       def idn: Identity = expr.idn
       def printable = true
-      override def toString = s"FunRetAddr(${expr}, ${expr.idn} ${timestamp})"
+      def printExpr = expr match {
+        case SchemeFuncall(operator, _, _) => operator.toString
+        case _                             => expr.toString
+      }
+      override def toString = s"FunRetAddr(${printExpr}, ${expr.idn} ${timestamp})"
 
   /** The location of the initial continuaton */
   case object Kont0Addr extends Address:
@@ -152,7 +156,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
   def readStoV(sto: Sto, addr: Address, ext: Ext): (Val, Sto) =
     readSto(sto, addr) match
         case (Storable.V(v), sto1) => (inject(v), sto1)
-        case _                     => (inject(lattice.bottom), sto)
+        case (_, sto1)             => (inject(lattice.bottom), sto1)
 
   /** Write to the given address in the store, returns the updated store */
   def writeSto(sto: Sto, addr: Address, value: Storable): Sto
@@ -354,6 +358,9 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       /** An error halting state */
       case HltE(error: Error)
 
+      /* A halting state */
+      case Hlt
+
       /** A return value of a function, where the return value is allocated in the store */
       case Ret(value: Address)
 
@@ -368,9 +375,10 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
             case Control.Ap(vlu)       => s"ap(${vlu.toString})"
             case Control.Fn(con)       => s"fn(${con})"
             case Control.HltE(error)   => s"err(${error})"
+            case Control.Hlt           => "hlt"
             case Control.Ret(addr) =>
               val (vlu, _) = readStoV(s, addr, extra)
-              s"addr($vlu)"
+              s"addr($vlu, $addr)"
           }
 
           s"($control, $k)"
@@ -416,6 +424,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       case Control.Fn(c)     => asGraphElement(c, k, s, ext, hsh)
       case Control.HltE(err) => GraphElementAAM(hsh, label = s"err($err)", color = Colors.Pink, data = "")
 
+      case Control.Hlt => GraphElementAAM(hsh, label = s"hlt", color = Colors.Pink, data = "")
+
   def stepDirect(ss: Set[State]): Result = done(ss)
 
   /** Step from one state to another */
@@ -427,6 +437,10 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
           case SchemeState(Ret(addr), sto, kont, t, ext) =>
             val (vlu, sto1) = readStoV(sto, addr, ext)
             continue(vlu, sto1, kont, t, ext)
+
+          /** Halting state */
+          case SchemeState(Hlt, _, _, _, _) => done(Set())
+
           case s @ SchemeState(HltE(error), _, _, _, _) =>
             //println(s"ERR: ${error}")
             registerError(error, s)
@@ -842,7 +856,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
               // executing the primitive is unsuccessfull, no successors states are generated
               case MayFailError(_) => done(Set())
       }
-      .foldSequence(Set[State]())((successors, all) => done(all ++ successors))
+      .flattenM
 
   protected def cond(
       value: Val,
@@ -989,7 +1003,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
             if !lattice.isTrue(project(value)) then error(AssertionFailed(idn), sto, next, t, ext)
             else ap(inject(lattice.nil), sto, next, t, ext)
 
-          case HltFrame => done(Set())
+          case HltFrame => done(Set(SchemeState(Control.Hlt, sto, Kont0Addr, t, ext)))
         }
       }
       .foldSequence(Set[State]())((successors, all) => done(all ++ successors))

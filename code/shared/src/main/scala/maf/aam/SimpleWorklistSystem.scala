@@ -10,6 +10,7 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
         this: System =>
         var seen: HashSet[Conf] = HashSet()
         var work: List[(Option[Conf], Conf)] = List()
+        var bumps: Set[(Conf, Conf)] = Set()
         var newWork: List[(Option[Conf], Conf)] = List()
 
         def popWork(): Option[(Option[Conf], Conf)] =
@@ -38,6 +39,10 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
         def addSeen(work: Conf): Unit = change {
           report(Seen, seen.size) // logging
           seen = seen + work
+        }
+
+        def addBump(from: Conf, to: Conf): Unit = change {
+          bumps = bumps + (from -> to)
         }
 
         def allConfs: Set[Conf] = seen
@@ -73,18 +78,31 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
         //println(s"seen ${system.seen.size}, work ${system.work.size}, newWork ${system.newWork.size}")
         val conf = system.popWork()
         // no more work; reached fixed point
-        if conf.isEmpty then (system, dependencyGraph)
+        if conf.isEmpty then
+            val fpdg = system.bumps.foldLeft(dependencyGraph) { case (deps, (from, to)) =>
+              val n1 = asGraphElement(from, system)
+              val n2 = asGraphElement(to, system)
+
+              g.addEdge(deps, n1, BumpTransition(), n2)
+            }
+
+            (system, fpdg)
         else
             // add an edge in the graph about the work
             val fdpg = if conf.get._1.nonEmpty then
                 val n1 = asGraphElement(conf.get._1.get, system)
                 val n2 = asGraphElement(conf.get._2, system)
-                val dpg2 = g.addNode(dependencyGraph, n2)
-                g.addEdge(dpg2, n1, NoTransition(), n2)
-            else dependencyGraph
+
+                println(s"from $n1")
+                println(s"to $n2")
+                g.addEdge(dependencyGraph, n1, NoTransitionBetween(n1, n2), n2)
+            else
+                println(s"No predecessor for ${conf.get._2}")
+                dependencyGraph
 
             // candidate successors
             val successors = run(step(asState(conf.get._2, system)))
+            println(s"Succcessors of $conf ${successors.map(asConf(_, system))}")
             decideSuccessors(fdpg, conf.get._2, successors, system)
 
 trait SimpleWorklistSystem extends BaseSimpleWorklistSystem:

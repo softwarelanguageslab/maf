@@ -9,6 +9,9 @@ import maf.util.Trampoline
 
 case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) extends GraphElement:
     def metadata: GraphMetadata = GraphMetadataString(data)
+    override def hashCode: Int = hsh
+    override def equals(other: Any): Boolean =
+      this.hashCode == other.hashCode
 
 case class AnalysisResult[G, V, C](dependencyGraph: G, values: Set[V], allConfs: Set[C])
 
@@ -121,7 +124,7 @@ trait AAMAnalysis:
         if !next.hasChanged then
             /* fixpoint */
             finished = true
-            (sys, dependencyGraph)
+            (next, fpdg)
         else if timeout.reached then
             /* timeout */
             finished = false
