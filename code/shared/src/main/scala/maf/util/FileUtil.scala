@@ -38,6 +38,13 @@ object Writer:
           case Array(file, ext) => open(file + " " + Clock.nowStr() + "." + ext)
           case _                => throw new Exception(s"Illegal path: $path")
 
+    def openTimeStampedGetName(path: String): (Writer, String) = // Also returns the name of the file.
+      path.split("\\.").nn match
+          case Array(file, ext) =>
+            val out = file + " " + Clock.nowStr() + "." + ext
+            (open(out), out)
+          case _ => throw new Exception(s"Illegal path: $path")
+
     def close(writer: Writer): Unit = writer.close()
 
     def setDefaultWriter(writer: Writer): Unit = defaultWriter = writer

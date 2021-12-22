@@ -86,7 +86,7 @@ trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] wi
     def interestingAddress[A <: Address](a: A): Boolean
 
     def createOutput(): String = //results.prettyString() ++ "\n\n" ++
-      results.toCSVString()
+      results.toCSVString(rowName = "benchmark")
 
 /** Counts the number of intra-component analyses run by the analysis. */
 trait CountIntraAnalyses[Expr <: Expression] extends IncrementalModAnalysis[Expr]:
@@ -115,31 +115,31 @@ object IncrementalSchemeModFTypeProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
-    val outputFile: String = s"properties/modf-type.txt"
+    val outputFile: String = s"properties/modf-type.csv"
 
 object IncrementalSchemeModFCPProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
-    val outputFile: String = s"properties/modf-CP.txt"
+    val outputFile: String = s"properties/modf-CP.csv"
 
 object IncrementalSchemeModConcTypeProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
-    val outputFile: String = s"properties/modconc-type.txt"
+    val outputFile: String = s"properties/modconc-type.csv"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
-    val outputFile: String = s"properties/modconc-CP.txt"
+    val outputFile: String = s"properties/modconc-CP.csv"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXProperties:
     def main(args: Array[String]): Unit =
-      IncrementalSchemeModFTypeProperties.main(args)
+      IncrementalSchemeModFTypeProperties.execute(args)
 //IncrementalSchemeModFCPProperties.main(args)
 //IncrementalSchemeModConcTypeProperties.main(args)
 //IncrementalSchemeModConcCPProperties.main(args)

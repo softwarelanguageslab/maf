@@ -42,21 +42,28 @@ trait IncrementalExperiment[E <: Expression]:
 
     // Runs measurements on the benchmarks in a given trait, or uses specific benchmarks if passed as an argument.
     def measure(bench: Option[Set[String]] = None): Unit =
-      bench.getOrElse(benchmarks()).toList.sorted.foreach { file =>
-          try onBenchmark(file)
-          catch
-              case e: Exception if catchErrors =>
-                // writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
-                //e.getStackTrace.nn.take(5).foreach(ste => writeErrln(ste.toString))
-                reportError(file)
-              case e: VirtualMachineError =>
-                // writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
-                reportError(file)
-          println()
-      }
+        val total = bench.getOrElse(benchmarks()).size
+        var count = 0
+        bench.getOrElse(benchmarks()).toList.sorted.foreach { file =>
+            try
+                count += 1
+                println(s"\nTesting $file ($count of $total)")
+                onBenchmark(file)
+            catch
+                case e: Exception if catchErrors =>
+                  // writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
+                  //e.getStackTrace.nn.take(5).foreach(ste => writeErrln(ste.toString))
+                  reportError(file)
+                case e: VirtualMachineError =>
+                  // writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
+                  reportError(file)
+            println()
+        }
 
-    def main(args: Array[String]): Unit =
-        setDefaultWriter(openTimeStamped(outputDir + outputFile))
+    /** Runs the benchmarks. Returns the path to the output file. */
+    def execute(args: Array[String]): String =
+        val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
+        setDefaultWriter(writer)
         enableReporting()
         if args.isEmpty then measure()
         else measure(Some(args.toSet))
@@ -64,3 +71,4 @@ trait IncrementalExperiment[E <: Expression]:
         writeln(out)
         closeDefaultWriter()
         disableReporting()
+        file

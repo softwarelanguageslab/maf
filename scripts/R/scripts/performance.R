@@ -1,3 +1,25 @@
+source("scripts/R/scripts/incremental.R")
+
+args <- commandArgs(TRUE)
+if (length(args) == 0) {
+  perf_cur_in <- read.csv(performance_curated_source)
+  perf_gen_in <- read.csv(performance_generated_source)
+} else if (length(args) == 2) {
+  perf_cur_in <- read.csv(args[1])
+  perf_gen_in <- read.csv(args[2])
+  perf_cur_out <- performance_curated_graph
+  perf_gen_out <- performance_generated_graph
+} else if (length(args) == 4 && substr(args[3], nchar(args[3]) - 4, nchar(args[3])) == ".png" && substr(args[3], nchar(args[3]) - 4, nchar(args[3])) == ".png") {
+  perf_cur_in <- read.csv(args[1])
+  perf_gen_in <- read.csv(args[2])
+  perf_cur_out <- args[3]
+  perf_gen_out <- args[4]
+} else {
+  library(stringr)
+  print(args)
+  stop(str_interp("Wrong number of arguments provided (${length(args)})."))
+}
+
 min_init_time <- 100 # The initial analysis must run at least 100 seconds.
 mutations_per_file <- 5
 
@@ -23,10 +45,16 @@ filter_times <- function(perf_data, mutations) {
   return(times_slow)
 }
 
-# Ridgelineplot
+# Filter data
+perf_cur_filtered <- filter_times(perf_cur_in, FALSE)
+perf_gen_filtered <- filter_times(perf_gen_in, TRUE)
 
-plotRidgeLine <- function(perf_data, mutations, out, bins = 25, max = 5) {
-  filtered_data <- filter_times(perf_data, mutations)
+# Save filtered datasets for reuse by precision/properties scripts.
+saveRDS(perf_cur_filtered, filtered_times_curated)
+saveRDS(perf_gen_filtered, filtered_times_generated)
+
+# Ridgelineplot
+plotRidgeLine <- function(filtered_data, out, bins = 25, max = 5) {
   div <- filtered_data[, 2:length(filtered_data)] / filtered_data[, 3]
   png(out, width = plotWidth, height = plotHeight)
   plot <- div %>% gather(key="Configuration", value="Comparison") %>%
@@ -38,5 +66,6 @@ plotRidgeLine <- function(perf_data, mutations, out, bins = 25, max = 5) {
   print(plot)
   dev.off()
 }
-plotRidgeLine(perf_gen, TRUE, "graphs/perfGen.png")
-plotRidgeLine(perf_cur, FALSE, "graphs/perfCur.png", 50, 2)
+
+plotRidgeLine(perf_cur_filtered, performance_curated_out, 50, 2)
+plotRidgeLine(perf_gen_filtered, performance_generated_out)
