@@ -11,12 +11,15 @@ import maf.language.scheme.lattices.SchemeLattice
 import maf.language.ContractScheme.*
 import maf.core.*
 import maf.aam.AAMAnalysis
+import maf.aam.scheme.stores.SchemeImperativeStoreWidening
 
 /**
  *   - CONF1: Function Boundaries
  *   - CONF2: No store allocated return
  *   - CONF3: Logging Global Store with function boundaries
  *   - CONF4: Logging Global Store without function boundaries
+ *   - CONF5: Effect Driven Analysis (WIP)
+ *   - CONF6: Logging Global Store with dependencies
  */
 object AAMAnalyses:
     def aamBase(b: SchemeExp): AAMPeformanceMetrics =
@@ -57,10 +60,12 @@ object AAMAnalyses:
       new SchemeAAMSemantics(b)
         with AAMAnalysis
         with SchemeAAMContextInsensitivity
+        //with SchemeAAMCallSiteSensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
         with SchemeStoreAllocateReturn
         with SchemeFunctionCallBoundary
+        with SchemeWideningAfterCondition
         with BaseSchemeLoggingLocalStore
         with BaseSimpleWorklistSystem
         with SchemeAAMAnalysisResults
@@ -73,6 +78,36 @@ object AAMAnalyses:
         with SchemeAAMNoExt
         with SchemeStoreAllocateReturn
         with BaseSchemeLoggingLocalStore
+        with BaseSimpleWorklistSystem
+        with SchemeAAMAnalysisResults
+
+    def aamConf5(b: SchemeExp): AAMPeformanceMetrics =
+      new SchemeAAMSemantics(b)
+        with AAMAnalysis
+        with SchemeAAMContextInsensitivity
+        //with SchemeAAMCallSiteSensitivity
+        with SchemeConstantPropagationDomain
+        with SchemeAAMNoExt
+        with SchemeStoreAllocateReturn
+        with SchemeFunctionCallBoundary
+        with SchemeWideningAfterCondition
+        with SchemeImperativeStoreWidening
+        //with BaseSchemeLoggingLocalStore
+        //with BaseSimpleWorklistSystem
+        with SchemeAAMAnalysisResults
+
+    def aamConf6(b: SchemeExp): AAMPeformanceMetrics =
+      new SchemeAAMSemantics(b)
+        with AAMAnalysis
+        with SchemeAAMContextInsensitivity
+        //with SchemeAAMCallSiteSensitivity
+        with SchemeConstantPropagationDomain
+        with SchemeAAMNoExt
+        with SchemeStoreAllocateReturn
+        with SchemeFunctionCallBoundary
+        with SchemeWideningAfterCondition
+        //with SchemeImperativeStoreWidening
+        with BaseSchemeDependencyLoggingStore
         with BaseSimpleWorklistSystem
         with SchemeAAMAnalysisResults
 
