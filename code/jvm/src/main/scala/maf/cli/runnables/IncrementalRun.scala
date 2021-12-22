@@ -151,12 +151,3 @@ object Memorycheck extends App:
         s"${v.toDouble / (1L << (z * 10))} ${" KMGTPE".charAt(z)}B"
 
     println(formatSize(Runtime.getRuntime.nn.maxMemory()))
-
-object R:
-
-    // Script must be a pathname relative to the root of the project.
-    def runScript(script: String): Boolean =
-        if !script.endsWith(".R") then return false
-        val escapeSpaces = script.replace(" ", "\\ ").nn
-        import sys.process.*
-        s"Rscript --vanilla $escapeSpaces".! == 0

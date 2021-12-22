@@ -81,19 +81,17 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
         println()
         Some(times)
 
-    val total = benchmarks().size
-    var count = 0
+    var first = true
     lazy val cols = (List(initS, reanS) ++ configurations.map(_.toString)).flatMap(c => List(columnName(timeS, c), columnName(stdS, c)))
 
     // A single program run with the analysis.
     def onBenchmark(file: String): Unit =
       try
           results = Table.empty.withDefaultValue(NotRun)
-          count += 1
-          println(s"\nTesting $file ($count of $total)")
-          if count == 1 then
+          if first then
               Writer.disableReporting()
               Writer.writeln(results.toCSVString(columns = cols, rowName = "benchmark"))
+              first = false
 
           val program = parse(file)
 
@@ -194,28 +192,30 @@ trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
 object IncrementalSchemeModFPerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
-    val outputFile: String = s"performance/modf-type.txt"
+    val outputFile: String = s"performance/modf-type.csv"
 
 object IncrementalSchemeModFCPPerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
-    val outputFile: String = s"performance/modf-CP.txt"
+    val outputFile: String = s"performance/modf-CP.csv"
 
 object IncrementalSchemeModConcPerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
-    val outputFile: String = s"performance/modconc-type.txt"
+    val outputFile: String = s"performance/modconc-type.csv"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
-    val outputFile: String = s"performance/modconc-CP.txt"
+    val outputFile: String = s"performance/modconc-CP.csv"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXPerformance:
     def main(args: Array[String]): Unit =
-      IncrementalSchemeModFPerformance.main(args)
+        val curated = IncrementalSchemeModFPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+        val generated = IncrementalSchemeModFPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/performance.R", curated, generated)
 //IncrementalSchemeModFCPPerformance.main(args)
 //IncrementalSchemeModConcPerformance.main(args)
 //IncrementalSchemeModConcCPPerformance.main(args)

@@ -133,8 +133,9 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         }
 
     def interestingAddress[A <: Address](a: A): Boolean
-    def createOutput(): String = //results.prettyString(columns = columns) ++ "\n\n" ++
-      s"Compared to full reanalysis:\n${results.toCSVString(columns = columns)}\n\nCompared to noOpt:\n${resultsNoOpt.toCSVString(columns = columns)}"
+    def createOutput(): String =
+      s"Compared to full reanalysis:\n${results.toCSVString(columns = columns, rowName = "benchmark")}\n\nCompared to noOpt:\n${resultsNoOpt
+        .toCSVString(columns = columns, rowName = "benchmark")}"
 
 /* ************************** */
 /* ***** Instantiations ***** */
@@ -171,9 +172,31 @@ object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision:
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXPrecision:
+    def splitOutput(output: String): (String, String) =
+        val text: List[List[String]] = Reader.loadFile(output).split("\n\n").nn.toList.map(_.nn.split("\n").nn.toList.map(_.nn).tail)
+        if !(text.length == 2) then throw new Exception("Unexpected format")
+        val full = text.head.mkString("\n")
+        val noOpt = text(1).mkString("\n")
+        val outFull = s"${output.split("\\.").nn.head}-FULL.csv"
+        println(output)
+        println(outFull)
+        val fullW = Writer.open(outFull)
+        Writer.write(fullW, full)
+        Writer.close(fullW)
+        val outNoOpt = s"${output.split("\\.").nn.head}-NOOPT.csv"
+        val noOptW = Writer.open(outNoOpt)
+        Writer.write(noOptW, noOpt)
+        Writer.close(noOptW)
+        (outFull, outNoOpt)
+
     def main(args: Array[String]): Unit =
-        IncrementalSchemeModFTypePrecision.main(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-        IncrementalSchemeModFTypePrecision.main(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        val (curatedFull, curatedNoOpt) = splitOutput(
+          IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+        )
+        val (generatedFull, generatedNoOpt) = splitOutput(
+          IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        )
+        if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/precision.R", curatedFull, generatedFull, curatedNoOpt, generatedNoOpt)
 //IncrementalSchemeModFCPPrecision.main(args)
 //IncrementalSchemeModConcTypePrecision.main(args)
 //IncrementalSchemeModConcCPPrecision.main(args)

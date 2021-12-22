@@ -1,3 +1,5 @@
+# This file imports libraries and defines some global variables.
+
 library(dplyr)
 library(tidyr)
 library(ggridges)
@@ -6,36 +8,31 @@ library(ggplot2)
 plotWidth <- 750
 plotHeight <- 450
 
-##### Data files #####
+##### Default input files #####
 
-performance_curated_source <- "data/performance curated.txt"
-performance_generated_source <- "data/performance generated.txt"
+performance_curated_source <- "scripts/R/data/performance curated.csv"
+performance_generated_source <- "scripts/R/data/performance generated.csv"
 
-precision_curated_vs_fullReanalysis_source <- "data/precision curated FULL.txt"
-precision_generated_vs_fullReanalysis_source <- "data/precision generated FULL.txt"
-precision_curated_vs_noOptimisations_source <- "data/precision curated NOOPT.txt"
-precision_generated_vs_noOptimisations_source <- "data/precision generated NOOPT.txt"
+precision_curated_vs_fullReanalysis_source <- "scripts/R/data/precision curated FULL.csv"
+precision_generated_vs_fullReanalysis_source <- "scripts/R/data/precision generated FULL.csv"
+precision_curated_vs_noOptimisations_source <- "scripts/R/data/precision curated NOOPT.csv"
+precision_generated_vs_noOptimisations_source <- "scripts/R/data/precision generated NOOPT.csv"
 
-properties_curated_source <- "data/properties curated.txt"
-properties_generated_source <- "data/properties generated.txt"
+properties_curated_source <- "scripts/R/data/properties curated.csv"
+properties_generated_source <- "scripts/R/data/properties generated.csv"
 
-##### Performance #####
+##### Default output files #####
 
-perf_cur <- read.csv(performance_curated_source)
-perf_gen <- read.csv(performance_generated_source)
+performance_curated_graph <- "scripts/R/graphs/perfCur.png"
+performance_generated_graph <- "scripts/R/graphs/perfGen.png"
 
-source("scripts/R/scripts/performance.R")
+precision_curated_vs_fullReanalysis_graph <- "scripts/R/graphs/precCurFULL.png"
+precision_generated_vs_fullReanalysis_graph <- "scripts/R/graphs/precGenFULL.png"
+precision_curated_vs_noOptimisations_graph <- "scripts/R/graphs/precGenNOOPT.png"
+precision_generated_vs_noOptimisations_graph <- "scripts/R/graphs/precCurNOOPT.png"
 
-##### Precision #####
+##### Saved data set locations #####
 
-prec_cur_full <- read.csv(precision_curated_vs_fullReanalysis_source)
-prec_gen_full <- read.csv(precision_generated_vs_fullReanalysis_source)
-prec_cur_noopt <- read.csv(precision_curated_vs_noOptimisations_source)
-prec_gen_noopt <- read.csv(precision_generated_vs_noOptimisations_source)
-
-source("scripts/R/scripts/precision.R")
-
-##### Properties #####
-
-prop_cur <- read.csv(properties_curated_source)
-prop_gen <- read.csv(properties_generated_source)
+# Data that is transferred from performance benchmarks to precision benchmarks (for filtereing).
+filtered_times_curated <- "scripts/R/data/filtered_times_curated.Rds"
+filtered_times_generated <- "scripts/R/data/filtered_times_generated.Rds"
