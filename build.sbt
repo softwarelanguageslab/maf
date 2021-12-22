@@ -88,7 +88,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     },
     resolvers += "bramvdbogaerde" at "https://raw.githubusercontent.com/bramvdbogaerde/maven-repo/master",
     libraryDependencies += ("space.vdb" %% "scala-smtlib" % "0.2.3-SNAPSHOT").cross(CrossVersion.for3Use2_13),
-    libraryDependencies += "net.openhft" % "affinity" % "3.21ea82",
+    //libraryDependencies += "net.openhft" % "affinity" % "3.21ea82",
     run / fork := false,
   )
   .jvmConfigure(_.enablePlugins(JmhPlugin))

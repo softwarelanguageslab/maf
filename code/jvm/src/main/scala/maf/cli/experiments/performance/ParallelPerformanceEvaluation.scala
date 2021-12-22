@@ -4,7 +4,7 @@ import java.util.concurrent.Executors
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import scala.concurrent.duration.*
-import net.openhft.affinity.{AffinityLock, AffinityStrategies, AffinityThreadFactory}
+//import net.openhft.affinity.{AffinityLock, AffinityStrategies, AffinityThreadFactory}
 
 trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
     override def addResult(name: String, benchmark: Benchmark, result: PerformanceResult, metrics: List[Metrics]): Unit =
@@ -38,7 +38,7 @@ trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
           measureBenchmarkFuture(b, current, total, failFast)
         }
         Thread.sleep(100)
-        println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
+        //println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
         Await.result(Future.sequence(futs), Duration.Inf)
 
     /** timeoutfast is ignored for this type of performance benchmark */
@@ -48,9 +48,9 @@ trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
         failFast: Boolean = true
       )(using AnalysisIsFinished[Analysis]
       ) =
-        import AffinityStrategies.*
-        val afinityFactory = new AffinityThreadFactory("bg", SAME_SOCKET)
-        val executor = Executors.newFixedThreadPool(6, afinityFactory).nn
+        //import AffinityStrategies.*
+        //val afinityFactory = new AffinityThreadFactory("bg", SAME_SOCKET)
+        val executor = Executors.newFixedThreadPool(6).nn /*, afinityFactory).nn */
         given ctx: ExecutionContext = ExecutionContext.fromExecutor(executor)
         measureBenchmarks(timeoutFast, failFast)
         printResults()
