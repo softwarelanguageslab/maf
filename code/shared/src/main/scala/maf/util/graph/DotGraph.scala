@@ -8,9 +8,8 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
         val _nodes: Set[N],
         val _edges: Map[N, Set[(E, N)]]):
         def _addNode(node: N): G =
-            if _nodes.contains(node) then this
-            else if next % 1000 == 0 then () //println(s"Number of nodes: $next")
-            new G(ids + (node -> next), next + 1, _nodes + node, _edges)
+          if _nodes.contains(node) then this
+          else new G(ids + (node -> next), next + 1, _nodes + node, _edges)
         private def _addEdgeNoCheck(
             node1: N,
             edge: E,
@@ -40,6 +39,7 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
             writer.write("digraph G {\n")
             _nodes.foreach { (n) =>
                 val id = ids(n)
+                println(id)
                 val label =
                   n.label.replace("<", "&lt;").nn.replace(">", "&gt;").nn.replace("&lt;br/&gt;", "<br/>").nn
                 val color = n.color
