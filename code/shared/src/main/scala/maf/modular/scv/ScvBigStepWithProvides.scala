@@ -12,7 +12,9 @@ import maf.core.{Identifier, Identity, Monad}
  *
  * The analysis does not feature a full module system, but rather triggers the analysis of the functions listed in the (provide ...) special form.
  *
- * These functions are triggered with the opaque value, and are monitored in their accompanyning contracts before calling them.
+ * These functions are triggered with the opaque value, and are monitored in their accompanyning contracts before calling them. Note that this also
+ * causes a read-dependency to be triggered, so the enclosing component might be re-analyzed multiple times even though we were not really interested
+ * in the return value of applying the guarded function with opaque values.
  *
  * Inside the module, the functions listed in the (provide ...) special form will **not** be monitored by the given function.
  *
