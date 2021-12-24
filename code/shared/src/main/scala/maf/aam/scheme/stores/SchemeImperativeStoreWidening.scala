@@ -15,8 +15,8 @@ import maf.util.graph.GraphMetadataNone
 
 // Graph visualisation edges
 
-case class WriteDep() extends GraphElement:
-    def label = "w"
+case class WriteDep(v: String) extends GraphElement:
+    def label = s"w($v)"
     def color = Colors.DarkBlue
     def metadata: GraphMetadata = GraphMetadataNone
 
@@ -43,15 +43,28 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
 
     override lazy val initialStore: Sto = EffectSto(Set(), Set(), 0)
 
-    case class EffectSto(w: Set[Address], r: Set[Address], tt: Int):
+    /**
+     * A store that collects all the effects of analyzing a single state
+     *
+     * @param w
+     *   the write effects of the state, trigger re-analysis of states that have registered a read effect
+     * @param r
+     *   the read effects of the state, are registered after the analysis of a particular state
+     * @param c
+     *   the call effects of the state
+     */
+    case class EffectSto(w: Set[Address], r: Set[Address], tt: Int, c: Set[State] = Set()):
         def writeDep(a: Address): EffectSto =
           this.copy(w = w + a)
+
+        def callDep(a: Set[State]): EffectSto =
+          this.copy(c = c ++ a)
 
         def readDep(a: Address): EffectSto =
           this.copy(r = r + a)
 
         override def toString: String =
-          s"EffectSto { w = ${w.size}, r = ${r.size})"
+          s"EffectSto { w = ${w.size}, r = ${r.size}, c = ${c.size})"
 
     class EffectDrivenAnalysisSystem extends BaseSystem:
         def allConfs: Set[Conf] = seen
@@ -119,11 +132,16 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
                 val nextConf = asConf(next, system)
                 println(sto)
 
-                system.spawn(nextConf, work)
-                //graph = g.addNode(graph, asGraphElement(nextConf, system))
-
+                (sto.c.map(asConf(_, system)) + nextConf).foreach(system.spawn(_, work))
                 sto.r.foreach(adr => graph = g.addEdge(graph, addrNode(adr), ReadDep(), asGraphElement(work, system)))
-                sto.w.foreach(adr => graph = g.addEdge(graph, asGraphElement(work, system), WriteDep(), addrNode(adr)))
+                sto.w.foreach(adr =>
+                    val vlu = this.store.lookup(adr).getOrElse(lattice.bottom)
+                    val writeDep = WriteDep(vlu match
+                        case Storable.V(v) => v.toString
+                        case _             => ""
+                    )
+                    graph = g.addEdge(graph, asGraphElement(work, system), writeDep, addrNode(adr))
+                )
 
                 system.register(sto.r, work)
                 system.trigger(sto.w, work)

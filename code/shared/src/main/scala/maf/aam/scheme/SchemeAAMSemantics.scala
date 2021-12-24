@@ -450,7 +450,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
           case s @ SchemeState(Fn(contr), sto, kont, t, ext) => step(s.copy(c = contr))
 
       // try to atomically step the successor
-      successors.flatMap(stepDirect)
+      //successors.flatMap(stepDirect)
+      successors
 
   /**
    * Push a frame on the conceptual stack of continuation frames
@@ -788,6 +789,17 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
 
   protected def allocCtx(fexp: SchemeFuncall, t: Timestamp): Timestamp
 
+  /** Evaluate the body in the given environment and store */
+  protected def call(
+      env: Env,
+      sto: Sto,
+      kon: KonA,
+      body: List[SchemeExp],
+      t: Timestamp,
+      ext: Ext
+    ): Result =
+    evaluate_sequence(env, sto, kon, body, t, ext, true)
+
   protected def applyClo(
       fexp: SchemeFuncall,
       func: Val,
@@ -807,7 +819,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
           val t1 = allocCtx(fexp, t0)
           val (sto3, frame, t2) = pushFrameRet(fexp, env, sto2, kon, EmptyFrame(), t1)
           // and evaluate the body
-          evaluate_sequence(env1, sto3, frame, lam.body, t2, ext1, true)
+          call(env1, sto3, frame, lam.body, t2, ext1)
         case (lam, lex) =>
           invalidArity(fexp, argv.size, lam.args.size + lam.varArgId.size, sto, kon, t, ext)
       }
@@ -855,7 +867,10 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
                 val sto1 = bridge.updatedSto
                 ap(inject(vlu), sto1, kon, t, ext)
               // executing the primitive is unsuccessfull, no successors states are generated
-              case MayFailError(_) => done(Set())
+              case MayFailError(_) =>
+                println("warn: primitive failure")
+                val sto1 = bridge.updatedSto
+                ap(inject(lattice.bottom), sto1, kon, t, ext)
       }
       .flattenM
 
@@ -929,6 +944,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
   def continue(value: Val, sto: Sto, kont: KonA, t: Timestamp, ext: Ext): Result =
     readKonts(sto, kont)
       .map { case (kont, sto) =>
+        println(s"kont $kont")
         kont match {
           case EmptyFrame(Some(next)) =>
             continueWiths(sto, next)(ap(value, sto, _, t, ext))

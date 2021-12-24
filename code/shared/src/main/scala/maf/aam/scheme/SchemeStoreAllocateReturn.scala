@@ -9,7 +9,7 @@ trait SchemeStoreAllocateReturn extends BaseSchemeAAMSemantics:
         def printable = true
         override def toString = s"RetAddr(${kont})"
 
-    private def allocRet(kont: KonA): Address =
+    protected def allocRet(kont: KonA): Address =
       RetAddr(kont)
 
     override def ap(value: Val, sto: Sto, kont: KonA, t: Timestamp, ext: Ext): Result =
