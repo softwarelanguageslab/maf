@@ -93,7 +93,7 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
                 val n1 = asGraphElement(conf.get._1.get, system)
                 val n2 = asGraphElement(conf.get._2, system)
 
-                g.addEdge(dependencyGraph, n1, NoTransitionBetween(n1, n2), n2)
+                g.addEdge(dependencyGraph, n1, NoTransition(), n2)
             else dependencyGraph
 
             // candidate successors

@@ -88,13 +88,13 @@ trait BaseSchemeDependencyLoggingStore extends BaseSchemeAAMSemantics, BaseSimpl
 
                 tmpWorkList.foreach(c => addSeen(c._2))
 
-                //(newWork.toSet -- tmpWorkList.toSet).foreach {
-                //  case (Some(from), to) => addBump(from, to)
-                //  case _                => println(s"warn")
-                //}
+                (newWork.toSet -- tmpWorkList.toSet).foreach {
+                  case (Some(from), to) => addBump(from, to)
+                  case _                => println(s"warn")
+                }
 
                 // if the writes are > 0 then we increment t
-                t = if writes.isEmpty then t else t + 1
+                t = if writes.isEmpty then t else t
 
                 work = tmpWorkList
                 newWork = List()
@@ -123,7 +123,9 @@ trait BaseSchemeDependencyLoggingStore extends BaseSchemeAAMSemantics, BaseSimpl
           // look in the log for the value, this is different in the Optimizing AAM paper
           // as we assume there that the invriant holds that states do not read from the log
           (sto.lookup(addr), sto.register(addr))
-      else (sto.originalSto.lookup(addr).getOrElse(Storable.V(lattice.bottom)), sto.register(addr))
+      else
+          println(s"lookup for $addr yields ${sto.originalSto.lookup(addr)}")
+          (sto.originalSto.lookup(addr).getOrElse(Storable.V(lattice.bottom)), sto.register(addr))
 
     override def asState(conf: Conf, sys: System): State =
       SchemeState(conf.c, DepLoggingStore.from(sto, conf.tt), conf.k, conf.t, conf.extra)

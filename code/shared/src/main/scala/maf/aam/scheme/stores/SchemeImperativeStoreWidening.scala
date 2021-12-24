@@ -8,6 +8,25 @@ import maf.util.Trampoline.run
 import scala.collection.mutable.Queue
 import maf.aam.scheme.AAMPeformanceMetrics
 import maf.util.graph.NoTransition
+import maf.util.graph.GraphElement
+import maf.util.graph.Colors
+import maf.util.graph.GraphMetadata
+import maf.util.graph.GraphMetadataNone
+
+// Graph visualisation edges
+
+case class WriteDep() extends GraphElement:
+    def label = "w"
+    def color = Colors.DarkBlue
+    def metadata: GraphMetadata = GraphMetadataNone
+
+case class ReadDep() extends GraphElement:
+    def label = "r"
+    def color = Colors.Red
+    def metadata = GraphMetadataNone
+
+def addrNode(adr: Address): GraphElementAAM =
+  GraphElementAAM(adr.hashCode, adr.toString, Colors.Grass, "")
 
 /** An effect driven imperative store */
 trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics, AAMPeformanceMetrics:
@@ -20,11 +39,11 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
     var store: BasicStore[Address, Storable] = originalSto
 
     override def asGraphElement(c: Conf, sys: System): GraphElementAAM =
-      asGraphElement(c.c, c.k, EffectSto(Set(), Set()), c.extra, c.hashCode)
+      asGraphElement(c.c, c.k, EffectSto(Set(), Set(), c.tt), c.extra, c.hashCode)
 
-    override lazy val initialStore: Sto = EffectSto(Set(), Set())
+    override lazy val initialStore: Sto = EffectSto(Set(), Set(), 0)
 
-    case class EffectSto(w: Set[Address], r: Set[Address]):
+    case class EffectSto(w: Set[Address], r: Set[Address], tt: Int):
         def writeDep(a: Address): EffectSto =
           this.copy(w = w + a)
 
@@ -53,7 +72,7 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
         /** Trigger some read dependencies */
         def trigger(w: Set[Address], from: Conf): Unit =
           change {
-            w.foreach(adr => R(adr).foreach(conf => worklist.enqueue((Some(from), conf))))
+            w.foreach(adr => R(adr).foreach(conf => worklist.enqueue((Some(from), conf.copy(tt = conf.tt)))))
           }
 
         /** Register a read dependency */
@@ -90,7 +109,7 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
             var graph = dependencyGraph
 
             if from.isDefined then
-                graph = g.addEdge(graph, asGraphElement(from.get, system), NoTransition(), asGraphElement(work, system))
+                //graph = g.addEdge(graph, asGraphElement(from.get, system), NoTransition(), asGraphElement(work, system))
                 println(s"stepping into $work")
 
             val successors = run(step(asState(work, system)))
@@ -101,7 +120,10 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
                 println(sto)
 
                 system.spawn(nextConf, work)
-                graph = g.addNode(graph, asGraphElement(nextConf, system))
+                //graph = g.addNode(graph, asGraphElement(nextConf, system))
+
+                sto.r.foreach(adr => graph = g.addEdge(graph, addrNode(adr), ReadDep(), asGraphElement(work, system)))
+                sto.w.foreach(adr => graph = g.addEdge(graph, asGraphElement(work, system), WriteDep(), addrNode(adr)))
 
                 system.register(sto.r, work)
                 system.trigger(sto.w, work)
@@ -116,10 +138,10 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
         (vlu, sto.readDep(addr))
 
     override def asState(conf: Conf, system: System): State =
-      SchemeState(conf.c, EffectSto(Set(), Set()), conf.k, conf.t, conf.extra)
+      SchemeState(conf.c, EffectSto(Set(), Set(), conf.tt), conf.k, conf.t, conf.extra)
 
     override def asConf(s: State, system: System): Conf =
-      SchemeConf(s.c, s.k, s.t, s.extra, 0)
+      SchemeConf(s.c, s.k, s.t, s.extra, s.s.tt)
 
     override def injectConf(e: Expr): Conf =
       SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt, 0)

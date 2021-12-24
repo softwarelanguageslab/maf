@@ -4,7 +4,7 @@ import maf.aam.scheme.*
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.language.scheme.*
 import maf.language.scheme.primitives.*
-import maf.aam.{AAMAnalysis, GraphElementAAM, SimpleWorklistSystem}
+import maf.aam.{AAMAnalysis, BaseSimpleWorklistSystem, GraphElementAAM}
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.test.VariousSequentialBenchmarks
 import maf.test.JSS2021Benchmarks
@@ -49,6 +49,7 @@ class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with Vario
         with SchemeStoreAllocateReturn // important for termination of some programs
         with SchemeFunctionCallBoundary
         // with SchemeAAMLocalStore
-        //with SimpleWorklistSystem
-        with maf.aam.scheme.stores.SchemeImperativeStoreWidening
+        with BaseSchemeLoggingLocalStore
+        with BaseSimpleWorklistSystem
+        //with maf.aam.scheme.stores.SchemeImperativeStoreWidening
         with SchemeAAMAnalysisResults

@@ -139,10 +139,10 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       def printable: Boolean = true
 
   /** The address at which the values of function parameters are allocated */
-  case class VarAddr(ide: Identity, ctx: Ctx) extends Address:
+  case class VarAddr(ide: Identity, name: String, ctx: Ctx) extends Address:
       def idn: Identity = ide
       def printable = true
-      override def toString = s"VarAddr(${ide}, ${ctx})"
+      override def toString = s"VarAddr(${ide}, $name, ${ctx})"
 
   /** An address on which location a primitive can be stored */
   case class PrimAddr(name: String) extends Address:
@@ -359,7 +359,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       case HltE(error: Error)
 
       /* A halting state */
-      case Hlt
+      case Hlt(v: Val)
 
       /** A return value of a function, where the return value is allocated in the store */
       case Ret(value: Address)
@@ -375,7 +375,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
             case Control.Ap(vlu)       => s"ap(${vlu.toString})"
             case Control.Fn(con)       => s"fn(${con})"
             case Control.HltE(error)   => s"err(${error})"
-            case Control.Hlt           => "hlt"
+            case Control.Hlt(v)        => s"hlt($v)"
             case Control.Ret(addr) =>
               val (vlu, _) = readStoV(s, addr, extra)
               s"addr($vlu, $addr)"
@@ -402,11 +402,12 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       true
 
   def isFinal(st: State): Boolean =
-    (st.k == Kont0Addr && (st.c match { case Control.Ap(_) => true; case Control.Ret(_) => true; case _ => false }))
+    (st.k == Kont0Addr && (st.c match { case Control.Ap(_) => true; case Control.Ret(_) => true; case Control.Hlt(v) => true; case _ => false }))
 
   def extractValue(st: State): Option[Val] =
     st.c match
-        case Control.Ap(v) => Some(v)
+        case Control.Ap(v)  => Some(v)
+        case Control.Hlt(v) => Some(v)
         case Control.Ret(addr) =>
           val (vlu, _) = readStoV(st.s, addr, st.extra)
           if lattice.isBottom(project(vlu)) then None else Some(vlu)
@@ -424,7 +425,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       case Control.Fn(c)     => asGraphElement(c, k, s, ext, hsh)
       case Control.HltE(err) => GraphElementAAM(hsh, label = s"err($err)", color = Colors.Pink, data = "")
 
-      case Control.Hlt => GraphElementAAM(hsh, label = s"hlt", color = Colors.Pink, data = "")
+      case Control.Hlt(v) => GraphElementAAM(hsh, label = s"hlt($v)", color = Colors.Pink, data = "")
 
   def stepDirect(ss: Set[State]): Result = done(ss)
 
@@ -439,7 +440,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
             continue(vlu, sto1, kont, t, ext)
 
           /** Halting state */
-          case SchemeState(Hlt, _, _, _, _) => done(Set())
+          case SchemeState(Hlt(_), _, _, _, _) => done(Set())
 
           case s @ SchemeState(HltE(error), _, _, _, _) =>
             //println(s"ERR: ${error}")
@@ -771,18 +772,18 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
 
       // add the fixed arguments on addresses in the store
       val (sto1, ext1) = lam.args.zip(fx).foldLeft((sto0, ext)) { case ((sto, ext), (par, (value, _))) =>
-        writeStoV(sto, VarAddr(par.idn, ctx), value, ext)
+        writeStoV(sto, VarAddr(par.idn, par.name, ctx), value, ext)
       }
       // add variable arguments as a list to a particular address in the store
       val (sto2, ext2) = lam.varArgId match
           case Some(id) =>
             val (vlu, newsto) = allocList(vra, lex, sto1, kon, t0)
-            writeStoV(newsto, VarAddr(id.idn, ctx), vlu, ext)
+            writeStoV(newsto, VarAddr(id.idn, id.name, ctx), vlu, ext)
           case _ => (sto1, ext1)
 
       // extend the environment with the correct bindigs
       val pars = (lam.args ++ lam.varArgId.map(List(_)).getOrElse(List()))
-      val env1 = pars.foldLeft(lex)((env, par) => env.extend(par.name, VarAddr(par.idn, ctx)))
+      val env1 = pars.foldLeft(lex)((env, par) => env.extend(par.name, VarAddr(par.idn, par.name, ctx)))
       (env1, sto2, t0, ext2)
 
   protected def allocCtx(fexp: SchemeFuncall, t: Timestamp): Timestamp
@@ -1003,7 +1004,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
             if !lattice.isTrue(project(value)) then error(AssertionFailed(idn), sto, next, t, ext)
             else ap(inject(lattice.nil), sto, next, t, ext)
 
-          case HltFrame => done(Set(SchemeState(Control.Hlt, sto, Kont0Addr, t, ext)))
+          case HltFrame => done(Set(SchemeState(Control.Hlt(value), sto, Kont0Addr, t, ext)))
         }
       }
       .foldSequence(Set[State]())((successors, all) => done(all ++ successors))

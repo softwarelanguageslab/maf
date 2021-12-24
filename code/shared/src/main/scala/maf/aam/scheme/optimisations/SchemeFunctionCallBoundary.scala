@@ -15,12 +15,13 @@ trait SchemeFunctionCallBoundary extends BaseSchemeAAMSemantics:
         import Control.*
         ss.map {
           // for widening we explitily to not step internally, so that the widening is propagated to the other configurations
-          case s @ SchemeState(Ret(WidenAddr(_, _)), _, _, _, _) => done(Set(s))
+          case s @ SchemeState(Ret(WidenAddr(_, _)), _, _, _, _) =>
+            done(Set(s))
           case s @ SchemeState(Ap(_) | Ret(_), _, kon, _, _) if readKonts(s.s, kon).map(_._1).collectFirst { case HltFrame => }.isDefined =>
             done(Set(s)) // normal halting state
           case s @ SchemeState(HltE(_), _, _, _, _) => done(Set(s)) // halting error state
 
-          case s @ SchemeState(Hlt, _, _, _, _) => done(Set(s)) // haltingstate
+          case s @ SchemeState(Hlt(_), _, _, _, _) => done(Set(s)) // normal halting state
           case s @ SchemeState(Ap(_) | Ret(_), _, _: FunRetAddr, _, _) =>
             done(Set(s)) // return from function
           case s @ SchemeState(Fn(_), _, _, _, _) => done(Set(s)) // enter function
