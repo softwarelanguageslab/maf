@@ -36,8 +36,6 @@ trait SchemeFunctionModularAAM extends SchemeImperativeStoreWidening, SchemeStor
         t: Timestamp,
         ext: Ext
       ): Result =
-        println(s"call of $body")
-
         val retKon = RetFrame(lam, t)
         for {
           // instead of directly returning the config we store it for later analysis
@@ -46,10 +44,13 @@ trait SchemeFunctionModularAAM extends SchemeImperativeStoreWidening, SchemeStor
           (v, sto1): (Val, Sto) = readStoV(sto, super[SchemeStoreAllocateReturn].allocRet(retKon), ext)
           // also register the call effect
           sto2 = sto1.callDep(callConf)
-          // continue with the continuation of the function, using an (old) value from the global store
-          _ = { println(s"current continuation =  $kon") }
-          result <- continue(v, sto2, kon, t, ext)
-          _ = { println(s"got result $result") }
+
+          // cut off the analysis if the value is bottom
+          result <-
+            if lattice.isBottom(project(v)) then done(Set(SchemeState(Control.RetFn, sto2, kon, t, ext)))
+            else
+                // continue with the continuation of the function, using an (old) value from the global store
+                continue(v, sto2, kon, t, ext)
         } yield result
 
     override def ap(value: Val, sto: Sto, kont: KonA, t: Timestamp, ext: Ext): Result =

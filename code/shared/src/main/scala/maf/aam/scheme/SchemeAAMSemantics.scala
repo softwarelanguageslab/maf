@@ -875,9 +875,10 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
                 ap(inject(vlu), sto1, kon, t, ext)
               // executing the primitive is unsuccessfull, no successors states are generated
               case MayFailError(_) =>
-                println("warn: primitive failure")
                 val sto1 = bridge.updatedSto
-                ap(inject(lattice.bottom), sto1, kon, t, ext)
+                // RetFn is a state that terminates the analysis of the current state,
+                // but is still able to communicate changes to the store
+                done(Set(SchemeState(Control.RetFn, sto1, kon, t, ext)))
       }
       .flattenM
 
@@ -951,7 +952,6 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
   def continue(value: Val, sto: Sto, kont: KonA, t: Timestamp, ext: Ext): Result =
     readKonts(sto, kont)
       .map { case (kont, sto) =>
-        println(s"kont $kont")
         kont match {
           case EmptyFrame(Some(next)) =>
             continueWiths(sto, next)(ap(value, sto, _, t, ext))
