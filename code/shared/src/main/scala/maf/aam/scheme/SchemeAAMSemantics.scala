@@ -364,6 +364,9 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       /** A return value of a function, where the return value is allocated in the store */
       case Ret(value: Address)
 
+      /** A return from function state, steps into nothing but is used to collect the effects from the previous state */
+      case RetFn
+
   /** Provide a default "empty" extension to the state of the AAM-based analysis */
   protected def emptyExt: Ext
 
@@ -376,6 +379,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
             case Control.Fn(con)       => s"fn(${con})"
             case Control.HltE(error)   => s"err(${error})"
             case Control.Hlt(v)        => s"hlt($v)"
+            case Control.RetFn         => s"retfn"
             case Control.Ret(addr) =>
               val (vlu, _) = readStoV(s, addr, extra)
               s"addr($vlu, $addr)"
@@ -426,6 +430,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       case Control.HltE(err) => GraphElementAAM(hsh, label = s"err($err)", color = Colors.Pink, data = "")
 
       case Control.Hlt(v) => GraphElementAAM(hsh, label = s"hlt($v)", color = Colors.Pink, data = "")
+      case Control.RetFn  => GraphElementAAM(hsh, label = "retfn", color = Colors.Pink, data = "")
 
   def stepDirect(ss: Set[State]): Result = done(ss)
 
@@ -448,6 +453,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
             done(Set()) // HltE is a final state
 
           case s @ SchemeState(Fn(contr), sto, kont, t, ext) => step(s.copy(c = contr))
+          case s @ SchemeState(RetFn, _, _, _, _)            => done(Set())
 
       // try to atomically step the successor
       //successors.flatMap(stepDirect)
@@ -779,7 +785,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       val (sto2, ext2) = lam.varArgId match
           case Some(id) =>
             val (vlu, newsto) = allocList(vra, lex, sto1, kon, t0)
-            writeStoV(newsto, VarAddr(id.idn, id.name, ctx), vlu, ext)
+            writeStoV(newsto, VarAddr(id.idn, id.name, ctx), vlu, ext1)
           case _ => (sto1, ext1)
 
       // extend the environment with the correct bindigs
@@ -791,6 +797,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
 
   /** Evaluate the body in the given environment and store */
   protected def call(
+      lam: SchemeLambdaExp,
       env: Env,
       sto: Sto,
       kon: KonA,
@@ -810,7 +817,6 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
       t: Timestamp,
       ext: Ext
     ): Result =
-    // TODO: introduce contexts to support things like k-cfa
     lattice
       .getClosures(project(func))
       .map {
@@ -819,7 +825,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, Schem
           val t1 = allocCtx(fexp, t0)
           val (sto3, frame, t2) = pushFrameRet(fexp, env, sto2, kon, EmptyFrame(), t1)
           // and evaluate the body
-          call(env1, sto3, frame, lam.body, t2, ext1)
+
+          call(lam, env1, sto3, frame, lam.body, t2, ext1)
         case (lam, lex) =>
           invalidArity(fexp, argv.size, lam.args.size + lam.varArgId.size, sto, kon, t, ext)
       }
