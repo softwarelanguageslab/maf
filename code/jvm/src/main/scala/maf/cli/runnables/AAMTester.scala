@@ -83,13 +83,14 @@ object AAMTester extends AAMTesterT:
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
         //with SchemeAAMLocalStore
-        with BaseSchemeLoggingLocalStore
+        //with BaseSchemeLoggingLocalStore
         //with SchemeImperativeStoreWidening
         //with maf.aam.scheme.stores.BaseSchemeDependencyLoggingStore
         with SchemeStoreAllocateReturn
         //with SchemeWideningAfterCondition
         with SchemeFunctionCallBoundary
-        with BaseSimpleWorklistSystem
+        with SchemeFunctionModularAAM
+        //with BaseSimpleWorklistSystem
         //with SchemeAtomicEvaluation
         with SchemeAAMAnalysisResults {
       //override type System = LoggingLocalStoreSystem
