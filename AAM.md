@@ -311,7 +311,7 @@ class SimpleAnalysis(b: SchemeExp)
 
 ## References
 
-[1] Van Horn, D., & Might, M. (2010, September). Abstracting abstract machines. In Proceedings of the 15th ACM SIGPLAN international conference on Functional programming (pp. 51-62).
-[2] Gilray, T., Lyde, S., Adams, M. D., Might, M., & Van Horn, D. (2016, January). Pushdown control-flow analysis for free. In Proceedings of the 43rd Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (pp. 691-704).
-[3] Johnson, J. I., Labich, N., Might, M., & Van Horn, D. (2012). Optimizing abstract abstract machines. arXiv preprint arXiv:1211.3722.
-[4] Nicolay, J., Stiévenart, Q., De Meuter, W., & De Roover, C. (2019, January). Effect-driven flow analysis. In International Conference on Verification, Model Checking, and Abstract Interpretation (pp. 247-274). Springer, Cham.
+[1] Van Horn, D., & Might, M. (2010, September). Abstracting abstract machines. In Proceedings of the 15th ACM SIGPLAN international conference on Functional programming (pp. 51-62).       
+[2] Gilray, T., Lyde, S., Adams, M. D., Might, M., & Van Horn, D. (2016, January). Pushdown control-flow analysis for free. In Proceedings of the 43rd Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages (pp. 691-704).      
+[3] Johnson, J. I., Labich, N., Might, M., & Van Horn, D. (2012). Optimizing abstract abstract machines. arXiv preprint arXiv:1211.3722.      
+[4] Nicolay, J., Stiévenart, Q., De Meuter, W., & De Roover, C. (2019, January). Effect-driven flow analysis. In International Conference on Verification, Model Checking, and Abstract Interpretation (pp. 247-274). Springer, Cham.     
