@@ -15,13 +15,20 @@ import maf.util.graph.GraphMetadataNone
 
 // Graph visualisation edges
 
-case class WriteDep(v: String) extends GraphElement:
-    def label = s"w($v)"
+object Deps:
+    private var ctr: Int = 0
+    def genId(): Int = { ctr = ctr + 1; ctr }
+
+object WriteDep:
+    def apply(v: String): WriteDep = WriteDep(v, Deps.genId())
+
+case class WriteDep(v: String, ctr: Int) extends GraphElement:
+    def label = s"w($v, $ctr)"
     def color = Colors.DarkBlue
     def metadata: GraphMetadata = GraphMetadataNone
 
 case class ReadDep() extends GraphElement:
-    def label = "r"
+    def label = s"r"
     def color = Colors.Red
     def metadata = GraphMetadataNone
 
@@ -78,8 +85,10 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
 
         def popWork(): Option[(Option[Conf], Conf)] =
           if worklist.nonEmpty then
-              val conf = worklist.dequeue
-              Some(conf)
+              change {
+                val conf = worklist.dequeue
+                Some(conf)
+              }
           else None
 
         /** Trigger some read dependencies */
