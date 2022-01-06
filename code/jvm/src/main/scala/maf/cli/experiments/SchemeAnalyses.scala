@@ -163,7 +163,22 @@ object SchemeAnalyses:
           with SchemeModFSemanticsM
           with ScvOneContextSensitivity:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
-            // TODO: use Z3 as solver instead of always returning "unknown"
+            override val sat: ScvSatSolver[Value] =
+                given SchemeLattice[Value, Address] = lattice
+                new JVMSatSolver
+
+    /** SCV with provide/contract support */
+    def scvModAnalysisWithProvide(prg: SchemeExp) =
+        import maf.modular.scv.ScvSymbolicStore.given
+        new ModAnalysis(prg)
+          with ScvBigStepSemantics
+          with ScvBigStepWithProvides
+          with SchemeConstantPropagationDomain
+          with StandardSchemeModFComponents
+          with LIFOWorklistAlgorithm[SchemeExp]
+          with SchemeModFSemanticsM
+          with ScvOneContextSensitivity:
+            override def intraAnalysis(cmp: Component) = new IntraScvSemanticsWithProvides(cmp)
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver

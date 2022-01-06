@@ -30,7 +30,7 @@ trait ScvBigStepWithProvides extends ScvBigStepSemantics:
 
     override def intraAnalysis(component: Component): IntraScvSemanticsWithProvides
 
-    trait IntraScvSemanticsWithProvides extends IntraScvSemantics:
+    class IntraScvSemanticsWithProvides(cmp: Component) extends IntraScvSemantics(cmp):
         /** Evaluates a single contract-out expression. Returns the monitored function */
         protected def evalProvideOut(out: ContractSchemeProvideOut): EvalM[(Value, Identifier, Identity)] = out match
             case ContractSchemeContractOut(name, contract, idn) =>
