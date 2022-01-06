@@ -1,29 +1,5 @@
 #lang racket
 
-(provide
- (contract-out
-  ;; image
-  [image? (-> any/c  boolean?)]
-  [empty-scene (-> real? real? image?)]
-  [place-image (-> image? real? real? image? image?)]
-  [circle (-> real? string? string? image?)]
-  ;; zombie
-  [posn/c contract?]
-  [player/c contract?]
-  [zombie/c contract?]
-  [zombies/c contract?]
-  [horde/c contract?]
-  [world/c contract?]
-  [new-world (-> player/c posn/c horde/c world/c)]
-  [new-player (-> posn/c  player/c)]
-  [new-horde (-> zombies/c zombies/c horde/c)]
-  [new-cons-zombies (-> zombie/c zombies/c zombies/c)]
-  [new-mt-zombies (-> zombies/c)]
-  [new-zombie (-> posn/c zombie/c)]
-  [new-posn (-> real? real?  posn/c)]
-  [w0 world/c]))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; image (dummy)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -269,3 +245,27 @@
     (new-cons-zombies
      (new-zombie (new-posn 200 200))
      (new-mt-zombies)))))
+
+(provide
+ (contract-out
+  ;; image
+  [image? (-> any/c  boolean?)]
+  [empty-scene (-> real? real? image?)]
+  [place-image (-> image? real? real? image? image?)]
+  [circle (-> real? string? string? image?)]
+  ;; zombie
+  [posn/c contract?]
+  [player/c contract?]
+  [zombie/c contract?]
+  [zombies/c contract?]
+  [horde/c contract?]
+  [world/c contract?]
+  [new-world (-> player/c posn/c horde/c world/c)]
+  [new-player (-> posn/c  player/c)]
+  [new-horde (-> zombies/c zombies/c horde/c)]
+  [new-cons-zombies (-> zombie/c zombies/c zombies/c)]
+  [new-mt-zombies (-> zombies/c)]
+  [new-zombie (-> posn/c zombie/c)]
+  [new-posn (-> real? real?  posn/c)]
+  [w0 world/c]))
+
