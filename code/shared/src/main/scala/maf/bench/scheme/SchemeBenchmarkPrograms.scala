@@ -129,8 +129,7 @@ object SchemeBenchmarkPrograms:
       "test/scv/NguyenGTH18/safe/games/tetris.rkt",
       "test/scv/NguyenGTH18/safe/games/snake.rkt",
       "test/scv/NguyenGTH18/safe/games/zombie.rkt",
-      "test/scv/NguyenGTH18/safe/larceny/slatex-expanded.rkt",
-      "test/scv/NguyenGTH18/safe/real/slatex-expanded.rkt", // what is the difference with the other slatex?
+      "test/scv/NguyenGTH18/safe/real/slatex-expanded.rkt",
       "test/scv/NguyenGTH18/safe/real/fector.rkt",
       "test/scv/NguyenGTH18/safe/real/nucleic2-modular-fixed-expanded.rkt", // nuclei2-modular* from paper
       "test/scv/NguyenGTH18/safe/real/nucleic2-modular-expanded.rkt",

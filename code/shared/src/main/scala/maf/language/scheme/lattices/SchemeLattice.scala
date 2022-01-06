@@ -69,6 +69,12 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
     /** Extract the flat contract vlaues in this value */
     def getFlats(x: L): Set[Flat[L]]
 
+    /** Extract the struct values from this abstract value */
+    def getStructs(x: L): Set[Struct[L]]
+
+    /** Extract the getters/setter values from this abstract value */
+    def getGetterSetter(x: L): Set[StructSetterGetter]
+
     /** Injection of an integer */
     def number(x: BigInt): L
 
@@ -168,6 +174,12 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
     /** Injection of an opaque value in the abstract domain */
     def opq(o: Opq): L
+
+    /** Injection of a struct in the abstract domain */
+    def struct(struct: Struct[L]): L
+
+    /** Injection of a struct field setter/getter in the abstract domain */
+    def structSetterGetter(setterGetter: StructSetterGetter): L
 
     def void: L
 

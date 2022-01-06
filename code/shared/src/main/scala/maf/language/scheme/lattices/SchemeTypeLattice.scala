@@ -26,7 +26,9 @@ class TypeSchemeLattice[A <: Address]:
         arr: Boolean = false,
         grd: Boolean = false,
         flt: Boolean = false,
-        opq: Boolean = false)
+        opq: Boolean = false,
+        struct: Boolean = false,
+        setterGetter: Boolean = false)
         extends SmartHash:
         def isBottom: Boolean =
           !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt && !opq
@@ -48,6 +50,8 @@ class TypeSchemeLattice[A <: Address]:
         def grd: L = L(grd = true)
         def flt: L = L(flt = true)
         def opq: L = L(opq = true)
+        def struct: L = L(struct = true)
+        def setterGetter: L = L(setterGetter = true)
 
     def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
       if b then { MayFail.success(v) }
@@ -189,6 +193,8 @@ class TypeSchemeLattice[A <: Address]:
       def getGrds(x: L): Set[Grd[L]] = Set()
       def getArrs(x: L): Set[Arr[L]] = Set()
       def getFlats(x: L): Set[Flat[L]] = Set()
+      def getStructs(x: L): Set[Struct[L]] = Set()
+      def getGetterSetter(x: L): Set[StructSetterGetter] = Set()
       def bottom: L = Inject.bottom
 
       def number(x: BigInt): L = Inject.num
@@ -216,6 +222,8 @@ class TypeSchemeLattice[A <: Address]:
       def arr(arr: Arr[L]): L = Inject.arr
       def grd(grd: Grd[L]): L = Inject.grd
       def flat(flt: Flat[L]): L = Inject.flt
+      def struct(struct: Struct[L]): L = Inject.struct
+      def structSetterGetter(setterGetter: StructSetterGetter): L = Inject.setterGetter
       def opq(opq: Opq): L = Inject.opq
       def void: L = ???
       def acquire(lock: L, caller: TID): MayFail[L, Error] = ???

@@ -94,6 +94,11 @@ class IncrementalModularSchemeLattice[
         schemeLattice.getArrs(x.toL()).map(_.map(annotate(_, Set()))) // TODO[medium] not sure what to pass to annotate
       def getFlats(x: AL): Set[Flat[AL]] =
         schemeLattice.getFlats(x.toL()).map(_.map(annotate(_, Set()))) // TODO[medium] not sure what to pass to annotate
+      def getGetterSetter(x: AL): Set[StructSetterGetter] =
+        schemeLattice.getGetterSetter(x.toL())
+      def getStructs(x: AL): Set[Struct[AL]] =
+        schemeLattice.getStructs(x.toL()).map(_.map(annotate(_, Set())))
+
       def acquire(lock: AL, tid: TID): MayFail[AL, Error] = schemeLattice.acquire(lock.toL(), tid).map(annotate(_, lock.sources))
       def release(lock: AL, tid: TID): MayFail[AL, Error] = schemeLattice.release(lock.toL(), tid).map(annotate(_, lock.sources))
 
@@ -124,6 +129,9 @@ class IncrementalModularSchemeLattice[
       def grd(grd: Grd[AL]): AL = AnnotatedElement(Value.grd(grd.map(_.toL())))
       def arr(arr: Arr[AL]): AL = AnnotatedElement(Value.arr(arr.map(_.toL())))
       def flat(flt: Flat[AL]): AL = AnnotatedElement(Value.flt(flt.map(_.toL())))
+      def struct(struct: Struct[AL]): AL = AnnotatedElement(Value.struct(struct.map(_.toL())))
+      def structSetterGetter(setterGetter: StructSetterGetter): AL =
+        AnnotatedElement(Value.structSetterGetter(setterGetter))
       def opq(opq: Opq): AL = AnnotatedElement(Value.opq(opq))
       def nil: AL = AnnotatedElement(Value.nil)
       def void: AL = AnnotatedElement(Value.void)
