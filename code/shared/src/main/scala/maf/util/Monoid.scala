@@ -81,6 +81,3 @@ object MonoidInstances:
       def append(x: Int, y: => Int): Int = Math.max(x, y)
       def zero: Int = 0
     }
-    given intSumMonoid: Monoid[Int] with
-        def append(x: Int, y: => Int) = x + y
-        val zero: Int = 0

@@ -652,3 +652,26 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                     _ <- PrimM[M].updateSto(addr, unlocked)
                 yield unspecified
               }
+
+        /** Racket specific primitives */
+
+        /**
+         * Creates a struct getter can be applied like a function
+         *
+         * (define posn-x (_make_struct_getter 'posn 0)) (posn-x (posn 10 20))
+         */
+        case object `_make_struct_getter` extends SchemePrimOp2("_make_struct_getter", SchemeOp.MakeStructGetter)
+
+        /**
+         * Creates a struct setter can be applied like a function
+         *
+         * (define set-posn-x! (_make_struct_setter 'posn 0)) (set-posn-x! (posn 10 20) 5)
+         */
+        case object `_make_struct_setter` extends SchemePrimOp2("_make_struct_setter", SchemeOp.MakeStructSetter)
+
+        /**
+         * Creates a constructor, that can be applied like a function.
+         *
+         * (define posn (_make_struct_constr 'posn 2)) (posn 10 20)
+         */
+        case object `make_struct_constr` extends SchemePrimOp2("_make_struct_constr", SchemeOp.MakeStructConstr)

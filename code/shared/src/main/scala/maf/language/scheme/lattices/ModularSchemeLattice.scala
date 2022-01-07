@@ -582,6 +582,26 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                       case (Int(length), Char(c)) => MayFail.success(Str(IntLattice[I].makeString(length, c)))
                       case _                      => MayFail.failure(OperatorNotApplicable("make-string", args))
 
+                /** Racket specific operations */
+                case op @ (MakeStructGetter | MakeStructSetter) =>
+                  (args(0), args(1)) match
+                      case (Symbol(tag_val), Int(idx_val)) =>
+                        val idx: scala.Int = ??? // TODO
+                        val tag: String = ??? // TODO
+
+                        MayFail.success(structSetterGetter(StructSetterGetter(tag, idx, op == MakeStructSetter)))
+
+                      case _ => MayFail.failure(OperatorNotApplicable("_make_struct_getter", args))
+
+                case MakeStructConstr =>
+                  (args(0), args(1)) match
+                      case (Symbol(tag_val), Int(siz_val)) =>
+                        val tag: String = ??? // TODO
+                        val siz: Int = ??? // TODO
+
+                        ??? // TODO: create value for constructor
+                      case _ => MayFail.failure(OperatorNotApplicable("_make_struct_constr", args))
+
         def number(x: BigInt): Value = Int(IntLattice[I].inject(x))
 
         def real(x: Double): Value = Real(RealLattice[R].inject(x))

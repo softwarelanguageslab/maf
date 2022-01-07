@@ -93,4 +93,4 @@ object ContractValues:
      * @param isSetter
      *   true if this value is a setter.
      */
-    case class StructSetterGetter(idx: Int, isSetter: Boolean)
+    case class StructSetterGetter(tag: String, idx: Int, isSetter: Boolean)
