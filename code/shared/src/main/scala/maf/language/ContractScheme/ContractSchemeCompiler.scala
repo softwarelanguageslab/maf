@@ -15,22 +15,16 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
     /** Utilities for compiling structs */
     object Struct:
         /** Generate a call (_make_struct_getter tag idx) */
-        private def getStructField(tag: String, idx: Int, idn: Identity): SchemeFuncall =
-            val tagSym = SchemeValue(Value.Symbol(tag), idn)
-            val numVal = SchemeValue(Value.Integer(idx), idn)
-            SchemeFuncall(SchemeVar(Identifier("_make_struct_getter", idn)), List(tagSym, numVal), idn)
+        private def getStructField(tag: String, idx: Int, idn: Identity): SchemeExp =
+          MakeStructGetter(tag, idx, idn)
 
         /** Generate a call (_make_struct_setter tag idx) */
-        private def setStructField(tag: String, idx: Int, idn: Identity): SchemeFuncall =
-            val tagSym = SchemeValue(Value.Symbol(tag), idn)
-            val numVal = SchemeValue(Value.Integer(idx), idn)
-            SchemeFuncall(SchemeVar(Identifier("_make_struct_getter", idn)), List(tagSym, numVal), idn)
+        private def setStructField(tag: String, idx: Int, idn: Identity): SchemeExp =
+          MakeStructSetter(tag, idx, idn)
 
         /** Generate a call (_make_struct_constr nam siz) */
-        private def makeStructConstructor(nam: String, size: Int, idn: Identity): SchemeFuncall =
-            val tagSym = SchemeValue(Value.Symbol(nam), idn)
-            val numVal = SchemeValue(Value.Integer(size), idn)
-            SchemeFuncall(SchemeVar(Identifier("_make_struct_constr", idn)), List(tagSym, numVal), idn)
+        private def makeStructConstructor(nam: String, size: Int, idn: Identity): SchemeExp =
+          MakeStructConstr(nam, size, idn)
 
         case class CompiledField(name: String, idn: Identity)
         def compileFields(fields: SExp): TailRec[List[CompiledField]] =
@@ -52,8 +46,8 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
             done(List(SchemeDefineVariable(Identifier(s"make-$name", nameIdn), constructor, structIdn)))
 
         def generatePredicate(name: String, nameIdn: Identity): TailRec[List[SchemeExp]] =
-            val predicateBody: List[SchemeExp] = ???
-            done(List(SchemeDefineFunction(Identifier(s"$name?", nameIdn), List(Identifier("x", nameIdn)), predicateBody, nameIdn)))
+            val predicate = MakeStructPredicate(name, nameIdn)
+            done(List(SchemeDefineVariable(Identifier(s"is-$name?", nameIdn), predicate, nameIdn)))
 
         def generateGetters(fields: List[CompiledField], name: String, nameIdn: Identity): TailRec[List[SchemeExp]] =
           done(
@@ -71,7 +65,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
             fields
               .foldLeft((0, List[SchemeExp]())) { case ((counter, fields), field) =>
                 val getter = setStructField(name, counter, field.idn)
-                val defv = SchemeDefineVariable(Identifier(s"$name-${field.name}", field.idn), getter, field.idn)
+                val defv = SchemeDefineVariable(Identifier(s"set-$name-${field.name}!", field.idn), getter, field.idn)
                 (counter + 1, defv :: fields)
               }
               ._2
