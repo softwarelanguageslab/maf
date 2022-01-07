@@ -11,6 +11,10 @@ trait Monoid[M] extends Serializable:
 object Monoid:
     def apply[M: Monoid]: Monoid[M] = implicitly
 
+    given listMonoid[T]: Monoid[List[T]] with
+        def append(x: List[T], y: => List[T]): List[T] = x ++ y
+        def zero: List[T] = List()
+
 object MonoidImplicits:
     implicit class FoldMapExtension[X](coll: Iterable[X]):
         def foldMap[M: Monoid](f: X => M): M =
@@ -77,3 +81,6 @@ object MonoidInstances:
       def append(x: Int, y: => Int): Int = Math.max(x, y)
       def zero: Int = 0
     }
+    given intSumMonoid: Monoid[Int] with
+        def append(x: Int, y: => Int) = x + y
+        val zero: Int = 0

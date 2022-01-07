@@ -194,7 +194,7 @@ case class SchemeLetStar(
     val label: Label = LTS
     def letName: String = "let*"
 
-/** Letrec-bindings: (letrec ((v1 e1) ...) body...) */
+/** Letrec-bindings: (letrec* ((v1 e1) ...) body...) */
 case class SchemeLetrec(
     bindings: List[(Identifier, SchemeExp)],
     body: List[SchemeExp],
