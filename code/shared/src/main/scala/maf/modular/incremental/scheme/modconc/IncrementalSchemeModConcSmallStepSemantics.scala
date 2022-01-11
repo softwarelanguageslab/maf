@@ -27,3 +27,5 @@ trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemanti
             case _ =>
               registerComponent(exp, component)
               super.evaluate(exp, env, stack)
+
+    override def configString(): String = super.configString() + "\n  applying incremental ModConc Scheme semantics"

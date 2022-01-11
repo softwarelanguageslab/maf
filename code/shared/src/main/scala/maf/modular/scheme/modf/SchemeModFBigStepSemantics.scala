@@ -167,4 +167,6 @@ trait BigStepModFSemantics extends BigStepModFSemanticsT {
     def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
       eval(fnBody).run(fnEnv).foreach(res => writeResult(res))
   }
+
+  override def configString(): String = super.configString() + "\n  applying big-step ModF Scheme semantics"
 }

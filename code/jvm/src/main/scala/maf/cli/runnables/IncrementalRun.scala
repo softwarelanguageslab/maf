@@ -101,16 +101,17 @@ object IncrementalRun extends App:
 
         try {
           println(s"***** $bench *****")
-          interpretProgram(bench)
+          //interpretProgram(bench)
           val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-          println(text.prettyString())
+          //println(text.prettyString())
           val a = base(text)
           //   a.logger.logU("BASE + INC")
-          a.analyzeWithTimeout(timeout())
+          println(a.configString())
+          //a.analyzeWithTimeout(timeout())
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
-          a.configuration = wi
+          //a.configuration = wi
          // a.flowInformationToDotGraph("logs/flowsA1.dot")
-          a.updateAnalysis(timeout())
+          //a.updateAnalysis(timeout())
          // a.flowInformationToDotGraph("logs/flowsA2.dot")
           //Thread.sleep(1000)
           //val b = base(text)

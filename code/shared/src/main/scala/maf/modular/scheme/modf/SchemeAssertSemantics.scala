@@ -43,3 +43,5 @@ trait SchemeAssertSemantics extends BigStepModFSemantics:
                 }
               )
           yield res
+
+    override def configString(): String = super.configString() + "\n  with assertion checking enabled"

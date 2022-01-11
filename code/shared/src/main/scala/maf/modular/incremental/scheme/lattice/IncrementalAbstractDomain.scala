@@ -10,3 +10,4 @@ import maf.modular.AbstractDomain
  */
 trait IncrementalAbstractDomain[Expr <: Expression] extends AbstractDomain[Expr]:
     implicit override lazy val lattice: IncrementalLattice[Value, Address]
+    override def domainName: String = "incremental abstract domain"

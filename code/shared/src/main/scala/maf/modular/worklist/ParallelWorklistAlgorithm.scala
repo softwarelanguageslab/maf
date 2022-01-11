@@ -146,3 +146,5 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
         if !visited(cmp) then C += cmp
       def isDone = toCheck.forall(dep => inter.depVersion(dep) == intra.depVersion(dep))
     }
+
+    override def configString(): String = super.configString() + "\n  using a parallel work list algorithm"

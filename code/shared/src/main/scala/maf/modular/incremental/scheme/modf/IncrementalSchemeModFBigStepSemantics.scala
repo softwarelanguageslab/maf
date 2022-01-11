@@ -44,3 +44,5 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
           yield lattice.addAddresses(resVal, adr)
 
     override def intraAnalysis(cmp: Component): IncrementalSchemeModFBigStepIntra
+
+    override def configString(): String = super.configString() + "\n  applying incremental big-step ModF Scheme semantics"

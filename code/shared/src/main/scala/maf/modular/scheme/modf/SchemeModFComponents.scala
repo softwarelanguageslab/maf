@@ -26,6 +26,7 @@ trait StandardSchemeModFComponents extends BaseSchemeModFSemantics:
     lazy val initialComponent = Main
     def newComponent(call: Call[ComponentContext]) = call
     def view(cmp: Component): SchemeModFComponent = cmp
+    override def configString(): String = super.configString() + "\n  having standard scheme ModF components"
 
 /*package maf.modular.scheme
 
