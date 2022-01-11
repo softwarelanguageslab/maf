@@ -25,11 +25,28 @@ if (length(args) == 0) {
 min_init_time <- 100 # The initial analysis must run at least 100 seconds.
 mutations_per_file <- 5
 
+# Rename and reorder the columns
+alter_columns <- function(data_in) {
+  renamed <- data_in %>% rename("Initial analysis" = "ms..init.",
+                                "Full reanalysis" = "ms..rean.",
+                                "No optimisations" = "ms..NoOpt.",
+                                "CI" = "ms..CI.",
+                                "DI" = "ms..DI.",
+                                "WI" = "ms..WI.",
+                                "CI + DI" = "ms..CI.DI.",
+                                "CI + WI" = "ms..CI.WI.",
+                                "DI + WI" = "ms..DI.WI.",
+                                "CI + DI + WI" = "ms..CI.DI.WI.")
+  #order <- c("benchmark", "Initial analysis", "Full reanalysis", "No optimisations", "CI", "DI", "WI", "CI + DI", "CI + WI", "DI + WI", "CI + DI + WI")
+  #return(renamed[, order])
+}
+
+# Filter data
 filter_times <- function(perf_data, mutations) {
   # First, omit entries that are not complete.
   data_complete <- na.omit(perf_data)
   # Second, remove the standard deviations.
-  times <- data_complete %>% select(starts_with("benchmark") | starts_with("ms"))
+  times<- data_complete %>% select(starts_with("benchmark") | starts_with("ms"))
   # Third, remove benchmarks for which the initial time was under the min_init_time.
   times_slow <- times[(times$ms..init.>=min_init_time),]
   # Lastly, only keep entries for which all 5 variations are present if these are the generated benchmarks.
@@ -47,9 +64,9 @@ filter_times <- function(perf_data, mutations) {
   return(times_slow)
 }
 
-# Filter data
-perf_cur_filtered <- filter_times(perf_cur_in, FALSE)
-perf_gen_filtered <- filter_times(perf_gen_in, TRUE)
+# Filter data and rename the columns
+perf_cur_filtered <- alter_columns(filter_times(perf_cur_in, FALSE))
+perf_gen_filtered <- alter_columns(filter_times(perf_gen_in, TRUE))
 
 # Save filtered datasets for reuse by precision/properties scripts.
 saveRDS(perf_cur_filtered, filtered_times_curated)
@@ -57,7 +74,7 @@ saveRDS(perf_gen_filtered, filtered_times_generated)
 
 # Ridgelineplot
 plotRidgeLine <- function(filtered_data, out, bins = 25, max = 5) {
-  div <- filtered_data[, 2:length(filtered_data)] / filtered_data[, 3]
+  div <- filtered_data[, 2:length(filtered_data)] / filtered_data[, 3] # 3 = compare to reanalysis, 4 = compare to no optimisations
   png(out, width = plotWidth, height = plotHeight)
   plot <- div %>% gather(key="Configuration", value="Comparison") %>%
     ggplot(aes(x = Comparison, y = Configuration, fill = Configuration)) +
@@ -71,3 +88,18 @@ plotRidgeLine <- function(filtered_data, out, bins = 25, max = 5) {
 
 plotRidgeLine(perf_cur_filtered, perf_cur_out, 50, 2)
 plotRidgeLine(perf_gen_filtered, perf_gen_out)
+
+# Violin plot
+
+plotViolin <- function(filtered_data, out) {
+  div <- filtered_data[, 2:length(filtered_data)] / filtered_data[, 3] # 3 = compare to reanalysis, 4 = compare to no optimisations
+  png(out, width = plotWidth, height = plotHeight)
+  plot <- div %>% gather(key="Analysis configuration", value="Relative runtime") %>%
+    ggplot(aes(x="Analysis Configuration", y="Relative runtime", fill="Analysis Configuration")) +
+    geom_violin() +
+    geom_boxplot(width=0.1, color="grey", alpha=0.2)
+  print(plot)
+  dev.off()
+}
+
+plotViolin(perf_cur_filtered, perf_cur_out)
