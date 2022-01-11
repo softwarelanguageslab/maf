@@ -91,7 +91,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         "Desugared program:\n\n" + str
 
     private def logData(end: Boolean): Unit =
-        if end then logger.logU("\n\n" + getSummary())
+       // if end then logger.logU("\n\n" + getSummary())
         logger.logU("\n\n" + tableToString())
         logger.logU("\n" + storeString())
         logger.logU("\n" + addressDependenciesToString())
@@ -126,6 +126,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     var logEnd = true
 
     override def run(timeout: Timeout.T): Unit =
+        logger.logU(configString())
         super.run(timeout)
         if logEnd then logData(false)
 

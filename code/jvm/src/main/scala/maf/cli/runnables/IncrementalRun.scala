@@ -101,17 +101,17 @@ object IncrementalRun extends App:
 
         try {
           println(s"***** $bench *****")
-          //interpretProgram(bench)
+          interpretProgram(bench)
           val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
           //println(text.prettyString())
           val a = base(text)
-          //   a.logger.logU("BASE + INC")
+          a.logger.logU("BASE + INC")
           println(a.configString())
-          //a.analyzeWithTimeout(timeout())
+          a.analyzeWithTimeout(timeout())
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
-          //a.configuration = wi
+          a.configuration = wi
          // a.flowInformationToDotGraph("logs/flowsA1.dot")
-          //a.updateAnalysis(timeout())
+          a.updateAnalysis(timeout())
          // a.flowInformationToDotGraph("logs/flowsA2.dot")
           //Thread.sleep(1000)
           //val b = base(text)
@@ -132,11 +132,11 @@ object IncrementalRun extends App:
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      //"test/DEBUG3.scm",
+      "test/DEBUG3.scm",
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
-      "test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
+      //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
     )
-    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(15, MINUTES))
+    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(1, MINUTES))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
     modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
