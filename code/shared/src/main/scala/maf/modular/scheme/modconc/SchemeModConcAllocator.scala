@@ -18,4 +18,3 @@ trait StandardSchemeModConcAllocator extends SchemeModConcSemantics:
         cmp: Component
       ) = PtrAddr(exp, modfCmp)
     override def configString(): String = super.configString() + "\n  allocating addresses using the ModF component as context"
-

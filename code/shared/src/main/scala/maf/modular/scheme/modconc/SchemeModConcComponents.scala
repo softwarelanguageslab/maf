@@ -24,4 +24,3 @@ trait StandardSchemeModConcComponents extends SchemeModConcSemantics:
     def newComponent(thread: Thread[ComponentContext]) = thread
     def view(cmp: Component) = cmp
     override def configString(): String = super.configString() + "\n  having standard scheme ModConc components"
-

@@ -48,7 +48,7 @@ trait SchemeModFKCallSiteSensitivity extends SchemeModFSensitivity:
       ) = context(caller) match
         case None                           => CallSiteContext(List(call).take(k))
         case Some(CallSiteContext(callers)) => CallSiteContext((call :: callers).take(k))
-    override def configString(): String = super.configString() + s"\n  with $k-call-site sensitivity"  
+    override def configString(): String = super.configString() + s"\n  with $k-call-site sensitivity"
 // shorthand for 1-CFA
 trait SchemeModFCallSiteSensitivity extends SchemeModFKCallSiteSensitivity:
     override val k = 1
@@ -70,7 +70,7 @@ trait SchemeModFFullArgumentCallSiteSensitivity extends SchemeModFSensitivity:
         caller: Component
       ): ComponentContext =
       ArgCallSiteContext(clo._1.idn.pos, call, args)
-    override def configString(): String = super.configString() + "\n  with full-argument and call-site sensitivity"  
+    override def configString(): String = super.configString() + "\n  with full-argument and call-site sensitivity"
 
 trait SchemeModFUserGuidedSensitivity1 extends SchemeModFSensitivity:
     type ComponentContext = Any
@@ -105,4 +105,4 @@ trait SchemeModFUserGuidedSensitivity1 extends SchemeModFSensitivity:
           case annot =>
             println(s"WARNING: Function has an invalid annotation: (${clo._1.lambdaName}), using no sensitivity instead of: $annot")
             ("No", ())
-    override def configString(): String = super.configString() + "\n  enabling user-guided context sensitivity"        
+    override def configString(): String = super.configString() + "\n  enabling user-guided context sensitivity"

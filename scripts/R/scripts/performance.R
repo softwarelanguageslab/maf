@@ -94,10 +94,11 @@ plotRidgeLine(perf_gen_filtered, perf_gen_out)
 plotViolin <- function(filtered_data, out) {
   div <- filtered_data[, 2:length(filtered_data)] / filtered_data[, 3] # 3 = compare to reanalysis, 4 = compare to no optimisations
   png(out, width = plotWidth, height = plotHeight)
-  plot <- div %>% gather(key="Analysis configuration", value="Relative runtime") %>%
-    ggplot(aes(x="Analysis Configuration", y="Relative runtime", fill="Analysis Configuration")) +
+  plot <- div %>% gather(key="Configuration", value="ms") %>%
+    ggplot(aes(x="Configuration", y="ms", fill="Configuration")) +
     geom_violin() +
-    geom_boxplot(width=0.1, color="grey", alpha=0.2)
+    geom_boxplot(width=0.1, color="grey", alpha=0.2) +
+    xlab("Configuration")
   print(plot)
   dev.off()
 }

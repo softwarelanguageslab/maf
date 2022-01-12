@@ -17,4 +17,3 @@ trait ComponentSchemeModFAllocator extends BaseSchemeModFSemantics:
     def allocVar(id: Identifier, cmp: Component) = VarAddr(id, cmp)
     def allocPtr(exp: SchemeExp, cmp: Component) = PtrAddr(exp, cmp)
     override def configString(): String = super.configString() + "\n  allocating addresses using the component as context"
-    

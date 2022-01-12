@@ -164,4 +164,5 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
 
     end IncrementalIntraAnalysis
 
-    override def configString(): String = super.configString() + s"\n  with incremental capabilities\n  using the following configuration: $configuration"
+    override def configString(): String =
+      super.configString() + s"\n  with incremental capabilities\n  using the following configuration: $configuration"

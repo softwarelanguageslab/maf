@@ -86,7 +86,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
     def run(timeout: Timeout.T): Unit =
       while !finished && !timeout.reached do step(timeout)
 
-    override def configString(): String = super.configString() + "\n  using a priority queue work list"  
+    override def configString(): String = super.configString() + "\n  using a priority queue work list"
 
 /** Provides a work list that prioritises nested calls by call depth to a modular analysis. */
 trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr]:
