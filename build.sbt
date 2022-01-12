@@ -13,7 +13,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     /** General settings */
     name := "Modular Analysis Framework (MAF)",
     version := "2.0",
-    scalaVersion := "3.0.2",
+    scalaVersion := "3.1",
     crossScalaVersions ++= Seq("2.13.6", "3.0.2"),
     /** Dependencies */
     libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "2.0.0",
