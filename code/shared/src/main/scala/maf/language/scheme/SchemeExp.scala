@@ -648,7 +648,7 @@ case class MakeStructSetter(
  */
 case class MakeStructConstr(
     tag: String,
-    idx: Int,
+    siz: Int,
     idn: Identity)
     extends MakeStruct:
 

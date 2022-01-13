@@ -289,14 +289,21 @@ trait ScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvS
         }
       }
 
+      /**
+       * A hook called by callFun, which can be used to add additional application semantics. For example to support call/cc or other objects that
+       * behave like functions
+       */
+      protected def callFun(f: PostValue, args: List[PostValue]): EvalM[Value] = void
+
       private def callFun(f: SchemeFuncall): EvalM[Value] =
         for
             fv <- extract(eval(f.f))
             argsV <- f.args.mapM(eval andThen extract)
             ctx = buildCtx(argsV.map(_.symbolic), None)
 
-            result <- nondet(
+            result <- nondets(
               applyArr(f, fv),
+              callFun(fv, argsV),
               applyFun(f, fv.value, f.args.zip(argsV.map(_.value)), f.idn.pos, ctx)
             ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))
         yield result
