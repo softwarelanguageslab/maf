@@ -29,7 +29,8 @@ class TypeSchemeLattice[A <: Address]:
         opq: Boolean = false,
         struct: Boolean = false,
         setterGetter: Boolean = false,
-        constructor: Boolean = true)
+        constructor: Boolean = false,
+        structPredicate: Boolean = false)
         extends SmartHash:
         def isBottom: Boolean =
           !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt && !opq
@@ -54,6 +55,7 @@ class TypeSchemeLattice[A <: Address]:
         def struct: L = L(struct = true)
         def setterGetter: L = L(setterGetter = true)
         def structConstructor: L = L(constructor = true)
+        def structPredicate: L = L(structPredicate = true)
 
     def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
       if b then { MayFail.success(v) }
@@ -198,6 +200,7 @@ class TypeSchemeLattice[A <: Address]:
       def getStructs(x: L): Set[Struct[L]] = Set()
       def getGetterSetter(x: L): Set[StructSetterGetter] = Set()
       def getStructConstructor(x: L): Set[StructConstructor] = Set()
+      def getStructPredicates(x: L): Set[StructPredicate] = Set()
 
       def bottom: L = Inject.bottom
 
@@ -229,6 +232,7 @@ class TypeSchemeLattice[A <: Address]:
       def struct(struct: Struct[L]): L = Inject.struct
       def structSetterGetter(setterGetter: StructSetterGetter): L = Inject.setterGetter
       def structConstructor(constr: StructConstructor): L = Inject.structConstructor
+      def structPredicate(pred: StructPredicate): L = Inject.structPredicate
       def opq(opq: Opq): L = Inject.opq
       def void: L = ???
       def acquire(lock: L, caller: TID): MayFail[L, Error] = ???

@@ -21,6 +21,8 @@ object ContractSchemeUndefiner extends BaseSchemeUndefiner:
               undefineExpr <- tailcall(undefine1(expr))
           yield ContractSchemeMon(undefineContract, undefineExpr, idn)
 
+        case _: MakeStructConstr | _: MakeStructGetter | _: MakeStructSetter | _: MakeStructPredicate => done(exp)
+
         case ContractSchemeCheck(contract, valueExpression, idn) =>
           for
               undefineContract <- tailcall(undefine1(contract))
