@@ -11,6 +11,7 @@ import maf.modular.incremental.IncrementalConfiguration.*
 import maf.modular.scheme.modf.*
 import maf.modular.incremental.*
 import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
+import maf.modular.incremental.ProgramVersionExtracter.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.PrmAddr
@@ -100,12 +101,14 @@ object IncrementalRun extends App:
         try {
           println(s"***** $bench *****")
           //interpretProgram(bench)
-          val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+          val text = getUpdated(CSchemeParser.parseProgram(Reader.loadFile(bench)))
           //println(text.prettyString())
           val a = base(text)
           //a.logger.logU("BASE + INC")
           //println(a.configString())
+          a.version = New
           a.analyzeWithTimeout(timeout())
+          a.visited.foreach(println)
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
           //a.configuration = noOptimisations
           // a.flowInformationToDotGraph("logs/flowsA1.dot")
@@ -118,6 +121,7 @@ object IncrementalRun extends App:
           //b.analyzeWithTimeout(timeout())
           // b.flowInformationToDotGraph("logs/flowsB.dot")
           println("Done")
+          println(a.program.asInstanceOf[SchemeExp].prettyString())
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
         } catch {
           case e: Exception =>
@@ -130,9 +134,10 @@ object IncrementalRun extends App:
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      //"test/DEBUG3.scm",
+      "test/DEBUG2.scm",
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
-      "test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
+      //"test/R5RS/gambit/nboyer.scm",
+      //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
     )
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(20, MINUTES))
 

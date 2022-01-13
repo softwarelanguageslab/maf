@@ -44,6 +44,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       |COMI  Indicates the component's analysis is committed.
       |DINV  Dependency invalidation: the component is no longer dependent on the dependency.
       |IUPD  Incremental update of the given address, indicating the value now residing in the store and the value actually written.
+      |NEWC  Discovery of a new, not yet existing component.
       |PROV  Registration of provenance, including the address and new provenance value, for values that did not cause store changes.
       |READ  Address read, includes the address and value retrieved from the store.
       |RSAD  Indicates the address dependencies for a given component are reset.
@@ -177,6 +178,10 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         if mode == Fine then
             logger.log(s"IUPD ${crop(addr.toString)} <<= ${crop(inter.store.getOrElse(addr, lattice.bottom).toString)} (W ${crop(nw.toString)}")
         b
+
+    override def spawn(cmp: Component): Unit =
+        if mode != Summary && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
+        super.spawn(cmp)
 
     trait IncrementalLoggingIntra extends IncrementalGlobalStoreIntraAnalysis:
         intra =>
