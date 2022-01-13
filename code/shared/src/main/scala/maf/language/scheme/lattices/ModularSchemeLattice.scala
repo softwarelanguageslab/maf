@@ -153,6 +153,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def typeName = "STRUCTGETTERSETTER"
         override def toString: String = "<struct-getter-setter>"
 
+    case class StructConstructors(constructors: Set[StructConstructor]) extends Value:
+        def ord = 25
+        def typeName = "STRUCTCONSTRUCTOR"
+        override def toString: String = "<struct-constructor>"
+
     /** The injected true value */
     val True: Bool = Bool(BoolLattice[B].inject(true))
 
@@ -202,6 +207,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Opqs(o1), Opqs(o2))                               => Opqs(sunion(o1, o2))
             case (Structs(o1), Structs(o2))                         => Structs(sunion(o1, o2))
             case (StructSetterGetters(o1), StructSetterGetters(o2)) => StructSetterGetters(o1 ++ o2)
+            case (StructConstructors(o1), StructConstructors(o2))   => StructConstructors(o1 ++ o2)
             case _                                                  => throw new Exception(s"Illegal join of $x and $y")
 
         def subsumes(x: Value, y: => Value): Boolean =
@@ -605,6 +611,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def opq(opq: Opq): Value = Opqs(Set(opq))
         def struct(struct: Struct[L]): Value = Structs(Set(struct))
         def structSetterGetter(struct: StructSetterGetter): Value = StructSetterGetters(Set(struct))
+        def structConstructor(constr: StructConstructor): Value = StructConstructors(Set(constr))
 
         def getClosures(x: Value): Set[schemeLattice.Closure] = x match
             case Clo(closures) => closures
@@ -648,6 +655,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def getSetterGetters(x: Value): Set[StructSetterGetter] = x match
             case StructSetterGetters(l) => l
             case _                      => Set.empty
+
+        def getStructConstructor(x: Value): Set[StructConstructor] = x match
+            case StructConstructors(l) => l
+            case _                     => Set.empty
 
         def car(x: Value): MayFail[L, Error] = x match
             case Cons(car, _) => MayFail.success(car)
@@ -847,6 +858,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       def getFlats(x: L): Set[Flat[L]] = x.foldMapL(x => Value.getFlats(x))(setMonoid)
       def getStructs(x: L): Set[Struct[L]] = x.foldMapL(x => Value.getStructs(x))(setMonoid)
       def getGetterSetter(x: L): Set[StructSetterGetter] = x.foldMapL(x => Value.getSetterGetters(x))(setMonoid)
+      def getStructConstructor(x: L): Set[StructConstructor] = x.foldMapL(x => Value.getStructConstructor(x))(setMonoid)
       def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
       def acquire(lock: L, tid: TID): MayFail[L, Error] =
         lock.foldMapL(l => Value.acquire(l, tid))
@@ -882,6 +894,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       def struct(struct: Struct[L]): L = Element(Value.struct(struct))
       def structSetterGetter(setterGetter: StructSetterGetter): L =
         Element(Value.structSetterGetter(setterGetter))
+      def structConstructor(constructor: StructConstructor): L = 
+        Element(Value.structConstructor(constructor))
       def nil: L = Element(Value.nil)
       def void: L = Element(Value.void)
       def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement

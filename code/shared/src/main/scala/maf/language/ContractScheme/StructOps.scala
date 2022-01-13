@@ -8,6 +8,9 @@ import maf.language.ContractScheme.ContractValues.*
 import maf.language.scheme.primitives.SchemePrimM
 import scala.annotation.meta.getter
 import scala.reflect.ClassTag
+import maf.core.Error
+
+case class StructInvalidArity(name: String, expected: Int, got: Int) extends Error
 
 /**
  * Semantics for creating and refering to structs.
@@ -35,7 +38,7 @@ class StructOps[Value](using lat: SchemeLattice[Value, Address], clsT: ClassTag[
           lat.getGetterSetter(op).flatMap { getterSetter =>
             if getterSetter.isSetter then
                 // Setter (set-posn-x! inst val)
-                if args.size != 2 then Set(monad.fail(???))
+                if args.size != 2 then Set(monad.fail(StructInvalidArity("set-struct!", 2, args.size)))
                 else
                     val instance = args(0)
                     val newValue = args(1)
@@ -45,7 +48,7 @@ class StructOps[Value](using lat: SchemeLattice[Value, Address], clsT: ClassTag[
                         struct.fields(getterSetter.idx) = lat.join(struct.fields(getterSetter.idx), newValue)
                         monad.unit(lat.nil)
                     }
-            else if args.size != 1 then Set(monad.fail(???))
+            else if args.size != 1 then Set(monad.fail(StructInvalidArity("struct-ref", 1, args.size)))
             else
                 // Getter (posn-x inst)
                 val instance = args(0)

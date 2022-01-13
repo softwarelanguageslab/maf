@@ -72,6 +72,9 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
     /** Extract the struct values from this abstract value */
     def getStructs(x: L): Set[Struct[L]]
 
+    /** Extract the constructor from the abstract domain */
+    def getStructConstructor(x: L): Set[StructConstructor]
+
     /** Extract the getters/setter values from this abstract value */
     def getGetterSetter(x: L): Set[StructSetterGetter]
 
@@ -180,6 +183,9 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
     /** Injection of a struct field setter/getter in the abstract domain */
     def structSetterGetter(setterGetter: StructSetterGetter): L
+
+    /** Injection of a struct constructor in the abstract domain */
+    def structConstructor(constr: StructConstructor): L
 
     def void: L
 
