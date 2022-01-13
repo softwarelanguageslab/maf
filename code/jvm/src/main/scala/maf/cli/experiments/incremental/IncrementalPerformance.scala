@@ -189,7 +189,7 @@ trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
-object IncrementalSchemeModFPerformance extends IncrementalSchemePerformance:
+object IncrementalSchemeModFTypePerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
     val outputFile: String = s"performance/modf-type.csv"
@@ -199,7 +199,7 @@ object IncrementalSchemeModFCPPerformance extends IncrementalSchemePerformance:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
     val outputFile: String = s"performance/modf-CP.csv"
 
-object IncrementalSchemeModConcPerformance extends IncrementalSchemePerformance:
+object IncrementalSchemeModConcTypePerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
     val outputFile: String = s"performance/modconc-type.csv"
@@ -213,8 +213,8 @@ object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformanc
 
 object IncrementalSchemeModXPerformance:
     def main(args: Array[String]): Unit =
-        val curated = IncrementalSchemeModFPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-        val generated = IncrementalSchemeModFPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        val curated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+        val generated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
         if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/performance.R", curated, generated)
 //IncrementalSchemeModFCPPerformance.main(args)
 //IncrementalSchemeModConcPerformance.main(args)

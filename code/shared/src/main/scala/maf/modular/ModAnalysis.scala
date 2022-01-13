@@ -135,6 +135,10 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
   def init() =
     visited = visited + initialComponent
 
+  // Print analysis information.
+
+  def configString(): String = "Modular analysis"
+
 }
 
 object ModAnalysis:

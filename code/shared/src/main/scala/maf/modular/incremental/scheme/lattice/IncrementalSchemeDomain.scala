@@ -39,6 +39,7 @@ object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrappe
 
 trait IncrementalSchemeTypeDomain extends IncrementalModularSchemeDomain:
     final val modularLatticeWrapper = IncrementalSchemeTypeDomain
+    override def domainName: String = "incremental modular type Scheme domain"
 
 object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeLatticeWrapper:
     type S = ConstantPropagation.S
@@ -52,3 +53,4 @@ object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSche
 
 trait IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeDomain:
     final val modularLatticeWrapper = IncrementalSchemeConstantPropagationDomain
+    override def domainName: String = "incremental modular constant propagation Scheme domain"

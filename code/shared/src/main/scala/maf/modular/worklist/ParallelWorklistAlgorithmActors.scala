@@ -163,4 +163,6 @@ trait ParallelWorklistAlgorithmActors[Expr <: Expression] extends ModAnalysis[Ex
       else false
     def isDone: Boolean = R.forall(dep => inter.depVersion(dep) == intra.depVersion(dep))
   }
+
+  override def configString(): String = super.configString() + "\n  using a parallel actor-based work list algorithm"
 }

@@ -223,3 +223,5 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemanticsIdentity:
             case ArgsFrame(fexp, fval, curExp, toEval, args, env) =>
               val newArgs = (curExp, vlu) :: args
               evalArgs(fexp, fval, toEval, newArgs, env, cnt)
+
+    override def configString(): String = super.configString() + "\n  applying small-step ModF Scheme semantics"

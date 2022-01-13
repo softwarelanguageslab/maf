@@ -11,6 +11,7 @@ trait SchemeModConcNoSensitivity extends SchemeModConcSemantics:
         modFCmp: SchemeModFComponent,
         caller: Component
       ) = NoContext
+    override def configString(): String = super.configString() + "\n  without context sensitivity"
 
 trait SchemeModConcStandardSensitivity extends SchemeModConcSemantics:
     type ComponentContext = SchemeModFComponent
@@ -20,3 +21,4 @@ trait SchemeModConcStandardSensitivity extends SchemeModConcSemantics:
         modFCmp: SchemeModFComponent,
         caller: Component
       ) = modFCmp
+    override def configString(): String = super.configString() + "\n  with standard ModConc context sensitivity"

@@ -26,6 +26,15 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
     def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
 
+    var maxLen: Int = 75
+    def crop(string: String, length: Int = maxLen): String = if string.length <= length then string else string.take(length) + "..."
+
+    enum Mode:
+        case Fine, Coarse, Summary
+
+    import Mode.*
+    var mode: Mode = Fine
+
     private def legend(): String =
       """***** LEGEND OF ABBREVIATIONS *****
       |ADEP  An address value dependency is registered. Includes the "source" address and the address where the value flows to.
@@ -35,6 +44,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
       |COMI  Indicates the component's analysis is committed.
       |DINV  Dependency invalidation: the component is no longer dependent on the dependency.
       |IUPD  Incremental update of the given address, indicating the value now residing in the store and the value actually written.
+      |NEWC  Discovery of a new, not yet existing component.
       |PROV  Registration of provenance, including the address and new provenance value, for values that did not cause store changes.
       |READ  Address read, includes the address and value retrieved from the store.
       |RSAD  Indicates the address dependencies for a given component are reset.
@@ -58,14 +68,14 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
               addrs.foreach(addr =>
                 if focus(addr) then {
                   val v = store.getOrElse(addr, lattice.bottom)
-                  val p = provenance(addr).map({ case (c, v) => s"$v ($c)" }).mkString("; ")
-                  table = table.add(stepString, s"σ($addr)", v.toString).add(stepString, s"P($addr)", p)
+                  val p = provenance(addr).map({ case (c, v) => s"${crop(v.toString)} ($c)" }).mkString("; ")
+                  table = table.add(stepString, s"σ(${crop(addr.toString)}", crop(v.toString)).add(stepString, s"P(${crop(addr.toString)}", p)
                 }
               )
               dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach { case (addr, valueSources) =>
                 if focus(addr) then table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
               }
-              botRead.foreach(addr => table = table.add(stepString, "Bot", addr.toString))
+              botRead.foreach(addr => table = table.add(stepString, "Bot", crop(addr.toString)))
               botRead = None
 
     private def tableToString(): String =
@@ -83,7 +93,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         val depString = deps
           .foldLeft(Table.empty.withDefaultValue(""))({ case (table, dep) => table.add(dep._1.toString, "Value sources", dep._2.mkString("; ")) })
           .prettyString()
-        val scaString = computeSCAs().map(_.mkString("{", ", ", "}")).mkString("\n")
+        val scaString = computeSCAs().map(_.map(a => crop(a.toString)).mkString("{", ", ", "}")).mkString("\n")
         depString + "\nSCAs:\n" + (if (scaString.isEmpty) then "none" else scaString)
 
     private def programToString(): String =
@@ -91,9 +101,9 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         "Desugared program:\n\n" + str
 
     private def logData(end: Boolean): Unit =
-        if end then logger.logU("\n\n" + getSummary())
+        // if end then logger.logU("\n\n" + getSummary())
         logger.logU("\n\n" + tableToString())
-        logger.logU("\n" + storeString())
+        if mode != Summary then logger.logU("\n" + storeString().split("\n").nn.map(s => crop(s.nn)).mkString("\n"))
         logger.logU("\n" + addressDependenciesToString())
         if end then logger.logU("\n\n" + programToString())
 
@@ -126,6 +136,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     var logEnd = true
 
     override def run(timeout: Timeout.T): Unit =
+        logger.logU(configString())
         super.run(timeout)
         if logEnd then logData(false)
 
@@ -138,11 +149,6 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             logEnd = false
             super.updateAnalysis(timeout)
             logEnd = true
-            //if (configuration.cyclicValueInvalidation) {
-            //  addressDependencies.foreach({ case (cmp, map) =>
-            //    map.foreach { case (a, addr) => logger.log(s"$a depends on $addr ($cmp)") }
-            //  })
-            //}
             logData(true)
         catch
             case t: Throwable =>
@@ -151,11 +157,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
               throw t
 
     override def deregister(target: Component, dep: Dependency): Unit =
-        logger.log(s"DINV $target <-\\- $dep")
+        if mode == Fine then logger.log(s"DINV $target <-\\- $dep")
         super.deregister(target, dep)
 
     override def deleteComponent(cmp: Component): Unit =
-        logger.log(s"CINV $cmp")
+        if mode != Summary then logger.log(s"CINV $cmp")
         deletedC = cmp :: deletedC
         super.deleteComponent(cmp)
 
@@ -164,49 +170,57 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         super.deleteAddress(addr)
 
     override def trigger(dep: Dependency): Unit =
-        logger.log(s"TRIG $dep [adding: ${deps(dep)}]")
+        if mode != Summary then logger.log(s"TRIG ${crop(dep.toString)} [adding: ${crop(deps(dep).toString())}]")
         super.trigger(dep)
 
     override def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean =
         val b = super.updateAddrInc(cmp, addr, nw)
-        logger.log(s"IUPD $addr <<= ${inter.store.getOrElse(addr, lattice.bottom)} (W $nw)")
+        if mode == Fine then
+            logger.log(s"IUPD ${crop(addr.toString)} <<= ${crop(inter.store.getOrElse(addr, lattice.bottom).toString)} (W ${crop(nw.toString)}")
         b
+
+    override def spawn(cmp: Component): Unit =
+        if mode != Summary && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
+        super.spawn(cmp)
 
     trait IncrementalLoggingIntra extends IncrementalGlobalStoreIntraAnalysis:
         intra =>
 
         // Analysis of a component.
         abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            logger.logU("") // Adds a newline to the log.
+            if mode != Summary then logger.logU("") // Adds a newline to the log.
             if version == Old then intraC += 1 else intraCU += 1
             repeats = repeats + (component -> (repeats(component) + 1))
-            logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
-            if configuration.cyclicValueInvalidation then logger.log(s"RSAD Resetting addressDependencies for $component.")
+            if mode != Summary then logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
+            if configuration.cyclicValueInvalidation && mode == Fine then logger.log(s"RSAD Resetting addressDependencies for $component.")
             super.analyzeWithTimeout(timeout)
 
         // Reading an address.
         override def readAddr(addr: Addr): Value =
             val v = super.readAddr(addr)
             if v == lattice.bottom then botRead = Some(addr) else botRead = None
-            logger.log(s"READ $addr => $v")
+            if mode == Fine then logger.log(s"READ ${crop(addr.toString)} => ${crop(v.toString)}")
             v
 
         // Writing an address.
         override def writeAddr(addr: Addr, value: Value): Boolean =
-            if configuration.cyclicValueInvalidation then
-                lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> $addr"))
-                implicitFlows.flatten.foreach(f => logger.log(s"ADP* $f ~> $addr"))
+            if configuration.cyclicValueInvalidation && mode == Fine then
+                lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> ${crop(addr.toString)}"))
+                implicitFlows.flatten.foreach(f => logger.log(s"ADP* $f ~> ${crop(addr.toString)}"))
             val b = super.writeAddr(addr, value)
-            logger.log(s"WRIT $value => $addr (${if b then "becomes" else "remains"} ${intra.store.getOrElse(addr, lattice.bottom)})")
+            if mode == Fine then
+                logger.log(
+                  s"WRIT ${crop(value.toString)} => ${crop(addr.toString)} (${if b then "becomes" else "remains"} ${crop(intra.store.getOrElse(addr, lattice.bottom).toString)})"
+                )
             b
 
         // Incremental store update.
         override def doWriteIncremental(): Unit =
-            intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV $addr: $value") })
+            if mode == Fine then intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV ${crop(addr.toString)}: ${crop(value.toString)}") })
             super.doWriteIncremental()
 
         override def commit(): Unit =
-            logger.log("COMI")
+            if mode == Fine then logger.log("COMI")
             super.commit()
             insertTable(Right(component))
 

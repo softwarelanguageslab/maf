@@ -58,6 +58,7 @@ object SchemeTypeDomain extends ModularSchemeLatticeWrapper:
 
 trait SchemeTypeDomain extends ModularSchemeDomain:
     val modularLatticeWrapper = SchemeTypeDomain
+    override def domainName: String = "modular type Scheme domain"
 
 //
 // CONSTANT PROPAGATION DOMAIN
@@ -77,6 +78,7 @@ object SchemeConstantPropagationDomain extends ModularSchemeLatticeWrapper:
 
 trait SchemeConstantPropagationDomain extends ModularSchemeDomain:
     val modularLatticeWrapper = SchemeConstantPropagationDomain
+    override def domainName: String = "modular constant propagation Scheme domain"
 
 //
 // POWERSET DOMAIN
@@ -97,6 +99,7 @@ object SchemePowersetDomain extends ModularSchemeLatticeWrapper:
 
 trait SchemePowersetDomain extends ModularSchemeDomain:
     val modularLatticeWrapper = SchemePowersetDomain
+    override def domainName: String = "modular powerset Scheme domain"
 
 //
 // BOUNDED SET DOMAIN
@@ -114,3 +117,4 @@ class SchemeBoundedDomainWrapper(val bound: Int) extends ModularSchemeLatticeWra
 
 trait SchemeBoundedDomain(bound: Int) extends ModularSchemeDomain:
     val modularLatticeWrapper = new SchemeBoundedDomainWrapper(bound)
+    override def domainName: String = "modular bounded Scheme domain"

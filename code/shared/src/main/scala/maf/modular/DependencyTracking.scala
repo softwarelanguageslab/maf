@@ -13,4 +13,6 @@ trait DependencyTracking[Expr <: Expression] extends ModAnalysis[Expr] { inter =
       override def commit(): Unit =
           super.commit()
           dependencies += component -> (dependencies(component) ++ C) // update the bookkeeping
+
+  override def configString(): String = super.configString() + "\n  with dependency tracking"
 }
