@@ -10,13 +10,15 @@ import maf.language.ContractScheme.StructOps
  *
  * The program must first be compiled using the ContractScheme compiler for the structures to be recognized
  */
-trait ScvWithStructs extends ScvBigStepSemantics:
-    given valueClassTag: ClassTag[Value]
+trait ScvWithStructs extends BaseScvBigStepSemantics:
+    protected val valueClassTag: ClassTag[Value]
 
     override def intraAnalysis(component: Component): IntraScvSemanticsWithStructs
 
-    trait IntraScvSemanticsWithStructs extends IntraScvSemantics:
+    trait IntraScvSemanticsWithStructs extends BaseIntraScvSemantics:
         import evalM._
+
+        private given ClassTag[Value] = valueClassTag
 
         private val structOps = StructOps()
 
