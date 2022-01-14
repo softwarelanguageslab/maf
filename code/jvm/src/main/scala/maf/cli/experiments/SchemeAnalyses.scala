@@ -14,6 +14,7 @@ import maf.modular.scv._
 import maf.cli.modular.scv.JVMSatSolver
 import maf.language.scheme.lattices.SchemeLattice
 import maf.core.Address
+import scala.reflect.ClassTag
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -167,18 +168,28 @@ object SchemeAnalyses:
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver
 
-    /** SCV with provide/contract support */
-    def scvModAnalysisWithProvide(prg: SchemeExp) =
+    /**
+     * SCV analysis with Racket features:
+     *
+     *   - provide/contract
+     *   - structs
+     */
+    def scvModAnalysisWithRacketFeatures(prg: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
           with ScvBigStepSemantics
           with ScvBigStepWithProvides
+          with ScvWithStructs
           with SchemeConstantPropagationDomain
           with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
           with SchemeModFSemanticsM
           with ScvOneContextSensitivity:
-            override def intraAnalysis(cmp: Component) = new IntraScvSemanticsWithProvides(cmp)
+            protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
+
+            override def intraAnalysis(
+                cmp: Component
+              ) = new IntraScvSemantics(cmp) with IntraScvSemanticsWithProvides with IntraScvSemanticsWithStructs
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver
