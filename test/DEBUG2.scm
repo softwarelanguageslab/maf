@@ -22,92 +22,23 @@
                                          (= rewrites 16445406)
                                          (if (eq? n 5) (= rewrites 51507739) #t))))))
                           #f))
-                       (test-boyer
-                          (__toplevel_cons
-                             (__toplevel_cons
-                                'x
-                                (__toplevel_cons
-                                   'f
-                                   (__toplevel_cons
-                                      (__toplevel_cons
-                                         'plus
-                                         (__toplevel_cons
-                                            (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                            (__toplevel_cons
-                                               (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons (__toplevel_cons 'zero ()) ())))
-                                               ())))
-                                      ())))
-                             (__toplevel_cons
-                                (__toplevel_cons
-                                   'y
-                                   (__toplevel_cons
-                                      'f
-                                      (__toplevel_cons
-                                         (__toplevel_cons
-                                            'times
-                                            (__toplevel_cons
-                                               (__toplevel_cons 'times (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                               (__toplevel_cons (__toplevel_cons 'plus (__toplevel_cons 'c (__toplevel_cons 'd ()))) ())))
-                                         ())))
-                                (__toplevel_cons
-                                   (__toplevel_cons
-                                      'z
-                                      (__toplevel_cons
-                                         'f
-                                         (__toplevel_cons
-                                            (__toplevel_cons
-                                               'reverse
-                                               (__toplevel_cons
-                                                  (__toplevel_cons
-                                                     'append
-                                                     (__toplevel_cons
-                                                        (__toplevel_cons 'append (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                                        (__toplevel_cons (__toplevel_cons 'nil ()) ())))
-                                                  ()))
-                                            ())))
-                                   (__toplevel_cons
-                                      (__toplevel_cons
-                                         'u
-                                         (__toplevel_cons
-                                            'equal
-                                            (__toplevel_cons
-                                               (__toplevel_cons 'plus (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                               (__toplevel_cons (__toplevel_cons 'difference (__toplevel_cons 'x (__toplevel_cons 'y ()))) ()))))
-                                      (__toplevel_cons
-                                         (__toplevel_cons
-                                            'w
-                                            (__toplevel_cons
-                                               'lessp
-                                               (__toplevel_cons
-                                                  (__toplevel_cons 'remainder (__toplevel_cons 'a (__toplevel_cons 'b ())))
-                                                  (__toplevel_cons
-                                                     (__toplevel_cons
-                                                        'member
-                                                        (__toplevel_cons 'a (__toplevel_cons (__toplevel_cons 'length (__toplevel_cons 'b ())) ())))
-                                                     ()))))
-                                         ())))))
-                          (__toplevel_cons
-                             'implies
-                             (__toplevel_cons
-                                (__toplevel_cons
-                                   'and
-                                   (__toplevel_cons
-                                      (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'y ())))
-                                      (__toplevel_cons
-                                         (__toplevel_cons
-                                            'and
-                                            (__toplevel_cons
-                                               (__toplevel_cons 'implies (__toplevel_cons 'y (__toplevel_cons 'z ())))
-                                               (__toplevel_cons
-                                                  (__toplevel_cons
-                                                     'and
-                                                     (__toplevel_cons
-                                                        (__toplevel_cons 'implies (__toplevel_cons 'z (__toplevel_cons 'u ())))
-                                                        (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'u (__toplevel_cons 'w ()))) ())))
-                                                  ())))
-                                         ())))
-                                (__toplevel_cons (__toplevel_cons 'implies (__toplevel_cons 'x (__toplevel_cons 'w ()))) ())))
-                          4)))))
+                            (test-boyer
+                                          (quote ((x f (plus (plus a b)
+                                                             (plus c (zero))))
+                                                  (y f (times (times a b)
+                                                              (plus c d)))
+                                                  (z f (reverse (append (append a b)
+                                                                        (nil))))
+                                                  (u equal (plus a b)
+                                                     (difference x y))
+                                                  (w lessp (remainder a b)
+                                                     (member a (length b)))))
+                                          (quote (implies (and (implies x y)
+                                                               (and (implies y z)
+                                                                    (and (implies z u)
+                                                                         (implies u w))))
+                                                          (implies x w)))
+                                          4)))))
          (setup-boyer (lambda ()
                         #t))
          (test-boyer (lambda ()
@@ -313,18 +244,8 @@
                                   (if (term-equal? x (car lst))
                                      #t
                                      (term-member? x (cdr lst)))))))
-         (<change>
-            (set! setup-boyer (lambda ()
-                              (set! *symbol-records-alist* ())
-                              (set! if-constructor (symbol->symbol-record 'if))
-                              (set! false-term (translate-term (__toplevel_cons 'f ())))
-                              (set! true-term (translate-term (__toplevel_cons 't ())))
-                              (setup)))
-            ())
-         (<change>
-            ()
-            n)
          (set! test-boyer (lambda (alist term n)
+                          (display "here")
                           (set! rewrite-count 0)
                           (let ((answer (test alist term n)))
                              (if answer rewrite-count #f))))))
