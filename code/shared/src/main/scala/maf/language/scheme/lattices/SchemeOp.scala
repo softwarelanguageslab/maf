@@ -153,9 +153,6 @@ object SchemeOp:
     case object CharacterLtCI extends SchemeOp2("char-ci<")
     case object MakeVector extends SchemeOp2("make-vector")
     case object VectorRef extends SchemeOp2("vector-ref")
-    case object MakeStructGetter extends SchemeOp2("_make_struct_getter")
-    case object MakeStructSetter extends SchemeOp2("_make_struct_setter")
-    case object MakeStructConstr extends SchemeOp2("_make_struct_constr")
 
     val binaryOperators: Iterable[SchemeOp2] = Set(
       Plus,

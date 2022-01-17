@@ -611,3 +611,52 @@ case class ContractSchemeContractOut(
     def fv: Set[String] = contract.fv
     def label: Label = PCO
     def subexpressions: List[Expression] = List(contract)
+
+abstract class MakeStruct extends ContractSchemeExp:
+    def fv: Set[String] = Set()
+    def subexpressions: List[Expression] = List()
+
+/**
+ * Creates a struct getter can be applied like a function
+ *
+ * (define posn-x (_make_struct_getter 'posn 0)) (posn-x (posn 10 20))
+ */
+case class MakeStructGetter(
+    tag: String,
+    idx: Int,
+    idn: Identity)
+    extends MakeStruct:
+
+    def label = MSG
+
+/**
+ * Creates a struct setter can be applied like a function
+ *
+ * (define set-posn-x! (_make_struct_setter 'posn 0)) (set-posn-x! (posn 10 20) 5)
+ */
+case class MakeStructSetter(
+    tag: String,
+    idx: Int,
+    idn: Identity)
+    extends MakeStruct:
+    def label = MSS
+
+/**
+ * Creates a constructor, that can be applied like a function.
+ *
+ * (define posn (_make_struct_constr 'posn 2)) (posn 10 20)
+ */
+case class MakeStructConstr(
+    tag: String,
+    siz: Int,
+    idn: Identity)
+    extends MakeStruct:
+
+    def label = MSC
+
+case class MakeStructPredicate(
+    tag: String,
+    idn: Identity)
+    extends MakeStruct:
+
+    def label = MSP

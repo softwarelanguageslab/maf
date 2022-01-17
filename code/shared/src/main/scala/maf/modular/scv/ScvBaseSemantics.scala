@@ -158,6 +158,10 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   protected def nondet[X](tru: EvalM[X], fls: EvalM[X]): EvalM[X] =
     nondets(Set(tru, fls))
 
+  /** Executes the given computations non-determinstically */
+  protected def nondets[X](branches: EvalM[X]*): EvalM[X] =
+    nondets(branches.toSet)
+
   protected def nondets[X](branches: Set[EvalM[X]]): EvalM[X] =
     MonadStateT((state) => TaggedSet.flatten(branches.map(_.run(state))))
 
