@@ -42,7 +42,7 @@ object DefineTester:
           case (SchemeDefineVariable(name, value, idn)) :: rest =>
             if allowed then check(value, false) || check(rest, true) else Error(idn)
           case x :: xs =>
-            check(x, false)
+            check(x, false) || checkSequence(xs, false)
 
           case Nil => false
 
