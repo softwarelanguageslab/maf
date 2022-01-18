@@ -132,6 +132,11 @@ trait UndefinerTester:
     protected def check(s: List[SchemeExp], allowed: Boolean): Result =
       s.foldLeft[Result](NoError(allowed))(_ || check(_, allowed))
 
+    /**
+     * Checks wether the given variable denotes an annotation.
+     *
+     * Annotations are currently used as sensitivity annoations, and start with "@"
+     */
     private def isAnnotation(vrr: SchemeVarExp): Boolean =
       vrr.id.name.startsWith("@")
 
@@ -210,6 +215,20 @@ trait UndefinerTester:
             // Change expressions
             case SchemeCodeChange(old, nw, _) =>
               check(old, allowed) || check(nw, allowed)
+
+            // ContractScheme
+            case ContractSchemeDepContract(domains, rangeMaker, _) =>
+              domains.foldLeft[Result](false)(_ || check(_, false)) || check(rangeMaker, false)
+            case ContractSchemeFlatContract(expression, _) =>
+              check(expression, false)
+            case ContractSchemeMon(contract, expression, _) =>
+              check(contract, false) || check(expression, false)
+            case ContractSchemeDefineContract(name, params, contract, expression, _) =>
+              if allowed then check(contract, false) || check(expression, true) else true
+            case ContractSchemeCheck(contract, valueExpression, _) =>
+              check(contract, false) || check(valueExpression, false)
+            case ContractSchemeProvide(outs, idn) => false // TODO: actually only allowed on the top-level, but we don't have any information about the level of the definition yet
+            case _: MakeStruct => false
 
             case _ =>
               //false
