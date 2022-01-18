@@ -18,7 +18,7 @@ import maf.modular.scheme.PrmAddr
 import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.util.{Reader, Writer}
 import maf.util.Writer.Writer
-import maf.util.benchmarks.Timeout
+import maf.util.benchmarks.{Timeout, Timer}
 import maf.util.graph.DotGraph
 import maf.util.graph.DotGraph.*
 
@@ -91,7 +91,7 @@ object IncrementalRun extends App:
           {
           override def focus(a: Addr): Boolean = false // a.toString.contains("VarAddr(n")
           var configuration: IncrementalConfiguration = ci
-          //mode = Mode.Summary
+          mode = Mode.Coarse
           override def intraAnalysis(
               cmp: Component
             ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
@@ -104,24 +104,34 @@ object IncrementalRun extends App:
           val text = getUpdated(CSchemeParser.parseProgram(Reader.loadFile(bench)))
           //println(text.prettyString())
           val a = base(text)
+          a.logger.logU(bench)
           //a.logger.logU("BASE + INC")
           //println(a.configString())
           a.version = New
-          a.analyzeWithTimeout(timeout())
-          a.visited.foreach(println)
+          val timeI = Timer.timeOnly {
+            a.analyzeWithTimeout(timeout())
+          }
+          println(s"Initial analysis took ${timeI/1000000} ms.")
+          //a.visited.foreach(println)
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
           //a.configuration = noOptimisations
           // a.flowInformationToDotGraph("logs/flowsA1.dot")
-          //a.updateAnalysis(timeout())
+          val timeU = Timer.timeOnly {
+            a.updateAnalysis(timeout())
+          }
+          println(s"Updating analysis took ${timeU/1000000} ms.")
           // a.flowInformationToDotGraph("logs/flowsA2.dot")
-          //Thread.sleep(1000)
-          //val b = base(text)
-          //b.version = New
-          //  b.logger.logU("REAN")
-          //b.analyzeWithTimeout(timeout())
+          Thread.sleep(1000)
+          val b = base(text)
+          b.version = New
+          b.logger.logU("REAN")
+          val timeR = Timer.timeOnly {
+            b.analyzeWithTimeout(timeout())
+          }
+          println(s"Full reanalysis took ${timeR/1000000} ms.")
           // b.flowInformationToDotGraph("logs/flowsB.dot")
           println("Done")
-          println(a.program.asInstanceOf[SchemeExp].prettyString())
+          //println(a.program.asInstanceOf[SchemeExp].prettyString())
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
         } catch {
           case e: Exception =>
