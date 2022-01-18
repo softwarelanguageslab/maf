@@ -186,7 +186,20 @@ trait UndefinerTester:
             case SchemeValue(value, idn)  => false
             case SchemeAssert(exp, _) =>
               check(exp, false)
-            case _ => throw new Exception(s"unrecongized expression $s")
+
+            // CScheme
+            case CSchemeFork(body, _) =>
+              check(body, true) // TODO: check if this is correct. Defines allowed at the start of the body
+            case CSchemeJoin(texp, _) =>
+              check(texp, false)
+
+            // Change expressions
+            case SchemeCodeChange(old, nw, _) =>
+              check(old, allowed) || check(nw, allowed)
+
+            case _ =>
+              false
+//throw new Exception(s"unrecongized expression $s")
 end UndefinerTester
 
 object SchemeUndefiner extends BaseSchemeUndefiner
