@@ -14,7 +14,7 @@ object DefineTester extends UndefinerTester:
           val directory = args(0)
           val programs = SchemeBenchmarkPrograms.fromFolderR(directory)(".DS_Store")
           val parsed = programs.map(name => (Reader.loadFile(name), name)).flatMap { (s, name) =>
-            Try(SchemeParser.parse(s)).toOption.map((e) => (e, name))
+            Try(SchemeParser.parseProgramText(s)).toOption.map((e) => (e, name))
           }
           val results = parsed.map { case (e, name) =>
             (check(e, true), name)

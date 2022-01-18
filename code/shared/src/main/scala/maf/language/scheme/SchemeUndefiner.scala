@@ -132,6 +132,14 @@ trait UndefinerTester:
     protected def check(s: List[SchemeExp], allowed: Boolean): Result =
       s.foldLeft[Result](NoError(allowed))(_ || check(_, allowed))
 
+    private def isAnnotation(vrr: SchemeVarExp): Boolean =
+      vrr.id.name.startsWith("@")
+
+    /**
+     * Checks the given list as a sequence of expressions.
+     *
+     * Will reject programs that have defines and expressions interleaved
+     */
     private def checkSequence(s: List[SchemeExp])(allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
@@ -139,12 +147,18 @@ trait UndefinerTester:
               if allowed then check(value, false) || checkSequence(rest)(true) else Error(idn)
             case (e @ SchemeBegin(_, _)) :: rest =>
               check(e, allowed) ||> checkSequence(rest)
+
+            case (vrr: SchemeVarExp) :: rest if isAnnotation(vrr) =>
+              // annotations of the form @... are ignored as expressions
+              checkSequence(rest)(allowed)
+
             case x :: xs =>
               check(x, false) ||> checkSequence(xs)
 
             case Nil =>
               NoError(allowed)
 
+    /** Checks whether the given expression contains defines in invalid contexts */
     protected def check(s: SchemeExp, allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
@@ -198,8 +212,8 @@ trait UndefinerTester:
               check(old, allowed) || check(nw, allowed)
 
             case _ =>
-              false
-//throw new Exception(s"unrecongized expression $s")
+              //false
+              throw new Exception(s"unrecongized expression $s")
 end UndefinerTester
 
 object SchemeUndefiner extends BaseSchemeUndefiner
