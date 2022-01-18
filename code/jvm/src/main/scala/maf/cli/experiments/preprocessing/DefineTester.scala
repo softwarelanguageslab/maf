@@ -91,8 +91,7 @@ object DefineTester:
       if args.size != 1 then println("Usage: DefineTester benchmarks")
       else
           val directory = args(0)
-          //val programs = SchemeBenchmarkPrograms.fromFolderR(directory)(".DS_Store")
-          val programs = List("test/R5RS/VUB-projects/railway-control-system.scm")
+          val programs = SchemeBenchmarkPrograms.fromFolderR(directory)(".DS_Store")
           val parsed = programs.map(name => (Reader.loadFile(name), name)).flatMap { (s, name) =>
             Try(SchemeParser.parse(s)).toOption.map((e) => (e, name))
           }
