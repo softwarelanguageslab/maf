@@ -41,10 +41,10 @@ trait BaseSchemeUndefiner extends UndefinerTester:
     def undefine1(exp: SchemeExp): TailRec[SchemeExp] = undefine(List(exp), List(), None)
 
     def undefineExp(exp: SchemeExp): TailRec[SchemeExp] = exp match
-        case SchemeLambda(name, args, body, pos) =>
-          tailcall(undefineBody(body)).map(b => SchemeLambda(name, args, b, pos))
-        case SchemeVarArgLambda(name, args, vararg, body, pos) =>
-          tailcall(undefineBody(body)).map(b => SchemeVarArgLambda(name, args, vararg, b, pos))
+        case SchemeLambda(name, args, body, ann, pos) =>
+          tailcall(undefineBody(body)).map(b => SchemeLambda(name, args, b, ann, pos))
+        case SchemeVarArgLambda(name, args, vararg, body, ann, pos) =>
+          tailcall(undefineBody(body)).map(b => SchemeVarArgLambda(name, args, vararg, b, ann, pos))
         case SchemeFuncall(f, args, pos) =>
           tailcall(undefine1(f)).flatMap(fun => trampolineM(undefine1, args).map(argsv => SchemeFuncall(fun, argsv, pos)))
         case SchemeIf(cond, cons, alt, pos) =>
@@ -162,10 +162,10 @@ trait UndefinerTester:
     protected def check(s: SchemeExp, allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
-            case SchemeLambda(name, args, body, idn) =>
+            case SchemeLambda(name, args, body, ann, idn) =>
               checkSequence(body)(true)
 
-            case SchemeVarArgLambda(name, args, vararg, body, idn) =>
+            case SchemeVarArgLambda(name, args, vararg, body, ann, idn) =>
               checkSequence(body)(true)
 
             case SchemeFuncall(f, args, idn) =>

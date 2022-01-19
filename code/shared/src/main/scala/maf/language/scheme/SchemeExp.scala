@@ -52,14 +52,14 @@ sealed trait SchemeLambdaExp extends SchemeExp:
     lazy val fv: Set[String] = SchemeBody.fv(body) -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
     // height
     override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
-    def annotation: Option[(String, String)] = body match
+    def annotation: Option[(String, String)] /* = body match
         case SchemeVar(id) :: _ =>
           if id.name.startsWith("@") then
               id.name.split(':') match
                   case Array(name, value) => Some((name, value))
                   case _                  => throw new Exception(s"Invalid annotation: $id")
           else None
-        case _ => None
+        case _ => None */
     def label: Label = LAM
     def subexpressions: List[Expression] = args ::: body
     override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
@@ -69,6 +69,7 @@ case class SchemeLambda(
     name: Option[String],
     args: List[Identifier],
     body: List[SchemeExp],
+    annotation: Option[(String, String)],
     idn: Identity)
     extends SchemeLambdaExp:
     override def toString: String =
@@ -84,6 +85,7 @@ case class SchemeVarArgLambda(
     args: List[Identifier],
     vararg: Identifier,
     body: List[SchemeExp],
+    annotation: Option[(String, String)],
     idn: Identity)
     extends SchemeLambdaExp:
     override def toString: String =
@@ -216,7 +218,7 @@ object SchemeNamedLet:
     def apply(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idn: Identity): SchemeExp =
         val (prs, ags) = bindings.unzip
         val fnDef =
-          SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, idn))), List((SchemeVar(Identifier(name.name, idn)))), idn)
+          SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, None, idn))), List((SchemeVar(Identifier(name.name, idn)))), idn)
         SchemeFuncall(fnDef, ags, idn)
 
 /** A set! expression: (set! variable value) */
@@ -382,13 +384,20 @@ case class SchemeDefineVariable(
 
 /** Function definition of the form (define (f arg ...) body) */
 object SchemeDefineFunction:
-    def apply(name: Identifier, args: List[Identifier], body: List[SchemeExp], idn: Identity): SchemeExp =
-      SchemeDefineVariable(name, SchemeLambda(Some(name.name), args, body, idn), idn)
+    def apply(name: Identifier, args: List[Identifier], body: List[SchemeExp], annotation: Option[(String, String)], idn: Identity): SchemeExp =
+      SchemeDefineVariable(name, SchemeLambda(Some(name.name), args, body, annotation, idn), idn)
 
 /** Function definition with varargs of the form (define (f arg . vararg ...) body) */
 object SchemeDefineVarArgFunction:
-    def apply(name: Identifier, args: List[Identifier], vararg: Identifier, body: List[SchemeExp], idn: Identity): SchemeExp =
-      SchemeDefineVariable(name, SchemeVarArgLambda(Some(name.name), args, vararg, body, idn), idn)
+    def apply(
+        name: Identifier,
+        args: List[Identifier],
+        vararg: Identifier,
+        body: List[SchemeExp],
+        annotation: Option[(String, String)],
+        idn: Identity
+      ): SchemeExp =
+      SchemeDefineVariable(name, SchemeVarArgLambda(Some(name.name), args, vararg, body, annotation, idn), idn)
 
 /**
  * Do notation: (do ((<variable1> <init1> <step1>) ...) (<test> <expression> ...) <command> ...). Desugared according to R5RS, i.e., a do becomes:
@@ -439,6 +448,7 @@ object SchemeDo:
                       idn
                     )
                   ),
+                None,
                 idn
               )
             )

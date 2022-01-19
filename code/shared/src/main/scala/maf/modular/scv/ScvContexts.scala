@@ -96,8 +96,8 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
             ): EvalM[ComponentContext] =
               // TODO: put free variables and their possible sybolic representation in the map as well
               val symbolic = clo._1 match
-                  case SchemeLambda(_, prs, _, _)          => prs.map(_.name).zip(symArgs)
-                  case SchemeVarArgLambda(_, prs, _, _, _) => prs.map(_.name).zip(symArgs.take(prs.length))
+                  case SchemeLambda(_, prs, _, _, _)          => prs.map(_.name).zip(symArgs)
+                  case SchemeVarArgLambda(_, prs, _, _, _, _) => prs.map(_.name).zip(symArgs.take(prs.length))
 
               val roots = Symbolic.identifiers(symArgs.flatten)
 
