@@ -52,14 +52,7 @@ sealed trait SchemeLambdaExp extends SchemeExp:
     lazy val fv: Set[String] = SchemeBody.fv(body) -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
     // height
     override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
-    def annotation: Option[(String, String)] /* = body match
-        case SchemeVar(id) :: _ =>
-          if id.name.startsWith("@") then
-              id.name.split(':') match
-                  case Array(name, value) => Some((name, value))
-                  case _                  => throw new Exception(s"Invalid annotation: $id")
-          else None
-        case _ => None */
+    def annotation: Option[(String, String)]
     def label: Label = LAM
     def subexpressions: List[Expression] = args ::: body
     override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
