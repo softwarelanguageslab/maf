@@ -12,8 +12,8 @@ sealed trait SchemeExp extends Expression:
     def nextIndent(current: Int): Int = current + 3
 
 /*
-    case SchemeLambda(name, args, body, idn) =>
-    case SchemeVarArgLambda(name, args, vararg, body, idn) =>
+    case SchemeLambda(name, args, body, ann, idn) =>
+    case SchemeVarArgLambda(name, args, vararg, body, ann, idn) =>
     case SchemeFuncall(f, args, idn) =>
     case SchemeIf(cond, cons, alt, idn) =>
     case SchemeLet(bindings, body, idn) =>
@@ -208,10 +208,16 @@ case class SchemeLetrec(
 
 /** Named-let: (let name ((v1 e1) ...) body...) */
 object SchemeNamedLet:
-    def apply(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idn: Identity): SchemeExp =
+    def apply(
+        name: Identifier,
+        bindings: List[(Identifier, SchemeExp)],
+        body: List[SchemeExp],
+        annotation: Option[(String, String)],
+        idn: Identity
+      ): SchemeExp =
         val (prs, ags) = bindings.unzip
         val fnDef =
-          SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, None, idn))), List((SchemeVar(Identifier(name.name, idn)))), idn)
+          SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, annotation, idn))), List(SchemeVar(Identifier(name.name, idn))), idn)
         SchemeFuncall(fnDef, ags, idn)
 
 /** A set! expression: (set! variable value) */
@@ -407,10 +413,11 @@ object SchemeDo:
         val loopIdName = "__do_loop"
         val loopId = Identifier(loopIdName, idn)
         val annot = commands.take(1) match
-            case (exp @ SchemeVar(Identifier(annot, _))) :: _ if annot.startsWith("@") =>
-              Some(exp)
-            case _ =>
-              None
+            case SchemeVar(id) :: _ if id.name.startsWith("@") =>
+              id.name.split(':') match
+                  case Array(name, value) => Some((name, value))
+                  case _                  => throw new Exception(s"Invalid annotation: $id")
+            case _ => None
         val commandsWithoutAnnot = if annot.isDefined then { commands.drop(1) }
         else { commands }
         SchemeLetrec(
@@ -420,28 +427,26 @@ object SchemeDo:
               SchemeLambda(
                 Some(loopIdName),
                 vars.map(_._1),
-                (if annot.isDefined then { annot.toList }
-                 else { List[SchemeExp]() }) ++
-                  List(
-                    SchemeIf(
-                      test,
-                      SchemeBody(finals),
-                      SchemeBody(
-                        commandsWithoutAnnot :::
-                          List(
-                            SchemeFuncall(SchemeVar(loopId),
-                                          vars.map({
-                                            case (_, _, Some(step)) => step
-                                            case (id, _, None)      => SchemeVar(id)
-                                          }),
-                                          idn
-                            )
+                List(
+                  SchemeIf(
+                    test,
+                    SchemeBody(finals),
+                    SchemeBody(
+                      commandsWithoutAnnot :::
+                        List(
+                          SchemeFuncall(SchemeVar(loopId),
+                                        vars.map({
+                                          case (_, _, Some(step)) => step
+                                          case (id, _, None)      => SchemeVar(id)
+                                        }),
+                                        idn
                           )
-                      ),
-                      idn
-                    )
-                  ),
-                None,
+                        )
+                    ),
+                    idn
+                  )
+                ),
+                annot,
                 idn
               )
             )
