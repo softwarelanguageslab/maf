@@ -152,6 +152,9 @@ trait UndefinerTester:
               if allowed then check(value, false) || checkSequence(rest)(true) else Error(idn)
             case (e @ SchemeBegin(_, _)) :: rest =>
               check(e, allowed) ||> checkSequence(rest)
+            case (e @ SchemeCodeChange(nw, old, _)) :: rest =>
+              // ignore the old expression (TODO verify)
+              check(nw, allowed) ||> checkSequence(rest)
 
             case (vrr: SchemeVarExp) :: rest if isAnnotation(vrr) =>
               // annotations of the form @... are ignored as expressions
@@ -214,7 +217,8 @@ trait UndefinerTester:
 
             // Change expressions
             case SchemeCodeChange(old, nw, _) =>
-              check(old, allowed) || check(nw, allowed)
+              // ignore the old expression while checking (TODO: verify)
+              check(nw, allowed)
 
             // ContractScheme
             case ContractSchemeDepContract(domains, rangeMaker, _) =>
