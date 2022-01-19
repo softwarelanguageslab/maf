@@ -12,8 +12,8 @@ sealed trait SchemeExp extends Expression:
     def nextIndent(current: Int): Int = current + 3
 
 /*
-    case SchemeLambda(name, args, body, idn) =>
-    case SchemeVarArgLambda(name, args, vararg, body, idn) =>
+    case SchemeLambda(name, args, body, ann, idn) =>
+    case SchemeVarArgLambda(name, args, vararg, body, ann, idn) =>
     case SchemeFuncall(f, args, idn) =>
     case SchemeIf(cond, cons, alt, idn) =>
     case SchemeLet(bindings, body, idn) =>
@@ -208,10 +208,16 @@ case class SchemeLetrec(
 
 /** Named-let: (let name ((v1 e1) ...) body...) */
 object SchemeNamedLet:
-    def apply(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idn: Identity): SchemeExp =
+    def apply(
+        name: Identifier,
+        bindings: List[(Identifier, SchemeExp)],
+        body: List[SchemeExp],
+        annotation: Option[(String, String)],
+        idn: Identity
+      ): SchemeExp =
         val (prs, ags) = bindings.unzip
         val fnDef =
-          SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, None, idn))), List((SchemeVar(Identifier(name.name, idn)))), idn)
+          SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, annotation, idn))), List(SchemeVar(Identifier(name.name, idn))), idn)
         SchemeFuncall(fnDef, ags, idn)
 
 /** A set! expression: (set! variable value) */
