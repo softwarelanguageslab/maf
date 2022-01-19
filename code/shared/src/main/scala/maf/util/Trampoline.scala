@@ -1,6 +1,7 @@
 package maf.util
 
 import maf.core.{IdentityMonad, Monad}
+import scala.annotation.tailrec
 
 class TrampolineT[M[_], T]
 case class More[M[_], T](next: () => TrampolineT[M, T]) extends TrampolineT[M, T]:
@@ -23,13 +24,14 @@ object Trampoline:
     def tailcall[M[_], T](v: => TrampolineT[M, T]): TrampolineT[M, T] =
       More(() => v)
 
-    def run[M[_]: Monad, T](trampoline: TrampolineT[M, T]): M[T] =
+    @tailrec
+    def run[T](trampoline: TrampolineT[IdentityMonad.Id, T]): IdentityMonad.Id[T] =
       trampoline match
           case Done(v) => v
           case More(f) => run(f())
-          case FlatMap((m: TrampolineT[M, T]), (f: (T => TrampolineT[M, T]))) =>
+          case FlatMap((m: TrampolineT[IdentityMonad.Id, T]), (f: (T => TrampolineT[IdentityMonad.Id, T]))) =>
             m match {
-              case Done(v: M[T]) => Monad[M].flatMap(v)((x: T) => run(f(x)))
+              case Done(v: IdentityMonad.Id[T]) => run(f(v))
               case More(k)       => run(FlatMap(k(), f))
               case FlatMap(sub2, cont2) =>
                 run(FlatMap(sub2, (x) => FlatMap(cont2(x), f)))
