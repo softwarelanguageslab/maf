@@ -208,7 +208,7 @@ trait UndefinerTester:
 
             // CScheme
             case CSchemeFork(body, _) =>
-              check(body, true) // TODO: check if this is correct. Defines allowed at the start of the body
+              check(body, false) // TODO: check if this is correct. Defines allowed at the start of the body
             case CSchemeJoin(texp, _) =>
               check(texp, false)
 
