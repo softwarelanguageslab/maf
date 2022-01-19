@@ -18,5 +18,8 @@ object SchemeParser:
     /** Parse a string representing a Scheme program */
     def parse(s: String, tag: PTag = noTag): List[SchemeExp] = SExpParser.parse(s, tag).map(compile)
 
+    /** Parses a program without running "undefine" afterwards */
+    def parseProgramText(prg: String): List[SchemeExp] = SchemePrelude.addPrelude(parse(prg))
+
     /** Parse a program (including adding a prelude and undefining it) */
     def parseProgram(prg: String): SchemeExp = undefine(SchemePrelude.addPrelude(parse(prg)))
