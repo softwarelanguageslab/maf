@@ -182,7 +182,7 @@ trait BaseSchemeModFSemanticsM
             for
                 result <-
                   (clo match {
-                    case (SchemeLambda(_, prs, _, _), _) if prs.length == arity =>
+                    case (SchemeLambda(_, prs, _, _, _), _) if prs.length == arity =>
                       val argVals = args.map(_._2)
                       for
                           context <- ctx.allocM(clo, argVals, cll, component)
@@ -190,7 +190,7 @@ trait BaseSchemeModFSemanticsM
                           targetCmp = newComponent(targetCall)
                           _ = bindArgs(targetCmp, prs, argVals)
                       yield call(targetCmp)
-                    case (SchemeVarArgLambda(_, prs, vararg, _, _), _) if prs.length <= arity =>
+                    case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) if prs.length <= arity =>
                       val (fixedArgs, varArgs) = args.splitAt(prs.length)
                       val fixedArgVals = fixedArgs.map(_._2)
                       val varArgVal = allocateList(varArgs)

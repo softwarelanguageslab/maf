@@ -23,7 +23,8 @@ object AnalyzeProgram extends App:
         print(s"Analysis of $bench ")
         try {
           val time = Timer.timeOnly {
-            a.analyzeWithTimeout(timeout())
+            //   a.analyzeWithTimeout(timeout())
+            println(a.program.prettyString())
           }
           println(s"terminated in ${time / 1000000} ms.")
           //a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) }).foreach(println)
@@ -36,7 +37,7 @@ object AnalyzeProgram extends App:
         }
 
     val bench: List[String] = List(
-      "test/R5RS/gambit/sboyer.scm"
+      "test/DEBUG3.scm"
     )
 
     // Used by webviz.
@@ -51,9 +52,8 @@ object AnalyzeProgram extends App:
             new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
-
     bench.foreach({ b =>
-      for(i <- 1 to 10) {
-        runAnalysis(b, program => SchemeAnalyses.kCFAAnalysis(program, 0), () => Timeout.start(Duration(2, MINUTES)))
-      }
+      // for(i <- 1 to 10) {
+      runAnalysis(b, program => SchemeAnalyses.kCFAAnalysis(program, 0), () => Timeout.start(Duration(2, MINUTES)))
+      //  }
     })

@@ -71,10 +71,10 @@ trait BaseSchemeMutableVarBoxer:
         case SchemeDefineVariable(id, vexp, pos) =>
           if mut(LexicalRef.VarRef(id)) then SchemeDefineVariable(Identifier(id.name, Identity.none), SchemeRef(rewrite(vexp, mut, rew), id.idn), pos)
           else SchemeDefineVariable(id, rewrite(vexp, mut, rew), pos)
-        case SchemeLambda(nam, prs, bdy, pos) =>
-          SchemeLambda(nam, prs, rewriteLambdaBody(prs, bdy, mut, rew), pos)
-        case SchemeVarArgLambda(nam, prs, vararg, bdy, pos) =>
-          SchemeVarArgLambda(nam, prs, vararg, rewriteLambdaBody(prs :+ vararg, bdy, mut, rew), pos)
+        case SchemeLambda(nam, prs, bdy, ann, pos) =>
+          SchemeLambda(nam, prs, rewriteLambdaBody(prs, bdy, mut, rew), ann, pos)
+        case SchemeVarArgLambda(nam, prs, vararg, bdy, ann, pos) =>
+          SchemeVarArgLambda(nam, prs, vararg, rewriteLambdaBody(prs :+ vararg, bdy, mut, rew), ann, pos)
         case SchemeBegin(eps, pos) =>
           SchemeBegin(eps.map(rewrite(_, mut, rew)), pos)
         case SchemeIf(prd, csq, alt, pos) =>

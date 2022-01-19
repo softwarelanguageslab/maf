@@ -194,7 +194,7 @@ class SchemeInterpreter(
               for
                   fv <- tailcall(eval(f, env, timeout, version))
                   res <- fv match
-                      case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, pos2), env2) =>
+                      case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
                         if argsNames.length != args.length then
                             stackedException(
                               s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected."
@@ -208,7 +208,7 @@ class SchemeInterpreter(
                             }
                             res <- stackedCall(name, pos2, tailcall(eval(SchemeBody(body), envExt, timeout, version)))
                         yield res
-                      case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, pos2), env2) =>
+                      case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, ann, pos2), env2) =>
                         val arity = argsNames.length
                         if args.length < arity then
                             stackedException(

@@ -68,7 +68,7 @@ object ProgramChanger:
 
     private def createNotExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("not", id0)), List(exp), id0)
     private def createIdFunCall(exp: SchemeExp) =
-      SchemeFuncall(SchemeLambda(None, List(Identifier("x", id0)), List(SchemeVar(Identifier("x", id0))), id0), List(exp), id0)
+      SchemeFuncall(SchemeLambda(None, List(Identifier("x", id0)), List(SchemeVar(Identifier("x", id0))), None, id0), List(exp), id0)
 
     private def changeIf(ifE: SchemeIf, nested: Boolean): SchemeExp =
       getIfAction() match {
@@ -156,10 +156,10 @@ object ProgramChanger:
 
     // Nested indicated whether we are already in a changed expression (the "new" expression), and hence the changes can be made without introducing a change expression again.
     private def changeExpression(e: SchemeExp, nested: Boolean): SchemeExp = e match {
-      case SchemeLambda(name, args, body, idn)               => SchemeLambda(name, args, changeBody(body, body, nested), idn)
-      case SchemeVarArgLambda(name, args, vararg, body, idn) => SchemeVarArgLambda(name, args, vararg, changeBody(body, body, nested), idn)
-      case SchemeFuncall(f, args, idn)                       => SchemeFuncall(f, args.map(changeExpression(_, nested)), idn)
-      case ifE @ SchemeIf(cond, cons, alt, idn)              => changeIf(ifE, nested)
+      case SchemeLambda(name, args, body, ann, idn)               => SchemeLambda(name, args, changeBody(body, body, nested), ann, idn)
+      case SchemeVarArgLambda(name, args, vararg, body, ann, idn) => SchemeVarArgLambda(name, args, vararg, changeBody(body, body, nested), ann, idn)
+      case SchemeFuncall(f, args, idn)                            => SchemeFuncall(f, args.map(changeExpression(_, nested)), idn)
+      case ifE @ SchemeIf(cond, cons, alt, idn)                   => changeIf(ifE, nested)
       case SchemeLet(bindings, body, idn) =>
         SchemeLet(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
       case SchemeLetStar(bindings, body, idn) =>
