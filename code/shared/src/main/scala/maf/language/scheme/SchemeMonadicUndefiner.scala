@@ -2,6 +2,7 @@ package maf.language.scheme
 
 import maf.core.*
 import maf.util.Trampoline
+import maf.language.CScheme.CSchemeParser
 
 /**
  * Remove defines from a Scheme expression, replacing them by let bindings. For example: (define foo 1) (define (f x) x) (f foo) Will be converted to:
@@ -173,10 +174,10 @@ trait BaseSchemeMonadicUndefiner:
 
     def undefine1(exps: SchemeExp): M[List[SchemeExp]] = exps match
         case SchemeLambda(name, args, body, ann, pos) =>
-          usingNewScope { undefine(body) } map (letrectify.tupled) map (b => List(SchemeLambda(name, args, b, ann, pos)))
+          usingNewScope { undefine(body) } map (letrectify.tupled) flatMap (b => mk(SchemeLambda(name, args, b, ann, pos)))
 
         case SchemeVarArgLambda(name, args, vararg, body, ann, pos) =>
-          usingNewScope { undefine(body) } map (letrectify.tupled) map (b => List(SchemeVarArgLambda(name, args, vararg, b, ann, pos)))
+          usingNewScope { undefine(body) } map (letrectify.tupled) flatMap (b => mk(SchemeVarArgLambda(name, args, vararg, b, ann, pos)))
 
         case SchemeIf(cond, cons, alt, idn) =>
           for
@@ -194,13 +195,13 @@ trait BaseSchemeMonadicUndefiner:
           yield result
 
         case SchemeLet(bindings, body, idn) =>
-          usingNewScope { undefine(body) } map (letrectify.tupled) map (b => List(SchemeLet(bindings, b, idn)))
+          usingNewScope { undefine(body) } map (letrectify.tupled) flatMap (b => mk(SchemeLet(bindings, b, idn)))
 
         case SchemeLetStar(bindings, body, idn) =>
-          usingNewScope { undefine(body) } map (letrectify.tupled) map (b => List(SchemeLetStar(bindings, b, idn)))
+          usingNewScope { undefine(body) } map (letrectify.tupled) flatMap (b => mk(SchemeLetStar(bindings, b, idn)))
 
         case SchemeLetrec(bindings, body, idn) =>
-          usingNewScope { undefine(body) } map (letrectify.tupled) map (b => List(SchemeLetrec(bindings, b, idn)))
+          usingNewScope { undefine(body) } map (letrectify.tupled) flatMap (b => mk(SchemeLetrec(bindings, b, idn)))
 
         case SchemeSet(variable, value, idn) =>
           undefineSingle(value) flatMap (b => mk(SchemeSet(variable, b, idn)))
@@ -271,8 +272,8 @@ trait BaseSchemeMonadicUndefiner:
         case ContractSchemeDefineContract(name, params, contract, expression, idn) =>
           throw new Exception("should be translated in the ContractSchemeCompiler")
         case ContractSchemeProvide(outs, idn) =>
-          unit(List(ContractSchemeProvide(outs, idn)))
-        case _: MakeStruct => unit(List(exps))
+          mk(ContractSchemeProvide(outs, idn))
+        case _: MakeStruct => mk(exps)
 
 object SchemeMonadicUndefiner extends BaseSchemeMonadicUndefiner, UndefinerTester:
     import BaseSchemeMonadicUndefiner.*
@@ -294,8 +295,10 @@ def test(): Unit =
     import maf.util.Reader
     import maf.language.scheme.*
     val contents = Reader.loadFile("/tmp/test.scm")
-    val parsed = SchemeParser.parse(contents)
-    val output = SchemeBegin(SchemeMonadicUndefiner.undefineExps(parsed, false), Identity.none)
+    val parsed = SchemeParser.parseProgramText(contents)
+    println(parsed.map(_.prettyString(0)).mkString("\n"))
+    //val output = CSchemeParser.parseProgram(contents)
+    val output = SchemeBegin(SchemeMonadicUndefiner.undefineExps(parsed, true), Identity.none)
     println(contents)
     println("================== translated ==================")
     println(output.prettyString(0))
