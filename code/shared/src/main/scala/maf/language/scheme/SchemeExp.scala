@@ -205,6 +205,7 @@ case class SchemeLetrec(
         .toSet
     val label: Label = LTR
     def letName: String = "letrec"
+    if bindings.size > bindings.map(_._1.name).toSet.size then throw new Exception(s"Illegal letrec: duplicate definitions (${idn.pos}).")
 
 /** Named-let: (let name ((v1 e1) ...) body...) */
 object SchemeNamedLet:
