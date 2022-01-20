@@ -100,7 +100,7 @@ trait BaseSchemeMonadicUndefiner:
     import maf.core.Monad.MonadIterableOps
 
     protected def letrectify(body: List[SchemeExp], bindings: List[(Identifier, SchemeExp)]): List[SchemeExp] =
-      List(SchemeLetrec(bindings, body, Identity.none))
+      if bindings.size == 0 then body else List(SchemeLetrec(bindings, body, Identity.none))
 
     protected def letrectify1(body: SchemeExp, bindings: List[(Identifier, SchemeExp)]): List[SchemeExp] = letrectify(List(body), bindings)
 
@@ -210,11 +210,14 @@ trait BaseSchemeMonadicUndefiner:
           unit(List(ContractSchemeProvide(outs, idn)))
         case _: MakeStruct => unit(List(exps))
 
-object SchemeMonadicUndefiner extends BaseSchemeMonadicUndefiner:
+object SchemeMonadicUndefiner extends BaseSchemeMonadicUndefiner, UndefinerTester:
     import BaseSchemeMonadicUndefiner.*
     import maf.core.Monad.MonadSyntaxOps
 
     def undefineExps(exps: List[SchemeExp]): List[SchemeExp] =
+        val result = check(exps, true)
+        if result.isError then
+            throw new Exception(s"Malformed program, define in invalid context. First occurence of error at ${result.show} in $exps")
         val computation = (for
             _ <- enterScope
             undefinedExps <- undefine(exps)

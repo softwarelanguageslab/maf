@@ -2,17 +2,18 @@ package maf.test.language.scheme
 
 import maf.language.scheme.*
 import org.scalatest.propspec.AnyPropSpec
+import maf.core.Identity
 
 class UndefinerTests extends AnyPropSpec:
     // Compares the given programs based on their structure, but ignores idenities
     def comparePrograms(program1: SchemeExp, program2: SchemeExp): Boolean =
       (program1, program2) match
           case (SchemeLambda(name, args, body, ann, _), SchemeLambda(name1, args1, body1, ann1, _))
-              if name == name1 && args.zip(args1).forall { case (a, b) => a == b } && ann == ann1 =>
+              if name == name1 && args.zip(args1).forall { case (a, b) => a.name == b.name } && ann == ann1 =>
             body.zip(body1).forall { case (a, b) => a == b } // TODO: args also have an identity that should be ignored
 
           case (SchemeVarArgLambda(name, args, vararg, body, ann, _), SchemeVarArgLambda(name1, args1, vararg1, body1, ann1, _))
-              if name == name1 && args.zip(args1).forall { case (a, b) => a == b } && ann == ann1 && vararg == vararg1 =>
+              if name == name1 && args.zip(args1).forall { case (a, b) => a.name == b.name } && ann == ann1 && vararg == vararg1 =>
             body.zip(body1).forall { case (a, b) => a == b }
 
           case (SchemeFuncall(f, args, _), SchemeFuncall(f1, args1, _)) =>
@@ -20,21 +21,44 @@ class UndefinerTests extends AnyPropSpec:
           case (SchemeIf(cond, cons, alt, _), SchemeIf(cond1, cons1, alt1, _)) =>
             comparePrograms(cond, cond1) && comparePrograms(cons, cons1) && comparePrograms(alt, alt1)
 
-          case (SchemeLet(bindings, body, _), SchemeLet(bindings1, body1, _)) => ???
-//case SchemeLetStar(bindings, body, idn)                             => ???
-//case SchemeLetrec(bindings, body, idn)                              => ???
-//case SchemeSet(variable, value, idn)                                => ???
-//case SchemeSetLex(variable, lexAddr, value, idn)                    => ???
-//case SchemeBegin(exps, idn)                                         => ???
-//case SchemeDefineVariable(name, value, idn)                         => ???
-//case SchemeDefineFunction(name, args, body, idn)                    => ???
-//case SchemeDefineVarArgFunction(name, args, vararg, body, idn)      => ???
-//case SchemeVar(id)                                                  => ???
-//case SchemeVarLex(id, lexAdr)                                       => ???
-//case SchemeValue(value, idn)                                        => ???
-//
-//
-    def test(name: String, original: String, translated: String): Unit = () // TODO
+          case (SchemeLet(bindings, body, _), SchemeLet(bindings1, body1, _)) =>
+            bindings.map(_._1.name).zip(bindings1.map(_._1.name)).forall { case (a, b) => a == b } && body.zip(body1).forall { case (body, body1) =>
+              comparePrograms(body, body1)
+            }
+
+          case (SchemeLetStar(bindings, body, _), SchemeLetStar(bindings1, body1, _)) =>
+            bindings.map(_._1.name).zip(bindings1.map(_._1.name)).forall { case (a, b) => a == b } && body.zip(body1).forall { case (body, body1) =>
+              comparePrograms(body, body1)
+            }
+          case (SchemeLetrec(bindings, body, _), SchemeLetrec(bindings1, body1, _)) =>
+            bindings.map(_._1.name).zip(bindings1.map(_._1.name)).forall { case (a, b) => a == b } && body.zip(body1).forall { case (body, body1) =>
+              comparePrograms(body, body1)
+            }
+          case (SchemeSet(variable, value, _), SchemeSet(variable1, value1, _)) =>
+            variable.name == variable1.name && comparePrograms(value, value1)
+
+          case (SchemeSetLex(variable, _, value, _), SchemeSetLex(variable1, _, value1, _)) =>
+            variable.name == variable1.name && comparePrograms(value, value1)
+
+          case (SchemeBegin(exps, _), SchemeBegin(exps1, _)) =>
+            exps.zip(exps1).forall { case (e1, e2) => comparePrograms(e1, e2) }
+
+          case (SchemeDefineVariable(name, value, _), SchemeDefineVariable(name1, value1, _)) =>
+            name.name == name1.name && comparePrograms(value, value1)
+
+          case (SchemeVar(id), SchemeVar(id2))             => id.name == id2.name
+          case (SchemeVarLex(id, _), SchemeVarLex(id2, _)) => id.name == id2.name
+          case (SchemeValue(value, _), SchemeValue(value1, idn)) =>
+            value == value1
+          case (e1, e2) => throw new Exception(s"comparison between $e1 and $e1 is not supported")
+
+    def test(name: String, original: String, translated: String): Unit =
+      property(name) {
+        val parsedOriginal = SchemeParser.parse(original.stripMargin)
+        val parsedTranslated = SchemeParser.parse(translated.stripMargin).head
+        val undefinedOriginal = SchemeBegin(SchemeMonadicUndefiner.undefineExps(parsedOriginal), Identity.none)
+        assert(comparePrograms(parsedTranslated, undefinedOriginal))
+      }
 
     // top level code
     test(
@@ -118,30 +142,17 @@ class UndefinerTests extends AnyPropSpec:
       "nested defines",
       """
     | (define (fac n)
-    | (define (fac-iter x n)
-    |   (if (= x 0) n (fac-iter (- x 1) (* n x))))
-
-    | (fac-iter n))
+    |   (define (fac-iter x n)
+    |     (if (= x 0) n (fac-iter (- x 1) (* n x))))
+    |   (fac-iter n))
+    | (fac 5)
     """,
       """
-    |(begin
-    | (letrec ((fac (lambda (n)
-    |                 (letrec ((fac-iter (lambda (x n)
-    |                                      (if (= x 0) n (fac-iter (- x 1) (* n x))))))
-    |                    (fac-iter n)))))))
+    | (begin
+    |   (letrec ((fac (lambda (n)
+    |     (letrec ((fac-iter (lambda (x n)
+    |       (if (= x 0) n (fac-iter (- x 1) (* n x))))))
+    |     (fac-iter n)))))
+    | (fac 5)))
     """
-    )
-
-    test(
-      "begins with only defines",
-      """
-      | (begin
-      |  (define x 10)
-      |  (define y 20))
-      """,
-      """
-      | (begin
-      |  (letrec ((x 10)
-      |           (y 20))))
-      """
     )
