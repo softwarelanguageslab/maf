@@ -50,13 +50,13 @@ class UndefinerTests extends AnyPropSpec:
           case (SchemeVarLex(id, _), SchemeVarLex(id2, _)) => id.name == id2.name
           case (SchemeValue(value, _), SchemeValue(value1, idn)) =>
             value == value1
-          case (e1, e2) => throw new Exception(s"comparison between $e1 and $e1 is not supported")
+          case (e1, e2) => throw new Exception(s"comparison between $e1 and $e2 is not supported")
 
     def test(name: String, original: String, translated: String): Unit =
       property(name) {
         val parsedOriginal = SchemeParser.parse(original.stripMargin)
         val parsedTranslated = SchemeParser.parse(translated.stripMargin).head
-        val undefinedOriginal = SchemeBegin(SchemeMonadicUndefiner.undefineExps(parsedOriginal), Identity.none)
+        val undefinedOriginal = SchemeBegin(SchemeMonadicUndefiner.undefineExps(parsedOriginal, false), Identity.none)
         assert(comparePrograms(parsedTranslated, undefinedOriginal))
       }
 
