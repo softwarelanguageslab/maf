@@ -200,10 +200,15 @@ trait BaseSchemeMonadicUndefiner:
               undefineRangeMaker <- undefineSingle(rangeMaker)
           yield List(ContractSchemeDepContract(domains, rangeMaker, idn))
 
+        case ContractSchemeMon(contract, expression, idn) =>
+          for
+              undefineContract <- undefineSingle(contract)
+              undefineRangeMaker <- undefineSingle(expression)
+          yield List(ContractSchemeMon(undefineContract, undefineRangeMaker, idn))
+
         case ContractSchemeFlatContract(expression, idn) =>
           for undefineExpression <- undefineSingle(expression)
           yield List(ContractSchemeFlatContract(undefineExpression, idn))
-
         case ContractSchemeDefineContract(name, params, contract, expression, idn) =>
           throw new Exception("should be translated in the ContractSchemeCompiler")
         case ContractSchemeProvide(outs, idn) =>
