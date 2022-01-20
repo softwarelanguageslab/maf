@@ -78,11 +78,11 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
     override def parseProgram(txt: String): SchemeExp =
       SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
 
-    def benchmarks = SchemeBenchmarkPrograms.fromFolder("test/scv/manual/safe")(".DS_Store")
+    def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks
 
     def analyses: List[(SchemeExp => Analysis, String)] =
       List(
-        (wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
+        //(wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
         (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf")
       )
 

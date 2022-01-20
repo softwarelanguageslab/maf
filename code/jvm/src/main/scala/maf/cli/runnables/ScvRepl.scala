@@ -11,7 +11,8 @@ import maf.util.Reader
 object ScvRepl extends App:
     def analyse(program: String): Any =
         val exp = ContractSchemeParser.parse(program.nn)
-        val analysis = SchemeAnalyses.scvModAnalysis(exp)
+        println(s"parsed expression $exp")
+        val analysis = SchemeAnalyses.scvModAnalysisWithRacketFeatures(exp)
         analysis.analyze()
         println(analysis.summary.blames)
         println(analysis.mapStoreString())
