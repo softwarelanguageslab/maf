@@ -79,7 +79,7 @@ object ContractValues:
      * A primitive called (_make-struct symbol number) is provided to create an instance of this struct. The primitive (_struct_ref instance number)
      * can be used to access a particular field, while (_struct_set! instance number value) can be used to set a field in the struct.
      */
-    case class Struct[L](tag: String, fields: Array[L]):
+    case class Struct[L](tag: String, fields: maf.util.ArrayEq[L]):
         def map[AL: ClassTag](f: L => AL): Struct[AL] =
           this.copy(fields = fields.map(f))
 

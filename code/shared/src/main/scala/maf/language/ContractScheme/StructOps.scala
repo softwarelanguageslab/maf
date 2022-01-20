@@ -36,14 +36,12 @@ class StructOps[Value](using lat: SchemeLattice[Value, Address], clsT: ClassTag[
           case MakeStructPredicate(tag, _) =>
             lat.structPredicate(StructPredicate(tag))
 
-    def getConstructor(v: Value): Set[(String, Int)] = ???
-
     /** Call a setter, getter or constructor */
     def call[M[_]](op: Value, args: List[Value])(using monad: SchemePrimM[M, Address, Value]): Set[M[Value]] =
         // We provide support for applying constructors, setters and getters
         val constrs: Set[M[Value]] = lat.getStructConstructor(op).map { constr =>
             assert(args.size == constr.size)
-            val newStruct = Struct(constr.tag, Array.from(args))
+            val newStruct = Struct(constr.tag, maf.util.ArrayEq.from(args))
             monad.unit(lat.struct(newStruct))
         }
 
@@ -53,7 +51,7 @@ class StructOps[Value](using lat: SchemeLattice[Value, Address], clsT: ClassTag[
             val oldStruct = args(0)
             lat.getStructs(oldStruct).map { struct =>
                 val newValue = args(1)
-                struct.fields(setter.idx) = lat.join(struct.fields(setter.idx), newValue)
+                struct.fields.update(setter.idx, lat.join(struct.fields(setter.idx), newValue))
                 monad.unit(lat.nil)
             }
         }
