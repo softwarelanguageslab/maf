@@ -131,6 +131,12 @@ object SchemeAnalyses:
         with SchemeModFLocalCallSiteSensitivity(k)
         with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFLocalAnalysisResults
+    def modflocalFSAnalysis(prg: SchemeExp, k: Int) =
+      new SchemeModFLocalFS(prg)
+        with SchemeConstantPropagationDomain
+        with SchemeModFLocalCallSiteSensitivity(k)
+        with FIFOWorklistAlgorithm[SchemeExp]
+        with SchemeModFLocalFSAnalysisResults
     def modflocalAnalysisAdaptiveA(prg: SchemeExp, k: Int, n: Int) =
       new SchemeModFLocal(prg)
         with SchemeConstantPropagationDomain
