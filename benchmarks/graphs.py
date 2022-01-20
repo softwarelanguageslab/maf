@@ -14,8 +14,7 @@ def read_metrics(filename):
         contents = f.read()
         metrics = json.loads(contents)
         for metric in metrics:
-            for time in metric["primaryMetric"]["rawData"][0]:
-                output.append(dict(name = metric["benchmark"], time = time))
+            output.append(dict(name = metric["benchmark"], time = metric["primaryMetric"]["score"], error = metric["primaryMetric"]["scoreError"]))
     return output
 
 print("files in artifact: %s" % glob.glob("artifact/*.json"))
