@@ -39,6 +39,7 @@ alter_columns <- function(data_in) {
                                 "CI + DI + WI" = "ms..CI.DI.WI.")
   #order <- c("benchmark", "Initial analysis", "Full reanalysis", "No optimisations", "CI", "DI", "WI", "CI + DI", "CI + WI", "DI + WI", "CI + DI + WI")
   #return(renamed[, order])
+  return(renamed)
 }
 
 # Filter data
@@ -72,29 +73,45 @@ perf_gen_filtered <- alter_columns(filter_times(perf_gen_in, TRUE))
 saveRDS(perf_cur_filtered, filtered_times_curated)
 saveRDS(perf_gen_filtered, filtered_times_generated)
 
+# Normalises data w.r.t. a given column. Preserves first column with benchmark names.
+normaliseData <- function(data, columnName) {
+  colNr <- which(colnames(data) == columnName)
+  norm <- data[, 2:length(data)] / data[,colNr]
+  return(cbind(data[,1], norm) %>% rename("benchmark" = "data[, 1]")) # Keep original column names.
+}
+
+perf_cur_normalised_Rean <- normaliseData(perf_cur_filtered, "Full reanalysis")
+perf_gen_normalised_Rean <- normaliseData(perf_gen_filtered, "Full reanalysis")
+
+# Get an overview of the data per benchmark and per configuration.
+dataOverview <- function(data) {
+ return(pivot_longer(data, -c("benchmark")))
+}
+
 # Ridgelineplot
+
 plotRidgeLine <- function(filtered_data, out, bins = 25, max = 5) {
-  div <- filtered_data[, 2:length(filtered_data)] / filtered_data[, 3] # 3 = compare to reanalysis, 4 = compare to no optimisations
+  data <- filtered_data[, 2:length(filtered_data)] # Remove benchmark names.
   png(out, width = plotWidth, height = plotHeight)
-  plot <- div %>% gather(key="Configuration", value="Comparison") %>%
+  plot <- data %>% gather(key="Configuration", value="Comparison") %>%
     ggplot(aes(x = Comparison, y = Configuration, fill = Configuration)) +
     geom_density_ridges(alpha=0.6, stat="binline", bins=bins) +
     theme_ridges() +
     theme(legend.position = "none") +
-    xlim(-0.15, max(div) + 0.05*max(div)) # max)
+    xlim(-0.15, max(data) + 0.05*max(data)) # max)
   print(plot)
   dev.off()
 }
 
-plotRidgeLine(perf_cur_filtered, perf_cur_out, 50, 2)
-plotRidgeLine(perf_gen_filtered, perf_gen_out)
+plotRidgeLine(perf_cur_normalised_Rean, perf_cur_out, 50, 2)
+plotRidgeLine(perf_gen_normalised_Rean, perf_gen_out)
 
 # Violin plot
 
 plotViolin <- function(filtered_data, out) {
-  div <- filtered_data[, 2:length(filtered_data)] / filtered_data[, 3] # 3 = compare to reanalysis, 4 = compare to no optimisations
+  data <- filtered_data[, 2:length(filtered_data)]
   png(out, width = plotWidth, height = plotHeight)
-  plot <- div %>% gather(key="Configuration", value="ms") %>%
+  plot <- data %>% gather(key="Configuration", value="ms") %>%
     ggplot(aes(x="Configuration", y="ms", fill="Configuration")) +
     geom_violin() +
     geom_boxplot(width=0.1, color="grey", alpha=0.2) +
@@ -103,4 +120,4 @@ plotViolin <- function(filtered_data, out) {
   dev.off()
 }
 
-plotViolin(perf_cur_filtered, perf_cur_out)
+plotViolin(perf_cur_normalised_Rean, perf_cur_out)
