@@ -26,6 +26,7 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
             val cll @ CallComponent(lam, _, ctx, sto) = cmp
             val cls = cmps.getOrElse((lam, ctx), Set.empty) + cll
             cmps += (lam, ctx) -> cls
+            debug(s"New component $cmp")
             onNewComponent(cll, cls)
         super.spawn(cmp)
 

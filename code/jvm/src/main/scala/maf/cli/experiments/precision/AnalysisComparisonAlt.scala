@@ -20,7 +20,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     def analyses: List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 30min.) and the number of concrete runs
-    def timeout() = Timeout.start(Duration(30, MINUTES)) // timeout for the analyses
+    def timeout() = Timeout.start(Duration(360, MINUTES)) // timeout for the analyses
     def runs = 3 // number of runs for the concrete interpreter
 
     // keep the results of the benchmarks in a table
@@ -66,14 +66,15 @@ object AnalysisComparisonAlt1
       ConstantPropagation.Sym
     ]:
     def k = 0
-    def ls = List(5)
+    def ls = List(100)
     lazy val modf: (SchemeExp => Analysis, String) = (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")
     lazy val dss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS")
     lazy val wdss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modFlocalAnalysisWidened(_, k), s"$k-CFA WDSS")
+    lazy val dssFS: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalFSAnalysis(_, k), s"$k-CFA DSS-FS")
     lazy val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
       (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
     }
-    def analyses = List(modf) // :: List(wdss)
+    def analyses = modf :: dssFS :: Nil
     def main0(args: Array[String]) = check("test/R5RS/gambit/matrix.scm")
     def main(args: Array[String]) = runBenchmarks(
       Set(
@@ -97,7 +98,8 @@ object AnalysisComparisonAlt1
         //"test/R5RS/gambit/matrix.scm",
         //"test/R5RS/gambit/mazefun.scm",
         //"test/R5RS/gambit/nqueens.scm",
-        "test/R5RS/gambit/peval.scm",
+        //"test/R5RS/gambit/peval.scm",
+        "test/R5RS/scp1/flatten.scm",
       )
     )
 

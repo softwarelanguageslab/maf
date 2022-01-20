@@ -58,7 +58,6 @@ object Delta:
     def empty[A, V]: Delta[A, V] = Delta(SmartMap.empty, Set.empty)
 
 case class LocalStore[A, V](content: SmartMap[A, (V, AbstractCount)])(using lat: Lattice[V], shouldCount: A => Boolean):
-    outer =>
     inline def apply(a: A): V = content(a)._1
     inline def lookup(a: A): Option[V] = content.get(a).map(_._1)
     def update(adr: A, vlu: V): Delta[A, V] = content.get(adr) match
