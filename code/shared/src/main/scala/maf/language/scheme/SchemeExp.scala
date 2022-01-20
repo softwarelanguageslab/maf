@@ -12,8 +12,8 @@ sealed trait SchemeExp extends Expression:
     def nextIndent(current: Int): Int = current + 3
 
 /*
-    case SchemeLambda(name, args, body, idn) =>
-    case SchemeVarArgLambda(name, args, vararg, body, idn) =>
+    case SchemeLambda(name, args, body, ann, idn) =>
+    case SchemeVarArgLambda(name, args, vararg, body, ann, idn) =>
     case SchemeFuncall(f, args, idn) =>
     case SchemeIf(cond, cons, alt, idn) =>
     case SchemeLet(bindings, body, idn) =>
@@ -52,14 +52,7 @@ sealed trait SchemeLambdaExp extends SchemeExp:
     lazy val fv: Set[String] = SchemeBody.fv(body) -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
     // height
     override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
-    def annotation: Option[(String, String)] = body match
-        case SchemeVar(id) :: _ =>
-          if id.name.startsWith("@") then
-              id.name.split(':') match
-                  case Array(name, value) => Some((name, value))
-                  case _                  => throw new Exception(s"Invalid annotation: $id")
-          else None
-        case _ => None
+    def annotation: Option[(String, String)]
     def label: Label = LAM
     def subexpressions: List[Expression] = args ::: body
     override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
@@ -69,6 +62,7 @@ case class SchemeLambda(
     name: Option[String],
     args: List[Identifier],
     body: List[SchemeExp],
+    annotation: Option[(String, String)],
     idn: Identity)
     extends SchemeLambdaExp:
     override def toString: String =
@@ -84,6 +78,7 @@ case class SchemeVarArgLambda(
     args: List[Identifier],
     vararg: Identifier,
     body: List[SchemeExp],
+    annotation: Option[(String, String)],
     idn: Identity)
     extends SchemeLambdaExp:
     override def toString: String =
@@ -194,7 +189,7 @@ case class SchemeLetStar(
     val label: Label = LTS
     def letName: String = "let*"
 
-/** Letrec-bindings: (letrec ((v1 e1) ...) body...) */
+/** Letrec-bindings: (letrec* ((v1 e1) ...) body...) */
 case class SchemeLetrec(
     bindings: List[(Identifier, SchemeExp)],
     body: List[SchemeExp],
@@ -213,10 +208,16 @@ case class SchemeLetrec(
 
 /** Named-let: (let name ((v1 e1) ...) body...) */
 object SchemeNamedLet:
-    def apply(name: Identifier, bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idn: Identity): SchemeExp =
+    def apply(
+        name: Identifier,
+        bindings: List[(Identifier, SchemeExp)],
+        body: List[SchemeExp],
+        annotation: Option[(String, String)],
+        idn: Identity
+      ): SchemeExp =
         val (prs, ags) = bindings.unzip
         val fnDef =
-          SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, idn))), List((SchemeVar(Identifier(name.name, idn)))), idn)
+          SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, annotation, idn))), List(SchemeVar(Identifier(name.name, idn))), idn)
         SchemeFuncall(fnDef, ags, idn)
 
 /** A set! expression: (set! variable value) */
@@ -382,13 +383,20 @@ case class SchemeDefineVariable(
 
 /** Function definition of the form (define (f arg ...) body) */
 object SchemeDefineFunction:
-    def apply(name: Identifier, args: List[Identifier], body: List[SchemeExp], idn: Identity): SchemeExp =
-      SchemeDefineVariable(name, SchemeLambda(Some(name.name), args, body, idn), idn)
+    def apply(name: Identifier, args: List[Identifier], body: List[SchemeExp], annotation: Option[(String, String)], idn: Identity): SchemeExp =
+      SchemeDefineVariable(name, SchemeLambda(Some(name.name), args, body, annotation, idn), idn)
 
 /** Function definition with varargs of the form (define (f arg . vararg ...) body) */
 object SchemeDefineVarArgFunction:
-    def apply(name: Identifier, args: List[Identifier], vararg: Identifier, body: List[SchemeExp], idn: Identity): SchemeExp =
-      SchemeDefineVariable(name, SchemeVarArgLambda(Some(name.name), args, vararg, body, idn), idn)
+    def apply(
+        name: Identifier,
+        args: List[Identifier],
+        vararg: Identifier,
+        body: List[SchemeExp],
+        annotation: Option[(String, String)],
+        idn: Identity
+      ): SchemeExp =
+      SchemeDefineVariable(name, SchemeVarArgLambda(Some(name.name), args, vararg, body, annotation, idn), idn)
 
 /**
  * Do notation: (do ((<variable1> <init1> <step1>) ...) (<test> <expression> ...) <command> ...). Desugared according to R5RS, i.e., a do becomes:
@@ -405,10 +413,11 @@ object SchemeDo:
         val loopIdName = "__do_loop"
         val loopId = Identifier(loopIdName, idn)
         val annot = commands.take(1) match
-            case (exp @ SchemeVar(Identifier(annot, _))) :: _ if annot.startsWith("@") =>
-              Some(exp)
-            case _ =>
-              None
+            case SchemeVar(id) :: _ if id.name.startsWith("@") =>
+              id.name.split(':') match
+                  case Array(name, value) => Some((name, value))
+                  case _                  => throw new Exception(s"Invalid annotation: $id")
+            case _ => None
         val commandsWithoutAnnot = if annot.isDefined then { commands.drop(1) }
         else { commands }
         SchemeLetrec(
@@ -418,27 +427,26 @@ object SchemeDo:
               SchemeLambda(
                 Some(loopIdName),
                 vars.map(_._1),
-                (if annot.isDefined then { annot.toList }
-                 else { List[SchemeExp]() }) ++
-                  List(
-                    SchemeIf(
-                      test,
-                      SchemeBody(finals),
-                      SchemeBody(
-                        commandsWithoutAnnot :::
-                          List(
-                            SchemeFuncall(SchemeVar(loopId),
-                                          vars.map({
-                                            case (_, _, Some(step)) => step
-                                            case (id, _, None)      => SchemeVar(id)
-                                          }),
-                                          idn
-                            )
+                List(
+                  SchemeIf(
+                    test,
+                    SchemeBody(finals),
+                    SchemeBody(
+                      commandsWithoutAnnot :::
+                        List(
+                          SchemeFuncall(SchemeVar(loopId),
+                                        vars.map({
+                                          case (_, _, Some(step)) => step
+                                          case (id, _, None)      => SchemeVar(id)
+                                        }),
+                                        idn
                           )
-                      ),
-                      idn
-                    )
-                  ),
+                        )
+                    ),
+                    idn
+                  )
+                ),
+                annot,
                 idn
               )
             )
@@ -611,3 +619,52 @@ case class ContractSchemeContractOut(
     def fv: Set[String] = contract.fv
     def label: Label = PCO
     def subexpressions: List[Expression] = List(contract)
+
+abstract class MakeStruct extends ContractSchemeExp:
+    def fv: Set[String] = Set()
+    def subexpressions: List[Expression] = List()
+
+/**
+ * Creates a struct getter can be applied like a function
+ *
+ * (define posn-x (_make_struct_getter 'posn 0)) (posn-x (posn 10 20))
+ */
+case class MakeStructGetter(
+    tag: String,
+    idx: Int,
+    idn: Identity)
+    extends MakeStruct:
+
+    def label = MSG
+
+/**
+ * Creates a struct setter can be applied like a function
+ *
+ * (define set-posn-x! (_make_struct_setter 'posn 0)) (set-posn-x! (posn 10 20) 5)
+ */
+case class MakeStructSetter(
+    tag: String,
+    idx: Int,
+    idn: Identity)
+    extends MakeStruct:
+    def label = MSS
+
+/**
+ * Creates a constructor, that can be applied like a function.
+ *
+ * (define posn (_make_struct_constr 'posn 2)) (posn 10 20)
+ */
+case class MakeStructConstr(
+    tag: String,
+    siz: Int,
+    idn: Identity)
+    extends MakeStruct:
+
+    def label = MSC
+
+case class MakeStructPredicate(
+    tag: String,
+    idn: Identity)
+    extends MakeStruct:
+
+    def label = MSP

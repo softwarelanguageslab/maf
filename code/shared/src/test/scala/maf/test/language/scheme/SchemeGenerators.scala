@@ -114,7 +114,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
         val anyAddr: Gen[SimpleAddr] = Gen.choose(0, 100).map(SimpleAddr(_)) // addresses are faked in 100 different variations
         val anyClosure: Gen[valLat.Closure] = for
             nm1 <- Gen.choose(0, 100) // lambdas are faked in 100 different variations
-            lam = SchemeLambda(None, List(), List(SchemeValue(Value.Integer(nm1), Identity.none)), Identity.none)
+            lam = SchemeLambda(None, List(), List(SchemeValue(Value.Integer(nm1), Identity.none)), None, Identity.none)
             nm2 <- Gen.choose(0, 100) // environments are faked in 100 different variations
         yield ((lam, emptyEnv))
         // a generator for each type of value

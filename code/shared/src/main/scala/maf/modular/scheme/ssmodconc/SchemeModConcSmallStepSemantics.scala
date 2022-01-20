@@ -264,10 +264,10 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
             stack: Stack
           ): Set[State] = exp match
             // Single-step evaluation.
-            case l @ SchemeLambda(_, _, _, _)          => Set(Kont(lattice.closure((l, env)), stack))
-            case l @ SchemeVarArgLambda(_, _, _, _, _) => Set(Kont(lattice.closure((l, env)), stack))
-            case SchemeValue(value, _)                 => Set(Kont(evalLiteralValue(exp, value), stack))
-            case SchemeVar(id)                         => Set(Kont(lookup(id, env), stack))
+            case l @ SchemeLambda(_, _, _, _, _)          => Set(Kont(lattice.closure((l, env)), stack))
+            case l @ SchemeVarArgLambda(_, _, _, _, _, _) => Set(Kont(lattice.closure((l, env)), stack))
+            case SchemeValue(value, _)                    => Set(Kont(evalLiteralValue(exp, value), stack))
+            case SchemeVar(id)                            => Set(Kont(lookup(id, env), stack))
 
             // Multi-step evaluation.
             case c @ SchemeFuncall(f, args, _)    => Set(Eval(f, env, extendKStore(f, OperatorFrame(args, env, c), stack)))
@@ -449,10 +449,10 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
               lattice
                 .getClosures(fval)
                 .flatMap({
-                  case (SchemeLambda(_, prs, body, _), env) if prs.length == args.length =>
+                  case (SchemeLambda(_, prs, body, _, _), env) if prs.length == args.length =>
                     val env2 = prs.zip(args.map(_._2)).foldLeft(env)({ case (env, (f, a)) => define(f, a, env) })
                     evalSequence(body, env2, stack)
-                  case (SchemeVarArgLambda(_, prs, vararg, body, _), env) if prs.length <= args.length =>
+                  case (SchemeVarArgLambda(_, prs, vararg, body, _, _), env) if prs.length <= args.length =>
                     val (fixedArgs, varArgs) = args.splitAt(prs.length)
                     val fixedArgVals = fixedArgs.map(_._2)
                     val varArgVal = allocateList(varArgs)

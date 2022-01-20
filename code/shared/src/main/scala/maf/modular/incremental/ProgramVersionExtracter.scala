@@ -8,11 +8,11 @@ object ProgramVersionExtracter:
 
     // TODO: make tailrecursive.
     private def getVersion(e: SchemeExp)(implicit version: Version): SchemeExp = e match
-        case SchemeLambda(name, args, body, idn)               => SchemeLambda(name, args, body.map(getVersion), idn)
-        case SchemeVarArgLambda(name, args, vararg, body, idn) => SchemeVarArgLambda(name, args, vararg, body.map(getVersion), idn)
-        case SchemeFuncall(f, args, idn)                       => SchemeFuncall(getVersion(f), args.map(getVersion), idn)
-        case SchemeIf(cond, cons, alt, idn)                    => SchemeIf(getVersion(cond), getVersion(cons), getVersion(alt), idn)
-        case SchemeLet(bindings, body, idn)                    => SchemeLet(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
+        case SchemeLambda(name, args, body, ann, idn)               => SchemeLambda(name, args, body.map(getVersion), ann, idn)
+        case SchemeVarArgLambda(name, args, vararg, body, ann, idn) => SchemeVarArgLambda(name, args, vararg, body.map(getVersion), ann, idn)
+        case SchemeFuncall(f, args, idn)                            => SchemeFuncall(getVersion(f), args.map(getVersion), idn)
+        case SchemeIf(cond, cons, alt, idn)                         => SchemeIf(getVersion(cond), getVersion(cons), getVersion(alt), idn)
+        case SchemeLet(bindings, body, idn)              => SchemeLet(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
         case SchemeLetStar(bindings, body, idn)          => SchemeLetStar(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
         case SchemeLetrec(bindings, body, idn)           => SchemeLetrec(bindings.map(b => (b._1, getVersion(b._2))), body.map(getVersion), idn)
         case SchemeSet(variable, value, idn)             => SchemeSet(variable, getVersion(value), idn)

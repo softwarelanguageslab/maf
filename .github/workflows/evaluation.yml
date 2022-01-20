@@ -51,7 +51,7 @@ jobs:
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
       - name: Run performance benchmarks
         # 3 warmup runs (wi), 5 iterations afterwards (i), one fork (f), one thread (t)
-        run: sbt "maf/jmh:run -rf json -rff jmh-results-${GITHUB_SHA}-${{ steps.date.outputs.date }}.json -wi 3 -i 5 -f 1 -t 1"
+        run: sbt "maf/jmh:run -rf json -rff jmh-results-${GITHUB_SHA}-${{ steps.date.outputs.date }}.json -wi 3 -i 10 -f 1 -t 1"
       - name: Identify last successful run of performance evaluation
         uses: simondotm/last-successful-commit-action@v2
         id: last_successful_commit

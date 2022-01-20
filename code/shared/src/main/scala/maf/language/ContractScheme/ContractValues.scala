@@ -4,6 +4,7 @@ package maf.language.ContractScheme
 
 import maf.core.Identity
 import maf.language.scheme._
+import scala.reflect.ClassTag
 
 object ContractValues:
 
@@ -66,3 +67,49 @@ object ContractValues:
      * allows for a "top" value to exist in any abstract domain, which is not possible in for example a (non-bounded) constant propagation lattice
      */
     case class Opq()
+
+    /**
+     * A struct value.
+     *
+     * A struct consists of a set of fields. The names of the fields are not kept as they can be compiled in the accessors and mutators of that
+     * struct.
+     *
+     * For convience and debugging purposes the name of the struct is kept.
+     *
+     * A primitive called (_make-struct symbol number) is provided to create an instance of this struct. The primitive (_struct_ref instance number)
+     * can be used to access a particular field, while (_struct_set! instance number value) can be used to set a field in the struct.
+     */
+    case class Struct[L](tag: String, fields: Array[L]):
+        def map[AL: ClassTag](f: L => AL): Struct[AL] =
+          this.copy(fields = fields.map(f))
+
+    /**
+     * A struct getter/setter. Works just like an application of _struct_set!.
+     *
+     * It is provided as an additional value in order to achieve exact precision without requiring n-m-cfa with m >= 1.
+     * @param tag
+     *   the name of the struct, used for tagging purposes
+     * @param idx
+     *   the index of the field to receive/update
+     * @param isSetter
+     *   true if this value is a setter.
+     */
+    case class StructSetterGetter(tag: String, idx: Int, isSetter: Boolean)
+
+    /**
+     * A constructor for a struct
+     *
+     * @param tag
+     *   the name of the struct used for tagging purposes
+     * @param siz
+     *   the number of fields in the struct
+     */
+    case class StructConstructor(tag: String, size: Int)
+
+    /**
+     * A predicate for a struct
+     *
+     * @param tag
+     *   the name of the struct to use when checking the predicate in the semantics
+     */
+    case class StructPredicate(tag: String)

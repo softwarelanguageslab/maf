@@ -1,49 +1,5 @@
 #lang racket
 
-(provide
- (contract-out
-  ;; data
-  [DIR/C contract?]
-  [POSN/C contract?]
-  [SNAKE/C contract?]
-  [WORLD/C contract?]
-  [struct posn ([x real?] [y real?])]
-  [posn=? (POSN/C POSN/C . -> . boolean?)]
-  [struct snake ([dir DIR/C] [segs (and/c cons? (listof POSN/C))])]
-  [struct world ([snake SNAKE/C] [food POSN/C])]
-  ;; const
-  [WORLD WORLD/C]
-  [BACKGROUND image/c]
-  [FOOD-IMAGE image/c]
-  [SEGMENT-IMAGE image/c]
-  [GRID-SIZE real?]
-  [BOARD-HEIGHT-PIXELS real?]
-  [BOARD-WIDTH real?]
-  [BOARD-HEIGHT real?]
-  ;; collide
-  [snake-wall-collide? (-> SNAKE/C boolean?)]
-  [snake-self-collide? (-> SNAKE/C boolean?)]
-  ;; cut-tail
-  [cut-tail (-> (and/c cons? (listof POSN/C)) (listof POSN/C))]
-  ;; motion-help
-  [snake-slither (-> SNAKE/C SNAKE/C)]
-  [snake-grow (-> SNAKE/C SNAKE/C)]
-  ;; motion
-  [world-change-dir (-> WORLD/C DIR/C WORLD/C)]
-  [world->world (-> WORLD/C WORLD/C)]
-  ;; handlers
-  [handle-key (-> WORLD/C string? WORLD/C)]
-  [game-over? (-> WORLD/C boolean?)]
-  ;; scenes
-  [world->scene (-> WORLD/C image/c)]
-  [food+scene (-> POSN/C image/c image/c)]
-  [place-image-on-grid (-> image/c real? real? image/c image/c)]
-  [snake+scene (-> SNAKE/C image/c  image/c)]
-  [segments+scene (-> (listof POSN/C) image/c image/c)]
-  [segment+scene (-> POSN/C image/c  image/c)]
-  ))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Dummy functions `image`
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -252,3 +208,48 @@
 ;; Add one snake segment to a scene.
 (define (segment+scene seg scn)
   (place-image-on-grid SEGMENT-IMAGE (posn-x seg) (posn-y seg) scn))
+
+(provide
+ (contract-out
+  ;; data
+  [DIR/C contract?]
+  [POSN/C contract?]
+  [SNAKE/C contract?]
+  [WORLD/C contract?]
+  [struct posn ([x real?] [y real?])]
+  [posn=? (POSN/C POSN/C . -> . boolean?)]
+  [struct snake ([dir DIR/C] [segs (and/c cons? (listof POSN/C))])]
+  [struct world ([snake SNAKE/C] [food POSN/C])]
+  ;; const
+  [WORLD WORLD/C]
+  [BACKGROUND image/c]
+  [FOOD-IMAGE image/c]
+  [SEGMENT-IMAGE image/c]
+  [GRID-SIZE real?]
+  [BOARD-HEIGHT-PIXELS real?]
+  [BOARD-WIDTH real?]
+  [BOARD-HEIGHT real?]
+  ;; collide
+  [snake-wall-collide? (-> SNAKE/C boolean?)]
+  [snake-self-collide? (-> SNAKE/C boolean?)]
+  ;; cut-tail
+  [cut-tail (-> (and/c cons? (listof POSN/C)) (listof POSN/C))]
+  ;; motion-help
+  [snake-slither (-> SNAKE/C SNAKE/C)]
+  [snake-grow (-> SNAKE/C SNAKE/C)]
+  ;; motion
+  [world-change-dir (-> WORLD/C DIR/C WORLD/C)]
+  [world->world (-> WORLD/C WORLD/C)]
+  ;; handlers
+  [handle-key (-> WORLD/C string? WORLD/C)]
+  [game-over? (-> WORLD/C boolean?)]
+  ;; scenes
+  [world->scene (-> WORLD/C image/c)]
+  [food+scene (-> POSN/C image/c image/c)]
+  [place-image-on-grid (-> image/c real? real? image/c image/c)]
+  [snake+scene (-> SNAKE/C image/c  image/c)]
+  [segments+scene (-> (listof POSN/C) image/c image/c)]
+  [segment+scene (-> POSN/C image/c  image/c)]
+  ))
+
+

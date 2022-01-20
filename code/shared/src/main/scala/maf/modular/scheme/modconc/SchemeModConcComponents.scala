@@ -23,3 +23,4 @@ trait StandardSchemeModConcComponents extends SchemeModConcSemantics:
     lazy val initialComponent = MainThread
     def newComponent(thread: Thread[ComponentContext]) = thread
     def view(cmp: Component) = cmp
+    override def configString(): String = super.configString() + "\n  having standard scheme ModConc components"

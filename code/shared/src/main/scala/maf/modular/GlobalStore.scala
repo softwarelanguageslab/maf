@@ -66,4 +66,6 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
       val size = filtered.size
       val infoString = "σ" * 150 + s"\nThe store contains $size addresses (primitive addresses ${if primitives then "included" else "excluded"}).\n"
       filtered.toList.sorted.mkString(infoString, "\n", "\n" + "σ" * 150)
+
+  override def configString(): String = super.configString() + s"\n  with a global store and a $domainName"
 }

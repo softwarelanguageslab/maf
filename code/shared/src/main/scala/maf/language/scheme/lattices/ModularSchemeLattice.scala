@@ -143,6 +143,27 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def typeName = "OPQ"
         override def toString: String = s"<opq>"
 
+    case class Structs(structs: Set[Struct[L]]) extends Value:
+        def ord = 23
+        def typeName = "STRUCT"
+        override def toString: String = s"<struct: ${structs.map(_.tag).mkString(",")}>"
+
+    case class StructSetterGetters(getterSetters: Set[StructSetterGetter]) extends Value:
+        def ord = 24
+        def typeName = "STRUCTGETTERSETTER"
+        override def toString: String = "<struct-getter-setter>"
+
+    case class StructConstructors(constructors: Set[StructConstructor]) extends Value:
+        def ord = 25
+        def typeName = "STRUCTCONSTRUCTOR"
+        override def toString: String = "<struct-constructor>"
+
+    case class StructPredicates(predicates: Set[StructPredicate]) extends Value: 
+        def ord = 26
+        def typeName = "STRUCTPREDICATE"
+        override def toString: String = "<struct-predicate>"
+
+
     /** The injected true value */
     val True: Bool = Bool(BoolLattice[B].inject(true))
 
@@ -179,18 +200,22 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 }
               })
               vWithEls2Joined
-            case (Kont(k1), Kont(k2))             => Kont(sunion(k1, k2))
-            case (Thread(t1), Thread(t2))         => Thread(sunion(t1, t2))
-            case (Lock(l1), Lock(l2))             => Lock(sunion(l1, l2))
-            case (Void, Void)                     => Void
-            case (InputPort(l1), InputPort(l2))   => InputPort(join(l1, l2))
-            case (OutputPort(l1), OutputPort(l2)) => OutputPort(join(l1, l2))
-            case (Blames(l1), Blames(l2))         => Blames(sunion(l1, l2))
-            case (Arrs(l1), Arrs(l2))             => Arrs(sunion(l1, l2))
-            case (Grds(l1), Grds(l2))             => Grds(sunion(l1, l2))
-            case (Flats(l1), Flats(l2))           => Flats(sunion(l1, l2))
-            case (Opqs(o1), Opqs(o2))             => Opqs(sunion(o1, o2))
-            case _                                => throw new Exception(s"Illegal join of $x and $y")
+            case (Kont(k1), Kont(k2))                               => Kont(sunion(k1, k2))
+            case (Thread(t1), Thread(t2))                           => Thread(sunion(t1, t2))
+            case (Lock(l1), Lock(l2))                               => Lock(sunion(l1, l2))
+            case (Void, Void)                                       => Void
+            case (InputPort(l1), InputPort(l2))                     => InputPort(join(l1, l2))
+            case (OutputPort(l1), OutputPort(l2))                   => OutputPort(join(l1, l2))
+            case (Blames(l1), Blames(l2))                           => Blames(sunion(l1, l2))
+            case (Arrs(l1), Arrs(l2))                               => Arrs(sunion(l1, l2))
+            case (Grds(l1), Grds(l2))                               => Grds(sunion(l1, l2))
+            case (Flats(l1), Flats(l2))                             => Flats(sunion(l1, l2))
+            case (Opqs(o1), Opqs(o2))                               => Opqs(sunion(o1, o2))
+            case (Structs(o1), Structs(o2))                         => Structs(sunion(o1, o2))
+            case (StructSetterGetters(o1), StructSetterGetters(o2)) => StructSetterGetters(o1 ++ o2)
+            case (StructConstructors(o1), StructConstructors(o2))   => StructConstructors(o1 ++ o2)
+            case (StructPredicates(o1), StructPredicates(o2))       => StructPredicates(o1 ++ o2)
+            case _                                                  => throw new Exception(s"Illegal join of $x and $y")
 
         def subsumes(x: Value, y: => Value): Boolean =
           if x == y then true
@@ -214,15 +239,19 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                           IntLattice[I].subsumes(idx1, idx2) && schemeLattice.subsumes(vlu1, vlu2)
                         }
                       }
-                  case (Thread(t1), Thread(t2))         => t2.subsetOf(t1)
-                  case (Lock(l1), Lock(l2))             => l2.subsetOf(l1)
-                  case (InputPort(l1), InputPort(l2))   => subsumes(l1, l2)
-                  case (OutputPort(l1), OutputPort(l2)) => subsumes(l1, l2)
-                  case (Blames(l1), Blames(l2))         => l2.subsetOf(l1)
-                  case (Arrs(l1), Arrs(l2))             => l2.subsetOf(l1)
-                  case (Grds(l1), Grds(l2))             => l2.subsetOf(l1)
-                  case (Flats(l1), Flats(l2))           => l2.subsetOf(l1)
-                  case _                                => false
+                  case (Thread(t1), Thread(t2))                           => t2.subsetOf(t1)
+                  case (Lock(l1), Lock(l2))                               => l2.subsetOf(l1)
+                  case (InputPort(l1), InputPort(l2))                     => subsumes(l1, l2)
+                  case (OutputPort(l1), OutputPort(l2))                   => subsumes(l1, l2)
+                  case (Blames(l1), Blames(l2))                           => l2.subsetOf(l1)
+                  case (Arrs(l1), Arrs(l2))                               => l2.subsetOf(l1)
+                  case (Grds(l1), Grds(l2))                               => l2.subsetOf(l1)
+                  case (Flats(l1), Flats(l2))                             => l2.subsetOf(l1)
+                  case (Structs(l1), Structs(l2))                         => l2.subsetOf(l1)
+                  case (StructSetterGetters(l1), StructSetterGetters(l2)) => l2.subsetOf(l1)
+                  case (StructConstructors(l1), StructConstructors(l2))   => l2.subsetOf(l1)
+                  case (StructPredicates(l1), StructPredicates(l2))       => l2.subsetOf(l1)
+                  case _                                                  => false
 
         def isTrue(x: Value): Boolean = x match
             case Bool(b) => BoolLattice[B].isTrue(b)
@@ -589,6 +618,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def arr(arr: Arr[L]): Value = Arrs(Set(arr))
         def flt(flt: Flat[L]): Value = Flats(Set(flt))
         def opq(opq: Opq): Value = Opqs(Set(opq))
+        def struct(struct: Struct[L]): Value = Structs(Set(struct))
+        def structSetterGetter(struct: StructSetterGetter): Value = StructSetterGetters(Set(struct))
+        def structConstructor(constr: StructConstructor): Value = StructConstructors(Set(constr))
+        def structPredicate(pred: StructPredicate): Value = StructPredicates(Set(pred))
 
         def getClosures(x: Value): Set[schemeLattice.Closure] = x match
             case Clo(closures) => closures
@@ -624,6 +657,22 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def getFlats(x: Value): Set[Flat[L]] = x match
             case Flats(l) => l
             case _        => Set.empty
+
+        def getStructs(x: Value): Set[Struct[L]] = x match
+            case Structs(l) => l
+            case _          => Set.empty
+
+        def getSetterGetters(x: Value): Set[StructSetterGetter] = x match
+            case StructSetterGetters(l) => l
+            case _                      => Set.empty
+
+        def getStructConstructor(x: Value): Set[StructConstructor] = x match
+            case StructConstructors(l) => l
+            case _                     => Set.empty
+
+        def getStructPredicates(x: Value): Set[StructPredicate] = x match 
+            case StructPredicates(l) => l
+            case _ => Set.empty
 
         def car(x: Value): MayFail[L, Error] = x match
             case Cons(car, _) => MayFail.success(car)
@@ -821,6 +870,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       def getGrds(x: L): Set[Grd[L]] = x.foldMapL(x => Value.getGrds(x))(setMonoid)
       def getArrs(x: L): Set[Arr[L]] = x.foldMapL(x => Value.getArrs(x))(setMonoid)
       def getFlats(x: L): Set[Flat[L]] = x.foldMapL(x => Value.getFlats(x))(setMonoid)
+      def getStructs(x: L): Set[Struct[L]] = x.foldMapL(x => Value.getStructs(x))(setMonoid)
+      def getGetterSetter(x: L): Set[StructSetterGetter] = x.foldMapL(x => Value.getSetterGetters(x))(setMonoid)
+      def getStructConstructor(x: L): Set[StructConstructor] = x.foldMapL(x => Value.getStructConstructor(x))(setMonoid)
+      def getStructPredicates(x: L): Set[StructPredicate] = x.foldMapL(x => Value.getStructPredicates(x))(setMonoid)
       def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
       def acquire(lock: L, tid: TID): MayFail[L, Error] =
         lock.foldMapL(l => Value.acquire(l, tid))
@@ -853,6 +906,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
       def arr(arr: Arr[L]): L = Element(Value.arr(arr))
       def flat(flt: Flat[L]): L = Element(Value.flt(flt))
       def opq(opq: Opq): L = Element(Value.opq(opq))
+      def struct(struct: Struct[L]): L = Element(Value.struct(struct))
+      def structPredicate(struct: StructPredicate): L = Element(Value.structPredicate(struct))
+      def structSetterGetter(setterGetter: StructSetterGetter): L =
+        Element(Value.structSetterGetter(setterGetter))
+      def structConstructor(constructor: StructConstructor): L =
+        Element(Value.structConstructor(constructor))
       def nil: L = Element(Value.nil)
       def void: L = Element(Value.void)
       def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement

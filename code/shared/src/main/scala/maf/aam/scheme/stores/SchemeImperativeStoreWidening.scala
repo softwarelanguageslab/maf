@@ -15,13 +15,20 @@ import maf.util.graph.GraphMetadataNone
 
 // Graph visualisation edges
 
-case class WriteDep(v: String) extends GraphElement:
-    def label = s"w($v)"
+object Deps:
+    private var ctr: Int = 0
+    def genId(): Int = { ctr = ctr + 1; ctr }
+
+object WriteDep:
+    def apply(v: String): WriteDep = WriteDep(v, Deps.genId())
+
+case class WriteDep(v: String, ctr: Int) extends GraphElement:
+    def label = s"w($v, $ctr)"
     def color = Colors.DarkBlue
     def metadata: GraphMetadata = GraphMetadataNone
 
 case class ReadDep() extends GraphElement:
-    def label = "r"
+    def label = s"r"
     def color = Colors.Red
     def metadata = GraphMetadataNone
 
@@ -33,6 +40,9 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
     case class SchemeConf(c: Control, k: KonA, t: Timestamp, extra: Ext, tt: Int)
     type Conf = SchemeConf
     type Sto = EffectSto
+
+    protected val enableGraph: Boolean = false
+
     override type System = EffectDrivenAnalysisSystem
 
     private var originalSto = BasicStore(initialBds.map(p => (p._2, p._3)).toMap).extend(Kont0Addr, Storable.K(Set(HltFrame)))
@@ -78,8 +88,10 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
 
         def popWork(): Option[(Option[Conf], Conf)] =
           if worklist.nonEmpty then
-              val conf = worklist.dequeue
-              Some(conf)
+              change {
+                val conf = worklist.dequeue
+                Some(conf)
+              }
           else None
 
         /** Trigger some read dependencies */
@@ -121,38 +133,38 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
             val (from, work) = workOption.get
             var graph = dependencyGraph
 
-            if from.isDefined then
-                //graph = g.addEdge(graph, asGraphElement(from.get, system), NoTransition(), asGraphElement(work, system))
-                println(s"stepping into $work")
-
             val successors = run(step(asState(work, system)))
             successors.foreach { next =>
-                println(s"next $next")
                 val sto = next.s
                 val nextConf = asConf(next, system)
-                println(sto)
 
-                (sto.c.map(asConf(_, system)) + nextConf).foreach(system.spawn(_, work))
-                sto.r.foreach(adr => graph = g.addEdge(graph, addrNode(adr), ReadDep(), asGraphElement(work, system)))
-                sto.w.foreach(adr =>
-                    val vlu = this.store.lookup(adr).getOrElse(lattice.bottom)
-                    val writeDep = WriteDep(vlu match
-                        case Storable.V(v) => v.toString
-                        case _             => ""
+                ///////////////////// GRAPH ///////////////////////////:
+                if enableGraph then
+                    sto.r.foreach(adr => graph = g.addEdge(graph, addrNode(adr), ReadDep(), asGraphElement(work, system)))
+                    sto.w.foreach(adr =>
+                        val vlu = this.store.lookup(adr).getOrElse(lattice.bottom)
+                        val writeDep = WriteDep(vlu match
+                            case Storable.V(v) => v.toString
+                            case _             => ""
+                        )
+                        graph = g.addEdge(graph, asGraphElement(work, system), writeDep, addrNode(adr))
                     )
-                    graph = g.addEdge(graph, asGraphElement(work, system), writeDep, addrNode(adr))
-                )
 
+                /////////////////////// ModF //////////////////////////////
+
+                // Spawn new components
+                (sto.c.map(asConf(_, system)) + nextConf).foreach(system.spawn(_, work))
+
+                // Register read dependencies
                 system.register(sto.r, work)
+
+                // Trigger read dependencies using write effects
                 system.trigger(sto.w, work)
             }
-            println("=====================")
-
             (system, graph)
 
     override def readSto(sto: Sto, addr: Address): (Storable, Sto) =
         val vlu = store.lookup(addr).getOrElse(Storable.V(lattice.bottom))
-        if vlu == Storable.V(lattice.bottom) then println("reading bottom")
         (vlu, sto.readDep(addr))
 
     override def asState(conf: Conf, system: System): State =
@@ -165,7 +177,6 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics,
       SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt, 0)
 
     override def inject(expr: Expr): System =
-        println("creating system")
         val sys = EffectDrivenAnalysisSystem()
         sys.spawn(injectConf(expr), None)
         sys

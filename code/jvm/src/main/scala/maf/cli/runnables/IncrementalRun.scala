@@ -11,13 +11,14 @@ import maf.modular.incremental.IncrementalConfiguration.*
 import maf.modular.scheme.modf.*
 import maf.modular.incremental.*
 import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
+import maf.modular.incremental.ProgramVersionExtracter.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.PrmAddr
 import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.util.{Reader, Writer}
 import maf.util.Writer.Writer
-import maf.util.benchmarks.Timeout
+import maf.util.benchmarks.{Timeout, Timer}
 import maf.util.graph.DotGraph
 import maf.util.graph.DotGraph.*
 
@@ -86,38 +87,51 @@ object IncrementalRun extends App:
           with IncrementalSchemeTypeDomain // IncrementalSchemeConstantPropagationDomain
           with IncrementalGlobalStore[SchemeExp]
           with IncrementalLogging[SchemeExp]
-          with IncrementalDataFlowVisualisation[SchemeExp] {
-          override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(n")
-          var configuration: IncrementalConfiguration = wi_cy
+          //with IncrementalDataFlowVisualisation[SchemeExp]
+          {
+          override def focus(a: Addr): Boolean = false // a.toString.contains("VarAddr(n")
+          var configuration: IncrementalConfiguration = ci
+          mode = Mode.Coarse
           override def intraAnalysis(
               cmp: Component
-            ) = new IntraAnalysis(cmp)
-            with IncrementalSchemeModFBigStepIntra
-            with IncrementalGlobalStoreIntraAnalysis
-            with IncrementalLoggingIntra
-            with IncrementalVisualIntra
+            ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
+          //with IncrementalVisualIntra
         }
 
         try {
           println(s"***** $bench *****")
-          interpretProgram(bench)
-          val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-          println(text.prettyString())
+          //interpretProgram(bench)
+          val text = getUpdated(CSchemeParser.parseProgram(Reader.loadFile(bench)))
+          //println(text.prettyString())
           val a = base(text)
-          //   a.logger.logU("BASE + INC")
-          a.analyzeWithTimeout(timeout())
+          a.logger.logU(bench)
+          //a.logger.logU("BASE + INC")
+          //println(a.configString())
+          a.version = New
+          val timeI = Timer.timeOnly {
+            a.analyzeWithTimeout(timeout())
+          }
+          println(s"Initial analysis took ${timeI/1000000} ms.")
+          //a.visited.foreach(println)
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
-          a.configuration = wi
-          a.flowInformationToDotGraph("logs/flowsA1.dot")
-          a.updateAnalysis(timeout())
-          a.flowInformationToDotGraph("logs/flowsA2.dot")
-          //Thread.sleep(1000)
-          //val b = base(text)
-          //b.version = New
-          //  b.logger.logU("REAN")
-          //b.analyzeWithTimeout(timeout())
+          //a.configuration = noOptimisations
+          // a.flowInformationToDotGraph("logs/flowsA1.dot")
+          val timeU = Timer.timeOnly {
+            a.updateAnalysis(timeout())
+          }
+          println(s"Updating analysis took ${timeU/1000000} ms.")
+          // a.flowInformationToDotGraph("logs/flowsA2.dot")
+          Thread.sleep(1000)
+          val b = base(text)
+          b.version = New
+          b.logger.logU("REAN")
+          val timeR = Timer.timeOnly {
+            b.analyzeWithTimeout(timeout())
+          }
+          println(s"Full reanalysis took ${timeR/1000000} ms.")
           // b.flowInformationToDotGraph("logs/flowsB.dot")
-          // println("Done")
+          println("Done")
+          //println(a.program.asInstanceOf[SchemeExp].prettyString())
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
         } catch {
           case e: Exception =>
@@ -130,16 +144,18 @@ object IncrementalRun extends App:
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/DEBUG3.scm",
+      "test/DEBUG2.scm",
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
+      //"test/R5RS/gambit/nboyer.scm",
+      //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
     )
-    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(10, MINUTES))
+    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(20, MINUTES))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
     modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
     //println("Creating graphs")
-    createPNG("logs/flowsA1.dot", true)
-    createPNG("logs/flowsA2.dot", true)
+    //createPNG("logs/flowsA1.dot", true)
+    //createPNG("logs/flowsA2.dot", true)
     //createPNG("logs/flowsB.dot", true)
     println("Done")
 

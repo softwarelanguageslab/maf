@@ -20,7 +20,7 @@ import maf.core.{Identifier, Identity, Monad}
  *
  * This is consistent with the behaviour of Racket (where this feature orginates from) and the original Nguyen SCV paper.
  */
-trait ScvBigStepWithProvides extends ScvBigStepSemantics:
+trait ScvBigStepWithProvides extends BaseScvBigStepSemantics:
     import maf.util.FunctionUtils.*
     import maf.core.Monad.MonadSyntaxOps
     import maf.core.Monad.MonadIterableOps
@@ -30,7 +30,7 @@ trait ScvBigStepWithProvides extends ScvBigStepSemantics:
 
     override def intraAnalysis(component: Component): IntraScvSemanticsWithProvides
 
-    trait IntraScvSemanticsWithProvides extends IntraScvSemantics:
+    trait IntraScvSemanticsWithProvides extends BaseIntraScvSemantics:
         /** Evaluates a single contract-out expression. Returns the monitored function */
         protected def evalProvideOut(out: ContractSchemeProvideOut): EvalM[(Value, Identifier, Identity)] = out match
             case ContractSchemeContractOut(name, contract, idn) =>

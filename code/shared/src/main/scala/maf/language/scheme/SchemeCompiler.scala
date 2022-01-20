@@ -64,7 +64,19 @@ trait BaseSchemeCompiler:
           for
               bindingsv <- tailcall(compileBindings(bindings))
               bodyv <- tailcall(compileBodyNonEmpty(body))
-          yield SchemeNamedLet(name, bindingsv, bodyv, exp.idn)
+          yield {
+            val annotation = bodyv match
+                case SchemeVar(id) :: _ if id.name.startsWith("@") =>
+                  id.name.split(':') match
+                      case Array(name, value) => Some((name, value))
+                      case _                  => throw new Exception(s"Invalid annotation: $id")
+                case _ => None
+            val actualBody = annotation match {
+              case Some(value) => bodyv.tail
+              case None        => bodyv
+            }
+            SchemeNamedLet(name, bindingsv, actualBody, annotation, exp.idn)
+          }
         case SExpPair(
               SExpId(Identifier("let", _)),
               SExpPair(bindings, body, _),
@@ -283,17 +295,39 @@ trait BaseSchemeCompiler:
         args: (List[Identifier], Option[Identifier]),
         body: List[SchemeExp],
         idn: Identity
-      ) = args._2 match
-        case Some(vararg) => SchemeVarArgLambda(name, args._1, vararg, body, idn)
-        case None         => SchemeLambda(name, args._1, body, idn)
+      ) =
+        val annotation = body match
+            case SchemeVar(id) :: _ if id.name.startsWith("@") =>
+              id.name.split(':') match
+                  case Array(name, value) => Some((name, value))
+                  case _                  => throw new Exception(s"Invalid annotation: $id")
+            case _ => None
+        val actualBody = annotation match {
+          case Some(value) => body.tail
+          case None        => body
+        }
+        args._2 match
+            case Some(vararg) => SchemeVarArgLambda(name, args._1, vararg, actualBody, annotation, idn)
+            case None         => SchemeLambda(name, args._1, actualBody, annotation, idn)
     private def makeDefineFunction(
         id: Identifier,
         args: (List[Identifier], Option[Identifier]),
         body: List[SchemeExp],
         idn: Identity
-      ) = args._2 match
-        case Some(vararg) => SchemeDefineVarArgFunction(id, args._1, vararg, body, idn)
-        case None         => SchemeDefineFunction(id, args._1, body, idn)
+      ) =
+        val annotation = body match
+            case SchemeVar(id) :: _ if id.name.startsWith("@") =>
+              id.name.split(':') match
+                  case Array(name, value) => Some((name, value))
+                  case _                  => throw new Exception(s"Invalid annotation: $id")
+            case _ => None
+        val actualBody = annotation match {
+          case Some(value) => body.tail
+          case None        => body
+        }
+        args._2 match
+            case Some(vararg) => SchemeDefineVarArgFunction(id, args._1, vararg, actualBody, annotation, idn)
+            case None         => SchemeDefineFunction(id, args._1, actualBody, annotation, idn)
 
     private def expandQuoted(sexp: SExp): TailRec[SchemeExp] = sexp match
         case sexpVal: SExpValue => done(value(sexpVal))

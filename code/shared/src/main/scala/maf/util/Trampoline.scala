@@ -1,34 +1,43 @@
 package maf.util
 
-import maf.core.Monad
+import maf.core.{IdentityMonad, Monad}
+import scala.annotation.tailrec
 
-class Trampoline[+T]
-case class More[T](next: () => Trampoline[T]) extends Trampoline[T]:
-    def execute: Trampoline[T] = next()
-case class Done[T](value: T) extends Trampoline[T]
-case class FlatMap[A, B](sub: Trampoline[A], cnt: A => Trampoline[B]) extends Trampoline[B]
+class TrampolineT[M[_], T]
+case class More[M[_], T](next: () => TrampolineT[M, T]) extends TrampolineT[M, T]:
+    def execute: TrampolineT[M, T] = next()
+case class Done[M[_], T](value: M[T]) extends TrampolineT[M, T]
+case class FlatMap[M[_], A, B](sub: TrampolineT[M, A], cnt: A => TrampolineT[M, B]) extends TrampolineT[M, B]
 
-object Trampoline:
-    given Monad[Trampoline] with
-        def unit[A](v: A): Trampoline[A] = Done(v)
-        def flatMap[A, B](m: Trampoline[A])(f: A => Trampoline[B]): Trampoline[B] =
+object TrampolineT:
+    type TrampolineM[M[_]] = [T] =>> TrampolineT[M, T]
+    given trampoline[M[_]: Monad]: Monad[TrampolineM[M]] with
+        def unit[A](v: A): TrampolineT[M, A] = Done(Monad[M].unit(v))
+        def flatMap[A, B](m: TrampolineT[M, A])(f: A => TrampolineT[M, B]): TrampolineT[M, B] =
           FlatMap(m, f)
-        def map[A, B](m: Trampoline[A])(f: A => B): Trampoline[B] =
+        def map[A, B](m: TrampolineT[M, A])(f: A => B): TrampolineT[M, B] =
           flatMap(m)(x => unit(f(x)))
 
-    def done[T](v: T): Trampoline[T] = Done(v)
+object Trampoline:
+    def done[M[_]: Monad, T](v: T): TrampolineT[M, T] = Done(Monad[M].unit(v))
 
-    def tailcall[T](v: => Trampoline[T]): Trampoline[T] =
+    def tailcall[M[_], T](v: => TrampolineT[M, T]): TrampolineT[M, T] =
       More(() => v)
 
-    def run[T](trampoline: Trampoline[T]): T =
+    @tailrec
+    def run[T](trampoline: TrampolineT[IdentityMonad.Id, T]): IdentityMonad.Id[T] =
       trampoline match
           case Done(v) => v
           case More(f) => run(f())
-          case FlatMap(m, f) =>
+          case FlatMap((m: TrampolineT[IdentityMonad.Id, T]), (f: (T => TrampolineT[IdentityMonad.Id, T]))) =>
             m match {
-              case Done(v) => run(f(v))
-              case More(k) => run(FlatMap(k(), f))
+              case Done(v: IdentityMonad.Id[T]) => run(f(v))
+              case More(k)       => run(FlatMap(k(), f))
               case FlatMap(sub2, cont2) =>
                 run(FlatMap(sub2, (x) => FlatMap(cont2(x), f)))
             }
+
+    def lift[M[_]: Monad, A](m: M[A]): TrampolineT[M, A] =
+      Done(m)
+
+type Trampoline[T] = TrampolineT[IdentityMonad.Id, T]

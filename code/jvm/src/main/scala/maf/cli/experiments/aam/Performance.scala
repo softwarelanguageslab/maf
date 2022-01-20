@@ -81,7 +81,10 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
     def benchmarks = SchemeBenchmarkPrograms.fromFolder("test/scv/manual/safe")(".DS_Store")
 
     def analyses: List[(SchemeExp => Analysis, String)] =
-      List((wrap(AAMAnalyses.scvAAMbase), "scvAAMbase"), (wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"))
+      List(
+        (wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
+        (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf")
+      )
 
     def main(args: Array[String]): Unit =
       run(timeoutFast = false)

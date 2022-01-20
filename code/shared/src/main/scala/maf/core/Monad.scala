@@ -65,6 +65,13 @@ object Monad:
               yield v :: vs
             case Nil => Monad[M].unit(List())
 
+    given idMonad: Monad[Id] with
+        def unit[T](v: T) = v
+        def flatMap[A, B](m: Id[A])(f: A => Id[B]): Id[B] =
+          f(m)
+        def map[A, B](m: Id[A])(f: A => B): Id[B] =
+          flatMap(m)((a) => unit(f(a)))
+
 //
 // MonadError
 //
@@ -197,8 +204,4 @@ object OptionMonad:
 
 object IdentityMonad:
     type Id[X] = X
-
-    given idMonad: Monad[Id] = new Monad:
-        def unit[X](x: X): Id[X] = x
-        def map[X, Y](m: Id[X])(f: X => Y): Id[Y] = f(m)
-        def flatMap[X, Y](m: Id[X])(f: X => Id[Y]): Id[Y] = f(m)
+    export Monad.idMonad

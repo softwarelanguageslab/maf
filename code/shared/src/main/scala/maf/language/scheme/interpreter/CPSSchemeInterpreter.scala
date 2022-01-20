@@ -225,12 +225,12 @@ class CPSSchemeInterpreter(
       ): State =
         // First, check the arity.
         f match
-            case Value.Clo(lambda @ SchemeLambda(_, argNames, _, _), _) =>
+            case Value.Clo(lambda @ SchemeLambda(_, argNames, _, _, _), _) =>
               if args.length != argNames.length then
                   stackedException(
                     s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${lambda.lambdaName}, while exactly ${argNames.length} are expected."
                   )
-            case Value.Clo(lambda @ SchemeVarArgLambda(_, argNames, _, _, _), _) =>
+            case Value.Clo(lambda @ SchemeVarArgLambda(_, argNames, _, _, _, _), _) =>
               if args.length < argNames.length then
                   stackedException(
                     s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${lambda.lambdaName}, while at least ${argNames.length} are expected."
@@ -251,9 +251,9 @@ class CPSSchemeInterpreter(
       ): State =
         val argvs = argvsRev.reverse
         f match
-            case Value.Clo(SchemeLambda(_, argNames, body, _), env2) =>
+            case Value.Clo(SchemeLambda(_, argNames, body, _, _), env2) =>
               Step(SchemeBody(body), extendEnv(argNames, argvs, env2), cc)
-            case Value.Clo(SchemeVarArgLambda(_, argNames, vararg, body, _), env2) =>
+            case Value.Clo(SchemeVarArgLambda(_, argNames, vararg, body, _, _), env2) =>
               val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
               extendStore(varArgAddr, makeList(call.args.drop(argNames.length).zip(argvs.drop(argNames.length))))
               val envExt = extendEnv(argNames, argvs, env2) + (vararg.name -> varArgAddr)

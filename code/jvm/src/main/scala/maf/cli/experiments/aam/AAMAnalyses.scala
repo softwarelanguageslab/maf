@@ -133,8 +133,9 @@ object AAMAnalyses:
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeFunctionCallBoundary
-        with SchemeAAMLocalStore
-        with SimpleWorklistSystem
+        //with SchemeAAMLocalStore
+        with BaseSchemeLoggingLocalStore
+        with BaseSimpleWorklistSystem
         with SchemeAAMAnalysisResults {
         //with SchemeStoreAllocateReturn
         lazy val satSolver: ScvSatSolver[LatVal] =

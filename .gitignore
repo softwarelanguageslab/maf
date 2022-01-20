@@ -23,3 +23,4 @@
 /.vscode
 .bsp/sbt.json
 code/**/*.semanticdb
+*.Rds

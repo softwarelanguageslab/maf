@@ -39,14 +39,17 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
 /** Provides a work list with a depth-first exploration order to a modular analysis. */
 trait LIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr]:
     def emptyWorkList = LIFOWorkList()
+    override def configString(): String = super.configString() + "\n  using a LIFO work list"
 
 /** Provides a work list with a breadth-first exploration order to a modular analysis. */
 trait FIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr]:
     def emptyWorkList = FIFOWorkList()
+    override def configString(): String = super.configString() + "\n  using a FIFO work list"
 
 /** Provides a work list with a random exploration order to a modular analysis. */
 trait RandomWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr]:
     def emptyWorkList = RandomWorkList()
+    override def configString(): String = super.configString() + "\n  using a random work list"
 
 // TODO: use an immutable priority queue, or reuse SequentialWorklistAlgorithm differently here
 trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
@@ -82,6 +85,8 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
     // step until worklist is empty or timeout is reached
     def run(timeout: Timeout.T): Unit =
       while !finished && !timeout.reached do step(timeout)
+
+    override def configString(): String = super.configString() + "\n  using a priority queue work list"
 
 /** Provides a work list that prioritises nested calls by call depth to a modular analysis. */
 trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr]:

@@ -369,3 +369,5 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     override def init(): Unit =
         super.init()
         provenance = Map().withDefaultValue(Map().withDefaultValue(lattice.bottom)) // Use of lattice must be delayed until after initialisation.
+
+    override def configString(): String = super.configString() + s"\n  with an incremental global store and an $domainName"

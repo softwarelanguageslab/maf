@@ -120,18 +120,19 @@ object SchemeBenchmarkPrograms:
     /**
      * Benchmarks from the "Soft Contract Verification for Higher-Order Stateful Programs" by Nguyen et al.
      *
-     * Modified in a semantic preserving way in order to support them in the more minimal ContractScheme Language
+     * Modified in a semantic preserving way in order to support them in the more minimal ContractScheme Language.
+     *
+     * The programs where also passed through a macro expander. The original files can be viewed by removing the -expanded suffix from some of the
+     * filenames.
      */
     lazy val scvNguyenBenchmarks: Set[String] = Set(
       "test/scv/NguyenGTH18/safe/games/tetris.rkt",
       "test/scv/NguyenGTH18/safe/games/snake.rkt",
       "test/scv/NguyenGTH18/safe/games/zombie.rkt",
-      "test/scv/NguyenGTH18/safe/larceny/slatex.rkt",
-      "test/scv/NguyenGTH18/safe/real/slatex.rkt", // what is the difference with the other slatex?
-      "test/scv/NguyenGTH18/safe/real/slatex.rkt",
+      "test/scv/NguyenGTH18/safe/real/slatex-expanded.rkt",
       "test/scv/NguyenGTH18/safe/real/fector.rkt",
-      "test/scv/NguyenGTH18/safe/real/nucleic2-modular-fixed.rkt", // nuclei2-modular* from paper
-      "test/scv/NguyenGTH18/safe/real/nucleic2-modular.rkt",
+      "test/scv/NguyenGTH18/safe/real/nucleic2-modular-fixed-expanded.rkt", // nuclei2-modular* from paper
+      "test/scv/NguyenGTH18/safe/real/nucleic2-modular-expanded.rkt",
       "test/scv/NguyenGTH18/safe/real/ring-buffer.rkt",
       "test/scv/NguyenGTH18/safe/real/leftist-tree.rkt", // leftist-tree
       "test/scv/NguyenGTH18/safe/real/protected-leftist-tree.rkt", // leftist-tree* from paper

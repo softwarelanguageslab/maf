@@ -138,6 +138,8 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiv
       }
     }
 
+    override def configString(): String = super.configString() ++ "\n  applying ModConc Scheme semantics"
+
 // convenience constructor
 abstract class SimpleSchemeModConcAnalysis(prg: SchemeExp)
     extends ModAnalysis(prg)

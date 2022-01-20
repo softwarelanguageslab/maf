@@ -7,11 +7,6 @@ import maf.language.CScheme._
 object SchemePrelude:
 
     val primDefs = Map(
-      "@sensitivity:1CS" -> "(define @sensitivity:1CS #f)",
-      "@sensitivity:FA" -> "(define @sensitivity:FA #f)",
-      "@sensitivity:1A" -> "(define @sensitivity:1A #f)",
-      "@sensitivity:2A" -> "(define @sensitivity:2A #f)",
-      "@sensitivity:No" -> "(define @sensitivity:No #f)",
       "<=" -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y)))",
       ">" -> "(define (> x y) @sensitivity:FA (assert (number? x)) (not (<= x y)))",
       ">=" -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
@@ -260,14 +255,14 @@ object SchemePrelude:
         """(define (string->list string)
         |  @sensitivity:FA
         |  (assert (string? string))
-        |  (define len (string-length string))
+        |  (let ((len (string-length string)))
                         |  (let convert ((n (- len 1))
                         |                (r '()))
                         |    @sensitivity:FA
                         |    (if (< n 0)
                         |        r
                         |        (convert (- n 1)
-                        |                 (cons (string-ref string n) r)))))""".stripMargin,
+                        |                 (cons (string-ref string n) r))))))""".stripMargin,
       "string=?" -> """(define (string=? s1 s2)
                     |  @sensitivity:FA
                     |  (assert (string? s1))

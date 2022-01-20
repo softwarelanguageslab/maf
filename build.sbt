@@ -13,13 +13,13 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     /** General settings */
     name := "Modular Analysis Framework (MAF)",
     version := "2.0",
-    scalaVersion := "3.0.2",
-    crossScalaVersions ++= Seq("2.13.6", "3.0.2"),
+    scalaVersion := "3.1.0",
+    //crossScalaVersions ++= Seq("2.13.6", "3.1.0"),
     /** Dependencies */
     libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "2.0.0",
-    libraryDependencies += "com.opencsv" % "opencsv" % "5.3",
-    libraryDependencies += ("com.typesafe.akka" %% "akka-actor-typed" % "2.6.10").cross(CrossVersion.for3Use2_13),
-    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
+    libraryDependencies += "com.opencsv" % "opencsv" % "5.5.2",
+    libraryDependencies += ("com.typesafe.akka" %% "akka-actor-typed" % "2.6.18").cross(CrossVersion.for3Use2_13),
+    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.10",
     libraryDependencies += "com.typesafe" % "config" % "1.4.1",
     /** Compilation options */
     maxErrors := 5,

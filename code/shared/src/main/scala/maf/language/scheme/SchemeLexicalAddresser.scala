@@ -44,10 +44,10 @@ trait BaseSchemeLexicalAddresser:
     def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = exp match
         case vexp: SchemeValue =>
           vexp
-        case SchemeLambda(nam, prs, bdy, pos) =>
-          SchemeLambda(nam, prs, translateBody(bdy, lenv.newFrame.extend(prs)), pos)
-        case SchemeVarArgLambda(nam, prs, vararg, bdy, pos) =>
-          SchemeVarArgLambda(nam, prs, vararg, translateBody(bdy, lenv.newFrame.extend(prs).extend(vararg)), pos)
+        case SchemeLambda(nam, prs, bdy, ann, pos) =>
+          SchemeLambda(nam, prs, translateBody(bdy, lenv.newFrame.extend(prs)), ann, pos)
+        case SchemeVarArgLambda(nam, prs, vararg, bdy, ann, pos) =>
+          SchemeVarArgLambda(nam, prs, vararg, translateBody(bdy, lenv.newFrame.extend(prs).extend(vararg)), ann, pos)
         case SchemeVar(id) =>
           SchemeVarLex(id, lenv.resolve(id.name))
         case SchemeBegin(eps, pos) =>
