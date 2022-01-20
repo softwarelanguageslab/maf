@@ -254,8 +254,15 @@ trait BaseSchemeMonadicUndefiner:
         case ContractSchemeMon(contract, expression, idn) =>
           for
               undefineContract <- undefineSingle(contract)
-              undefineRangeMaker <- undefineSingle(expression)
-              result <- mk(ContractSchemeMon(undefineContract, undefineRangeMaker, idn))
+              undefineExpression <- undefineSingle(expression)
+              result <- mk(ContractSchemeMon(undefineContract, undefineExpression, idn))
+          yield result
+
+        case ContractSchemeCheck(contract, valueExpression, idn) =>
+          for
+              undefineContract <- undefineSingle(contract)
+              undefineValue <- undefineSingle(valueExpression)
+              result <- mk(ContractSchemeCheck(undefineContract, undefineValue, idn))
           yield result
 
         case ContractSchemeFlatContract(expression, idn) =>
