@@ -169,6 +169,9 @@ trait BaseSchemeMonadicUndefiner:
         }
     yield e
 
+    def undefineBinding(idf: Identifier, exp: SchemeExp): M[(Identifier, SchemeExp)] =
+      undefineSingle(exp).map((idf, _))
+
     def undefine(exps: List[SchemeExp]): M[List[SchemeExp]] =
       Monad.sequence(exps.map(undefine1)).map(_.flatten)
 
@@ -195,13 +198,25 @@ trait BaseSchemeMonadicUndefiner:
           yield result
 
         case SchemeLet(bindings, body, idn) =>
-          usingNewScope { undefine(body) } map (letrectify.tupled) flatMap (b => mk(SchemeLet(bindings, b, idn)))
+          for 
+            undefinedBds <- bindings.mapM(undefineBinding.tupled)
+            undefinedBdy <- usingNewScope { undefine(body) } map (letrectify.tupled)
+            result <- mk(SchemeLet(undefinedBds, undefinedBdy, idn))
+          yield result
 
         case SchemeLetStar(bindings, body, idn) =>
-          usingNewScope { undefine(body) } map (letrectify.tupled) flatMap (b => mk(SchemeLetStar(bindings, b, idn)))
+          for 
+            undefinedBds <- bindings.mapM(undefineBinding.tupled)
+            undefinedBdy <- usingNewScope { undefine(body) } map (letrectify.tupled)
+            result <- mk(SchemeLetStar(undefinedBds, undefinedBdy, idn))
+          yield result
 
         case SchemeLetrec(bindings, body, idn) =>
-          usingNewScope { undefine(body) } map (letrectify.tupled) flatMap (b => mk(SchemeLetrec(bindings, b, idn)))
+          for 
+            undefinedBds <- bindings.mapM(undefineBinding.tupled)
+            undefinedBdy <- usingNewScope { undefine(body) } map (letrectify.tupled)
+            result <- mk(SchemeLetrec(undefinedBds, undefinedBdy, idn))
+          yield result
 
         case SchemeSet(variable, value, idn) =>
           undefineSingle(value) flatMap (b => mk(SchemeSet(variable, b, idn)))
