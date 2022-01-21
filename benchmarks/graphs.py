@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-import pandas as pd
 import json
 import glob
-import os
-import os.path
 import datetime
+import pandas as pd
+import matplotlib as mpl
+mpl.use('Agg') # Needed to run without an X server, see here: https://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server
+import seaborn as sb
+import matplotlib.pyplot as plt
+import matplotlib.ticker as tkr
 
 def read_metrics(filename):
     output = []
@@ -20,9 +22,7 @@ def read_metrics(filename):
 print("files in artifact: %s" % glob.glob("artifact/*.json"))
 
 json_files = glob.glob("artifact/jmh-results-*-*.json")
-print(json_files)
 dates = [ datetime.date(*map(int, f.split('.')[0].split('-')[-3:])) for f in json_files ]
-print(dates)
 metrics = [ read_metrics(f) for f in json_files ]
 for date, group in zip(dates, metrics):
     for metric in group:
@@ -33,21 +33,22 @@ df = pd.DataFrame(sum(metrics, []))
 df["date"] = pd.to_datetime(df.date)
 df = df.sort_values(by='name')
 
-import matplotlib as mpl
-mpl.use('Agg') # Needed to run without an X server, see here: https://stackoverflow.com/questions/4931376/generating-matplotlib-graphs-without-a-running-x-server
-import seaborn as sb
-import matplotlib.pyplot as plt
-
 sb.set(rc={'figure.figsize':(11.7,8.27)})
-sb.lineplot(x = "date", y = "time", hue = "name", data = df, marker = "o", ci = "sd")
 
-moving_mean = pd.DataFrame()
+def ytick_formatter(x, pos):
+    return '{}s'.format(int(x / 1000))
+yfmt = tkr.FuncFormatter(ytick_formatter)
+ax = plt.gca()
+ax.yaxis.set_major_formatter(yfmt)
+
 for benchmark in set(df['name']):
-    data = df[df['name'] == benchmark].groupby('date').mean().rolling(7).mean().assign(name=benchmark).reset_index()
-    moving_mean = moving_mean.append(data)
-moving_mean.insert(0, 'id', range(len(moving_mean)))
-moving_mean = moving_mean.set_index('id')
-moving_mean = moving_mean.sort_values(by='name')
-sb.lineplot(x = "date", y = "time", hue = "name", data = moving_mean, ci = None, linestyle='--', legend=False)
+    color = next(ax._get_lines.prop_cycler)['color']
+    data = df[df['name'] == benchmark]
+    # Plot the individual points with an error bar
+    plt.errorbar(data['date'], data['time'], yerr=data['error'], marker = "o", linestyle="", label=benchmark, color=color)
+    # Compute the 7 day moving mean
+    moving_mean = data.groupby('date').mean().rolling(7).mean().assign(name=benchmark).reset_index()
+    plt.plot(moving_mean['date'], moving_mean['time'], linestyle='--', color=color)
 
+plt.legend()
 plt.savefig("output.pdf")
