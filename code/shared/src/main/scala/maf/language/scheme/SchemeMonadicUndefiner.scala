@@ -198,24 +198,24 @@ trait BaseSchemeMonadicUndefiner:
           yield result
 
         case SchemeLet(bindings, body, idn) =>
-          for 
-            undefinedBds <- bindings.mapM(undefineBinding.tupled)
-            undefinedBdy <- usingNewScope { undefine(body) } map (letrectify.tupled)
-            result <- mk(SchemeLet(undefinedBds, undefinedBdy, idn))
+          for
+              undefinedBds <- bindings.mapM(undefineBinding.tupled)
+              undefinedBdy <- usingNewScope { undefine(body) } map (letrectify.tupled)
+              result <- mk(SchemeLet(undefinedBds, undefinedBdy, idn))
           yield result
 
         case SchemeLetStar(bindings, body, idn) =>
-          for 
-            undefinedBds <- bindings.mapM(undefineBinding.tupled)
-            undefinedBdy <- usingNewScope { undefine(body) } map (letrectify.tupled)
-            result <- mk(SchemeLetStar(undefinedBds, undefinedBdy, idn))
+          for
+              undefinedBds <- bindings.mapM(undefineBinding.tupled)
+              undefinedBdy <- usingNewScope { undefine(body) } map (letrectify.tupled)
+              result <- mk(SchemeLetStar(undefinedBds, undefinedBdy, idn))
           yield result
 
         case SchemeLetrec(bindings, body, idn) =>
-          for 
-            undefinedBds <- bindings.mapM(undefineBinding.tupled)
-            undefinedBdy <- usingNewScope { undefine(body) } map (letrectify.tupled)
-            result <- mk(SchemeLetrec(undefinedBds, undefinedBdy, idn))
+          for
+              undefinedBds <- bindings.mapM(undefineBinding.tupled)
+              undefinedBdy <- usingNewScope { undefine(body) } map (letrectify.tupled)
+              result <- mk(SchemeLetrec(undefinedBds, undefinedBdy, idn))
           yield result
 
         case SchemeSet(variable, value, idn) =>

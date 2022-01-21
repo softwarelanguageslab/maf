@@ -158,11 +158,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def typeName = "STRUCTCONSTRUCTOR"
         override def toString: String = "<struct-constructor>"
 
-    case class StructPredicates(predicates: Set[StructPredicate]) extends Value: 
+    case class StructPredicates(predicates: Set[StructPredicate]) extends Value:
         def ord = 26
         def typeName = "STRUCTPREDICATE"
         override def toString: String = "<struct-predicate>"
-
 
     /** The injected true value */
     val True: Bool = Bool(BoolLattice[B].inject(true))
@@ -670,9 +669,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case StructConstructors(l) => l
             case _                     => Set.empty
 
-        def getStructPredicates(x: Value): Set[StructPredicate] = x match 
+        def getStructPredicates(x: Value): Set[StructPredicate] = x match
             case StructPredicates(l) => l
-            case _ => Set.empty
+            case _                   => Set.empty
 
         def car(x: Value): MayFail[L, Error] = x match
             case Cons(car, _) => MayFail.success(car)

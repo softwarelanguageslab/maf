@@ -50,10 +50,7 @@ object AdaptiveRun:
         println(prg)
 
     def adaptiveAnalysisA(prg: SchemeExp, n: Int) =
-      new SchemeModFLocal(prg)
-        with SchemeConstantPropagationDomain
-        with SchemeModFLocalCallSiteSensitivity(0)
-        with FIFOWorklistAlgorithm[SchemeExp]:
+      new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalCallSiteSensitivity(0) with FIFOWorklistAlgorithm[SchemeExp]:
           override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
           //override def debug(msg: => String): Unit = println(s"[DEBUG $i] $msg")
           var i = 0

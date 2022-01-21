@@ -31,7 +31,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
     lazy val initialEnv: Env = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
     lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))
 
-    given shouldCount: (Adr => Boolean) = 
+    given shouldCount: (Adr => Boolean) =
         case _: PtrAddr[_] => true
         case _             => false
 

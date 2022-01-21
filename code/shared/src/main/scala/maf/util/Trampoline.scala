@@ -32,7 +32,7 @@ object Trampoline:
           case FlatMap((m: TrampolineT[IdentityMonad.Id, T]), (f: (T => TrampolineT[IdentityMonad.Id, T]))) =>
             m match {
               case Done(v: IdentityMonad.Id[T]) => run(f(v))
-              case More(k)       => run(FlatMap(k(), f))
+              case More(k)                      => run(FlatMap(k(), f))
               case FlatMap(sub2, cont2) =>
                 run(FlatMap(sub2, (x) => FlatMap(cont2(x), f)))
             }
