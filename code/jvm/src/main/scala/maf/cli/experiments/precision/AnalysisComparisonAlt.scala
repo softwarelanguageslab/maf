@@ -20,7 +20,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     def analyses: List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 30min.) and the number of concrete runs
-    def timeout() = Timeout.start(Duration(360, MINUTES)) // timeout for the analyses
+    def timeout() = Timeout.start(Duration(30, MINUTES)) // timeout for the analyses
     def runs = 3 // number of runs for the concrete interpreter
 
     // keep the results of the benchmarks in a table
@@ -48,7 +48,11 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
         val concreteResult = runInterpreter(program, path, Timeout.none, runs).get // no timeout set for the concrete interpreter
         // run the other analyses on the benchmark
         analyses.foreach { case (analysis, name) =>
+          val t0 = System.nanoTime
           val otherResult = runAnalysis(analysis, name, program, path, timeout())
+          val t1 = System.nanoTime
+          val duration = (System.nanoTime - t0) / 1e9d
+          println(s"duration: $duration")
           val lessPrecise = otherResult match
               case Terminated(analysisResult) => Result.Success(compareOrdered(analysisResult, concreteResult).size)
               case TimedOut(partialResult)    => Result.Timeout(compareOrdered(partialResult, concreteResult, check = false).size)
@@ -74,7 +78,7 @@ object AnalysisComparisonAlt1
     lazy val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
       (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
     }
-    def analyses = modf :: dssFS :: Nil
+    def analyses = modf :: wdss :: dss :: dssFS :: adaptive
     def main0(args: Array[String]) = check("test/R5RS/gambit/matrix.scm")
     def main(args: Array[String]) = runBenchmarks(
       Set(
@@ -99,7 +103,11 @@ object AnalysisComparisonAlt1
         //"test/R5RS/gambit/mazefun.scm",
         //"test/R5RS/gambit/nqueens.scm",
         //"test/R5RS/gambit/peval.scm",
-        "test/R5RS/scp1/flatten.scm",
+        //"test/R5RS/scp1/flatten.scm",
+        //"test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+        //"test/R5RS/icp/icp_1c_ontleed.scm",
+        //"test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+        "test/R5RS/icp/icp_2_aeval.scm",
       )
     )
 
