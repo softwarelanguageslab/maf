@@ -49,176 +49,175 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E] with SplitPerformance[E]
 
-// The maximal number of warm-up runs.
-val maxWarmupRuns = 3 //5
-// The number of actually measured runs.
-val measuredRuns = 15 //30
+    // The maximal number of warm-up runs.
+    val maxWarmupRuns = 3 //5
+    // The number of actually measured runs.
+    val measuredRuns = 15 //30
 
-val timeS: String = "ms" // Mean of measured times.
-val stdS: String = "SD" // Standard deviation of mean.
-val timeIntraS: String = "intraMS" // Mean of the measured intra-component analysis times.
-val stdIntraS: String = "intraSD" // Standard deviation of the mean.
-val propertiesS: List[String] = List(timeS, stdS, timeIntraS, stdIntraS)
-var results: Table[Result] = Table.empty.withDefaultValue(NotRun)
-val error: Result = Errored
+    val timeS: String = "ms" // Mean of measured times.
+    val stdS: String = "SD" // Standard deviation of mean.
+    val timeIntraS: String = "intraMS" // Mean of the measured intra-component analysis times.
+    val stdIntraS: String = "intraSD" // Standard deviation of the mean.
+    val propertiesS: List[String] = List(timeS, stdS, timeIntraS, stdIntraS)
+    var results: Table[Result] = Table.empty.withDefaultValue(NotRun)
+    val error: Result = Errored
 
-def runOneTime(analysis: Analysis, block: (Timeout.T, Analysis) => Unit): Option[Double] =
-    System.gc()
-    val to = timeout()
-    val time = Timer.timeOnly(block(to, analysis))
-    if to.reached then None
-    else Some(time.toDouble / 1000000) // Return time in ms.
-
-def warmUp(msg: String, block: Timeout.T => Unit): Unit =
-    print(s"Warmup: $msg ")
-    val timeOut = timeout()
-    for w <- 1 to maxWarmupRuns do
-        print(s"$w ")
+    def runOneTime(analysis: Analysis, block: (Timeout.T, Analysis) => Unit): Option[Double] =
         System.gc()
-        block(timeOut)
-        if timeOut.reached then
-            println()
-            return println()
+        val to = timeout()
+        val time = Timer.timeOnly(block(to, analysis))
+        if to.reached then None
+        else Some(time.toDouble / 1000000) // Return time in ms.
 
-def runNTimes(
-    msg: String,
-    createAnalysis: () => Analysis,
-    block: (Timeout.T, Analysis) => Unit
-  ): Option[(List[Double], List[Double])] =
-    print(s"Measuring: $msg ")
-    var times: List[Double] = List()
-    var timesIntra: List[Double] = List()
-    for i <- 1 to measuredRuns do
-        print(s"$i ")
-        val analysis = createAnalysis() // Don't measure analysis creation.
-        runOneTime(analysis, block) match
-            case Some(t) =>
-              times = t :: times
-              timesIntra = (analysis.intraComponentAnalysisTimeAcc.toDouble / 1000000) :: timesIntra
-            case None =>
-              println(" timed out.")
-              return None
-    println()
-    Some((times, timesIntra))
+    def warmUp(msg: String, block: Timeout.T => Unit): Unit =
+        print(s"Warmup: $msg ")
+        val timeOut = timeout()
+        for w <- 1 to maxWarmupRuns do
+            print(s"$w ")
+            System.gc()
+            block(timeOut)
+            if timeOut.reached then
+                println()
+                return
+        println()
 
-var first = true
-lazy val cols = columns // (List(initS, reanS) ++ configurations.map(_.toString)).flatMap(c => List(columnName(timeS, c), columnName(stdS, c), columnName(timeIntraS, c), columnName(stdIntraS, c)))
+    def runNTimes(
+        msg: String,
+        createAnalysis: () => Analysis,
+        block: (Timeout.T, Analysis) => Unit
+      ): Option[(List[Double], List[Double])] =
+        print(s"Measuring: $msg ")
+        var times: List[Double] = List()
+        var timesIntra: List[Double] = List()
+        for i <- 1 to measuredRuns do
+            print(s"$i ")
+            val analysis = createAnalysis() // Don't measure analysis creation.
+            runOneTime(analysis, block) match
+                case Some(t) =>
+                  times = t :: times
+                  timesIntra = (analysis.intraComponentAnalysisTimeAcc.toDouble / 1000000) :: timesIntra
+                case None =>
+                  println(" timed out.")
+                  return None
+        println()
+        Some((times, timesIntra))
 
-// A single program run with the analysis.
-def onBenchmark(file: String): Unit =
-  try
-      results = Table.empty.withDefaultValue(NotRun)
-      if first then
-          Writer.disableReporting()
-          Writer.writeln(results.toCSVString(columns = cols, rowName = "benchmark"))
-          first = false
+    var first = true
+    lazy val cols = columns // (List(initS, reanS) ++ configurations.map(_.toString)).flatMap(c => List(columnName(timeS, c), columnName(stdS, c), columnName(timeIntraS, c), columnName(stdIntraS, c)))
 
-      val program = parse(file)
+    // A single program run with the analysis.
+    def onBenchmark(file: String): Unit =
+      try
+          results = Table.empty.withDefaultValue(NotRun)
+          if first then
+              Writer.disableReporting()
+              Writer.writeln(results.toCSVString(columns = cols, rowName = "benchmark"))
+              first = false
 
-      var times: Map[String, List[Double]] = Map().withDefaultValue(List.empty)
-      var timeOuts: Map[String, Boolean] = Map().withDefaultValue(false)
+          val program = parse(file)
 
-      // Initial analysis.
+          var times: Map[String, List[Double]] = Map().withDefaultValue(List.empty)
+          var timeOuts: Map[String, Boolean] = Map().withDefaultValue(false)
 
-      warmUp("initial analysis", timeout => analysis(program, noOptimisations.disableAsserts()).analyzeWithTimeout(timeout))
-      runNTimes("initial analysis",
-                () => analysis(program, noOptimisations.disableAsserts()),
-                (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
-      ) match
-          case None =>
-            results = results.add(file, columnName(timeS, initS), Timedout)
-            return
-          case Some((ts, tsi)) =>
-            val stats = Statistics.all(ts)
-            val statsIntra = Statistics.all(tsi)
-            results = results
-              .add(file, columnName(timeS, initS), Value(scala.math.round(stats.mean)))
-              .add(file, columnName(stdS, initS), Value(scala.math.round(stats.stddev)))
-              .add(file, columnName(timeIntraS, initS), Value(scala.math.round(statsIntra.mean)))
-              .add(file, columnName(stdIntraS, initS), Value(scala.math.round(statsIntra.stddev)))
+          // Initial analysis.
 
-      // Full reanalysis.
-
-      warmUp("reanalysis",
-             timeout => {
-               val a = analysis(program, noOptimisations.disableAsserts())
-               a.version = New
-               a.analyzeWithTimeout(timeout)
-             }
-      )
-      runNTimes(
-        "reanalysis",
-        () => {
-          val a = analysis(program, noOptimisations.disableAsserts())
-          a.version = New
-          a
-        },
-        (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
-      ) match
-          case None => results = results.add(file, columnName(timeS, reanS), Timedout)
-          case Some((ts, tsi)) =>
-            val stats = Statistics.all(ts)
-            val statsIntra = Statistics.all(tsi)
-            results = results
-              .add(file, columnName(timeS, reanS), Value(scala.math.round(stats.mean)))
-              .add(file, columnName(stdS, reanS), Value(scala.math.round(stats.stddev)))
-              .add(file, columnName(timeIntraS, reanS), Value(scala.math.round(statsIntra.mean)))
-              .add(file, columnName(stdIntraS, reanS), Value(scala.math.round(statsIntra.stddev)))
-
-      // Incremental measurements.
-
-      // Run the initial analysis.
-      val initAnalysis = analysis(program, ci_di_wi.disableAsserts()) // Allow all caches to be initialised (may increase memory footprint).
-      initAnalysis.analyzeWithTimeout(timeout())
-      if !initAnalysis.finished then return initAnalysis.intraComponentAnalysisTimeAcc = 0 // Reset the timer.
-
-      configurations.foreach { config =>
-          warmUp(config.toString,
-                 timeout => {
-                   val a = initAnalysis.deepCopy()
-                   a.configuration = config.disableAsserts()
-                   a.updateAnalysis(timeout)
-                 }
-          )
-          runNTimes(config.toString,
-                    () => {
-                      val a = initAnalysis.deepCopy()
-                      a.configuration = config.disableAsserts()
-                      a
-                    },
-                    (timeout, analysis) => analysis.updateAnalysis(timeout)
+          warmUp("initial analysis", timeout => analysis(program, noOptimisations.disableAsserts()).analyzeWithTimeout(timeout))
+          runNTimes("initial analysis",
+                    () => analysis(program, noOptimisations.disableAsserts()),
+                    (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
           ) match
-              case None => results = results.add(file, columnName(timeS, config.toString), Timedout)
+              case None =>
+                results = results.add(file, columnName(timeS, initS), Timedout)
+                return
               case Some((ts, tsi)) =>
                 val stats = Statistics.all(ts)
                 val statsIntra = Statistics.all(tsi)
                 results = results
-                  .add(file, columnName(timeS, config.toString), Value(scala.math.round(stats.mean)))
-                  .add(file, columnName(stdS, config.toString), Value(scala.math.round(stats.stddev)))
-                  .add(file, columnName(timeIntraS, config.toString), Value(scala.math.round(statsIntra.mean)))
-                  .add(file, columnName(stdIntraS, config.toString), Value(scala.math.round(statsIntra.stddev)))
-      }
-      val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
-      Writer.writeln(lst(1))
-  catch
-      case _ =>
-        reportError(file)
-        val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
-        Writer.writeln(lst(1))
-end onBenchmark
+                  .add(file, columnName(timeS, initS), Value(scala.math.round(stats.mean)))
+                  .add(file, columnName(stdS, initS), Value(scala.math.round(stats.stddev)))
+                  .add(file, columnName(timeIntraS, initS), Value(scala.math.round(statsIntra.mean)))
+                  .add(file, columnName(stdIntraS, initS), Value(scala.math.round(statsIntra.stddev)))
 
-def createOutput(): String = "" // Results are written during benchmarking.
+          // Full reanalysis.
 
-/* ************************** */
-/* ***** Instantiations ***** */
-/* ************************** */
+          warmUp("reanalysis",
+                 timeout => {
+                   val a = analysis(program, noOptimisations.disableAsserts())
+                   a.version = New
+                   a.analyzeWithTimeout(timeout)
+                 }
+          )
+          runNTimes(
+            "reanalysis",
+            () => {
+              val a = analysis(program, noOptimisations.disableAsserts())
+              a.version = New
+              a
+            },
+            (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
+          ) match
+              case None => results = results.add(file, columnName(timeS, reanS), Timedout)
+              case Some((ts, tsi)) =>
+                val stats = Statistics.all(ts)
+                val statsIntra = Statistics.all(tsi)
+                results = results
+                  .add(file, columnName(timeS, reanS), Value(scala.math.round(stats.mean)))
+                  .add(file, columnName(stdS, reanS), Value(scala.math.round(stats.stddev)))
+                  .add(file, columnName(timeIntraS, reanS), Value(scala.math.round(statsIntra.mean)))
+                  .add(file, columnName(stdIntraS, reanS), Value(scala.math.round(statsIntra.stddev)))
 
-trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
-    override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
+          // Incremental measurements.
 
+          // Run the initial analysis.
+          val initAnalysis = analysis(program, ci_di_wi.disableAsserts()) // Allow all caches to be initialised (may increase memory footprint).
+          initAnalysis.analyzeWithTimeout(timeout())
+          if !initAnalysis.finished then return initAnalysis.intraComponentAnalysisTimeAcc = 0 // Reset the timer.
+
+          configurations.foreach { config =>
+              warmUp(config.toString,
+                     timeout => {
+                       val a = initAnalysis.deepCopy()
+                       a.configuration = config.disableAsserts()
+                       a.updateAnalysis(timeout)
+                     }
+              )
+              runNTimes(config.toString,
+                        () => {
+                          val a = initAnalysis.deepCopy()
+                          a.configuration = config.disableAsserts()
+                          a
+                        },
+                        (timeout, analysis) => analysis.updateAnalysis(timeout)
+              ) match
+                  case None => results = results.add(file, columnName(timeS, config.toString), Timedout)
+                  case Some((ts, tsi)) =>
+                    val stats = Statistics.all(ts)
+                    val statsIntra = Statistics.all(tsi)
+                    results = results
+                      .add(file, columnName(timeS, config.toString), Value(scala.math.round(stats.mean)))
+                      .add(file, columnName(stdS, config.toString), Value(scala.math.round(stats.stddev)))
+                      .add(file, columnName(timeIntraS, config.toString), Value(scala.math.round(statsIntra.mean)))
+                      .add(file, columnName(stdIntraS, config.toString), Value(scala.math.round(statsIntra.stddev)))
+          }
+          val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
+          Writer.writeln(lst(1))
+      catch
+          case _ =>
+            reportError(file)
+            val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
+            Writer.writeln(lst(1))
+    end onBenchmark
+
+    def createOutput(): String = ""// Results are written during benchmarking.
+
+    /* ************************** */
+
+    /* ***** Instantiations ***** */ /* ************************** */
+
+val configurations: List[IncrementalConfiguration] = allConfigurations
     override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-
-    val configurations: List[IncrementalConfiguration] = allConfigurations
+    override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
+    :trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]
 
 object IncrementalSchemeModFTypePerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
