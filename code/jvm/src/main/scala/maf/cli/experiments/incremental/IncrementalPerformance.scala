@@ -208,16 +208,16 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
             Writer.writeln(lst(1))
     end onBenchmark
 
-    def createOutput(): String = ""// Results are written during benchmarking.
+    def createOutput(): String = "" // Results are written during benchmarking.
 
-    /* ************************** */
+/* ************************** */
+/* ***** Instantiations ***** */
+/* ************************** */
 
-    /* ***** Instantiations ***** */ /* ************************** */
-
-val configurations: List[IncrementalConfiguration] = allConfigurations
-    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
+trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    :trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]
+    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
+    val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFTypePerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
