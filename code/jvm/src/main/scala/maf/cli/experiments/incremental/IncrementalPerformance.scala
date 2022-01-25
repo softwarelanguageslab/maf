@@ -49,16 +49,16 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E] with SplitPerformance[E]
 
-    // The maximal number of warm-up runs.
-    val maxWarmupRuns = 3 //5
-    // The number of actually measured runs.
-    val measuredRuns = 15 //30
+// The maximal number of warm-up runs.
+val maxWarmupRuns = 3 //5
+// The number of actually measured runs.
+val measuredRuns = 15 //30
 
-    val timeS: String = "ms" // Mean of measured times.
-    val stdS: String = "SD" // Standard deviation of mean.
-    val timeIntraS: String = "intraMS" // Mean of the measured intra-component analysis times.
-    val stdIntraS: String = "intraSD" // Standard deviation of the mean.
-    val propertiesS: List[String] = List(timeS, stdS, timeIntraS, stdIntraS)
+val timeS: String = "ms" // Mean of measured times.
+val stdS: String = "SD" // Standard deviation of mean.
+val timeIntraS: String = "intraMS" // Mean of the measured intra-component analysis times.
+val stdIntraS: String = "intraSD" // Standard deviation of the mean.
+val propertiesS: List[String] = List(timeS, stdS, timeIntraS, stdIntraS)
 var results: Table[Result] = Table.empty.withDefaultValue(NotRun)
 val error: Result = Errored
 
@@ -101,8 +101,8 @@ def runNTimes(
     println()
     Some((times, timesIntra))
 
-    var first = true
-    lazy val cols = columns // (List(initS, reanS) ++ configurations.map(_.toString)).flatMap(c => List(columnName(timeS, c), columnName(stdS, c), columnName(timeIntraS, c), columnName(stdIntraS, c)))
+var first = true
+lazy val cols = columns // (List(initS, reanS) ++ configurations.map(_.toString)).flatMap(c => List(columnName(timeS, c), columnName(stdS, c), columnName(timeIntraS, c), columnName(stdIntraS, c)))
 
 // A single program run with the analysis.
 def onBenchmark(file: String): Unit =
