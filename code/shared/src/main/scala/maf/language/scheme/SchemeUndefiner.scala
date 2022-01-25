@@ -152,6 +152,6 @@ end UndefinerTester
 
 class BaseSchemeUndefiner:
     def undefine(exps: List[SchemeExp]): SchemeExp =
-      SchemeBegin(SchemeMonadicUndefiner.undefineExps(exps), Identity.none)
+      SchemeBody(SchemeMonadicUndefiner.undefineExps(exps))
 
 object SchemeUndefiner extends BaseSchemeUndefiner
