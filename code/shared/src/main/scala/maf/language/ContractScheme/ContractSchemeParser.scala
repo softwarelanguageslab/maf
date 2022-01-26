@@ -25,4 +25,4 @@ object ContractSchemeParser:
 
     /** Parses a Scheme program with contracts into a scheme body, and runs the undefiner on top of it */
     def parse(program: String, tag: PTag = noTag): SchemeExp =
-      ContractSchemeUndefiner.undefine(SchemePrelude.addPrelude(List(compile(program, tag))))
+      ContractSchemeUndefiner.undefine(ContractSchemePrelude.addPrelude(List(compile(program, tag))))
