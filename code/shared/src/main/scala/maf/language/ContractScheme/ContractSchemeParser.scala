@@ -3,6 +3,7 @@ package maf.language.ContractScheme
 import maf.language.sexp.SExpParser
 import maf.language.scheme._
 import maf.core.Position._
+import maf.language.scheme.primitives.SchemePrelude
 
 /** Main access to the ContractScheme parsing and compilation facilities */
 object ContractSchemeParser:
@@ -24,4 +25,4 @@ object ContractSchemeParser:
 
     /** Parses a Scheme program with contracts into a scheme body, and runs the undefiner on top of it */
     def parse(program: String, tag: PTag = noTag): SchemeExp =
-      ContractSchemeUndefiner.undefine(List(compile(program, tag)))
+      ContractSchemeUndefiner.undefine(SchemePrelude.addPrelude(List(compile(program, tag))))

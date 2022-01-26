@@ -10,7 +10,7 @@ trait BaseSchemeCompiler:
 
     /** Reserved keywords */
     def reserved: List[String] =
-      List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "do", "when", "unless")
+      List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "do", "when", "unless", "λ")
 
     def compile(exp: SExp): SchemeExp = this._compile(exp).result
 
@@ -24,7 +24,7 @@ trait BaseSchemeCompiler:
         case SExpPair(SExpId(Identifier("quasiquote", _)), _, _) =>
           throw new SchemeCompilerException(s"Invalid Scheme quasiquote: $exp", exp.idn)
         case SExpPair(
-              SExpId(Identifier("lambda", _)),
+              SExpId(Identifier("lambda" | "λ", _)),
               SExpPair(args, body, _),
               _
             ) =>
@@ -32,7 +32,7 @@ trait BaseSchemeCompiler:
               argsv <- tailcall(compileArgs(args))
               bodyv <- tailcall(compileBodyNonEmpty(body))
           yield makeLambda(None, argsv, bodyv, exp.idn)
-        case SExpPair(SExpId(Identifier("lambda", _)), _, _) =>
+        case SExpPair(SExpId(Identifier("lambda" | "λ", _)), _, _) =>
           throw new SchemeCompilerException(s"Invalid Scheme lambda: $exp", exp.idn)
         case SExpPair(
               SExpId(Identifier("if", _)),
