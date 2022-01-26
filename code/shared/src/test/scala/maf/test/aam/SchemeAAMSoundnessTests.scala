@@ -49,7 +49,7 @@ class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with Vario
         with SchemeStoreAllocateReturn // important for termination of some programs
         with SchemeFunctionCallBoundary
         with SchemeAAMLocalStore
-        //with BaseSchemeLoggingLocalStore
+        //with BaseSchemeLoggingLocalStore TODO: this seems to be unsound for lambda-update.scm check
         with SimpleWorklistSystem
         //with maf.aam.scheme.stores.SchemeImperativeStoreWidening
         with SchemeAAMAnalysisResults

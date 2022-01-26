@@ -1,5 +1,4 @@
 #lang racket
-(require soft-contract/fake-contract)
 
 (define (f g) (λ (x y) (g (+ x 1) (+ y 1))))
 
@@ -16,6 +15,6 @@
 (define (main n)
   (unzip n zip))
 
-(provide/contract
- [f ((integer? integer? . -> . integer?) . -> . (integer? integer? . -> . integer?))]
- [main (integer? . -> . integer?)])
+(provide (contract-out
+ [f (-> (-> integer? integer? integer?) (-> integer? integer? integer?))]
+ [main (-> integer? integer?)]))

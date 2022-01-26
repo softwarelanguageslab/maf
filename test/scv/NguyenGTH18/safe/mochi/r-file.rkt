@@ -1,8 +1,5 @@
 #lang racket
 
-(provide/contract
- [main (integer? integer? . -> . any/c)])
-
 (define STATE/C (one-of/c 'init 'opened 'closed 'ignore))
 
 (define (loop) (loop))
@@ -34,3 +31,6 @@
 (define (main b2 b3)
   (if (> b2 0) (g b3 #t 'opened) (g b3 #f 'init))
   'unit)
+
+(provide (contract-out
+ [main (-> integer? integer? any/c)]))
