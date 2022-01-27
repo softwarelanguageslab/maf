@@ -24,7 +24,7 @@ import maf.core._
 
 object AdaptiveRun:
 
-    def main(args: Array[String]): Unit = testModFLocal()
+    def main(args: Array[String]): Unit = testTransform()
 
     def testConcrete() =
         val txt =
@@ -42,7 +42,7 @@ object AdaptiveRun:
         }
 
     def testTransform(): Unit =
-        val txt = Reader.loadFile("test/R5RS/various/grid.scm")
+        val txt = Reader.loadFile("test/R5RS/various/strong-update.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
