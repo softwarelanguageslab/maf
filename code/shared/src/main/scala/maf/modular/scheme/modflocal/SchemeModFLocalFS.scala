@@ -16,12 +16,14 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
 
     // more shorthands
     type Cmp = Component
+    type Cll = CallComponent
     type Dep = Dependency
     type Sto = LocalStore[Adr, Val]
     type Dlt = Delta[Adr, Val]
     type Cnt = AbstractCount
     type Res = Map[Cmp, (Val, Dlt)]
     type Sts = Map[Cmp, Sto]
+    type Anl = SchemeModFLocalFSIntraAnalysis
 
     //
     // INITIALISATION
@@ -49,7 +51,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
     sealed trait Component extends Serializable:
         def exp: Exp
         def env: Env
-        val ctx: Ctx
+        def ctx: Ctx
     case object MainComponent extends Component:
         val exp = initialExp
         val env = initialEnv
@@ -63,11 +65,14 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
     def expr(cmp: Component): Exp = cmp.exp
 
     //
-    // RESULTS
+    // STATE = RESULTS + STORE
     //
 
     var results: Res = Map.empty
     case class ResultDependency(cmp: Cmp) extends Dependency
+
+    var stores: Sts = Map.empty
+    case class AddrDependencyFS(cmp: Cmp, adr: Adr) extends Dependency
 
     //
     // STORE STUFF
@@ -75,14 +80,13 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
 
     def extendV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.extend(adr, vlu)
     def updateV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.update(adr, vlu)
-    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr] {
-      def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
-        if a1 == a2 then
-            sto.content.get(a1) match
-                case Some((_, CountOne)) => BoolLattice[B].inject(true)
-                case _                   => BoolLattice[B].top
-        else BoolLattice[B].inject(false)
-    }
+    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
+        def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
+          if a1 == a2 then
+              sto.content.get(a1) match
+                  case Some((_, CountOne)) => BoolLattice[B].inject(true)
+                  case _                   => BoolLattice[B].top
+          else BoolLattice[B].inject(false)
 
     //
     // GC'ing
@@ -107,172 +111,141 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
                 (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
 
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
-      (res, ctx, env, sto) =>
+      (anl, env, sto, ctx) =>
           val gcs = StoreGC.collect(sto, rs)
-          val (vlu, dlt, eff) = blk(res, ctx, env, gcs)
-          val dgc = DeltaGC(gcs).collect(dlt, vlu.map(lattice.refs).getOrElse(Set.empty) ++ dlt.updates)
-          (vlu, sto.replay(gcs, dgc), eff)
+          blk(anl, env, sto, ctx).map { (vlu, dlt) =>
+              val gcd = DeltaGC(gcs).collect(dlt, lattice.refs(vlu) ++ dlt.updates)
+              (vlu, gcd)
+          }
 
     override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
       withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
         super.applyClosure(app, lam, ags, fvs)
       }
 
-    //
-    // STORE WIDENING
-    //
-
-    var stores: Sts = Map.empty
-    def getStore(sts: Sts, cmp: Cmp): Sto = sts.getOrElse(cmp, LocalStore.empty)
-    def setStore(sts: Sts, cmp: Cmp, sto: Sto): Sts = sts + (cmp -> sto)
-
     override def init() =
         super.init()
-        stores = setStore(stores, MainComponent, initialSto)
-
-    case class WidenedAddrDependency(cmp: Cmp, adr: Adr) extends Dependency
-
-    //
-    // EFFECTS
-    //
-
-    case class Eff(c: Set[Cmp], w: Set[(Cmp, Adr, Cnt, Val)]):
-        def ++(other: Eff): Eff = Eff(c ++ other.c, w ++ other.w)
-    object Eff:
-        def empty = Eff(Set.empty, Set.empty)
-        def call(cmp: Cmp) = Eff(Set(cmp), Set.empty)
-        def write(cmp: Cmp, adr: Adr, cnt: Cnt, vlu: Val) = Eff(Set.empty, Set((cmp, adr, cnt, vlu)))
-        def write(wrs: Iterable[(Cmp, Adr, Cnt, Val)]) = Eff(Set.empty, wrs.toSet)
+        stores += MainComponent -> initialSto
 
     //
     // ANALYSISM MONAD
     //
 
-    type A[X] = (Res, Ctx, Env, Sto) => (Option[X], Dlt, Eff)
+    type A[X] = (Anl, Env, Sto, Ctx) => Option[(X, Dlt)]
 
     given analysisM: AnalysisM[A] with
         // MONAD
         def unit[X](x: X) =
-          (_, _, _, sto) => (Some(x), Delta.empty, Eff.empty)
+          (_, _, _, _) => Some((x, Delta.empty))
         def map[X, Y](m: A[X])(f: X => Y) =
-          (res, ctx, env, sto) =>
-              val (x, dlt, eff) = m(res, ctx, env, sto)
-              (x.map(f), dlt, eff)
+          (anl, env, sto, ctx) => m(anl, env, sto, ctx).map((x, d) => (f(x), d))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
-          (res, ctx, env, sto0) =>
-              val (r, dlt1, eff1) = m(res, ctx, env, sto0)
-              r.map(x =>
-                  val sto1 = sto0.integrate(dlt1)
-                  val (y, dlt2, eff2) = f(x)(res, ctx, env, sto1)
-                  (y, sto0.compose(dlt2, dlt1), eff1 ++ eff2)
-              ).getOrElse((None, Delta.empty, eff1))
+          (anl, env, sto, ctx) =>
+            for
+                (x0, d0) <- m(anl, env, sto, ctx)
+                (x1, d1) <- f(x0)(anl, env, sto.integrate(d0), ctx)
+            yield (x1, sto.compose(d1, d0))
         // MONADJOIN
         def mbottom[X] =
-          (_, _, _, _) => (None, Delta.empty, Eff.empty)
+          (_, _, _, _) => None
         def mjoin[X: Lattice](x: A[X], y: A[X]) =
-          (res, ctx, env, sto) =>
-              val (xres, dlt1, eff1) = x(res, ctx, env, sto)
-              val (yres, dlt2, eff2) = y(res, ctx, env, sto)
-              val joined = (xres, yres) match
-                  case (None, None)       => None
-                  case (Some(x), None)    => xres
-                  case (None, Some(y))    => yres
-                  case (Some(x), Some(y)) => Some(Lattice[X].join(x, y))
-              (joined, sto.join(dlt1, dlt2), eff1 ++ eff2)
+          (anl, env, sto, ctx) =>
+            (x(anl, env, sto, ctx), y(anl, env, sto, ctx)) match
+                case (None, yres)                   => yres
+                case (xres, None)                   => xres
+                case (Some((xv, xs)), Some(yv, ys)) => (Some((Lattice[X].join(xv, yv), sto.join(xs, ys))))
         // MONADERROR
         def fail[X](err: Error) =
           mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-          (_, _, _, sto) => (Some(eqA(sto)), Delta.empty, Eff.empty)
+          (_, _, sto, _) => Some((eqA(sto), Delta.empty))
         def extendSto(adr: Adr, vlu: Val) =
-          (_, _, env, sto) => (Some(()), extendV(sto, adr, vlu), Eff.empty)
+          (_, _, sto, _) => Some((), extendV(sto, adr, vlu))
         def updateSto(adr: Adr, vlu: Val) =
-          (_, _, env, sto) => (Some(()), updateV(sto, adr, vlu), Eff.empty)
+          (_, _, sto, _) => Some((), updateV(sto, adr, vlu))
         def lookupSto(adr: Adr) =
-          (_, _, _, sto) => (sto.lookup(adr), Delta.empty, Eff.empty)
+          (_, _, sto, _) => sto.lookup(adr).map((_, Delta.empty))
         // CTX STUFF
         def getCtx =
-          (_, ctx, _, sto) => (Some(ctx), Delta.empty, Eff.empty)
-        def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
-          (res, ctx, env, sto) => blk(res, f(ctx), env, sto)
+          (_, _, _, ctx) => Some((ctx, Delta.empty))
+        def withCtx[X](f: Ctx => Ctx)(blk: A[X]) =
+          (anl, env, sto, ctx) => blk(anl, env, sto, f(ctx))
         // ENV STUFF
         def getEnv =
-          (_, _, env, sto) => (Some(env), Delta.empty, Eff.empty)
-        def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
-          (res, ctx, env, sto) => blk(res, ctx, f(env), sto)
+          (_, env, _, _) => Some((env, Delta.empty))
+        def withEnv[X](f: Env => Env)(blk: A[X]) =
+          (anl, env, sto, ctx) => blk(anl, f(env), sto, ctx)
         // CALL STUFF
-        def call(lam: Lam): A[Val] =
-          (res, ctx, env, sto) =>
-              val cmp = CallComponent(lam, env, ctx)
-              val eff = Eff.call(cmp) ++ Eff.write(sto.content.map({ case (adr, (vlu, cnt)) => (cmp, adr, cnt, vlu) }))
-              val rss = res.get(cmp)
-              (rss.map(_._1), rss.map(_._2).getOrElse(Delta.empty), eff)
+        def call(lam: Lam) =
+          (anl, env, sto, ctx) => anl.call(CallComponent(lam, env, ctx), sto)
 
     //
     // THE INTRA-ANALYSIS
     //
 
-    def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) { intra =>
-      // local state
-      var results = inter.results
-      var stores = inter.stores
+    def intraAnalysis(cmp: Component) = new SchemeModFLocalFSIntraAnalysis(cmp)
+    class SchemeModFLocalFSIntraAnalysis(cmp: Component) extends IntraAnalysis(cmp):
+        intra =>
 
-      def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          val sto = getStore(intra.stores, cmp)
-          val (res, dlt, eff) = eval(cmp.exp)(results, cmp.ctx, cmp.env, sto)
-          res.foreach { vlu =>
-              val rgc = DeltaGC(sto).collect(dlt, lattice.refs(vlu) ++ dlt.updates)
-              val old = results.getOrElse(cmp, (lattice.bottom, Delta.empty))
-              if ((vlu, rgc) != old) then
-                  results = results + (cmp -> (vlu, rgc))
-                  trigger(ResultDependency(cmp))
-          }
-          // register dependencies on all values of the store
-          sto.content.keys.foreach(adr => register(WidenedAddrDependency(cmp, adr)))
-          // process new components
-          eff.c.foreach { cmp =>
-              spawn(cmp)
-              register(ResultDependency(cmp))
-          }
-          // process writes to widened stores
-          eff.w.foreach { case (cmp, adr, cnt, vlu) =>
-            val prv = getStore(intra.stores, cmp)
-            prv.joinAt(adr, vlu, cnt) match
-                case None => ()
-                case Some(sto) =>
-                  intra.stores = setStore(intra.stores, cmp, sto)
-                  trigger(WidenedAddrDependency(cmp, adr))
-          }
+        // local state
+        var results = inter.results
+        var stores = inter.stores
 
-      override def doWrite(dep: Dependency): Boolean = dep match
-          case ResultDependency(cmp) =>
-            val old = inter.results.getOrElse(cmp, (lattice.bottom, Delta.empty))
-            val cur = intra.results(cmp) // we are certain to have a result here!
-            if old != cur then
-                inter.results += cmp -> cur
-                true
-            else false
-          case WidenedAddrDependency(cmp, adr) =>
-            val oldS = inter.stores.getOrElse(cmp, LocalStore.empty)
-            val newS = intra.stores(cmp) // we are certain to have a store here!
-            val (newV, newC) = newS.content(adr)
-            oldS.joinAt(adr, newV, newC) match
-                case None => false
-                case Some(sto) =>
-                  inter.stores = setStore(inter.stores, cmp, sto)
+        def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            // get the (widened) store
+            val sto = stores.getOrElse(cmp, LocalStore.empty)
+            // register dependencies on all addresses
+            sto.content.keys.foreach(adr => register(AddrDependencyFS(cmp, adr)))
+            // GC the result
+            val rgc = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx).map { (v, d) =>
+              (v, DeltaGC(sto).collect(d, lattice.refs(v) ++ d.updates))
+            }
+            // update the result of this component
+            val old = results.get(cmp)
+            if (rgc != old) then
+                results += cmp -> rgc.get
+                trigger(ResultDependency(cmp))
+
+        def call(cll: Cll, sto: Sto): Option[(Val, Dlt)] =
+            // spawn the component
+            spawn(cll)
+            // add bindings to its store
+            val stw = stores.getOrElse(cll, LocalStore.empty)
+            val (upd, dty) = sto.content.foldLeft((stw, false)) { case (acc, (adr, (vlu, cnt))) =>
+              acc._1.joinAt(adr, vlu, cnt) match
+                  case None => acc
+                  case Some(upd) =>
+                    trigger(AddrDependencyFS(cll, adr))
+                    (upd, true)
+            }
+            if dty then stores += cll -> upd
+            // read its result
+            register(ResultDependency(cll))
+            results.get(cll)
+
+        override def doWrite(dep: Dependency): Boolean = dep match
+            case ResultDependency(cmp) =>
+              val old = inter.results.getOrElse(cmp, (lattice.bottom, Delta.empty))
+              val cur = intra.results(cmp) // we are certain to have a result here!
+              if old != cur then
+                  inter.results += cmp -> cur
                   true
-          case _ => super.doWrite(dep)
-    }
-
-//TODO: widen resulting values
-//TODO: GC at every step? (ARC?)
+              else false
+            case AddrDependencyFS(cmp, adr) =>
+              val oldS = inter.stores.getOrElse(cmp, LocalStore.empty)
+              val newS = intra.stores(cmp) // we are certain to have a store here!
+              val (newV, newC) = newS.content(adr) // we are certain to have a binding here!
+              oldS.joinAt(adr, newV, newC) match
+                  case None => false
+                  case Some(upd) =>
+                    inter.stores += cmp -> upd
+                    true
+            case _ => super.doWrite(dep)
 
 trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
-
     var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
-
     override def extendV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>

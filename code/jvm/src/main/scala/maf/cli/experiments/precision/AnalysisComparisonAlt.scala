@@ -107,7 +107,13 @@ object AnalysisComparisonAlt1
         //"test/R5RS/icp/icp_1c_multiple-dwelling.scm",
         //"test/R5RS/icp/icp_1c_ontleed.scm",
         //"test/R5RS/icp/icp_1c_prime-sum-pair.scm",
-        "test/R5RS/icp/icp_2_aeval.scm",
+        //"test/R5RS/icp/icp_2_aeval.scm",
+        //"test/R5RS/icp/icp_3_leval.scm",
+        //"test/R5RS/icp/icp_5_regsim.scm",
+        //"test/R5RS/icp/icp_7_eceval.scm",
+        //"test/R5RS/icp/icp_8_compiler.scm",
+        //"test/R5RS/various/lambda-update.scm",
+        "test/R5RS/various/strong-update.scm"
       )
     )
 
