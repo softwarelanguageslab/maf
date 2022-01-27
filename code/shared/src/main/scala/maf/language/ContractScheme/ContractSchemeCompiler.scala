@@ -82,10 +82,10 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
     private def compile_params(params: SExp): List[Identifier] = params match
         case IdentWithIdentity(name, idn) :::: rest =>
           Identifier(name, idn) :: compile_params(rest)
-        case snil => List()
+        case SNil(_) => List()
 
     private def compileContractOut(binding: SExp): TailRec[ContractSchemeProvideOut] = binding match
-        case IdentWithIdentity(name, idn) :::: contract :::: snil =>
+        case IdentWithIdentity(name, idn) :::: contract :::: SNil(_) =>
           val compiled_name = Identifier(name, idn)
           for compiled_contract <- _compile(contract)
           yield ContractSchemeContractOut(compiled_name, compiled_contract, binding.idn)
@@ -122,14 +122,14 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
           )
 
         // (flat expr)
-        case Ident("flat") :::: expr :::: snil =>
+        case Ident("flat") :::: expr :::: SNil(_) =>
           for compiledExpr <- tailcall(_compile(expr))
           yield ContractSchemeFlatContract(compiledExpr, exp.idn)
 
         case Ident("flat") :::: _ => throw new Exception(s"Parse error, flat expects exactly one argument at ${exp.idn}")
 
         // (mon contract expr)
-        case Ident("mon") :::: contract :::: expr :::: snil =>
+        case Ident("mon") :::: contract :::: expr :::: SNil(_) =>
           for
               compiledContract <- tailcall(_compile(contract))
               compiledExpr <- tailcall(_compile(expr))
@@ -156,7 +156,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
           yield ContractSchemeProvide(compiled_outs, exp.idn)
 
         // (check contract valueExpression)
-        case Ident("check") :::: contract :::: expression :::: snil =>
+        case Ident("check") :::: contract :::: expression :::: SNil(_) =>
           for
               compiledContract <- tailcall(_compile(contract))
               compiledExpr <- tailcall(_compile(expression))
@@ -165,7 +165,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
         case Ident("define/contract") :::: _ => throw new Exception(s"Parse error, invalid usage of define/contract at ${exp.idn}")
 
         // (struct id (field ...) properties ...)
-        case Ident("struct") :::: IdentWithIdentity(name, nameIdn) :::: (fields @ (f :::: fs)) :::: snil =>
+        case Ident("struct") :::: IdentWithIdentity(name, nameIdn) :::: (fields @ ((_ :::: _) | SNil(_))) :::: SNil(_) =>
           for
               compiledFields <- Struct.compileFields(fields)
               constructor <- Struct.generateConstructor(compiledFields, name, nameIdn, exp.idn)
