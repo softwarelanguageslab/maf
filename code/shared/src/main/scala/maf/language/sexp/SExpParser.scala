@@ -264,10 +264,10 @@ object SExpParser extends TokenParsers:
           throw new Exception(
             s"cannot fully parse expression, stopped at ${next.pos} after parsing $res"
           )
-        case Failure(msg, next) => 
+        case Failure(msg, next) =>
           println(s"msg: $msg $next")
           throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
-        case Error(msg, next)   => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
+        case Error(msg, next) => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
 
     /*
      * Similar to parse, but:
