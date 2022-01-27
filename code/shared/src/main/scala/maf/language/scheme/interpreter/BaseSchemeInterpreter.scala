@@ -6,6 +6,8 @@ import maf.language.sexp
 import maf.language.sexp.{SExp, SExpId, SExpPair, SExpValue}
 import maf.util.benchmarks.Timeout
 
+case class ProgramError(msg: String) extends Exception
+
 /** Common functionality for different Scheme interpreters, and interface methods needed for the primitives. */
 trait BaseSchemeInterpreter[V]:
     this: ConcreteSchemePrimitives => // Needed for initialEnv and initialSto
@@ -78,7 +80,8 @@ trait BaseSchemeInterpreter[V]:
 
     val stack: Boolean
 
-    def stackedException[R](msg: String): R
+    /** Signals an error in the program to the user. */
+    def signalException[R](msg: String): R = throw ProgramError(msg)
 
     val io: IO
 

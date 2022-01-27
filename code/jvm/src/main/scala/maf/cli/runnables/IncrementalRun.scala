@@ -109,7 +109,8 @@ object IncrementalRun extends App:
           val timeI = Timer.timeOnly {
             a.analyzeWithTimeout(timeout())
           }
-          println(s"Initial analysis took ${timeI / 1000000} ms.")
+          if a.finished then println(s"Initial analysis took ${timeI / 1000000} ms.")
+          else println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
           //a.visited.foreach(println)
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
           //a.configuration = noOptimisations
@@ -117,7 +118,8 @@ object IncrementalRun extends App:
           val timeU = Timer.timeOnly {
             a.updateAnalysis(timeout())
           }
-          println(s"Updating analysis took ${timeU / 1000000} ms.")
+          if a.finished then println(s"Updating analysis took ${timeU / 1000000} ms.")
+          else println(s"Updating analysis timed out after ${timeU / 1000000} ms.")
           // a.flowInformationToDotGraph("logs/flowsA2.dot")
           Thread.sleep(1000)
           val b = base(text)
@@ -126,7 +128,8 @@ object IncrementalRun extends App:
           val timeR = Timer.timeOnly {
             b.analyzeWithTimeout(timeout())
           }
-          println(s"Full reanalysis took ${timeR / 1000000} ms.")
+          if b.finished then println(s"Full reanalysis took ${timeR / 1000000} ms.")
+          else println(s"Full reanalysis timed out after ${timeR / 1000000} ms.")
           // b.flowInformationToDotGraph("logs/flowsB.dot")
           println("Done")
           //println(a.program.asInstanceOf[SchemeExp].prettyString())
@@ -149,7 +152,7 @@ object IncrementalRun extends App:
       //"test/R5RS/gambit/nboyer.scm",
       //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
     )
-    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(20, MINUTES))
+    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(60, MINUTES))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
     modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
