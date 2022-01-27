@@ -61,7 +61,6 @@ trait ScvModF extends SchemeModFSoundnessTests:
 
 class BigStepSchemeModFSoundnessTests extends BigStepSchemeModF with AllSequentialBenchmarks:
     override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b) || b.contains("infinite")
-    override def benchmarks: Set[Benchmark] = Set("test/DEBUG2.scm")
 
 class SmallStepSchemeModFSoundnessTests extends SmallStepSchemeModF with AllSequentialBenchmarks:
     override def isSlow(b: Benchmark) = !SchemeBenchmarkPrograms.various.contains(b)
