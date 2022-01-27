@@ -125,10 +125,10 @@ class SExpLexer extends Lexical with SExpTokens:
             '='
           ) | chr('>') | chr('?') | chr('^') | chr('_') | chr('~') | chr('@')) ^^ (x => x)
         // def initial: Parser[Char] = letter | specialInitial
-        def initial: Parser[Char] = not(chr('@') | chr('.') | digit | whitespaceChar | delimiter | quotes) ~> chrExcept()
+        def initial: Parser[Char] = not(chr('@') | chr('.') | chr('#') | digit | whitespaceChar | delimiter | quotes | chr('"')) ~> chrExcept()
         def specialSubsequent: Parser[Char] = chr('+') | chr('-') | chr('.') | chr('@')
         //def subsequent: Parser[Char] = initial | digit | specialSubsequent
-        def subsequent: Parser[Char] = not(whitespaceChar | delimiter | quotes) ~> chrExcept()
+        def subsequent: Parser[Char] = not(whitespaceChar | delimiter | quotes | chr('"') | chr('\'')) ~> chrExcept()
         def peculiarIdentifier: Parser[String] = { in =>
           // R5RS specifies + | - | ..., not clear what ... is supposed to be
           // so let's be very flexible with this definition
@@ -170,10 +170,10 @@ class SExpLexer extends Lexical with SExpTokens:
     def number: Parser[SExpToken] = real | integer
     def token: Parser[SExpToken] =
       nonRelevant ~> positioned({
-        boolean | number | identifier |
+        boolean | number |
           character | string |
           leftParen | leftBracket | rightParen | rightBracket |
-          hashParen | quote | backquote | unquoteSplicing | unquote | dot
+          hashParen | quote | backquote | unquoteSplicing | unquote | dot | identifier
       }) <~ nonRelevant
 
 object SExpParser extends TokenParsers:
@@ -264,10 +264,10 @@ object SExpParser extends TokenParsers:
           throw new Exception(
             s"cannot fully parse expression, stopped at ${next.pos} after parsing $res"
           )
-        case Failure(msg, next) => 
+        case Failure(msg, next) =>
           println(s"msg: $msg $next")
           throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
-        case Error(msg, next)   => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
+        case Error(msg, next) => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
 
     /*
      * Similar to parse, but:
