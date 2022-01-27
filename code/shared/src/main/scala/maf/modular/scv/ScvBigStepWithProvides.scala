@@ -37,7 +37,7 @@ trait ScvBigStepWithProvides extends BaseScvBigStepSemantics:
               for
                   function <- extract(evalVariable(name))
                   evaluatedContract <- extract(eval(contract))
-                  result <- applyMon(function, evaluatedContract, SchemeVar(name), idn, false)
+                  result <- applyMon(function, evaluatedContract, SchemeVar(name), idn, false, contractExpr = Some(contract))
               yield (result, name, idn)
 
             case _ => throw new Exception("only contract-out is supported in provide")

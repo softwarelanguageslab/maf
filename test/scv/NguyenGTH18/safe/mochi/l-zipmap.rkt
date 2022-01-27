@@ -1,8 +1,5 @@
 #lang racket
 
-(provide/contract
- [main (->i ([n integer?]) (res (n) (and/c integer? (=/c n))))])
-
 (define (zip x y)
   (cond
     [(and (= x 0) (= y 0)) x]
@@ -13,3 +10,6 @@
   (if (= x 0) x (+ 1 (map (- x 1)))))
 
 (define (main n) (map (zip n n)))
+
+(provide/contract
+ [main (->i ([n integer?]) (res (n) (and/c integer? (=/c n))))])

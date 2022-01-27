@@ -1,5 +1,4 @@
 #lang racket
-(require soft-contract/fake-contract)
 
 (define (h x) (λ (_) x))
 

@@ -1,5 +1,4 @@
 #lang racket
-(require soft-contract/fake-contract)
 
 (define (main len)
   (let ([xs (mk-list len)])
@@ -11,4 +10,4 @@
 (define (mk-list n)
   (if (= n 0) empty (cons n (mk-list (- n 1)))))
 
-(provide/contract [main (integer? . -> . integer?)])
+(provide (contract-out [main (-> integer? integer?)]))

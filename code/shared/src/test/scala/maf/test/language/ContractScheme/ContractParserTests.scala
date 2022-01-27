@@ -10,13 +10,13 @@ trait ContractParserTestsSpec extends SchemeBenchmarkTests:
     def onBenchmark(benchmark: Benchmark) =
       property(s"ContractSchemeParser can correctly parse $benchmark", ParserTest) {
         val content = Reader.loadFile(benchmark)
-        val parsed = ContractSchemeParser.parse(content)
+        val parsed = ContractSchemeParser.compile(content)
 
         // Check that the parsing was succesful
         assert(parsed.toString.nonEmpty)
         // Check that printing and parsing the result again gives the same result
         val printed = parsed.toString
-        val reparsed = ContractSchemeParser.parse(printed, Position.newTag("MAF"))
+        val reparsed = ContractSchemeParser.compile(printed, Position.newTag("MAF"))
         assert(parsed.toString == reparsed.toString, "Printing and parsing again gives a result different from the original parse")
         assert(reparsed.subexpressions.forall(e => e.idn.pos.tag.contains("MAF") || e.idn == NoCodeIdentity && e.idn.pos.tag.isEmpty))
       }

@@ -87,7 +87,14 @@ trait BaseSchemeLexicalAddresser:
           ContractSchemeFlatContract(translate(contract, lenv), idn)
         case ContractSchemeDepContract(domains, rangeMaker, idn) =>
           ContractSchemeDepContract(domains.map(translate(_, lenv)), translate(rangeMaker, lenv), idn)
+        case ContractSchemeProvide(outs, idn) =>
+          ContractSchemeProvide(translateContractSchemeOut(outs, lenv), idn)
         case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
+
+    def translateContractSchemeOut(outs: List[ContractSchemeProvideOut], lenv: LexicalEnv): List[ContractSchemeProvideOut] =
+      outs.map { case ContractSchemeContractOut(name, contract, idn) =>
+        ContractSchemeContractOut(name, translate(contract, lenv), idn)
+      }
 
     def translate(bdy: List[SchemeExp], lenv: LexicalEnv): List[SchemeExp] =
       bdy.map(translate(_, lenv))

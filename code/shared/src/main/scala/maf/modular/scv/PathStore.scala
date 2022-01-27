@@ -188,8 +188,8 @@ case class PathStore(pcs: Map[String, Set[Symbolic]] = Map(), cachedPc: Set[Symb
     /** Find the lowest identifier (ie. x1 < x3) in the current path condition */
     private def findLowest: Int =
       cachedPc.flatMap(_.identifiers.filter(_.startsWith("x")).map(id => id.split('x')(1).toInt)) match
-          case List() => 0
-          case x      => x.min
+          case x if x.isEmpty => 0
+          case x              => x.min
 
     /** Reindex a single symbolic expression */
     private def reindex(lowest: Int, sym: Symbolic): Symbolic =

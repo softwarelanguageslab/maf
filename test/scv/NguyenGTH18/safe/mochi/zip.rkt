@@ -1,5 +1,4 @@
 #lang racket
-(require soft-contract/fake-contract)
 
 (define (zip xs ys) ; zip itself is unsafe
   (cond
@@ -13,6 +12,6 @@
 (define (main n)
   (let ([xs (mk-list n)]) (zip xs xs)))
 
-(provide/contract
- [mk-list (integer? . -> . (listof integer?))]
- [main (integer? . -> . (listof (cons/c integer? integer?)))])
+(provide (contract-out
+ [mk-list (-> integer? (listof integer?))]
+ [main (-> integer? (listof (cons/c integer? integer?)))]))
