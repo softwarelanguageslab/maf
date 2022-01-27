@@ -26,8 +26,6 @@ import scala.concurrent.duration.*
 
 object IncrementalRun extends App:
 
-    val w = Writer.open("benchOutput/incremental/errors.txt")
-
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
     // Useful when reducing a program when debugging the analysis.
     def interpretProgram(file: String): Unit =
@@ -136,15 +134,17 @@ object IncrementalRun extends App:
         } catch {
           case e: Exception =>
             e.printStackTrace(System.out)
+            val w = Writer.open("benchOutput/incremental/errors.txt")
             Writer.writeln(w, bench)
             Writer.writeln(w, e.getStackTrace().toString)
             Writer.writeln(w, "")
+            Writer.close(w)
         }
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/DEBUG2.scm",
+      "test/changes/scheme/mountainvale.scm",
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
       //"test/R5RS/gambit/nboyer.scm",
       //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
