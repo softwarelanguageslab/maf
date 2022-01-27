@@ -110,7 +110,9 @@ object IncrementalRun extends App:
             a.analyzeWithTimeout(timeout())
           }
           if a.finished then println(s"Initial analysis took ${timeI / 1000000} ms.")
-          else println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
+          else
+              println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
+              return
           //a.visited.foreach(println)
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
           //a.configuration = noOptimisations
@@ -147,7 +149,7 @@ object IncrementalRun extends App:
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/changes/scheme/mountainvale.scm",
+      "test/DEBUG2.scm",
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
       //"test/R5RS/gambit/nboyer.scm",
       //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
