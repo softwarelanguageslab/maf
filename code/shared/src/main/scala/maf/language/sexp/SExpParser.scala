@@ -124,9 +124,11 @@ class SExpLexer extends Lexical with SExpTokens:
           (chr('!') | chr('$') | chr('%') | chr('&') | chr('*') | chr('/') | chr(':') | chr('<') | chr(
             '='
           ) | chr('>') | chr('?') | chr('^') | chr('_') | chr('~') | chr('@')) ^^ (x => x)
-        def initial: Parser[Char] = letter | specialInitial
+        // def initial: Parser[Char] = letter | specialInitial
+        def initial: Parser[Char] = not(chr('@') | chr('.') | digit | whitespaceChar | delimiter) ~> chrExcept()
         def specialSubsequent: Parser[Char] = chr('+') | chr('-') | chr('.') | chr('@')
-        def subsequent: Parser[Char] = initial | digit | specialSubsequent
+        //def subsequent: Parser[Char] = initial | digit | specialSubsequent
+        def subsequent: Parser[Char] = not(whitespaceChar | delimiter) ~> chrExcept()
         def peculiarIdentifier: Parser[String] = { in =>
           // R5RS specifies + | - | ..., not clear what ... is supposed to be
           // so let's be very flexible with this definition

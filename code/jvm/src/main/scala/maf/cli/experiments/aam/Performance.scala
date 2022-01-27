@@ -79,7 +79,7 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
       SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
 
     //def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks
-    def benchmarks = SchemeBenchmarkPrograms.horsScvBenchmarkSuite
+    def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks
 
     def analyses: List[(SchemeExp => Analysis, String)] =
       List(
