@@ -47,6 +47,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         catch
             case _: TimeoutException =>
               alert(s"Concrete evaluation of $benchmark timed out.")
+            case ProgramError(msg) =>
+              alert(s"Concrete evaluation of $benchmark encountered a program error:\n$msg")
             case ChildThreadDiedException(_) =>
               alert(s"Concrete evaluation of $benchmark aborted due to a fatal crash in a child thread.")
             case e: VirtualMachineError =>
