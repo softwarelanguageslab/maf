@@ -20,4 +20,11 @@ object ContractSchemeMutableVarBoxer extends BaseSchemeMutableVarBoxer:
         case ContractSchemeDepContract(domains, rangeMaker, idn) =>
           ContractSchemeDepContract(domains.map(rewrite(_, mut, rew)), rewrite(rangeMaker, mut, rew), idn)
 
+        case ContractSchemeProvide(outs, idn) =>
+          ContractSchemeProvide(outs.map { case ContractSchemeContractOut(name, contract, idn) =>
+                                  ContractSchemeContractOut(name, rewrite(contract, mut, rew), idn)
+                                },
+                                idn
+          )
+
         case _ => super.rewrite(exp, mut, rew)

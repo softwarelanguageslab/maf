@@ -26,8 +26,6 @@ import scala.concurrent.duration.*
 
 object IncrementalRun extends App:
 
-    val w = Writer.open("benchOutput/incremental/errors.txt")
-
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
     // Useful when reducing a program when debugging the analysis.
     def interpretProgram(file: String): Unit =
@@ -111,7 +109,8 @@ object IncrementalRun extends App:
           val timeI = Timer.timeOnly {
             a.analyzeWithTimeout(timeout())
           }
-          println(s"Initial analysis took ${timeI / 1000000} ms.")
+          if a.finished then println(s"Initial analysis took ${timeI / 1000000} ms.")
+          else println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
           //a.visited.foreach(println)
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
           //a.configuration = noOptimisations
@@ -119,7 +118,8 @@ object IncrementalRun extends App:
           val timeU = Timer.timeOnly {
             a.updateAnalysis(timeout())
           }
-          println(s"Updating analysis took ${timeU / 1000000} ms.")
+          if a.finished then println(s"Updating analysis took ${timeU / 1000000} ms.")
+          else println(s"Updating analysis timed out after ${timeU / 1000000} ms.")
           // a.flowInformationToDotGraph("logs/flowsA2.dot")
           Thread.sleep(1000)
           val b = base(text)
@@ -128,7 +128,8 @@ object IncrementalRun extends App:
           val timeR = Timer.timeOnly {
             b.analyzeWithTimeout(timeout())
           }
-          println(s"Full reanalysis took ${timeR / 1000000} ms.")
+          if b.finished then println(s"Full reanalysis took ${timeR / 1000000} ms.")
+          else println(s"Full reanalysis timed out after ${timeR / 1000000} ms.")
           // b.flowInformationToDotGraph("logs/flowsB.dot")
           println("Done")
           //println(a.program.asInstanceOf[SchemeExp].prettyString())
@@ -136,20 +137,22 @@ object IncrementalRun extends App:
         } catch {
           case e: Exception =>
             e.printStackTrace(System.out)
+            val w = Writer.open("benchOutput/incremental/errors.txt")
             Writer.writeln(w, bench)
             Writer.writeln(w, e.getStackTrace().toString)
             Writer.writeln(w, "")
+            Writer.close(w)
         }
     end modfAnalysis
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/DEBUG2.scm",
+      "test/changes/scheme/mountainvale.scm",
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
       //"test/R5RS/gambit/nboyer.scm",
       //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
     )
-    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(20, MINUTES))
+    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(60, MINUTES))
 
     modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
     modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))

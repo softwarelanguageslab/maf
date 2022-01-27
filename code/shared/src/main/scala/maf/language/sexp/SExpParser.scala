@@ -124,9 +124,11 @@ class SExpLexer extends Lexical with SExpTokens:
           (chr('!') | chr('$') | chr('%') | chr('&') | chr('*') | chr('/') | chr(':') | chr('<') | chr(
             '='
           ) | chr('>') | chr('?') | chr('^') | chr('_') | chr('~') | chr('@')) ^^ (x => x)
-        def initial: Parser[Char] = letter | specialInitial
+        // def initial: Parser[Char] = letter | specialInitial
+        def initial: Parser[Char] = not(chr('@') | chr('.') | digit | whitespaceChar | delimiter | quotes) ~> chrExcept()
         def specialSubsequent: Parser[Char] = chr('+') | chr('-') | chr('.') | chr('@')
-        def subsequent: Parser[Char] = initial | digit | specialSubsequent
+        //def subsequent: Parser[Char] = initial | digit | specialSubsequent
+        def subsequent: Parser[Char] = not(whitespaceChar | delimiter | quotes) ~> chrExcept()
         def peculiarIdentifier: Parser[String] = { in =>
           // R5RS specifies + | - | ..., not clear what ... is supposed to be
           // so let's be very flexible with this definition
@@ -149,6 +151,7 @@ class SExpLexer extends Lexical with SExpTokens:
     def backquote: Parser[SExpToken] = chr('`') ^^^ TBackquote()
     def unquote: Parser[SExpToken] = chr(',') ^^^ TUnquote()
     def unquoteSplicing: Parser[SExpToken] = chr(',') ~ chr('@') ^^^ TUnquoteSplicing()
+    def quotes: Parser[SExpToken] = quote | backquote | unquote | unquoteSplicing
     def dot: Parser[SExpToken] = chr('.') <~ guard(delimiter) ^^^ TDot()
     def real: Parser[SExpToken] =
       sign ~ rep(digit) ~ opt('.' ~ rep1(digit)) ~ opt('e' ~ integer) <~ guard(delimiter) ^? {
@@ -254,12 +257,16 @@ object SExpParser extends TokenParsers:
     def expList(tag: PTag): Parser[List[SExp]] = rep1(exp(tag))
 
     def parse(s: String, tag: PTag = noTag): List[SExp] = expList(tag)(new Scanner(s)) match
-        case Success(res, next) if next.atEnd => res
+        case Success(res, next) if next.atEnd =>
+          res
         case Success(res, next) =>
+          println(s"token list $res")
           throw new Exception(
             s"cannot fully parse expression, stopped at ${next.pos} after parsing $res"
           )
-        case Failure(msg, next) => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
+        case Failure(msg, next) => 
+          println(s"msg: $msg $next")
+          throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
         case Error(msg, next)   => throw new Exception(s"cannot parse expression: $msg, at ${next.pos}, before ${next.source}")
 
     /*

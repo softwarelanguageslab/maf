@@ -125,20 +125,33 @@ object SchemeBenchmarkPrograms:
      * The programs where also passed through a macro expander. The original files can be viewed by removing the -expanded suffix from some of the
      * filenames.
      */
-    lazy val scvNguyenBenchmarks: Set[String] = Set(
-      "test/scv/NguyenGTH18/safe/games/tetris.rkt",
-      "test/scv/NguyenGTH18/safe/games/snake.rkt",
-      "test/scv/NguyenGTH18/safe/games/zombie.rkt",
-      "test/scv/NguyenGTH18/safe/real/slatex-expanded.rkt",
-      "test/scv/NguyenGTH18/safe/real/fector.rkt",
-      "test/scv/NguyenGTH18/safe/real/nucleic2-modular-fixed-expanded.rkt", // nuclei2-modular* from paper
-      "test/scv/NguyenGTH18/safe/real/nucleic2-modular-expanded.rkt",
-      "test/scv/NguyenGTH18/safe/real/ring-buffer.rkt",
-      "test/scv/NguyenGTH18/safe/real/leftist-tree.rkt", // leftist-tree
-      "test/scv/NguyenGTH18/safe/real/protected-leftist-tree.rkt", // leftist-tree* from paper
-      "test/scv/NguyenGTH18/safe/mochi/hors.rkt", // quite small
-      "test/scv/NguyenGTH18/safe/real/hash-srfi-69.rkt",
-      // TODO: missing? soft-typing, occurence-typing, ring-bufer*, morsecode
+    lazy val scvNguyenBenchmarks: Set[String] = Set("test/scv/NguyenGTH18/safe/games/tetris.rkt")
+//      "test/scv/NguyenGTH18/safe/games/snake.rkt",
+//      "test/scv/NguyenGTH18/safe/games/zombie.rkt",
+//      "test/scv/NguyenGTH18/safe/real/slatex-expanded.rkt",
+//      "test/scv/NguyenGTH18/safe/real/fector.rkt",
+//      "test/scv/NguyenGTH18/safe/real/nucleic2-modular-fixed-expanded.rkt", // nuclei2-modular* from paper
+//      "test/scv/NguyenGTH18/safe/real/nucleic2-modular-expanded.rkt",
+//      "test/scv/NguyenGTH18/safe/real/ring-buffer.rkt",
+//      "test/scv/NguyenGTH18/safe/real/leftist-tree.rkt", // leftist-tree
+//      "test/scv/NguyenGTH18/safe/real/protected-leftist-tree.rkt", // leftist-tree* from paper
+//      "test/scv/NguyenGTH18/safe/real/hash-srfi-69.rkt",
+//      // TODO: missing? soft-typing, occurence-typing, ring-bufer*, morsecode
+//    ) ++ horsScvBenchmarkSuite
+
+    lazy val horsScvBenchmarkSuite: Set[String] = SchemeBenchmarkPrograms.fromFolderR("test/scv/NguyenGTH18/safe/mochi")(
+      ".DS_Store",
+      // TODO: transform contract to supported ContractScheme contract
+      "fhnnhn.rkt",
+      "fold-fun-list.rkt",
+      "intro1.rkt",
+      "intro2.rkt",
+      "intro3.rkt",
+      "isnil.rkt",
+      "l-zipmap.rkt",
+      "mc91.rkt",
+      "mem.rkt",
+      "repeat.rkt",
     )
 
     // Publications ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

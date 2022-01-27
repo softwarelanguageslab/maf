@@ -4,7 +4,7 @@ import maf.aam.scheme.*
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.language.scheme.*
 import maf.language.scheme.primitives.*
-import maf.aam.{AAMAnalysis, BaseSimpleWorklistSystem, GraphElementAAM}
+import maf.aam.{AAMAnalysis, BaseSimpleWorklistSystem, GraphElementAAM, SimpleWorklistSystem}
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.test.VariousSequentialBenchmarks
 import maf.test.JSS2021Benchmarks
@@ -33,10 +33,10 @@ trait SchemeAAMSoundnessTests extends maf.test.aam.AAMSoundnessTests with DotGra
         SchemeParser.undefine(transf)
 
 class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with VariousSequentialBenchmarks:
-    override val name: String = "Scheme AAM soundness tests"
+    override def name: String = "Scheme AAM"
     //override def benchmarks: Set[Benchmark] =
     //  Set(
-    //    "test/R5RS/various/procedure.scm"
+    //    "test/R5RS/various/lambda-update.scm"
     //  )
 
     override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(12, SECONDS))
@@ -48,8 +48,8 @@ class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with Vario
         with SchemeAAMNoExt
         with SchemeStoreAllocateReturn // important for termination of some programs
         with SchemeFunctionCallBoundary
-        // with SchemeAAMLocalStore
-        with BaseSchemeLoggingLocalStore
-        with BaseSimpleWorklistSystem
+        with SchemeAAMLocalStore
+        //with BaseSchemeLoggingLocalStore TODO: this seems to be unsound for lambda-update.scm check
+        with SimpleWorklistSystem
         //with maf.aam.scheme.stores.SchemeImperativeStoreWidening
         with SchemeAAMAnalysisResults

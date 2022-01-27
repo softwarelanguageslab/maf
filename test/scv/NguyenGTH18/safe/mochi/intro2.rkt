@@ -6,4 +6,4 @@
 
 (provide
  (contract-out
-  [main (integer? ((and/c integer? (>/c 0)) . -> . any/c) . -> . any/c)]))
+  [main (-> integer? (-> (and/c integer? (>/c 0)) any/c) any/c)]))

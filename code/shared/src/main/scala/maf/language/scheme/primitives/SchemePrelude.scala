@@ -4,9 +4,9 @@ import maf.core._
 import maf.language.scheme._
 import maf.language.CScheme._
 
-object SchemePrelude:
+class BaseSchemePrelude:
 
-    val primDefs = Map(
+    def primDefs = Map(
       "<=" -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y)))",
       ">" -> "(define (> x y) @sensitivity:FA (assert (number? x)) (not (<= x y)))",
       ">=" -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
@@ -349,8 +349,11 @@ object SchemePrelude:
        */
     )
 
-    val primDefsParsed: Map[String, SchemeExp] = primDefs.map { case (nam, str) =>
-      val exp = SchemeBody(SchemeParser.parse(str, Position.newTag(nam)))
+    def parseDef(dff: String, nam: String): List[SchemeExp] =
+      SchemeParser.parse(dff, Position.newTag(nam))
+
+    lazy val primDefsParsed: Map[String, SchemeExp] = primDefs.map { case (nam, str) =>
+      val exp = SchemeBody(parseDef(str, nam))
       (nam, exp)
     }
 
@@ -361,6 +364,7 @@ object SchemePrelude:
         var prelude: List[SchemeExp] = List()
         var work: Set[String] = SchemeBody.fv(prg) ++ incl
         var added: Set[String] = Set.empty
+        val primDefs = this.primDefs
         while work.nonEmpty do
             val free = work.filter(primDefs.contains).filterNot(added)
             val defs = free.map(primDefsParsed)
@@ -368,3 +372,5 @@ object SchemePrelude:
             work = defs.flatMap(_.fv)
             added ++= free
         prelude ::: prg
+
+object SchemePrelude extends BaseSchemePrelude

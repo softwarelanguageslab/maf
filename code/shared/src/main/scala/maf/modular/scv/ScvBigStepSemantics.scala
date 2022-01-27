@@ -152,7 +152,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
               for
                   contractVal <- extract(eval(contract))
                   expressionVal <- extract(eval(expression))
-                  result <- applyMon(contractVal, expressionVal, expression, idn)
+                  result <- applyMon(contractVal, expressionVal, expression, idn, contractExpr = Some(contract))
               yield result
 
             case ContractSchemeFlatContract(expression, idn) =>
@@ -215,18 +215,41 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
               })
           yield result
 
+        /**
+         * The semantics of a "mon" expression.
+         *
+         * @param contract
+         *   The evaluated contract
+         * @param expression
+         *   The expression to apply the monitor to
+         * @param expr
+         *   the AST node of the expression to apply the monitor to
+         * @param monIdn
+         *   the identity of the whole monitor expression
+         * @param contractExpr
+         *   the expression of the contract in the monitor expression (if any).
+         * @param assumed
+         *   if true, will ignore the path where the monitor fails
+         */
         protected def applyMon(
             contract: PostValue,
             expression: PostValue,
             expr: SchemeExp,
             monIdn: Identity,
-            assumed: Boolean = false
+            assumed: Boolean = false,
+            contractExpr: Option[SchemeExp] = None
           ): EvalM[Value] =
             // We have three distinct possibilities for a "mon" expression:
             // 1. `contract` is a flat contract, or a function that can be treated as such, the result of mon is the value of `expression`
             // 2. `contract` is a dependent contract, in which case `expression` must be a function, the result of `mon` is a guarded function
             // 3. `contract` does not satisfy any of the above conditions, resutling in an error
-            val flats = lattice.getFlats(contract.value).map(c => monFlat(c, expression, expr, monIdn, assumed))
+            val extraFlats =
+              if contractExpr.isDefined then
+                  lattice
+                    .getClosures(contract.value)
+                    .map(f => ContractValues.Flat(lattice.closure(f), contractExpr.get, None, contractExpr.get.idn))
+              else Set()
+            val flats = (lattice.getFlats(contract.value) ++ extraFlats).map(c => monFlat(c, expression, expr, monIdn, assumed))
             val guards = lattice.getGrds(contract.value).map(c => monArr(c, expression, expr, monIdn))
 
             nondets(flats ++ guards)
