@@ -87,7 +87,6 @@ trait AAMSoundnessTests extends SchemeBenchmarkTests:
         val lat = analysis.lattice
         v match
             case Value.Undefined(_)  => true
-            case Value.Unbound(_)    => true
             case Value.Void          => lat.subsumes(abs, lat.void)
             case Value.Clo(lam, _)   => lat.getClosures(abs).exists(_._1.idn == lam.idn)
             case Value.Primitive(p)  => lat.getPrimitives(abs).exists(_ == p)
