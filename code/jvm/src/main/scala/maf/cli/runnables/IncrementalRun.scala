@@ -89,7 +89,7 @@ object IncrementalRun extends App:
           {
           override def focus(a: Addr): Boolean = false // a.toString.contains("VarAddr(n")
           var configuration: IncrementalConfiguration = ci
-          mode = Mode.Coarse
+          mode = Mode.Fine
           override def intraAnalysis(
               cmp: Component
             ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
@@ -110,7 +110,9 @@ object IncrementalRun extends App:
             a.analyzeWithTimeout(timeout())
           }
           if a.finished then println(s"Initial analysis took ${timeI / 1000000} ms.")
-          else println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
+          else
+              println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
+              return
           //a.visited.foreach(println)
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
           //a.configuration = noOptimisations
@@ -147,7 +149,7 @@ object IncrementalRun extends App:
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/changes/scheme/mountainvale.scm",
+      "test/changes/scheme/leval.scm",
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
       //"test/R5RS/gambit/nboyer.scm",
       //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"

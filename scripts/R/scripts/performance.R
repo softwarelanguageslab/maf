@@ -120,4 +120,4 @@ plotViolin <- function(filtered_data, out) {
   dev.off()
 }
 
-plotViolin(perf_cur_normalised_Rean, perf_cur_out)
+#plotViolin(perf_cur_normalised_Rean, perf_cur_out)

@@ -153,9 +153,6 @@ class SchemeInterpreter(
         case Value.Undefined(_) =>
           //println(s"Undefined behavior arising from identity $idn seen at ${e.idn.pos}")
           false
-        case Value.Unbound(_) =>
-          //println(s"Seen unbound identifier $idn")
-          false
         case _ =>
           true
 
@@ -252,9 +249,7 @@ class SchemeInterpreter(
               /* First extend the environment with all bindings set to unbound */
               val envExt = bindings.foldLeft(env) { (env2, binding) =>
                   val addr = newAddr(AddrInfo.VarAddr(binding._1))
-                  extendStore(addr, Value.Unbound(binding._1))
-                  val env3 = env2 + (binding._1.name -> addr)
-                  env3
+                  env2 + (binding._1.name -> addr)
               }
               /* Then evaluate all bindings in the extended environment */
               tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout, version))
@@ -262,7 +257,7 @@ class SchemeInterpreter(
               /* TODO: primitives can be reassigned with set! without being redefined */
               val addr = env.get(id.name) match
                   case Some(addr) => addr
-                  case None       => signalException(s"Unbound variable $id accessed at position $pos")
+                  case None       => signalException(s"Undefined variable $id accessed at position $pos")
               for
                   v <- eval(v, env, timeout, version)
                   _ = extendStore(addr, v)
@@ -274,11 +269,11 @@ class SchemeInterpreter(
             case SchemeDefineVariable(_, _, _) => ???
             case SchemeVar(id) =>
               env.get(id.name) match
+                  case None => signalException(s"Undefined variable $id at position ${id.idn}.")
                   case Some(addr) =>
                     lookupStoreOption(addr) match
+                        case None    => signalException(s"Uninitialised variable $id at position ${id.idn}.")
                         case Some(v) => done(v)
-                        case None    => signalException(s"Unbound variable $id at position ${id.idn}.")
-                  case None => signalException(s"Undefined variable $id at position ${id.idn}.")
             case SchemeValue(v, _) =>
               done(evalLiteral(v, e))
             case CSchemeFork(body, _) =>

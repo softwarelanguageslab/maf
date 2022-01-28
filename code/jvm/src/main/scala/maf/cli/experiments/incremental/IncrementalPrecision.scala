@@ -146,7 +146,7 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
         case PrmAddr(_) => false
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
+    override def timeout(): Timeout.T = Timeout.start(Duration(30, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFTypePrecision extends IncrementalSchemePrecision:
@@ -190,13 +190,13 @@ object IncrementalSchemeModXPrecision:
         (outFull, outNoOpt)
 
     def main(args: Array[String]): Unit =
-        val (curatedFull, curatedNoOpt) = splitOutput(
-          IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-        )
-        val (generatedFull, generatedNoOpt) = splitOutput(
-          IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
-        )
-        if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/precision.R", curatedFull, generatedFull, curatedNoOpt, generatedNoOpt)
+      val (curatedFull, curatedNoOpt) = splitOutput(
+        IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+      )
+//val (generatedFull, generatedNoOpt) = splitOutput(
+//  IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+//)
+//if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/precision.R", curatedFull, generatedFull, curatedNoOpt, generatedNoOpt)
 //IncrementalSchemeModFCPPrecision.main(args)
 //IncrementalSchemeModConcTypePrecision.main(args)
 //IncrementalSchemeModConcCPPrecision.main(args)

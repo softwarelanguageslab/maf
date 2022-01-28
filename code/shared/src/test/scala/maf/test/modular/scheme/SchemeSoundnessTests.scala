@@ -47,6 +47,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         catch
             case _: TimeoutException =>
               alert(s"Concrete evaluation of $benchmark timed out.")
+            case ProgramError(msg) =>
+              alert(s"Concrete evaluation of $benchmark encountered a program error:\n$msg")
             case ChildThreadDiedException(_) =>
               alert(s"Concrete evaluation of $benchmark aborted due to a fatal crash in a child thread.")
             case e: VirtualMachineError =>
@@ -70,7 +72,6 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         val lat = analysis.lattice
         v match
             case Value.Undefined(_)  => true
-            case Value.Unbound(_)    => true
             case Value.Void          => lat.subsumes(abs, lat.void)
             case Value.Clo(lam, _)   => lat.getClosures(abs).exists(_._1.idn == lam.idn)
             case Value.Primitive(p)  => lat.getPrimitives(abs).exists(_ == p)

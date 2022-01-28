@@ -41,10 +41,6 @@ object ConcreteValues:
         case class Undefined(idn: Identity) extends Value:
             override def toString: String = "#<undef>"
 
-        /* only used for letrec */
-        case class Unbound(id: Identifier) extends Value:
-            override def toString: String = "#<unbound>"
-
         case class Clo(lambda: SchemeLambdaExp, env: Env) extends Value:
             override def toString: String = s"#<procedure:${lambda.lambdaName}>"
 

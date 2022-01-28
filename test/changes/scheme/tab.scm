@@ -8,11 +8,12 @@
 ; Om de elementen van de vector op te vullen, neemt zij als  tweede argument een expressie.
 ; Deze expressie wordt _meermaals_ geëvalueerd; één evaluatie per element van de vector (van links naar rechts).
 
-
 ; Wijzigingen aan de evaluator:
 ; - procedure tab? toegevoegd,
 ; - procedure eval-tab toegevoegd,
 ; - extra tak in conditional van eval-procedure: ((tab? exp) (eval-tab exp env)).
+
+; Hernoemd: apply -> apply-fun; apply-in-underlying-scheme -> apply (removed)
 
 ;(#%require (only racket/base
 ;                 time error))
@@ -26,7 +27,7 @@
 ;;
 ;; zie deel 1.1 p52
 ;;
-(define apply-in-underlying-scheme apply)
+;(define apply-in-underlying-scheme apply)
 
 (define (let? exp)
   (tagged-list? exp 'let))
@@ -96,15 +97,15 @@
          (eval (let*->lets exp) env))
         ((<change> #f (tab? exp)) (eval-tab exp env))
         ((application? exp)
-         (apply (eval (operator exp) env)
-                (list-of-values (operands exp) env)))
+         (apply-fun (eval (operator exp) env)
+                    (list-of-values (operands exp) env)))
         (else
          (error "Unknown expression type -- EVAL" exp))))
 
 ;;
 ;; zie deel 1.1 p34/p52
 ;;
-(define (apply procedure arguments)
+(define (apply-fun procedure arguments)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure arguments))
         ((compound-procedure? procedure)
@@ -460,7 +461,7 @@
 ;; zie deel 1.1 p52
 ;;
 (define (apply-primitive-procedure proc args)
-  (apply-in-underlying-scheme
+  (apply ;-in-underlying-scheme
    (primitive-implementation proc) args))
 
 ;;

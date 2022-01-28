@@ -12,6 +12,8 @@
 ; - omgevingsmodel gewijzigd: i.p.v. cons-cel waarvan de car een lijst van variabele-namen is, en de cdr een lijst van waarden, staat er nu een vector met idx 0 = lijst van variabele-namen, idx 1 = lijst van waarden, idx 2 = booleans die aangeven of de variabele frozen is,
 ; - procedure freeze-variable! toegevoegd.
 
+; Hernoemd: apply -> apply-fun; apply-in-underlying-scheme -> apply (removed)
+
 ;(#%require (only racket/base
 ;                 time error))
 
@@ -24,7 +26,7 @@
 ;;
 ;; zie deel 1.1 p52
 ;;
-(define apply-in-underlying-scheme apply)
+;(define apply-in-underlying-scheme apply)
 
 (define freeze?
   (<change>
@@ -58,15 +60,15 @@
         ((cond? exp) (eval (cond->if exp) env))
         ((<change> #f (freeze? exp)) (eval-freeze exp env))
         ((application? exp)
-         (apply (eval (operator exp) env)
-                (list-of-values (operands exp) env)))
+         (apply-fun (eval (operator exp) env)
+                    (list-of-values (operands exp) env)))
         (else
          (error "Unknown expression type -- EVAL" exp))))
 
 ;;
 ;; zie deel 1.1 p34/p52
 ;;
-(define (apply procedure arguments)
+(define (apply-fun procedure arguments)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure arguments))
         ((compound-procedure? procedure)
@@ -463,7 +465,7 @@
 ;; zie deel 1.1 p52
 ;;
 (define (apply-primitive-procedure proc args)
-  (apply-in-underlying-scheme
+  (apply ;-in-underlying-scheme
    (primitive-implementation proc) args))
 
 ;;

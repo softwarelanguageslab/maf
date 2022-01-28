@@ -38,6 +38,26 @@ which is illegal.
 
 During preprocessing MAF rejects any program that contains internal definitions on invalid locations. Define's may only occur in the beginning of a body (according to the R5RS specification). However, in popular R5RS implementations such as the one provided with DrRacket, this is only detected at run time. 
 
+### Redefining primitives
+
+MAF features a _preluder_ which prepends (Scheme) implementations for some primitives to the source file.
+When the undefiner, which translates `define`s to `letrec`s, and the preluder are used together, it is discouraged to redefine functions that carry the same name than preluded primitives.
+Since all top-level definitions are transformed to one single `letrec`, the undefiner will not prepend the primitive definition to the file.
+For this reason, references to the function will resolve to the self-defined function instead of to the primitive, which deviates from R5RS semantics and possibly produces errors.
+
+For example, in the Scheme interpreter, the following program leads to an error:
+
+```scheme
+(define my-apply apply)
+(define (apply f . args) (display f))
+(my-apply + 1 2 3)
+```
+
+```
+Invalid function call at position 3:2: #<unbound> is not a closure or a primitive.
+```
+
+The reason for this error is that in a `letrec`, bindings are evaluated in order. As `apply` has not yet been bound at the time that `my-apply` is define, the error is thrown when `my-apply` is evaluated.
 
 ## Errors in the abstract interpreter
 

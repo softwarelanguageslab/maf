@@ -158,7 +158,7 @@ class CPSSchemeInterpreter(
         case let @ SchemeLet((_, e) :: rest, _, _)         => Step(e, env, LetC(rest, env, Nil, let, cc))
         case SchemeLetrec(Nil, body, pos)                  => Step(SchemeBegin(body, pos), env, cc)
         case let @ SchemeLetrec(bnd @ (i, e) :: rest, _, _) =>
-          val extEnv = extendEnv(bnd.map(_._1), bnd.map(b => Value.Unbound(b._1)), env)
+          val extEnv = env ++ bnd.map((idf, _) => (idf.name, newAddr(AddrInfo.VarAddr(idf))))
           Step(e, extEnv, LtrC(i, rest, extEnv, let, cc))
         case SchemeLetStar(Nil, body, pos)             => Step(SchemeBegin(body, pos), env, cc)
         case let @ SchemeLetStar((i, e) :: rest, _, _) => Step(e, env, LtsC(i, rest, env, let, cc))
@@ -169,7 +169,11 @@ class CPSSchemeInterpreter(
         case SchemeSetLex(_, _, _, _) => signalException("Unsupported: lexical addresses.")
         case SchemeValue(value, _)    => Kont(evalLiteral(value, exp), cc)
         case SchemeVar(id) =>
-          env.get(id.name).flatMap(lookupStoreOption).map(Kont(_, cc)).getOrElse(signalException(s"Unbound variable $id at position ${id.idn}."))
+          env.get(id.name) match 
+            case None => signalException(s"Undefined variable $id at position ${id.idn}")
+            case Some(addr) => lookupStoreOption(addr) match
+              case None => signalException(s"Uninitialised variable $id at position ${id.idn}.")
+              case Some(value) => Kont(value, cc)
         case SchemeVarLex(_, _) => signalException("Unsupported: lexical addresses.")
 
         case CSchemeFork(body, _) =>

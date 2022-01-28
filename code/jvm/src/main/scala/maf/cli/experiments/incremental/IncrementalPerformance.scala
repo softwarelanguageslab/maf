@@ -216,7 +216,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
 trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
+    override def timeout(): Timeout.T = Timeout.start(Duration(30, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFTypePerformance extends IncrementalSchemePerformance:
@@ -259,9 +259,9 @@ object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformanc
 
 object IncrementalSchemeModXPerformance:
     def main(args: Array[String]): Unit =
-        val curated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-        val generated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
-        if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/performance.R", curated, generated)
+      val curated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+//val generated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+//if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/performance.R", curated, generated)
 //IncrementalSchemeModFCPPerformance.main(args)
 //IncrementalSchemeModConcPerformance.main(args)
 //IncrementalSchemeModConcCPPerformance.main(args)
