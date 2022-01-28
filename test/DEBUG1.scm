@@ -1,11 +1,3 @@
-(define test-cons-in-vec
-  (lambda (a)
-    (<change>
-     (let ((vec (make-vector 1))
-           (b 5))
-       (vector-set! vec 0 (cons a b)))
-     (let ((vec (make-vector 1))
-           (c 5))
-       (vector-set! vec 0 (cons a c))))))
-
-(test-cons-in-vec 5)
+(define my-apply apply)
+(define (apply f . args) (display f))
+(my-apply + 1 2 3)

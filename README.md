@@ -2,9 +2,13 @@ Modular Analysis Framework (MAF): A Framework for Modular Analysis of Dynamic La
 
 # Goal
 
-The goal of this artefact is to experiment with abstract machines and language semantics. Currently, the artefact's
-implementation is focused towards experiments with modular analyses. Additionally, semantics for R5RS Scheme are
-present.
+The goal of this artefact is to experiment with abstract machines and language semantics. 
+Currently, the artefact's implementation is focused towards experiments with modular analyses. 
+These are build according to the ModX technique.
+A comparison on how our ModF analysis compares to a well-known AAM-style analysis is described [here](docs/AAM.md).
+
+Additionally, semantics for R5RS Scheme are present. 
+Note that the semantics of our implementation may deviate from the R5RS specification at certain points; these have been described [here](docs/INCOMPATIBILITIES.md).
 
 For more information on the incremental analyses that are currently developed using MAF,
 see [here](code/shared/src/main/scala/maf/modular/incremental/README.md).
@@ -32,7 +36,7 @@ visualisations are also accessible via the `web` folder.
 The MAF framework is built in a modular style. To run a modular analysis, you need to compose the implementation of a
 specific machine and an abstract domain.
 
-To analyze a specific program, an instance of the MODF analysis class must be created. The constructor of this class
+To analyze a specific program, an instance of the ModF analysis class must be created. The constructor of this class
 takes a parsed version of the program to be analysed, which can be obtained as follows:
 ```scala
 val text = io.Reader.loadFile(path-to-file)
@@ -40,7 +44,7 @@ val prog = language.scheme.Schemeparser.parse(text)
 ```
 Additional preprocessing steps are performed by the modular analysis itself and hence must not be performed manually.
 
-Now, the MODF instance can be created. For example, to analyze `prog` using a big-step MODF analysis
+Now, the ModF instance can be created. For example, to analyze `prog` using a big-step ModF analysis
 with full argument sensitivity and a type domain:
 ```scala
 val analysis = new ModAnalysis(prog) with BigStepSemantics
@@ -103,7 +107,7 @@ The MAF framework is presented in the following publication:
   2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf). _See release: `SCAM 2020`_
  
 MAF is a complete rework of the [Scala-AM framework](https://github.com/acieroid/scala-am), which was not focused on
-modular static analysis but was primarily used to experiment with AAM-style analyses. An [AAM implementation](AAM.md) (inspired by Scala-AM) is provided in MAF for benchmarks comparisons. Scala-AM is described in the
+modular static analysis but was primarily used to experiment with AAM-style analyses. An [AAM implementation](Documents/Programming/maf/docs/AAM.md) (inspired by Scala-AM) is provided in MAF for benchmarks comparisons. Scala-AM is described in the
 following publications:
 
 * _Scala-AM: A Modular Static Analysis Framework_. SCAM
