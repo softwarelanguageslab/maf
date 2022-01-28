@@ -72,6 +72,15 @@ object Monad:
         def map[A, B](m: Id[A])(f: A => B): Id[B] =
           flatMap(m)((a) => unit(f(a)))
 
+    /** For any Monad M provides a way to merge a set of such monads into a single monad-wrapped value using the join of the given lattice */
+    def merge[X: Lattice, M[_]: Monad](xs: List[M[X]]): M[X] = xs match
+        case List() => Monad[M].unit(Lattice[X].bottom)
+        case x :: rest =>
+          for
+              v <- x
+              vs <- merge(xs)
+          yield Lattice[X].join(v, vs)
+
 //
 // MonadError
 //
