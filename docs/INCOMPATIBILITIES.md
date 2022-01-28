@@ -8,13 +8,19 @@ This document aims to describe these differences.
 
 ## The `define` special form
 
-### Letrec is letrec*
+MAF does not support `define` directly in either its concrete or abstract interpreters. Instead, it relies on a preprocessor, called the _undefiner_ (found [here](maf/code/shared/src/main/scala/maf/language/scheme/SchemeMonadicUndefiner.scala)) to translate all `define` special forms in the program to (almost) equivalent `letrec` expressions. However, in doing so, some minor incompatibilities are inevitably introduced w.r.t. R5RS semantics.
 
-In order to approximate top-level "define" semantics, our `letrec` special form is implemented as a `letrec*` special form, which means that the values of earlier bindings will be available in the next bindings. In contrast, a `letrec` also first makes the variables available in the environment, but only assigns them after all bindings have been evaluated.
+### `letrec` is `letrec*`
 
-### Double define's
+In order to approximate top-level `define` semantics, our `letrec` special form is implemented as a `letrec*` special form, which means that the values of earlier bindings will be available in the next bindings. In contrast, a `letrec` also first makes the variables available in the environment, but only assigns them after all bindings have been evaluated.
 
-In one of the proprocessing steps, `define`s are translated to `letrec`. Both `letrec` and `let` are restricted in that the variables of its bindings should be unique. This means that the following program will be rejected:
+### Duplicate definitions
+
+In one of the proprocessing steps, all `define`s in the same scope are translated to a single `letrec`. Both `letrec` and `let` are restricted in that the variables of its bindings should be unique. As a result, duplicate definitions in a single scope using `define` are never allowed in MAF. 
+
+In R5RS, internal definitions (i.e., `define`s that appear in regular bodies) are also translated into `letrec` in the same way, therefore also disallowing duplicate definitions for the same reason. However, as an exception, R5RS does allow duplicate definitions at the top level, treating redefinitions of a previously defined identifier using `set!` semantics. We do not support such top level redefinitions, as the top level is also just translated into a single `letrec`.
+
+This means that the following code at the top level (which is valid in R5RS) will be rejected:
 
 ```scheme
 (define x 10)
@@ -34,30 +40,37 @@ Because it is translated to:
 
 which is illegal.
 
-### Internal definitions 
-
-During preprocessing MAF rejects any program that contains internal definitions on invalid locations. Define's may only occur in the beginning of a body (according to the R5RS specification). However, in popular R5RS implementations such as the one provided with DrRacket, this is only detected at run time. 
-
 ### Redefining primitives
 
 MAF features a _preluder_ which prepends (Scheme) implementations for some primitives to the source file.
-When the undefiner, which translates `define`s to `letrec`s, and the preluder are used together, it is discouraged to redefine functions that carry the same name than preluded primitives.
-Since all top-level definitions are transformed to one single `letrec`, the undefiner will not prepend the primitive definition to the file.
-For this reason, references to the function will resolve to the self-defined function instead of to the primitive, which deviates from R5RS semantics and possibly produces errors.
+As a consequence of not allowing duplicate definitions (cf. sup.), it is not allowed to redefine functions that have the same name as preluded primitives.
 
-For example, in the Scheme interpreter, the following program leads to an error:
+When doing so anyway, the preluder will in fact not prepend such primitives to the program, since all top-level definitions are transformed by the undefiner to one single `letrec`, and hence only the self-defined function can be used. This may lead to unexpected behaviour w.r.t. other R5RS implementations (although some of them will also disallow the redefinition of primitives).
+
+For example, the following program
 
 ```scheme
-(define my-apply apply)
-(define (apply f . args) (display f))
-(my-apply + 1 2 3)
+(define old-apply apply)
+(define (apply f args) (display f))
+(old-apply + '(1 2 3))
+```
+is transformed into:
+
+```scheme
+(letrec ((old-apply apply)
+         (apply (lambda (f args) (display f))))
+  (old-apply + '(1 2 3)))
 ```
 
+and therefore throws the following error in the concrete Scheme interpreter:
+
 ```
-Invalid function call at position 3:2: #<unbound> is not a closure or a primitive.
+Uninitialised variable apply at position 1:20.
 ```
 
-The reason for this error is that in a `letrec`, bindings are evaluated in order. As `apply` has not yet been bound at the time that `my-apply` is define, the error is thrown when `my-apply` is evaluated.
+### Internal definitions 
+
+During preprocessing MAF rejects any program that contains internal definitions on invalid locations. Define's may only occur in the beginning of a body (according to the R5RS specification). However, in popular R5RS implementations such as the one provided with DrRacket, this is only detected at run time. 
 
 ## Errors in the abstract interpreter
 
