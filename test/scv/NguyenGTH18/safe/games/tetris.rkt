@@ -7,6 +7,7 @@
 (struct block (x y color))
 (struct tetra (center blocks))
 (struct world (tetra blocks))
+(struct posn (x y))
 (define COLOR/C symbol?)
 (define POSN/C (struct/c posn real? real?))
 (define BLOCK/C (struct/c block real? real? COLOR/C))
