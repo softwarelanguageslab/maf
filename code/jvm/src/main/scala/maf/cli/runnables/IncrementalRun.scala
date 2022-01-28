@@ -89,7 +89,7 @@ object IncrementalRun extends App:
           {
           override def focus(a: Addr): Boolean = false // a.toString.contains("VarAddr(n")
           var configuration: IncrementalConfiguration = ci
-          mode = Mode.Coarse
+          mode = Mode.Fine
           override def intraAnalysis(
               cmp: Component
             ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
@@ -149,7 +149,7 @@ object IncrementalRun extends App:
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/DEBUG2.scm",
+      "test/changes/scheme/leval.scm",
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
       //"test/R5RS/gambit/nboyer.scm",
       //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
