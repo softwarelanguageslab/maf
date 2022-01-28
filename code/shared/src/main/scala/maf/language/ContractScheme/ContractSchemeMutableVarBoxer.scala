@@ -27,4 +27,9 @@ object ContractSchemeMutableVarBoxer extends BaseSchemeMutableVarBoxer:
                                 idn
           )
 
+        case ContractSchemeCheck(contract, valueExpression, idn) =>
+          ContractSchemeCheck(rewrite(contract, mut, rew), rewrite(valueExpression, mut, rew), idn)
+
+        case m: MakeStruct => m // no variables to box here
+
         case _ => super.rewrite(exp, mut, rew)

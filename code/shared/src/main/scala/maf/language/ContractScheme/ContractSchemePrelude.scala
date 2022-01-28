@@ -8,7 +8,8 @@ object ContractSchemePrelude extends BaseSchemePrelude:
     override def primDefs = super.primDefs ++ List(
       "any/c" -> "(define any/c (flat (lambda (_) #t)))",
       "fprintf" -> "(define (fprintf . args) '())",
-      "empty?" -> "(define empty? null?)"
+      "empty?" -> "(define empty? null?)",
+      "and/c" -> "(define (and/c a b) (lambda (v) (and (check a v) (check b v))))",
     )
 
     override def parseDef(dff: String, nam: String): List[SchemeExp] =

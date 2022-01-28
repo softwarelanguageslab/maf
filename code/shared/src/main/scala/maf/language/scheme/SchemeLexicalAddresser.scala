@@ -89,7 +89,10 @@ trait BaseSchemeLexicalAddresser:
           ContractSchemeDepContract(domains.map(translate(_, lenv)), translate(rangeMaker, lenv), idn)
         case ContractSchemeProvide(outs, idn) =>
           ContractSchemeProvide(translateContractSchemeOut(outs, lenv), idn)
-        case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
+        case ContractSchemeCheck(contract, valueExpression, idn) =>
+          ContractSchemeCheck(translate(contract, lenv), translate(valueExpression, lenv), idn)
+        case m: MakeStruct => m // no variables inside a makestruct expression so lexical adressing does not need to be recursively called
+        case _             => throw new Exception(s"Unsupported Scheme expression: $exp")
 
     def translateContractSchemeOut(outs: List[ContractSchemeProvideOut], lenv: LexicalEnv): List[ContractSchemeProvideOut] =
       outs.map { case ContractSchemeContractOut(name, contract, idn) =>
