@@ -45,3 +45,6 @@ enum Label:
     case MSS // Struct setter
     case MSC // Struct constructor
     case MSP // Struct predicate
+
+    // Match expressions
+    case MEX // match expression

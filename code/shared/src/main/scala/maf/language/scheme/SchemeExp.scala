@@ -672,3 +672,32 @@ case class MakeStructPredicate(
     extends MakeStruct:
 
     def label = MSP
+
+/**
+ * A clause of a match expression.
+ *
+ * @param pat
+ *   the pattern of the clause
+ * @param expr
+ *   the expression that will be evaluated if the pattern matches
+ * @param whenExpr
+ *   an optional expression that is evaluated if the pattern matches, and if true will allow expr to be evaluated otherwise the clause is ignored
+ */
+case class MatchExprClause(pat: SchemeExp, expr: SchemeExp, whenExpr: SchemeExp):
+    def fv: Set[String] = (expr.fv ++ whenExpr.fv) -- pat.fv // the free variables in patterns are treated as new variables
+    def subexpressions: List[SchemeExp] = List(pat, expr, whenExpr)
+
+/**
+ * A regular match expression.
+ *
+ * (match v clause ...)
+ *
+ * @param value
+ *   the expression representing the value that it is matched against
+ * @param clauses
+ *   a list of match expression clauses
+ */
+case class MatchExpr(value: SchemeExp, clauses: List[MatchExprClause], idn: Identity) extends SchemeExp:
+    def fv: Set[String] = value.fv ++ clauses.flatMap(_.fv)
+    def subexpressions: List[SchemeExp] = value :: clauses.flatMap(_.subexpressions)
+    def label = MEX
