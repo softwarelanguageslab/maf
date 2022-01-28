@@ -16,9 +16,9 @@ object SExpUtils:
         def unapply(arg: SExpId): Option[(String, Identity)] =
           Some((arg.id.name, arg.idn))
 
-    object snil:
+    object SNil:
         def unapply(value: SExp): Option[(Identity)] = value match
-            case SExpValue(Value.Nil, idn) => Some((idn))
+            case SExpValue(Value.Nil, idn) => Some(idn)
             case _                         => None
 
     /** Maps over a list of s-expressions */

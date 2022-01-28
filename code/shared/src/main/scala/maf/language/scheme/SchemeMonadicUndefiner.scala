@@ -3,6 +3,7 @@ package maf.language.scheme
 import maf.core.*
 import maf.util.Trampoline
 import maf.language.CScheme.CSchemeParser
+import maf.language.ContractScheme.*
 
 /**
  * Remove defines from a Scheme expression, replacing them by let bindings. For example: (define foo 1) (define (f x) x) (f foo) Will be converted to:
@@ -310,7 +311,7 @@ def test(): Unit =
     import maf.util.Reader
     import maf.language.scheme.*
     val contents = Reader.loadFile("/tmp/test.scm")
-    val parsed = SchemeParser.parseProgramText(contents)
+    val parsed = List(ContractSchemeParser.compile(contents))
     println(parsed.map(_.prettyString(0)).mkString("\n"))
     //val output = CSchemeParser.parseProgram(contents)
     val output = SchemeBegin(SchemeMonadicUndefiner.undefineExps(parsed, true), Identity.none)
