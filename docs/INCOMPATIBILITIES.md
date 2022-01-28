@@ -8,7 +8,7 @@ This document aims to describe these differences.
 
 ## The `define` special form
 
-MAF does not support `define` directly in either its concrete or abstract interpreters. Instead, it relies on a preprocessor, called the _undefiner_ (found [here](maf/code/shared/src/main/scala/maf/language/scheme/SchemeMonadicUndefiner.scala)) to translate all `define` special forms in the program to (almost) equivalent `letrec` expressions. However, in doing so, some minor incompatibilities are inevitably introduced w.r.t. R5RS semantics.
+MAF does not support `define` directly in either its concrete or abstract interpreters. Instead, it relies on a preprocessor, called the _undefiner_ (found [here](https://github.com/softwarelanguageslab/maf/blob/master/code/shared/src/main/scala/maf/language/scheme/SchemeMonadicUndefiner.scala)) to translate all `define` special forms in the program to (almost) equivalent `letrec` expressions. However, in doing so, some minor incompatibilities are inevitably introduced w.r.t. R5RS semantics.
 
 ### `letrec` is `letrec*`
 
