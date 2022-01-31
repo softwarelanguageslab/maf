@@ -167,6 +167,13 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             case contractExp @ ContractSchemeCheck(_, _, _) =>
               evalCheck(contractExp)
 
+            case MatchExpr(value, clauses, _) =>
+              // TODO: same as maf.modular.scv.SchemeContractSchemeSupport see if this can be factored out
+              for
+                  _ <- eval(value) // evaluate value for side effects but ignore result
+                  evaluatedClauses <- merge(clauses.map(_.expr).map(evalSequence)) // over approximate by evaluating all clauses at once
+              yield evaluatedClauses
+
             // catch-all, dispatching to the default Scheme semantics
             case _ => super.eval(exp)
 

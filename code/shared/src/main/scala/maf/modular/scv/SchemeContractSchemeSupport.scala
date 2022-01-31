@@ -38,7 +38,12 @@ trait SchemeContractSchemeSupport extends BigStepModFSemantics:
             case ContractSchemeProvide(_, _) => unit(lattice.nil)
             /** Struct semantics are preserved */
             case mk: MakeStruct => unit(structOps.evaluate(mk))
-            case _              => super.eval(exp)
+            case MatchExpr(value, clauses, _) =>
+              for
+                  _ <- eval(value) // evaluate value for side effects but ignore result
+                  evaluatedClauses <- merge(clauses.map(_.expr).map(evalSequence)) // over approximate by evaluating all clauses at once
+              yield evaluatedClauses
+            case _ => super.eval(exp)
 
         override def applyFun(
             fexp: SchemeFuncall,
