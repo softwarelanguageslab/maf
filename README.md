@@ -11,7 +11,7 @@ Additionally, semantics for R5RS Scheme are present.
 Note that the semantics of our implementation may deviate from the R5RS specification at certain points; these have been described [here](docs/INCOMPATIBILITIES.md).
 
 For more information on the incremental analyses that are currently developed using MAF,
-see [here](code/shared/src/main/scala/maf/modular/incremental/README.md).
+see [here](code/shared/src/main/scala/maf/modular/incremental/incrementalAnalysis.md).
 
 # Usage
 

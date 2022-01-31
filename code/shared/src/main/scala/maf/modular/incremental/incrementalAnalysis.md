@@ -34,5 +34,11 @@ The following instances are available for ModConc (non-exhaustive):
 * `IncrementalModConcAnalysisCPLattice`: an incremental ModConc analysis using a constant-propagation lattice, a LIFO
   worklist algorithm, and a small-step semantics for a concurrent Scheme.
 
-~~For ModF, versions of the given instances that can perform an assertion analysis are also provided. The full details of
-all instances is provided in JavaDoc.~~ Instances performing an assertion analysis are currently no longer supported.
+For ModF, versions of the given instances that can perform an assertion analysis are also provided. The full details of
+all instances is provided in JavaDoc.
+
+## Benchmarks
+
+The incremental analyses can be run on a specific suit of benchmarks, which are programs that have been annotated with
+change expressions.
+More information on these benchmarks can be found [here](../../../../../../../../test/changes/incrementalBenchmarks.md).
