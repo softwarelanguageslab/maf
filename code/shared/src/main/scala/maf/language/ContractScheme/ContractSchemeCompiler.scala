@@ -72,6 +72,21 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
               ._2
           )
 
+    object MatchCompiler:
+        def compileClause(clause: SExp): TailRec[MatchExprClause] = clause match
+            // with a "when"
+            case pat :::: Ident("#:when") :::: pred :::: body =>
+              for
+                  compiledBody <- sequence(smap(body, _compile))
+                  compiledPat <- _compile(pat)
+                  compiledPred <- _compile(pred)
+              yield MatchExprClause(compiledPat, compiledBody, Some(compiledPred))
+            case pat :::: body =>
+              for
+                  compiledBody <- sequence(smap(body, _compile))
+                  compiledPat <- _compile(pat)
+              yield MatchExprClause(compiledPat, compiledBody, None)
+
     /** Nest the given expressions using the given function application */
     private def nest(expressions: List[SchemeExp], function: String): SchemeExp = expressions match
         case List(expression) => expression
@@ -214,8 +229,24 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
             compiledExpressions <- sequence(smap(expressions, _compile))
           } yield nest(compiledExpressions, "and/c")
 
-        // (struct id super-id (field ...) properties ...) // unsupported
+        // (structid super-id (field ...) properties ...) // unsupported
         case Ident("struct") :::: Ident(_) :::: Ident(_) :::: _ =>
           throw new Exception("structs with super-ids are currently unsupported")
+
+        // (match v [clause body ...]) or (match [clause #:when pred body ...])
+        case Ident("match") :::: v :::: clauses =>
+          for
+              compiledValue <- _compile(v)
+              compiledClauses <- sequence(smap(clauses, MatchCompiler.compileClause))
+          yield MatchExpr(compiledValue, compiledClauses, exp.idn)
+
+        case Ident("match-lambda") :::: clauses =>
+          for compiledClauses <- sequence(smap(clauses, MatchCompiler.compileClause))
+          yield SchemeLambda(None,
+                             List(Identifier("_x", exp.idn)),
+                             List(MatchExpr(SchemeVar(Identifier("_x", exp.idn)), compiledClauses, exp.idn)),
+                             None,
+                             exp.idn
+          )
 
         case _ => super._compile(exp)

@@ -683,9 +683,9 @@ case class MakeStructPredicate(
  * @param whenExpr
  *   an optional expression that is evaluated if the pattern matches, and if true will allow expr to be evaluated otherwise the clause is ignored
  */
-case class MatchExprClause(pat: SchemeExp, expr: SchemeExp, whenExpr: SchemeExp):
-    def fv: Set[String] = (expr.fv ++ whenExpr.fv) -- pat.fv // the free variables in patterns are treated as new variables
-    def subexpressions: List[SchemeExp] = List(pat, expr, whenExpr)
+case class MatchExprClause(pat: SchemeExp, expr: List[SchemeExp], whenExpr: Option[SchemeExp]):
+    def fv: Set[String] = (expr.flatMap(_.fv).toSet ++ whenExpr.map(_.fv).getOrElse(Set())) -- pat.fv // the free variables in patterns are treated as new variables
+    def subexpressions: List[SchemeExp] = List(pat) ++ expr ++ whenExpr.map(List(_)).getOrElse(List())
 
 /**
  * A regular match expression.
