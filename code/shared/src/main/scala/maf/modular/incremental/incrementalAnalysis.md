@@ -41,4 +41,4 @@ all instances is provided in JavaDoc.
 
 The incremental analyses can be run on a specific suit of benchmarks, which are programs that have been annotated with
 change expressions.
-More information on these benchmarks can be found [here](test/changes/incrementalBenchmarks.md).
+More information on these benchmarks can be found [here](../../../../../../../../test/changes/incrementalBenchmarks.md).
