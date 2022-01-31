@@ -165,7 +165,7 @@ class CPSSchemeInterpreter(
         case SchemeSet(variable, value, _) =>
           env.get(variable.name) match
               case Some(addr) => Step(value, env, SetC(addr, cc))
-              case None       => signalException(s"Unbound variable $variable at position ${variable.idn}.")
+              case None       => signalException(s"Undefined variable $variable at position ${variable.idn}.")
         case SchemeSetLex(_, _, _, _) => signalException("Unsupported: lexical addresses.")
         case SchemeValue(value, _)    => Kont(evalLiteral(value, exp), cc)
         case SchemeVar(id) =>

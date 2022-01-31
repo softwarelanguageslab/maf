@@ -76,7 +76,9 @@ object AAMModFPerformanceComparison extends AAMPerformanceComparison:
 
 object ScvPerformanceComparison extends AAMPerformanceComparison:
     override def parseProgram(txt: String): SchemeExp =
-      SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
+        val result = SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
+        println(s"input program ${result.prettyString(0)}")
+        result
 
     //def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks
     def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks

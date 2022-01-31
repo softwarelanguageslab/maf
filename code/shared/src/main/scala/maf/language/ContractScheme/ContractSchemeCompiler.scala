@@ -2,6 +2,7 @@ package maf.language.ContractScheme
 
 import maf.language.scheme.BaseSchemeCompiler
 import maf.language.sexp.SExp
+import maf.language.sexp
 import maf.language.sexp.Value
 import maf.language.scheme._
 import maf.util.MonoidImplicits.*
@@ -47,7 +48,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
 
         def generatePredicate(name: String, nameIdn: Identity): TailRec[List[SchemeExp]] =
             val predicate = MakeStructPredicate(name, nameIdn)
-            done(List(SchemeDefineVariable(Identifier(s"is-$name?", nameIdn), predicate, nameIdn)))
+            done(List(SchemeDefineVariable(Identifier(s"$name?", nameIdn), predicate, nameIdn)))
 
         def generateGetters(fields: List[CompiledField], name: String, nameIdn: Identity): TailRec[List[SchemeExp]] =
           done(
@@ -71,6 +72,13 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
               ._2
           )
 
+    /** Nest the given expressions using the given function application */
+    private def nest(expressions: List[SchemeExp], function: String): SchemeExp = expressions match
+        case List(expression) => expression
+        case expression :: rest =>
+          SchemeFuncall(SchemeVar(Identifier(function, Identity.none)), List(expression, nest(rest, function)), Identity.none)
+        case List() => throw new Exception("nest cannot receive an empty list")
+
     private def compile_sequence(seq: SExp): TailRec[List[SchemeExp]] =
       sequence(smap(seq, this._compile))
 
@@ -82,10 +90,10 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
     private def compile_params(params: SExp): List[Identifier] = params match
         case IdentWithIdentity(name, idn) :::: rest =>
           Identifier(name, idn) :: compile_params(rest)
-        case snil => List()
+        case SNil(_) => List()
 
     private def compileContractOut(binding: SExp): TailRec[ContractSchemeProvideOut] = binding match
-        case IdentWithIdentity(name, idn) :::: contract :::: snil =>
+        case IdentWithIdentity(name, idn) :::: contract :::: SNil(_) =>
           val compiled_name = Identifier(name, idn)
           for compiled_contract <- _compile(contract)
           yield ContractSchemeContractOut(compiled_name, compiled_contract, binding.idn)
@@ -122,14 +130,14 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
           )
 
         // (flat expr)
-        case Ident("flat") :::: expr :::: snil =>
+        case Ident("flat") :::: expr :::: SNil(_) =>
           for compiledExpr <- tailcall(_compile(expr))
           yield ContractSchemeFlatContract(compiledExpr, exp.idn)
 
         case Ident("flat") :::: _ => throw new Exception(s"Parse error, flat expects exactly one argument at ${exp.idn}")
 
         // (mon contract expr)
-        case Ident("mon") :::: contract :::: expr :::: snil =>
+        case Ident("mon") :::: contract :::: expr :::: SNil(_) =>
           for
               compiledContract <- tailcall(_compile(contract))
               compiledExpr <- tailcall(_compile(expr))
@@ -149,14 +157,13 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
             exp.idn
           )
 
-        // In Racket, files are modules and can provide certain
         // functions to the outside world, using the `provide` expression.
         case Ident("provide") :::: outs =>
           for compiled_outs <- sequence(smap(outs, compile_provides)).map(_.flatten)
           yield ContractSchemeProvide(compiled_outs, exp.idn)
 
         // (check contract valueExpression)
-        case Ident("check") :::: contract :::: expression :::: snil =>
+        case Ident("check") :::: contract :::: expression :::: SNil(_) =>
           for
               compiledContract <- tailcall(_compile(contract))
               compiledExpr <- tailcall(_compile(expression))
@@ -165,7 +172,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
         case Ident("define/contract") :::: _ => throw new Exception(s"Parse error, invalid usage of define/contract at ${exp.idn}")
 
         // (struct id (field ...) properties ...)
-        case Ident("struct") :::: IdentWithIdentity(name, nameIdn) :::: (fields @ (f :::: fs)) :::: snil =>
+        case Ident("struct") :::: IdentWithIdentity(name, nameIdn) :::: (fields @ ((_ :::: _) | SNil(_))) :::: SNil(_) =>
           for
               compiledFields <- Struct.compileFields(fields)
               constructor <- Struct.generateConstructor(compiledFields, name, nameIdn, exp.idn)
@@ -173,6 +180,39 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
               getters <- Struct.generateGetters(compiledFields, name, nameIdn)
               setters <- Struct.generateSetters(compiledFields, name, nameIdn)
           yield SchemeBegin(constructor ++ predicate ++ getters ++ setters, exp.idn)
+
+        // desugaring of (struct/c name field-contract ...) into a contract as follows:
+        // (and/c (flat name?) (flat (lambda (v) (check contract (_struct_ref v 0)))) ...)
+        case Ident("struct/c") :::: IdentWithIdentity(name, nameIdn) :::: fields =>
+          val tagCheck = ContractSchemeFlatContract(SchemeVar(Identifier(s"${name}?", nameIdn)), Identity.none)
+          for
+              fieldsCheck <- sequence(
+                smap(
+                  fields,
+                  field => {
+                    val structRef = SchemeFuncall(
+                      SchemeVar(Identifier("__struct_ref", Identity.none)),
+                      List(SchemeVar(Identifier("v", Identity.none)), SchemeValue(sexp.Value.Integer(0), Identity.none)),
+                      Identity.none
+                    )
+                    for {
+                      fieldExpr <- _compile(field)
+                      checkExpression = ContractSchemeCheck(fieldExpr, structRef, Identity.none)
+                      fieldCheck = ContractSchemeFlatContract(
+                        SchemeLambda(None, List(Identifier("v", Identity.none)), List(checkExpression), None, Identity.none),
+                        field.idn
+                      )
+                    } yield fieldCheck
+                  }
+                )
+              )
+          yield SchemeFuncall(SchemeVar(Identifier("and/c", exp.idn)), tagCheck :: fieldsCheck, exp.idn)
+
+        // Desugaring of and/c (and/c contract1 contract2 ...) to (and/c contract1 (and/c contract2 ...))
+        case Ident("and/c") :::: expressions =>
+          for {
+            compiledExpressions <- sequence(smap(expressions, _compile))
+          } yield nest(compiledExpressions, "and/c")
 
         // (struct id super-id (field ...) properties ...) // unsupported
         case Ident("struct") :::: Ident(_) :::: Ident(_) :::: _ =>

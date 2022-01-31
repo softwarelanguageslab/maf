@@ -4,10 +4,10 @@
 ;;;;; data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(struct posn (x y))
 (struct block (x y color))
 (struct tetra (center blocks))
 (struct world (tetra blocks))
+(struct posn (x y))
 (define COLOR/C symbol?)
 (define POSN/C (struct/c posn real? real?))
 (define BLOCK/C (struct/c block real? real? COLOR/C))
@@ -400,10 +400,10 @@
 (provide
  (contract-out
   ;; data
-  [struct block ([x real?] [y real?] [color COLOR/C])]
-  [struct posn ([x real?] [y real?])]
-  [struct tetra ([center POSN/C] [blocks BSET/C])]
-  [struct world ([tetra TETRA/C] [blocks BSET/C])]
+  ; ignored for benchmarking [struct block ([x real?] [y real?] [color COLOR/C])]
+  ; ignored for benchmarking [struct posn ([x real?] [y real?])]
+  ; ignored for benchmarking [struct tetra ([center POSN/C] [blocks BSET/C])]
+  ; ignored for benchmarking [struct world ([tetra TETRA/C] [blocks BSET/C])]
   [posn=? (-> POSN/C POSN/C boolean?)]
   [COLOR/C any/c]
   [POSN/C any/c]
