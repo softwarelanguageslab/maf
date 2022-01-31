@@ -8,7 +8,7 @@ import scala.concurrent.Future
 
 object ConcreteValues:
 
-    sealed trait Value
+    trait Value
 
     sealed trait AddrInfo:
         def idn: Identity

@@ -178,6 +178,56 @@ class SchemeInterpreter(
                 argsv <- tailcall(evalArgs(args, env, timeout, version))
             yield argv :: argsv
 
+    protected def isProcedure(v: Value): Boolean = v match
+        case _: Value.Primitive | _: Value.Clo => true
+        case _                                 => false
+
+    protected def applyFun(
+        f: Value,
+        call: SchemeFuncall,
+        argsv: List[Value],
+        args: List[SchemeExp],
+        idn: Identity,
+        timeout: Timeout.T,
+        version: Version
+      ): TailRec[Value] = f match
+        // A regular closure with a fixed amount of parameters
+        case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
+          if argsNames.length != argsv.length then
+              signalException(
+                s"Invalid function call at position ${idn}: ${argsv.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected."
+              )
+          val envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
+              val addr = newAddr(AddrInfo.VarAddr(arg._1))
+              extendStore(addr, arg._2)
+              (env3 + (arg._1.name -> addr))
+          }
+          stackedCall(name, pos2, tailcall(eval(SchemeBody(body), envExt, timeout, version)))
+
+        // A closure with a variable amount of parameters
+        case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, ann, pos2), env2) =>
+          val arity = argsNames.length
+          if argsv.length < arity then
+              signalException(
+                s"Invalid function call at position $idn: ${args.length} arguments given, while at least ${argsNames.length} are expected."
+              )
+          val envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
+              val addr = newAddr(AddrInfo.VarAddr(arg._1))
+              extendStore(addr, arg._2)
+              (env3 + (arg._1.name -> addr))
+          }
+          val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
+          extendStore(varArgAddr, makeList(args.drop(arity).zip(argsv.drop(arity))))
+          val envExt2 = envExt + (vararg.name -> varArgAddr)
+          stackedCall(name, pos2, eval(SchemeBody(body), envExt2, timeout, version))
+
+        case Value.Primitive(p) =>
+          tailcall(
+            stackedCall(Some(p), Identity.none, done(Primitives.allPrimitives(p).call(call, args.zip(argsv))))
+          )
+        case v =>
+          signalException(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive.")
+
     def eval(
         e: SchemeExp,
         env: Env,
