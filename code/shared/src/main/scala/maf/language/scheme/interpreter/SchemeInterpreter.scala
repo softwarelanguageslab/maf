@@ -240,49 +240,8 @@ class SchemeInterpreter(
             case call @ SchemeFuncall(f, args, idn) =>
               for
                   fv <- tailcall(eval(f, env, timeout, version))
-                  res <- fv match
-                      case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
-                        if argsNames.length != args.length then
-                            signalException(
-                              s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected."
-                            )
-                        for
-                            argsv <- evalArgs(args, env, timeout, version)
-                            envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
-                                val addr = newAddr(AddrInfo.VarAddr(arg._1))
-                                extendStore(addr, arg._2)
-                                (env3 + (arg._1.name -> addr))
-                            }
-                            res <- stackedCall(name, pos2, tailcall(eval(SchemeBody(body), envExt, timeout, version)))
-                        yield res
-                      case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, ann, pos2), env2) =>
-                        val arity = argsNames.length
-                        if args.length < arity then
-                            signalException(
-                              s"Invalid function call at position $idn: ${args.length} arguments given, while at least ${argsNames.length} are expected."
-                            )
-                        for
-                            argsv <- evalArgs(args, env, timeout, version)
-                            envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
-                                val addr = newAddr(AddrInfo.VarAddr(arg._1))
-                                extendStore(addr, arg._2)
-                                (env3 + (arg._1.name -> addr))
-                            }
-                            varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
-                            _ = extendStore(varArgAddr, makeList(args.drop(arity).zip(argsv.drop(arity))))
-                            envExt2 = envExt + (vararg.name -> varArgAddr)
-                            res <- stackedCall(name, pos2, eval(SchemeBody(body), envExt2, timeout, version))
-                        yield res
-                      case Value.Primitive(p) =>
-                        tailcall(
-                          stackedCall(Some(p),
-                                      Identity.none,
-                                      for argsv <- tailcall(evalArgs(args, env, timeout, version))
-                                      yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
-                          )
-                        )
-                      case v =>
-                        signalException(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive.")
+                  argsv <- evalArgs(args, env, timeout, version)
+                  res <- applyFun(fv, call, argsv, args, idn, timeout, version)
               yield res
             case SchemeIf(cond, cons, alt, _) =>
               for
