@@ -73,6 +73,41 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
           )
 
     object MatchCompiler:
+        def compilePat(pat: SExp): MatchPat = pat match
+            case IdentWithIdentity("_", idn) => WildcardPat(idn)
+            case IdentWithIdentity(id, idn) =>
+              IdPat(id, idn)
+            case Ident("var") :::: IdentWithIdentity(id, idn) :::: SNil(_) =>
+              IdPat(id, idn)
+            case Ident("quote") :::: anything =>
+              QuotePat(anything, pat.idn)
+            case Ident("list") :::: patterns =>
+              ListPat(smap(patterns, compilePat))
+            case Ident("list-rest" | "list*") :::: patterns =>
+              val compiledPats = smap(patterns, compilePat)
+              assert(compiledPats.size >= 1, "invalid usage of list-rest pattern")
+              ListRest(compiledPats.dropRight(1), compiledPats.last)
+            case Ident("list-no-order") :::: patterns =>
+              ListNoOrderPat(smap(patterns, compilePat), None)
+            case Ident("vector") :::: patterns =>
+              VectorPat(smap(patterns, compilePat))
+            case Ident("or") :::: patterns =>
+              OrPat(smap(patterns, compilePat))
+            case Ident("and") :::: patterns =>
+              AndPat(smap(patterns, compilePat))
+            case Ident("not") :::: patterns =>
+              NotPat(smap(patterns, compilePat))
+            case Ident("?") :::: expr :::: pats =>
+              PredPat(compile(expr), smap(pats, compilePat))
+            case Ident("app") :::: expr :::: pats =>
+              AppPat(compile(expr), smap(pats, compilePat))
+            case Ident("struct") :::: Ident(id) :::: (pats @ (SNil(_) | (_ :::: _))) =>
+              StructPat(id, smap(pats, compilePat))
+            case Ident(id) :::: patterns =>
+              StructPat(id, smap(patterns, compilePat))
+            case sexp.SExpValue(v, _) => LitPat(v)
+            case _                    => throw new Exception(s"unsupported match patern $pat")
+
         def compileClause(clause: SExp): TailRec[MatchExprClause] = clause match
             // with a "when"
             case pat :::: Ident("#:when") :::: pred :::: body =>
