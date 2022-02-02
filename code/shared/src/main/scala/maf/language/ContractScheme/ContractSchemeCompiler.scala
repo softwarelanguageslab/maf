@@ -113,14 +113,16 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
             case pat :::: Ident("#:when") :::: pred :::: body =>
               for
                   compiledBody <- sequence(smap(body, _compile))
-                  compiledPat <- _compile(pat)
+                  compiledPat <- done(compilePat(pat))
                   compiledPred <- _compile(pred)
               yield MatchExprClause(compiledPat, compiledBody, Some(compiledPred))
             case pat :::: body =>
               for
                   compiledBody <- sequence(smap(body, _compile))
-                  compiledPat <- _compile(pat)
+                  compiledPat <- done(compilePat(pat))
               yield MatchExprClause(compiledPat, compiledBody, None)
+
+            case _ => throw new Exception(s"invalid match clause at ${clause.idn}")
 
     /** Nest the given expressions using the given function application */
     private def nest(expressions: List[SchemeExp], function: String): SchemeExp = expressions match

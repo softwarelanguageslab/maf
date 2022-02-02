@@ -15,7 +15,7 @@ import maf.language.ContractScheme.*
  *   an evaluation function to possibly evaluate unevaluate expressions in the pattern
  */
 class Matcher(vlu: ConcreteValues.Value, eval: SchemeExp => ConcreteValues.Value):
-    private var bindings: Map[String, ConcreteValues.Value] = Map()
+    private var bindings: Map[Identifier, ConcreteValues.Value] = Map()
 
     private def matchesLiteral(pat: sexp.Value, vlu: ConcreteValues.Value): Boolean = (pat, vlu) match
         case (sexp.Value.Boolean(b), ConcreteValues.Value.Bool(b1))        => b == b1
@@ -42,7 +42,11 @@ class Matcher(vlu: ConcreteValues.Value, eval: SchemeExp => ConcreteValues.Value
       bindings = Map()
 
     /** Resolve the bindings in the last pattern we matched against */
-    def resolveBindings: Map[String, ConcreteValues.Value] = bindings
+    def resolveBindings: List[(Identifier, ConcreteValues.Value)] = bindings.toList
+
+    def matches(pat: MatchPat): Boolean =
+        reset()
+        matches(pat, vlu)
 
     /**
      * Matches the given pattern with the given value.
@@ -59,9 +63,9 @@ class Matcher(vlu: ConcreteValues.Value, eval: SchemeExp => ConcreteValues.Value
         // pat ::=
         // id                       matches anything and binds the value to id
         // (var id)                 same as id
-        case IdPat(name, _) =>
+        case IdPat(name, idn) =>
           checkDuplicate(name)
-          bindings = bindings + (name -> vlu)
+          bindings = bindings + (Identifier(name, idn) -> vlu)
           true
         // _                        matches anything
         case WildcardPat(_) =>

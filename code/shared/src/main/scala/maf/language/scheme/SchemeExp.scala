@@ -4,6 +4,7 @@ import maf.core._
 import maf.language.change.ChangeExp
 import maf.language.sexp._
 import maf.language.scheme.ContractSchemeExp
+import maf.language.ContractScheme.MatchPat
 import Label.*
 
 /** Abstract syntax of Scheme programs */
@@ -683,9 +684,9 @@ case class MakeStructPredicate(
  * @param whenExpr
  *   an optional expression that is evaluated if the pattern matches, and if true will allow expr to be evaluated otherwise the clause is ignored
  */
-case class MatchExprClause(pat: SchemeExp, expr: List[SchemeExp], whenExpr: Option[SchemeExp]):
+case class MatchExprClause(pat: MatchPat, expr: List[SchemeExp], whenExpr: Option[SchemeExp]):
     def fv: Set[String] = (expr.flatMap(_.fv).toSet ++ whenExpr.map(_.fv).getOrElse(Set())) -- pat.fv // the free variables in patterns are treated as new variables
-    def subexpressions: List[SchemeExp] = List(pat) ++ expr ++ whenExpr.map(List(_)).getOrElse(List())
+    def subexpressions: List[Expression] = pat.subexpressions ++ expr ++ whenExpr.map(List(_)).getOrElse(List())
 
 /**
  * A regular match expression.
@@ -699,5 +700,5 @@ case class MatchExprClause(pat: SchemeExp, expr: List[SchemeExp], whenExpr: Opti
  */
 case class MatchExpr(value: SchemeExp, clauses: List[MatchExprClause], idn: Identity) extends SchemeExp:
     def fv: Set[String] = value.fv ++ clauses.flatMap(_.fv)
-    def subexpressions: List[SchemeExp] = value :: clauses.flatMap(_.subexpressions)
+    def subexpressions: List[Expression] = value :: clauses.flatMap(_.subexpressions)
     def label = MEX
