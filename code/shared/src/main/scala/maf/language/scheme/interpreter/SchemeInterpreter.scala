@@ -49,9 +49,10 @@ class SchemeInterpreter(
 
     // Access to cb should be synchronized on 'Callback'.
     object Callback:
-        def call(i: Identity, v: Value): Unit = synchronized {
-          cb(i, v)
-        }
+        def call(i: Identity, v: Value): Unit = 
+          synchronized {
+            cb(i, v)
+          }
 
     // Keep an artificial call stack to ease debugging.
     var callStack: List[String] = List()
@@ -62,16 +63,17 @@ class SchemeInterpreter(
         name: Option[String],
         idn: Identity,
         block: => TailRec[Value]
-      ): TailRec[Value] = synchronized {
-      val n = name.getOrElse("λ") + s"@${idn.pos}"
-      if stack then callStack = n :: callStack
-      val res = block
-      if stack then
+      ): TailRec[Value] = 
+        synchronized {
+          val n = name.getOrElse("λ") + s"@${idn.pos}"
+          if stack then callStack = n :: callStack
+          val res = block
+          if stack then
           callStack match
-              case Nil => System.err.nn.println("The call stack tracking does currently not work correctly with concurrent programs.")
-              case _   => callStack = callStack.tail
-      res
-    }
+          case Nil => System.err.nn.println("The call stack tracking does currently not work correctly with concurrent programs.")
+          case _   => callStack = callStack.tail
+          res
+        }
 
     override def signalException[R](msg: String): R =
         val m = if stack then callStack.mkString(s"$msg\n Callstack:\n * ", "\n * ", "\n **********") else msg
@@ -160,9 +162,10 @@ class SchemeInterpreter(
         case _: AddrInfo.VarAddr | _: AddrInfo.PtrAddr => true
         case _                                         => false
 
-    override def extendStore(a: Addr, v: Value): Unit =
+    override def extendStore(a: Addr, v: Value): Unit = 
         if checkAddr(a) && checkValue(v) then Callback.call(a._2.idn, v)
         super.extendStore(a, v)
+  
 
     def evalArgs(
         args: List[SchemeExp],
@@ -190,7 +193,8 @@ class SchemeInterpreter(
         idn: Identity,
         timeout: Timeout.T,
         version: Version
-      ): TailRec[Value] = f match
+      ): TailRec[Value] = 
+        f match
         // A regular closure with a fixed amount of parameters
         case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
           if argsNames.length != argsv.length then
@@ -229,7 +233,7 @@ class SchemeInterpreter(
 
         case Value.Primitive(p) =>
           tailcall(
-            stackedCall(Some(p), Identity.none, done(Primitives.allPrimitives(p).call(call, args.zip(argsv))))
+            stackedCall(Some(p), Identity.none, tailcall(done(Primitives.allPrimitives(p).call(call, args.zip(argsv)))))
           )
         case v =>
           signalException(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive.")

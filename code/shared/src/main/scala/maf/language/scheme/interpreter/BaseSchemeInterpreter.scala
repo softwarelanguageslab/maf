@@ -32,28 +32,33 @@ trait BaseSchemeInterpreter[V]:
     // Both access to 'lastAddr' and 'store' should be synchronized on 'this'!
     var lastAddr = 0
 
-    def newAddr(meta: AddrInfo): (Int, AddrInfo) = synchronized {
-      lastAddr += 1
-      (lastAddr, meta)
-    }
+    def newAddr(meta: AddrInfo): (Int, AddrInfo) = 
+      synchronized {
+        lastAddr += 1
+        (lastAddr, meta)
+      }
 
     var store = Map[Addr, Value]()
 
-    def extendStore(a: Addr, v: Value): Unit = synchronized {
-      store = store + (a -> v)
-    }
+    def extendStore(a: Addr, v: Value): Unit = 
+      synchronized {
+        store = store + (a -> v)
+      }
 
-    def lookupStore(a: Addr): Value = synchronized {
-      store(a)
-    }
+    def lookupStore(a: Addr): Value =
+      synchronized {
+        store(a)
+      }
 
-    def lookupStoreOption(a: Addr): Option[Value] = synchronized {
-      store.get(a)
-    }
+    def lookupStoreOption(a: Addr): Option[Value] = 
+      synchronized {
+        store.get(a)
+      }
 
-    def setStore(s: Map[Addr, Value]): Unit = synchronized {
-      store = s
-    }
+    def setStore(s: Map[Addr, Value]): Unit = 
+      synchronized {
+        store = s
+      }
 
     def allocateVal(exp: SchemeExp, value: Value): Value.Pointer =
         val addr = newAddr(AddrInfo.PtrAddr(exp))
