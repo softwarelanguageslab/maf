@@ -70,6 +70,13 @@ class ContractSchemeInterpreter extends SchemeInterpreter:
             case MakeStructSetter(tag, idx, idn) =>
               done(ContractValue(ContractValues.StructSetterGetter(tag, idx, true)))
 
+            case call @ SchemeFuncall(f, args, idn) =>
+              for
+                  fv <- tailcall(eval(f, env, timeout, version))
+                  argsv <- evalArgs(args, env, timeout, version)
+                  res <- applyFun(fv, call, argsv, args, idn, timeout, version)
+              yield res
+
             case _ => super.eval(e, env, timeout, version)
 
     private def checkArity[T](argsv: List[T], expected: Int): Unit =
