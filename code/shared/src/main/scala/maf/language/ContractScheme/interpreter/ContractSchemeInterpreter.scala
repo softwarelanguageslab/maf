@@ -180,7 +180,7 @@ class ContractSchemeInterpreter extends SchemeInterpreter:
         isCheck: Boolean = false,
       ): TailRec[Value] =
       // first try to see what type the contract value is
-      contract match
+      contractv match
           case ContractValue(ContractValues.Flat(flatv, _, _, _)) =>
             // it is a flat contract, so we must apply the inner function value, if return value is true the monitored value is returned, otherwise an error is thrown
             for

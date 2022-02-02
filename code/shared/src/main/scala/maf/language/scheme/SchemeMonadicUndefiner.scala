@@ -284,6 +284,12 @@ trait BaseSchemeMonadicUndefiner:
 
         case ContractSchemeFlatContract(expression, idn) =>
           undefineSingle(expression) flatMap (e => mk(ContractSchemeFlatContract(e, idn)))
+        case MatchExpr(value, clauses, idn) =>
+          for
+              undefinedValue <- undefineSingle(value)
+              undefinedClauses <- Monad.sequence(clauses.map(cl => subexpression { undefine(cl.expr).map(MatchExprClause(cl.pat, _, cl.whenExpr)) }))
+              result <- mk(MatchExpr(undefinedValue, undefinedClauses, idn))
+          yield result
 
         case ContractSchemeDefineContract(name, params, contract, expression, idn) =>
           throw new Exception("should be translated in the ContractSchemeCompiler")

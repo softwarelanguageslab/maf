@@ -144,6 +144,8 @@ trait UndefinerTester:
               check(contract, false) || check(valueExpression, false)
             case ContractSchemeProvide(outs, idn) => false // TODO: actually only allowed on the top-level, but we don't have any information about the level of the definition yet
             case _: MakeStruct => false
+            case m: MatchExpr =>
+              m.clauses.foldLeft[Result](false)((acc, cl) => acc || checkSequence(cl.expr)(false))
 
             case _ =>
               //false
