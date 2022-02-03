@@ -33,6 +33,7 @@ trait AAMTesterT:
         val program = parseProgram(content)
         val graph = new DotGraph[GraphElementAAM, GraphElement]()
         given gInst: Graph[graph.G, GraphElementAAM, GraphElement] = graph.G.typeclass
+        println(s"input program ${program.prettyString(0)}")
         val theAnalysis = analysis(program)
 
         def findConf[T](states: Set[T], g: graph.G, id: String): Option[T] =
@@ -82,15 +83,15 @@ object AAMTester extends AAMTesterT:
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
-        //with SchemeAAMLocalStore
+        with SchemeAAMLocalStore
         //with BaseSchemeLoggingLocalStore
         //with SchemeImperativeStoreWidening
         //with maf.aam.scheme.stores.BaseSchemeDependencyLoggingStore
         with SchemeStoreAllocateReturn
         //with SchemeWideningAfterCondition
         with SchemeFunctionCallBoundary
-        with SchemeFunctionModularAAM
-        //with BaseSimpleWorklistSystem
+        //with SchemeFunctionModularAAM
+        with SimpleWorklistSystem
         //with SchemeAtomicEvaluation
         with SchemeAAMAnalysisResults {
       //override type System = LoggingLocalStoreSystem

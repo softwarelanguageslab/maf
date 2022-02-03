@@ -14,7 +14,12 @@ import maf.language.ContractScheme.ContractValues.StructSetterGetter
 import maf.language.ContractScheme.ContractValues.StructConstructor
 import maf.language.ContractScheme.ContractValues.Arr
 
-class ContractSchemeInterpreter extends SchemeInterpreter:
+trait RandomInputGenerator:
+    /** Generate a random input, possibly under the constraint of the given set of primitive contracts */
+    def generateInput(contract: Set[String] = Set()): ConcreteValues.Value
+
+class ContractSchemeInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (), signalBlame: (Identity, Identity) => Unit = (_, _) => ())
+    extends SchemeInterpreter(cb):
     import ConcreteValues.*
     import ContractSchemeErrors.*
     import TailrecUtil.*
