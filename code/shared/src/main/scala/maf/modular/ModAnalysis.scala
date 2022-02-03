@@ -12,11 +12,19 @@ import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutp
 // in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
 trait Dependency extends SmartHash
 
+/** Super type of all analyses in MAF, provides basic entry points to the analysis */
+trait AnalysisEntry[Exp <: Expression]:
+    /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
+    def finished: Boolean
+
+    /** Runs the analysis until the given time-out passes */
+    def analyzeWithTimeout(timeout: Timeout.T): Unit
+
 /**
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and provides some
  * utility functionality.
  */
-abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Cloneable with Serializable { inter =>
+abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Cloneable with Serializable with AnalysisEntry[Expr] { inter =>
 
   // parameterized by a component representation
   type Component <: Serializable
@@ -91,9 +99,6 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
       def doWrite(dep: Dependency): Boolean = throw new Exception(s"Unknown dependency $dep") // `ModAnalysis` has no knowledge of dependencies it can commit.
 
   // Specific to the worklist algorithm:
-
-  /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
-  def finished: Boolean
 
   // flag to indicate if the analysis has already been initialized (see method `init`)
   private var initialized: Boolean = false

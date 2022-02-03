@@ -2,7 +2,7 @@ package maf.cli.experiments.performance
 
 import maf.language.scheme._
 import maf.language.CScheme._
-import maf.modular.ModAnalysis
+import maf.modular.{AnalysisEntry, ModAnalysis}
 import maf.util._
 import maf.util.benchmarks._
 
@@ -35,9 +35,9 @@ trait AnalysisIsFinished[T]:
         def metrics: List[Metric] = getMetrics(analysis)
 
 object AnalysisIsFinished:
-    given AnalysisIsFinished[ModAnalysis[SchemeExp]] with
-        def isFinished(analysis: ModAnalysis[SchemeExp]): Boolean = analysis.finished
-        def doAnalyzeWithTimeout(analysis: ModAnalysis[SchemeExp], timeout: Timeout.T): Any =
+    given AnalysisIsFinished[AnalysisEntry[SchemeExp]] with
+        def isFinished(analysis: AnalysisEntry[SchemeExp]): Boolean = analysis.finished
+        def doAnalyzeWithTimeout(analysis: AnalysisEntry[SchemeExp], timeout: Timeout.T): Any =
           analysis.analyzeWithTimeout(timeout)
 
     given AnalysisIsFinished[AAMAnalysis] with
