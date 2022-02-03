@@ -38,9 +38,6 @@ object SchemeBenchmarkPrograms:
 
     lazy val ad: Set[String] = fromFolder("test/R5RS/ad")(
       "bfirst.scm", // Unbound identifier: create-graph
-      "bst.scm", // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
-      "btree.scm", // Lacks a body.
-      "stspaceCODE.scm" // Tail of empty list BUT THERE IS NO CODE TO RUN? TODO Look at this.
     )
     lazy val gabriel: Set[String] = fromFolder("test/R5RS/gabriel")()
     lazy val gambit: Set[String] = fromFolder("test/R5RS/gambit")(

@@ -86,14 +86,14 @@
       (define (acc-aux tree)
         (if (null-tree? tree)
             init
-            (operator (function tree)
+            (begin    (function tree) ;; Changed `operator` to `begin` to avoid an error.
                       (acc-aux (left tree))
                       (acc-aux (right tree)))))
       (acc-aux tree))
-    
+
     (define (empty?)
       (null-tree? root))
-    
+
     (define (tree-search k)
       (define (search-aux node)
         (cond
@@ -106,19 +106,19 @@
           (else
            (search-aux (right node)))))
       (search-aux root))
-    
+
     (define (tree-minimum x)
       (cond ((null-tree? (left x))
              x)
-            (else 
+            (else
              (tree-minimum (left x)))))
-    
+
     (define (tree-maximum x)
       (cond ((null-tree? (right x))
              x)
-            (else 
+            (else
              (tree-maximum (right x)))))
-    
+
     (define (tree-successor x)
       (define (iter x y)
         (cond ((and (not (null-tree? y))
@@ -129,7 +129,7 @@
           (tree-minimum (right x))
           (let ((y (parent x)))
             (iter x y))))
-    
+
     (define (tree-insert k i)
       (let ((y null-tree)
             (z (make-node k null-tree null-tree null-tree i)))
@@ -148,7 +148,7 @@
                   (set-left! y z)
                   (set-right! y z))
               (set-parent! z y)))))
-    
+
     (define (tree-delete k)
       (let ((z (tree-search k)))
         (if z
@@ -172,7 +172,7 @@
                     (set-key! z (key y))
                     (set-info! z (info z))))
               y))))
-    
+
     (define (map a-function)
       (tree-acc root cons null-tree a-function))
     (define (foreach a-action)
@@ -189,3 +189,16 @@
         (else
          (error "unknown request -- create-BST" msg))))
     dispatch))
+
+;; Added body
+
+(define bst (create-bst))
+(if (bst 'empty)
+    (bst 'insert 9 "Nine"))
+(bst 'insert -5 "Minus five")
+(bst 'lookup 9)
+(bst 'map display)
+(newline)
+(bst 'foreach display)
+(newline)
+(bst 'display)
