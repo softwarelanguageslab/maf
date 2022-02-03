@@ -139,7 +139,7 @@ object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties:
 
 object IncrementalSchemeModXProperties:
     def main(args: Array[String]): Unit =
-      IncrementalSchemeModFTypeProperties.execute(args)
-//IncrementalSchemeModFCPProperties.main(args)
-//IncrementalSchemeModConcTypeProperties.main(args)
-//IncrementalSchemeModConcCPProperties.main(args)
+        IncrementalSchemeModFTypeProperties.execute(args)
+        IncrementalSchemeModFCPProperties.execute(args)
+//IncrementalSchemeModConcTypeProperties.execute(args)
+//IncrementalSchemeModConcCPProperties.execute(args)

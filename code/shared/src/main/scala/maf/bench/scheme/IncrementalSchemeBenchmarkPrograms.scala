@@ -8,6 +8,7 @@ object IncrementalSchemeBenchmarkPrograms:
       "qeval.scm", // define-syntax, force, delay
       "scheme.scm", // error in program
       "machine-simulator.scm", // map with three arguments
+      "mountainvale.scm", // Too big...
       ".DS_Store"
     ) ++ cyclicValueReinforcement
 

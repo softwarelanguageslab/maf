@@ -84,13 +84,13 @@
         ((eq? m 'map) map)
         ((eq? m 'foreach) foreach)
         (else
-          (error "unknown request
+         (error "unknown request
                  -- create-set" m))))
     dispatch))
 
 (define (create-operator pre op) (list pre op))
 (define (precondition operator) (car operator))
-(define (operation operator) (cadr operator)
+(define (operation operator) (cadr operator))
 
 (define (depth-first-search start-state  operators
                             goal-reached? good-state? eq-state?
@@ -103,26 +103,26 @@
       (define (iter rest)
         (cond ((null? rest) false)
               (else
-                (let ((operator (car rest)))
-                  (if ((precondition operator) state)
-                      (let ((new-state ((operation operator) state)))
-                        (if (good-state? new-state)
-                            (if (goal-reached? new-state)
-                                (begin
-                                  (if open-trace-action
-                                      (open-trace-action new-state))
-                                  (present-goal new-state)
-                                  true)
-                                (begin
-                                  (if (and (not ((open 'is-in) new-state))
-                                           (not ((closed 'is-in) new-state)))
-                                      (begin
-                                        ((open 'push) new-state)
-                                        (if open-trace-action
-                                            (open-trace-action new-state))))
-                                  (iter (cdr rest))))
-                            (iter (cdr rest))))
-                      (iter (cdr rest)))))))
+               (let ((operator (car rest)))
+                 (if ((precondition operator) state)
+                     (let ((new-state ((operation operator) state)))
+                       (if (good-state? new-state)
+                           (if (goal-reached? new-state)
+                               (begin
+                                 (if open-trace-action
+                                     (open-trace-action new-state))
+                                 (present-goal new-state)
+                                 true)
+                               (begin
+                                 (if (and (not ((open 'is-in) new-state))
+                                          (not ((closed 'is-in) new-state)))
+                                     (begin
+                                       ((open 'push) new-state)
+                                       (if open-trace-action
+                                           (open-trace-action new-state))))
+                                 (iter (cdr rest))))
+                           (iter (cdr rest))))
+                     (iter (cdr rest)))))))
       (iter operators))
     (define (loop)
       (cond (((open 'empty?)) false)
@@ -136,3 +136,15 @@
                           (loop)))))))
     ((open 'push) start-state)
     (loop)))
+
+;; Added body (I have no idea how the code above exactly works).
+
+(depth-first-search 0 (list (create-operator (lambda (s) (<= -100 s 100)) (lambda (x) x))
+                            (create-operator (lambda (s) (<= -100 s 100)) (lambda (x) (- x 2)))
+                            (create-operator (lambda (s) (<= -100 s 100)) (lambda (x) (+ x 2))))
+                    (lambda (g) (< g -99))
+                    (lambda (s) (<= -100 s 100))
+                    =
+                    display
+                    (lambda (x) (* x 2))
+                    (lambda (x) (* x -15)))
