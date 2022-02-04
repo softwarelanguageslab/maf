@@ -65,8 +65,8 @@ class InterpreterTests() extends AnyPropSpec:
         property(s"The Scheme interpreters give the same result for $benchmark", InterpreterTest, SlowTest) {
           try
               // TODO (maybe): run in parallel?
-              val r1: ConcreteValues.Value = interpreter.run(program, Timeout.start(Duration(60, SECONDS)))
-              val r2: ConcreteValues.Value = CPSinterpreter.run(program, Timeout.start(Duration(60, SECONDS)))
+              val r1: ConcreteValues.Value = interpreter.run(program, Timeout.start(Duration(2, MINUTES)))
+              val r2: ConcreteValues.Value = CPSinterpreter.run(program, Timeout.start(Duration(2, MINUTES)))
               compareValues(r1, r2) match
                   case Some(b) =>
                     assert(b, s"The return value of the CPS interpreter ($r2) did not match the return value of the recursive interpreter ($r1).")

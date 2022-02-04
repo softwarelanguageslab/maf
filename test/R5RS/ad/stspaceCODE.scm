@@ -139,9 +139,9 @@
 
 ;; Added body (I have no idea how the code above exactly works).
 
-(depth-first-search 0 (list (create-operator (lambda (s) (<= -100 s 100)) (lambda (x) x))
-                            (create-operator (lambda (s) (<= -100 s 100)) (lambda (x) (- x 2)))
-                            (create-operator (lambda (s) (<= -100 s 100)) (lambda (x) (+ x 2))))
+(depth-first-search 0 (list (create-operator (lambda (s) (and (<= -100 s) (<= s 100))) (lambda (x) x))
+                            (create-operator (lambda (s) (and (<= -100 s) (<= s 100))) (lambda (x) (- x 2)))
+                            (create-operator (lambda (s) (and (<= -100 s) (<= s 100))) (lambda (x) (+ x 2))))
                     (lambda (g) (< g -99))
                     (lambda (s) (<= -100 s 100))
                     =
