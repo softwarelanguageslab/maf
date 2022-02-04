@@ -17,13 +17,13 @@ object ScvAAMTester extends AAMTesterT:
     protected def analysis(b: SchemeExp): Analysis =
       new ScvAAMSemantics(b)
         with BaseSchemeAAMSemantics
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         //with SchemeStoreAllocateReturn
         with SchemeFunctionCallBoundary
         with SchemeAAMLocalStore
-        with SimpleWorklistSystem
+        with SimpleWorklistSystem[SchemeExp]
         with SchemeAAMAnalysisResults {
         lazy val satSolver: ScvSatSolver[LatVal] =
             given lat: SchemeLattice[LatVal, Address] = lattice

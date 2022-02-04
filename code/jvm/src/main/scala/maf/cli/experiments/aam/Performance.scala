@@ -3,6 +3,7 @@ package maf.cli.experiments.aam
 import maf.cli.experiments.performance.*
 import maf.aam.*
 import maf.language.scheme.*
+import maf.modular.Metric
 import maf.language.ContractScheme.*
 import maf.core.*
 import maf.bench.scheme.SchemeBenchmarkPrograms
@@ -14,7 +15,7 @@ import maf.aam.scheme.AAMPeformanceMetrics
 
 enum AllAnalyisTypes:
     case ModF(analysis: ModAnalysis[SchemeExp])
-    case AAM(analysis: AAMPeformanceMetrics)
+    case AAM(analysis: AAMPeformanceMetrics[SchemeExp])
 
 object AllAnalyisTypes:
     given AnalysisIsFinished[AllAnalyisTypes] with
@@ -39,10 +40,10 @@ object AllAnalyisTypes:
 
 /** Compare the performance of AAM with a ModF style analysis */
 trait AAMPerformanceComparison extends PerformanceEvaluation:
-    type Analysis = AllAnalyisTypes
+    type Analysis = AnalysisEntry[SchemeExp]
 
-    protected def wrap(f: SchemeExp => AAMPeformanceMetrics): SchemeExp => Analysis = (exp) => AllAnalyisTypes.AAM(f(exp))
-    protected def wrapModF(f: SchemeExp => ModAnalysis[SchemeExp]): SchemeExp => Analysis = (exp) => AllAnalyisTypes.ModF(f(exp))
+    protected def wrap(f: SchemeExp => AAMPeformanceMetrics[SchemeExp]): SchemeExp => Analysis = (exp) => f(exp)
+    protected def wrapModF(f: SchemeExp => ModAnalysis[SchemeExp]): SchemeExp => Analysis = (exp) => f(exp)
 
 object AAMModFPerformanceComparison extends AAMPerformanceComparison:
     override def maxWarmupRuns = 0

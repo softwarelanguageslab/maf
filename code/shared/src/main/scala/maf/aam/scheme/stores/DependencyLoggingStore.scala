@@ -2,6 +2,7 @@ package maf.aam.scheme.stores
 
 import maf.aam.scheme.BaseSchemeAAMSemantics
 import maf.aam.{AAMGraph, BaseSimpleWorklistSystem, GraphElementAAM}
+import maf.language.scheme.SchemeExp
 import maf.core.{Address, BasicStore, Lattice}
 
 object DepLoggingStore:
@@ -40,7 +41,7 @@ case class DepLoggingStore[V: Lattice](originalSto: BasicStore[Address, V], W: M
     def readDeps: Set[Address] = R
 
 /** A logging store were we also keep track of the dependencies, so that components are not re-analyzed unnecessarily */
-trait BaseSchemeDependencyLoggingStore extends BaseSchemeAAMSemantics, BaseSimpleWorklistSystem:
+trait BaseSchemeDependencyLoggingStore extends BaseSchemeAAMSemantics, BaseSimpleWorklistSystem[SchemeExp]:
     type Sto = DepLoggingStore[Storable]
     type Conf = SchemeConf
     type System = DepLoggingStoreSystem

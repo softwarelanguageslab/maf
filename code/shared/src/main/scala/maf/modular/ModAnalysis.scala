@@ -12,6 +12,8 @@ import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutp
 // in essence, whenever a dependency is triggered, all registered components for that dependency need to be re-analyzed
 trait Dependency extends SmartHash
 
+case class Metric(name: String, result: Double)
+
 /** Super type of all analyses in MAF, provides basic entry points to the analysis */
 trait AnalysisEntry[Exp <: Expression]:
     /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
@@ -19,6 +21,9 @@ trait AnalysisEntry[Exp <: Expression]:
 
     /** Runs the analysis until the given time-out passes */
     def analyzeWithTimeout(timeout: Timeout.T): Unit
+
+    /** Returns any metrics collected during the analysis, if any (default returns empty list) */
+    def metrics: List[Metric] = List()
 
 /**
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and provides some

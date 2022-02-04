@@ -6,6 +6,7 @@ import maf.aam.{BaseSimpleWorklistSystem, SimpleWorklistSystem}
 import maf.language.scheme.*
 import maf.modular.scv.*
 import maf.modular.scheme.*
+import maf.modular.AnalysisEntry
 import maf.cli.modular.scv.*
 import maf.language.scheme.lattices.SchemeLattice
 import maf.language.ContractScheme.*
@@ -22,9 +23,10 @@ import maf.aam.scheme.stores.SchemeImperativeStoreWidening
  *   - CONF6: Logging Global Store with dependencies
  */
 object AAMAnalyses:
-    def aamBase(b: SchemeExp): AAMPeformanceMetrics =
+
+    def aamBase(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
       new BaseSchemeAAMSemantics(b)
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
@@ -33,9 +35,9 @@ object AAMAnalyses:
         with SimpleWorklistSystem
         with SchemeAAMAnalysisResults
 
-    def aamConf1(b: SchemeExp): AAMPeformanceMetrics =
+    def aamConf1(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
       new SchemeAAMSemantics(b)
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
@@ -45,9 +47,9 @@ object AAMAnalyses:
         with SimpleWorklistSystem
         with SchemeAAMAnalysisResults
 
-    def aamConf2(b: SchemeExp): AAMPeformanceMetrics =
+    def aamConf2(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
       new SchemeAAMSemantics(b)
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
@@ -56,9 +58,9 @@ object AAMAnalyses:
         with SimpleWorklistSystem
         with SchemeAAMAnalysisResults
 
-    def aamConf3(b: SchemeExp): AAMPeformanceMetrics =
+    def aamConf3(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
       new SchemeAAMSemantics(b)
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         //with SchemeAAMCallSiteSensitivity
         with SchemeConstantPropagationDomain
@@ -70,9 +72,9 @@ object AAMAnalyses:
         with BaseSimpleWorklistSystem
         with SchemeAAMAnalysisResults
 
-    def aamConf4(b: SchemeExp): AAMPeformanceMetrics =
+    def aamConf4(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
       new SchemeAAMSemantics(b)
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMNoExt
@@ -81,9 +83,9 @@ object AAMAnalyses:
         with BaseSimpleWorklistSystem
         with SchemeAAMAnalysisResults
 
-    def aamConf5(b: SchemeExp): AAMPeformanceMetrics =
+    def aamConf5(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
       new SchemeAAMSemantics(b)
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         //with SchemeAAMCallSiteSensitivity
         with SchemeConstantPropagationDomain
@@ -96,9 +98,9 @@ object AAMAnalyses:
         //with BaseSimpleWorklistSystem
         with SchemeAAMAnalysisResults
 
-    def aamConf6(b: SchemeExp): AAMPeformanceMetrics =
+    def aamConf6(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
       new SchemeAAMSemantics(b)
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         //with SchemeAAMCallSiteSensitivity
         with SchemeConstantPropagationDomain
@@ -111,14 +113,14 @@ object AAMAnalyses:
         with BaseSimpleWorklistSystem
         with SchemeAAMAnalysisResults
 
-    def scvAAMbase(b: SchemeExp): ScvAAMSemantics with AAMPeformanceMetrics =
+    def scvAAMbase(b: SchemeExp): ScvAAMSemantics with AAMPeformanceMetrics[SchemeExp] =
       new ScvAAMSemantics(b)
         with BaseSchemeAAMSemantics
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeAAMLocalStore
-        with SimpleWorklistSystem
+        with SimpleWorklistSystem[SchemeExp]
         with SchemeAAMAnalysisResults {
         //with SchemeStoreAllocateReturn
         lazy val satSolver: ScvSatSolver[LatVal] =
@@ -126,16 +128,18 @@ object AAMAnalyses:
             new JVMSatSolver
       }
 
-    def scvAAMFnCallBoundaries(b: SchemeExp): ScvAAMSemantics with AAMPeformanceMetrics =
+    def scvAAMFnCallBoundaries(
+        b: SchemeExp
+      ): AnalysisEntry[SchemeExp] with ScvAAMSemantics with AAMPeformanceMetrics[SchemeExp] with ModularSchemeDomain =
       new ScvAAMSemantics(b)
         with BaseSchemeAAMSemantics
-        with AAMAnalysis
+        with AAMAnalysis[SchemeExp]
         with SchemeAAMContextInsensitivity
         with SchemeConstantPropagationDomain
         with SchemeFunctionCallBoundary
         //with SchemeAAMLocalStore
         with BaseSchemeLoggingLocalStore
-        with BaseSimpleWorklistSystem
+        with BaseSimpleWorklistSystem[SchemeExp]
         with SchemeAAMAnalysisResults {
         //with SchemeStoreAllocateReturn
         lazy val satSolver: ScvSatSolver[LatVal] =

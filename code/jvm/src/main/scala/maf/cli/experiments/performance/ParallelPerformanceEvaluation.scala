@@ -17,8 +17,7 @@ trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
         current: Int,
         total: Int,
         failFast: Boolean
-      )(using AnalysisIsFinished[Analysis],
-        ExecutionContext
+      )(using ExecutionContext
       ): List[Future[Any]] =
       analyses.map { case (analysis, name) =>
         println(s"***** Scheduling $name on $benchmark [$current/$total] (futures) *****")
@@ -32,7 +31,7 @@ trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
           }
       }
 
-    override def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using AnalysisIsFinished[Analysis], ExecutionContext) =
+    override def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using ExecutionContext) =
         val total = benchmarks.size
         val futs = (0 to total).zip(benchmarks).flatMap { case (current, b) =>
           measureBenchmarkFuture(b, current, total, failFast)
@@ -46,7 +45,6 @@ trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
         path: String = "benchOutput/performance/output.csv",
         timeoutFast: Boolean = true,
         failFast: Boolean = true
-      )(using AnalysisIsFinished[Analysis]
       ) =
         //import AffinityStrategies.*
         //val afinityFactory = new AffinityThreadFactory("bg", SAME_SOCKET)

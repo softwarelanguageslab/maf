@@ -91,7 +91,7 @@ object AAMTester extends AAMTesterT:
         //with SchemeWideningAfterCondition
         with SchemeFunctionCallBoundary
         //with SchemeFunctionModularAAM
-        with SimpleWorklistSystem
+        with SimpleWorklistSystem[SchemeExp]
         //with SchemeAtomicEvaluation
         with SchemeAAMAnalysisResults {
       //override type System = LoggingLocalStoreSystem
