@@ -26,6 +26,8 @@ trait AAMPeformanceMetrics[E <: Expression] extends AAMAnalysis[E]:
         case None      => Some(1)
       }
 
+    override def metrics: List[maf.modular.Metric] = List()
+
     def reportMetrics: List[(String, Double)] =
       collectedMetrics.map { case (key, v) =>
         (key.name, v)

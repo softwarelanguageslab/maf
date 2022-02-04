@@ -13,31 +13,6 @@ import maf.util.graph.*
 import maf.cli.experiments.SchemeAnalyses
 import maf.aam.scheme.AAMPeformanceMetrics
 
-enum AllAnalyisTypes:
-    case ModF(analysis: ModAnalysis[SchemeExp])
-    case AAM(analysis: AAMPeformanceMetrics[SchemeExp])
-
-object AllAnalyisTypes:
-    given AnalysisIsFinished[AllAnalyisTypes] with
-        type T = AllAnalyisTypes
-        def isFinished(analysis: T): Boolean =
-          analysis match
-              case ModF(anl) => anl.finished
-              case AAM(anl)  => anl.finished
-
-        def doAnalyzeWithTimeout(analysis: T, timeout: Timeout.T): Any =
-          analysis match
-              case ModF(anl) => anl.analyzeWithTimeout(timeout)
-              case AAM(anl) =>
-                val g = new NoGraph[GraphElementAAM, GraphElement]
-                anl.analyzeWithTimeout(timeout, g.G())(using g.G.typeclass)
-
-        override def getMetrics(analysis: T): List[Metric] =
-          analysis match
-              case AAM(anl) =>
-                anl.reportMetrics.map(Metric.apply.tupled)
-              case _ => List() // no support for metrics in ModF yet
-
 /** Compare the performance of AAM with a ModF style analysis */
 trait AAMPerformanceComparison extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]
