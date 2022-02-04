@@ -2,7 +2,7 @@ package maf.cli.experiments.precision
 
 import maf.core._
 import maf.language.scheme._
-import maf.language.scheme.interpreter.{ConcreteValues, FileIO, SchemeInterpreter}
+import maf.language.scheme.interpreter.{ConcreteValues, FileIO, IO, SchemeInterpreter}
 import maf.language.scheme.lattices.ModularSchemeLattice
 import maf.language.scheme.primitives._
 import maf.lattice.interfaces._
@@ -10,6 +10,7 @@ import maf.modular._
 import maf.modular.scheme._
 import maf.util._
 import maf.util.benchmarks.Timeout
+import maf.language.scheme.interpreter.EmptyIO
 
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
 
@@ -37,7 +38,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     type BaseValue = baseDomain.L
 
     val emptyEnv = Environment[BaseAddr](Iterable.empty)
-    private def convertV(analysis: Analysis)(value: analysis.modularLatticeWrapper.modularLattice.Value): baseDomain.Value = value match
+    protected def convertV(analysis: Analysis)(value: analysis.modularLatticeWrapper.modularLattice.Value): baseDomain.Value = value match
         case analysis.modularLatticeWrapper.modularLattice.Nil          => baseDomain.Nil
         case analysis.modularLatticeWrapper.modularLattice.Bool(b)      => baseDomain.Bool(b)
         case analysis.modularLatticeWrapper.modularLattice.Int(i)       => baseDomain.Int(i)
@@ -55,7 +56,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         case analysis.modularLatticeWrapper.modularLattice.Thread(tids) => baseDomain.Thread(tids)
         case v                                                          => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
 
-    private def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match
+    protected def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match
         case analysis.modularLatticeWrapper.modularLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
 
     private def convertConcreteAddr(addr: ConcreteValues.Addr): BaseAddr = addr._2 match
@@ -63,7 +64,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         case ConcreteValues.AddrInfo.PtrAddr(p) => PtrAddr(p)
         case ConcreteValues.AddrInfo.PrmAddr(p) => PrmAddr(p)
 
-    private def convertConcreteValue(value: ConcreteValues.Value): BaseValue = value match
+    protected def convertConcreteValue(value: ConcreteValues.Value): BaseValue = value match
         case ConcreteValues.Value.Nil          => baseLattice.nil
         case ConcreteValues.Value.Void         => baseLattice.void
         case ConcreteValues.Value.Undefined(_) => baseLattice.bottom
@@ -211,6 +212,27 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
             Errored(e)
 
     /**
+     * Create a concrete interpeter.
+     *
+     * @param addResult
+     *   a callabck function that is called when the store is updated in the concrete interpeter
+     * @param io
+     *   a mock FileIO class that is used when the concrete interpreter requires some input
+     */
+    def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO()): SchemeInterpreter =
+      new SchemeInterpreter(addResult, io)
+
+    /**
+     * Hook that gets executed when the interpreter throws an exception.
+     *
+     * It rethrows the exception as a default behaviour
+     *
+     * @param addResult
+     *   a callback function that can register values in the result map
+     */
+    def handleInterpreterError(addResult: (Identity, ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = { case e => throw e }
+
+    /**
      * Run the concrete interpreter on a given program
      *
      * @param program
@@ -239,8 +261,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         try
             for _ <- 1 to times do
                 print(".")
-                val interpreter = new SchemeInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
-                interpreter.run(program, timeout)
+                val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+                try interpreter.run(program, timeout)
+                catch handleInterpreterError(addResult)
             println()
             Some(idnResults)
         catch
