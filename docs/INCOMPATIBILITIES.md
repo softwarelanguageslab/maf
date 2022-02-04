@@ -80,4 +80,8 @@ MAF currently does not explicitly model errors. Invalid operations simply yield 
 
 Scheme has a powerful numerical system. This numerical system is only modelled partially: we support both integers and real numbers. 
 
+## Primitives
+
+Some Scheme primitives, such as `map` and `<=` do not support a variable number of arguments, but have a fixed arity.
+
 
