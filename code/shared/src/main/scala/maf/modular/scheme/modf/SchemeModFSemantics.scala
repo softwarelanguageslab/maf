@@ -262,16 +262,13 @@ trait BaseSchemeModFSemanticsM
         lattice
           .getPrimitives(fval)
           .foldLeftM(lattice.bottom)((acc, prm) =>
-            Monad[M].unit(
-              lattice.join(
-                acc,
-                primitives(prm).callMF(fexp, args.map(_._2)) match {
-                  case MayFailSuccess(vlu) => vlu
-                  case MayFailBoth(vlu, _) => vlu
-                  case MayFailError(_)     => lattice.bottom
-                }
-              )
-            )
+            (primitives(prm).callMF(fexp, args.map(_._2)) match {
+              case MayFailSuccess(vlu) => Monad[M].unit(vlu)
+              case MayFailBoth(vlu, _) => Monad[M].unit(vlu)
+              case MayFailError(e)     => MonadError[M, Error].fail(PrimitiveError(e))
+            }) >>= { vlu =>
+              Monad[M].unit(lattice.join(acc, vlu))
+            }
           )
       // evaluation helpers
       protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): Value = literal match

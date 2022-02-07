@@ -9,6 +9,7 @@ case class OperatorNotApplicable[V](operator: String, arguments: List[V]) extend
 case class TypeError[V](message: String, on: V) extends Error
 case class InvalidRelease[V](message: String, on: V) extends Error
 case class UndefinedVariableError(id: Identifier) extends Error
+case class PrimitiveError(errs: Set[Error]) extends Error
 
 /** An error that is thrown as an exception. */
 trait MAFException extends Throwable
