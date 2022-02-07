@@ -72,6 +72,10 @@ object Monad:
         def map[A, B](m: Id[A])(f: A => B): Id[B] =
           flatMap(m)((a) => unit(f(a)))
 
+    given idMonadFail[E]: Monad[Id] with MonadError[Id, E] with
+        export idMonad.*
+        def fail[X](e: E): Id[X] = throw new Exception(e.toString)
+
     /** For any Monad M provides a way to merge a set of such monads into a single monad-wrapped value using the join of the given lattice */
     def merge[X: Lattice, M[_]: Monad](xs: List[M[X]]): M[X] = xs match
         case List() => Monad[M].unit(Lattice[X].bottom)
@@ -213,4 +217,4 @@ object OptionMonad:
 
 object IdentityMonad:
     type Id[X] = X
-    export Monad.idMonad
+    export Monad.{idMonad, idMonadFail}

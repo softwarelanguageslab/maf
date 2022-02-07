@@ -24,7 +24,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
     type EvalM[_]
     type M[X] = EvalM[X]
     implicit val evalM: TEvalM[EvalM]
-    implicit lazy val baseEvalM: Monad[M] = evalM
+    implicit lazy val baseEvalM: Monad[M] & MonadError[M, Error] = evalM
 
     import evalM._
 
@@ -66,7 +66,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
           for
               rhs <- eval(exp)
               env <- getEnv
-              _ = assign(id, env, rhs)
+              _ <- assign(id, env, rhs)
           yield lattice.void
         protected def evalIf(
             prd: SchemeExp,
@@ -162,13 +162,26 @@ object TEvalM:
         def fail[X](e: Error): EvalM[X] =
           throw new Exception(e.toString)
 
+    /** Instead of throwing an error, fails with bottom so that evaluation stops at that point in the analysis */
+    trait FailSilentMonadEvalM extends MonadEvalM:
+        override def fail[X](e: Error): EvalM[X] =
+          mzero
+
+    /** Same as "FailSilent" but prints a warning first */
+    trait LogFailMonadEValM extends FailSilentMonadEvalM:
+        def warn(msg: String): Unit
+        override def fail[X](e: Error): EvalM[X] =
+            warn(s"ignoring error $e")
+            super.fail(e)
+
 trait BigStepModFSemantics extends BigStepModFSemanticsT {
   import TEvalM.{EvalM as BaseEvalM, *}
 
-  object BaseEvalM extends MonadEvalM
+  object BaseEvalM extends LogFailMonadEValM:
+      def warn(msg: String): Unit =
+        println(msg)
 
   override type EvalM[X] = BaseEvalM[X]
-  /* EvalM allows for big-step computations in "monadic" style */
 
   implicit val evalM = BaseEvalM
   override def intraAnalysis(component: Component): BigStepModFIntra

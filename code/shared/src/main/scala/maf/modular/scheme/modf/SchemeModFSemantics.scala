@@ -26,7 +26,7 @@ trait BaseSchemeModFSemanticsM
 
     /** Functions of these base definitions can be executed in the context of the given monad */
     type M[_]
-    implicit lazy val baseEvalM: Monad[M]
+    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error]
 
     // the environment in which the ModF analysis is executed
     type Env = Environment[Addr]
@@ -125,18 +125,23 @@ trait BaseSchemeModFSemanticsM
                 case None         => extEnv
                 case Some(varArg) => extEnv.extend(varArg.name, allocVar(varArg, component))
       // variable lookup: use the global store
-      protected def lookup(id: Identifier, env: Env): Value = env.lookup(id.name) match
-          case None       => lattice.bottom // throw new Exception(s"Undefined variable $id (${id.idn.pos})") //TODO: better error reporting
-          case Some(addr) => readAddr(addr)
+      protected def lookup(id: Identifier, env: Env): M[Value] = env.lookup(id.name) match
+          case None       => baseEvalM.fail(UndefinedVariableError(id))
+          case Some(addr) => baseEvalM.unit(readAddr(addr))
       protected def assign(
           id: Identifier,
           env: Env,
           vlu: Value
-        ): Unit = env.lookup(id.name) match
-          case None       => lattice.bottom // throw new Exception(s"Undefined variable $id (${id.idn.pos})") //TODO: better error reporting
-          case Some(addr) => writeAddr(addr, vlu)
-      protected def assign(bds: List[(Identifier, Value)], env: Env): Unit =
-        bds.foreach { case (id, vlu) => assign(id, env, vlu) }
+        ): M[Unit] = env.lookup(id.name) match
+          case None => baseEvalM.fail(UndefinedVariableError(id))
+          case Some(addr) =>
+            writeAddr(addr, vlu)
+            baseEvalM.unit(())
+
+      protected def assign(bds: List[(Identifier, Value)], env: Env): M[Unit] =
+          import maf.core.Monad.MonadSyntaxOps
+          Monad.sequence(bds.map { case (id, vlu) => assign(id, env, vlu) }) >>> baseEvalM.unit(())
+
       protected def bind(
           id: Identifier,
           env: Env,
@@ -320,7 +325,7 @@ trait BaseSchemeModFSemanticsIdentity extends BaseSchemeModFSemantics:
     import maf.core.IdentityMonad.Id
 
     type M[X] = Id[X]
-    implicit lazy val baseEvalM: Monad[M] = idMonad
+    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error] = idMonadFail
 
 trait SchemeModFSemanticsM extends SchemeSetup with BaseSchemeModFSemanticsM with StandardSchemeModFAllocator:
     def baseEnv = initialEnv
