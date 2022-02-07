@@ -74,6 +74,8 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
       def mzero[X]: EvalM[X] = MonadStateT.lift(TaggedSet.empty)
       def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] =
         throw new Exception("Merging not supported in ScvEvalM")
+      def fail[X](e: Error): EvalM[X] =
+        throw new Exception(e.toString)
 
   /* MonadStateT((state) => {
           val xRes = x.run(state)

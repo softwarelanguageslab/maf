@@ -7,7 +7,7 @@ import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.benchmarks.Timeout
 
 /* Generic trait for big-step computations in a "monadic" style */
-trait TEvalM[M[_]] extends Monad[M]:
+trait TEvalM[M[_]] extends Monad[M], MonadError[M, Error]:
     def mzero[X]: M[X]
     /* Guards the execution on the given Boolean variable */
     def guard(cnd: Boolean): M[Unit]
@@ -120,46 +120,57 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
               result <- inject(returned)
           yield result
 
+/** A collection of possible configurations of the EvalM monad */
+object TEvalM:
+    case class EvalM[+X](run: Environment[Address] => Option[X]):
+        def flatMap[Y](f: X => EvalM[Y]): EvalM[Y] = EvalM(env => run(env).flatMap(res => f(res).run(env)))
+        def map[Y](f: X => Y): EvalM[Y] = EvalM(env => run(env).map(f))
+
+    /** Regular EvalM: joins non-deterministic paths using the analysis lattice, throws an exception if an operation fails */
+    trait MonadEvalM extends TEvalM[EvalM]:
+        def map[X, Y](m: EvalM[X])(f: X => Y): EvalM[Y] = m.map(f)
+        def flatMap[X, Y](m: EvalM[X])(f: X => EvalM[Y]): EvalM[Y] = m.flatMap(f)
+        def unit[X](x: X): EvalM[X] = EvalM(_ => Some(x))
+        def mzero[X]: EvalM[X] = EvalM(_ => None)
+        def guard(cnd: Boolean): EvalM[Unit] = if cnd then EvalM(_ => Some(())) else mzero
+        // TODO: Scala probably already has something for this?
+        implicit class MonadicOps[X](xs: Iterable[X]):
+            def foldLeftM[Y](y: Y)(f: (Y, X) => EvalM[Y]): EvalM[Y] = xs match
+                case Nil     => unit(y)
+                case x :: xs => f(y, x).flatMap(acc => xs.foldLeftM(acc)(f))
+            def mapM[Y](f: X => EvalM[Y]): EvalM[List[Y]] = xs match
+                case Nil => unit(Nil)
+                case x :: xs =>
+                  for
+                      fx <- f(x)
+                      rest <- xs.mapM(f)
+                  yield fx :: rest
+            def mapM_(f: X => EvalM[Unit]): EvalM[Unit] = xs match
+                case Nil     => unit(())
+                case x :: xs => f(x).flatMap(_ => xs.mapM_(f))
+        def getEnv: EvalM[Environment[Address]] = EvalM(env => Some(env))
+        // TODO: withExtendedEnv would make more sense
+        def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
+          EvalM(env => ev.run(f(env)))
+        def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] = EvalM { env =>
+          (x.run(env), y.run(env)) match
+              case (None, yres)             => yres
+              case (xres, None)             => xres
+              case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
+        }
+
+        def fail[X](e: Error): EvalM[X] =
+          throw new Exception(e.toString)
+
 trait BigStepModFSemantics extends BigStepModFSemanticsT {
+  import TEvalM.{EvalM as BaseEvalM, *}
 
+  object BaseEvalM extends MonadEvalM
+
+  override type EvalM[X] = BaseEvalM[X]
   /* EvalM allows for big-step computations in "monadic" style */
-  case class EvalM[+X](run: Environment[Address] => Option[X]):
-      def flatMap[Y](f: X => EvalM[Y]): EvalM[Y] = EvalM(env => run(env).flatMap(res => f(res).run(env)))
-      def map[Y](f: X => Y): EvalM[Y] = EvalM(env => run(env).map(f))
 
-  object EvalM extends TEvalM[EvalM]:
-      def map[X, Y](m: EvalM[X])(f: X => Y): EvalM[Y] = m.map(f)
-      def flatMap[X, Y](m: EvalM[X])(f: X => EvalM[Y]): EvalM[Y] = m.flatMap(f)
-      def unit[X](x: X): EvalM[X] = EvalM(_ => Some(x))
-      def mzero[X]: EvalM[X] = EvalM(_ => None)
-      def guard(cnd: Boolean): EvalM[Unit] = if cnd then EvalM(_ => Some(())) else mzero
-      // TODO: Scala probably already has something for this?
-      implicit class MonadicOps[X](xs: Iterable[X]):
-          def foldLeftM[Y](y: Y)(f: (Y, X) => EvalM[Y]): EvalM[Y] = xs match
-              case Nil     => unit(y)
-              case x :: xs => f(y, x).flatMap(acc => xs.foldLeftM(acc)(f))
-          def mapM[Y](f: X => EvalM[Y]): EvalM[List[Y]] = xs match
-              case Nil => unit(Nil)
-              case x :: xs =>
-                for
-                    fx <- f(x)
-                    rest <- xs.mapM(f)
-                yield fx :: rest
-          def mapM_(f: X => EvalM[Unit]): EvalM[Unit] = xs match
-              case Nil     => unit(())
-              case x :: xs => f(x).flatMap(_ => xs.mapM_(f))
-      def getEnv: EvalM[Environment[Address]] = EvalM(env => Some(env))
-      // TODO: withExtendedEnv would make more sense
-      def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
-        EvalM(env => ev.run(f(env)))
-      def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] = EvalM { env =>
-        (x.run(env), y.run(env)) match
-            case (None, yres)             => yres
-            case (xres, None)             => xres
-            case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
-      }
-
-  implicit val evalM = EvalM
+  implicit val evalM = BaseEvalM
   override def intraAnalysis(component: Component): BigStepModFIntra
 
   trait BigStepModFIntra extends BigStepModFIntraT {
