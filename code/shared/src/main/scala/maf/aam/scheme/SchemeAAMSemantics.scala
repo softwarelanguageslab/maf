@@ -17,9 +17,10 @@ import maf.util.graph.{Graph, GraphElement}
 import maf.util.graph.Colors
 import maf.util.Trampoline.{done, given}
 import maf.core.Monad.*
+import maf.modular.AnalysisEntry
 
 /** An AAM style semantics for Scheme */
-trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis, SchemeDomain { outer =>
+trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis[SchemeExp], SchemeDomain { outer =>
   type Val
   type LatVal = Value
   type Expr = SchemeExp

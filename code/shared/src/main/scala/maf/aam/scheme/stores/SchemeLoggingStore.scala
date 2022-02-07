@@ -1,6 +1,7 @@
 package maf.aam.scheme.stores
 
 import maf.aam.scheme.*
+import maf.language.scheme.SchemeExp
 import maf.core.{Address, BasicStore, Lattice}
 import maf.aam.{AAMGraph, BaseSimpleWorklistSystem, GraphElementAAM}
 
@@ -24,7 +25,7 @@ case class LoggingStore[V: Lattice](originalSto: BasicStore[Address, V], changes
         .getOrElse(List())
         .foldLeft(Lattice[V].bottom)((joined, vlu) => Lattice[V].join(joined, vlu))
 
-trait BaseSchemeLoggingLocalStore extends BaseSchemeAAMSemantics, BaseSimpleWorklistSystem:
+trait BaseSchemeLoggingLocalStore extends BaseSchemeAAMSemantics, BaseSimpleWorklistSystem[SchemeExp]:
     type Sto = LoggingStore[Storable]
     type System = LoggingLocalStoreSystem
     type Conf = SchemeConf

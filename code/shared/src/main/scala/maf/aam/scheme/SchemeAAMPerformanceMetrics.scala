@@ -2,9 +2,10 @@ package maf.aam.scheme
 
 import scala.collection.mutable.Map
 import maf.aam.AAMAnalysis
+import maf.core.Expression
 
 /** Trait that provides instrumentation to report various metrics of the analysis */
-trait AAMPeformanceMetrics extends AAMAnalysis:
+trait AAMPeformanceMetrics[E <: Expression] extends AAMAnalysis[E]:
     sealed abstract class Metric:
         def name: String
 
@@ -24,6 +25,8 @@ trait AAMPeformanceMetrics extends AAMAnalysis:
         case Some(old) => Some(old + 1)
         case None      => Some(1)
       }
+
+    override def metrics: List[maf.modular.Metric] = List()
 
     def reportMetrics: List[(String, Double)] =
       collectedMetrics.map { case (key, v) =>

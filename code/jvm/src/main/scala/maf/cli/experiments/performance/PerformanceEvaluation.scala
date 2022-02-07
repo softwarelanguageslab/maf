@@ -2,7 +2,7 @@ package maf.cli.experiments.performance
 
 import maf.language.scheme._
 import maf.language.CScheme._
-import maf.modular.{AnalysisEntry, ModAnalysis}
+import maf.modular.{AnalysisEntry, Metric, ModAnalysis}
 import maf.util._
 import maf.util.benchmarks._
 
@@ -19,34 +19,10 @@ case object TimedOut extends PerformanceResult
 case object NoData extends PerformanceResult
 
 // A variable that holds additional metrics
-case class Metric(name: String, result: Double)
 case class Metrics(name: String, results: Statistics.Stats)
 
-trait AnalysisIsFinished[T]:
-    def isFinished(analysis: T): Boolean
-    def doAnalyzeWithTimeout(analysis: T, timeout: Timeout.T): Any
-
-    /** Let the analysis decide what additional metrics to report */
-    def getMetrics(analysis: T): List[Metric] = List()
-
-    extension (analysis: T)
-        def finished: Boolean = isFinished(analysis)
-        def analyzeWithTimeout(timeout: Timeout.T): Any = doAnalyzeWithTimeout(analysis, timeout)
-        def metrics: List[Metric] = getMetrics(analysis)
-
-object AnalysisIsFinished:
-    given AnalysisIsFinished[AnalysisEntry[SchemeExp]] with
-        def isFinished(analysis: AnalysisEntry[SchemeExp]): Boolean = analysis.finished
-        def doAnalyzeWithTimeout(analysis: AnalysisEntry[SchemeExp], timeout: Timeout.T): Any =
-          analysis.analyzeWithTimeout(timeout)
-
-    given AnalysisIsFinished[AAMAnalysis] with
-        def isFinished(analysis: AAMAnalysis): Boolean = analysis.finished
-        def doAnalyzeWithTimeout(analysis: AAMAnalysis, timeout: Timeout.T): Any =
-          analysis.analyzeWithTimeout(timeout)
-
 trait PerformanceEvaluation:
-    type Analysis
+    type Analysis <: AnalysisEntry[SchemeExp]
 
     // Configuring the warm-up
     def maxWarmupRuns = 10 // maximum number of warm-up runs
@@ -80,8 +56,7 @@ trait PerformanceEvaluation:
     def measureAnalysis(
         file: String,
         analysis: SchemeExp => Analysis
-      )(using af: AnalysisIsFinished[Analysis],
-        ex: ExecutionContext
+      )(using ex: ExecutionContext
       ): Future[(PerformanceResult, List[Metrics])] =
         def run(): (PerformanceResult, List[Metrics]) =
             // Parse the program
@@ -137,8 +112,7 @@ trait PerformanceEvaluation:
         total: Int,
         timeoutFast: Boolean,
         failFast: Boolean
-      )(using AnalysisIsFinished[Analysis],
-        ExecutionContext
+      )(using ExecutionContext
       ): Unit =
       analyses.foreach { case (analysis, name) =>
         try
@@ -160,7 +134,7 @@ trait PerformanceEvaluation:
               if failFast then return
       }
 
-    def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using AnalysisIsFinished[Analysis], ExecutionContext) =
+    def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using ExecutionContext) =
         var current = 0
         val total = benchmarks.size
         benchmarks.foreach { b =>
@@ -184,7 +158,6 @@ trait PerformanceEvaluation:
         path: String = "benchOutput/performance/output.csv",
         timeoutFast: Boolean = true,
         failFast: Boolean = true
-      )(using AnalysisIsFinished[Analysis]
       ) =
         given ExecutionContext with
             def execute(runnable: Runnable): Unit = runnable.run

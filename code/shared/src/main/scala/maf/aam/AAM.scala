@@ -6,6 +6,7 @@ import maf.util.graph.Graph.GraphOps
 import maf.util.benchmarks.Timeout
 import scala.annotation.tailrec
 import maf.util.Trampoline
+import maf.modular.AnalysisEntry
 
 case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) extends GraphElement:
     def metadata: GraphMetadata = GraphMetadataString(data)
@@ -18,7 +19,7 @@ case class AnalysisResult[G, V, C](dependencyGraph: G, values: Set[V], allConfs:
 type AAMGraph[G] = Graph[G, GraphElementAAM, GraphElement]
 
 /** Provides functionality for a full AAM style analysis */
-trait AAMAnalysis:
+trait AAMAnalysis[E <: Expression] extends AnalysisEntry[E]:
     /** The type of the abstract values for the analysis */
     type Val
     type LatVal
@@ -50,7 +51,7 @@ trait AAMAnalysis:
     type System <: BaseSystem
 
     /** The type of expression to use in the analysis */
-    type Expr
+    type Expr <: E
 
     /** The type of the timestamp in the analysis */
     type Timestamp
@@ -149,5 +150,10 @@ trait AAMAnalysis:
         AnalysisResult(graph1, sys.finalStates.flatMap(extractValue(_)), sys.allConfs)
 
     def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): AnalysisResult[G, Val, Conf]
+
+    /** Runs the analysis until the given time-out passes */
+    def analyzeWithTimeout(timeout: Timeout.T): Unit =
+        val g = new NoGraph[GraphElementAAM, GraphElement]
+        analyzeWithTimeout(timeout, g.G())(using g.G.typeclass)
 
     var finished: Boolean = false

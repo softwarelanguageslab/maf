@@ -4,8 +4,9 @@ import maf.util.graph.*
 import scala.collection.immutable.HashSet
 import maf.util.Trampoline.run
 import maf.aam.scheme.AAMPeformanceMetrics
+import maf.core.Expression
 
-trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
+trait BaseSimpleWorklistSystem[E <: Expression] extends AAMAnalysis[E], AAMPeformanceMetrics[E]:
     val enableGraph: Boolean = false
 
     trait SeenStateSystem extends BaseSystem:
@@ -105,7 +106,7 @@ trait BaseSimpleWorklistSystem extends AAMAnalysis, AAMPeformanceMetrics:
             val successors = run(step(asState(conf.get._2, system)))
             decideSuccessors(fdpg, conf.get._2, successors, system)
 
-trait SimpleWorklistSystem extends BaseSimpleWorklistSystem:
+trait SimpleWorklistSystem[E <: Expression] extends BaseSimpleWorklistSystem[E]:
     type System = SeenStateSystem
     override def inject(expr: Expr): System =
       new SeenStateSystem {}.pushWork(None, injectConf(expr))

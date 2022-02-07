@@ -24,7 +24,7 @@ import maf.util.graph.GraphElement
 // part since that should be the same for both
 trait AAMSoundnessTests extends SchemeBenchmarkTests:
     // analysis must support basic Scheme semantics
-    type Analysis = SchemeAAMSemantics with maf.aam.AnalysisResults
+    type Analysis = SchemeAAMSemantics with maf.modular.AnalysisResults[SchemeExp]
 
     // the analysis that is used to analyse the programs
     def name: String

@@ -2,6 +2,7 @@ package maf.aam.scheme.stores
 
 import maf.core.*
 import scala.annotation.static
+import maf.language.scheme.*
 import maf.aam.{AAMAnalysis, AAMGraph, GraphElementAAM}
 import maf.aam.scheme.BaseSchemeAAMSemantics
 import maf.util.Trampoline.run
@@ -36,7 +37,7 @@ def addrNode(adr: Address): GraphElementAAM =
   GraphElementAAM(adr.hashCode, adr.toString, Colors.Grass, "")
 
 /** An effect driven imperative store */
-trait SchemeImperativeStoreWidening extends AAMAnalysis, BaseSchemeAAMSemantics, AAMPeformanceMetrics:
+trait SchemeImperativeStoreWidening extends AAMAnalysis[SchemeExp], BaseSchemeAAMSemantics, AAMPeformanceMetrics[SchemeExp]:
     case class SchemeConf(c: Control, k: KonA, t: Timestamp, extra: Ext, tt: Int)
     type Conf = SchemeConf
     type Sto = EffectSto
