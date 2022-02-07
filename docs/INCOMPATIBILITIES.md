@@ -83,5 +83,6 @@ Scheme has a powerful numerical system. This numerical system is only modelled p
 ## Primitives
 
 Some Scheme primitives, such as `map` and `<=` do not support a variable number of arguments, but have a fixed arity.
+Scheme's `eqv?` currently is implemented as `eq?`.
 
 
