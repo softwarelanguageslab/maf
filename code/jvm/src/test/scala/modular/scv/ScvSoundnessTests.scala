@@ -129,9 +129,17 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
               lat.getFlats(abs).exists { fl =>
                 checkSubsumption(analysis)(f.contract, fl.contract) && f.fexp == fl.fexp && f.contractIdn == fl.contractIdn
               }
-            case Opq()               => true
-            case Struct(tag, fields) => ???
-            //lat.getStructs(abs).exists { s => s.tag == tag && fields.zip(abs.fields).forall(checkSubsumption(analysis)(_, _))
+
+            case ContractValue(Opq()) => true
+
+            case ContractValue(Struct(tag, fields)) =>
+              lat.getStructs(abs).exists { s => s.tag == tag && fields.contents.zip(s.fields.contents).forall(checkSubsumption(analysis)(_, _)) }
+            case ContractValue(StructSetterGetter(tag, idx, isSetter)) =>
+              lat.getGetterSetter(abs).exists { s => s.tag == tag && s.idx == idx && s.isSetter == isSetter }
+            case ContractValue(StructConstructor(tag, size)) =>
+              lat.getStructConstructor(abs).exists { s => s.tag == tag && s.size == size }
+            case ContractValue(StructPredicate(tag)) =>
+              lat.getStructPredicates(abs).exists { s => s.tag == tag }
 
             case _ => super.checkSubsumption(analysis)(v, abs)
 
