@@ -26,8 +26,6 @@ object ScvPrecisionComparison
       ConstantPropagation.Sym
     ]:
 
-    // TODO: check whether the subsumes method is correctly implemented for all values
-
     def analyses: List[(SchemeExp => Analysis, String)] = List(
       (SchemeAnalyses.scvModAnalysisWithRacketFeatures, "scv-modf"),
       (AAMAnalyses.scvAAMFnCallBoundaries, "scv-aam")

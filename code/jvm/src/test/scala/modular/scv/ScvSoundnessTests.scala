@@ -4,7 +4,8 @@ import maf.cli.modular.scv.*
 import maf.core.Identity
 import maf.test.*
 import maf.language.ContractScheme.*
-import maf.language.scheme.interpreter.ConcreteValues.*
+import maf.language.ContractScheme.interpreter.ConcreteValues.*
+import maf.language.ContractScheme.interpreter.ConcreteValues
 import maf.language.scheme.*
 import maf.language.scheme.lattices.*
 import maf.modular.*
@@ -107,9 +108,31 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
             super.compareResults(analysis, concreteResults, message)
 
     override def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value): Boolean =
+        import ConcreteValues.ContractValue
+
+        import maf.language.ContractScheme.ContractValues.{Value => CValue, *}
         val lat = analysis.lattice
         v match
-            // TODO: add cases for contracts and structs
+            case ContractValue(b: Blame) => lat.subsumes(abs, lat.blame(b))
+            case ContractValue(g: Grd[Value]) =>
+              lat.getGrds(abs).exists { grd =>
+                g.domain.zip(grd.domain).forall(checkSubsumption(analysis)(_, _)) &&
+                checkSubsumption(analysis)(g.rangeMaker, grd.rangeMaker) && g.domainIdns == grd.domainIdns && g.rangeMakerExpr == grd.rangeMakerExpr
+              }
+            case ContractValue(a: Arr[Value]) =>
+              lat.getArrs(abs).exists { arr =>
+                a.lcontract == arr.lcontract &&
+                a.lserver == arr.lserver &&
+                checkSubsumption(analysis)(ContractValue(a.contract), lat.grd(arr.contract))
+              }
+            case ContractValue(f: Flat[Value]) =>
+              lat.getFlats(abs).exists { fl =>
+                checkSubsumption(analysis)(f.contract, fl.contract) && f.fexp == fl.fexp && f.contractIdn == fl.contractIdn
+              }
+            case Opq()               => true
+            case Struct(tag, fields) => ???
+            //lat.getStructs(abs).exists { s => s.tag == tag && fields.zip(abs.fields).forall(checkSubsumption(analysis)(_, _))
+
             case _ => super.checkSubsumption(analysis)(v, abs)
 
     def analysis(program: SchemeExp): Analysis =
