@@ -187,26 +187,30 @@ trait BaseSchemeModFSemanticsM
             for
                 result <-
                   (clo match {
-                    case (SchemeLambda(_, prs, _, _, _), _) if prs.length == arity =>
-                      val argVals = args.map(_._2)
-                      for
-                          context <- ctx.allocM(clo, argVals, cll, component)
-                          targetCall = Call(clo, context)
-                          targetCmp = newComponent(targetCall)
-                          _ = bindArgs(targetCmp, prs, argVals)
-                      yield call(targetCmp)
-                    case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) if prs.length <= arity =>
-                      val (fixedArgs, varArgs) = args.splitAt(prs.length)
-                      val fixedArgVals = fixedArgs.map(_._2)
-                      val varArgVal = allocateList(varArgs)
+                    case (SchemeLambda(_, prs, _, _, _), _) =>
+                      if prs.length == arity then
+                          val argVals = args.map(_._2)
+                          for
+                              context <- ctx.allocM(clo, argVals, cll, component)
+                              targetCall = Call(clo, context)
+                              targetCmp = newComponent(targetCall)
+                              _ = bindArgs(targetCmp, prs, argVals)
+                          yield call(targetCmp)
+                      else baseEvalM.fail(ArityError(cll, prs.length, arity))
+                    case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
+                      if prs.length <= arity then
+                          val (fixedArgs, varArgs) = args.splitAt(prs.length)
+                          val fixedArgVals = fixedArgs.map(_._2)
+                          val varArgVal = allocateList(varArgs)
 
-                      for
-                          context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
-                          targetCall = Call(clo, context)
-                          targetCmp = newComponent(targetCall)
-                          _ = bindArgs(targetCmp, prs, fixedArgVals)
-                          _ = bindArg(targetCmp, vararg, varArgVal)
-                      yield call(targetCmp)
+                          for
+                              context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
+                              targetCall = Call(clo, context)
+                              targetCmp = newComponent(targetCall)
+                              _ = bindArgs(targetCmp, prs, fixedArgVals)
+                              _ = bindArg(targetCmp, vararg, varArgVal)
+                          yield call(targetCmp)
+                      else baseEvalM.fail(VarArityError(cll, prs.length, arity))
                     case _ => Monad[M].unit(lattice.bottom)
                   })
             yield lattice.join(
