@@ -26,7 +26,7 @@ trait BaseSchemeModFSemanticsM
 
     /** Functions of these base definitions can be executed in the context of the given monad */
     type M[_]
-    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error]
+    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error] with MonadJoin[M]
 
     // the environment in which the ModF analysis is executed
     type Env = Environment[Addr]
@@ -161,11 +161,10 @@ trait BaseSchemeModFSemanticsM
           ctx: ContextBuilder = DefaultContextBuilder,
         ): M[Value] =
           import maf.core.Monad.MonadSyntaxOps
-          for
-              fromClosures <- applyClosuresM(fval, args, cll, ctx)
-              fromPrimitives <- applyPrimitives(fexp, fval, args)
-              _ = applyContinuations(fval, args)
-          yield lattice.join(fromClosures, fromPrimitives)
+          val fromClosures = applyClosuresM(fval, args, cll, ctx)
+          val fromPrimitives = applyPrimitives(fexp, fval, args)
+          val _ = applyContinuations(fval, args)
+          baseEvalM.mjoin(List(fromClosures, fromPrimitives))
 
       private def applyContinuations(k: Value, args: List[(SchemeExp, Value)]) =
         args match
@@ -174,7 +173,6 @@ trait BaseSchemeModFSemanticsM
               cnts.foreach(cnt => writeResult(vlu, cnt.asInstanceOf[Component])) // TODO: type safety!
             case _ => () // continuations are only called with a single argument
       // => ignore continuation calls with more than 1 argument
-      // TODO[minor]: use foldMap instead of foldLeft
       protected def applyClosuresM(
           fun: Value,
           args: List[(SchemeExp, Value)],
@@ -183,40 +181,34 @@ trait BaseSchemeModFSemanticsM
         ): M[Value] =
           val arity = args.length
           val closures = lattice.getClosures(fun)
-          closures.foldLeftM(lattice.bottom)((acc, clo) =>
-            for
-                result <-
-                  (clo match {
-                    case (SchemeLambda(_, prs, _, _, _), _) =>
-                      if prs.length == arity then
-                          val argVals = args.map(_._2)
-                          for
-                              context <- ctx.allocM(clo, argVals, cll, component)
-                              targetCall = Call(clo, context)
-                              targetCmp = newComponent(targetCall)
-                              _ = bindArgs(targetCmp, prs, argVals)
-                          yield call(targetCmp)
-                      else baseEvalM.fail(ArityError(cll, prs.length, arity))
-                    case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
-                      if prs.length <= arity then
-                          val (fixedArgs, varArgs) = args.splitAt(prs.length)
-                          val fixedArgVals = fixedArgs.map(_._2)
-                          val varArgVal = allocateList(varArgs)
+          MonadJoin[M].mfoldMap(closures)((clo) =>
+            (clo match {
+              case (SchemeLambda(_, prs, _, _, _), _) =>
+                if prs.length == arity then
+                    val argVals = args.map(_._2)
+                    for
+                        context <- ctx.allocM(clo, argVals, cll, component)
+                        targetCall = Call(clo, context)
+                        targetCmp = newComponent(targetCall)
+                        _ = bindArgs(targetCmp, prs, argVals)
+                    yield call(targetCmp)
+                else baseEvalM.fail(ArityError(cll, prs.length, arity))
+              case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
+                if prs.length <= arity then
+                    val (fixedArgs, varArgs) = args.splitAt(prs.length)
+                    val fixedArgVals = fixedArgs.map(_._2)
+                    val varArgVal = allocateList(varArgs)
 
-                          for
-                              context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
-                              targetCall = Call(clo, context)
-                              targetCmp = newComponent(targetCall)
-                              _ = bindArgs(targetCmp, prs, fixedArgVals)
-                              _ = bindArg(targetCmp, vararg, varArgVal)
-                          yield call(targetCmp)
-                      else baseEvalM.fail(VarArityError(cll, prs.length, arity))
-                    case _ => Monad[M].unit(lattice.bottom)
-                  })
-            yield lattice.join(
-              acc,
-              result
-            )
+                    for
+                        context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
+                        targetCall = Call(clo, context)
+                        targetCmp = newComponent(targetCall)
+                        _ = bindArgs(targetCmp, prs, fixedArgVals)
+                        _ = bindArg(targetCmp, vararg, varArgVal)
+                    yield call(targetCmp)
+                else baseEvalM.fail(VarArityError(cll, prs.length, arity))
+              case _ => Monad[M].unit(lattice.bottom)
+            })
           )
       protected def allocateList(elms: List[(SchemeExp, Value)]): Value = elms match
           case Nil                => lattice.nil
@@ -257,23 +249,18 @@ trait BaseSchemeModFSemanticsM
               fpos: Position
             ): Value = modf.callcc(clo, fpos)
           def currentThread = modf.currentThread
-      // TODO[minor]: use foldMap instead of foldLeft
       protected def applyPrimitives(
           fexp: SchemeFuncall,
           fval: Value,
           args: List[(SchemeExp, Value)]
         ): M[Value] =
-        lattice
-          .getPrimitives(fval)
-          .foldLeftM(lattice.bottom)((acc, prm) =>
-            (primitives(prm).callMF(fexp, args.map(_._2)) match {
-              case MayFailSuccess(vlu) => Monad[M].unit(vlu)
-              case MayFailBoth(vlu, _) => Monad[M].unit(vlu)
-              case MayFailError(e)     => MonadError[M, Error].fail(PrimitiveError(e))
-            }) >>= { vlu =>
-              Monad[M].unit(lattice.join(acc, vlu))
-            }
-          )
+        MonadJoin[M].mfoldMap(lattice.getPrimitives(fval))(prm =>
+          (primitives(prm).callMF(fexp, args.map(_._2)) match {
+            case MayFailSuccess(vlu) => Monad[M].unit(vlu)
+            case MayFailBoth(vlu, _) => Monad[M].unit(vlu)
+            case MayFailError(e)     => MonadError[M, Error].fail(PrimitiveError(e))
+          })
+        )
       // evaluation helpers
       protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): Value = literal match
           case sexp.Value.Integer(n)   => lattice.number(n)
@@ -330,7 +317,7 @@ trait BaseSchemeModFSemanticsIdentity extends BaseSchemeModFSemantics:
     case object Failure extends IdFailure[Nothing]
 
     type M[X] = IdFailure[X]
-    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error] = new Monad[M] with MonadError[M, Error]:
+    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error] with MonadJoin[M] = new Monad[M] with MonadError[M, Error] with MonadJoin[M]:
         def unit[T](v: T) = Success(v)
         def flatMap[A, B](m: M[A])(f: A => M[B]): M[B] =
           m match
@@ -341,6 +328,13 @@ trait BaseSchemeModFSemanticsIdentity extends BaseSchemeModFSemantics:
         def fail[X](e: Error): M[X] =
             println(s"warn: encountered an error $e")
             Failure
+        def mbottom[X]: M[X] = Failure
+        def mjoin[X: Lattice](x: M[X], y: M[X]): M[X] =
+          (x, y) match
+              case (Success(v), Failure)      => Success(v)
+              case (Failure, Success(v))      => Success(v)
+              case (Success(v1), Success(v2)) => Success(Lattice[X].join(v1, v2))
+              case _                          => Failure
 
     /** Implicitly tries to convert the given computation to a lattice value. If the computation results in  an error bottom is Return */
     implicit def mtry(m: M[Value]): Value =

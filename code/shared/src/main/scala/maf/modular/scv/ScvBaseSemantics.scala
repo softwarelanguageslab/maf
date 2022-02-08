@@ -69,11 +69,12 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
       def getEnv: EvalM[Environment[Address]] = get.map(_.env)
       def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
         withState(s => s.copy(env = f(s.env)))(ev)
-      def guard(bln: Boolean): EvalM[Unit] =
-        if bln then unit(()) else mzero
+      //def guard(bln: Boolean): EvalM[Unit] =
+      //  if bln then unit(()) else mzero
       def mzero[X]: EvalM[X] = MonadStateT.lift(TaggedSet.empty)
       def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] =
-        throw new Exception("Merging not supported in ScvEvalM")
+        // two programs paths are not merged together in Scv but are rather explorered seperately
+        nondet(x, y)
       def fail[X](e: Error): EvalM[X] =
         throw new Exception(e.toString)
 

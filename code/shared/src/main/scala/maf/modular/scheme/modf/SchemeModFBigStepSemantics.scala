@@ -7,24 +7,31 @@ import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.benchmarks.Timeout
 
 /* Generic trait for big-step computations in a "monadic" style */
-trait TEvalM[M[_]] extends Monad[M], MonadError[M, Error]:
+trait TEvalM[M[_]] extends Monad[M], MonadError[M, Error], MonadJoin[M]:
+    /** Implementation of MonadJoin */
+    def mbottom[X]: M[X] = mzero
+    def mjoin[X: Lattice](x: M[X], y: M[X]): M[X] = merge(x, y)
+
+    /** End implementation of MonadJoin */
     def mzero[X]: M[X]
     /* Guards the execution on the given Boolean variable */
-    def guard(cnd: Boolean): M[Unit]
+    //def guard(cnd: Boolean): M[Unit]
     def getEnv: M[Environment[Address]]
     // TODO: withExtendedEnv would make more sense
     def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => M[X]): M[X]
-    def inject[X: Lattice](x: X): M[X] = if Lattice[X].isBottom(x) then mzero else unit(x)
+    //def inject[X: Lattice](x: X): M[X] = if Lattice[X].isBottom(x) then mzero else unit(x)
     def merge[X: Lattice](x: M[X], y: M[X]): M[X]
     def merge[X: Lattice](xs: Iterable[M[X]]): M[X] =
       xs.foldLeft[M[X]](mzero)((acc, x) => merge(acc, x))
+    def merge[X: Lattice](xs: M[X]*): M[X] =
+      merge(xs)
 
 trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
     import maf.core.Monad.{MonadIterableOps, MonadSyntaxOps}
     type EvalM[_]
     type M[X] = EvalM[X]
     implicit val evalM: TEvalM[EvalM]
-    implicit lazy val baseEvalM: Monad[M] & MonadError[M, Error] = evalM
+    implicit lazy val baseEvalM = evalM
 
     import evalM._
 
@@ -132,7 +139,7 @@ object TEvalM:
         def flatMap[X, Y](m: EvalM[X])(f: X => EvalM[Y]): EvalM[Y] = m.flatMap(f)
         def unit[X](x: X): EvalM[X] = EvalM(_ => Some(x))
         def mzero[X]: EvalM[X] = EvalM(_ => None)
-        def guard(cnd: Boolean): EvalM[Unit] = if cnd then EvalM(_ => Some(())) else mzero
+        //def guard(cnd: Boolean): EvalM[Unit] = if cnd then EvalM(_ => Some(())) else mzero
         // TODO: Scala probably already has something for this?
         implicit class MonadicOps[X](xs: Iterable[X]):
             def foldLeftM[Y](y: Y)(f: (Y, X) => EvalM[Y]): EvalM[Y] = xs match
