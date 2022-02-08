@@ -260,8 +260,8 @@ object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformanc
 object IncrementalSchemeModXPerformance:
     def main(args: Array[String]): Unit =
         val curated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-//val generated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        val generated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
 //if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/performance.R", curated, generated)
-        IncrementalSchemeModFCPPerformance.execute(args)
+//IncrementalSchemeModFCPPerformance.execute(args)
 //IncrementalSchemeModConcPerformance.main(args)
 //IncrementalSchemeModConcCPPerformance.main(args)

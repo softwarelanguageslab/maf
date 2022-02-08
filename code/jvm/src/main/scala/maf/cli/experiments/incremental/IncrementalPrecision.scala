@@ -178,8 +178,6 @@ object IncrementalSchemeModXPrecision:
         val full = text.head.mkString("\n")
         val noOpt = text(1).mkString("\n")
         val outFull = s"${output.split("\\.").nn.head}-FULL.csv"
-        println(output)
-        println(outFull)
         val fullW = Writer.open(outFull)
         Writer.write(fullW, full)
         Writer.close(fullW)
@@ -193,10 +191,10 @@ object IncrementalSchemeModXPrecision:
         val (curatedFull, curatedNoOpt) = splitOutput(
           IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
         )
-//val (generatedFull, generatedNoOpt) = splitOutput(
-//  IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
-//)
+        val (generatedFull, generatedNoOpt) = splitOutput(
+          IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        )
 //if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/precision.R", curatedFull, generatedFull, curatedNoOpt, generatedNoOpt)
-        IncrementalSchemeModFCPPrecision.execute(args)
+//IncrementalSchemeModFCPPrecision.execute(args)
 //IncrementalSchemeModConcTypePrecision.execute(args)
 //IncrementalSchemeModConcCPPrecision.execute(args)
