@@ -181,12 +181,11 @@ object TEvalM:
             warn(s"ignoring error $e")
             super.fail(e)
 
-trait BigStepModFSemantics extends BigStepModFSemanticsT {
+trait BigStepModFSemantics extends BigStepModFSemanticsT { outer =>
   import TEvalM.{EvalM as BaseEvalM, *}
 
   object BaseEvalM extends LogFailMonadEValM:
-      def warn(msg: String): Unit =
-        println(msg)
+      def warn(msg: String) = outer.warn(msg)
 
   override type EvalM[X] = BaseEvalM[X]
 

@@ -62,20 +62,58 @@ object Identity extends PositionalIdentity:
     def none: Identity = NoCodeIdentity
 
 object Position:
+    // Tag for positions (can e.g. be used when ASTs of multiple parsings need to be combined).
+    sealed trait PTag:
+        /** Geneates a showable representation of the tag */
+        def show: String
 
-    type PTag = Option[String] // Tag for positions (can e.g. be used when ASTs of multiple parsings need to be combined).
+        /** Checks wheter the tag contains the given string */
+        def contains(v: String): Boolean
 
-    val noTag: PTag = None
-    def newTag(tag: String): PTag = Some(tag)
+        /** Returns true if the position does not have a tag */
+        def isEmpty: Boolean = false
 
+    case class SimplePTag(tag: String) extends PTag:
+        def show: String = tag
+        def contains(v: String): Boolean = tag.contains(v)
+
+    case class PTagWithSource(tag: String, path: String) extends PTag:
+        def show: String = s"$tag:$path"
+        def contains(v: String): Boolean = tag.contains(v)
+
+    case class SourcePathTag(sourcePath: String) extends PTag:
+        def show: String = s"$sourcePath"
+        def contains(v: String): Boolean = false
+        override def isEmpty: Boolean = true
+
+    case object NoPTag extends PTag:
+        override def isEmpty: Boolean = true
+        def show: String = ""
+        def contains(v: String): Boolean = false
+
+    val noTag: PTag = NoPTag
+    def newTag(tag: String): PTag = SimplePTag(tag)
+    def newTag(tag: String, path: String): PTag = PTagWithSource(tag, path)
+    def withSourcePath(path: String) = SourcePathTag(path)
+
+    /**
+     * Positional information of an expression.
+     *
+     * @param line
+     *   the line on which the expression occurs in the source code
+     * @param col
+     *   the column on which the expression occurs in the source code
+     * @param tag
+     *   an optional tag, can be used to differentiate the AST from multiple parsings
+     */
     case class Position(
         line: Int,
         col: Int,
         tag: PTag = noTag)
         extends SmartHash:
         override def toString: String = tag match
-            case None    => s"$line:$col"
-            case Some(t) => s"$t:$line:$col"
+            case NoPTag => s"$line:$col"
+            case t      => s"${t.show}:$line:$col"
 
     def apply(
         line: Int,

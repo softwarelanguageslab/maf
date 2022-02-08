@@ -8,6 +8,7 @@ import maf.util.benchmarks.Clock
 
 // null values are used here due to Java interop
 import scala.language.unsafeNulls
+import scala.collection.mutable
 
 object Reader:
 
@@ -144,4 +145,80 @@ object Logger:
 
     def apply(msg: String = "log"): Log = new Log(Writer.openTimeStamped(out + msg + ".txt"))
 
+    /** Opens a log without a timestamp */
+    def raw(msg: String): Log = new Log(Writer.open(out + msg + ".txt"))
+
     def numbered(msg: String = "log"): NumberedLog = new NumberedLog(Writer.openTimeStamped(out + msg + ".txt"))
+
+/** A global MAF Logger */
+object MAFLogger:
+    enum LogLevelPolicy:
+        case Print
+        case NoLog
+        case FileLog(location: String)
+
+    enum LogLevel:
+        case AnalysisError
+        case Info
+        case Debug
+
+    /** A series of environments that MAF can run in */
+    enum LogEnvironment:
+        case CI
+        case Local
+        case Benchmarking
+
+    import LogLevelPolicy.*
+    import LogLevel.*
+
+    private def configs(env: LogEnvironment): Map[LogLevel, LogLevelPolicy] = env match
+        case LogEnvironment.CI =>
+          val logLocation: String = sys.env.get("LOG_LOCATION").getOrElse("log.txt")
+          Map(
+            AnalysisError -> FileLog(logLocation),
+            Info -> NoLog,
+            Debug -> NoLog
+          )
+        case LogEnvironment.Local =>
+          Map(
+            AnalysisError -> Print,
+            Info -> Print,
+            Debug -> Print
+          )
+        case LogEnvironment.Benchmarking =>
+          Map(
+            AnalysisError -> NoLog,
+            Info -> NoLog,
+            Debug -> NoLog
+          )
+
+    /** A mapping from log levels to actual loggers, depending on the policy */
+    private val loggers: mutable.Map[LogLevel, Option[Logger.Log]] = mutable.Map(
+      AnalysisError -> None,
+      Info -> None,
+      Debug -> None
+    )
+
+    /** Loads the config that is applicable for the current environment */
+    private def currentConfig: Map[LogLevel, LogLevelPolicy] =
+      sys.env.get("LOG_ENV").getOrElse("local") match
+          case "local" => configs(LogEnvironment.Local)
+          case "ci"    => configs(LogEnvironment.CI)
+          case "bench" => configs(LogEnvironment.Benchmarking)
+          case env     => throw new Exception(s"invalid logging environment $env")
+
+    def log(level: LogLevel, msg: String): Unit =
+        val policy = currentConfig(level)
+        val finalMsg = s"[$level]$msg"
+        policy match
+            case Print => println(finalMsg)
+            case NoLog => ()
+            case FileLog(to) =>
+              val log = loggers(level)
+              log match
+                  case Some(log) => log.log(finalMsg)
+                  case None =>
+                    val logger = Logger.raw(to)
+                    logger.enable()
+                    loggers(level) = Some(logger)
+                    logger.log(finalMsg)

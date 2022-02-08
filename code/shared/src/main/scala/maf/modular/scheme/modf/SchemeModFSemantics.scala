@@ -36,6 +36,18 @@ trait BaseSchemeModFSemanticsM
     // All components used together with this Scheme MODF analysis should be viewable as SchemeComponents.
     def view(cmp: Component): SchemeModFComponent
 
+    /** Get the source path for the given SchemeExpr if available */
+    def getName(program: SchemeExp): String =
+        import maf.core.Position
+        program.idn.pos.tag match
+            case Position.PTagWithSource(_, source) => source
+            case Position.SourcePathTag(source)     => source
+            case _                                  => "unknown"
+
+    /** A warning printer */
+    def warn(msg: String): Unit =
+      MAFLogger.log(MAFLogger.LogLevel.AnalysisError, s"[${getName(program)}] warn $msg")
+
     // Represent `allocCtx` as a value, which can be passed
     // to other functions
     protected trait ContextBuilder:
@@ -326,7 +338,7 @@ trait BaseSchemeModFSemanticsIdentity extends BaseSchemeModFSemantics:
         def map[A, B](m: M[A])(f: A => B): M[B] =
           flatMap(m)((a) => unit(f(a)))
         def fail[X](e: Error): M[X] =
-            println(s"warn: encountered an error $e")
+            warn(s"encountered an error $e")
             Failure
         def mbottom[X]: M[X] = Failure
         def mjoin[X: Lattice](x: M[X], y: M[X]): M[X] =
@@ -348,7 +360,7 @@ trait SchemeModFSemanticsM extends SchemeSetup with BaseSchemeModFSemanticsM wit
 trait SchemeModFSemantics extends BaseSchemeModFSemanticsIdentity
 
 // for convenience, since most Scheme analyses don't need this much parameterization
-abstract class SimpleSchemeModFAnalysis(prg: SchemeExp)
+abstract class SimpleSchemeModFAnalysis(prg: SchemeExp, override val name: Option[String] = None)
     extends ModAnalysis[SchemeExp](prg)
     with StandardSchemeModFComponents
     with SchemeModFSemanticsM

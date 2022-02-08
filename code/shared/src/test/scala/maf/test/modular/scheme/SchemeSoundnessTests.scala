@@ -151,14 +151,14 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
       if isSlow(b) then Seq(SoundnessTest, SlowTest)
       else Seq(SoundnessTest)
 
-    def parseProgram(txt: String): SchemeExp =
-      CSchemeParser.parseProgram(txt)
+    def parseProgram(txt: String, benchmark: String): SchemeExp =
+      CSchemeParser.parseProgram(txt, Position.withSourcePath(benchmark))
 
     def onBenchmark(benchmark: Benchmark): Unit =
       property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
         // load the benchmark program
         val content = Reader.loadFile(benchmark)
-        val program = parseProgram(content)
+        val program = parseProgram(content, benchmark)
         // run the program using a concrete interpreter
         val concreteResults = evalConcrete(program, benchmark)
         // analyze the program using a ModF analysis
