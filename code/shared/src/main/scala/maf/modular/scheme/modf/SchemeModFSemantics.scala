@@ -325,8 +325,28 @@ trait BaseSchemeModFSemanticsIdentity extends BaseSchemeModFSemantics:
     export maf.core.IdentityMonad.given
     import maf.core.IdentityMonad.Id
 
-    type M[X] = Id[X]
-    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error] = idMonadFail
+    sealed trait IdFailure[+X]
+    case class Success[X](v: X) extends IdFailure[X]
+    case object Failure extends IdFailure[Nothing]
+
+    type M[X] = IdFailure[X]
+    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error] = new Monad[M] with MonadError[M, Error]:
+        def unit[T](v: T) = Success(v)
+        def flatMap[A, B](m: M[A])(f: A => M[B]): M[B] =
+          m match
+              case Success(v) => f(v)
+              case Failure    => Failure
+        def map[A, B](m: M[A])(f: A => B): M[B] =
+          flatMap(m)((a) => unit(f(a)))
+        def fail[X](e: Error): M[X] =
+            println(s"warn: encountered an error $e")
+            Failure
+
+    /** Implicitly tries to convert the given computation to a lattice value. If the computation results in  an error bottom is Return */
+    implicit def mtry(m: M[Value]): Value =
+      m match
+          case Success(v) => v
+          case _          => lattice.bottom
 
 trait SchemeModFSemanticsM extends SchemeSetup with BaseSchemeModFSemanticsM with StandardSchemeModFAllocator:
     def baseEnv = initialEnv
