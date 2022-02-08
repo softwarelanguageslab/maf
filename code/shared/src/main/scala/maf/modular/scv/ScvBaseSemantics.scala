@@ -76,7 +76,9 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
         // two programs paths are not merged together in Scv but are rather explorered seperately
         nondet(x, y)
       def fail[X](e: Error): EvalM[X] =
-        throw new Exception(e.toString)
+          // also ignore exception in Scv semantics
+          warn(s"encountered error $e")
+          mzero
 
   /* MonadStateT((state) => {
           val xRes = x.run(state)
