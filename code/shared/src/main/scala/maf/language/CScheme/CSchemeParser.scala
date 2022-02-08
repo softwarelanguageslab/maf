@@ -17,7 +17,7 @@ object CSchemeParser:
     def parse(s: String, tag: PTag = noTag): List[SchemeExp] = SExpParser.parse(s, tag).map(compile)
 
     /** Parse a program, add its prelude and undefine it */
-    def parseProgram(prg: String): SchemeExp = undefine(SchemePrelude.addPrelude(CSchemeParser.parse(prg)))
+    def parseProgram(prg: String, tag: PTag = noTag): SchemeExp = undefine(SchemePrelude.addPrelude(CSchemeParser.parse(prg, tag)))
 
     /** Extension to the parser to allow loading definitions from different files. */
     def parseL(
