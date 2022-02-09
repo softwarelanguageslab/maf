@@ -74,7 +74,17 @@ During preprocessing MAF rejects any program that contains internal definitions 
 
 ## Errors in the abstract interpreter
 
-MAF currently does not explicitly model errors. Invalid operations simply yield `bottom` and the analysis halts for that particular program path.
+None of the analyses in MAF currently model errors explicitly.
+Errors encountered by the abstract interpreter are passed to method `fail` (which is part of the `MonadError` interface). 
+By default, this method logs the error (to aid with debugging) and just returns `bottom` (which causes the analysis to halt for the program path where the error was encountered, but does not include any information about the error state in the analysis results). 
+This behaviour can easily be changed by providing a different implementation for method `fail`.
+
+Note that some errors are not properly handled yet, and may result in unspecified behaviour for the abstract interpreter itself (see [#21](https://github.com/softwarelanguageslab/maf/issues/21)).
+
+
+
+
+
 
 ## Numerical system
 
