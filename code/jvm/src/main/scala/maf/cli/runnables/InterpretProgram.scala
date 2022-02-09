@@ -11,7 +11,7 @@ import scala.concurrent.duration.*
 
 object InterpretProgram extends App:
     val text = Reader.loadFile("test/R5RS/ad/stspaceCODE.scm")
-    val interpreter = new SchemeInterpreter((_, _) => (), stack = true)
+    val interpreter = new SchemeInterpreter((_, _) => ())
     try
         val res = interpreter.run(
           CSchemeParser.parseProgram(text),

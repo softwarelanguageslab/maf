@@ -85,8 +85,6 @@ trait BaseSchemeInterpreter[V]:
         case Nil                  => Value.Nil
         case (exp, value) :: rest => allocateCons(exp, value, makeList(rest))
 
-    val stack: Boolean
-
     /** Signals an error in the program to the user. */
     def signalException[R](msg: Error): R = throw ProgramError(msg)
 

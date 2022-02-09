@@ -22,8 +22,7 @@ case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpr
  */
 class SchemeInterpreter(
     cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
-    val io: IO = new EmptyIO(),
-    val stack: Boolean = false)
+    val io: IO = new EmptyIO())
     extends BaseSchemeInterpreter[TailRec[ConcreteValues.Value]]
     with ConcreteSchemePrimitives:
 
@@ -54,27 +53,6 @@ class SchemeInterpreter(
             cb(i, v)
           }
 
-    // Keep an artificial call stack to ease debugging.
-    var callStack: List[String] = List()
-
-    // TODO: The stack mechanism might have been broken due to the use of TailRec
-    // TODO: This may not work with concurrent programs at all, but at least we make it thread-safe and avoid exceptions.
-    def stackedCall(
-        name: Option[String],
-        idn: Identity,
-        block: => TailRec[Value]
-      ): TailRec[Value] =
-      synchronized {
-        val n = name.getOrElse("λ") + s"@${idn.pos}"
-        if stack then callStack = n :: callStack
-        val res = block
-        if stack then
-            callStack match
-                case Nil => System.err.nn.println("The call stack tracking does currently not work correctly with concurrent programs.")
-                case _   => callStack = callStack.tail
-        res
-      }
-
     def evalSequence(
         exps: List[SchemeExp],
         env: Env,
@@ -100,7 +78,7 @@ class SchemeInterpreter(
         version: Version
       ): TailRec[Value] =
       bindings match
-          case Nil => tailcall(eval(SchemeBegin(body, pos), envExt, timeout, version))
+          case Nil => tailcall(evalSequence(body, envExt, timeout, version))
           case binding :: bindings =>
             val addr = newAddr(AddrInfo.VarAddr(binding._1))
             for
@@ -119,7 +97,7 @@ class SchemeInterpreter(
         version: Version
       ): TailRec[Value] =
       bindings match
-          case Nil => tailcall(eval(SchemeBegin(body, pos), envExt, timeout, version))
+          case Nil => tailcall(evalSequence(body, envExt, timeout, version))
           case binding :: bindings =>
             val addr = newAddr(AddrInfo.VarAddr(binding._1))
             for
@@ -138,7 +116,7 @@ class SchemeInterpreter(
         version: Version
       ): TailRec[Value] =
       bindings match
-          case Nil => tailcall(eval(SchemeBegin(body, pos), envExt, timeout, version))
+          case Nil => tailcall(evalSequence(body, envExt, timeout, version))
           case binding :: bindings =>
             for
                 bindingv <- tailcall(eval(binding._2, envExt, timeout, version))
@@ -203,7 +181,7 @@ class SchemeInterpreter(
                     extendStore(addr, arg._2)
                     (env3 + (arg._1.name -> addr))
                 }
-                ret <- stackedCall(name, pos2, tailcall(eval(SchemeBody(body), envExt, timeout, version)))
+                ret <- tailcall(evalSequence(body, envExt, timeout, version))
             yield ret
 
           // A closure with a variable amount of parameters
@@ -223,13 +201,10 @@ class SchemeInterpreter(
                 varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
                 _ = extendStore(varArgAddr, makeList(args.drop(arity).zip(argsv.drop(arity))))
                 envExt2 = envExt + (vararg.name -> varArgAddr)
-                ret <- stackedCall(name, pos2, eval(SchemeBody(body), envExt2, timeout, version))
+                ret <- evalSequence(body, envExt2, timeout, version)
             yield ret
 
-          case Value.Primitive(p) =>
-            tailcall(
-              stackedCall(Some(p), Identity.none, tailcall(done(Primitives.allPrimitives(p).call(call, args.zip(argsv)))))
-            )
+          case Value.Primitive(p) => tailcall(done(Primitives.allPrimitives(p).call(call, args.zip(argsv))))
           case v =>
             signalException(ValueNotApplicable(v, idn))
 
@@ -259,7 +234,7 @@ class SchemeInterpreter(
                                 extendStore(addr, arg._2)
                                 (env3 + (arg._1.name -> addr))
                             }
-                            res <- stackedCall(name, pos2, tailcall(eval(SchemeBody(body), envExt, timeout, version)))
+                            res <- tailcall(evalSequence(body, envExt, timeout, version))
                         yield res
                       case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, ann, pos2), env2) =>
                         val arity = argsNames.length
@@ -277,16 +252,11 @@ class SchemeInterpreter(
                             varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
                             _ = extendStore(varArgAddr, makeList(args.drop(arity).zip(argsv.drop(arity))))
                             envExt2 = envExt + (vararg.name -> varArgAddr)
-                            res <- stackedCall(name, pos2, eval(SchemeBody(body), envExt2, timeout, version))
+                            res <- evalSequence(body, envExt2, timeout, version)
                         yield res
                       case Value.Primitive(p) =>
-                        tailcall(
-                          stackedCall(Some(p),
-                                      Identity.none,
-                                      for argsv <- tailcall(evalArgs(args, env, timeout, version))
-                                      yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
-                          )
-                        )
+                        for argsv <- tailcall(evalArgs(args, env, timeout, version))
+                        yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
                       case v =>
                         signalException(ValueNotApplicable(v, idn))
               yield res
