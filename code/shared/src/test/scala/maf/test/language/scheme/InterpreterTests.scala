@@ -17,9 +17,10 @@ import scala.concurrent.duration._
 
 class InterpreterTests() extends AnyPropSpec:
 
-    val benchmarks: Set[String] = SchemeBenchmarkPrograms.sequentialBenchmarks -- Set(
+    val benchmarks: Set[String] = Set("test/R5RS/ad/stspaceCODE.scm")
+      /* SchemeBenchmarkPrograms.sequentialBenchmarks -- Set(
       "test/R5RS/various/my-test.scm" // Result depends on random numbers.
-    )
+    ) */
 
     val interpreter = new SchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new EmptyIO())
     val CPSinterpreter = new CPSSchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new EmptyIO())

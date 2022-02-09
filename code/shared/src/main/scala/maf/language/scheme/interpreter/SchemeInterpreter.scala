@@ -75,10 +75,6 @@ class SchemeInterpreter(
         res
       }
 
-    override def signalException[R](msg: String): R =
-        val m = if stack then callStack.mkString(s"$msg\n Callstack:\n * ", "\n * ", "\n **********") else msg
-        super.signalException(m)
-
     def evalSequence(
         exps: List[SchemeExp],
         env: Env,
@@ -198,7 +194,7 @@ class SchemeInterpreter(
           case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
             if argsNames.length != argsv.length then
                 signalException(
-                  s"Invalid function call at position ${idn}: ${argsv.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected."
+                  ArityError(pos2.pos, argsNames.length, argsv.length)
                 )
             for
                 _ <- done(())
@@ -215,7 +211,7 @@ class SchemeInterpreter(
             val arity = argsNames.length
             if argsv.length < arity then
                 signalException(
-                  s"Invalid function call at position $idn: ${args.length} arguments given, while at least ${argsNames.length} are expected."
+                  VarArityError(pos2.pos, argsNames.length, args.length)
                 )
             for
                 _ <- done(())
@@ -235,7 +231,7 @@ class SchemeInterpreter(
               stackedCall(Some(p), Identity.none, tailcall(done(Primitives.allPrimitives(p).call(call, args.zip(argsv)))))
             )
           case v =>
-            signalException(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive.")
+            signalException(ValueNotApplicable(v, idn))
 
     def eval(
         e: SchemeExp,
@@ -252,8 +248,9 @@ class SchemeInterpreter(
                   res <- fv match
                       case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
                         if argsNames.length != args.length then
+
                             signalException(
-                              s"Invalid function call at position ${idn}: ${args.length} arguments given to function lambda (${lambda.idn.pos}), while exactly ${argsNames.length} are expected."
+                              ArityError(pos2.pos, argsNames.length, args.length)
                             )
                         for
                             argsv <- evalArgs(args, env, timeout, version)
@@ -268,7 +265,7 @@ class SchemeInterpreter(
                         val arity = argsNames.length
                         if args.length < arity then
                             signalException(
-                              s"Invalid function call at position $idn: ${args.length} arguments given, while at least ${argsNames.length} are expected."
+                              VarArityError(pos2.pos, argsNames.length, args.length)
                             )
                         for
                             argsv <- evalArgs(args, env, timeout, version)
@@ -291,7 +288,7 @@ class SchemeInterpreter(
                           )
                         )
                       case v =>
-                        signalException(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive.")
+                        signalException(ValueNotApplicable(v, idn))
               yield res
             case SchemeIf(cond, cons, alt, _) =>
               for
@@ -316,7 +313,7 @@ class SchemeInterpreter(
               /* TODO: primitives can be reassigned with set! without being redefined */
               val addr = env.get(id.name) match
                   case Some(addr) => addr
-                  case None       => signalException(s"Undefined variable $id accessed at position $pos")
+                  case None       => signalException(UndefinedVariableError(id))
               for
                   v <- eval(v, env, timeout, version)
                   _ = extendStore(addr, v)
@@ -328,10 +325,10 @@ class SchemeInterpreter(
             case SchemeDefineVariable(_, _, _) => ???
             case SchemeVar(id) =>
               env.get(id.name) match
-                  case None => signalException(s"Undefined variable $id at position ${id.idn}.")
+                  case None => signalException(UndefinedVariableError(id))
                   case Some(addr) =>
                     lookupStoreOption(addr) match
-                        case None    => signalException(s"Uninitialised variable $id at position ${id.idn}.")
+                        case None    => signalException(UninitialisedVariableError(id))
                         case Some(v) => done(v)
             case SchemeValue(v, _) =>
               done(evalLiteral(v, e))
@@ -344,7 +341,7 @@ class SchemeInterpreter(
                   res <- threadv match
                       case Value.Thread(fut) =>
                         done(Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf)))
-                      case v => signalException(s"Join expected thread, but got $v")
+                      case v => signalException(TypeError("Join expected thread", v))
               yield res
             case SchemeCodeChange(old, nw, _) =>
               if version == Old then tailcall(eval(old, env, timeout, version)) else tailcall(eval(nw, env, timeout, version))
