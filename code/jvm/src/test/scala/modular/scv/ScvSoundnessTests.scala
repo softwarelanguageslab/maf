@@ -21,6 +21,7 @@ import maf.language.ContractScheme.interpreter.ContractSchemeErrors.*
 import java.util.concurrent.TimeoutException
 import maf.language.scheme.interpreter.ProgramError
 import maf.language.scheme.interpreter.ChildThreadDiedException
+import maf.bench.scheme.SchemeBenchmarkPrograms
 
 /**
  * Soft contract verification is regarded as sound if it generates contract violations for contracts that are violated (unsatisfied) at runtime.
@@ -145,3 +146,8 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
 
     def analysis(program: SchemeExp): Analysis =
       SchemeAnalyses.scvModAnalysisWithRacketFeatures(program)
+
+/** Automated soundness tests  on the set of benchmarks from the Nguyen paper */
+class ScvNguyenSoundnessTests extends ScvSoundnessTests:
+    def name: String = "scv-soundness-tests"
+    override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
