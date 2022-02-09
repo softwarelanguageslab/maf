@@ -92,7 +92,12 @@ Scheme has a powerful numerical system. This numerical system is only modelled p
 
 ## Primitives
 
-Some Scheme primitives, such as `map` and `<=` do not support a variable number of arguments, but have a fixed arity.
+Some Scheme primitives, such as `map` and `<=` do not support a variable number of arguments, but have a fixed arity. For primitives such as `map`, the reason is twofold. 
+First, a naive (preluded) implementation using a variable number of arguments would lead to a precision loss, as an extra loop is required to iterate over the variable number of arguments. 
+This is especially undesirable when the primitive in practice is typically only used with a fixed number of arguments (though this problem can possibly be avoided by implementing the primitive differently; cf. the implementation of preluded primitive `min` as an example).
+Second, additional precision loss can happen due to a known bug where the addresses used to allocate the vararg list may accidentally overlap with the addresses used for allocations in argument positions (see [#30](https://github.com/softwarelanguageslab/maf/issues/30)). This is especially problematic for primitives that operate on lists (such as `map`), since these often take arguments that may be allocated at the same program location as the addresses of the vararg list.
+
+
 Scheme's `eqv?` currently is implemented as `eq?`.
 
-
+Finally, various primitives (in particular, tricky ones such as `eval`) are not supported (yet) or only supported in limited form (such as primitive `apply`, which only works for argument lists up to a certain length).
