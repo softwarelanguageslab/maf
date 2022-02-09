@@ -92,6 +92,28 @@ class ContractSchemeInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (
                   ret <- tryClauses(env, timeout, version, clauses, matcher)
               yield ret
 
+            // provide contract/out
+            case ContractSchemeProvide(outs, idn) =>
+              // map over all the contracts and execute those that have primitive contracts
+              // with generated values. This is a rather incomplete strategy as some inputs might
+              // be missed that cause certain program paths to be executed.
+              //
+              // In terms of soundness this might cause the analysis to be marked as "sound" while it does not
+              // soundly overapproximate the programs concrete semantics.
+              //
+              // However, for precision, this is sufficient. The concrete analyis provides a worst case (lower bound) on the
+              // precision of the analysis: i.e., if the program does not concretely execute certain program paths but the
+              // static analyser does interpret them abstractly then the "distance" between the results of the concrete
+              // execution and the static analysis will be larger.
+              sequence(outs.map {
+                ???
+                //case ContractSchemeContractOut(name, contract, _) =>
+                //  // the name of the contract should refer to a bound identifier in the environment
+                //  for
+                //
+                //  yield result
+              }).flatMap(???)
+
             case _ => super.eval(e, env, timeout, version)
 
     private def tryClauses(env: Env, timeout: Timeout.T, version: Version, clauses: List[MatchExprClause], matcher: Matcher): TailRec[Value] =

@@ -104,3 +104,7 @@ object ConcreteValues:
 
         case object Void extends Value:
             override def toString: String = "#<void>"
+
+        /** An error as a value */
+        case class Error(e: ProgramError) extends Value:
+            override def toString: String = s"<#error: $e>"
