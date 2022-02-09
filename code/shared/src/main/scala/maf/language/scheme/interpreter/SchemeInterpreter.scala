@@ -254,9 +254,8 @@ class SchemeInterpreter(
                             res <- evalSequence(body, envExt2, timeout, version)
                         yield res
                       case Value.Primitive(p) =>
-                          for 
-                            argsv <- tailcall(evalArgs(args, env, timeout, version))
-                          yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
+                        for argsv <- tailcall(evalArgs(args, env, timeout, version))
+                        yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
                       case v =>
                         signalException(s"Invalid function call at position ${idn}: ${v} is not a closure or a primitive.")
               yield res
