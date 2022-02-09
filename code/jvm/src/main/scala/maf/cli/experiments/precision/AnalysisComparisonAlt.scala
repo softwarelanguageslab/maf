@@ -78,7 +78,7 @@ object AnalysisComparisonAlt1
     lazy val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
       (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
     }
-    def analyses = modf :: wdss :: dss :: dssFS :: adaptive
+    def analyses = modf :: dssFS :: dss :: Nil
     def main0(args: Array[String]) = check("test/R5RS/gambit/matrix.scm")
     def main(args: Array[String]) = runBenchmarks(
       Set(
