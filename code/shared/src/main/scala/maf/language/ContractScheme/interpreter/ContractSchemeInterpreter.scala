@@ -15,10 +15,20 @@ import maf.language.ContractScheme.ContractValues.StructConstructor
 import maf.language.ContractScheme.ContractValues.Arr
 
 trait RandomInputGenerator:
-    /** Generate a random input, possibly under the constraint of the given set of primitive contracts */
-    def generateInput(contract: Set[String] = Set()): ConcreteValues.Value
+    /**
+     * Generate a random input, possibly under the constraint of the given set of primitive contracts
+     *
+     * @param contract
+     *   an optional set of contracts the randomly generated input should satify
+     * @param topLevelFunction
+     *   an optional name of the toplevel function we should generate a random input for
+     */
+    def generateInput(contract: Set[String] = Set(), topLevelFunction: Option[String] = None): ConcreteValues.Value
 
-class ContractSchemeInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (), signalBlame: (Identity, Identity) => Unit = (_, _) => ())
+class ContractSchemeInterpreter(
+    cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
+    signalBlame: (Identity, Identity) => Unit = (_, _) => (),
+    generator: Option[RandomInputGenerator] = None)
     extends SchemeInterpreter(cb):
     import ConcreteValues.*
     import ContractSchemeErrors.*
