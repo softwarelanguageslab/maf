@@ -1,4 +1,4 @@
-#lang reader "random-scv.rkt"
+#lang reader random-scv
 
 (struct posn (x y))
 (define POSN/C (struct/c posn number? number?))
