@@ -188,13 +188,14 @@ object IncrementalSchemeModXPrecision:
         (outFull, outNoOpt)
 
     def main(args: Array[String]): Unit =
-        val (curatedFull, curatedNoOpt) = splitOutput(
-          IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-        )
-        val (generatedFull, generatedNoOpt) = splitOutput(
-          IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
-        )
+        //val (curatedFull, curatedNoOpt) = splitOutput(
+        //  IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+        //)
+        //val (generatedFull, generatedNoOpt) = splitOutput(
+        //  IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        //)
 //if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/precision.R", curatedFull, generatedFull, curatedNoOpt, generatedNoOpt)
-//IncrementalSchemeModFCPPrecision.execute(args)
+        splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray))
+        splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray))
 //IncrementalSchemeModConcTypePrecision.execute(args)
 //IncrementalSchemeModConcCPPrecision.execute(args)

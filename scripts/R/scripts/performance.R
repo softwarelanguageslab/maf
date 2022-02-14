@@ -60,7 +60,9 @@ filter_times <- function(perf_data, mutations) {
         drop <- c(row, drop)
       }
     }
-    times_slow <- (times_slow %>% slice(-drop))
+    if (!is.null(drop)) {
+       times_slow <- (times_slow %>% slice(-drop))
+    }
   }
   return(times_slow)
 }

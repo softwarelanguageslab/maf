@@ -112,7 +112,7 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp]:
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFTypeProperties extends IncrementalSchemeProperties:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
+    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequentialGenerated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
     val outputFile: String = s"properties/modf-type.csv"
@@ -139,7 +139,8 @@ object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties:
 
 object IncrementalSchemeModXProperties:
     def main(args: Array[String]): Unit =
-        IncrementalSchemeModFTypeProperties.execute(args)
-        IncrementalSchemeModFCPProperties.execute(args)
+        //IncrementalSchemeModFTypeProperties.execute(args)
+        IncrementalSchemeModFCPProperties.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+        IncrementalSchemeModFCPProperties.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
 //IncrementalSchemeModConcTypeProperties.execute(args)
 //IncrementalSchemeModConcCPProperties.execute(args)
