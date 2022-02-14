@@ -16,14 +16,16 @@ import maf.language.ContractScheme.ContractValues.Arr
 
 trait RandomInputGenerator:
     /**
-     * Generate a random input, possibly under the constraint of the given set of primitive contracts
+     * Generate a random input for the given function, possibly under the constraint of the given set of primitive contracts
      *
      * @param contract
      *   an optional set of contracts the randomly generated input should satify
      * @param topLevelFunction
      *   an optional name of the toplevel function we should generate a random input for
+     * @return
+     *   a list of inputs for the given function
      */
-    def generateInput(contract: Set[String] = Set(), topLevelFunction: Option[String] = None): ConcreteValues.Value
+    def generateInput(topLevelFunction: String, contract: Set[String] = Set()): List[ConcreteValues.Value]
 
 class ContractSchemeInterpreter(
     cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
@@ -115,14 +117,35 @@ class ContractSchemeInterpreter(
               // precision of the analysis: i.e., if the program does not concretely execute certain program paths but the
               // static analyser does interpret them abstractly then the "distance" between the results of the concrete
               // execution and the static analysis will be larger.
-              sequence(outs.map {
-                ???
-                //case ContractSchemeContractOut(name, contract, _) =>
-                //  // the name of the contract should refer to a bound identifier in the environment
-                //  for
-                //
-                //  yield result
-              }).flatMap(???)
+              sequence(outs.map { case ContractSchemeContractOut(name, contract, idn) =>
+                for
+                    // the name of the contract should refer to a bound identifier in the environment
+                    v <- done(lookupStore(env.get(name.name).get))
+                    // evaluate the contract as well (even if we do not use its value, we must execute it for its side-effects)
+                    vcontract <- eval(contract, env, timeout, version)
+                    // generate a random value for the given function using the input generator
+                    // if one of the input fail, then simply do not execute the "provide" (todo: check if this generates sufficient line coverage)
+                    vlus = generator.map(_.generateInput(name.name)).getOrElse(List())
+                    // check if we can apply the given value (if the contract represents a function, then we apply the value as a function) ;
+                    // it we have an insufficient number of arguments we simply not execute the function
+                    _ <- vcontract match
+                        case ConcreteValues.ContractValue(ContractValues.Grd(domains, _, domainIdns, _)) =>
+                          if vlus.size < domains.size then done(ConcreteValues.Value.Nil)
+                          else
+                              val actualVlus = vlus.take(domains.size) // the input file might accidentily contain too many values
+                              // we don't actually have syntactic function call arguments, so we synthesize them here.
+                              val synArgs = actualVlus.zip(domainIdns).map { case (_, idn) => SchemeValue(maf.language.sexp.Value.Nil, idn) }
+                              // we also don't have an operator, so we will use the identifier from the provide contract-out
+                              val synOperator = SchemeVar(name)
+                              // now we can make the function call
+                              val call = SchemeFuncall(synOperator, synArgs, idn)
+                              applyFun(v, call, actualVlus, synArgs, idn, timeout, version)
+                        case _ =>
+                          // any other value does not represent a function and does not need to be applied
+                          // TODO: check the contracts on exported values (monitored by a flat contract)
+                          done(ConcreteValues.Value.Nil)
+                yield ConcreteValues.Value.Nil
+              }).flatMap(_ => done(ConcreteValues.Value.Nil))
 
             case _ => super.eval(e, env, timeout, version)
 
