@@ -54,6 +54,15 @@ case class SExpPair(
     val label: Label = Label.PAI
     def subexpressions: List[Expression] = List(car, cdr)
 
+case class SExpVector(
+    elements: List[SExp],
+    idn: Identity)
+    extends SExp:
+
+    override def toString: String = s"#(${elements.map(_.toString).mkString(" ")})"
+    val label: Label = Label.VEC
+    def subexpressions: List[Expression] = elements
+
 object SExpList:
 
     /** Alternative constructor to automatically construct a bunch of pair from a list of expressions */

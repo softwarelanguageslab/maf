@@ -15,6 +15,7 @@ enum Label:
     case LTR // Letrec expression
     case LTS // Let* expression
     case PAI // Pair expression
+    case VEC // Vector expression
     case SET // Assignment
     case VAL // Value
     case VAR // Variable
