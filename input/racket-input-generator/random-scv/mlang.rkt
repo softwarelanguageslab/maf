@@ -9,14 +9,56 @@
 ;;; mstruct: is provided here as a replacement for Racket's struct, it adds the property #:transperent to each struct definition 
 ;;; mprovide: provides a replacement for Racket's "provide", as desribed above 
 ;;; rstruct: the original Racket struct, which is used by mstruct 
-(provide (except-out (all-from-out racket) provide struct ->d)
-         (rename-out (mprovide provide) (mstruct struct) (rstruct rstruct) (r->d r->d) (m->d ->d)))
+(provide (except-out (all-from-out racket) provide struct ->d string? symbol?)
+         (rename-out (mprovide provide) (mstruct struct) (rstruct rstruct) (r->d r->d) (m->d ->d) (mstring? string?) (msymbol? symbol?)))
 
 ;;; We rename struct to rstruct
 (require (only-in racket (struct rstruct) (->i r->d)))
 ;;; We need access to Racket's match expressions while doing macro expansion
 (require (for-syntax racket/match 
                      (only-in racket (struct rstruct))))
+
+;;;;;;;;;;;;;
+;; string? ;;
+;;;;;;;;;;;;;
+
+;;; Limits the string? predicate to printable ASCII characters
+;;; this is only for input generation. 
+(define (printable-random-char)
+  (integer->char (+ (random 25) 97)))
+
+(define (mstring-generate ctc)
+  (lambda (fuel)
+    (lambda ()
+      (list->string (for/list [(i (in-range 20))]
+        (printable-random-char))))))
+
+(define-struct st-mstring? ()
+  #:property prop:flat-contract 
+  (build-flat-contract-property
+   #:first-order (lambda (c) string?)
+   #:generate mstring-generate))
+
+(define mstring? (st-mstring?))
+
+;;;;;;;;;;;;;
+;; symbol? ;;
+;;;;;;;;;;;;;
+
+
+
+;; Limits the symbol? predicate to only printable symbols (according to the ASCII set of characters)
+
+(define (msymbol-generate ctc)
+  (lambda (fuel) (lambda () (string->symbol (((mstring-generate ctc) fuel))))))
+
+(define-struct st-msymbol? ()
+   #:property prop:flat-contract
+   (build-flat-contract-property
+     #:first-order (lambda (c) symbol?)
+     #:generate msymbol-generate ))
+
+(define msymbol? (st-msymbol?))
 
 ;;; A replacement for Racket's ->d. 
 ;;; Sytnax: 
