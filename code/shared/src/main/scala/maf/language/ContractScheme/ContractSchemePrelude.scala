@@ -16,6 +16,7 @@ object ContractSchemePrelude extends BaseSchemePrelude:
             #t
             (and (check contract (car xs)) (iter (cdr xs)))))
 
+
         (and/c list? (flat (lambda (v) (iter v)))))"""
     )
 

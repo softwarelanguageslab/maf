@@ -1,6 +1,7 @@
 package maf.cli.experiments.interpreter
 
 import maf.language.scheme.SchemeParser
+import maf.language.ContractScheme.interpreter.RandomInputsFromFile
 import maf.language.scheme.interpreter.SchemeInterpreter
 import maf.language.ContractScheme.interpreter.ContractSchemeInterpreter
 import scala.util.control.TailCalls.TailRec
@@ -9,6 +10,7 @@ import maf.language.change.CodeVersion.{New, Version}
 import maf.util.benchmarks.Timeout
 import maf.language.ContractScheme.interpreter.RandomInputGenerator
 import maf.language.ContractScheme.ContractSchemeParser
+import maf.util.Reader
 
 /** Objects implementing this trait must provide a "compute" method that returns the code coverage (between 0 and 1) of the program. */
 trait Coverage:
@@ -45,8 +47,9 @@ trait ScvParser extends Coverage:
       ContractSchemeParser.parse(program)
 
 /** Measures the coverage of the given program */
-class CodeCoverage(program: String):
-    def scvSelectRandomGenerator(programPath: String): RandomInputGenerator = ???
+object CodeCoverage:
+    def scvSelectRandomGenerator(programPath: String): RandomInputGenerator =
+      RandomInputsFromFile(s"input/generated/${programPath.replace("/", "_")}.scm")
 
     /**
      * Computes the line coverage of the given ContractScheme program.
@@ -55,7 +58,7 @@ class CodeCoverage(program: String):
      *
      * This method will look at the following locations for a file containing random inputs:
      *
-     *   - input/PATH_SEPERATORS_REPLACED_WITH_UNDERSCORES.json
+     *   - input/PATH_SEPERATORS_REPLACED_WITH_UNDERSCORES.scm
      *
      * The file will be parsed according to maf.language.ContractScheme.interpreter.RandomInputsFromFile
      *
@@ -68,4 +71,5 @@ class CodeCoverage(program: String):
     def scvLineCoverage(programPath: String): Double =
         val generator = scvSelectRandomGenerator(programPath)
         val interpreter = new ContractSchemeInterpreter(generator = Some(generator)) with LineCoverageInterpreter with ScvParser {}
+        val program = Reader.loadFile(programPath)
         interpreter.compute(program)

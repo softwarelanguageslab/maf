@@ -258,14 +258,14 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
                   }
                 )
               )
-          yield SchemeFuncall(SchemeVar(Identifier("and/c", exp.idn)), tagCheck :: fieldsCheck, exp.idn)
+          yield nest(tagCheck :: fieldsCheck, "and/c")
 
         // Desugaring of and/c (and/c contract1 contract2 ...) to (and/c contract1 (and/c contract2 ...))
         case Ident("and/c") :::: expressions =>
           for {
             compiledExpressions <- sequence(smap(expressions, _compile))
-          } yield nest(compiledExpressions, "and/c")
-
+            result = nest(compiledExpressions, "and/c")
+          } yield result
         // (structid super-id (field ...) properties ...) // unsupported
         case Ident("struct") :::: Ident(_) :::: Ident(_) :::: _ =>
           throw new Exception("structs with super-ids are currently unsupported")
@@ -285,5 +285,8 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
                              None,
                              exp.idn
           )
+
+        // Ignore require expressions
+        case Ident("require") :::: _ => done(SchemeBegin(List(), exp.idn))
 
         case _ => super._compile(exp)

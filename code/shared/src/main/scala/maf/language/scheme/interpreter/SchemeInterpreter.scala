@@ -172,7 +172,7 @@ class SchemeInterpreter(
           case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
             if argsNames.length != argsv.length then
                 signalException(
-                  ArityError(pos2.pos, argsNames.length, argsv.length)
+                  ArityError(pos2.pos, argsNames.length, argsv.length, call.idn)
                 )
             for
                 _ <- done(())

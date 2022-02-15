@@ -5,7 +5,7 @@ import maf.core.Position.Position
 /** An error that is not thrown but rather used as an erroneous value. */
 // TODO Perhaps rename to ErrorValue?
 trait Error extends Serializable
-case class ArityError(call: Position, expected: Int, got: Int) extends Error
+case class ArityError(fpos: Position, expected: Int, got: Int, call: Identity = Identity.none) extends Error
 case class VarArityError(call: Position, expected: Int, got: Int) extends Error
 case class ValueNotApplicable[V](value: V, idn: Identity) extends Error
 //case class NotSupported(message: String)                                  extends Error
