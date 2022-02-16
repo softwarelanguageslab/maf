@@ -50,9 +50,9 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E] with SplitPerformance[E]
 
     // The maximal number of warm-up runs.
-    val maxWarmupRuns = 1 //5
+    val maxWarmupRuns = 3 //5
     // The number of actually measured runs.
-    val measuredRuns = 1 //30
+    val measuredRuns = 15 //30
 
     val timeS: String = "ms" // Mean of measured times.
     val stdS: String = "SD" // Standard deviation of mean.
@@ -219,20 +219,14 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
     override def timeout(): Timeout.T = Timeout.start(Duration(30, MINUTES))
-    val configurations: List[IncrementalConfiguration] = List(di_wi) // allConfigurations
+    val configurations: List[IncrementalConfiguration] = allConfigurations
 
 object IncrementalSchemeModFTypePerformance extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
-      with SplitPerformance[SchemeExp]
-      with IncrementalLogging[SchemeExp] {
-      mode = Mode.Summary
+      with SplitPerformance[SchemeExp] {
       override def intraAnalysis(cmp: Component) =
-        new IntraAnalysis(cmp)
-          with IncrementalSchemeModFBigStepIntra
-          with IncrementalGlobalStoreIntraAnalysis
-          with SplitPerformanceIntra
-          with IncrementalLoggingIntra
+        new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
     }
     val outputFile: String = s"performance/modf-type.csv"
 
@@ -267,13 +261,14 @@ object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformanc
 
 object IncrementalSchemeModXPerformance:
     def main(args: Array[String]): Unit =
-      IncrementalSchemeModFTypePerformance.execute(Array("test/changes/scheme/generated/R5RS_icp_icp_1c_ontleed-4.scm"))
-//val curated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-//IncrementalSchemeModFTypePerformance.first = true
-//val generated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
-//if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/performance.R", curated, generated)
-//IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-//IncrementalSchemeModFCPPerformance.first = true
-//IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
-//IncrementalSchemeModConcPerformance.main(args)
-//IncrementalSchemeModConcCPPerformance.main(args)
+        val curated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+        IncrementalSchemeModFTypePerformance.first = true
+        val generated = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+    //if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/performance.R", curated, generated)
+    //IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+    //IncrementalSchemeModFCPPerformance.first = true
+    //IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+    //IncrementalSchemeModConcPerformance.main(args)
+    //IncrementalSchemeModConcCPPerformance.main(args)
+    end main
+end IncrementalSchemeModXPerformance
