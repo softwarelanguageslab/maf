@@ -44,7 +44,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
             // generate a call to _make_struct_constr
             val constructor = makeStructConstructor(name, fields.size, structIdn)
             // Generate a definition
-            done(List(SchemeDefineVariable(Identifier(s"make-$name", nameIdn), constructor, structIdn)))
+            done(List(SchemeDefineVariable(Identifier(s"$name", nameIdn), constructor, structIdn)))
 
         def generatePredicate(name: String, nameIdn: Identity): TailRec[List[SchemeExp]] =
             val predicate = MakeStructPredicate(name, nameIdn)
