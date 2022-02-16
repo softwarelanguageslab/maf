@@ -20,4 +20,6 @@ object ScvInputCoverage:
         val coverage = benchmarks.map(runCoverage)
         val table =
           coverage.zip(benchmarks).foldLeft(Table.empty[Double]) { case (table, (coverage, benchmark)) => table.add(benchmark, "coverage", coverage) }
-        Writer.openTimeStamped("scv-line-coverage.csv").write(table.toCSVString())
+        val writer = Writer.openTimeStamped("out/scv-line-coverage.csv")
+        writer.write(table.toCSVString())
+        writer.close()

@@ -40,7 +40,14 @@ trait LineCoverageInterpreter extends SchemeInterpreter, Coverage:
     def compute(program: String): Double =
         val parsedProgram = parseProgram(program)
         run(parsedProgram, Timeout.none)
-        this.visitedLines.size / program.split('\n').size
+        this.visitedLines.size.toDouble / program
+          .split('\n')
+          .filterNot(line =>
+            // ignore lines that start with a comment, or that do not contain any characters except for whitespaces
+            line.trim.nn.startsWith(";") || line.trim.nn.size == 0
+          )
+          .size
+          .toDouble
 
 trait ScvParser extends Coverage:
     override def parseProgram(program: String): SchemeExp =
