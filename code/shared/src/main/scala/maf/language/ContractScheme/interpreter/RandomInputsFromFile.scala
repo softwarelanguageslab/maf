@@ -4,6 +4,7 @@ import maf.language.sexp.*
 import maf.util.Reader
 import maf.core.Identity
 import maf.util.ArrayEq
+import maf.core.Monad
 import maf.language.ContractScheme.ContractValues
 
 /**
@@ -38,49 +39,58 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
         )
 
     import SExpUtils.*
-    def convertToConcreteValue(quoted: Boolean)(sexp: SExp): ConcreteValues.Value = sexp match
-        case SExpValue(vlu, _) =>
-          vlu match
-              case Value.String(v)    => ConcreteValues.Value.Str(v)
-              case Value.Symbol(s)    => ConcreteValues.Value.Symbol(s)
-              case Value.Integer(v)   => ConcreteValues.Value.Integer(v)
-              case Value.Real(v)      => ConcreteValues.Value.Real(v)
-              case Value.Boolean(v)   => ConcreteValues.Value.Bool(v)
-              case Value.Character(v) => ConcreteValues.Value.Character(v)
-              case Value.Nil          => ConcreteValues.Value.Nil
-        case Ident("+inf.0") => ConcreteValues.Value.Real(Double.PositiveInfinity)
-        case Ident("-inf.0") => ConcreteValues.Value.Real(Double.NegativeInfinity)
 
-        // A quote is recursively converted
-        case Ident("quote") :::: contents => convertToConcreteValue(quoted = true)(contents)
-        // What follows is how to convert a quoted expression to concrete pairs
-        case car :::: cdr if quoted =>
-          ConcreteValues.Value.Cons(convertToConcreteValue(quoted)(car), convertToConcreteValue(quoted)(cdr))
-        case SNil(_) if quoted =>
-          ConcreteValues.Value.Nil
-        case Ident("fail") =>
-          ConcreteValues.Value.Undefined(Identity.none)
+    def convertToConcreteValue(quoted: Boolean)(sexp: SExp): InputGenerator =
+        import maf.core.Monad.MonadSyntaxOps
+        sexp match
+            case SExpValue(vlu, _) =>
+              noalloc(vlu match
+                  case Value.String(v)    => ConcreteValues.Value.Str(v)
+                  case Value.Symbol(s)    => ConcreteValues.Value.Symbol(s)
+                  case Value.Integer(v)   => ConcreteValues.Value.Integer(v)
+                  case Value.Real(v)      => ConcreteValues.Value.Real(v)
+                  case Value.Boolean(v)   => ConcreteValues.Value.Bool(v)
+                  case Value.Character(v) => ConcreteValues.Value.Character(v)
+                  case Value.Nil          => ConcreteValues.Value.Nil
+              )
+            case Ident("+inf.0") => noalloc(ConcreteValues.Value.Real(Double.PositiveInfinity))
+            case Ident("-inf.0") => noalloc(ConcreteValues.Value.Real(Double.NegativeInfinity))
 
-        case SExpVector(Ident(head) :: elements, _) if head.startsWith("struct:") =>
-          // for now vectors only enable the definition of structs.
-          val elementValues = elements.map(convertToConcreteValue(false))
-          val tag = head.replace("struct:", "").nn
-          ConcreteValues.ContractValue(ContractValues.Struct(tag, ArrayEq.from(elementValues)))
+            // A quote is recursively converted
+            case Ident("quote") :::: contents => convertToConcreteValue(quoted = true)(contents)
+            // What follows is how to convert a quoted expression to concrete pairs
+            case car :::: cdr if quoted =>
+              for
+                  mcar <- convertToConcreteValue(quoted)(car)
+                  mcdr <- convertToConcreteValue(quoted)(cdr)
+                  mcons <- alloc(ConcreteValues.Value.Cons(mcar, mcdr))
+              yield mcons
 
-        // if not quoted
-        case l @ (_ :::: _) => convertToConcreteValue(quoted = true)(l)
-        case Ident(sym)     => ConcreteValues.Value.Symbol(sym)
+            case SNil(_) if quoted =>
+              noalloc(ConcreteValues.Value.Nil)
 
-        // all other expression types are not supported as value literals
-        case _ => throw new Exception(s"unsupported expression $sexp as concrete input ${if quoted then "in a quoted environment" else ""}")
+            case Ident("fail") =>
+              noalloc(ConcreteValues.Value.Undefined(Identity.none))
+
+            case SExpVector(Ident(head) :: elements, _) if head.startsWith("struct:") =>
+              // for now vectors only enable the definition of structs.
+              for elementValues <- Monad.sequence(elements.map(convertToConcreteValue(false)))
+              yield ConcreteValues.ContractValue(ContractValues.Struct(head.replace("struct:", "").nn, ArrayEq.from(elementValues)))
+
+            // if not quoted
+            case l @ (_ :::: _) => convertToConcreteValue(quoted = true)(l)
+            case Ident(sym)     => noalloc(ConcreteValues.Value.Symbol(sym))
+
+            // all other expression types are not supported as value literals
+            case _ => throw new Exception(s"unsupported expression $sexp as concrete input ${if quoted then "in a quoted environment" else ""}")
 
     /** Convert the given map of value literal to a map of concrete values */
-    def convertMapToConcreteValue(input: Map[String, List[SExp]]): Map[String, List[ConcreteValues.Value]] =
+    def convertMapToConcreteValue(input: Map[String, List[SExp]]): Map[String, List[InputGenerator]] =
       input.view
         .mapValues(_ map convertToConcreteValue(quoted = false))
         .toMap
 
-    private lazy val inputs: Map[String, List[ConcreteValues.Value]] =
+    private lazy val inputs: Map[String, List[InputGenerator]] =
       convertMapToConcreteValue(loadFile())
 
     /**
@@ -88,6 +98,6 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
      *
      * If the file does not contain any concrete input, then randomly generated a concrete input
      */
-    override def generateInput(topLevelFunction: String, contract: Set[String] = Set()): List[ConcreteValues.Value] =
+    override def generateInput(topLevelFunction: String, contract: Set[String] = Set()): List[InputGenerator] =
       // ignore the set of contracts, lets hope that Racket was able to generate some useful values
       inputs.get(topLevelFunction).getOrElse(List())

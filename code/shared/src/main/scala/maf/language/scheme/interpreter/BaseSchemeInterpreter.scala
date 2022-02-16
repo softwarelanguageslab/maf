@@ -67,6 +67,14 @@ trait BaseSchemeInterpreter[V]:
         extendStore(addr, value)
         Value.Pointer(addr)
 
+    /** Allocate the given pair recursively in the store. */
+    def allocateAll(exp: SchemeExp, value: Value): ConcreteValues.Value = value match
+        case ConcreteValues.Value.Cons(car, cdr) =>
+          val carAlloc = allocateAll(exp, car)
+          val cdrAlloc = allocateAll(exp, cdr)
+          allocateVal(exp, ConcreteValues.Value.Cons(carAlloc, cdrAlloc))
+        case _ => value
+
     def allocateCons(
         exp: SchemeExp,
         car: Value,

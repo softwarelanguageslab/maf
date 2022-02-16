@@ -4,7 +4,7 @@ import maf.language.scheme.interpreter.SchemeInterpreter
 import maf.language.scheme.interpreter.SchemeInterpreter
 import maf.language.change.CodeVersion._
 import maf.language.scheme.*
-import maf.core.Identity
+import maf.core.{Identity, Monad}
 import maf.util.benchmarks.Timeout
 import scala.util.control.TailCalls._
 import maf.language.ContractScheme.ContractValues
@@ -13,8 +13,57 @@ import maf.util._
 import maf.language.ContractScheme.ContractValues.StructSetterGetter
 import maf.language.ContractScheme.ContractValues.StructConstructor
 import maf.language.ContractScheme.ContractValues.Arr
+import maf.language.ContractScheme.interpreter.RandomInputGenerator.Allocator
+import maf.language.ContractScheme.ContractValues.StructPredicate
+
+object RandomInputGenerator:
+    /** A type that describes that an allocator should be able to allocate a value and return a pointer for it */
+    trait Allocator { def alloc(vlu: ConcreteValues.Value): ConcreteValues.Value.Pointer }
 
 trait RandomInputGenerator:
+    import RandomInputGenerator.*
+
+    /**
+     * Each value that is fetched from the concrete interpreter is represented by an InputGenerator.
+     *
+     * The reason for this indirection is that some values need to be allocate on the store, but during pre-execution (when loading the random values
+     * from the file) such allocator is not yet available.
+     *
+     * To enable composeablility the generator implements the Monad typeclass
+     */
+    case class InputGeneratorM[X](run: Allocator => X)
+
+    given Monad[InputGeneratorM] with
+        def unit[X](v: X): InputGeneratorM[X] = InputGeneratorM { _ => v }
+        def flatMap[A, B](m: InputGeneratorM[A])(f: A => InputGeneratorM[B]): InputGeneratorM[B] = InputGeneratorM { alloc =>
+          f(m.run(alloc)).run(alloc)
+        }
+
+        def map[A, B](m: InputGeneratorM[A])(f: A => B): InputGeneratorM[B] = InputGeneratorM { alloc =>
+          f(m.run(alloc))
+        }
+
+    /** The InputGenerator only needs to generate values, not arbitrary types */
+    type InputGenerator = InputGeneratorM[ConcreteValues.Value]
+
+    /**
+     * Can be used to return a value without doing any allocation
+     *
+     * @param v
+     *   the value to return
+     */
+    def noalloc(v: ConcreteValues.Value): InputGenerator = Monad[InputGeneratorM].unit(v)
+
+    /**
+     * Can be used to a store allocated value
+     *
+     * @param v
+     *   the value to store allocate
+     * @return
+     *   a pointer to the allocated value, wrapped in the InputGenerator
+     */
+    def alloc(v: ConcreteValues.Value): InputGenerator = InputGeneratorM((allocator: Allocator) => allocator.alloc(v))
+
     /**
      * Generate a random input for the given function, possibly under the constraint of the given set of primitive contracts
      *
@@ -25,7 +74,7 @@ trait RandomInputGenerator:
      * @return
      *   a list of inputs for the given function
      */
-    def generateInput(topLevelFunction: String, contract: Set[String] = Set()): List[ConcreteValues.Value]
+    def generateInput(topLevelFunction: String, contract: Set[String] = Set()): List[InputGenerator]
 
 class ContractSchemeInterpreter(
     cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
@@ -132,7 +181,15 @@ class ContractSchemeInterpreter(
                         case ConcreteValues.ContractValue(ContractValues.Grd(domains, _, domainIdns, _)) =>
                           if vlus.size < domains.size then done(ConcreteValues.Value.Nil)
                           else
-                              val actualVlus = vlus.take(domains.size) // the input file might accidentily contain too many values
+                              // the input file might accidentily contain too many values
+                              val actualVlus = vlus.take(domains.size).zip(domainIdns) map {
+                                // the primitives expect pairs to be allocated in the store, so we make sure they are
+                                case (v, idn) =>
+                                  v.run(new Allocator {
+                                    def alloc(vlu: ConcreteValues.Value): Value.Pointer =
+                                      allocateVal(SchemeValue(maf.language.sexp.Value.Nil, idn), vlu)
+                                  })
+                              }
                               // we don't actually have syntactic function call arguments, so we synthesize them here.
                               val synArgs = actualVlus.zip(domainIdns).map { case (_, idn) => SchemeValue(maf.language.sexp.Value.Nil, idn) }
                               // we also don't have an operator, so we will use the identifier from the provide contract-out
@@ -213,6 +270,12 @@ class ContractSchemeInterpreter(
               argsv(0) match
                   case ContractValue(ContractValues.Struct(tag, fields)) => done(fields(idx))
                   case v                                                 => throw ContractSchemeTypeError(s"expected a struct but got $v")
+
+        case ContractValue(StructPredicate(tag)) =>
+          checkArity(argsv, 1)
+          argsv(0) match
+              case ContractValue(ContractValues.Struct(actualTag, _)) => done(Value.Bool(tag == actualTag))
+              case v                                                  => done(Value.Bool(false))
 
         case _ => super.applyFun(f, call, argsv, args, idn, timeout, version)
 
