@@ -3,6 +3,8 @@ package maf.language.ContractScheme.interpreter
 import maf.language.sexp.*
 import maf.util.Reader
 import maf.core.Identity
+import maf.util.ArrayEq
+import maf.language.ContractScheme.ContractValues
 
 /**
  * MAF can read random inputs that serve as the source for provide/contract-out forms from an input file
@@ -46,6 +48,9 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
               case Value.Boolean(v)   => ConcreteValues.Value.Bool(v)
               case Value.Character(v) => ConcreteValues.Value.Character(v)
               case Value.Nil          => ConcreteValues.Value.Nil
+        case Ident("+inf.0") => ConcreteValues.Value.Real(Double.PositiveInfinity)
+        case Ident("-inf.0") => ConcreteValues.Value.Real(Double.NegativeInfinity)
+
         // A quote is recursively converted
         case Ident("quote") :::: contents => convertToConcreteValue(quoted = true)(contents)
         // What follows is how to convert a quoted expression to concrete pairs
@@ -55,7 +60,17 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
           ConcreteValues.Value.Nil
         case Ident("fail") =>
           ConcreteValues.Value.Undefined(Identity.none)
-        // TODO: support vectors and structs
+
+        case SExpVector(Ident(head) :: elements, _) if head.startsWith("struct:") =>
+          // for now vectors only enable the definition of structs.
+          val elementValues = elements.map(convertToConcreteValue(false))
+          val tag = head.replace("struct:", "").nn
+          ConcreteValues.ContractValue(ContractValues.Struct(tag, ArrayEq.from(elementValues)))
+
+        // if not quoted
+        case l @ (_ :::: _) => convertToConcreteValue(quoted = true)(l)
+        case Ident(sym)     => ConcreteValues.Value.Symbol(sym)
+
         // all other expression types are not supported as value literals
         case _ => throw new Exception(s"unsupported expression $sexp as concrete input ${if quoted then "in a quoted environment" else ""}")
 
@@ -75,4 +90,4 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
      */
     override def generateInput(topLevelFunction: String, contract: Set[String] = Set()): List[ConcreteValues.Value] =
       // ignore the set of contracts, lets hope that Racket was able to generate some useful values
-      inputs(topLevelFunction)
+      inputs.get(topLevelFunction).getOrElse(List())

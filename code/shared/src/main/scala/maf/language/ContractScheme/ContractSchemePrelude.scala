@@ -10,6 +10,7 @@ object ContractSchemePrelude extends BaseSchemePrelude:
       "fprintf" -> "(define (fprintf . args) '())",
       "empty?" -> "(define empty? null?)",
       "and/c" -> "(define (and/c a b) (lambda (v) (and (check a v) (check b v))))",
+      "cons?" -> "(define (cons? v) (pair? v))",
       "listof" -> """(define (listof contract) 
         (define (iter xs)
           (if (null? xs)

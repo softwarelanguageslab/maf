@@ -9,8 +9,9 @@
 ;;; mstruct: is provided here as a replacement for Racket's struct, it adds the property #:transperent to each struct definition 
 ;;; mprovide: provides a replacement for Racket's "provide", as desribed above 
 ;;; rstruct: the original Racket struct, which is used by mstruct 
-(provide (except-out (all-from-out racket) provide struct ->d string? symbol?)
-         (rename-out (mprovide provide) (mstruct struct) (rstruct rstruct) (r->d r->d) (m->d ->d) (mstring? string?) (msymbol? symbol?)))
+(provide (except-out (all-from-out racket) provide struct ->d string? symbol? any/c)
+         (rename-out (mprovide provide) (mstruct struct) (rstruct rstruct) (r->d r->d) (m->d ->d) (mstring? string?) (msymbol? symbol?) (many/c any/c))
+         filter-supported)
 
 ;;; We rename struct to rstruct
 (require (only-in racket (struct rstruct) (->i r->d)))
@@ -60,6 +61,22 @@
 
 (define msymbol? (st-msymbol?))
 
+;;;;;;;;;;;
+;; any/c ;;
+;;;;;;;;;;;
+
+;; Restrict any/c to primitive values supported by MaF 
+(define many/c 
+  (or/c boolean? mstring? msymbol? number? real?))
+
+
+;;; returns the value if it is supported by MAF, otherwise returns fail 
+(define (filter-supported v)
+  (define unsupported-predicates (list procedure? hash?))
+  (if (for/or [(pred unsupported-predicates)] (pred v))
+    'fail
+    v))
+
 ;;; A replacement for Racket's ->d. 
 ;;; Sytnax: 
 ;;; (->d domain-contract ... dependent-range) 
@@ -92,13 +109,13 @@
     `(displayln 
        (list (quote ,idn)
          ,@(map (lambda (c) 
-                  `(for/list [(i (in-range 10))]
-                      (with-handlers ([exn:fail? (lambda (e) 'fail)]) (contract-random-generate ,c))))
+                  `(car (for/list [(i (in-range 10))]
+                      (with-handlers ([exn:fail? (lambda (e) 'fail)]) (filter-supported (contract-random-generate ,c))))))
                 contract)))]
 
    [(list idn contract) 
-             `(displayln (list (quote ,idn) (for/list [(i (in-range 10))] 
-                                       (with-handlers ([exn:fail? (lambda (e) 'fail)]) (contract-random-generate ,contract)))))]
+             `(displayln (list (quote ,idn) (car (for/list [(i (in-range 10))] 
+                                       (with-handlers ([exn:fail? (lambda (e) 'fail)]) (contract-random-generate ,contract))))))]
    [_ '(void)]))
 
 (define-for-syntax (transform-contracts contract)
