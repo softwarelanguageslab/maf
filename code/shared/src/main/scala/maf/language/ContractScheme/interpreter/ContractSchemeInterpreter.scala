@@ -264,12 +264,12 @@ class ContractSchemeInterpreter(
                     fields.update(idx, argsv(1).asInstanceOf)
                     done(Value.Nil)
 
-                  case v => throw ContractSchemeTypeError(s"expected a struct but got $v")
+                  case v => throw ContractSchemeTypeError(s"expected a struct but got $v at ${call.idn}")
           else
               checkArity(argsv, 1)
               argsv(0) match
                   case ContractValue(ContractValues.Struct(tag, fields)) => done(fields(idx))
-                  case v                                                 => throw ContractSchemeTypeError(s"expected a struct but got $v")
+                  case v => throw ContractSchemeTypeError(s"expected a struct but got $v at ${call.idn}")
 
         case ContractValue(StructPredicate(tag)) =>
           checkArity(argsv, 1)

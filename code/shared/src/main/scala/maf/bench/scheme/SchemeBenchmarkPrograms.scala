@@ -127,20 +127,20 @@ object SchemeBenchmarkPrograms:
       "test/scv/NguyenGTH18/safe/games/snake.rkt",
       "test/scv/NguyenGTH18/safe/games/zombie.rkt",
       //"test/scv/NguyenGTH18/safe/real/slatex-expanded.rkt",
-      //"test/scv/NguyenGTH18/safe/real/fector.rkt",
-      //"test/scv/NguyenGTH18/safe/real/nucleic2-modular-fixed-expanded.rkt", // nuclei2-modular* from paper
+      //"test/scv/NguyenGTH18/safe/real/fector.rkt", TODO: support struct properties, and s-expression comments
+      //"test/scv/NguyenGTH18/safe/real/nucleic2-modular-fixed-expanded.rkt", // nuclei2-modular* from paper, TODO: support for vectors
       //"test/scv/NguyenGTH18/safe/real/nucleic2-modular-expanded.rkt",
-      //"test/scv/NguyenGTH18/safe/real/ring-buffer.rkt",
-      //"test/scv/NguyenGTH18/safe/real/leftist-tree.rkt", // leftist-tree
+      //"test/scv/NguyenGTH18/safe/real/ring-buffer.rkt", TODO/ support #:property prop:sequence, support #:mutable
+      // "test/scv/NguyenGTH18/safe/real/leftist-tree.rkt", // leftist-tree, Racket features: values, match-define, ...
       //"test/scv/NguyenGTH18/safe/real/protected-leftist-tree.rkt", // leftist-tree* from paper
-      //"test/scv/NguyenGTH18/safe/real/hash-srfi-69.rkt",
+      //"test/scv/NguyenGTH18/safe/real/hash-srfi-69.rkt", // parser error
 //      // TODO: missing? soft-typing, occurence-typing, ring-bufer*, morsecode
-    ) // ++ horsScvBenchmarkSuite
+    ) ++ horsScvBenchmarkSuite
 
     lazy val horsScvBenchmarkSuite: Set[String] = SchemeBenchmarkPrograms.fromFolderR("test/scv/NguyenGTH18/safe/mochi")(
       ".DS_Store",
       // TODO: transform contract to supported ContractScheme contract
-      "fhnnhn.rkt",
+      "fhnhn.rkt",
       "fold-fun-list.rkt",
       "intro1.rkt",
       "intro2.rkt",
@@ -148,7 +148,6 @@ object SchemeBenchmarkPrograms:
       "isnil.rkt",
       "l-zipmap.rkt",
       "mc91.rkt",
-      "mem.rkt",
       "repeat.rkt",
     )
 

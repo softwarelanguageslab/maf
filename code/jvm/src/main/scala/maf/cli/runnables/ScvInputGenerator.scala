@@ -14,7 +14,7 @@ import java.nio.file.Files
  * The output of each such invocation is a list of inputs for each function exported in the provide expression
  */
 object ScvInputGenerator:
-    def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
+    def benchmarks: List[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks.toList
 
     /**
      * Read the program from the given path into a string

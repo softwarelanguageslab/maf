@@ -11,6 +11,8 @@ import maf.util.benchmarks.Timeout
 import maf.language.ContractScheme.interpreter.RandomInputGenerator
 import maf.language.ContractScheme.ContractSchemeParser
 import maf.util.Reader
+import scala.concurrent.duration.*
+import java.util.concurrent.TimeoutException
 
 /** Objects implementing this trait must provide a "compute" method that returns the code coverage (between 0 and 1) of the program. */
 trait Coverage:
@@ -34,20 +36,22 @@ trait LineCoverageInterpreter extends SchemeInterpreter, Coverage:
     var visitedLines: Set[Int] = Set()
 
     override def eval(e: SchemeExp, env: Env, timeout: Timeout.T, version: Version): TailRec[Value] =
-        visitedLines = visitedLines + e.idn.pos.line
+        if e.idn.pos.line >= 0 then visitedLines = visitedLines + e.idn.pos.line // line can be -1 in case of Identity.none
         super.eval(e, env, timeout, version)
 
     def compute(program: String): Double =
         val parsedProgram = parseProgram(program)
-        run(parsedProgram, Timeout.none)
-        this.visitedLines.size.toDouble / program
-          .split('\n')
+        try run(parsedProgram, Timeout.start(15.seconds))
+        catch { case _: TimeoutException => () }
+
+        // even if the execution timed-out we will run with the coverage results we already obtained
+        this.visitedLines.size.toDouble / (program.linesIterator
           .filterNot(line =>
             // ignore lines that start with a comment, or that do not contain any characters except for whitespaces
             line.trim.nn.startsWith(";") || line.trim.nn.size == 0
           )
           .size
-          .toDouble
+          .toDouble)
 
 trait ScvParser extends Coverage:
     override def parseProgram(program: String): SchemeExp =

@@ -13,9 +13,15 @@ object ContractSchemePrelude extends BaseSchemePrelude:
       "cons?" -> "(define (cons? v) (pair? v))",
       "null" -> "(define null '())",
       "empty" -> "(define empty '())",
+      "empty?" -> "(define (empty? x) (null? x))",
       "sub1" -> "(define (sub1 x) (- x 1))",
       "add1" -> "(define (add1 x) (+ x 1))",
       "false?" -> "(define (false? v) (not v))",
+      "one-of/c" -> """
+      (define (one-of/c . vlus)
+        (flat (lambda (v)
+              (member v vlus))))
+      """,
       "listof" -> """(define (listof contract) 
         (define (iter xs)
           (if (null? xs)

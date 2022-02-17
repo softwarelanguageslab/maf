@@ -3,6 +3,7 @@ package maf.language.ContractScheme.interpreter
 import maf.language.sexp.*
 import maf.util.Reader
 import maf.core.Identity
+import scala.util.Try
 import maf.util.ArrayEq
 import maf.core.Monad
 import maf.language.ContractScheme.ContractValues
@@ -70,7 +71,7 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
               noalloc(ConcreteValues.Value.Nil)
 
             case Ident("fail") =>
-              noalloc(ConcreteValues.Value.Undefined(Identity.none))
+              throw new Exception("could not generate value")
 
             case SExpVector(Ident(head) :: elements, _) if head.startsWith("struct:") =>
               // for now vectors only enable the definition of structs.
@@ -87,7 +88,7 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
     /** Convert the given map of value literal to a map of concrete values */
     def convertMapToConcreteValue(input: Map[String, List[SExp]]): Map[String, List[InputGenerator]] =
       input.view
-        .mapValues(_ map convertToConcreteValue(quoted = false))
+        .mapValues(vlus => Try(vlus map convertToConcreteValue(quoted = false)).getOrElse(List()))
         .toMap
 
     private lazy val inputs: Map[String, List[InputGenerator]] =
