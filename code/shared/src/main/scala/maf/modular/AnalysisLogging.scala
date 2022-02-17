@@ -22,6 +22,12 @@ trait AnalysisLogging[Expr <: Expression] extends GlobalStore[Expr]:
 
     def focus(a: Addr): Boolean = !a.toString.contains("Prm") // Whether to "watch"" an address and insert it into the table.
 
+    enum Mode:
+        case Fine, Coarse //, Summary
+
+    import Mode.*
+    var mode: Mode = Fine
+
     private def insertTable(messageOrComponent: Either[String, Component]): Unit =
         val stepString = step.toString
         step = step + 1
@@ -64,20 +70,20 @@ trait AnalysisLogging[Expr <: Expression] extends GlobalStore[Expr]:
             logger.logU("") // Adds a newline to the log.
             intraC += 1
             repeats = repeats + (component -> (repeats(component) + 1))
-            logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
+            if mode == Fine then logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
             super.analyzeWithTimeout(timeout)
 
         // Reading an address.
         override def readAddr(addr: Addr): Value =
             val v = super.readAddr(addr)
             if v == lattice.bottom then botRead = Some(addr) else botRead = None
-            logger.log(s"READ $addr => $v")
+            if mode == Fine then logger.log(s"READ $addr => $v")
             v
 
         // Writing an address.
         override def writeAddr(addr: Addr, value: Value): Boolean =
             val b = super.writeAddr(addr, value)
-            if b then logger.log(s"WRIT $addr <= $value (becomes ${intra.store.getOrElse(addr, lattice.bottom)})")
+            if b && mode == Fine then logger.log(s"WRIT $addr <= $value (becomes ${intra.store.getOrElse(addr, lattice.bottom)})")
             b
 
         override def commit(): Unit =

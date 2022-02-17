@@ -1,14 +1,13 @@
 package maf.cli.runnables
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
-import maf.cli.experiments.incremental.IncrementalSchemeModFTypePerformance.Analysis
 import maf.cli.experiments.incremental.SplitPerformance
 import maf.language.CScheme.*
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.SchemeInterpreter
 import maf.language.scheme.primitives.SchemePrelude
-import maf.modular.ModAnalysis
+import maf.modular.{GlobalStore, ModAnalysis}
 import maf.modular.incremental.IncrementalConfiguration.*
 import maf.modular.scheme.modf.*
 import maf.modular.incremental.*
@@ -16,7 +15,7 @@ import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
 import maf.modular.incremental.ProgramVersionExtracter.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
-import maf.modular.scheme.PrmAddr
+import maf.modular.scheme.{PrmAddr, SchemeTypeDomain}
 import maf.modular.worklist.LIFOWorklistAlgorithm
 import maf.util.{Reader, Writer}
 import maf.util.Writer.Writer
@@ -79,11 +78,37 @@ object IncrementalRun extends App:
           }
 
         // Performance benchmarks
-        def perfAnalysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
-          with SplitPerformance[SchemeExp] {
+        def perfAnalysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
+          with SplitPerformance[SchemeExp]
+          with IncrementalLogging[SchemeExp] {
+          mode = Mode.Summary
           override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
+            new IntraAnalysis(cmp)
+              with IncrementalSchemeModFBigStepIntra
+              with IncrementalGlobalStoreIntraAnalysis
+              with SplitPerformanceIntra
+              with IncrementalLoggingIntra
         }
+
+        def newNonIncAnalysis(program: SchemeExp) =
+          new ModAnalysis[SchemeExp](program)
+            with StandardSchemeModFComponents
+            with SchemeModFNoSensitivity
+            with SchemeModFSemanticsM
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with BigStepModFSemantics
+            with SchemeTypeDomain
+            with GlobalStore[SchemeExp] {
+            var cnt = 0
+            override def run(timeout: Timeout.T) =
+                super.run(timeout)
+                println(cnt)
+            override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra {
+              override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+                  cnt = cnt + 1
+                  super.analyzeWithTimeout(timeout)
+            }
+          }
 
         // Analysis from soundness tests.
         def base(program: SchemeExp) = new ModAnalysis[SchemeExp](program)
@@ -111,9 +136,9 @@ object IncrementalRun extends App:
           //interpretProgram(bench)
           val text = getUpdated(CSchemeParser.parseProgram(Reader.loadFile(bench)))
           //println(text.prettyString())
-          val a = perfAnalysis(text, ci_di_wi)
-          //a.logger.logU(bench)
-          //a.logger.logU("BASE + INC")
+          val a = perfAnalysis(text, noOptimisations)
+          a.logger.logU(bench)
+          a.logger.logU("BASE")
           //println(a.configString())
           a.version = New
           val timeI = Timer.timeOnly {
@@ -127,9 +152,12 @@ object IncrementalRun extends App:
           //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
           //a.configuration = noOptimisations
           // a.flowInformationToDotGraph("logs/flowsA1.dot")
+          val a2 = perfAnalysis(text, ci_di_wi)
+          a2.logger.logU("INC")
+          a2.analyzeWithTimeout(timeout())
+          a2.configuration = di_wi
           val timeU = Timer.timeOnly {
-            a.configuration = wi
-            a.updateAnalysis(timeout())
+            a2.updateAnalysis(timeout())
           }
           if a.finished then println(s"Updating analysis took ${timeU / 1000000} ms.")
           else println(s"Updating analysis timed out after ${timeU / 1000000} ms.")
@@ -138,7 +166,7 @@ object IncrementalRun extends App:
           Thread.sleep(1000)
           val b = perfAnalysis(text, noOptimisations)
           b.version = New
-          //b.logger.logU("REAN")
+          b.logger.logU("REAN")
           val timeR = Timer.timeOnly {
             b.analyzeWithTimeout(timeout())
           }
@@ -161,7 +189,7 @@ object IncrementalRun extends App:
 
     val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/changes/scheme/generated/R5RS_icp_icp_1c_ontleed-4.scm",
+      "test/changes/scheme/generated/R5RS_gambit_sboyer-1.scm",
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
       //"test/R5RS/gambit/nboyer.scm",
       //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
@@ -184,3 +212,11 @@ object Memorycheck extends App:
         s"${v.toDouble / (1L << (z * 10))} ${" KMGTPE".charAt(z)}B"
 
     println(formatSize(Runtime.getRuntime.nn.maxMemory()))
+
+object IncrementalExtraction extends App:
+
+    val text: String = "test/changes/scheme/generated/R5RS_icp_icp_1c_ontleed-4.scm"
+    val version: Version = New
+
+    val program = CSchemeParser.parseProgram(Reader.loadFile(text))
+    println((if version == New then ProgramVersionExtracter.getUpdated(program) else ProgramVersionExtracter.getInitial(program)).prettyString())
