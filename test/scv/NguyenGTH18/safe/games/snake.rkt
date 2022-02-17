@@ -14,12 +14,12 @@
 ;;;;; data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(struct posn (x y) #:transparent)
+(struct posn (x y))
 (define (posn=? p1 p2)
   (and (= (posn-x p1) (posn-x p2))
        (= (posn-y p1) (posn-y p2))))
-(struct snake (dir segs) #:transparent)
-(struct world (snake food) #:transparent)
+(struct snake (dir segs))
+(struct world (snake food))
 (define DIR/C (one-of/c 'up 'down 'left 'right))
 (define POSN/C (struct/c posn real? real?))
 (define SNAKE/C (struct/c snake DIR/C (and/c cons? (listof POSN/C))))
@@ -212,14 +212,14 @@
 (provide
  (contract-out
   ;; data
-  [DIR/C contract?]
-  [POSN/C contract?]
-  [SNAKE/C contract?]
-  [WORLD/C contract?]
-  [struct posn ([x real?] [y real?])]
-  [posn=? (POSN/C POSN/C . -> . boolean?)]
-  [struct snake ([dir DIR/C] [segs (and/c cons? (listof POSN/C))])]
-  [struct world ([snake SNAKE/C] [food POSN/C])]
+  ;[DIR/C contract?]
+  ;[POSN/C contract?]
+  ;[SNAKE/C contract?]
+  ;[WORLD/C contract?]
+  ;[struct posn ([x real?] [y real?])]
+  [posn=? (-> POSN/C POSN/C  boolean?)]
+  ;[struct snake ([dir DIR/C] [segs (and/c cons? (listof POSN/C))])]
+  ;[struct world ([snake SNAKE/C] [food POSN/C])]
   ;; const
   [WORLD WORLD/C]
   [BACKGROUND image/c]

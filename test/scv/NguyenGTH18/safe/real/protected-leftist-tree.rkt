@@ -28,7 +28,7 @@
                   any/c
                   (recursive-contract tree/c #:chaperone)
                   (recursive-contract tree/c #:chaperone))))
-(define leftist-tree/c (struct/c leftist (any/c any/c . -> . any/c) tree/c))
+(define leftist-tree/c (struct/c leftist (-> any/c any/c any/c) tree/c))
 
 (define (leftist-tree <=? xs)
   (leftist-tree-add-all (leftist <=? #f) xs))
@@ -125,7 +125,7 @@
     [(node _ _ l r) (merge l r <=?)]))
 
 
-(provide/contract
+(provide (contract-out 
  [leftist-tree (-> (-> any/c any/c any/c) list? leftist-tree?)]
  [leftist-tree? (-> any/c boolean?)]
  [leftist-tree-empty? (-> leftist-tree? boolean?)]
@@ -135,4 +135,4 @@
  [leftist-tree-min (-> leftist-tree/c any/c)]
  [leftist-tree-remove-min (-> leftist-tree/c leftist-tree?)] ; poz
  [leftist-tree->list (-> leftist-tree/c (listof any/c))]
- [in-leftist-tree (-> leftist-tree? sequence?)])
+ [in-leftist-tree (-> leftist-tree? sequence?)]))
