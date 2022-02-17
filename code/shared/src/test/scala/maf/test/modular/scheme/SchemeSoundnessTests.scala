@@ -38,7 +38,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
      * @return
      *   a concrete SchemeInterpreter
      */
-    def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO()): SchemeInterpreter =
+    def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO(), benchmark: String): SchemeInterpreter =
       new SchemeInterpreter(addResult, io)
 
     /**
@@ -65,7 +65,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         try
             val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
             for _ <- 1 to times do
-                val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+                val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
                 try runInterpreter(interpreter, program, timeout)
                 catch handleInterpreterError(addResult)
         catch

@@ -8,6 +8,10 @@ import maf.util.ArrayEq
 import maf.core.Monad
 import maf.language.ContractScheme.ContractValues
 
+object RandomInputsFromFile:
+    def toInputPath(sourcePath: String): String =
+      s"input/generated/${sourcePath.replace("/", "_")}.scm"
+
 /**
  * MAF can read random inputs that serve as the source for provide/contract-out forms from an input file
  *
@@ -19,7 +23,7 @@ import maf.language.ContractScheme.ContractValues
  * This symbol may reside on both the INPUT-1, INPUT-2, ... or instead of the s-expression on a seperate line.
  *
  * @param sourcePath
- *   the path to the original file that is been executed
+ *   the path to the input file
  */
 class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
     /**
