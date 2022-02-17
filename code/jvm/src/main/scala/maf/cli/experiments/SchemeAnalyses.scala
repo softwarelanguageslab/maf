@@ -184,13 +184,13 @@ object SchemeAnalyses:
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
           with ScvBigStepSemantics
-          with ScvBigStepWithProvides
-          with ScvWithStructs
           with SchemeConstantPropagationDomain
           with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
           with SchemeModFSemanticsM
-          with ScvOneContextSensitivity:
+          with ScvOneContextSensitivity
+          with ScvBigStepWithProvides
+          with ScvWithStructs:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
             override def intraAnalysis(

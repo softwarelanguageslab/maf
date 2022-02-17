@@ -77,7 +77,7 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
         io: IO = new EmptyIO(),
         benchmark: String
       ): SchemeInterpreter =
-      ContractSchemeInterpreter(generator = Some(RandomInputsFromFile(RandomInputsFromFile.toInputPath(benchmark))))
+      ContractSchemeInterpreter(cb = addResult, generator = Some(RandomInputsFromFile(RandomInputsFromFile.toInputPath(benchmark))))
 
     override def parseProgram(txt: String, benchmark: String): SchemeExp =
       ContractSchemeParser.parse(txt, SourcePathTag(benchmark))
@@ -107,6 +107,10 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
     //    else
     //        // Use the regular comparison for the others
     //        super.compareResults(analysis, concreteResults, message)
+    //
+    override def compareResults(analysis: Analysis, concreteResults: Map[Identity, Set[Value]], message: String): Unit =
+        println(s"view: ${view(analysis).summary.blames}")
+        super.compareResults(analysis, concreteResults, message)
 
     override def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value): Boolean =
         import ConcreteValues.ContractValue
@@ -148,6 +152,7 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
       SchemeAnalyses.scvModAnalysisWithRacketFeatures(program)
 
 /** Automated soundness tests  on the set of benchmarks from the Nguyen paper */
-class ScvNguyenSoundnessTests extends ScvSoundnessTests:
-    def name: String = "scv-soundness-tests"
-    override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
+//class ScvNguyenSoundnessTests extends ScvSoundnessTests:
+//    def name: String = "scv-soundness-tests"
+//    override def benchmarks: Set[String] = Set("test/scv/NguyenGTH18/safe/games/tetris.rkt")
+//      SchemeBenchmarkPrograms.scvNguyenBenchmarks

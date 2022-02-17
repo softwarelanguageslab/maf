@@ -238,26 +238,21 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
         case Ident("struct/c") :::: IdentWithIdentity(name, nameIdn) :::: fields =>
           val tagCheck = ContractSchemeFlatContract(SchemeVar(Identifier(s"${name}?", nameIdn)), Identity.none)
           for
-              fieldsCheck <- sequence(
-                smap(
-                  fields,
-                  field => {
-                    val structRef = SchemeFuncall(
-                      SchemeVar(Identifier("__struct_ref", Identity.none)),
-                      List(SchemeVar(Identifier("v", Identity.none)), SchemeValue(sexp.Value.Integer(0), Identity.none)),
-                      Identity.none
-                    )
-                    for {
-                      fieldExpr <- _compile(field)
-                      checkExpression = ContractSchemeCheck(fieldExpr, structRef, Identity.none)
-                      fieldCheck = ContractSchemeFlatContract(
-                        SchemeLambda(None, List(Identifier("v", Identity.none)), List(checkExpression), None, Identity.none),
-                        field.idn
-                      )
-                    } yield fieldCheck
-                  }
+              fieldsCheck <- sequence(fields.toList.zipWithIndex.map { case (field, idx) =>
+                val structRef = SchemeFuncall(
+                  SchemeVar(Identifier("__struct_ref", Identity.none)),
+                  List(SchemeVar(Identifier("v", Identity.none)), SchemeValue(sexp.Value.Integer(idx), Identity.none)),
+                  Identity.none
                 )
-              )
+                for {
+                  fieldExpr <- _compile(field)
+                  checkExpression = ContractSchemeCheck(fieldExpr, structRef, Identity.none)
+                  fieldCheck = ContractSchemeFlatContract(
+                    SchemeLambda(None, List(Identifier("v", Identity.none)), List(checkExpression), None, Identity.none),
+                    field.idn
+                  )
+                } yield fieldCheck
+              })
           yield nest(tagCheck :: fieldsCheck, "and/c")
 
         // Desugaring of and/c (and/c contract1 contract2 ...) to (and/c contract1 (and/c contract2 ...))

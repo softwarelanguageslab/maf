@@ -37,7 +37,7 @@ trait ScvBigStepWithProvides extends BaseScvBigStepSemantics:
               for
                   function <- extract(evalVariable(name))
                   evaluatedContract <- extract(eval(contract))
-                  result <- applyMon(function, evaluatedContract, SchemeVar(name), idn, false, contractExpr = Some(contract))
+                  result <- applyMon(evaluatedContract, function, SchemeVar(name), idn, false, contractExpr = Some(contract))
               yield (result, name, idn)
 
             case _ => throw new Exception("only contract-out is supported in provide")
@@ -45,8 +45,9 @@ trait ScvBigStepWithProvides extends BaseScvBigStepSemantics:
         protected def callWithOpq(values: List[(Value, Identifier, Identity)]): EvalM[List[Value]] =
             def fresh(idn: Identity): SchemeExp = SchemeFuncall(SchemeVar(Identifier("fresh", idn)), List(), idn)
             Monad.sequence(values.map { case (value, name, idn) =>
+              if name.name == "tetra-change-color" then println(s"executing $name $value $idn")
               lattice.getArrs(value).foldLeftM(lattice.bottom) { (vlu, arr) =>
-                applyArr(SchemeFuncall(SchemeVar(name), (0 to arr.expectedNumArgs).map(_ => fresh(idn)).toList, idn), PostValue.noSymbolic(arr.e))
+                applyArr(SchemeFuncall(SchemeVar(name), arr.contract.domainIdns.map(idn => fresh(idn)).toList, idn), PostValue.noSymbolic(arr.e))
                   .map(lattice.join(vlu, _))
               }
             })

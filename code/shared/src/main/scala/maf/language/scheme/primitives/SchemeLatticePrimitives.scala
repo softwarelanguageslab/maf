@@ -144,7 +144,9 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             `eof-object?`,
             /* Other primitives that are not R5RS */
             `random`,
-            `error`
+            `error`,
+            // primitives to support structs
+            `__struct_ref`
           ) ++ CSchemePrimitives
         )
 
@@ -478,6 +480,18 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                     _ <- PrimM[M].updateSto(adr, newvec)
                 yield unspecified
               }
+
+        case object `__struct_ref` extends SchemePrim2("__struct_ref"):
+            def call[M[_]: PrimM](fpos: SchemeExp, s: V, field: V): M[V] =
+              MonadJoin[M].mjoin(
+                lat
+                  .getStructs(s)
+                  .flatMap(s =>
+                    // TODO: this is sound but very imprecise; use the value "field" and a corresponding operation in the lattice to make this more precise
+                    // and fetch the actual field whenever possible
+                    s.fields.contents.map(Monad[M].unit)
+                  )
+              )
 
         case object `call/cc` extends SchemePrim1("call/cc"):
             def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =

@@ -247,15 +247,22 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             contractExpr: Option[SchemeExp] = None
           ): EvalM[Value] =
             // We have three distinct possibilities for a "mon" expression:
-            // 1. `contract` is a flat contract, or a function that can be treated as such, the result of mon is the value of `expression`
+            // 1. `contract` is a flat contract, or a function (or primitive) that can be treated as such, the result of mon is the value of `expression`
             // 2. `contract` is a dependent contract, in which case `expression` must be a function, the result of `mon` is a guarded function
             // 3. `contract` does not satisfy any of the above conditions, resutling in an error
             val extraFlats =
-              if contractExpr.isDefined then
-                  lattice
-                    .getClosures(contract.value)
-                    .map(f => ContractValues.Flat(lattice.closure(f), contractExpr.get, None, contractExpr.get.idn))
-              else Set()
+              (if contractExpr.isDefined then
+                   // closures
+                   lattice
+                     .getClosures(contract.value)
+                     .map(f => ContractValues.Flat(lattice.closure(f), contractExpr.get, None, contractExpr.get.idn))
+               else Set()) ++ (/* primitives */ lattice
+                .getPrimitives(contract.value)
+                .map(p =>
+                  ContractValues
+                    .Flat(lattice.primitive(p), SchemeVar(Identifier(p, Identity.none)), Some(SchemeVar(Identifier(p, Identity.none))), Identity.none)
+                ))
+
             val flats = (lattice.getFlats(contract.value) ++ extraFlats).map(c => monFlat(c, expression, expr, monIdn, assumed))
             val guards = lattice.getGrds(contract.value).map(c => monArr(c, expression, expr, monIdn))
 
