@@ -104,15 +104,16 @@ object OpqOps:
       Vector -> SchemeOp.IsVector
     )
 
-    /** Injection functions for the native types */
+    /** Injection functions for the native and union types */
     def inject[V: Lat](tpy: Tpy): V = tpy match
-        case Real    => Lat[V].realTop
-        case Boolean => Lat[V].boolTop
-        case Integer => Lat[V].numTop
-        case String  => Lat[V].stringTop
-        case Symbol  => Lat[V].symbolTop
-        case Nil     => Lat[V].nil
-        case Any     => Lat[V].opq(Opq())
+        case Real        => Lat[V].realTop
+        case Boolean     => Lat[V].boolTop
+        case Integer     => Lat[V].numTop
+        case String      => Lat[V].stringTop
+        case Symbol      => Lat[V].symbolTop
+        case Nil         => Lat[V].nil
+        case Any         => Lat[V].opq(Opq())
+        case Union(a, b) => Lat[V].join(inject(a), inject(b))
 
     /** A type for a number */
     val NumberTy: Tpy = Integer ||| Real
@@ -120,10 +121,10 @@ object OpqOps:
     /** Signatures for each native */
     val signatures = Map(
       "modulo" -> (Real ==>: Real),
-      "*" -> (VarArg(NumberTy) ==>: Real),
-      "+" -> (VarArg(NumberTy) ==>: Real),
-      "-" -> (VarArg(NumberTy) ==>: Real),
-      "/" -> (VarArg(NumberTy) ==>: Real),
+      "*" -> (VarArg(NumberTy) ==>: NumberTy),
+      "+" -> (VarArg(NumberTy) ==>: NumberTy),
+      "-" -> (VarArg(NumberTy) ==>: NumberTy),
+      "/" -> (VarArg(NumberTy) ==>: NumberTy),
       "acos" -> (Real ==>: Real),
       "asin" -> (Real ==>: Real),
       "aton" -> (Real ==>: Real),
