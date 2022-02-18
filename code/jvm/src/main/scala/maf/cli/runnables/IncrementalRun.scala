@@ -47,12 +47,21 @@ object IncrementalRun extends App:
       with SplitPerformance[SchemeExp]
       with IncrementalLogging[SchemeExp] {
       mode = Mode.Summary
+      var cnt = 0
+      override def run(timeout: Timeout.T) =
+        super.run(timeout)
+        println(cnt)
       override def intraAnalysis(cmp: Component) =
         new IntraAnalysis(cmp)
           with IncrementalSchemeModFBigStepIntra
           with IncrementalGlobalStoreIntraAnalysis
           with SplitPerformanceIntra
           with IncrementalLoggingIntra
+        {
+          override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            cnt = cnt + 1
+            super.analyzeWithTimeout(timeout)
+        }
     }
 
     // Analysis from soundness tests.
@@ -95,7 +104,7 @@ object IncrementalRun extends App:
         //println(text.prettyString())
         val a = perfAnalysis(text, noOptimisations)
         a.logger.logU(bench)
-        a.logger.logU("BASE")
+        a.logger.logU("BASE -- No Optimisations")
         //println(a.configString())
         //a.version = New
         val timeI = Timer.timeOnly {
@@ -104,14 +113,20 @@ object IncrementalRun extends App:
         if a.finished then println(s"Initial analysis took ${timeI / 1000000} ms.")
         else
             println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
-            return
+            return ()
         //a.visited.foreach(println)
         //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
         //a.configuration = noOptimisations
         // a.flowInformationToDotGraph("logs/flowsA1.dot")
         val a2 = perfAnalysis(text, ci_di_wi)
-        a2.logger.logU("INC")
-        a2.analyzeWithTimeout(timeout())
+        a2.logger.logU("BASE CI-DI-WI + INC")
+        val timeI2 = Timer.timeOnly {
+          a2.analyzeWithTimeout(timeout())
+        }
+        if a2.finished then println(s"Preparatory initial analysis took ${timeI2 / 1000000} ms.")
+        else
+            println(s"Preparatory initial analysis timed out after ${timeI2 / 1000000} ms.")
+            return ()
         a2.configuration = di_wi
         val timeU = Timer.timeOnly {
           a2.updateAnalysis(timeout())
