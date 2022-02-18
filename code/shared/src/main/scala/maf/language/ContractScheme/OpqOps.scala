@@ -13,6 +13,9 @@ object OpqOps:
         def ==>:(other: Tpy): Tpy =
           ArrowTpy(other, this)
 
+        def |||(other: Tpy): Tpy =
+          Union(this, other)
+
     /**
      * Everything can be expressed as an uncurried function type,
      *
@@ -44,6 +47,36 @@ object OpqOps:
 
     /** Represents the type of an unsupported operation */
     case object Unsupported extends Tpy
+
+    /** Represents a union type, during checking it will try the variants from left to right, and convert opaque values as such if necessary */
+    case class Union(a: Tpy, b: Tpy) extends Tpy
+
+    /**
+     * Represents a variable that can be used in type signatures.
+     *
+     * It matches a concrete value if the concrete value matches the bound type. (TODO)
+     *
+     * @param name
+     *   the name of the variable
+     * @param boundTo
+     *   the type the variable is bound to (if any)
+     */
+    case class Var(name: String, boundTo: Option[Tpy] = None) extends Tpy:
+        def bind(tpy: Tpy): Var =
+          Var(name, Some(tpy))
+
+        /** Checks whether the condition is satisfies for the concrete values the variable is bound to */
+        def forall(pred: Tpy => Boolean): Tpy = Forall(this, pred)
+
+    /**
+     * Matches a concrete value if the concrete value bound at vrr satisfies the given predicate.
+     *
+     * If the concrete value is a list of values, then the entire list of values should match the type (TODO)
+     */
+    case class Forall(vrr: Var, pred: Tpy => Boolean) extends Tpy
+
+    /** If-then-else. Matches a concrete value if cns matches the concrete value in case cnd matches, or matches alt if cnd does not match (TODO) */
+    case class Ite(cnd: Tpy, cns: Tpy, alt: Tpy) extends Tpy
 
     /** Native types */
     case object Real extends Tpy
@@ -81,13 +114,16 @@ object OpqOps:
         case Nil     => Lat[V].nil
         case Any     => Lat[V].opq(Opq())
 
+    /** A type for a number */
+    val NumberTy: Tpy = Integer ||| Real
+
     /** Signatures for each native */
     val signatures = Map(
       "modulo" -> (Real ==>: Real),
-      "*" -> (VarArg(Real) ==>: Real),
-      "+" -> (VarArg(Real) ==>: Real),
-      "-" -> (VarArg(Real) ==>: Real),
-      "/" -> (VarArg(Real) ==>: Real),
+      "*" -> (VarArg(NumberTy) ==>: NumberTy),
+      "+" -> (VarArg(NumberTy) ==>: NumberTy),
+      "-" -> (VarArg(NumberTy) ==>: NumberTy),
+      "/" -> (VarArg(NumberTy) ==>: NumberTy),
       "acos" -> (Real ==>: Real),
       "asin" -> (Real ==>: Real),
       "aton" -> (Real ==>: Real),
@@ -183,13 +219,15 @@ object OpqOps:
         export lat.*
 
     /** Returns true if the given argument matches the given type */
-    def matches[V: Lat](value: V, tpy: Tpy): Boolean =
-        val operation = typePredicates(tpy)
-        operation match
-            case SchemeOp.IsAny => true
-            case _ =>
-              Lat[V].op(operation)(List(value)).map(Lat[V].isTrue).getOrElse(false) ||
-                Lat[V].isOpq(value)
+    def matches[V: Lat](value: V, tpy: Tpy): Boolean = tpy match
+        case Union(a, b) => matches(value, a) || matches(value, b)
+        case _ =>
+          val operation = typePredicates(tpy)
+          operation match
+              case SchemeOp.IsAny => true
+              case _ =>
+                Lat[V].op(operation)(List(value)).map(Lat[V].isTrue).getOrElse(false) ||
+                  Lat[V].isOpq(value)
 
     /** Returns true if the arguments match (both in number *and* type) */
     def checkArgs[V: Lat](values: List[V], tpys: List[Tpy]): Boolean = (values, tpys) match
