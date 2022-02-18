@@ -120,10 +120,10 @@ object OpqOps:
     /** Signatures for each native */
     val signatures = Map(
       "modulo" -> (Real ==>: Real),
-      "*" -> (VarArg(NumberTy) ==>: NumberTy),
-      "+" -> (VarArg(NumberTy) ==>: NumberTy),
-      "-" -> (VarArg(NumberTy) ==>: NumberTy),
-      "/" -> (VarArg(NumberTy) ==>: NumberTy),
+      "*" -> (VarArg(NumberTy) ==>: Real)
+      "+" -> (VarArg(NumberTy) ==>: Real)
+      "-" -> (VarArg(NumberTy) ==>: Real)
+      "/" -> (VarArg(NumberTy) ==>: Real)
       "acos" -> (Real ==>: Real),
       "asin" -> (Real ==>: Real),
       "aton" -> (Real ==>: Real),
