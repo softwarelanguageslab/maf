@@ -45,9 +45,10 @@ trait ScvBigStepWithProvides extends BaseScvBigStepSemantics:
         protected def callWithOpq(values: List[(Value, Identifier, Identity)]): EvalM[List[Value]] =
             def fresh(idn: Identity): SchemeExp = SchemeFuncall(SchemeVar(Identifier("fresh", idn)), List(), idn)
             Monad.sequence(values.map { case (value, name, idn) =>
-              if name.name == "tetra-change-color" then println(s"executing $name $value $idn")
               lattice.getArrs(value).foldLeftM(lattice.bottom) { (vlu, arr) =>
-                applyArr(SchemeFuncall(SchemeVar(name), arr.contract.domainIdns.map(idn => fresh(idn)).toList, idn), PostValue.noSymbolic(arr.e))
+                applyArr(SchemeFuncall(SchemeVar(name), arr.contract.domainIdns.map(idn => fresh(idn)).toList, idn),
+                         PostValue.noSymbolic(lattice.arr(arr))
+                )
                   .map(lattice.join(vlu, _))
               }
             })

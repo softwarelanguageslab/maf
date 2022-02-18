@@ -136,7 +136,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
 
     // TODO: create special kind of Lambda expression that ignores its arguments
     private def rangeToRangerMaker(range: SchemeExp): SchemeExp =
-      SchemeLambda(None, List(Identifier("0arg", Identity.none)), List(range), None, range.idn)
+      SchemeVarArgLambda(None, List(), Identifier("0arg", Identity.none), List(range), None, range.idn)
 
     // TODO: also take vararg into account eg. (define (f . a) exp) is a function that takes any number of arguments
     private def compile_params(params: SExp): List[Identifier] = params match
