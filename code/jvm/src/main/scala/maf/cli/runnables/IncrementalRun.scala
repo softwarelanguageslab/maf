@@ -27,6 +27,55 @@ import scala.concurrent.duration.*
 
 object IncrementalRun extends App:
 
+    def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
+      new IncrementalSchemeModFAnalysisTypeLattice(text, configuration)
+        with IncrementalLogging[SchemeExp]
+        //with IncrementalDataFlowVisualisation[SchemeExp]
+        {
+        override def focus(a: Addr): Boolean = a.toString.toLowerCase().nn.contains("ret")
+
+        override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
+          with IncrementalSchemeModFBigStepIntra
+          with IncrementalGlobalStoreIntraAnalysis
+          //  with AssertionModFIntra
+          with IncrementalLoggingIntra
+        //with IncrementalVisualIntra
+      }
+
+    // Performance benchmarks
+    def perfAnalysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
+      with SplitPerformance[SchemeExp]
+      with IncrementalLogging[SchemeExp] {
+      mode = Mode.Summary
+      override def intraAnalysis(cmp: Component) =
+        new IntraAnalysis(cmp)
+          with IncrementalSchemeModFBigStepIntra
+          with IncrementalGlobalStoreIntraAnalysis
+          with SplitPerformanceIntra
+          with IncrementalLoggingIntra
+    }
+
+    // Analysis from soundness tests.
+    def base(program: SchemeExp) = new ModAnalysis[SchemeExp](program)
+      with StandardSchemeModFComponents
+      with SchemeModFNoSensitivity
+      with SchemeModFSemanticsM
+      with LIFOWorklistAlgorithm[SchemeExp]
+      with IncrementalSchemeModFBigStepSemantics
+      with IncrementalSchemeTypeDomain // IncrementalSchemeConstantPropagationDomain
+      with IncrementalGlobalStore[SchemeExp]
+      with IncrementalLogging[SchemeExp]
+      //with IncrementalDataFlowVisualisation[SchemeExp]
+      {
+      override def focus(a: Addr): Boolean = false // a.toString.contains("VarAddr(n")
+      var configuration: IncrementalConfiguration = ci
+      mode = Mode.Fine
+      override def intraAnalysis(
+          cmp: Component
+        ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
+      //with IncrementalVisualIntra
+    }
+
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
     // Useful when reducing a program when debugging the analysis.
     def interpretProgram(file: String): Unit =
@@ -38,171 +87,79 @@ object IncrementalRun extends App:
         i.run(prog, Timeout.start(Duration(3, MINUTES)), New)
         println("*")
 
-    def modconcAnalysis(
-        bench: String,
-        config: IncrementalConfiguration,
-        timeout: () => Timeout.T
-      ): Unit =
-        val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-        val a = new IncrementalModConcAnalysisCPLattice(text, config) with IncrementalLogging[SchemeExp] {
-          override def intraAnalysis(
-              cmp: Component
-            ) = new IntraAnalysis(cmp)
-            with IncrementalSmallStepIntra
-            with KCFAIntra
-            with IncrementalGlobalStoreIntraAnalysis
-            with IncrementalLoggingIntra {
-            override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-                println(s"Analyzing $cmp")
-                super.analyzeWithTimeout(timeout)
-          }
-        }
-        a.analyzeWithTimeout(timeout())
-        print(a.finalResult)
-    //a.updateAnalysis(timeout())
-
     def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit =
-        def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
-          new IncrementalSchemeModFAnalysisTypeLattice(text, configuration)
-            with IncrementalLogging[SchemeExp]
-            //with IncrementalDataFlowVisualisation[SchemeExp]
-            {
-            override def focus(a: Addr): Boolean = a.toString.toLowerCase().nn.contains("ret")
-
-            override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
-              with IncrementalSchemeModFBigStepIntra
-              with IncrementalGlobalStoreIntraAnalysis
-              //  with AssertionModFIntra
-              with IncrementalLoggingIntra
-            //with IncrementalVisualIntra
-          }
-
-        // Performance benchmarks
-        def perfAnalysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
-          with SplitPerformance[SchemeExp]
-          with IncrementalLogging[SchemeExp] {
-          mode = Mode.Summary
-          override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp)
-              with IncrementalSchemeModFBigStepIntra
-              with IncrementalGlobalStoreIntraAnalysis
-              with SplitPerformanceIntra
-              with IncrementalLoggingIntra
+      try {
+        println(s"***** $bench *****")
+        //interpretProgram(bench)
+        val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+        //println(text.prettyString())
+        val a = perfAnalysis(text, noOptimisations)
+        a.logger.logU(bench)
+        a.logger.logU("BASE")
+        //println(a.configString())
+        //a.version = New
+        val timeI = Timer.timeOnly {
+          a.analyzeWithTimeout(timeout())
         }
-
-        def newNonIncAnalysis(program: SchemeExp) =
-          new ModAnalysis[SchemeExp](program)
-            with StandardSchemeModFComponents
-            with SchemeModFNoSensitivity
-            with SchemeModFSemanticsM
-            with LIFOWorklistAlgorithm[SchemeExp]
-            with BigStepModFSemantics
-            with SchemeTypeDomain
-            with GlobalStore[SchemeExp] {
-            var cnt = 0
-            override def run(timeout: Timeout.T) =
-                super.run(timeout)
-                println(cnt)
-            override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra {
-              override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-                  cnt = cnt + 1
-                  super.analyzeWithTimeout(timeout)
-            }
-          }
-
-        // Analysis from soundness tests.
-        def base(program: SchemeExp) = new ModAnalysis[SchemeExp](program)
-          with StandardSchemeModFComponents
-          with SchemeModFNoSensitivity
-          with SchemeModFSemanticsM
-          with LIFOWorklistAlgorithm[SchemeExp]
-          with IncrementalSchemeModFBigStepSemantics
-          with IncrementalSchemeTypeDomain // IncrementalSchemeConstantPropagationDomain
-          with IncrementalGlobalStore[SchemeExp]
-          with IncrementalLogging[SchemeExp]
-          //with IncrementalDataFlowVisualisation[SchemeExp]
-          {
-          override def focus(a: Addr): Boolean = false // a.toString.contains("VarAddr(n")
-          var configuration: IncrementalConfiguration = ci
-          mode = Mode.Fine
-          override def intraAnalysis(
-              cmp: Component
-            ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
-          //with IncrementalVisualIntra
+        if a.finished then println(s"Initial analysis took ${timeI / 1000000} ms.")
+        else
+            println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
+            return
+        //a.visited.foreach(println)
+        //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
+        //a.configuration = noOptimisations
+        // a.flowInformationToDotGraph("logs/flowsA1.dot")
+        val a2 = perfAnalysis(text, ci_di_wi)
+        a2.logger.logU("INC")
+        a2.analyzeWithTimeout(timeout())
+        a2.configuration = di_wi
+        val timeU = Timer.timeOnly {
+          a2.updateAnalysis(timeout())
         }
+        if a.finished then println(s"Updating analysis took ${timeU / 1000000} ms.")
+        else println(s"Updating analysis timed out after ${timeU / 1000000} ms.")
+        // a.flowInformationToDotGraph("logs/flowsA2.dot")
 
-        try {
-          println(s"***** $bench *****")
-          //interpretProgram(bench)
-          val text = getUpdated(CSchemeParser.parseProgram(Reader.loadFile(bench)))
-          //println(text.prettyString())
-          val a = perfAnalysis(text, noOptimisations)
-          a.logger.logU(bench)
-          a.logger.logU("BASE")
-          //println(a.configString())
-          a.version = New
-          val timeI = Timer.timeOnly {
-            a.analyzeWithTimeout(timeout())
-          }
-          if a.finished then println(s"Initial analysis took ${timeI / 1000000} ms.")
-          else
-              println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
-              return
-          //a.visited.foreach(println)
-          //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
-          //a.configuration = noOptimisations
-          // a.flowInformationToDotGraph("logs/flowsA1.dot")
-          val a2 = perfAnalysis(text, ci_di_wi)
-          a2.logger.logU("INC")
-          a2.analyzeWithTimeout(timeout())
-          a2.configuration = di_wi
-          val timeU = Timer.timeOnly {
-            a2.updateAnalysis(timeout())
-          }
-          if a.finished then println(s"Updating analysis took ${timeU / 1000000} ms.")
-          else println(s"Updating analysis timed out after ${timeU / 1000000} ms.")
-          // a.flowInformationToDotGraph("logs/flowsA2.dot")
-
-          Thread.sleep(1000)
-          val b = perfAnalysis(text, noOptimisations)
-          b.version = New
-          b.logger.logU("REAN")
-          val timeR = Timer.timeOnly {
-            b.analyzeWithTimeout(timeout())
-          }
-          if b.finished then println(s"Full reanalysis took ${timeR / 1000000} ms.")
-          else println(s"Full reanalysis timed out after ${timeR / 1000000} ms.")
-          // b.flowInformationToDotGraph("logs/flowsB.dot")
-          println("Done")
-          //println(a.program.asInstanceOf[SchemeExp].prettyString())
-          //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
-        } catch {
-          case e: Exception =>
-            e.printStackTrace(System.out)
-            val w = Writer.open("benchOutput/incremental/errors.txt")
-            Writer.writeln(w, bench)
-            Writer.writeln(w, e.getStackTrace().toString)
-            Writer.writeln(w, "")
-            Writer.close(w)
+        Thread.sleep(1000)
+        val b = perfAnalysis(text, noOptimisations)
+        b.version = New
+        b.logger.logU("REAN")
+        val timeR = Timer.timeOnly {
+          b.analyzeWithTimeout(timeout())
         }
+        if b.finished then println(s"Full reanalysis took ${timeR / 1000000} ms.")
+        else println(s"Full reanalysis timed out after ${timeR / 1000000} ms.")
+        // b.flowInformationToDotGraph("logs/flowsB.dot")
+        println("Done")
+        //println(a.program.asInstanceOf[SchemeExp].prettyString())
+        //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
+      } catch {
+        case e: Exception =>
+          e.printStackTrace(System.out)
+          val w = Writer.open("benchOutput/incremental/errors.txt")
+          Writer.writeln(w, bench)
+          Writer.writeln(w, e.getStackTrace().toString)
+          Writer.writeln(w, "")
+          Writer.close(w)
+      }
     end modfAnalysis
 
-    val modConcbenchmarks: List[String] = List()
     val modFbenchmarks: List[String] = List(
-      "test/changes/scheme/generated/R5RS_gambit_sboyer-1.scm",
+      // "test/changes/scheme/generated/R5RS_gambit_sboyer-1.scm",
+      "test/changes/scheme/generated/R5RS_icp_icp_1c_ontleed-4.scm"
       //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
       //"test/R5RS/gambit/nboyer.scm",
       //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
     )
     val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(60, MINUTES))
 
-    modConcbenchmarks.foreach(modconcAnalysis(_, ci_di_wi, standardTimeout))
     modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
     //println("Creating graphs")
     //createPNG("logs/flowsA1.dot", true)
     //createPNG("logs/flowsA2.dot", true)
     //createPNG("logs/flowsB.dot", true)
     println("Done")
+end IncrementalRun
 
 // Prints the maximal heap size.
 object Memorycheck extends App:
