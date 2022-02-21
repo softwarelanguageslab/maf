@@ -132,7 +132,7 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
               }
             case ContractValue(f: Flat[Value]) =>
               lat.getFlats(abs).exists { fl =>
-                checkSubsumption(analysis)(f.contract, fl.contract) && f.fexp == fl.fexp && f.contractIdn == fl.contractIdn
+                checkSubsumption(analysis)(f.contract, fl.contract) && /* f.fexp == fl.fexp && */ f.contractIdn == fl.contractIdn
               }
 
             case ContractValue(Opq()) => true
@@ -152,7 +152,7 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
       SchemeAnalyses.scvModAnalysisWithRacketFeatures(program)
 
 /** Automated soundness tests  on the set of benchmarks from the Nguyen paper */
-class ScvNguyenSoundnessTests extends ScvSoundnessTests:
-    def name: String = "scv-soundness-tests"
-    override def benchmarks: Set[String] = Set("test/scv/NguyenGTH18/safe/mochi/ack.rkt")
-    SchemeBenchmarkPrograms.scvNguyenBenchmarks
+//class ScvNguyenSoundnessTests extends ScvSoundnessTests:
+//    def name: String = "scv-soundness-tests"
+//    override def benchmarks: Set[String] = Set("test/scv/NguyenGTH18/safe/mochi/map-foldr.rkt")
+//    SchemeBenchmarkPrograms.scvNguyenBenchmarks
