@@ -100,7 +100,7 @@ object DeadcodeDetection:
         val exp = parseProgram(program)
         val analysis = mkAnalysis(exp)
         try analysis.analyzeWithTimeout(Timeout.start(30.seconds))
-        catch case _: TimeoutException => ()
+        catch case _ => ()
 
         exp.allSubexpressions.map(_.idn).toSet -- analysis.visitedIdn
 
