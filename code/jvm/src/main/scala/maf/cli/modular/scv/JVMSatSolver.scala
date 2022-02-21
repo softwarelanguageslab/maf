@@ -86,6 +86,8 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
       Parser.fromString(s).parseScript
 
     def isSat(script: Script)(using interpreter: Interpreter): IsSat[V] =
+        import scala.concurrent.ExecutionContext.Implicits.global
+
         script.commands.foreach(interpreter.eval)
         interpreter.eval(CheckSat()) match
             case CheckSatStatus(SatStatus)   => Sat(Map())
@@ -102,5 +104,5 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
         given interpreter: Interpreter = Z3Interpreter.buildDefault
         val script: Script = parseStringToScript(program)
         val answer = isSat(script)
-        interpreter.free
+        interpreter.free()
         answer
