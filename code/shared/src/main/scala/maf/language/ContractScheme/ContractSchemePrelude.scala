@@ -29,7 +29,10 @@ object ContractSchemePrelude extends BaseSchemePrelude:
             (and (check contract (car xs)) (iter (cdr xs)))))
 
 
-        (and/c list? (flat (lambda (v) (iter v)))))"""
+        (and/c list? (flat (lambda (v) (iter v)))))""",
+      ">=/c" -> """
+      (define (>=/c v) (flat (lambda (x) (>= x v))))
+      """
     )
 
     override def parseDef(dff: String, nam: String): List[SchemeExp] =
