@@ -105,7 +105,7 @@ class ContractSchemeInterpreter(
             case ContractSchemeFlatContract(expression, idn) =>
               // evaluates to a flat contract
               for evaluatedExpression <- tailcall(eval(expression, env, timeout, version))
-              yield ContractValue(ContractValues.Flat(evaluatedExpression, e, None, expression.idn))
+              yield ContractValue(ContractValues.Flat(evaluatedExpression, e, None, idn))
 
             case ContractSchemeDepContract(domains, rangeMaker, idn) =>
               import TailrecUtil.*
