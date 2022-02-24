@@ -62,8 +62,8 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             if incr == rean then e += 1 // Both results are the same => equally precise.
             else if inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]) then l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
             else {
-              System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
-              System.err.nn.flush()
+              //System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
+              //System.err.nn.flush()
               m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
             }
         })
@@ -188,14 +188,14 @@ object IncrementalSchemeModXPrecision:
         (outFull, outNoOpt)
 
     def main(args: Array[String]): Unit =
-        //val (curatedFull, curatedNoOpt) = splitOutput(
-        //  IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-        //)
+        val (curatedFull, curatedNoOpt) = splitOutput(
+          IncrementalSchemeModFTypePrecision.execute(Array("test/changes/scheme/slip-0-to-1.scm"))//(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+        )
         //val (generatedFull, generatedNoOpt) = splitOutput(
         //  IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
         //)
 //if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/precision.R", curatedFull, generatedFull, curatedNoOpt, generatedNoOpt)
-        splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray))
-        splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray))
+        //splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray))
+        //splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray))
 //IncrementalSchemeModConcTypePrecision.execute(args)
 //IncrementalSchemeModConcCPPrecision.execute(args)

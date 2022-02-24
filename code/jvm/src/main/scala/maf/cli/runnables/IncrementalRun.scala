@@ -5,12 +5,12 @@ import maf.cli.experiments.incremental.SplitPerformance
 import maf.language.CScheme.*
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
-import maf.language.scheme.interpreter.SchemeInterpreter
+import maf.language.scheme.interpreter.{ProgramError, SchemeInterpreter}
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.{GlobalStore, ModAnalysis}
 import maf.modular.incremental.IncrementalConfiguration.*
 import maf.modular.scheme.modf.*
-import maf.modular.incremental.*
+import maf.modular.incremental.{IncrementalLogging, IncrementalModAnalysis, *}
 import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
 import maf.modular.incremental.ProgramVersionExtracter.*
 import maf.modular.incremental.scheme.lattice.*
@@ -32,7 +32,7 @@ object IncrementalRun extends App:
         with IncrementalLogging[SchemeExp]
         //with IncrementalDataFlowVisualisation[SchemeExp]
         {
-        override def focus(a: Addr): Boolean = a.toString.toLowerCase().nn.contains("ret")
+        override def focus(a: Addr): Boolean = false //a.toString.toLowerCase().nn.contains("ret")
 
         override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
           with IncrementalSchemeModFBigStepIntra
@@ -46,7 +46,7 @@ object IncrementalRun extends App:
     def perfAnalysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with SplitPerformance[SchemeExp]
       with IncrementalLogging[SchemeExp] {
-      mode = Mode.Summary
+      mode = Mode.Coarse
       var cnt = 0
       override def run(timeout: Timeout.T) =
         super.run(timeout)
@@ -85,94 +85,79 @@ object IncrementalRun extends App:
       //with IncrementalVisualIntra
     }
 
+    def compareAnalyses(inc: IncrementalSchemeModFAnalysisTypeLattice, rean: IncrementalSchemeModFAnalysisTypeLattice): Unit =
+      val cName = inc.configuration.toString
+      // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
+      val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
+      val rStore = rean.store.withDefaultValue(rean.lattice.bottom)
+
+      val allAddr = iStore.keySet ++ rStore.keySet
+      var e: Long = 0L
+      var l: Long = 0L
+      var m: Long = 0L
+      allAddr.foreach({ a =>
+        val incr = iStore(a)
+        val rean = rStore(a)
+        if incr == rean then e += 1 // Both results are the same => equally precise.
+        else if inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]) then l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
+        else {
+          //System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
+          //System.err.nn.flush()
+          m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
+        }
+      })
+      System.err.nn.println(s"less precise: $l -- equal: $e -- more precise: $m")
+    end compareAnalyses
+
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
     // Useful when reducing a program when debugging the analysis.
     def interpretProgram(file: String): Unit =
         val prog = CSchemeParser.parseProgram(Reader.loadFile(file))
         val i = new SchemeInterpreter((_, _) => (), stack = true)
-        print("*")
-        i.run(prog, Timeout.start(Duration(3, MINUTES)), Old)
-        print("*")
-        i.run(prog, Timeout.start(Duration(3, MINUTES)), New)
-        println("*")
+        List(Old, New).foreach { version =>
+          try
+            print("*")
+            i.run(prog, Timeout.start(Duration(3, MINUTES)), version)
+          catch {
+            case ProgramError(e) => System.err.nn.println(e)
+          }
+        }
+        println("Done interpreting.")
 
-    def modfAnalysis(bench: String, timeout: () => Timeout.T): Unit =
+    val modFbenchmarks: List[String] = List(
+      "test/changes/scheme/slip-0-to-1.scm"
+    )
+
+    def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
+
+    modFbenchmarks.foreach { bench =>
       try {
         println(s"***** $bench *****")
         //interpretProgram(bench)
         val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-        //println(text.prettyString())
-        val a = perfAnalysis(text, noOptimisations)
-        a.logger.logU(bench)
-        a.logger.logU("BASE -- No Optimisations")
-        //println(a.configString())
-        //a.version = New
-        val timeI = Timer.timeOnly {
-          a.analyzeWithTimeout(timeout())
-        }
-        if a.finished then println(s"Initial analysis took ${timeI / 1000000} ms.")
-        else
-            println(s"Initial analysis timed out after ${timeI / 1000000} ms.")
-            return ()
-        //a.visited.foreach(println)
-        //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
-        //a.configuration = noOptimisations
-        // a.flowInformationToDotGraph("logs/flowsA1.dot")
-        val a2 = perfAnalysis(text, ci_di_wi)
-        a2.logger.logU("BASE CI-DI-WI + INC")
-        val timeI2 = Timer.timeOnly {
-          a2.analyzeWithTimeout(timeout())
-        }
-        if a2.finished then println(s"Preparatory initial analysis took ${timeI2 / 1000000} ms.")
-        else
-            println(s"Preparatory initial analysis timed out after ${timeI2 / 1000000} ms.")
-            return ()
-        a2.configuration = di_wi
-        val timeU = Timer.timeOnly {
-          a2.updateAnalysis(timeout())
-        }
-        if a.finished then println(s"Updating analysis took ${timeU / 1000000} ms.")
-        else println(s"Updating analysis timed out after ${timeU / 1000000} ms.")
-        // a.flowInformationToDotGraph("logs/flowsA2.dot")
 
-        Thread.sleep(1000)
-        val b = perfAnalysis(text, noOptimisations)
-        b.version = New
-        b.logger.logU("REAN")
-        val timeR = Timer.timeOnly {
-          b.analyzeWithTimeout(timeout())
-        }
-        if b.finished then println(s"Full reanalysis took ${timeR / 1000000} ms.")
-        else println(s"Full reanalysis timed out after ${timeR / 1000000} ms.")
-        // b.flowInformationToDotGraph("logs/flowsB.dot")
-        println("Done")
-        //println(a.program.asInstanceOf[SchemeExp].prettyString())
-        //println(a.store.filterNot(_._1.isInstanceOf[PrmAddr]))
+        val a = newAnalysis(text, ci_di_wi)
+        a.analyzeWithTimeout(newTimeout())
+        assert(a.finished)
+
+        val noOpt = a.deepCopy()
+        noOpt.configuration = noOptimisations
+        noOpt.updateAnalysis(newTimeout())
+        assert(noOpt.finished)
+
+        val cidiwi = a.deepCopy()
+        cidiwi.configuration = ci_di_wi
+        cidiwi.updateAnalysis(newTimeout())
+        assert(cidiwi.finished)
+
+        compareAnalyses(cidiwi, noOpt)
+
       } catch {
         case e: Exception =>
           e.printStackTrace(System.out)
-          val w = Writer.open("benchOutput/incremental/errors.txt")
-          Writer.writeln(w, bench)
-          Writer.writeln(w, e.getStackTrace().toString)
-          Writer.writeln(w, "")
-          Writer.close(w)
       }
-    end modfAnalysis
+    }
 
-    val modFbenchmarks: List[String] = List(
-      // "test/changes/scheme/generated/R5RS_gambit_sboyer-1.scm",
-      "test/changes/scheme/generated/R5RS_icp_icp_1c_ontleed-4.scm"
-      //"test/changes/scheme/reinforcingcycles/cycleCreation.scm"
-      //"test/R5RS/gambit/nboyer.scm",
-      //"test/changes/scheme/generated/R5RS_gambit_nboyer-5.scm"
-    )
-    val standardTimeout: () => Timeout.T = () => Timeout.start(Duration(60, MINUTES))
-
-    modFbenchmarks.foreach(modfAnalysis(_, standardTimeout))
-    //println("Creating graphs")
-    //createPNG("logs/flowsA1.dot", true)
-    //createPNG("logs/flowsA2.dot", true)
-    //createPNG("logs/flowsB.dot", true)
     println("Done")
 end IncrementalRun
 
