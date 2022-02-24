@@ -46,7 +46,7 @@ object IncrementalRun extends App:
     def perfAnalysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with SplitPerformance[SchemeExp]
       with IncrementalLogging[SchemeExp] {
-      mode = Mode.Coarse
+      mode = Mode.Summary
       var cnt = 0
       override def run(timeout: Timeout.T) =
         super.run(timeout)
@@ -95,6 +95,7 @@ object IncrementalRun extends App:
       var e: Long = 0L
       var l: Long = 0L
       var m: Long = 0L
+      println()
       allAddr.foreach({ a =>
         val incr = iStore(a)
         val rean = rStore(a)
@@ -103,6 +104,7 @@ object IncrementalRun extends App:
         else {
           //System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
           //System.err.nn.flush()
+          println(a)
           m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
         }
       })
@@ -129,7 +131,7 @@ object IncrementalRun extends App:
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
-    val configs = List(di_wi, ci_di_wi)
+    val configs = List(wi, ci_wi)
 
     modFbenchmarks.foreach { bench =>
       try {
@@ -138,22 +140,26 @@ object IncrementalRun extends App:
         val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
 
         val a = newAnalysis(text, ci_di_wi)
+        a.logger.logU("***** INIT *****")
         a.analyzeWithTimeout(newTimeout())
         assert(a.finished)
 
         val noOpt = a.deepCopy()
         noOpt.configuration = noOptimisations
+        noOpt.logger.logU("***** NO OPT *****")
         noOpt.updateAnalysis(newTimeout())
         assert(noOpt.finished)
 
         val full = newAnalysis(text, noOptimisations)
         full.version = New
+        full.logger.logU("***** FULL *****")
         full.analyzeWithTimeout(newTimeout())
         assert(full.finished)
 
         configs.foreach { config =>
           val opt = a.deepCopy()
           opt.configuration = config
+          opt.logger.logU(s"***** ${config.toString} *****")
           opt.updateAnalysis(newTimeout())
           assert(opt.finished)
 
