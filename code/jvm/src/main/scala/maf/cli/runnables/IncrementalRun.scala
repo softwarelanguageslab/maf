@@ -85,13 +85,13 @@ object IncrementalRun extends App:
       //with IncrementalVisualIntra
     }
 
-    def compareAnalyses(inc: IncrementalSchemeModFAnalysisTypeLattice, rean: IncrementalSchemeModFAnalysisTypeLattice): Unit =
+    def compareAnalyses(inc: IncrementalSchemeModFAnalysisTypeLattice, rean: IncrementalSchemeModFAnalysisTypeLattice, name: String): Unit =
       val cName = inc.configuration.toString
       // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
       val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
       val rStore = rean.store.withDefaultValue(rean.lattice.bottom)
 
-      val allAddr = iStore.keySet ++ rStore.keySet
+      val allAddr = (iStore.keySet ++ rStore.keySet).filter(!_.isInstanceOf[PrmAddr])
       var e: Long = 0L
       var l: Long = 0L
       var m: Long = 0L
@@ -106,7 +106,7 @@ object IncrementalRun extends App:
           m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
         }
       })
-      System.err.nn.println(s"less precise: $l -- equal: $e -- more precise: $m")
+      System.err.nn.println(s"$name: less precise: $l -- equal: $e -- more precise: $m")
     end compareAnalyses
 
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
@@ -129,6 +129,7 @@ object IncrementalRun extends App:
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
+    val configs = List(di_wi, ci_di_wi)
 
     modFbenchmarks.foreach { bench =>
       try {
@@ -145,12 +146,20 @@ object IncrementalRun extends App:
         noOpt.updateAnalysis(newTimeout())
         assert(noOpt.finished)
 
-        val cidiwi = a.deepCopy()
-        cidiwi.configuration = ci_di_wi
-        cidiwi.updateAnalysis(newTimeout())
-        assert(cidiwi.finished)
+        val full = newAnalysis(text, noOptimisations)
+        full.version = New
+        full.analyzeWithTimeout(newTimeout())
+        assert(full.finished)
 
-        compareAnalyses(cidiwi, noOpt)
+        configs.foreach { config =>
+          val opt = a.deepCopy()
+          opt.configuration = config
+          opt.updateAnalysis(newTimeout())
+          assert(opt.finished)
+
+          compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
+          compareAnalyses(opt, noOpt, s"${opt.configuration.toString} vs. No Opt")
+        }
 
       } catch {
         case e: Exception =>
