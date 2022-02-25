@@ -48,8 +48,8 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
       ): Table[String] =
         val cName = inc.configuration.toString
         // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
-        val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
-        val rStore = rean.store.withDefaultValue(rean.lattice.bottom)
+        val iStore = inc.store.filterNot(kv => inc.lattice.isBottom(kv._2)).withDefaultValue(inc.lattice.bottom)
+        val rStore = rean.store.filterNot(kv => rean.lattice.isBottom(kv._2)).withDefaultValue(rean.lattice.bottom)
 
         val allAddr = iStore.keySet.filter(interestingAddress) ++ rStore.keySet.filter(interestingAddress)
         var e: Long = 0L
@@ -189,13 +189,13 @@ object IncrementalSchemeModXPrecision:
 
     def main(args: Array[String]): Unit =
         val (curatedFull, curatedNoOpt) = splitOutput(
-          IncrementalSchemeModFTypePrecision.execute(Array("test/changes/scheme/slip-0-to-1.scm"))//(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+          IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
         )
-        //val (generatedFull, generatedNoOpt) = splitOutput(
-        //  IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
-        //)
+        val (generatedFull, generatedNoOpt) = splitOutput(
+           IncrementalSchemeModFTypePrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        )
 //if args.contains("-graphs") then RBridge.runScript("scripts/R/scripts/precision.R", curatedFull, generatedFull, curatedNoOpt, generatedNoOpt)
-        //splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray))
-        //splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray))
+        splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray))
+        splitOutput(IncrementalSchemeModFCPPrecision.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray))
 //IncrementalSchemeModConcTypePrecision.execute(args)
 //IncrementalSchemeModConcCPPrecision.execute(args)

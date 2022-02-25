@@ -89,9 +89,9 @@ object IncrementalRun extends App:
     def compareAnalyses(inc: IncrementalModAnalysis[SchemeExp] with GlobalStore[SchemeExp], rean: IncrementalModAnalysis[SchemeExp] with GlobalStore[SchemeExp], name: String): Unit =
       val cName = inc.configuration.toString
       // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
-      val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
-      val rStore = rean.store.withDefaultValue(rean.lattice.bottom)
-
+      val iStore = inc.store.filterNot(kv => inc.lattice.isBottom(kv._2)).withDefaultValue(inc.lattice.bottom)
+      val rStore = rean.store.filterNot(kv => rean.lattice.isBottom(kv._2)).withDefaultValue(rean.lattice.bottom)
+      println(iStore.keySet.size)
       val allAddr = (iStore.keySet ++ rStore.keySet).filter(!_.isInstanceOf[PrmAddr])
       var e: Long = 0L
       var l: Long = 0L
@@ -154,16 +154,6 @@ object IncrementalRun extends App:
         //full.logger.logU("***** FULL *****")
         full.analyzeWithTimeout(newTimeout())
         assert(full.finished)
-
-        val Awi = a.deepCopy()
-        Awi.configuration = wi
-        Awi.updateAnalysis(newTimeout())
-
-        val Aall = a.deepCopy()
-        Aall.configuration = ci_wi
-        Aall.updateAnalysis(newTimeout())
-
-        (Awi.store -- Aall.store.keySet).foreach(println)
 
         configs.foreach { config =>
           val opt = a.deepCopy()
