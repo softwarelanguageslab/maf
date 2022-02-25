@@ -2,6 +2,7 @@ package maf.cli.runnables
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.cli.experiments.incremental.SplitPerformance
+import maf.core.worklist.FIFOWorkList
 import maf.language.CScheme.*
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
@@ -16,7 +17,7 @@ import maf.modular.incremental.ProgramVersionExtracter.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.{PrmAddr, SchemeTypeDomain}
-import maf.modular.worklist.LIFOWorklistAlgorithm
+import maf.modular.worklist.{FIFOWorklistAlgorithm, LIFOWorklistAlgorithm}
 import maf.util.{Reader, Writer}
 import maf.util.Writer.Writer
 import maf.util.benchmarks.{Timeout, Timer}
@@ -29,16 +30,16 @@ object IncrementalRun extends App:
 
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
       new IncrementalSchemeModFAnalysisTypeLattice(text, configuration)
-        with IncrementalLogging[SchemeExp]
+        //with IncrementalLogging[SchemeExp]
         //with IncrementalDataFlowVisualisation[SchemeExp]
         {
-        override def focus(a: Addr): Boolean = false //a.toString.toLowerCase().nn.contains("ret")
+        //override def focus(a: Addr): Boolean = false //a.toString.toLowerCase().nn.contains("ret")
 
         override def intraAnalysis(cmp: SchemeModFComponent) = new IntraAnalysis(cmp)
           with IncrementalSchemeModFBigStepIntra
           with IncrementalGlobalStoreIntraAnalysis
           //  with AssertionModFIntra
-          with IncrementalLoggingIntra
+          //with IncrementalLoggingIntra
         //with IncrementalVisualIntra
       }
 
@@ -85,7 +86,7 @@ object IncrementalRun extends App:
       //with IncrementalVisualIntra
     }
 
-    def compareAnalyses(inc: IncrementalSchemeModFAnalysisTypeLattice, rean: IncrementalSchemeModFAnalysisTypeLattice, name: String): Unit =
+    def compareAnalyses(inc: IncrementalModAnalysis[SchemeExp] with GlobalStore[SchemeExp], rean: IncrementalModAnalysis[SchemeExp] with GlobalStore[SchemeExp], name: String): Unit =
       val cName = inc.configuration.toString
       // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
       val iStore = inc.store.withDefaultValue(inc.lattice.bottom)
@@ -95,7 +96,6 @@ object IncrementalRun extends App:
       var e: Long = 0L
       var l: Long = 0L
       var m: Long = 0L
-      println()
       allAddr.foreach({ a =>
         val incr = iStore(a)
         val rean = rStore(a)
@@ -104,7 +104,6 @@ object IncrementalRun extends App:
         else {
           //System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
           //System.err.nn.flush()
-          println(a)
           m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
         }
       })
@@ -127,7 +126,7 @@ object IncrementalRun extends App:
         println("Done interpreting.")
 
     val modFbenchmarks: List[String] = List(
-      "test/changes/scheme/slip-0-to-1.scm"
+      "test/changes/scheme/slip-1-to-2.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
@@ -140,31 +139,41 @@ object IncrementalRun extends App:
         val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
 
         val a = newAnalysis(text, ci_di_wi)
-        a.logger.logU("***** INIT *****")
+        //a.logger.logU("***** INIT *****")
         a.analyzeWithTimeout(newTimeout())
         assert(a.finished)
 
         val noOpt = a.deepCopy()
         noOpt.configuration = noOptimisations
-        noOpt.logger.logU("***** NO OPT *****")
+        //noOpt.logger.logU("***** NO OPT *****")
         noOpt.updateAnalysis(newTimeout())
         assert(noOpt.finished)
 
         val full = newAnalysis(text, noOptimisations)
         full.version = New
-        full.logger.logU("***** FULL *****")
+        //full.logger.logU("***** FULL *****")
         full.analyzeWithTimeout(newTimeout())
         assert(full.finished)
+
+        val Awi = a.deepCopy()
+        Awi.configuration = wi
+        Awi.updateAnalysis(newTimeout())
+
+        val Aall = a.deepCopy()
+        Aall.configuration = ci_wi
+        Aall.updateAnalysis(newTimeout())
+
+        (Awi.store -- Aall.store.keySet).foreach(println)
 
         configs.foreach { config =>
           val opt = a.deepCopy()
           opt.configuration = config
-          opt.logger.logU(s"***** ${config.toString} *****")
+          //opt.logger.logU(s"***** ${config.toString} *****")
           opt.updateAnalysis(newTimeout())
           assert(opt.finished)
 
-          compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
-          compareAnalyses(opt, noOpt, s"${opt.configuration.toString} vs. No Opt")
+         compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
+         //compareAnalyses(opt, noOpt, s"${opt.configuration.toString} vs. No Opt")
         }
 
       } catch {
@@ -187,7 +196,7 @@ object Memorycheck extends App:
 
 object IncrementalExtraction extends App:
 
-    val text: String = "test/changes/scheme/generated/R5RS_icp_icp_1c_ontleed-4.scm"
+    val text: String = "test/changes/scheme/slip-1-to-2.scm"
     val version: Version = New
 
     val program = CSchemeParser.parseProgram(Reader.loadFile(text))
