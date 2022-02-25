@@ -207,7 +207,13 @@ object MAFLogger:
           case "bench" => configs(LogEnvironment.Benchmarking)
           case env     => throw new Exception(s"invalid logging environment $env")
 
+    private var disabled: Boolean = false
+    def enable(): Unit = disabled = false
+    def disable(): Unit = disabled = true
+
     def log(level: LogLevel, msg: String): Unit =
+        if disabled then return
+
         val policy = currentConfig(level)
         val finalMsg = s"[$level]$msg"
         policy match

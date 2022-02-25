@@ -21,6 +21,8 @@ import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.util.benchmarks.Timeout
 import maf.language.ContractScheme.ContractSchemeParser
 import java.util.concurrent.TimeoutException
+import maf.util.MAFLogger
+import maf.language.CScheme.CSchemeParser
 
 /** A dead code detection analysis, is a client analysis of the ModF analysis */
 trait DeadcodeDetection extends BigStepModFSemanticsT:
@@ -87,7 +89,7 @@ object DeadcodeDetection:
 
     /** Parses the given program text to a SchemeExp */
     def parseProgram(txt: String): SchemeExp =
-      ContractSchemeParser.parse(txt)
+      CSchemeParser.parseProgram(txt)
 
     /**
      * Returns a set of expressions that was not visited during the analysis.
@@ -95,24 +97,62 @@ object DeadcodeDetection:
      * These expressions are, by definition dead code as the analysis will always visit paths that are possibly reachable during execution due to its
      * sound overapproximations
      */
-    def run(mkAnalysis: SchemeExp => DeadcodeDetection)(program: String): Set[Identity] =
+    def run(mkAnalysis: SchemeExp => DeadcodeDetection)(program: String): DeadCodeAnalysisResult =
         import scala.concurrent.duration.*
         val exp = parseProgram(program)
         val analysis = mkAnalysis(exp)
         try analysis.analyzeWithTimeout(Timeout.start(30.seconds))
         catch case _ => ()
 
-        exp.allSubexpressions.map(_.idn).toSet -- analysis.visitedIdn
+        val deadIdns = exp.allSubexpressions.map(_.idn).toSet -- analysis.visitedIdn
+
+        DeadCodeAnalysisResult(
+          deadIdns = deadIdns,
+          fractionDeadLines = deadIdns.map(_.idn).size.toDouble / exp.allSubexpressions.map(_.idn).size.toDouble
+        )
+
+case class DeadCodeAnalysisResult(deadIdns: Set[Identity], fractionDeadLines: Double)
+
+abstract class DeadcodeMain:
+    val benchmarks: List[String]
+
+    private def logFile(name: String): String =
+        println(s"Analysing $name")
+        name
+
+    def run(name: String, analysis: SchemeExp => DeadcodeDetection): Unit =
+        val results = benchmarks.map(logFile andThen Reader.loadFile andThen DeadcodeDetection.run(analysis))
+        val outputTable = results.zip(benchmarks).foldLeft(Table.empty[Double]) { case (table, (result, benchmark)) =>
+          table.add(benchmark, "% dead expressions", result.fractionDeadLines)
+        }
+        val writer = Writer.openTimeStamped(s"out/$name")
+        writer.write(outputTable.toCSVString(rowName = "benchmark"))
+        writer.close()
+
+object DeadcodeSchemeBenchmarks extends DeadcodeMain:
+    val benchmarks: List[String] =
+      (SchemeBenchmarkPrograms.sequentialBenchmarks.filterNot(p =>
+        // undefiner issues (define in invalid context) TODO: check if this is the case or it is an error in the undefiner
+        p.startsWith("test/R5RS/ad") || p.startsWith("test/R5RS/WeiChenRompf2019/the-little-schemer")
+      ) -- Set(
+        // also undefiner issues
+        "test/R5RS/various/lambda-update.scm",
+        "test/R5RS/scp1/car-counter.scm",
+        "test/R5RS/scp1/twitter.scm",
+        "test/R5RS/scp1/university.scm",
+        "test/R5RS/various/strong-update.scm", // not sure what's wrong here? thought we fixed that.
+      )).toList
+
+    def main(args: Array[String]): Unit =
+        // progamatically disable the logger
+        MAFLogger.disable()
+        run("dead-code-scheme.csv", DeadcodeDetection.createAnalysis)
 
 /** Runs the dead code analysis using the SCV analyser on the Nguyen scv benchmark */
-object DeadCodeScvBenchmarks:
+object DeadCodeScvBenchmarks extends DeadcodeMain:
     val benchmarks: List[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks.toList
 
     def main(args: Array[String]): Unit =
-        val results = benchmarks.map(Reader.loadFile andThen DeadcodeDetection.run(DeadcodeDetection.createScvAnalysis))
-        val outputTable = results.zip(benchmarks).foldLeft(Table.empty[Int]) { case (table, (result, benchmark)) =>
-          table.add(benchmark, "# dead lines", result.map(_.pos.line).size)
-        }
-        val writer = Writer.openTimeStamped("out/dead-code-scv.csv")
-        writer.write(outputTable.toCSVString(rowName = "benchmark"))
-        writer.close()
+        // progamatically disable the logger
+        MAFLogger.disable()
+        run("dead-code-scv.csv", DeadcodeDetection.createScvAnalysis)
