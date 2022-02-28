@@ -8,6 +8,7 @@ import maf.core.Monad.*
 import maf.modular.scv.Symbolic.Implicits
 import maf.util.Trampoline.{given, *}
 import maf.language.scheme.*
+import maf.core.*
 import maf.language.scheme.primitives.*
 import maf.language.sexp.*
 import maf.language.ContractScheme.*
@@ -225,15 +226,28 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
       ): Result =
       for
           s1 <- super.applyPrim(fexp, func, argv, env, sto, kon, t, ext).map(_.map(_.mapValue(tagOption(ap(fexp, argv)))))
-          s2 <-
+          s2 <- locally {
+            import maf.core.MonadJoin.MonadJoinIterableSyntax
+            import maf.language.scheme.primitives.given
+
             if OpqOps.eligible(argv.map(project)) then
-                val opqValue = lattice
+                given bridge: InterpreterBridge = InterpreterBridge(env, sto, kon, t, ext)
+                val (opqValue, st) = ((lattice
                   .getPrimitives(project(func))
-                  .foldMap(prim => OpqOps.compute(prim, argv.map(project)))
+                  .foldMapM(prim => OpqOps.compute[MF, LatVal](fexp, prim, argv.map(project), primitives))) match
+                    case MayFailSuccess(vlu) =>
+                      val sto1 = bridge.updatedSto
+                      (vlu, sto1)
+                    case MayFailBoth(vlu, _) =>
+                      val sto1 = bridge.updatedSto
+                      (vlu, sto1)
+                    case _ => ???
+                )
 
                 val taggedValue = tagOption(ap(fexp, argv))(inject(opqValue))
                 ap(taggedValue, sto, kon, t, ext)
-            else done(Set())
+            else done(Set[State]())
+          }
       yield s1 ++ s2
 
     override protected def applyClo(

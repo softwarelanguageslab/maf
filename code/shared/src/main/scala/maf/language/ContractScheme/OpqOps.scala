@@ -1,8 +1,11 @@
 package maf.language.ContractScheme
 
+import maf.core.Monad
+import maf.language.scheme.SchemeExp
 import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
 import maf.language.ContractScheme.ContractValues.Opq
 import maf.core.Address
+import maf.language.scheme.primitives.{SchemePrimM, SchemePrimitives}
 
 /**
  * This object defines the signatures for the native Scheme functions. The reason for this is that it can automatically resolve operations involving
@@ -34,7 +37,17 @@ object OpqOps:
           case _ =>
             Uncurried(domains = List(), tpy)
 
-    case class Uncurried(domains: List[Tpy], range: Tpy)
+    case class Uncurried(domains: List[Tpy], range: Tpy):
+        def checkArity[V](args: List[V]): Boolean =
+            def check(domains: List[Tpy], args: List[V]): Boolean = (domains, args) match
+                // a VarArg may only occur at the end, any number of remaining arguments is accepted for this
+                case (List(VarArg(_)), _) => true
+                // maximum one element allowed if the end is an optional
+                case (List(Optional(_)), List(_) | List()) => true
+                case (_ :: rest, _ :: restArg)             => check(rest, restArg)
+                case (_, _)                                => false
+
+            check(domains, args)
 
     /** Represents a type of a function with the specified domain and range */
     case class ArrowTpy(domain: Tpy, range: Tpy) extends Tpy
@@ -240,11 +253,70 @@ object OpqOps:
           matches(v, tpy) && checkArgs(vs, tpys)
         case _ => throw new Exception(s"Unsupported comparison of $values witgh $tpys")
 
-    /* Computations with OPQ values */
-    def compute[V: Lat](primName: String, args: List[V]): V =
+    import maf.core.Monad.MonadSyntaxOps
+
+    /**
+     * Returns "true" if the application of the given primitive on the given arguments does not need to be "faked" but can instead be directly
+     * executed using one of the SchemeLatticePrimitives
+     *
+     * @param fexp
+     *   the original function call expression
+     * @param primName
+     *   the name of the primitive to apply
+     * @param args
+     *   the arguments of the function
+     * @param primitives
+     *   a map from names of primitives to the primitives themselves, may be used for checking the type of the arguments
+     */
+    def directlyApplicable[M[_], V: Lat](
+        fexp: SchemeExp,
+        primName: String,
+        args: List[V],
+        primitives: SchemePrimitives[V, Address]
+      )(using SchemePrimM[M, Address, V]
+      ): M[Boolean] = primName match
+        case "cons" =>
+          // cons is always directly applicable, not matter what the arguments are
+          Monad[M].unit(true)
+
+        case "set-car!" | "set-cdr!" =>
+          // set-car! and set-cdr! are only applicable if the first argument is a pair
+          val isPair = primitives("pair?")
+          isPair.call(fexp, List(args(0))) map (Lat[V].isTrue)
+
+        case _ => Monad[M].unit(false)
+
+    def appl[M[_], V: Lat](
+        fexp: SchemeExp,
+        primName: String,
+        args: List[V],
+        primitives: SchemePrimitives[V, Address]
+      )(using SchemePrimM[M, Address, V]
+      ): M[V] =
+      primitives(primName).call(fexp, args)
+
+    /* Computations with OPQ values
+     *
+     * @param primName the name of the primitive to compute
+     * @param args the list of arguments (may include opaque values)
+     * @param primitives a map from names of primitives to the primitives themselves, are sometimes used when access to the store is required
+     */
+    def compute[M[_], V: Lat](
+        fexp: SchemeExp,
+        primName: String,
+        args: List[V],
+        primitives: SchemePrimitives[V, Address]
+      )(using SchemePrimM[M, Address, V]
+      ): M[V] =
         val signature = uncurry(signatures(primName))
-        if signature.range == Unsupported || !checkArgs(args, signature.domains) then Lat[V].bottom
-        else inject(signature.range)
+
+        // first check whether the number of arguments is correct according to the signature
+        if !signature.checkArity(args) then return Monad[M].unit(Lat[V].bottom) // TODO: use failure op
+
+        Monad.mIf(directlyApplicable(fexp, primName, args, primitives)) /* then */ { appl(fexp, primName, args, primitives) } /* else */ {
+          if signature.range == Unsupported || !checkArgs(args, signature.domains) then Monad[M].unit(Lat[V].bottom)
+          else Monad[M].unit(inject(signature.range))
+        }
 
     /** Checks whether the abstract computations can be ran using the semantics of opaque values */
     def eligible[V: Lat](args: List[V]): Boolean =

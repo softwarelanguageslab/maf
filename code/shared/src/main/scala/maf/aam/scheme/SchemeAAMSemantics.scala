@@ -41,7 +41,8 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis[Scheme
     analyze(prog, graph, timeout)
 
   /** An instantation of the <code>SchemeInterpreterBridge</code> trait to support the builtin MAF Scheme primitives */
-  private class InterpreterBridge(env: Env, private var sto: Sto, kont: KonA, t: Timestamp, ext: Ext) extends SchemeInterpreterBridge[LatVal, Address]:
+  protected class InterpreterBridge(env: Env, private var sto: Sto, kont: KonA, t: Timestamp, ext: Ext)
+      extends SchemeInterpreterBridge[LatVal, Address]:
       def pointer(exp: SchemeExp): Address =
         alloc(exp.idn, env, sto, kont, t)
 

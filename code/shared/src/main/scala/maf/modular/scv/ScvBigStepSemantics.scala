@@ -142,11 +142,13 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
         override protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)]): M[Value] =
             import MonoidInstances.*
             import maf.util.MonoidImplicits.*
+            import maf.core.MonadJoin.MonadJoinIterableSyntax
+            import maf.language.scheme.primitives.given
             val values = args.map(_._2)
 
             nondet(
               super.applyPrimitives(fexp, fval, args),
-              if OpqOps.eligible(values) then unit(lattice.getPrimitives(fval).foldMap(prim => OpqOps.compute(prim, values)))
+              if OpqOps.eligible(values) then lattice.getPrimitives(fval).foldMapM(prim => OpqOps.compute(fexp, prim, values, primitives))
               else void
             )
 
