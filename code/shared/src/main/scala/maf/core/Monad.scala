@@ -52,7 +52,7 @@ object Monad:
               }
 
     /** "if" expressions for monads */
-    def mIf[M[_]: Monad, X](m: M[Boolean])(csq: M[X])(alt: M[X]): M[X] =
+    def mIf[M[_]: Monad, X](m: M[Boolean])(csq: => M[X])(alt: => M[X]): M[X] =
       m.flatMap(b => if b then csq else alt)
 
     extension [M[_]: Monad, X](xs: Iterable[M[Set[X]]])

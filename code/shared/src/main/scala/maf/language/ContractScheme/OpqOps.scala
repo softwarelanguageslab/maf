@@ -40,6 +40,8 @@ object OpqOps:
     case class Uncurried(domains: List[Tpy], range: Tpy):
         def checkArity[V](args: List[V]): Boolean =
             def check(domains: List[Tpy], args: List[V]): Boolean = (domains, args) match
+                // if both lists are empty, all arguments have been matched
+                case (List(), List()) => true
                 // a VarArg may only occur at the end, any number of remaining arguments is accepted for this
                 case (List(VarArg(_)), _) => true
                 // maximum one element allowed if the end is an optional
@@ -126,6 +128,7 @@ object OpqOps:
         case Symbol      => Lat[V].symbolTop
         case Nil         => Lat[V].nil
         case Any         => Lat[V].opq(Opq())
+        case Char        => Lat[V].charTop
         case Union(a, b) => Lat[V].join(inject(a), inject(b))
 
     /** A type for a number */
@@ -311,7 +314,9 @@ object OpqOps:
         val signature = uncurry(signatures(primName))
 
         // first check whether the number of arguments is correct according to the signature
-        if !signature.checkArity(args) then return Monad[M].unit(Lat[V].bottom) // TODO: use failure op
+        if !signature.checkArity(args) then
+            println(s"Error in arity of $fexp")
+            return Monad[M].unit(Lat[V].bottom) // TODO: use failure op
 
         Monad.mIf(directlyApplicable(fexp, primName, args, primitives)) /* then */ { appl(fexp, primName, args, primitives) } /* else */ {
           if signature.range == Unsupported || !checkArgs(args, signature.domains) then Monad[M].unit(Lat[V].bottom)
