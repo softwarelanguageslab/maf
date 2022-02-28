@@ -38,6 +38,7 @@ class SimpleSchemeModConcSoundnessTests
     with SimpleSchemeModConc
     with ThreadBenchmarks
     with VariousSequentialBenchmarks:
+    override def benchmarks: Set[Benchmark] = Set("test/R5RS/scp1/family-budget.scm")
     override def isSlow(b: Benchmark): Boolean =
       SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
         Set(
@@ -77,38 +78,39 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests:
     }
 
 class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks with AllSequentialBenchmarks:
-    override def isSlow(b: Benchmark): Boolean =
+    override def benchmarks: Set[Benchmark] = Set("test/R5RS/scp1/family-budget.scm")
+    override def isSlow(b: Benchmark): Boolean = false &&
       // (SchemeBenchmarks.sequentialBenchmarks.contains(b) && !SchemeBenchmarks.other.contains(b)) ||
       SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
-        // These tests currently slow down the test suite too much (time out on Bertha in 3 minutes):
-        Set(
-          "test/concurrentScheme/threads/actors.scm",
-          "test/concurrentScheme/threads/atoms.scm",
-          "test/concurrentScheme/threads/crypt.scm",
-          "test/concurrentScheme/threads/fact-indep.scm",
-          "test/concurrentScheme/threads/fact.scm",
-          "test/concurrentScheme/threads/life.scm",
-          "test/concurrentScheme/threads/matmul.scm",
-          "test/concurrentScheme/threads/mazefun.scm",
-          "test/concurrentScheme/threads/mcarlo.scm",
-          "test/concurrentScheme/threads/mceval.scm",
-          "test/concurrentScheme/threads/minimax.scm",
-          "test/concurrentScheme/threads/msort.scm",
-          "test/concurrentScheme/threads/pc.scm",
-          "test/concurrentScheme/threads/peterson.scm",
-          "test/concurrentScheme/threads/pp.scm",
-          "test/concurrentScheme/threads/pps.scm",
-          "test/concurrentScheme/threads/qsort.scm",
-          "test/concurrentScheme/threads/readers2.scm",
-          "test/concurrentScheme/threads/stm.scm",
-          "test/concurrentScheme/threads/sudoku.scm",
-          "test/R5RS/gambit/peval.scm",
-          "test/R5RS/gambit/earley.scm", // list->vector
-          "test/R5RS/gambit/scheme.scm",
-          "test/R5RS/gambit/sboyer.scm",
-          "test/R5RS/gambit/nboyer.scm",
-          "test/concurrentScheme/threads/tsp.scm"
-        )(b)
+      // These tests currently slow down the test suite too much (time out on Bertha in 3 minutes):
+      Set(
+        "test/concurrentScheme/threads/actors.scm",
+        "test/concurrentScheme/threads/atoms.scm",
+        "test/concurrentScheme/threads/crypt.scm",
+        "test/concurrentScheme/threads/fact-indep.scm",
+        "test/concurrentScheme/threads/fact.scm",
+        "test/concurrentScheme/threads/life.scm",
+        "test/concurrentScheme/threads/matmul.scm",
+        "test/concurrentScheme/threads/mazefun.scm",
+        "test/concurrentScheme/threads/mcarlo.scm",
+        "test/concurrentScheme/threads/mceval.scm",
+        "test/concurrentScheme/threads/minimax.scm",
+        "test/concurrentScheme/threads/msort.scm",
+        "test/concurrentScheme/threads/pc.scm",
+        "test/concurrentScheme/threads/peterson.scm",
+        "test/concurrentScheme/threads/pp.scm",
+        "test/concurrentScheme/threads/pps.scm",
+        "test/concurrentScheme/threads/qsort.scm",
+        "test/concurrentScheme/threads/readers2.scm",
+        "test/concurrentScheme/threads/stm.scm",
+        "test/concurrentScheme/threads/sudoku.scm",
+        "test/R5RS/gambit/peval.scm",
+        "test/R5RS/gambit/earley.scm", // list->vector
+        "test/R5RS/gambit/scheme.scm",
+        "test/R5RS/gambit/sboyer.scm",
+        "test/R5RS/gambit/nboyer.scm",
+        "test/concurrentScheme/threads/tsp.scm"
+      )(b)
 
 /* On Bertha with a timeout of 3 minutes:
         test/concurrentScheme/threads/fact2.scm finished in 6ms.

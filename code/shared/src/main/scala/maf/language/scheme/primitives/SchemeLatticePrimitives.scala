@@ -142,11 +142,11 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             `write`,
             `display`,
             `eof-object?`,
+            // primitives to support structs
+            StructRef,
             /* Other primitives that are not R5RS */
             `random`,
             `error`,
-            // primitives to support structs
-            `__struct_ref`
           ) ++ CSchemePrimitives
         )
 
@@ -481,7 +481,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                 yield unspecified
               }
 
-        case object `__struct_ref` extends SchemePrim2("__struct_ref"):
+        case object StructRef extends SchemePrim2("__struct_ref"):
             def call[M[_]: PrimM](fpos: SchemeExp, s: V, field: V): M[V] =
               MonadJoin[M].mjoin(
                 lat

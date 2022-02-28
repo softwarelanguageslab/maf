@@ -117,15 +117,11 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             import maf.util.MonoidImplicits.*
             val values = args.map(_._2)
 
-            super
-              .applyPrimitives(fexp, fval, args)
-              .map(result =>
-                lattice.join(
-                  result,
-                  if OpqOps.eligible(values) then lattice.getPrimitives(fval).foldMap(prim => OpqOps.compute(prim, values))
-                  else lattice.bottom
-                )
-              )
+            nondet(
+              super.applyPrimitives(fexp, fval, args),
+              if OpqOps.eligible(values) then unit(lattice.getPrimitives(fval).foldMap(prim => OpqOps.compute(prim, values)))
+              else void
+            )
 
         /** Applies the given primitive and returns its resulting value */
         protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
@@ -303,29 +299,38 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
           unit(lattice.arr(ContractValues.Arr(monIdn, expression.idn, contract, value.value)))
 
         protected def applyArr(fc: SchemeFuncall, fv: PostValue): EvalM[Value] = nondets {
+          println(s"applying arr with $fc and $fv")
           lattice.getArrs(fv.value).map { arr =>
-            for
-                argsV <- fc.args.mapM(eval andThen extract)
-                values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
-                  applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn)
-                }
-                // apply the range maker function
-                rangeContract <- applyFun(
-                  SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
-                  arr.contract.rangeMaker,
-                  fc.args.zip(argsV.map(_.value)),
-                  arr.contract.rangeMakerExpr.idn.pos,
-                )
-                ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
-                result <- applyFun(
-                  fc, // syntactic function node
-                  arr.e, // the function to apply
-                  fc.args.zip(argsV.map(_.value)), // the arguments
-                  fc.idn.pos, // the position of the function in the source code
-                  ctx
-                  //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
-                )
-            yield result
+              println(s"=== got arr $arr and $fc")
+              for
+                  argsV <- fc.args.mapM(eval andThen extract)
+                  _ = { println(s"=== got args $argsV") }
+                  values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
+                    println(s"++++ applying mon on $arg $domain")
+                    applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn) >>= { res =>
+                        println(s"+++++ got res for $arg $domain $expr $res")
+                        unit(res)
+                    }
+                  }
+                  _ = { println(s"=== before applying function of range contract. Got $argsV and $values") }
+                  // apply the range maker function
+                  rangeContract <- applyFun(
+                    SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
+                    arr.contract.rangeMaker,
+                    fc.args.zip(argsV.map(_.value)),
+                    arr.contract.rangeMakerExpr.idn.pos,
+                  )
+                  _ = { println(s"=== applying arr with $argsV and $rangeContract") }
+                  ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
+                  result <- applyFun(
+                    fc, // syntactic function node
+                    arr.e, // the function to apply
+                    fc.args.zip(argsV.map(_.value)), // the arguments
+                    fc.idn.pos, // the position of the function in the source code
+                    ctx
+                    //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
+                  )
+              yield result
           }
         }
 
