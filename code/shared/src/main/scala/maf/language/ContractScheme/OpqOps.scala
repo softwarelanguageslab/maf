@@ -97,7 +97,7 @@ object OpqOps:
       Boolean -> SchemeOp.IsBoolean,
       Integer -> SchemeOp.IsInteger,
       String -> SchemeOp.IsString,
-      // Pair -> SchemeOp.IsPair,
+      Pair -> SchemeOp.IsAny, // TODO: should actually use primitive pair? here!
       Symbol -> SchemeOp.IsSymbol,
       Nil -> SchemeOp.IsNull,
       Any -> SchemeOp.IsAny,
