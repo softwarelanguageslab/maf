@@ -162,11 +162,9 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
             // only enabled for testing, results in a nil value associated with a fresh symbol
             case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) if DEBUG =>
-              println(s"gen fresh for $exp")
               for
                   symbolic <- fresh
                   value <- tag(symbolic)(lattice.opq(ContractValues.Opq()))
-                  _ <- log(s"final val $value")
               yield value
 
             // function calls have different behaviour in SCV as they can be guarded by contract
@@ -349,23 +347,14 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
           unit(lattice.arr(ContractValues.Arr(monIdn, expression.idn, contract, value.value)))
 
         protected def applyArr(fc: SchemeFuncall, fv: PostValue): EvalM[Value] = nondets {
-          println(s"applying arr with $fc and $fv")
-          val tag = UUID.randomUUID().nn
           lattice.getArrs(fv.value).map { arr =>
             for
-                _ <- log(s"$tag got arr $arr and $fc")
                 argsV <- fc.args.mapM(eval andThen extract)
-                _ <- log(s"$tag got args $argsV")
-                values <- enter("+") {
-                  argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
-                    log(s"applying mon on $arg $domain") >>>
-                      applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn) >>= { res =>
-                      log(s"got res for $arg $domain $expr $res") >>>
-                        unit(res)
-                    }
+                values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
+                  applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn) >>= { res =>
+                    unit(res)
                   }
                 }
-                _ <- effectful { println(s"=== before applying function of range contract. Got $argsV and $values") }
                 // apply the range maker function
                 rangeContract <- applyFun(
                   SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
@@ -373,7 +362,6 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                   fc.args.zip(argsV.map(_.value)),
                   arr.contract.rangeMakerExpr.idn.pos,
                 )
-                _ = { println(s"=== applying arr with $argsV and $rangeContract") }
                 ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
                 result <- applyFun(
                   fc, // syntactic function node
