@@ -163,6 +163,12 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   protected def nondet[X](tru: EvalM[X], fls: EvalM[X]): EvalM[X] =
     nondets(Set(tru, fls))
 
+  /** For executing a side-effecting computation within the Monad (delayed) */
+  protected def effectful(c: => Unit): EvalM[Unit] = MonadStateT((state) =>
+      c
+      TaggedSet.taggedSetMonad.unit(((), state))
+  )
+
   /** Executes the given computations non-determinstically */
   protected def nondets[X](branches: EvalM[X]*): EvalM[X] =
     nondets(branches.toSet)

@@ -10,10 +10,35 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.{MonoidInstances, TaggedSet}
 import maf.core.{Identifier, Identity, Monad, Position}
+import java.util.UUID
+
+object DebugLogger:
+    import maf.core.Monad.MonadSyntaxOps
+    private var currentLevel = 0
+    private var symbolStack = List("=")
+
+    def log[M[_]: Monad](msg: String): M[Unit] =
+        println((0.to(currentLevel)).map(_ => symbolStack.head).mkString("") + " " + msg)
+        Monad[M].unit(())
+
+    def enter[M[_]: Monad, X](symbol: String)(c: M[X]): M[X] =
+        currentLevel = currentLevel + 1
+        symbolStack = symbol :: symbolStack
+        c.map(v => {
+          currentLevel = currentLevel - 1
+          symbolStack = symbolStack.tail
+          v
+        })
+
+    def enter[M[_]: Monad, X](c: M[X]): M[X] =
+      enter(symbolStack.head)(c)
 
 /** This trait encodes the semantics of the ContractScheme language */
 trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvSymbolicStore.GlobalSymbolicStore with ScvContextSensitivity:
     outer =>
+
+    type Closure = (SchemeLambdaExp, Env)
+
     import maf.util.FunctionUtils.*
     import maf.core.Monad.MonadSyntaxOps
     import maf.core.Monad.MonadIterableOps
@@ -44,6 +69,8 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
         SchemeFuncall(SchemeVar(Identifier(p.name, Identity.none)), args.toList, Identity.none)
 
     trait BaseIntraScvSemantics extends IntraAnalysis with IntraScvAnalysis with BaseIntraAnalysis with GlobalMapStoreIntra:
+        import DebugLogger.*
+
         protected val cmp: Component = component
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
@@ -135,9 +162,11 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
             // only enabled for testing, results in a nil value associated with a fresh symbol
             case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) if DEBUG =>
+              println(s"gen fresh for $exp")
               for
                   symbolic <- fresh
                   value <- tag(symbolic)(lattice.opq(ContractValues.Opq()))
+                  _ <- log(s"final val $value")
               yield value
 
             // function calls have different behaviour in SCV as they can be guarded by contract
@@ -205,18 +234,39 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             nondet(truVal, flsVal)
 
         protected def evalCheck(checkExpr: ContractSchemeCheck): EvalM[Value] =
-          for
-              contract <- eval(checkExpr.contract)
-              value <- eval(checkExpr.valueExpression)
-              result <- nondets[Value](lattice.getFlats(contract).map { flat =>
+            def appl(procedureOrPrimitive: Closure | String, checkExpr: ContractSchemeCheck, vlu: Value): EvalM[Value] =
+                val injV = procedureOrPrimitive match
+                    case v: Closure => lattice.closure(v)
+                    case p: String  => lattice.primitive(p)
+
                 applyFun(
                   SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
-                  flat.contract,
-                  List((checkExpr.valueExpression, value)),
+                  injV,
+                  List((checkExpr.valueExpression, vlu)),
                   checkExpr.idn.pos
                 )
-              })
-          yield result
+
+            for
+                contract <- eval(checkExpr.contract)
+                value <- eval(checkExpr.valueExpression)
+
+                // TODO: refactor such that most of this code is in applyMon
+                flats = lattice.getFlats(contract).map { flat =>
+                  applyFun(
+                    SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
+                    flat.contract,
+                    List((checkExpr.valueExpression, value)),
+                    checkExpr.idn.pos
+                  )
+                }
+
+                // coerce procedures and primitives into flat contracts, in this case no wrapping is required and we can directly apply the
+                // procedure predicate.
+                procedures = ((lattice.getClosures(contract) ++ lattice.getPrimitives(contract)): Set[Closure | String])
+                  .map(appl(_, checkExpr, value))
+
+                result <- nondets[Value](flats ++ procedures)
+            yield result
 
         /**
          * The semantics of a "mon" expression.
@@ -300,37 +350,40 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
         protected def applyArr(fc: SchemeFuncall, fv: PostValue): EvalM[Value] = nondets {
           println(s"applying arr with $fc and $fv")
+          val tag = UUID.randomUUID().nn
           lattice.getArrs(fv.value).map { arr =>
-              println(s"=== got arr $arr and $fc")
-              for
-                  argsV <- fc.args.mapM(eval andThen extract)
-                  _ = { println(s"=== got args $argsV") }
-                  values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
-                    println(s"++++ applying mon on $arg $domain")
-                    applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn) >>= { res =>
-                        println(s"+++++ got res for $arg $domain $expr $res")
+            for
+                _ <- log(s"$tag got arr $arr and $fc")
+                argsV <- fc.args.mapM(eval andThen extract)
+                _ <- log(s"$tag got args $argsV")
+                values <- enter("+") {
+                  argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
+                    log(s"applying mon on $arg $domain") >>>
+                      applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn) >>= { res =>
+                      log(s"got res for $arg $domain $expr $res") >>>
                         unit(res)
                     }
                   }
-                  _ = { println(s"=== before applying function of range contract. Got $argsV and $values") }
-                  // apply the range maker function
-                  rangeContract <- applyFun(
-                    SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
-                    arr.contract.rangeMaker,
-                    fc.args.zip(argsV.map(_.value)),
-                    arr.contract.rangeMakerExpr.idn.pos,
-                  )
-                  _ = { println(s"=== applying arr with $argsV and $rangeContract") }
-                  ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
-                  result <- applyFun(
-                    fc, // syntactic function node
-                    arr.e, // the function to apply
-                    fc.args.zip(argsV.map(_.value)), // the arguments
-                    fc.idn.pos, // the position of the function in the source code
-                    ctx
-                    //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
-                  )
-              yield result
+                }
+                _ <- effectful { println(s"=== before applying function of range contract. Got $argsV and $values") }
+                // apply the range maker function
+                rangeContract <- applyFun(
+                  SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
+                  arr.contract.rangeMaker,
+                  fc.args.zip(argsV.map(_.value)),
+                  arr.contract.rangeMakerExpr.idn.pos,
+                )
+                _ = { println(s"=== applying arr with $argsV and $rangeContract") }
+                ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
+                result <- applyFun(
+                  fc, // syntactic function node
+                  arr.e, // the function to apply
+                  fc.args.zip(argsV.map(_.value)), // the arguments
+                  fc.idn.pos, // the position of the function in the source code
+                  ctx
+                  //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
+                )
+            yield result
           }
         }
 
