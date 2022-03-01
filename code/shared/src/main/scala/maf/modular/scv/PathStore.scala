@@ -101,7 +101,9 @@ case class SymbolicStore(mapping: Map[String, Symbolic]):
         allowed: Symbolic => Boolean = (_) => true
       ): M[(SymbolicStore, SymChange)] =
         import maf.core.Monad.MonadSyntaxOps
-        val symbolic = if allowed(sym) then Monad[M].unit((sym, NoChange)) else fresh.map(id => (Symbolic(id), SymReplace(sym, Symbolic(id))))
+        val symbolic =
+          if allowed(sym) then Monad[M].unit((sym, NoChange))
+          else fresh.map(id => (Symbolic(id), SymReplace(sym, Symbolic(id))))
         symbolic.map(sym => (this.copy(mapping = mapping + (name -> sym._1)), sym._2))
 
     /** Add a list of bindings to the symbolic store */
@@ -120,9 +122,11 @@ case class SymbolicStore(mapping: Map[String, Symbolic]):
                 yield (newStore, change :: result._2)
         )
 
-    def gc(roots: List[String]): SymbolicStore =
-        println(s"got roots $roots for $mapping")
-        this.copy(mapping = mapping.filterKeys(roots.contains).toMap)
+    /** Only keep those expressions in the symbolic store that are actually in the path condition */
+    def gc(pc: List[SchemeExp]): SymbolicStore =
+        val allSubexpressions = pc.flatMap(_.allSubexpressions)
+        //println(s"filtering $allSubexpressions with $mapping")
+        this.copy(mapping = mapping.filter { case (k, v) => allSubexpressions.contains(v.expr) }.toMap)
 
 object SymbolicStore:
     /** A symbolic store where only variables are allowed */
