@@ -135,8 +135,6 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
                 checkSubsumption(analysis)(f.contract, fl.contract) && /* f.fexp == fl.fexp && */ f.contractIdn == fl.contractIdn
               }
 
-            case ContractValue(Opq()) => true
-
             case ContractValue(Struct(tag, fields)) =>
               lat.getStructs(abs).exists { s => s.tag == tag && fields.contents.zip(s.fields.contents).forall(checkSubsumption(analysis)(_, _)) }
             case ContractValue(StructSetterGetter(tag, idx, isSetter)) =>
@@ -145,15 +143,14 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
               lat.getStructConstructor(abs).exists { s => s.tag == tag && s.size == size }
             case ContractValue(StructPredicate(tag)) =>
               lat.getStructPredicates(abs).exists { s => s.tag == tag }
-
-            case _ => super.checkSubsumption(analysis)(v, abs)
+            case _ =>
+              // if there is a single opaque value in the abstract value, it supercedes the other values
+              lat.isOpq(abs) || super.checkSubsumption(analysis)(v, abs)
 
     def analysis(program: SchemeExp): Analysis =
       SchemeAnalyses.scvModAnalysisWithRacketFeatures(program)
 
 /** Automated soundness tests  on the set of benchmarks from the Nguyen paper */
-class ScvNguyenSoundnessTests extends ScvSoundnessTests:
-    def name: String = "scv-soundness-tests"
-    override def benchmarks: Set[String] = Set("test/scv/NguyenGTH18/safe/mochi/mem.rkt") ++ Set(
-      "test/scv/NguyenGTH18/safe/mochi/map-foldr.rkt"
-    ) ++ SchemeBenchmarkPrograms.scvNguyenBenchmarks
+//class ScvNguyenSoundnessTests extends ScvSoundnessTests:
+//    def name: String = "scv-soundness-tests"
+//    override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks

@@ -28,12 +28,12 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
     /** Translates a symbolic Scheme value to an instance of the `V` sort */
     private def injectValue(value: Value): String = value match
         case Value.String(value)   => s"(VString $value)"
-        case Value.Symbol(symbol)  => throw new Exception("Not supported") // TODO
+        case Value.Symbol(symbol)  => s"(VSymbol $symbol)"
         case Value.Integer(value)  => s"(VInteger $value)"
         case Value.Real(value)     => s"(VReal $value)"
         case Value.Boolean(b) if b => s"(VBool true)"
         case Value.Boolean(b)      => s"(VBool false)"
-        case Value.Character(c)    => throw new Exception("Not supported") // TODO
+        case Value.Character(c)    => throw new Exception(s"Not supported character ($c)") // TODO
         case Value.Nil             => s"(VNil)"
 
     private def translateIdentifier(idn: Identifier): String =
@@ -49,6 +49,7 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
      |        (VNil)
      |        (VBool    (unwrap-bool    Bool))
      |        (VString  (unwrap-string  String))
+     |        (VSymbol  (unwrap-symbol String))
      |        (VError))))
      |
      |  (define-fun boolean?/v ((b V)) V
