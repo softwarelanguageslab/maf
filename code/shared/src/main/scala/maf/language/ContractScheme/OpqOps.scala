@@ -163,6 +163,7 @@ object OpqOps:
       "char=?" -> (Char ==>: Boolean),
       "char?" -> (Any ==>: Boolean),
       "cons" -> (Any ==>: Any ==>: Pair),
+      "__struct_ref" -> (Any ==>: Integer ==>: Any), // TODO: make this signature more precise
       "cos" -> (Real ==>: Real),
       "eq?" -> (Any ==>: Any ==>: Boolean),
       "exact->inexact" -> (Real ==>: Real),
