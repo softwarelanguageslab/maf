@@ -38,7 +38,6 @@ class SimpleSchemeModConcSoundnessTests
     with SimpleSchemeModConc
     with ThreadBenchmarks
     with VariousSequentialBenchmarks:
-    override def benchmarks: Set[Benchmark] = Set("test/R5RS/scp1/family-budget.scm")
     override def isSlow(b: Benchmark): Boolean =
       SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
         Set(
@@ -78,7 +77,6 @@ trait SmallStepSchemeModConc extends SchemeModConcSoundnessTests:
     }
 
 class SmallStepSchemeModConcSoundnessTests extends SmallStepSchemeModConc with ThreadBenchmarks with AllSequentialBenchmarks:
-    override def benchmarks: Set[Benchmark] = Set("test/R5RS/scp1/family-budget.scm")
     override def isSlow(b: Benchmark): Boolean = false &&
       // (SchemeBenchmarks.sequentialBenchmarks.contains(b) && !SchemeBenchmarks.other.contains(b)) ||
       SchemeBenchmarkPrograms.sequentialBenchmarks.contains(b) ||
