@@ -42,16 +42,16 @@ trait ScvBigStepWithProvides extends BaseScvBigStepSemantics:
 
             case _ => throw new Exception("only contract-out is supported in provide")
 
-        protected def callWithOpq(values: List[(Value, Identifier, Identity)]): EvalM[List[Value]] =
+        protected def callWithOpq(values: List[(Value, Identifier, Identity)]): EvalM[Value] =
             def fresh(idn: Identity): SchemeExp = SchemeFuncall(SchemeVar(Identifier("fresh", idn)), List(), idn)
-            Monad.sequence(values.map { case (value, name, idn) =>
+            nondets(values.map { case (value, name, idn) =>
               lattice.getArrs(value).foldLeftM(lattice.bottom) { (vlu, arr) =>
-                applyArr(SchemeFuncall(SchemeVar(name), arr.contract.domainIdns.map(idn => fresh(idn)).toList, idn),
+                applyArr(SchemeFuncall(SchemeVar(name), arr.contract.domainIdns.map(idnn => fresh(idnn)).toList, idn),
                          PostValue.noSymbolic(lattice.arr(arr))
                 )
                   .map(lattice.join(vlu, _))
               }
-            })
+            }.toSet)
 
         override def eval(exp: SchemeExp): EvalM[Value] = exp match
             case ContractSchemeProvide(outs, idn) =>

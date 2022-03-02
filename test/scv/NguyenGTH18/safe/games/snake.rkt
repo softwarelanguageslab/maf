@@ -147,7 +147,7 @@
 ;; Eat the food and generate a new one.
 (define (snake-eat w)
   (world (snake-grow (world-snake w))
-         #;(posn (random BOARD-WIDTH) (random BOARD-HEIGHT))
+         ;(posn (random BOARD-WIDTH) (random BOARD-HEIGHT))
          (posn (- BOARD-WIDTH 1) (- BOARD-HEIGHT 1))))
 
 

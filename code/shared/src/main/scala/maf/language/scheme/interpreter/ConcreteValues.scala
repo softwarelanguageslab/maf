@@ -34,6 +34,8 @@ object ConcreteValues:
             def idn = Identity.none
         case class PtrAddr(exp: SchemeExp) extends AddrInfo:
             def idn = exp.idn
+        case class PtrIgnoreAddr(exp: SchemeExp) extends AddrInfo:
+            def idn = exp.idn
 
     object Value:
 

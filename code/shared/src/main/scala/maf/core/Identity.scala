@@ -16,6 +16,8 @@ case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
 /** Neutral identity for to elements not in the code (constructed by the analysis). */
 case object NoCodeIdentity extends Identity:
     val idn: IDN = Identity.newId(Position(-1, 0))
+case object NoCodeIdentityDebug extends Identity:
+    val idn: IDN = Identity.newId(Position(-2, 0))
 
 /*
 trait UniqueIdentity {

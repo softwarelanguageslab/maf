@@ -2,6 +2,7 @@ package maf.language.scheme.primitives
 
 import maf.core._
 import maf.language.scheme._
+import maf.language.ContractScheme.ContractValues
 import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
 
 class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A]) extends SchemePrimitives[V, A]:
@@ -490,7 +491,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                     // TODO: this is sound but very imprecise; use the value "field" and a corresponding operation in the lattice to make this more precise
                     // and fetch the actual field whenever possible
                     s.fields.contents.map(Monad[M].unit)
-                  )
+                  ) ++ (if lat.isOpq(s) then Set(Monad[M].unit(lat.opq(ContractValues.Opq()))) else Set())
               )
 
         case object `call/cc` extends SchemePrim1("call/cc"):

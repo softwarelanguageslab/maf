@@ -6,7 +6,7 @@ import maf.language.sexp
 import maf.language.sexp.Value
 import maf.language.scheme._
 import maf.util.MonoidImplicits.*
-import maf.core.{Identifier, Identity}
+import maf.core.{Identifier, Identity, NoCodeIdentityDebug}
 
 object ContractSchemeCompiler extends BaseSchemeCompiler:
     import scala.util.control.TailCalls._
@@ -128,7 +128,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
     private def nest(expressions: List[SchemeExp], function: String): SchemeExp = expressions match
         case List(expression) => expression
         case expression :: rest =>
-          SchemeFuncall(SchemeVar(Identifier(function, Identity.none)), List(expression, nest(rest, function)), Identity.none)
+          SchemeFuncall(SchemeVar(Identifier(function, expression.idn)), List(expression, nest(rest, function)), expression.idn)
         case List() => throw new Exception("nest cannot receive an empty list")
 
     private def compile_sequence(seq: SExp): TailRec[List[SchemeExp]] =
@@ -136,7 +136,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
 
     // TODO: create special kind of Lambda expression that ignores its arguments
     private def rangeToRangerMaker(range: SchemeExp): SchemeExp =
-      SchemeVarArgLambda(None, List(), Identifier("0arg", Identity.none), List(range), None, range.idn)
+      SchemeVarArgLambda(None, List(), Identifier("0arg", NoCodeIdentityDebug), List(range), None, range.idn)
 
     // TODO: also take vararg into account eg. (define (f . a) exp) is a function that takes any number of arguments
     private def compile_params(params: SExp): List[Identifier] = params match
@@ -236,19 +236,19 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
         // desugaring of (struct/c name field-contract ...) into a contract as follows:
         // (and/c (flat name?) (flat (lambda (v) (check contract (_struct_ref v 0)))) ...)
         case Ident("struct/c") :::: IdentWithIdentity(name, nameIdn) :::: fields =>
-          val tagCheck = ContractSchemeFlatContract(SchemeVar(Identifier(s"${name}?", nameIdn)), Identity.none)
+          val tagCheck = ContractSchemeFlatContract(SchemeVar(Identifier(s"${name}?", nameIdn)), nameIdn)
           for
               fieldsCheck <- sequence(fields.toList.zipWithIndex.map { case (field, idx) =>
                 val structRef = SchemeFuncall(
-                  SchemeVar(Identifier("__struct_ref", Identity.none)),
-                  List(SchemeVar(Identifier("v", Identity.none)), SchemeValue(sexp.Value.Integer(idx), Identity.none)),
-                  Identity.none
+                  SchemeVar(Identifier("__struct_ref", field.idn)),
+                  List(SchemeVar(Identifier("v", field.idn)), SchemeValue(sexp.Value.Integer(idx), field.idn)),
+                  field.idn
                 )
                 for {
                   fieldExpr <- _compile(field)
-                  checkExpression = ContractSchemeCheck(fieldExpr, structRef, Identity.none)
+                  checkExpression = ContractSchemeCheck(fieldExpr, structRef, field.idn)
                   fieldCheck = ContractSchemeFlatContract(
-                    SchemeLambda(None, List(Identifier("v", Identity.none)), List(checkExpression), None, Identity.none),
+                    SchemeLambda(None, List(Identifier("v", field.idn)), List(checkExpression), None, field.idn),
                     field.idn
                   )
                 } yield fieldCheck

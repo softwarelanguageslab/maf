@@ -4,7 +4,7 @@ import maf.language.scheme.interpreter.SchemeInterpreter
 import maf.language.scheme.interpreter.SchemeInterpreter
 import maf.language.change.CodeVersion._
 import maf.language.scheme.*
-import maf.core.{Identity, Monad}
+import maf.core.{Identity, Monad, NoCodeIdentityDebug}
 import maf.util.benchmarks.Timeout
 import scala.util.control.TailCalls._
 import maf.language.ContractScheme.ContractValues
@@ -187,7 +187,7 @@ class ContractSchemeInterpreter(
                                 case (v, idn) =>
                                   v.run(new Allocator {
                                     def alloc(vlu: ConcreteValues.Value): Value.Pointer =
-                                      allocateVal(SchemeValue(maf.language.sexp.Value.Nil, idn), vlu)
+                                      allocateVal(SchemeValue(maf.language.sexp.Value.Nil, idn), vlu, true)
                                   })
                               }
                               // we don't actually have syntactic function call arguments, so we synthesize them here.
@@ -249,7 +249,7 @@ class ContractSchemeInterpreter(
               ret <- tailcall(applyFun(f, call, argsv, args, idn, timeout, version))
               // then check the range contract on the return value
               // TODO: call is not entirely correct in this context, probably needs to be synthesized
-              checkedRet <- tailcall(mon(rangeContract, ret, call, call, Identity.none, timeout, version))
+              checkedRet <- tailcall(mon(rangeContract, ret, call, call, NoCodeIdentityDebug, timeout, version))
           yield checkedRet
 
         // Structures

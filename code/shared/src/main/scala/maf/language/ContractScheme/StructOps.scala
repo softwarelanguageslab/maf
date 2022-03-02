@@ -49,30 +49,43 @@ class StructOps[Value](using lat: SchemeLattice[Value, Address], clsT: ClassTag[
         val setters: Set[M[Value]] = lat.getGetterSetter(op).filter(_.isSetter).flatMap { setter =>
             assert(args.size == 2)
             val oldStruct = args(0)
-            lat.getStructs(oldStruct).map { struct =>
+            val nonOpq = lat.getStructs(oldStruct).map { struct =>
                 val newValue = args(1)
                 struct.fields.update(setter.idx, lat.join(struct.fields(setter.idx), newValue))
                 monad.unit(lat.nil)
             }
+
+            // TODO: seperate this from the main code? should we replace the symbolic representation in the sym store?
+            // If the struct is an opaque value, then we "fake" that we have changed it.
+            val opq = if lat.isOpq(oldStruct) then Set(monad.unit(lat.nil)) else Set()
+            nonOpq ++ opq
         }
 
         // A getter must read the value on the specified index from the field array of the struct
         val getters: Set[M[Value]] = lat.getGetterSetter(op).filterNot(_.isSetter).flatMap { getter =>
             assert(args.size == 1)
             val struct = args(0)
-            lat.getStructs(struct).map { struct =>
+            val nonOpq = lat.getStructs(struct).map { struct =>
                 val value = struct.fields(getter.idx)
                 monad.unit(value)
             }
+
+            // If the struct is an opaque value, then access to its fields could return anything
+            val opq = if lat.isOpq(struct) then Set(monad.unit(lat.opq(Opq()))) else Set()
+            nonOpq ++ opq
         }
 
         // A predicate must check the type tag of the struct
         val predicates: Set[M[Value]] = lat.getStructPredicates(op).flatMap { pred =>
             assert(args.size == 1)
             val structArg = args(0)
-            lat.getStructs(structArg).map { struct =>
+            val nonOpq = lat.getStructs(structArg).map { struct =>
               monad.unit(lat.bool(struct.tag == pred.tag))
             }
+
+            // If the struct is an opaque value, then it could be the struct of the correct type or filterNot
+            val opq = if lat.isOpq(structArg) then Set(monad.unit(lat.boolTop)) else Set()
+            nonOpq ++ opq
         }
 
         constrs ++ setters ++ getters ++ predicates

@@ -326,4 +326,4 @@ object OpqOps:
 
     /** Checks whether the abstract computations can be ran using the semantics of opaque values */
     def eligible[V: Lat](args: List[V]): Boolean =
-      args.exists(arg => Lat[V].isOpq(arg))
+      args.exists(arg => Lat[V].isOpq(arg)) && !args.exists(arg => Lat[V].isBottom(arg))

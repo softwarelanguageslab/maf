@@ -62,8 +62,18 @@ trait BaseSchemeInterpreter[V]:
         store = s
       }
 
-    def allocateVal(exp: SchemeExp, value: Value): Value.Pointer =
-        val addr = newAddr(AddrInfo.PtrAddr(exp))
+    /**
+     * Allocate the given value on the address determined by the given Scheme expression.
+     *
+     * @param exp
+     *   the scheme expression that determines the address of the given value
+     * @param value
+     *   the value to allocate in the store
+     * @param ignore
+     *   whether to ignore the address for soundness tests
+     */
+    def allocateVal(exp: SchemeExp, value: Value, ignore: Boolean = false): Value.Pointer =
+        val addr = newAddr(if ignore then AddrInfo.PtrIgnoreAddr(exp) else AddrInfo.PtrAddr(exp))
         extendStore(addr, value)
         Value.Pointer(addr)
 

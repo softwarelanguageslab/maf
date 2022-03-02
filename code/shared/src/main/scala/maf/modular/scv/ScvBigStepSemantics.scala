@@ -9,7 +9,7 @@ import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.{MonoidInstances, TaggedSet}
-import maf.core.{Identifier, Identity, Monad, Position}
+import maf.core.{Identifier, Identity, Monad, NoCodeIdentityDebug, Position}
 import java.util.UUID
 
 object DebugLogger:
@@ -61,7 +61,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
           addr <- unit(
             env.lookup(id.name).getOrElse(throw Exception(s"variable ${id.name} not found"))
           ) // exception should not happen because of lexical address pass
-          value <- lookupCache(addr).flatMap(v => v.map(unit).getOrElse(fresh.flatMap(writeSymbolic(addr))))
+          value <- lookupCache(addr).flatMap(v => v.map(unit).getOrElse(fresh.flatMap(writeSymbolic(addr)))) // TODO: check if it is actually good to freshly allocate an identifier each time we don't find something in the store cache
       yield value
 
     extension (p: Prim)
@@ -307,7 +307,19 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 .map(p =>
                   ContractValues
                     .Flat(lattice.primitive(p), SchemeVar(Identifier(p, Identity.none)), Some(SchemeVar(Identifier(p, Identity.none))), Identity.none)
-                ))
+                ) ++
+                /** struct predicates */
+                lattice
+                  .getStructPredicates(contract.value)
+                  .map(p =>
+                    ContractValues.Flat(
+                      lattice.structPredicate(p), /* synthetic, struct predicates do not need fexp */ SchemeValue(maf.language.sexp.Value.Nil,
+                                                                                                                  Identity.none
+                      ),
+                      None,
+                      Identity.none
+                    )
+                  ))
 
             val flats = (lattice.getFlats(contract.value) ++ extraFlats).map(c => monFlat(c, expression, expr, monIdn, assumed))
             val guards = lattice.getGrds(contract.value).map(c => monArr(c, expression, expr, monIdn))
@@ -332,7 +344,10 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             val resultSymbolic = symCall(contract.sym, List(value.symbolic))
             for
                 // TODO: find better position information
-                result <- applyFun(call, contract.contract, List((expr, value.value)), Position(-1, 0))
+                result <- nondets(
+                  applyFun(call, contract.contract, List((expr, value.value)), Position(-1, 0)),
+                  callFun(PostValue.noSymbolic(contract.contract), List(value))
+                )
                 pv = PostValue(resultSymbolic, result)
                 tru = ifFeasible(`true?`, pv) { unit(value.value).flatMap(value.symbolic.map(tag).getOrElse(unit)) }
                 fls =
@@ -389,11 +404,14 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
               argsV <- f.args.mapM(eval andThen extract)
               ctx = buildCtx(argsV.map(_.symbolic), None)
 
-              result <- nondets(
-                applyArr(f, fv),
-                callFun(fv, argsV),
-                applyFun(f, fv.value, f.args.zip(argsV.map(_.value)), f.idn.pos, ctx)
-              ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))
+              result <-
+                if argsV.map(_.value).exists(lattice.isBottom(_)) then void
+                else
+                    nondets(
+                      applyArr(f, fv),
+                      callFun(fv, argsV),
+                      applyFun(f, fv.value, f.args.zip(argsV.map(_.value)), f.idn.pos, ctx)
+                    ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))
           yield result
 
         override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
