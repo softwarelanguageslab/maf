@@ -34,7 +34,12 @@ object DebugLogger:
       enter(symbolStack.head)(c)
 
 /** This trait encodes the semantics of the ContractScheme language */
-trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvSymbolicStore.GlobalSymbolicStore with ScvContextSensitivity:
+trait BaseScvBigStepSemantics
+    extends ScvModAnalysis
+    with ScvBaseSemantics
+    with ScvSymbolicStore.GlobalSymbolicStore
+    with ScvContextSensitivity
+    with ScvReporter:
     outer =>
 
     type Closure = (SchemeLambdaExp, Env)
@@ -74,6 +79,9 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
         protected val cmp: Component = component
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            track(NumberOfComponents, cmp)
+            count(NumberOfIntra)
+
             val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
             val resultsM = for
                 _ <- injectCtx
@@ -221,7 +229,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 cnd.symbolic match
                     case _ if !lattice.isTrue(primResult) =>
                       void // if it is not possible according to the lattice, we do not execute "m"
-                    case Some(symbolic) if !sat.feasible(pc, vars) =>
+                    case Some(symbolic) if ! { count(SATExec); time(Z3Time) { sat.feasible(pc, vars) } } =>
                       void // if the path condition is unfeasible we also do not execute "m"
                     case Some(symbolic) =>
                       extendPc(prim.symApply(symbolic)) >>> m
@@ -234,6 +242,8 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             nondet(truVal, flsVal)
 
         protected def evalCheck(checkExpr: ContractSchemeCheck): EvalM[Value] =
+            track(EvalCheck, checkExpr)
+
             def appl(procedureOrPrimitive: Closure | String, checkExpr: ContractSchemeCheck, vlu: Value): EvalM[Value] =
                 val injV = procedureOrPrimitive match
                     case v: Closure => lattice.closure(v)
@@ -340,6 +350,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             monIdn: Identity,
             assumed: Boolean = false
           ): EvalM[Value] =
+            track(AppFlat, (contract, value))
             val call = SchemeFuncall(contract.fexp, List(expr), monIdn)
             val resultSymbolic = symCall(contract.sym, List(value.symbolic))
             for
@@ -365,30 +376,31 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
         protected def applyArr(fc: SchemeFuncall, fv: PostValue): EvalM[Value] = nondets {
           lattice.getArrs(fv.value).map { arr =>
-            for
-                argsV <- fc.args.mapM(eval andThen extract)
-                values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
-                  applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn) >>= { res =>
-                    unit(res)
+              track(AppArr, (arr, fc))
+              for
+                  argsV <- fc.args.mapM(eval andThen extract)
+                  values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
+                    applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn) >>= { res =>
+                      unit(res)
+                    }
                   }
-                }
-                // apply the range maker function
-                rangeContract <- applyFun(
-                  SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
-                  arr.contract.rangeMaker,
-                  fc.args.zip(argsV.map(_.value)),
-                  arr.contract.rangeMakerExpr.idn.pos,
-                )
-                ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
-                result <- applyFun(
-                  fc, // syntactic function node
-                  arr.e, // the function to apply
-                  fc.args.zip(argsV.map(_.value)), // the arguments
-                  fc.idn.pos, // the position of the function in the source code
-                  ctx
-                  //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
-                )
-            yield result
+                  // apply the range maker function
+                  rangeContract <- applyFun(
+                    SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
+                    arr.contract.rangeMaker,
+                    fc.args.zip(argsV.map(_.value)),
+                    arr.contract.rangeMakerExpr.idn.pos,
+                  )
+                  ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
+                  result <- applyFun(
+                    fc, // syntactic function node
+                    arr.e, // the function to apply
+                    fc.args.zip(argsV.map(_.value)), // the arguments
+                    fc.idn.pos, // the position of the function in the source code
+                    ctx
+                    //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
+                  )
+              yield result
           }
         }
 
