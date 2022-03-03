@@ -24,10 +24,11 @@ object ScvAAMTester extends AAMTesterT:
         with SchemeFunctionCallBoundary
         with SchemeAAMLocalStore
         with SimpleWorklistSystem[SchemeExp]
-        with SchemeAAMAnalysisResults {
+        with SchemeAAMAnalysisResults
+        with ScvReporter {
         lazy val satSolver: ScvSatSolver[LatVal] =
             given lat: SchemeLattice[LatVal, Address] = lattice
-            new JVMSatSolver
+            new JVMSatSolver(this)
       }
 
     override protected def parseProgram(txt: String): SchemeExp =
