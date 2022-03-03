@@ -28,7 +28,7 @@ object ScvPrecisionComparison
 
     def analyses: List[(SchemeExp => Analysis, String)] = List(
       (SchemeAnalyses.scvModAnalysisWithRacketFeatures, "scv-modf"),
-      (AAMAnalyses.scvAAMFnCallBoundaries, "scv-aam")
+      //(AAMAnalyses.scvAAMFnCallBoundaries, "scv-aam")
     )
 
     override def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO()): SchemeInterpreter =
