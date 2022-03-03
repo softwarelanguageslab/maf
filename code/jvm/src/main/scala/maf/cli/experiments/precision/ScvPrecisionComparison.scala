@@ -12,6 +12,7 @@ import scala.concurrent.duration.*
 import maf.language.scheme.*
 import maf.core.Identity
 import maf.language.ContractScheme.interpreter.ContractSchemeErrors.ContractSchemeBlame
+import maf.language.ContractScheme.*
 import maf.language.ContractScheme.ContractValues.*
 
 /**
@@ -69,6 +70,9 @@ object ScvPrecisionComparison
     private val benchmarks: List[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks.toList
 
     override def runs = 1
+
+    override def parseProgram(txt: String): SchemeExp =
+      SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
 
     def main(args: Array[String]) =
         benchmarks.foreach(runBenchmark)
