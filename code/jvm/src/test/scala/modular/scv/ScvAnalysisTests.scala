@@ -28,7 +28,7 @@ trait ScvAnalysisTests extends SchemeBenchmarkTests:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Addr] = lattice
-                new JVMSatSolver()
+                new JVMSatSolver(this)
 
     protected def parse(program: String): SchemeExp =
       ContractSchemeParser.parse(program.nn)
