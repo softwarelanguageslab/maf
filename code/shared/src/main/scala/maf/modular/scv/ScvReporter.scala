@@ -1,7 +1,8 @@
 package maf.modular.scv
 
 import maf.language.scheme.*
-import maf.modular.ModReporter
+import maf.modular.worklist.*
+import maf.modular.{ModAnalysis, ModReporter}
 
 trait ScvReporter extends ModReporter[SchemeExp]:
     case object Z3Time extends ModMetric:

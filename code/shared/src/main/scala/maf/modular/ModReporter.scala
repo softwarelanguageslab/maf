@@ -5,7 +5,7 @@ import maf.util.benchmarks.Timer
 import maf.core.Expression
 
 /** A reporter to report metrics, it also includes some timing utilities to measure how long certain parts of the code take */
-trait ModReporter[E <: Expression] extends ModAnalysis[E]:
+trait ModReporter[E <: Expression] extends AnalysisEntry[E]:
     /** The type of the metric reported by the ModF analysis */
     protected trait ModMetric:
         def name: String
