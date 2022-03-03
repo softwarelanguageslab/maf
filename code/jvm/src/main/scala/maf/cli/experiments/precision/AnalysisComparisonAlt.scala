@@ -53,11 +53,14 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
           val t1 = System.nanoTime
           val duration = (System.nanoTime - t0) / 1e9d
           println(s"duration: $duration")
-          val lessPrecise = otherResult match
-              case Terminated(analysisResult) => Result.Success(compareOrdered(analysisResult, concreteResult).size)
-              case TimedOut(partialResult)    => Result.Timeout(compareOrdered(partialResult, concreteResult, check = false).size)
-              case Errored(_)                 => Result.Errored
+          val (lessPrecise, size) = otherResult match
+              case Terminated(analysisResult) =>
+                (Result.Success(compareOrdered(analysisResult, concreteResult).size), Result.Success(analysisResult.keys.size))
+              case TimedOut(partialResult) =>
+                (Result.Timeout(compareOrdered(partialResult, concreteResult, check = false).size), Result.Timeout(partialResult.keys.size))
+              case Errored(_) => (Result.Errored, Result.Errored)
           results = results.add(path, name, lessPrecise)
+          results = results.add(path, s"$name-total", size)
         }
 
 object AnalysisComparisonAlt1

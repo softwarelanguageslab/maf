@@ -74,6 +74,10 @@ object ScvPrecisionComparison
     override def parseProgram(txt: String): SchemeExp =
       SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
 
+    override def compareOrdered(r1: ResultMap, r2: ResultMap, check: Boolean = true): Set[Identity] =
+      // override check flag: checking is already done in soundness tests (except for unrelated, but in scv this in unavoidable because of the many synthesized calls)
+      super.compareOrdered(r1, r2, check = false)
+
     def main(args: Array[String]) =
         benchmarks.foreach(runBenchmark)
         println(results.prettyString(format = _.toString))
