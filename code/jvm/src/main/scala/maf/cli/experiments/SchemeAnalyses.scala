@@ -172,7 +172,7 @@ object SchemeAnalyses:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver
+                new JVMSatSolver(this)
 
     /**
      * SCV analysis with Racket features:
@@ -198,4 +198,4 @@ object SchemeAnalyses:
               ) = new IntraScvSemantics(cmp) with IntraScvSemanticsWithProvides with IntraScvSemanticsWithStructs
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver
+                new JVMSatSolver(this)

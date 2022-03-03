@@ -85,7 +85,7 @@ object DeadcodeDetection:
 
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver
+                new JVMSatSolver(this)
 
     /** Parses the given program text to a SchemeExp */
     def parseProgram(txt: String): SchemeExp =

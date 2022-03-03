@@ -1,6 +1,6 @@
 package maf.cli.modular.scv
 
-import maf.modular.scv.{IsSat, Sat, ScvSatSolver, Unknown, Unsat}
+import maf.modular.scv.{IsSat, Sat, ScvReporter, ScvSatSolver, Unknown, Unsat}
 import maf.core.Address
 import maf.language.scheme._
 import maf.language.sexp.Value
@@ -11,8 +11,36 @@ import smtlib.trees.Commands._
 import smtlib.Interpreter
 import smtlib.trees.CommandsResponses.{CheckSatStatus, SatStatus, UnsatStatus}
 import smtlib.interpreters.Z3Interpreter
+import scala.concurrent.ExecutionContext
 
-class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
+class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
+    /** We run the Z3 process in the background, and feed it with commands */
+    private given z3Interpreter: Interpreter = Z3Interpreter.buildDefault
+
+    /** Sends the reset command to the Z3 interpreter */
+    private def reset()(using interpreter: Interpreter, ec: ExecutionContext): Unit =
+      interpreter.eval(Reset())
+
+    /** A cache where already solved path conditions are stored together with their result */
+    private var cache: Map[(List[SchemeExp], List[String]), IsSat[V]] = Map()
+
+    /**
+     * Checks whether the path condition is already solved
+     *
+     * @param e
+     *   the expression representing the path condition (as a list that represents conjunctions of expressions)
+     * @param vars
+     *   the variables used in the path condition
+     */
+    def inCache(e: List[SchemeExp], vars: List[String]): Boolean = cache.contains((e, vars))
+
+    /** Returns the cached version of the path condition */
+    private def lookupCache(e: List[SchemeExp], vars: List[String]): IsSat[V] = cache((e, vars))
+
+    /** Stores the answer in the cache */
+    private def storeCache(e: List[SchemeExp], vars: List[String], v: IsSat[V]): Unit =
+      cache = (cache + ((e, vars) -> v))
+
     /** A mapping between the name of Scheme primitives and their Z3 counter-parts */
     private val primMap: Map[String, String] = Map(
       "number?" -> "number?/v",
@@ -76,6 +104,9 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
      |     (ite (is-VBool b) (not (unwrap-bool b)) false))
     """.stripMargin
 
+    /** We pre-parse the prelude into a script */
+    private lazy val parsedPrelude = parseStringToScript(prelude)
+
     /** Translate the given SchemeExp to a series of constraints */
     def translate(e: SchemeExp): String = e match
         case SchemeVar(identifier)     => translateIdentifier(identifier)
@@ -86,8 +117,7 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
     def parseStringToScript(s: String): Script =
       Parser.fromString(s).parseScript
 
-    def isSat(script: Script)(using interpreter: Interpreter): IsSat[V] =
-        import scala.concurrent.ExecutionContext.Implicits.global
+    def isSat(script: Script)(using interpreter: Interpreter, ec: ExecutionContext): IsSat[V] =
 
         script.commands.foreach(interpreter.eval)
         interpreter.eval(CheckSat()) match
@@ -97,13 +127,19 @@ class JVMSatSolver[V](using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
 
     /** Returns either Sat, Unsat or Unknown depending on the answer of Z3 */
     def sat(e: List[SchemeExp], vars: List[String]): IsSat[V] =
-        import scala.language.unsafeNulls
-        val translated = e.map(translate).map(assertion => s"(assert $assertion)").mkString("\n")
-        val varsDeclarations = vars.map(v => s"(declare-const $v V)").mkString("\n")
-        val program = prelude ++ varsDeclarations ++ translated
+      if inCache(e, vars) then
+          reporter.count(reporter.SATCacheHit)
+          lookupCache(e, vars)
+      else
+          import scala.language.unsafeNulls
+          import scala.concurrent.ExecutionContext.Implicits.global
 
-        given interpreter: Interpreter = Z3Interpreter.buildDefault
-        val script: Script = parseStringToScript(program)
-        val answer = isSat(script)
-        interpreter.free()
-        answer
+          val translated = e.map(translate).map(assertion => s"(assert $assertion)").mkString("\n")
+          val varsDeclarations = vars.map(v => s"(declare-const $v V)").mkString("\n")
+          val program = varsDeclarations ++ translated
+
+          reset()
+          val script: Script = Script(parsedPrelude.commands ++ parseStringToScript(program).commands)
+          val answer = reporter.time(reporter.Z3InterpreterTime) { isSat(script) }
+          storeCache(e, vars, answer)
+          answer
