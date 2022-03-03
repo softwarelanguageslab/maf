@@ -3,9 +3,12 @@ package maf.cli.experiments.precision
 import maf.language.scheme.interpreter.{EmptyIO, IO, SchemeInterpreter}
 import maf.language.ContractScheme.interpreter.{ConcreteValues, ContractSchemeInterpreter}
 import maf.cli.experiments.SchemeAnalyses
+import maf.util.*
 import maf.cli.experiments.aam.AAMAnalyses
 import maf.lattice.*
+import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.util.benchmarks.Timeout
+import scala.concurrent.duration.*
 import maf.language.scheme.*
 import maf.core.Identity
 import maf.language.ContractScheme.interpreter.ContractSchemeErrors.ContractSchemeBlame
@@ -62,3 +65,14 @@ object ScvPrecisionComparison
         case analysis.modularLatticeWrapper.modularLattice.StructSetterGetters(sgs) => baseDomain.StructSetterGetters(sgs)
         case analysis.modularLatticeWrapper.modularLattice.StructPredicates(p)      => baseDomain.StructPredicates(p)
         case _                                                                      => super.convertV(analysis)(value)
+
+    private val benchmarks: List[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks.toList
+
+    override def runs = 1
+
+    def main(args: Array[String]) =
+        benchmarks.foreach(runBenchmark)
+        println(results.prettyString(format = _.toString))
+        Writer.setDefaultWriter(Writer.open("benchOutput/precision/scv-precision-benchmarks.csv"))
+        Writer.write(results.toCSVString(format = _.toString, rowName = "benchmark"))
+        Writer.closeDefaultWriter()
