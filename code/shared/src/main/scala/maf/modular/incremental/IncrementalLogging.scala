@@ -94,7 +94,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
           .foldLeft(Table.empty.withDefaultValue(""))({ case (table, dep) => table.add(dep._1.toString, "Value sources", dep._2.mkString("; ")) })
           .prettyString()
         val scaString = computeSCAs().map(_.map(a => crop(a.toString)).mkString("{", ", ", "}")).mkString("\n")
-        depString + "\nSCAs:\n" + (if (scaString.isEmpty) then "none" else scaString)
+        depString + (if configuration.cyclicValueInvalidation then "\nSCAs:\n" + (if scaString.isEmpty then "none" else scaString) else "")
 
     private def programToString(): String =
         val str = program.asInstanceOf[SchemeExp].prettyString()
@@ -204,7 +204,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
         // Writing an address.
         override def writeAddr(addr: Addr, value: Value): Boolean =
-            if configuration.cyclicValueInvalidation && mode == Fine then
+            if configuration.cyclicValueInvalidation && mode != Summary then
                 lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> ${crop(addr.toString)}"))
                 implicitFlows.flatten.foreach(f => logger.log(s"ADP* $f ~> ${crop(addr.toString)}"))
             val b = super.writeAddr(addr, value)
@@ -216,11 +216,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
         // Incremental store update.
         override def doWriteIncremental(): Unit =
-            if mode == Fine then intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV ${crop(addr.toString)}: ${crop(value.toString)}") })
+            if mode != Summary then intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV ${crop(addr.toString)}: ${crop(value.toString)}") })
             super.doWriteIncremental()
 
         override def commit(): Unit =
-            if mode == Fine then logger.log("COMI")
+            if mode != Summary then logger.log("COMI")
             super.commit()
             insertTable(Right(component))
 

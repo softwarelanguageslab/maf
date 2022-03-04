@@ -1,14 +1,14 @@
 package maf.modular.incremental.scheme
 
-import maf.language.scheme._
-import maf.modular._
-import maf.modular.incremental._
-import maf.modular.incremental.scheme.lattice._
-import maf.modular.incremental.scheme.modconc._
+import maf.language.scheme.*
+import maf.modular.*
+import maf.modular.incremental.*
+import maf.modular.incremental.scheme.lattice.*
+import maf.modular.incremental.scheme.modconc.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
-import maf.modular.scheme.modf._
-import maf.modular.scheme.ssmodconc._
-import maf.modular.worklist.LIFOWorklistAlgorithm
+import maf.modular.scheme.modf.*
+import maf.modular.scheme.ssmodconc.*
+import maf.modular.worklist.*
 
 /**
  * Provides instantiations of incremental analyses.

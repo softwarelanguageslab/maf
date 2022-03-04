@@ -1,23 +1,25 @@
 package maf.test.modular.scheme.incremental
 
+import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import maf.language.CScheme.CSchemeParser
-import maf.language.change.CodeVersion._
-import maf.language.scheme._
-import maf.modular._
-import maf.modular.incremental.IncrementalConfiguration._
-import maf.modular.incremental._
+import maf.language.change.CodeVersion.*
+import maf.language.scheme.*
+import maf.modular.*
+import maf.modular.incremental.IncrementalConfiguration.*
+import maf.modular.incremental.*
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeConstantPropagationDomain
 import maf.modular.incremental.scheme.modconc.IncrementalSchemeModConcSmallStepSemantics
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
-import maf.modular.scheme.modf._
-import maf.modular.scheme.ssmodconc._
+import maf.modular.scheme.modf.*
+import maf.modular.scheme.ssmodconc.*
 import maf.modular.worklist.LIFOWorklistAlgorithm
-import maf.test._
+import maf.test.*
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
+import maf.util.datastructures.SmartUnion
 import org.scalatest.Tag
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
  * Compares the analysis result of an incremental analysis w.r.t. the results obtained by full program analyses. Requires equality for the analysis of
@@ -26,7 +28,7 @@ import scala.concurrent.duration._
 // TODO: Require equality when all optimisations are enabled.
 trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
     lazy val configurations: List[IncrementalConfiguration] = allConfigurations
-    def timeout(): Timeout.T = Timeout.start(Duration(20, SECONDS))
+    def timeout(): Timeout.T = Timeout.start(Duration(150, SECONDS))
 
     def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag]
 
@@ -74,7 +76,14 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
               //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
             }
 
-class ModFComparisonTests extends IncrementalModXComparisonTests with SequentialIncrementalBenchmarks:
+class ModFComparisonTests extends IncrementalModXComparisonTests:
+
+    override def benchmarks: Set[Benchmark] =
+      SmartUnion.sunion(
+        SmartUnion.sunion(
+          super.benchmarks,
+          IncrementalSchemeBenchmarkPrograms.sequential),
+        IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
 
     abstract class BaseAnalysis(program: SchemeExp)
         extends ModAnalysis[SchemeExp](program)
