@@ -205,6 +205,9 @@ jobs:
           java-version: openjdk@1.15
       - name: Run soundness tests
         run: sbt "maf/testOnly maf.test.modular.scheme.${{ matrix.test_class }}"
+        env: 
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()

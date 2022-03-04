@@ -127,7 +127,7 @@ object SchemeOp:
       CharacterIsLower,
       CharacterIsUpper,
       MakeInputPort,
-      MakeOutputPort
+      MakeOutputPort,
     )
 
     sealed trait SchemeOp2(val name: String) extends SchemeOp:

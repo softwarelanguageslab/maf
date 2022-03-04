@@ -3,6 +3,7 @@ package maf.language.scheme.interpreter
 import maf.core.Identity
 import maf.core.Position.Position
 import maf.language.scheme._
+import maf.core.*
 import maf.lattice.{MathOps, NumOps}
 
 trait ConcreteSchemePrimitives:
@@ -197,8 +198,8 @@ trait ConcreteSchemePrimitives:
                 case (_, x) :: Nil =>
                   val f = fun(fexp)
                   if f.isDefinedAt(x) then f(x)
-                  else signalException(s"$name (${fexp.idn.pos}): invalid argument type $x")
-                case _ => signalException(s"$name ($fexp.idn.pos): invalid arguments $args")
+                  else signalException(StringError(s"$name (${fexp.idn.pos}): invalid argument type $x"))
+                case _ => signalException(StringError(s"$name ($fexp.idn.pos): invalid arguments $args"))
 
         abstract class SingleArgumentPrim(name: String) extends SingleArgumentPrimWithExp(name):
             def fun: PartialFunction[Value, Value]
@@ -217,7 +218,7 @@ trait ConcreteSchemePrimitives:
               case (Value.Integer(n1), Value.Real(n2))    => Value.Real(n1 + n2)
               case (Value.Real(n1), Value.Integer(n2))    => Value.Real(n1 + n2)
               case (Value.Real(n1), Value.Real(n2))       => Value.Real(n1 + n2)
-              case (x, y)                                 => signalException(s"+ ($position): invalid argument types ($x and $y)")
+              case (x, y)                                 => signalException(StringError(s"+ ($position): invalid argument types ($x and $y)"))
             })
 
         object Times extends SimplePrim:
@@ -229,14 +230,14 @@ trait ConcreteSchemePrimitives:
               case (Value.Integer(n1), Value.Real(n2))    => Value.Real(n1 * n2)
               case (Value.Real(n1), Value.Integer(n2))    => Value.Real(n1 * n2)
               case (Value.Real(n1), Value.Real(n2))       => Value.Real(n1 * n2)
-              case (x, y)                                 => signalException(s"* ($position): invalid argument types ($x and $y)")
+              case (x, y)                                 => signalException(StringError(s"* ($position): invalid argument types ($x and $y)"))
             })
 
         object Minus extends SimplePrim:
             val name = "-"
 
             def call(args: List[Value], position: Position) = args match
-                case Nil                     => signalException("-: wrong number of arguments")
+                case Nil                     => signalException(StringError("-: wrong number of arguments"))
                 case Value.Integer(x) :: Nil => Value.Integer(-x)
                 case Value.Real(x) :: Nil    => Value.Real(-x)
                 case Value.Integer(x) :: rest =>
@@ -249,13 +250,13 @@ trait ConcreteSchemePrimitives:
                       case Value.Integer(y) => Value.Real(x - y)
                       case Value.Real(y)    => Value.Real(x - y)
                       case v                => throw new UnexpectedValueTypeException[Value](v)
-                case _ => signalException(s"- ($position): invalid arguments $args")
+                case _ => signalException(StringError(s"- ($position): invalid arguments $args"))
 
         object Div extends SimplePrim:
             val name = "/"
 
             def call(args: List[Value], position: Position) = args match
-                case Nil                                            => signalException("/: wrong number of arguments")
+                case Nil                                            => signalException(StringError("/: wrong number of arguments"))
                 case Value.Integer(i) :: Nil if i.equals(BigInt(1)) => Value.Integer(BigInt(1))
                 case Value.Integer(x) :: Nil                        => Value.Real(1.0 / x)
                 case Value.Real(x) :: Nil                           => Value.Real(1.0 / x)

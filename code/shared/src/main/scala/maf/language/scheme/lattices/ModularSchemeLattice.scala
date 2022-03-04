@@ -250,7 +250,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                   case (StructSetterGetters(l1), StructSetterGetters(l2)) => l2.subsetOf(l1)
                   case (StructConstructors(l1), StructConstructors(l2))   => l2.subsetOf(l1)
                   case (StructPredicates(l1), StructPredicates(l2))       => l2.subsetOf(l1)
-                  case _                                                  => false
+                  // opaque values behave like top, they subsume everything
+                  case (Opqs(_), _) => true
+                  case _            => false
 
         def isTrue(x: Value): Boolean = x match
             case Bool(b) => BoolLattice[B].isTrue(b)

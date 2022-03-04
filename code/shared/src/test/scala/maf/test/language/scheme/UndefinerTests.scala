@@ -50,7 +50,7 @@ class UndefinerTests extends AnyPropSpec:
           case (SchemeVarLex(id, _), SchemeVarLex(id2, _)) => id.name == id2.name
           case (SchemeValue(value, _), SchemeValue(value1, idn)) =>
             value == value1
-          case (e1, e2) => throw new Exception(s"comparison between $e1 and $e2 is not supported")
+          case (e1, e2) => e1.isomorphic(e2) // throw new Exception(s"comparison between $e1 and $e2 is not supported")
 
     def test(name: String, original: String, translated: String): Unit =
       property(name) {

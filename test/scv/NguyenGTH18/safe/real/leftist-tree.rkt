@@ -15,9 +15,7 @@
                   (leftist-tree-count t)
                   (leftist-tree-min t))]))
 
-(struct leftist (<=? root)
-  #:methods gen:custom-write
-  [(define write-proc leftist-tree-write)])
+(struct leftist (<=? root))
 
 (struct node (rank key left right))
 
@@ -38,7 +36,12 @@
   (leftist <=? (insert root x <=?)))
 
 (define (leftist-tree-add-all t xs)
-  (for/fold ([t t]) ([x xs]) (leftist-tree-add t x)))
+  (define (foldl f acc elms)
+    (if (null? elms)
+        acc 
+        (foldl (f acc (car elms)) (cdr elms))))
+  (foldl (lambda (t x) (leftist-tree-add t x)) t xs))
+  ;(for/fold ([t t]) ([x xs]) (leftist-tree-add t x)))
 
 (define (leftist-tree-min t)
   (match (get-min (leftist-root t))
@@ -103,7 +106,7 @@
 (define (insert t x <=?)
   (merge t (singleton x) <=?))
 
-(define *nothing* (gensym))
+(define *nothing* 'nothing-123)
 
 (define (get-min n)
   (match n
@@ -116,7 +119,7 @@
     [(node _ _ l r) (merge l r <=?)]))
 
 
-(provide/contract
+(provide (contract-out
  [leftist-tree (-> (-> any/c any/c any/c) list? leftist-tree?)]
  [leftist-tree? (-> any/c boolean?)]
  [leftist-tree-empty? (-> leftist-tree? boolean?)]
@@ -126,4 +129,4 @@
  [leftist-tree-min (-> leftist-tree? any/c)]
  [leftist-tree-remove-min (-> leftist-tree? leftist-tree?)]
  [leftist-tree->list (-> leftist-tree? (listof any/c))]
- [in-leftist-tree (-> leftist-tree? sequence?)])
+ [in-leftist-tree (-> leftist-tree? sequence?)]))

@@ -25,6 +25,9 @@ trait AnalysisEntry[Exp <: Expression]:
     /** Returns any metrics collected during the analysis, if any (default returns empty list) */
     def metrics: List[Metric] = List()
 
+    /** The name of the program under analysis (if available) */
+    def name: Option[String] = None
+
 /**
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and provides some
  * utility functionality.

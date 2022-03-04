@@ -177,7 +177,7 @@ object ProgramChanger:
 
     // A program is valid if it can be interpreted without errors. We only have to check the new version normally, but check both to be certain.
     def validProgram(program: SchemeExp, duration: Duration = Duration(1, MINUTES)): Boolean =
-        val i = new SchemeInterpreter((_, _) => (), stack = false)
+        val i = new SchemeInterpreter((_, _) => ())
         try
             i.run(program, Timeout.start(duration), Old)
             i.run(program, Timeout.start(duration), New)

@@ -2,6 +2,7 @@ package maf.language.scheme.primitives
 
 import maf.core._
 import maf.language.scheme._
+import maf.language.ContractScheme.ContractValues
 import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
 
 class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A]) extends SchemePrimitives[V, A]:
@@ -142,9 +143,11 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             `write`,
             `display`,
             `eof-object?`,
+            // primitives to support structs
+            StructRef,
             /* Other primitives that are not R5RS */
             `random`,
-            `error`
+            `error`,
           ) ++ CSchemePrimitives
         )
 
@@ -478,6 +481,18 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                     _ <- PrimM[M].updateSto(adr, newvec)
                 yield unspecified
               }
+
+        case object StructRef extends SchemePrim2("__struct_ref"):
+            def call[M[_]: PrimM](fpos: SchemeExp, s: V, field: V): M[V] =
+              MonadJoin[M].mjoin(
+                lat
+                  .getStructs(s)
+                  .flatMap(s =>
+                    // TODO: this is sound but very imprecise; use the value "field" and a corresponding operation in the lattice to make this more precise
+                    // and fetch the actual field whenever possible
+                    s.fields.contents.map(Monad[M].unit)
+                  ) ++ (if lat.isOpq(s) then Set(Monad[M].unit(lat.opq(ContractValues.Opq()))) else Set())
+              )
 
         case object `call/cc` extends SchemePrim1("call/cc"):
             def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =

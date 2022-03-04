@@ -67,7 +67,7 @@ class CPSSchemeInterpreter(
             throw new TimeoutException()
         catch
             // Use the continuations to print the stack trace.
-            case ProgramError(message) =>
+            case e @ ProgramError(message) =>
               var cc = state.cc
               var msg: String = s"$message\n Callstack:"
               if stack then
@@ -77,7 +77,7 @@ class CPSSchemeInterpreter(
                       cc != EndC() && cc != TrdC()
                   do ()
                   msg += "\n **********"
-              throw new Exception(msg)
+              throw e
 
     /* ************************* */
     /* ***** CONTINUATIONS ***** */
@@ -150,7 +150,7 @@ class CPSSchemeInterpreter(
         case SchemeBegin(first :: rest, _)                 => Step(first, env, BegC(rest, env, cc))
         case SchemeCodeChange(old, _, _) if version == New => Step(old, env, cc)
         case SchemeCodeChange(_, nw, _) if version == Old  => Step(nw, env, cc)
-        case SchemeDefineVariable(_, _, _)                 => signalException("Undefined expression expected.")
+        case SchemeDefineVariable(_, _, idn)               => signalException(UndefinedExpressionExpected(idn))
         case call @ SchemeFuncall(f, args, _)              => Step(f, env, FunC(args, env, call, cc))
         case SchemeIf(cond, cons, alt, _)                  => Step(cond, env, IffC(cons, alt, env, cc))
         case lambda: SchemeLambdaExp                       => Kont(Value.Clo(lambda, env), cc)
@@ -165,16 +165,17 @@ class CPSSchemeInterpreter(
         case SchemeSet(variable, value, _) =>
           env.get(variable.name) match
               case Some(addr) => Step(value, env, SetC(addr, cc))
-              case None       => signalException(s"Undefined variable $variable at position ${variable.idn}.")
-        case SchemeSetLex(_, _, _, _) => signalException("Unsupported: lexical addresses.")
+              case None       => signalException(UndefinedVariableError(variable))
+        case SchemeSetLex(_, _, _, _) => signalException(UnsupportedExpression(exp))
         case SchemeValue(value, _)    => Kont(evalLiteral(value, exp), cc)
         case SchemeVar(id) =>
-          env.get(id.name) match 
-            case None => signalException(s"Undefined variable $id at position ${id.idn}")
-            case Some(addr) => lookupStoreOption(addr) match
-              case None => signalException(s"Uninitialised variable $id at position ${id.idn}.")
-              case Some(value) => Kont(value, cc)
-        case SchemeVarLex(_, _) => signalException("Unsupported: lexical addresses.")
+          env.get(id.name) match
+              case None => signalException(UndefinedVariableError(id))
+              case Some(addr) =>
+                lookupStoreOption(addr) match
+                    case None        => signalException(UninitialisedVariableError(id))
+                    case Some(value) => Kont(value, cc)
+        case SchemeVarLex(_, _) => signalException(UnsupportedExpression(exp))
 
         case CSchemeFork(body, _) =>
           val tid = allocTID()
@@ -182,7 +183,7 @@ class CPSSchemeInterpreter(
           Kont(Value.CThread(tid), cc)
         case CSchemeJoin(tExp, _) => Step(tExp, env, JoiC(cc))
 
-        case _ => signalException(s"Unsupported expression type: ${exp.label}.")
+        case _ => signalException(UnsupportedExpression(exp))
 
     def apply(v: Value, cc: Continuation): State = cc match
         case ArgC(Nil, _, f, argv, call, cc)                 => continueBody(f, v :: argv, call, cc)
@@ -201,7 +202,7 @@ class CPSSchemeInterpreter(
                       scheduleNext()
                       state
                     case Right(v) => Kont(v, cc)
-              case v => signalException(s"Cannot join non-thread value: $v.")
+              case v => signalException(TypeError(s"Cannot join non-thread value.", v))
         case LetC(Nil, env, bvals, let, cc) => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
         case LetC((_, e) :: rest, env, bvals, let, cc) => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
         case LtrC(i1, bnd, env, let, cc) =>
@@ -225,18 +226,18 @@ class CPSSchemeInterpreter(
       ): State =
         // First, check the arity.
         f match
-            case Value.Clo(lambda @ SchemeLambda(_, argNames, _, _, _), _) =>
+            case Value.Clo(lambda @ SchemeLambda(_, argNames, _, _, idn), _) =>
               if args.length != argNames.length then
                   signalException(
-                    s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${lambda.lambdaName}, while exactly ${argNames.length} are expected."
+                    ArityError(idn.pos, argNames.length, args.length)
                   )
-            case Value.Clo(lambda @ SchemeVarArgLambda(_, argNames, _, _, _, _), _) =>
+            case Value.Clo(lambda @ SchemeVarArgLambda(_, argNames, _, _, _, idn), _) =>
               if args.length < argNames.length then
                   signalException(
-                    s"Invalid function call at position ${call.idn}: ${args.length} arguments given to function ${lambda.lambdaName}, while at least ${argNames.length} are expected."
+                    VarArityError(idn.pos, argNames.length, args.length)
                   )
             case Value.Primitive(_) => // Arity is checked upon primitive call.
-            case v                  => signalException(s"Invalid function call at position ${call.idn}: ${v} is not a closure or a primitive.")
+            case v                  => signalException(ValueNotApplicable(v, call.idn))
         // If the arity is ok, evaluate the arguments.
         args match
             case Nil           => continueBody(f, Nil, call, cc)

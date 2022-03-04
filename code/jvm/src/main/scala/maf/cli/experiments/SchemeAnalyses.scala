@@ -172,7 +172,7 @@ object SchemeAnalyses:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver
+                new JVMSatSolver(this)
 
     /**
      * SCV analysis with Racket features:
@@ -184,13 +184,13 @@ object SchemeAnalyses:
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
           with ScvBigStepSemantics
-          with ScvBigStepWithProvides
-          with ScvWithStructs
           with SchemeConstantPropagationDomain
           with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
           with SchemeModFSemanticsM
-          with ScvOneContextSensitivity:
+          with ScvOneContextSensitivity
+          with ScvBigStepWithProvides
+          with ScvWithStructs:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
             override def intraAnalysis(
@@ -198,4 +198,4 @@ object SchemeAnalyses:
               ) = new IntraScvSemantics(cmp) with IntraScvSemanticsWithProvides with IntraScvSemanticsWithStructs
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver
+                new JVMSatSolver(this)

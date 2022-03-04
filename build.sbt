@@ -30,6 +30,9 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.15.4" % "test",
     libraryDependencies += "org.scalatestplus" %% "scalacheck-1-15" % "3.2.9.0" % "test",
     libraryDependencies += "com.vladsch.flexmark" % "flexmark-all" % "0.62.2" % Test,
+    resolvers += "bramvdbogaerde" at "https://raw.githubusercontent.com/bramvdbogaerde/maven-repo/master",
+    libraryDependencies += ("space.vdb" %% "scala-smtlib" % "0.3.1"),
+
     /** Imported options from https://tpolecat.github.io/2017/04/25/scalac-flags.html */
     scalacOptions ++= Seq(
       "-deprecation", // Emit warning and location for usages of deprecated APIs.
@@ -83,11 +86,6 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
   .jvmSettings(
     /** General */
     Compile / mainClass := Some("maf.cli.Main"),
-    Compile / unmanagedJars += {
-      baseDirectory.value / "lib" / "com.microsoft.z3.jar"
-    },
-    resolvers += "bramvdbogaerde" at "https://raw.githubusercontent.com/bramvdbogaerde/maven-repo/master",
-    libraryDependencies += ("space.vdb" %% "scala-smtlib" % "0.2.3-SNAPSHOT").cross(CrossVersion.for3Use2_13),
     //libraryDependencies += "net.openhft" % "affinity" % "3.21ea82",
     run / fork := false,
   )

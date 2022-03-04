@@ -6,7 +6,7 @@ import maf.language.sexp
 import maf.language.sexp.Value
 import maf.language.scheme._
 import maf.util.MonoidImplicits.*
-import maf.core.{Identifier, Identity}
+import maf.core.{Identifier, Identity, NoCodeIdentityDebug}
 
 object ContractSchemeCompiler extends BaseSchemeCompiler:
     import scala.util.control.TailCalls._
@@ -44,7 +44,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
             // generate a call to _make_struct_constr
             val constructor = makeStructConstructor(name, fields.size, structIdn)
             // Generate a definition
-            done(List(SchemeDefineVariable(Identifier(s"make-$name", nameIdn), constructor, structIdn)))
+            done(List(SchemeDefineVariable(Identifier(s"$name", nameIdn), constructor, structIdn)))
 
         def generatePredicate(name: String, nameIdn: Identity): TailRec[List[SchemeExp]] =
             val predicate = MakeStructPredicate(name, nameIdn)
@@ -128,7 +128,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
     private def nest(expressions: List[SchemeExp], function: String): SchemeExp = expressions match
         case List(expression) => expression
         case expression :: rest =>
-          SchemeFuncall(SchemeVar(Identifier(function, Identity.none)), List(expression, nest(rest, function)), Identity.none)
+          SchemeFuncall(SchemeVar(Identifier(function, expression.idn)), List(expression, nest(rest, function)), expression.idn)
         case List() => throw new Exception("nest cannot receive an empty list")
 
     private def compile_sequence(seq: SExp): TailRec[List[SchemeExp]] =
@@ -136,7 +136,7 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
 
     // TODO: create special kind of Lambda expression that ignores its arguments
     private def rangeToRangerMaker(range: SchemeExp): SchemeExp =
-      SchemeLambda(None, List(Identifier("0arg", Identity.none)), List(range), None, range.idn)
+      SchemeVarArgLambda(None, List(), Identifier("0arg", NoCodeIdentityDebug), List(range), None, range.idn)
 
     // TODO: also take vararg into account eg. (define (f . a) exp) is a function that takes any number of arguments
     private def compile_params(params: SExp): List[Identifier] = params match
@@ -236,36 +236,31 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
         // desugaring of (struct/c name field-contract ...) into a contract as follows:
         // (and/c (flat name?) (flat (lambda (v) (check contract (_struct_ref v 0)))) ...)
         case Ident("struct/c") :::: IdentWithIdentity(name, nameIdn) :::: fields =>
-          val tagCheck = ContractSchemeFlatContract(SchemeVar(Identifier(s"${name}?", nameIdn)), Identity.none)
+          val tagCheck = ContractSchemeFlatContract(SchemeVar(Identifier(s"${name}?", nameIdn)), nameIdn)
           for
-              fieldsCheck <- sequence(
-                smap(
-                  fields,
-                  field => {
-                    val structRef = SchemeFuncall(
-                      SchemeVar(Identifier("__struct_ref", Identity.none)),
-                      List(SchemeVar(Identifier("v", Identity.none)), SchemeValue(sexp.Value.Integer(0), Identity.none)),
-                      Identity.none
-                    )
-                    for {
-                      fieldExpr <- _compile(field)
-                      checkExpression = ContractSchemeCheck(fieldExpr, structRef, Identity.none)
-                      fieldCheck = ContractSchemeFlatContract(
-                        SchemeLambda(None, List(Identifier("v", Identity.none)), List(checkExpression), None, Identity.none),
-                        field.idn
-                      )
-                    } yield fieldCheck
-                  }
+              fieldsCheck <- sequence(fields.toList.zipWithIndex.map { case (field, idx) =>
+                val structRef = SchemeFuncall(
+                  SchemeVar(Identifier("__struct_ref", field.idn)),
+                  List(SchemeVar(Identifier("v", field.idn)), SchemeValue(sexp.Value.Integer(idx), field.idn)),
+                  field.idn
                 )
-              )
-          yield SchemeFuncall(SchemeVar(Identifier("and/c", exp.idn)), tagCheck :: fieldsCheck, exp.idn)
+                for {
+                  fieldExpr <- _compile(field)
+                  checkExpression = ContractSchemeCheck(fieldExpr, structRef, field.idn)
+                  fieldCheck = ContractSchemeFlatContract(
+                    SchemeLambda(None, List(Identifier("v", field.idn)), List(checkExpression), None, field.idn),
+                    field.idn
+                  )
+                } yield fieldCheck
+              })
+          yield nest(tagCheck :: fieldsCheck, "and/c")
 
         // Desugaring of and/c (and/c contract1 contract2 ...) to (and/c contract1 (and/c contract2 ...))
         case Ident("and/c") :::: expressions =>
           for {
             compiledExpressions <- sequence(smap(expressions, _compile))
-          } yield nest(compiledExpressions, "and/c")
-
+            result = nest(compiledExpressions, "and/c")
+          } yield result
         // (structid super-id (field ...) properties ...) // unsupported
         case Ident("struct") :::: Ident(_) :::: Ident(_) :::: _ =>
           throw new Exception("structs with super-ids are currently unsupported")
@@ -285,5 +280,8 @@ object ContractSchemeCompiler extends BaseSchemeCompiler:
                              None,
                              exp.idn
           )
+
+        // Ignore require expressions
+        case Ident("require") :::: _ => done(SchemeBegin(List(), exp.idn))
 
         case _ => super._compile(exp)

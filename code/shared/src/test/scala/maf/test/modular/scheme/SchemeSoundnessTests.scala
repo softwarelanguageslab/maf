@@ -38,7 +38,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
      * @return
      *   a concrete SchemeInterpreter
      */
-    def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO()): SchemeInterpreter =
+    def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO(), benchmark: String): SchemeInterpreter =
       new SchemeInterpreter(addResult, io)
 
     /**
@@ -65,7 +65,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         try
             val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
             for _ <- 1 to times do
-                val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+                val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
                 try runInterpreter(interpreter, program, timeout)
                 catch handleInterpreterError(addResult)
         catch
@@ -151,14 +151,14 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
       if isSlow(b) then Seq(SoundnessTest, SlowTest)
       else Seq(SoundnessTest)
 
-    def parseProgram(txt: String): SchemeExp =
-      CSchemeParser.parseProgram(txt)
+    def parseProgram(txt: String, benchmark: String): SchemeExp =
+      CSchemeParser.parseProgram(txt, Position.withSourcePath(benchmark))
 
     def onBenchmark(benchmark: Benchmark): Unit =
       property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
         // load the benchmark program
         val content = Reader.loadFile(benchmark)
-        val program = parseProgram(content)
+        val program = parseProgram(content, benchmark)
         // run the program using a concrete interpreter
         val concreteResults = evalConcrete(program, benchmark)
         // analyze the program using a ModF analysis

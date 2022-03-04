@@ -41,6 +41,14 @@ jobs:
       # Perform the actual tests.
       - name: Run the tests
         run: sbt "maf/testOnly -- -l SlowTest"
+        env: 
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
+      - name: Upload log
+        uses: actions/upload-artifact@v2 
+        with: 
+          name: Test logging output 
+          path: logs/log-${{ github.sha }}.txt
       # If successful, update the Slack notification.
       - name: Notify slack success
         if: success()

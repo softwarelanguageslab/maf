@@ -69,11 +69,16 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
       def getEnv: EvalM[Environment[Address]] = get.map(_.env)
       def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
         withState(s => s.copy(env = f(s.env)))(ev)
-      def guard(bln: Boolean): EvalM[Unit] =
-        if bln then unit(()) else mzero
+      //def guard(bln: Boolean): EvalM[Unit] =
+      //  if bln then unit(()) else mzero
       def mzero[X]: EvalM[X] = MonadStateT.lift(TaggedSet.empty)
       def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] =
-        throw new Exception("Merging not supported in ScvEvalM")
+        // two programs paths are not merged together in Scv but are rather explorered seperately
+        nondet(x, y)
+      def fail[X](e: Error): EvalM[X] =
+        // also ignore exception in Scv semantics
+        //warn(s"encountered error $e")
+        mzero
 
   /* MonadStateT((state) => {
           val xRes = x.run(state)
@@ -157,6 +162,12 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   /** Executes both computations non-determinstically */
   protected def nondet[X](tru: EvalM[X], fls: EvalM[X]): EvalM[X] =
     nondets(Set(tru, fls))
+
+  /** For executing a side-effecting computation within the Monad (delayed) */
+  protected def effectful(c: => Unit): EvalM[Unit] = MonadStateT((state) =>
+      c
+      TaggedSet.taggedSetMonad.unit(((), state))
+  )
 
   /** Executes the given computations non-determinstically */
   protected def nondets[X](branches: EvalM[X]*): EvalM[X] =
