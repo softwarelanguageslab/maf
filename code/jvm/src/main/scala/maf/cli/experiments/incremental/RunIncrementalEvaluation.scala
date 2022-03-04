@@ -6,6 +6,7 @@ object RunIncrementalEvaluation:
         catch
             case t: Throwable =>
               System.err.nn.println(s"Measuring precision failed: ${t.getMessage}.")
+              /*
         try IncrementalSchemeModXProperties.main(args)
         catch
             case t: Throwable =>
@@ -14,3 +15,4 @@ object RunIncrementalEvaluation:
         catch
             case t: Throwable =>
               System.err.nn.println(s"Measuring performance failed: ${t.getMessage}.")
+              */
