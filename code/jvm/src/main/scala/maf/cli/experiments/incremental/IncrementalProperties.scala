@@ -142,5 +142,7 @@ object IncrementalSchemeModXProperties:
         //IncrementalSchemeModFTypeProperties.execute(args)
         IncrementalSchemeModFCPProperties.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
         IncrementalSchemeModFCPProperties.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
-//IncrementalSchemeModConcTypeProperties.execute(args)
-//IncrementalSchemeModConcCPProperties.execute(args)
+    //IncrementalSchemeModConcTypeProperties.execute(args)
+    //IncrementalSchemeModConcCPProperties.execute(args)
+    end main
+end IncrementalSchemeModXProperties
