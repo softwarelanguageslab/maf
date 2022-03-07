@@ -10,12 +10,12 @@ import smtlib.parser.Parser
 import smtlib.trees.Commands._
 import smtlib.Interpreter
 import smtlib.trees.CommandsResponses.{CheckSatStatus, SatStatus, UnsatStatus}
-import smtlib.interpreters.Z3Interpreter
+import smtlib.interpreters.Z3InterpreterNative
 import scala.concurrent.ExecutionContext
 
 class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
     /** We run the Z3 process in the background, and feed it with commands */
-    private given z3Interpreter: Interpreter = Z3Interpreter.buildDefault
+    private given z3Interpreter: Interpreter = Z3InterpreterNative()
 
     /** Sends the reset command to the Z3 interpreter */
     private def reset()(using interpreter: Interpreter, ec: ExecutionContext): Unit =
