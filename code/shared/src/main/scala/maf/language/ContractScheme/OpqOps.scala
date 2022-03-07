@@ -1,11 +1,12 @@
 package maf.language.ContractScheme
 
 import maf.core.Monad
-import maf.language.scheme.SchemeExp
+import maf.language.scheme.{SchemeExp, SchemeFuncall}
 import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
 import maf.language.ContractScheme.ContractValues.Opq
 import maf.core.Address
 import maf.language.scheme.primitives.{SchemePrimM, SchemePrimitives}
+import maf.modular.scv.Symbolic
 
 /**
  * This object defines the signatures for the native Scheme functions. The reason for this is that it can automatically resolve operations involving
@@ -327,3 +328,9 @@ object OpqOps:
     /** Checks whether the abstract computations can be ran using the semantics of opaque values */
     def eligible[V: Lat](args: List[V]): Boolean =
       args.exists(arg => Lat[V].isOpq(arg)) && !args.exists(arg => Lat[V].isBottom(arg))
+
+    /**
+     * Performs a contract check using the given arguments on the given primitive, may use a satisfiability function that checks whether the given
+     * predicate is satisfiable
+     */
+    def checkContract[M[_]: Monad, V](fexp: SchemeFuncall, primName: String, args: List[(V, Symbolic)]): M[Unit] = ???

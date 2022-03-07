@@ -119,7 +119,10 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
 
     def isSat(script: Script)(using interpreter: Interpreter, ec: ExecutionContext): IsSat[V] =
 
-        script.commands.foreach(interpreter.eval)
+        script.commands.foreach { cmd =>
+            println(s"eval $cmd")
+            interpreter.eval(cmd)
+        }
         interpreter.eval(CheckSat()) match
             case CheckSatStatus(SatStatus)   => Sat(Map())
             case CheckSatStatus(UnsatStatus) => Unsat
