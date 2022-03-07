@@ -269,7 +269,7 @@ trait BaseSchemeModFSemanticsM
         MonadJoin[M].mfoldMap(lattice.getPrimitives(fval))(prm =>
           (primitives(prm).callMF(fexp, args.map(_._2)) match {
             case MayFailSuccess(vlu) => Monad[M].unit(vlu)
-            case MayFailBoth(vlu, _) => Monad[M].unit(vlu)
+            case MayFailBoth(vlu, e) => MonadJoin[M].mjoin(Monad[M].unit(vlu), MonadError[M, Error].fail(PrimitiveError(e)))
             case MayFailError(e)     => MonadError[M, Error].fail(PrimitiveError(e))
           })
         )
