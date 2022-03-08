@@ -10,7 +10,8 @@ case class IncArgs(
     typeLattice: Boolean = false,
     cpLattice: Boolean = false,
     warmUp: Int = 3,
-    repetitions: Int = 15)
+    repetitions: Int = 15,
+    count: Option[Int] = None)
 
 object RunIncrementalEvaluation:
 
@@ -25,9 +26,10 @@ object RunIncrementalEvaluation:
           case "--cp" :: tail                                         => processArgs(tail, options.copy(cpLattice = true))
           case "--warmup" :: n :: tail if n.forall(Character.isDigit) => processArgs(tail, options.copy(warmUp = n.toInt))
           case "--repet" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(repetitions = n.toInt))
+          case "--count" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(count = Some(n.toInt)))
           case Nil                                                    => options
           case o =>
-            System.err.nn.println(s"Unknown option: $o")
+            System.err.nn.println(s"Unknown options: $o")
             sys.exit(1)
         }
         if args.length == 0 then
@@ -40,6 +42,7 @@ object RunIncrementalEvaluation:
             |   --cp           run experiments that use the cp lattice
             |   --warmup n     use n warmup runs for the performance experiments
             |   --repet n      use n measured runs for each performance experiment
+            |   --count n      use only n benchmarks from the benchmarking suite
             | Any combination of arguments can be used.
             | To run experiments, you will at least need to provide a type of experiment (performance/precision),
             | a benchmarking suite (curated/generated), a lattice (type/cp).

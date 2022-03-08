@@ -79,7 +79,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
             block(timeOut)
             if timeOut.reached then
                 println()
-                return
+                return ()
         println()
 
     def runNTimes(
@@ -264,17 +264,22 @@ object IncrementalSchemeModXPerformance:
     def main(args: IncArgs): Unit =
         val outDir: String = "benchOutput/incremental/"
 
+        val (curatedSuite, generatedSuite) = args.count match {
+          case Some(n) => (IncrementalSchemeBenchmarkPrograms.sequential.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
+          case None => (IncrementalSchemeBenchmarkPrograms.sequential.toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        }
+
         if args.typeLattice then
             IncrementalSchemeModFTypePerformance.maxWarmupRuns = args.warmUp
             IncrementalSchemeModFTypePerformance.measuredRuns = args.repetitions
 
             if args.curated then
-                val curatedType = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+                val curatedType = IncrementalSchemeModFTypePerformance.execute(curatedSuite)
                 FileOps.copy(curatedType, outDir + "type-curated-performance.csv")
             end if
             if args.generated then
                 IncrementalSchemeModFTypePerformance.first = true
-                val generatedType = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+                val generatedType = IncrementalSchemeModFTypePerformance.execute(generatedSuite)
                 FileOps.copy(generatedType, outDir + "type-generated-performance.csv")
             end if
         end if
@@ -284,12 +289,12 @@ object IncrementalSchemeModXPerformance:
             IncrementalSchemeModFCPPerformance.measuredRuns = args.repetitions
 
             if args.curated then
-                val curatedCP = IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+                val curatedCP = IncrementalSchemeModFCPPerformance.execute(curatedSuite)
                 FileOps.copy(curatedCP, outDir + "cp-curated-performance.csv")
             end if
             if args.generated then
                 IncrementalSchemeModFCPPerformance.first = true
-                val generatedCP = IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+                val generatedCP = IncrementalSchemeModFCPPerformance.execute(generatedSuite)
                 FileOps.copy(generatedCP, outDir + "cp-generated-performance.csv")
             end if
         end if
