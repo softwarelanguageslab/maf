@@ -31,7 +31,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies += "org.scalatestplus" %% "scalacheck-1-15" % "3.2.9.0" % "test",
     libraryDependencies += "com.vladsch.flexmark" % "flexmark-all" % "0.62.2" % Test,
     resolvers += "bramvdbogaerde" at "https://raw.githubusercontent.com/bramvdbogaerde/maven-repo/master",
-    libraryDependencies += ("space.vdb" %% "scala-smtlib" % "0.3.1"),
+    libraryDependencies += ("space.vdb" %% "scala-smtlib" % "0.4.4"),
 
     /** Imported options from https://tpolecat.github.io/2017/04/25/scalac-flags.html */
     scalacOptions ++= Seq(

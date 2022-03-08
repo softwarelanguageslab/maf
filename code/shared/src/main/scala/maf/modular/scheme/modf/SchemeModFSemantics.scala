@@ -178,7 +178,7 @@ trait BaseSchemeModFSemanticsM
           val _ = applyContinuations(fval, args)
           baseEvalM.mjoin(List(fromClosures, fromPrimitives))
 
-      private def applyContinuations(k: Value, args: List[(SchemeExp, Value)]) =
+      protected def applyContinuations(k: Value, args: List[(SchemeExp, Value)]) =
         args match
             case (_, vlu) :: Nil =>
               val cnts = lattice.getContinuations(k)

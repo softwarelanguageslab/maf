@@ -10,7 +10,7 @@ import smtlib.parser.Parser
 import smtlib.trees.Commands._
 import smtlib.Interpreter
 import smtlib.trees.CommandsResponses.{CheckSatStatus, SatStatus, UnsatStatus}
-import smtlib.interpreters.Z3Interpreter
+import smtlib.interpreters.{Z3Interpreter, Z3InterpreterNative}
 import scala.concurrent.ExecutionContext
 
 class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) extends ScvSatSolver[V]:
@@ -51,6 +51,7 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
       "null?" -> "null?/v",
       "real?" -> "real?/v",
       "integer?" -> "integer?/v",
+      "any?" -> "any?/v"
     )
 
     /** Translates a symbolic Scheme value to an instance of the `V` sort */
@@ -97,6 +98,9 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
      |
      |  (define-fun real?/v ((n V)) V
      |     (VBool (is-VReal n)))
+     | 
+     |  (define-fun any?/v ((n V)) V 
+     |      (VBool true))
      |
      |  (define-fun true?/v ((n V)) Bool
      |     (ite (is-VBool n) (unwrap-bool n) false))
@@ -119,7 +123,9 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
 
     def isSat(script: Script)(using interpreter: Interpreter, ec: ExecutionContext): IsSat[V] =
 
-        script.commands.foreach(interpreter.eval)
+        script.commands.foreach { cmd =>
+          interpreter.eval(cmd)
+        }
         interpreter.eval(CheckSat()) match
             case CheckSatStatus(SatStatus)   => Sat(Map())
             case CheckSatStatus(UnsatStatus) => Unsat
