@@ -43,7 +43,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
 
     override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
-    val configurations: List[IncrementalConfiguration] = List(allOptimisations) // The configurations to test.
+    val configurations: List[IncrementalConfiguration] = List(ci_di_wi) // The configurations to test.
 
     def runInterpreterWithVersion(
         i: SchemeInterpreter,
@@ -186,7 +186,7 @@ class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStep
 class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks:
     def name = "Incremental ModF Type"
 
-    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, allOptimisations)
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, ci_di_wi)
 
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
     override def isSlow(b: Benchmark): Boolean =
@@ -203,7 +203,7 @@ class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialI
 /** Implements soundness tests for an incremental ModF CP analysis. */
 class IncrementalModFCP extends IncrementalModFType:
     override def name = "Incremental ModF CP"
-    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, allOptimisations)
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, ci_di_wi)
     override def isSlow(b: Benchmark): Boolean = true
 
 class IncrementalModFTypeRemainingConfigs extends IncrementalModFType with RemainingConfigurations
