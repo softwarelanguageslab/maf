@@ -150,7 +150,7 @@ object Logger:
 
 object FileOps:
 
-  def copy(source: String, destination: String): Unit =
-    java.nio.file.Files.copy(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING)
+    def copy(source: String, destination: String): Unit =
+      java.nio.file.Files.copy(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING)
 
 end FileOps

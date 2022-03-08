@@ -169,11 +169,12 @@ class CPSSchemeInterpreter(
         case SchemeSetLex(_, _, _, _) => signalException("Unsupported: lexical addresses.")
         case SchemeValue(value, _)    => Kont(evalLiteral(value, exp), cc)
         case SchemeVar(id) =>
-          env.get(id.name) match 
-            case None => signalException(s"Undefined variable $id at position ${id.idn}")
-            case Some(addr) => lookupStoreOption(addr) match
-              case None => signalException(s"Uninitialised variable $id at position ${id.idn}.")
-              case Some(value) => Kont(value, cc)
+          env.get(id.name) match
+              case None => signalException(s"Undefined variable $id at position ${id.idn}")
+              case Some(addr) =>
+                lookupStoreOption(addr) match
+                    case None        => signalException(s"Uninitialised variable $id at position ${id.idn}.")
+                    case Some(value) => Kont(value, cc)
         case SchemeVarLex(_, _) => signalException("Unsupported: lexical addresses.")
 
         case CSchemeFork(body, _) =>

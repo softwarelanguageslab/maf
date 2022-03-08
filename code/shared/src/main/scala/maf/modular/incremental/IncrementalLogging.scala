@@ -216,7 +216,8 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
         // Incremental store update.
         override def doWriteIncremental(): Unit =
-            if mode != Summary then intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV ${crop(addr.toString)}: ${crop(value.toString)}") })
+            if mode != Summary then
+                intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV ${crop(addr.toString)}: ${crop(value.toString)}") })
             super.doWriteIncremental()
 
         override def commit(): Unit =

@@ -12,7 +12,7 @@ import maf.modular.incremental.scheme.lattice.IncrementalSchemeConstantPropagati
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeTypeDomain.modularLattice
 import maf.modular.scheme.{PtrAddr, VarAddr}
 import maf.modular.scheme.modf.SchemeModFComponent
-import maf.util.{Reader, Writer, FileOps}
+import maf.util.{FileOps, Reader, Writer}
 import maf.util.benchmarks.*
 
 import java.nio.file.StandardCopyOption
@@ -51,9 +51,9 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E] with SplitPerformance[E]
 
     // The maximal number of warm-up runs.
-    val maxWarmupRuns = 3 //5
+    var maxWarmupRuns = 3 //5
     // The number of actually measured runs.
-    val measuredRuns = 15 //30
+    var measuredRuns = 15 //30
 
     val timeS: String = "ms" // Mean of measured times.
     val stdS: String = "SD" // Standard deviation of mean.
@@ -261,21 +261,37 @@ object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformanc
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXPerformance:
-    def main(args: Array[String]): Unit =
+    def main(args: IncArgs): Unit =
         val outDir: String = "benchOutput/incremental/"
 
-        val curatedType = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-        IncrementalSchemeModFTypePerformance.first = true
-        val generatedType = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        if args.typeLattice then
+            IncrementalSchemeModFTypePerformance.maxWarmupRuns = args.warmUp
+            IncrementalSchemeModFTypePerformance.measuredRuns = args.repetitions
 
-        FileOps.copy(curatedType, outDir + "type-curated-performance.csv")
-        FileOps.copy(generatedType, outDir + "type-generated-performance.csv")
+            if args.curated then
+                val curatedType = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+                FileOps.copy(curatedType, outDir + "type-curated-performance.csv")
+            end if
+            if args.generated then
+                IncrementalSchemeModFTypePerformance.first = true
+                val generatedType = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+                FileOps.copy(generatedType, outDir + "type-generated-performance.csv")
+            end if
+        end if
 
-        val curatedCP = IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-        IncrementalSchemeModFCPPerformance.first = true
-        val generatedCP = IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        if args.cpLattice then
+            IncrementalSchemeModFCPPerformance.maxWarmupRuns = args.warmUp
+            IncrementalSchemeModFCPPerformance.measuredRuns = args.repetitions
 
-        FileOps.copy(curatedCP, outDir + "cp-curated-performance.csv")
-        FileOps.copy(generatedCP, outDir + "cp-generated-performance.csv")
+            if args.curated then
+                val curatedCP = IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+                FileOps.copy(curatedCP, outDir + "cp-curated-performance.csv")
+            end if
+            if args.generated then
+                IncrementalSchemeModFCPPerformance.first = true
+                val generatedCP = IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+                FileOps.copy(generatedCP, outDir + "cp-generated-performance.csv")
+            end if
+        end if
     end main
 end IncrementalSchemeModXPerformance
