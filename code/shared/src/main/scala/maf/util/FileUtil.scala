@@ -2,9 +2,11 @@ package maf.util
 
 import maf.util.StringUtil.NumberedStrings
 
-import java.io._
+import java.io.*
 import maf.util.Writer.Writer
 import maf.util.benchmarks.Clock
+
+import java.nio.file.{Paths, StandardCopyOption}
 
 // null values are used here due to Java interop
 import scala.language.unsafeNulls
@@ -145,3 +147,10 @@ object Logger:
     def apply(msg: String = "log"): Log = new Log(Writer.openTimeStamped(out + msg + ".txt"))
 
     def numbered(msg: String = "log"): NumberedLog = new NumberedLog(Writer.openTimeStamped(out + msg + ".txt"))
+
+object FileOps:
+
+  def copy(source: String, destination: String): Unit =
+    java.nio.file.Files.copy(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING)
+
+end FileOps

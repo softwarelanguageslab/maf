@@ -12,9 +12,10 @@ import maf.modular.incremental.scheme.lattice.IncrementalSchemeConstantPropagati
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeTypeDomain.modularLattice
 import maf.modular.scheme.{PtrAddr, VarAddr}
 import maf.modular.scheme.modf.SchemeModFComponent
-import maf.util.{Reader, Writer}
+import maf.util.{Reader, Writer, FileOps}
 import maf.util.benchmarks.*
 
+import java.nio.file.StandardCopyOption
 import scala.concurrent.duration.*
 
 // The results of the evaluation.
@@ -261,11 +262,20 @@ object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformanc
 
 object IncrementalSchemeModXPerformance:
     def main(args: Array[String]): Unit =
+        val outDir: String = "benchOutput/incremental/"
+
         val curatedType = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
         IncrementalSchemeModFTypePerformance.first = true
         val generatedType = IncrementalSchemeModFTypePerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+
+        FileOps.copy(curatedType, outDir + "type-curated-performance.csv")
+        FileOps.copy(generatedType, outDir + "type-generated-performance.csv")
+
         val curatedCP = IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
         IncrementalSchemeModFCPPerformance.first = true
         val generatedCP = IncrementalSchemeModFCPPerformance.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+
+        FileOps.copy(curatedCP, outDir + "cp-curated-performance.csv")
+        FileOps.copy(generatedCP, outDir + "cp-generated-performance.csv")
     end main
 end IncrementalSchemeModXPerformance
