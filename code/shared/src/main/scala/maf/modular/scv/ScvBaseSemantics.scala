@@ -31,6 +31,12 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   object State:
       def empty: State = State(env = BasicEnvironment(Map()), store = Map(), new BasicStore(content = Map()), ps = PathStore(), freshVar = 0, List())
 
+  case class PostValue(symbolic: Option[Symbolic], value: Value)
+
+  object PostValue {
+    def noSymbolic(value: Value): PostValue = PostValue(None, value)
+  }
+
   override type EvalM[X] = ScvEvalM[X]
   type Symbolic = SchemeExp
   type SymbolicSet[X] = TaggedSet[Symbolic, X]

@@ -38,6 +38,19 @@ object OpqOps:
           case _ =>
             Uncurried(domains = List(), tpy)
 
+    def symbolicContracts(tpy: Tpy, args: List[Unit]): List[SchemeOp] =
+        val uncurried = uncurry(tpy)
+        def iter(tpys: List[Tpy], args: List[Unit]): List[SchemeOp] = (tpys, args) match
+            case (List(VarArg(tpy)), rest) =>
+              (0 to rest.size).map(_ => typePredicates(tpy)).toList
+            case (List(Optional(tpy)), List(rest)) =>
+              List(typePredicates(tpy))
+            case (tpy :: restTpys, arg :: restArgs) =>
+              typePredicates(tpy) :: iter(restTpys, restArgs)
+            case (List(), _ /*List()*/ ) => List()
+
+        iter(uncurried.domains, args)
+
     case class Uncurried(domains: List[Tpy], range: Tpy):
         def checkArity[V](args: List[V]): Boolean =
             def check(domains: List[Tpy], args: List[V]): Boolean = (domains, args) match
@@ -117,7 +130,9 @@ object OpqOps:
       Symbol -> SchemeOp.IsSymbol,
       Nil -> SchemeOp.IsNull,
       Any -> SchemeOp.IsAny,
-      Vector -> SchemeOp.IsVector
+      Vector -> SchemeOp.IsVector,
+      Char -> SchemeOp.IsChar,
+      Union(Integer, Real) -> SchemeOp.SyntheticSchemeOp("number?", 1)
     )
 
     /** Injection functions for the native and union types */
@@ -206,8 +221,8 @@ object OpqOps:
       "vector-ref" -> (Vector ==>: Integer ==>: Any),
       "vector-set!" -> (Vector ==>: Integer ==>: Any ==>: Nil),
       "vector?" -> (Any ==>: Boolean),
-      "<" -> (Real ==>: Real ==>: Boolean),
-      "=" -> (Real ==>: Real ==>: Boolean),
+      "<" -> (NumberTy ==>: NumberTy ==>: Boolean),
+      "=" -> (NumberTy ==>: NumberTy ==>: Boolean),
       "input-port?" -> (Any ==>: Boolean),
       "output-port?" -> (Any ==>: Boolean),
       "open-input-file" -> Unsupported,
@@ -328,9 +343,3 @@ object OpqOps:
     /** Checks whether the abstract computations can be ran using the semantics of opaque values */
     def eligible[V: Lat](args: List[V]): Boolean =
       args.exists(arg => Lat[V].isOpq(arg)) && !args.exists(arg => Lat[V].isBottom(arg))
-
-    /**
-     * Performs a contract check using the given arguments on the given primitive, may use a satisfiability function that checks whether the given
-     * predicate is satisfiable
-     */
-    def checkContract[M[_]: Monad, V](fexp: SchemeFuncall, primName: String, args: List[(V, Symbolic)]): M[Unit] = ???
