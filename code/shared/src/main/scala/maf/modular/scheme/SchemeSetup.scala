@@ -25,6 +25,7 @@ trait SchemeSetup
       store
         .filter(_._1 match {
           case _: VarAddr[_] | _: PtrAddr[_] => true
+          case _: ExceptionAddr[_]           => true
           case _                             => false
         })
         .groupBy(_._1.idn)
