@@ -13,12 +13,12 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
         import scvMonadInstance.*
         import maf.core.Monad.MonadSyntaxOps
 
-        private def readPathCondition(targetCmp: Component): List[PathStore] =
+        private def readPathCondition(targetCmp: Component): Set[PathStore] =
           readMapAddr(targetCmp)
 
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathStore)] =
             val answers = super.runIntraSemantics(initialState)
-            writeMapAddr(cmp, answers.map(_._2).toList)
+            writeMapAddr(cmp, answers.map(_._2).toSet)
             answers
 
         override protected def afterCall(targetCmp: Component): EvalM[Unit] =
@@ -26,13 +26,13 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
           context(targetCmp) match
               case Some(KPathCondition(_, _, _, _, changes)) =>
                 val pss = readPathCondition(targetCmp)
-                val updatedPss = pss.map(_.revertChanges(changes))
+                val updatedPss = pss.map(_.revertChanges(changes)).toSet.toList
                 // Combine path store with current path store, branch if nessary
                 nondets(updatedPss.map { ps =>
                   for
                       pc <- getPc
-                      // TODO: remove parts of path condition that are about variables in our current scope
-                      _ <- putPc(ps.pc ++ pc)
+                      // TODO: emovep arts of the path condition that are about variables that are currently out-of-scope
+                      _ <- putPc((ps.pc.toSet ++ pc.toSet).toList)
                   yield ()
                 }.toSet)
               case _ => unit(())

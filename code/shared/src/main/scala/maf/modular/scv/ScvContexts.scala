@@ -105,10 +105,11 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
 
               val roots = Symbolic.identifiers(symArgs.flatten)
 
-              val nextCallers = context(caller) match
+              val nextCallers = (context(caller) match
                   case Some(KPathCondition(_, _, _, callers, _)) =>
-                    (call :: callers).take(m)
+                    (call :: callers)
                   case _ => List(call)
+              ).take(m)
 
               for
                   ps <- getPathStore

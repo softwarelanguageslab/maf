@@ -12,7 +12,7 @@ object ScvRepl extends App:
     def analyse(program: String): Any =
         val exp = ContractSchemeParser.parse(program.nn)
         println(s"parsed expression $exp")
-        val analysis = SchemeAnalyses.scvModAnalysisWithRacketFeatures(exp)
+        val analysis = SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore(exp)
         analysis.analyze()
         println(analysis.summary.blames)
         //println(analysis.mapStoreString())
