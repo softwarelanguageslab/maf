@@ -44,13 +44,21 @@ object Symbolic:
       else vr
 
 sealed trait SymChange:
+    /** Apply the change described by a sublass of SymChange */
     def apply(old: Symbolic): Symbolic
+
+    /** Revert the change */
+    def revert(old: Symbolic): Symbolic
+
 case object NoChange extends SymChange:
     def apply(old: Symbolic): Symbolic = old
+    def revert(old: Symbolic): Symbolic = old
+
 case class SymReplace(from: Symbolic, to: Symbolic) extends SymChange:
-    def apply(old: Symbolic): Symbolic =
+    def apply(old: Symbolic, revert: Boolean): Symbolic =
         def visit(e: SchemeExp): SchemeExp =
-          if e == from.expr then to.expr
+          if !revert && e == from.expr then to.expr
+          else if revert && e == to.expr then from.expr
           else
               (e match
                   case SchemeFuncall(f, args, idn) =>
@@ -60,6 +68,8 @@ case class SymReplace(from: Symbolic, to: Symbolic) extends SymChange:
           )
 
         Symbolic(visit(old.expr))
+    def apply(old: Symbolic): Symbolic = apply(old, false)
+    def revert(old: Symbolic): Symbolic = apply(old, true)
 
 case class SymbolicStore(mapping: Map[String, Symbolic]):
     def roots: Set[String] =
@@ -165,6 +175,11 @@ case class PathStore(pcs: Map[String, Set[Symbolic]] = Map(), cachedPc: Set[Symb
 
     private def computeMap(path: Set[Symbolic]): Map[String, Set[Symbolic]] =
       path.foldLeft(Map[String, Set[Symbolic]]())((acc, cnd) => extendMap(cnd, acc))
+
+    /** Revert the changes of the given list on the current path condition */
+    def revertChanges(changes: List[SymChange]): PathStore =
+        val newCachedPc = changes.foldLeft(cachedPc)((pc, change) => pc.map(change.revert))
+        this.copy(pcs = computeMap(newCachedPc), cachedPc = newCachedPc)
 
     /** Extend the path condition with the given constraint */
     def extendPc(addition: Symbolic): PathStore =

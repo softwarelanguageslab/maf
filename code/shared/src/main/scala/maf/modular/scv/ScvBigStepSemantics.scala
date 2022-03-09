@@ -34,12 +34,7 @@ object DebugLogger:
       enter(symbolStack.head)(c)
 
 /** This trait encodes the semantics of the ContractScheme language */
-trait BaseScvBigStepSemantics
-    extends ScvModAnalysis
-    with ScvBaseSemantics
-    with ScvSymbolicStore.GlobalSymbolicStore
-    with ScvContextSensitivity
-    with ScvReporter:
+trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvContextSensitivity with ScvReporter:
     outer =>
 
     type Closure = (SchemeLambdaExp, Env)
@@ -73,26 +68,37 @@ trait BaseScvBigStepSemantics
       def symApply(args: Symbolic*): Symbolic =
         SchemeFuncall(SchemeVar(Identifier(p.name, Identity.none)), args.toList, Identity.none)
 
-    trait BaseIntraScvSemantics extends IntraAnalysis with IntraScvAnalysis with BaseIntraAnalysis with GlobalMapStoreIntra:
+    trait BaseIntraScvSemantics extends IntraAnalysis with IntraScvAnalysis with BaseIntraAnalysis:
         import DebugLogger.*
 
         protected val cmp: Component = component
+
+        /**
+         * Run the intra semantics using the given initial state
+         *
+         * @param initialState
+         *   the initial state of the intra analysis
+         * @return
+         *   a list of possible post values, and a path store
+         */
+        protected def runIntraSemantics(initialState: State): Set[(PostValue, PathStore)] =
+            val resultsM = for
+                _ <- injectCtx
+                //_ <- injectPre
+                value <- extract(eval(expr(cmp)))
+                _ <- checkPost(value)
+                ps <- getPathStore
+            yield (value, ps)
+
+            resultsM.runValue(initialState).vs.map(_._2)
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
             track(NumberOfComponents, cmp)
             count(NumberOfIntra)
 
             val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
-            val resultsM = for
-                _ <- injectCtx
-                //_ <- injectPre
-                value <- extract(eval(expr(cmp)))
-                _ <- checkPost(value)
-            yield value
-
-            val results = resultsM.runValue(initialState)
-            writeMapAddrForce(cmp, results.vs.flatMap(_._2.symbolic).toList)
-            writeResult(results.map(_.value).merge, cmp)
+            val answers = runIntraSemantics(initialState)
+            answers.map(_._1.value).foreach(writeResult(_, cmp))
 
         /** Check the post contract on the value resulting from the analysis of the current component */
         private def checkPost(value: PostValue): EvalM[Unit] =

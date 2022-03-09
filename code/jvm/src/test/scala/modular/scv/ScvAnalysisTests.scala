@@ -24,7 +24,7 @@ trait ScvAnalysisTests extends SchemeBenchmarkTests:
           with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
           with SchemeModFSemanticsM
-          with ScvOneContextSensitivity:
+          with ScvOneContextSensitivity(0):
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Addr] = lattice

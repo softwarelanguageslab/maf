@@ -74,9 +74,9 @@ trait GlobalMapStore[V: Monoid, Exp <: Expression] extends ModAnalysis[Exp] { in
 
 object ScvSymbolicStore:
     import maf.language.scheme._
-    given Monoid[List[SchemeExp]] with
-        def zero: List[SchemeExp] = List()
-        def append(x: List[SchemeExp], y: => List[SchemeExp]): List[SchemeExp] = x ++ y
+    given Monoid[List[PathStore]] with
+        def zero: List[PathStore] = List()
+        def append(x: List[PathStore], y: => List[PathStore]): List[PathStore] = x ++ y
 
-    trait GlobalSymbolicStore extends GlobalMapStore[List[SchemeExp], SchemeExp]:
+    trait GlobalSymbolicStore extends GlobalMapStore[List[PathStore], SchemeExp]:
         type A = Component
