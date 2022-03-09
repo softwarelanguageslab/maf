@@ -75,7 +75,7 @@ object DeadcodeDetection:
           with StandardSchemeModFComponents
           with FIFOWorklistAlgorithm[SchemeExp]
           with SchemeModFSemanticsM
-          with ScvOneContextSensitivity
+          with ScvOneContextSensitivity(0)
           with DeadcodeDetection:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
