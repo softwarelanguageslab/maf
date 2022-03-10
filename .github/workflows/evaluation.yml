@@ -37,7 +37,7 @@ jobs:
   performance-evaluation:
     name: Execute performance evaluation with JMH
     runs-on: self-hosted
-    timeout-minutes: 60
+    timeout-minutes: 360
     strategy:
       fail-fast: false
     steps:
