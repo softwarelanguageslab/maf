@@ -15,6 +15,8 @@ import maf.language.ContractScheme.ContractValues.StructConstructor
 import maf.language.ContractScheme.ContractValues.Arr
 import maf.language.ContractScheme.interpreter.RandomInputGenerator.Allocator
 import maf.language.ContractScheme.ContractValues.StructPredicate
+import maf.language.scheme.lattices.SchemeOp
+import maf.language.ContractScheme.OpqOps
 
 object RandomInputGenerator:
     /** A type that describes that an allocator should be able to allocate a value and return a pointer for it */
@@ -225,6 +227,27 @@ class ContractSchemeInterpreter(
     private def checkArity[T](argsv: List[T], expected: Int): Unit =
       if expected != argsv.size then throw ContractSchemeInvalidArity(argsv.size, expected)
 
+    private val opToPrimMapping: Map[SchemeOp, String] = Map(
+      SchemeOp.IsReal -> "real?",
+      SchemeOp.IsBoolean -> "boolean?",
+      SchemeOp.IsString -> "string?",
+      SchemeOp.IsSymbol -> "symbol?",
+      SchemeOp.IsNull -> "null?",
+      SchemeOp.IsAny -> "any?",
+      SchemeOp.IsVector -> "vector?",
+      SchemeOp.IsChar -> "char?",
+      SchemeOp.SyntheticSchemeOp("number?", 1) -> "number?"
+    )
+
+    private def checkPrimitiveContracts(p: String, call: SchemeFuncall, args: List[SchemeExp], argsv: List[Value], idn: Identity): Unit =
+        val signature = OpqOps.signatures(p)
+        val ops = OpqOps.symbolicContracts(signature, argsv.map(_ => ()))
+        ops.zip(argsv).zip(args).foreach { case ((op, argv), arg) =>
+          Primitives.allPrimitives(opToPrimMapping(op)).call(call, List((arg, argv))) match
+              case ConcreteValues.Value.Bool(b) if !b => throw new ContractSchemeBlame(call.idn, arg.idn, Some(idn))
+              case _ => ()
+        }
+
     override def applyFun(
         f: Value,
         call: SchemeFuncall,
@@ -276,6 +299,12 @@ class ContractSchemeInterpreter(
           argsv(0) match
               case ContractValue(ContractValues.Struct(actualTag, _)) => done(Value.Bool(tag == actualTag))
               case v                                                  => done(Value.Bool(false))
+
+        case Value.Primitive(p) =>
+          for
+              _ <- done(checkPrimitiveContracts(p, call, args, argsv, idn))
+              result <- super.applyFun(f, call, argsv, args, idn, timeout, version)
+          yield result
 
         case _ => super.applyFun(f, call, argsv, args, idn, timeout, version)
 

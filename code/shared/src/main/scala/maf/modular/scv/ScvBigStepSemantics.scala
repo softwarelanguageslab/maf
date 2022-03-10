@@ -34,12 +34,7 @@ object DebugLogger:
       enter(symbolStack.head)(c)
 
 /** This trait encodes the semantics of the ContractScheme language */
-trait BaseScvBigStepSemantics
-    extends ScvModAnalysis
-    with ScvBaseSemantics
-    with ScvSymbolicStore.GlobalSymbolicStore
-    with ScvContextSensitivity
-    with ScvReporter:
+trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvContextSensitivity with ScvReporter:
     outer =>
 
     type Closure = (SchemeLambdaExp, Env)
@@ -73,26 +68,37 @@ trait BaseScvBigStepSemantics
       def symApply(args: Symbolic*): Symbolic =
         SchemeFuncall(SchemeVar(Identifier(p.name, Identity.none)), args.toList, Identity.none)
 
-    trait BaseIntraScvSemantics extends IntraAnalysis with IntraScvAnalysis with BaseIntraAnalysis with GlobalMapStoreIntra:
+    trait BaseIntraScvSemantics extends IntraAnalysis with IntraScvAnalysis with BaseIntraAnalysis:
         import DebugLogger.*
 
         protected val cmp: Component = component
+
+        /**
+         * Run the intra semantics using the given initial state
+         *
+         * @param initialState
+         *   the initial state of the intra analysis
+         * @return
+         *   a list of possible post values, and a path store
+         */
+        protected def runIntraSemantics(initialState: State): Set[(PostValue, PathStore)] =
+            val resultsM = for
+                _ <- injectCtx
+                //_ <- injectPre
+                value <- extract(eval(expr(cmp)))
+                _ <- checkPost(value)
+                ps <- getPathStore
+            yield (value, ps)
+
+            resultsM.runValue(initialState).vs.map(_._2)
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
             track(NumberOfComponents, cmp)
             count(NumberOfIntra)
 
             val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
-            val resultsM = for
-                _ <- injectCtx
-                //_ <- injectPre
-                value <- extract(eval(expr(cmp)))
-                _ <- checkPost(value)
-            yield value
-
-            val results = resultsM.runValue(initialState)
-            writeMapAddrForce(cmp, results.vs.flatMap(_._2.symbolic).toList)
-            writeResult(results.map(_.value).merge, cmp)
+            val answers = runIntraSemantics(initialState)
+            answers.map(_._1.value).foreach(writeResult(_, cmp))
 
         /** Check the post contract on the value resulting from the analysis of the current component */
         private def checkPost(value: PostValue): EvalM[Unit] =
@@ -146,19 +152,64 @@ trait BaseScvBigStepSemantics
             .map(name => baseEnv.lookup(name).get -> SchemeVar(Identifier(name, Identity.none)))
             .toMap
 
+        protected def symIfFeasible[X](symbolic: Option[Symbolic], prim: Prim)(cmp: => M[X]): M[X] =
+          symbolic match
+              // if we do not have symbolic information we simply execute cmp (overapproximating)
+              case None => cmp
+              case Some(sym) =>
+                for
+                    // extend the path condition
+                    _ <- extendPc(prim.symApply(sym))
+                    // check if the path condition is feasible
+                    pc <- getPc
+                    vars <- getVars
+                    solved = sat.feasible(pc, vars)
+                    result <- if solved then cmp else void
+                yield result
+
+        /** Adds support for checking contracts on primitives */
+        protected def checkPrimitiveContract(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, PostValue)]): M[Unit] =
+            track(ImplicitContract, fexp)
+            nondets(
+              lattice
+                .getPrimitives(fval)
+                .map(prim =>
+                    // fetch the signature
+                    val signature = OpqOps.signatures(prim)
+                    val ops = OpqOps.symbolicContracts(signature, args.map(_ => ()))
+                    // check using the path condition whether the negation of the contracts is ifFeasible
+                    Monad.sequence(ops.zip(args).map { case (op, (exp, argv)) =>
+                      // synthesize symbolic call to the contract
+                      val call = symCall(Some(SchemeVar(Identifier(op.name, Identity.none))), List(argv.symbolic))
+                      nondet(
+                        symIfFeasible(call, `true?`) { /* no problem simply continue */
+                          unit(())
+                        },
+                        symIfFeasible(call, `false?`) { /* contract is invalid */
+                          impure { writeBlame(ContractValues.Blame(exp.idn, fexp.idn)) }.flatMap(_ => void)
+                        }
+                      )
+                    }) >>> unit(())
+                )
+            )
+
         /** Adds support for opaque values in primitives */
-        override protected def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)]): M[Value] =
+        private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, PostValue)]): M[Value] =
             import MonoidInstances.*
             import maf.util.MonoidImplicits.*
             import maf.core.MonadJoin.MonadJoinIterableSyntax
             import maf.language.scheme.primitives.given
-            val values = args.map(_._2)
+            val simpleArgs = args.map { case (e, pv) => (e, pv.value) }
+            val values = simpleArgs.map(_._2)
 
-            nondet(
-              super.applyPrimitives(fexp, fval, args),
-              if OpqOps.eligible(values) then lattice.getPrimitives(fval).foldMapM(prim => OpqOps.compute(fexp, prim, values, primitives))
-              else void
-            )
+            for
+                _ <- checkPrimitiveContract(fexp, fval, args)
+                result <- nondet(
+                  super.applyPrimitives(fexp, fval, simpleArgs),
+                  if OpqOps.eligible(values) then lattice.getPrimitives(fval).foldMapM(prim => OpqOps.compute(fexp, prim, values, primitives))
+                  else void
+                )
+            yield result
 
         /** Applies the given primitive and returns its resulting value */
         protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
@@ -244,12 +295,12 @@ trait BaseScvBigStepSemantics
         protected def evalCheck(checkExpr: ContractSchemeCheck): EvalM[Value] =
             track(EvalCheck, checkExpr)
 
-            def appl(procedureOrPrimitive: Closure | String, checkExpr: ContractSchemeCheck, vlu: Value): EvalM[Value] =
+            def appl(procedureOrPrimitive: Closure | String, checkExpr: ContractSchemeCheck, vlu: PostValue): EvalM[Value] =
                 val injV = procedureOrPrimitive match
                     case v: Closure => lattice.closure(v)
                     case p: String  => lattice.primitive(p)
 
-                applyFun(
+                applyFunPost(
                   SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
                   injV,
                   List((checkExpr.valueExpression, vlu)),
@@ -258,11 +309,11 @@ trait BaseScvBigStepSemantics
 
             for
                 contract <- eval(checkExpr.contract)
-                value <- eval(checkExpr.valueExpression)
+                value <- extract(eval(checkExpr.valueExpression))
 
                 // TODO: refactor such that most of this code is in applyMon
                 flats = lattice.getFlats(contract).map { flat =>
-                  applyFun(
+                  applyFunPost(
                     SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
                     flat.contract,
                     List((checkExpr.valueExpression, value)),
@@ -356,7 +407,7 @@ trait BaseScvBigStepSemantics
             for
                 // TODO: find better position information
                 result <- nondets(
-                  applyFun(call, contract.contract, List((expr, value.value)), Position(-1, 0)),
+                  applyFunPost(call, contract.contract, List((expr, value)), Position(-1, 0)),
                   callFun(PostValue.noSymbolic(contract.contract), List(value))
                 )
                 pv = PostValue(resultSymbolic, result)
@@ -385,17 +436,17 @@ trait BaseScvBigStepSemantics
                     }
                   }
                   // apply the range maker function
-                  rangeContract <- applyFun(
+                  rangeContract <- applyFunPost(
                     SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
                     arr.contract.rangeMaker,
-                    fc.args.zip(argsV.map(_.value)),
+                    fc.args.zip(argsV),
                     arr.contract.rangeMakerExpr.idn.pos,
                   )
                   ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
-                  result <- applyFun(
+                  result <- applyFunPost(
                     fc, // syntactic function node
                     arr.e, // the function to apply
-                    fc.args.zip(argsV.map(_.value)), // the arguments
+                    fc.args.zip(argsV), // the arguments
                     fc.idn.pos, // the position of the function in the source code
                     ctx
                     //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
@@ -410,6 +461,21 @@ trait BaseScvBigStepSemantics
          */
         protected def callFun(f: PostValue, args: List[PostValue]): EvalM[Value] = void
 
+        private def applyFunPost(
+            fexp: SchemeFuncall,
+            fval: Value,
+            args: List[(SchemeExp, PostValue)],
+            cll: Position.Position,
+            ctx: ContextBuilder = DefaultContextBuilder,
+          ): M[Value] =
+            // TODO: this is code duplication from SchemeModFSemantics, refactor it so that code duplication is avoided.
+            import maf.core.Monad.MonadSyntaxOps
+            val simpleArgs = args.map(arg => (arg._1, arg._2.value))
+            val fromClosures = applyClosuresM(fval, simpleArgs, cll, ctx)
+            val fromPrimitives = applyPrimitives(fexp, fval, args)
+            val _ = applyContinuations(fval, simpleArgs)
+            baseEvalM.mjoin(List(fromClosures, fromPrimitives))
+
         private def callFun(f: SchemeFuncall): EvalM[Value] =
           for
               fv <- extract(eval(f.f))
@@ -422,7 +488,7 @@ trait BaseScvBigStepSemantics
                     nondets(
                       applyArr(f, fv),
                       callFun(fv, argsV),
-                      applyFun(f, fv.value, f.args.zip(argsV.map(_.value)), f.idn.pos, ctx)
+                      applyFunPost(f, fv.value, f.args.zip(argsV), f.idn.pos, ctx)
                     ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))
           yield result
 

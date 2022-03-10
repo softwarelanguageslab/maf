@@ -1,11 +1,12 @@
 package maf.language.ContractScheme
 
 import maf.core.Monad
-import maf.language.scheme.SchemeExp
+import maf.language.scheme.{SchemeExp, SchemeFuncall}
 import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
 import maf.language.ContractScheme.ContractValues.Opq
 import maf.core.Address
 import maf.language.scheme.primitives.{SchemePrimM, SchemePrimitives}
+import maf.modular.scv.Symbolic
 
 /**
  * This object defines the signatures for the native Scheme functions. The reason for this is that it can automatically resolve operations involving
@@ -36,6 +37,19 @@ object OpqOps:
             Uncurried(domains = domain :: rangeUncurried.domains, rangeUncurried.range)
           case _ =>
             Uncurried(domains = List(), tpy)
+
+    def symbolicContracts(tpy: Tpy, args: List[Unit]): List[SchemeOp] =
+        val uncurried = uncurry(tpy)
+        def iter(tpys: List[Tpy], args: List[Unit]): List[SchemeOp] = (tpys, args) match
+            case (List(VarArg(tpy)), rest) =>
+              (0 to rest.size).map(_ => typePredicates(tpy)).toList
+            case (List(Optional(tpy)), List(rest)) =>
+              List(typePredicates(tpy))
+            case (tpy :: restTpys, arg :: restArgs) =>
+              typePredicates(tpy) :: iter(restTpys, restArgs)
+            case (List(), _ /*List()*/ ) => List()
+
+        iter(uncurried.domains, args)
 
     case class Uncurried(domains: List[Tpy], range: Tpy):
         def checkArity[V](args: List[V]): Boolean =
@@ -116,7 +130,9 @@ object OpqOps:
       Symbol -> SchemeOp.IsSymbol,
       Nil -> SchemeOp.IsNull,
       Any -> SchemeOp.IsAny,
-      Vector -> SchemeOp.IsVector
+      Vector -> SchemeOp.IsVector,
+      Char -> SchemeOp.IsChar,
+      Union(Integer, Real) -> SchemeOp.SyntheticSchemeOp("number?", 1)
     )
 
     /** Injection functions for the native and union types */
@@ -205,8 +221,8 @@ object OpqOps:
       "vector-ref" -> (Vector ==>: Integer ==>: Any),
       "vector-set!" -> (Vector ==>: Integer ==>: Any ==>: Nil),
       "vector?" -> (Any ==>: Boolean),
-      "<" -> (Real ==>: Real ==>: Boolean),
-      "=" -> (Real ==>: Real ==>: Boolean),
+      "<" -> (NumberTy ==>: NumberTy ==>: Boolean),
+      "=" -> (NumberTy ==>: NumberTy ==>: Boolean),
       "input-port?" -> (Any ==>: Boolean),
       "output-port?" -> (Any ==>: Boolean),
       "open-input-file" -> Unsupported,

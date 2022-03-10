@@ -153,4 +153,6 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
 /** Automated soundness tests  on the set of benchmarks from the Nguyen paper */
 class ScvNguyenSoundnessTests extends ScvSoundnessTests:
     def name: String = "scv-soundness-tests"
-    override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
+    override def benchmarks: Set[String] =
+      Set("test/scv/NguyenGTH18/safe/games/snake.rkt", "test/scv/NguyenGTH18/safe/games/tetris.rkt")
+    SchemeBenchmarkPrograms.scvNguyenBenchmarks

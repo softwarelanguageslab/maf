@@ -188,7 +188,9 @@ trait ConcreteSchemePrimitives:
           Error,
           NewLock,
           Acquire,
-          Release
+          Release,
+          `any?`,
+          `number?`
         ).map(prim => (prim.name, prim)).toMap
 
         abstract class SingleArgumentPrimWithExp(val name: String) extends Prim:
@@ -723,6 +725,21 @@ trait ConcreteSchemePrimitives:
                   io.writeString("\n", port)
                   Value.Undefined(Identity.none)
                 case _ => signalException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
+
+        object `number?` extends SimplePrim: 
+            val name = "number?"
+
+            def call(args: List[Value], position: Position) = args match 
+                case (Value.Integer(_) | Value.Real(_)) :: Nil => Value.Bool(true) 
+                case _ :: Nil => Value.Bool(false)
+                case _ => signalException(s"$name ($position) wrong number of arguments, 1 expected, got ${args.length}")
+
+        object `any?` extends SimplePrim: 
+            val name = "any?"
+
+            def call(args: List[Value], position: Position) = args match 
+                case value :: Nil => Value.Bool(true) 
+                case _ => signalException(s"$name ($position) wrong number of arguments, 1 expected, got ${args.length}")
 
         object `read` extends Prim:
             val name = "read"

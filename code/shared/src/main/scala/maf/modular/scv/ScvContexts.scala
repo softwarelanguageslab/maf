@@ -24,25 +24,27 @@ sealed trait ScvContext[L]
 /** Used when the function call is originating from applying a monitor */
 case class ContractCallContext[L](domains: List[L], rangeContract: L, args: List[SchemeExp], idn: Identity) extends ScvContext[L]
 
-/**
- * Keeps track of the path conditions from the last k components
- *
- * @param pc
- *   a list of path conditions from the last k components
- * @param vars
- *   a list of variables used in the path conditions from the last k components
- * @param symbolic
- *   a mapping between names of variables and symbolic values that should be passed between components (also from the last k components)
- */
-// TODO: factor out rangeContract, because it is required for a sound implementation of scv, and cannot be disabled/enabled
-// for certain experiments.As such it is not part of a variable context.
-case class KPathCondition[L](ps: PathStore, sstore: SymbolicStore, rangeContract: Option[L]) extends ScvContext[L]:
-    override def toString: String = s"KPathCondition(rangeContract = $rangeContract, pc = ${ps.pc}, sstore = $sstore)"
-
-case class NoContext[L]() extends ScvContext[L]
-
 trait ScvContextSensitivity extends SchemeModFSensitivity:
     type ComponentContext = ScvContext[Value]
+
+    /**
+     * Keeps track of the path conditions from the last k components
+     *
+     * @param pc
+     *   a list of path conditions from the last k components
+     * @param vars
+     *   a list of variables used in the path conditions from the last k components
+     * @param symbolic
+     *   a mapping between names of variables and symbolic values that should be passed between components (also from the last k components)
+     * @param changes
+     *   a list of changes applied to obtain the current path condition
+     */
+    // TODO: factor out rangeContract, because it is required for a sound implementation of scv, and cannot be disabled/enabled
+    // for certain experiments.As such it is not part of a variable context.
+    case class KPathCondition[L](ps: PathStore, sstore: SymbolicStore, rangeContract: Option[L], callers: List[Position], changes: List[SymChange])
+        extends ScvContext[L]:
+        override def toString: String = s"KPathCondition(rangeContract = $rangeContract, pc = ${ps.pc}, sstore = $sstore)"
+    case class NoContext[L]() extends ScvContext[L]
 
     def contractContext(cmp: Component): Option[ContractCallContext[Value]] = context(cmp).flatMap {
       case c: ContractCallContext[_] =>
@@ -69,16 +71,18 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
     import maf.core.Monad.MonadSyntaxOps
 
     protected def k: Int
+    protected def m: Int
+
     protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value, List[SchemeExp], Identity)] => X): X = contractContext(cmp) match
         case Some(context) => f(Some(context.domains, context.rangeContract, context.args, context.idn))
         case _             => f(None)
 
     protected def usingRangeContract[X](cmp: Component)(f: Option[Value] => X): X = context(cmp) match
-        case Some(KPathCondition(_, _, rangeContractOpt)) => f(rangeContractOpt)
-        case _                                            => f(None)
+        case Some(KPathCondition(_, _, rangeContractOpt, _, _)) => f(rangeContractOpt)
+        case _                                                  => f(None)
 
     override def fromContext(cmp: Component): FromContext = context(cmp) match
-        case Some(KPathCondition(ps, sstore, _)) =>
+        case Some(KPathCondition(ps, sstore, _, cmps, _)) =>
           new FromContext:
               def pathCondition: List[SchemeExp] = ps.pc
               def vars: List[String] = ps.vars
@@ -101,6 +105,12 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
 
               val roots = Symbolic.identifiers(symArgs.flatten)
 
+              val nextCallers = (context(caller) match
+                  case Some(KPathCondition(_, _, _, callers, _)) =>
+                    (call :: callers)
+                  case _ => List(call)
+              ).take(m)
+
               for
                   ps <- getPathStore
                   vars <- getVars
@@ -119,7 +129,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
                   lowest = psGc.lowest
                   newPs = psGc.reindex(lowest)
                   newSstore = sstore.gc(cleanedPs.pc).reindex(lowest)
-              yield KPathCondition[Value](newPs, newSstore, rangeContract)
+              yield KPathCondition[Value](newPs, newSstore, rangeContract, nextCallers, changes)
 
-trait ScvOneContextSensitivity extends ScvKContextSensitivity:
+trait ScvOneContextSensitivity(protected val m: Int) extends ScvKContextSensitivity:
     protected val k: Int = 1

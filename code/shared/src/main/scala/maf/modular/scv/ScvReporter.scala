@@ -19,3 +19,5 @@ trait ScvReporter extends ModReporter[SchemeExp]:
         def name: String = "# flat contract applications"
     case object EvalCheck extends ModMetric:
         def name: String = "# check expressions"
+    case object ImplicitContract extends ModMetric:
+        def name: String = "# implicit contracts"

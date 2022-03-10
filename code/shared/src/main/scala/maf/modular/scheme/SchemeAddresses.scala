@@ -19,6 +19,8 @@ case class PtrAddr[Context](exp: SchemeExp, ctx: Context) extends SchemeAddr[Con
     def printable = false
     def idn: Identity = exp.idn
     override def toString: String = s"PtrAddr($exp)${showCtx(ctx)}"
+trait ExceptionAddr[Context] extends SchemeAddr[Context]
+
 case class PrmAddr(nam: String) extends SchemeAddr[Nothing]:
     def printable = false
     def idn: Identity = Identity.none

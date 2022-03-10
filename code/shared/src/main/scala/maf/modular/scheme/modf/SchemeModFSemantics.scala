@@ -178,13 +178,24 @@ trait BaseSchemeModFSemanticsM
           val _ = applyContinuations(fval, args)
           baseEvalM.mjoin(List(fromClosures, fromPrimitives))
 
-      private def applyContinuations(k: Value, args: List[(SchemeExp, Value)]) =
+      protected def applyContinuations(k: Value, args: List[(SchemeExp, Value)]) =
         args match
             case (_, vlu) :: Nil =>
               val cnts = lattice.getContinuations(k)
               cnts.foreach(cnt => writeResult(vlu, cnt.asInstanceOf[Component])) // TODO: type safety!
             case _ => () // continuations are only called with a single argument
       // => ignore continuation calls with more than 1 argument
+
+      /**
+       * Hook for code that needs to be executed after the call
+       *
+       * @param targetCmp
+       *   the called component
+       * @return
+       *   nothing
+       */
+      protected def afterCall(cmp: Component): M[Unit] = Monad[M].unit(())
+
       protected def applyClosuresM(
           fun: Value,
           args: List[(SchemeExp, Value)],
@@ -203,7 +214,9 @@ trait BaseSchemeModFSemanticsM
                         targetCall = Call(clo, context)
                         targetCmp = newComponent(targetCall)
                         _ = bindArgs(targetCmp, prs, argVals)
-                    yield call(targetCmp)
+                        result = call(targetCmp)
+                        _ <- afterCall(targetCmp)
+                    yield result
                 else baseEvalM.fail(ArityError(cll, prs.length, arity))
               case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
                 if prs.length <= arity then
@@ -217,7 +230,9 @@ trait BaseSchemeModFSemanticsM
                         targetCmp = newComponent(targetCall)
                         _ = bindArgs(targetCmp, prs, fixedArgVals)
                         _ = bindArg(targetCmp, vararg, varArgVal)
-                    yield call(targetCmp)
+                        result = call(targetCmp)
+                        _ <- afterCall(targetCmp)
+                    yield result
                 else baseEvalM.fail(VarArityError(cll, prs.length, arity))
               case _ => Monad[M].unit(lattice.bottom)
             })

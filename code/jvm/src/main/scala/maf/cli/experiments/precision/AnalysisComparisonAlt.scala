@@ -34,6 +34,8 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
             case Result.Errored      => "ERROR"
     var results: Table[Result] = Table.empty
 
+    protected def additionalCounts(path: Benchmark, r1: ResultMap, r2: ResultMap): Unit = ()
+
     /**
      * For a given benchmark, compare each analysis with the result of the concrete interpreter That is, count for each analysis how many values are
      * strictly over-approximating the result of the concrete interpreter All results are saved in the `result` table of this object
@@ -55,8 +57,10 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
           println(s"duration: $duration")
           val (lessPrecise, size) = otherResult match
               case Terminated(analysisResult) =>
+                additionalCounts(path, analysisResult, concreteResult)
                 (Result.Success(compareOrdered(analysisResult, concreteResult).size), Result.Success(analysisResult.keys.size))
               case TimedOut(partialResult) =>
+                additionalCounts(path, partialResult, concreteResult)
                 (Result.Timeout(compareOrdered(partialResult, concreteResult, check = false).size), Result.Timeout(partialResult.keys.size))
               case Errored(_) => (Result.Errored, Result.Errored)
           results = results.add(path, name, lessPrecise)

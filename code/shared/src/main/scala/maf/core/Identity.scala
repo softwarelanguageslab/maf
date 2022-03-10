@@ -13,6 +13,10 @@ sealed trait Identity extends Serializable:
 /** An identity for AST elements. */
 case class SimpleIdentity(idn: IDN) extends Identity with SmartHash
 
+/* An identity that has additional data attached to it, can be used to support unique synthetic identities */
+trait IdentityData extends SmartHash
+case class IdentityWithData(idn: IDN, data: Option[IdentityData]) extends Identity with SmartHash
+
 /** Neutral identity for to elements not in the code (constructed by the analysis). */
 case object NoCodeIdentity extends Identity:
     val idn: IDN = Identity.newId(Position(-1, 0))
