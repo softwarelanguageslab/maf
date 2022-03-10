@@ -137,6 +137,12 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
       s"Compared to full reanalysis:\n${results.toCSVString(columns = columns, rowName = "benchmark")}\n\nCompared to noOpt:\n${resultsNoOpt
         .toCSVString(columns = columns, rowName = "benchmark")}"
 
+    override def execute(args: Array[String]): String =
+      // Clear the state.
+      results = Table.empty.withDefaultValue(" ")
+      resultsNoOpt = Table.empty.withDefaultValue(" ")
+      super.execute(args)
+
 /* ************************** */
 /* ***** Instantiations ***** */
 /* ************************** */
