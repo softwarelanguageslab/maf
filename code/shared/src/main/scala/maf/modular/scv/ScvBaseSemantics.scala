@@ -55,7 +55,7 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
    * @param rangeContract
    *   an optional range contract
    */
-  protected def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value], storeCacheLex: Option[StoreCache]): ContextBuilder =
+  protected def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value]): ContextBuilder =
     DefaultContextBuilder
 
   /////////////////////////////////////////////////////

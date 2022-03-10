@@ -98,7 +98,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
                 sstore.mapping.mapValues(sym => Some(sym.expr)).toMap.withDefaultValue(None)
         case _ => EmptyContext
 
-    override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None, storeCacheLex: Option[StoreCache]): ContextBuilder =
+    override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None): ContextBuilder =
       new ContextBuilder:
           def allocM(
               clo: (SchemeLambdaExp, Environment[Address]),
