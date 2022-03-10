@@ -228,7 +228,7 @@ object SchemeAnalyses:
           with StandardSchemeModFComponents
           with LIFOWorklistAlgorithm[SchemeExp]
           with SchemeModFSemanticsM
-          with ScvOneContextSensitivity(1)
+          with ScvOneContextSensitivity(0)
           with ScvBigStepWithProvides
           with ScvWithStructs
           with ScvSharedPathStore:

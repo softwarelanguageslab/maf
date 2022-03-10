@@ -61,14 +61,15 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
 
     override protected val nameSuffix: String = "_time"
 
-    //def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks
     def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks
+
+    //SchemeBenchmarkPrograms.scvNguyenBenchmarks
 
     def analyses: List[(SchemeExp => Analysis, String)] =
       List(
         //(wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
         (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf"),
-        (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures1cfa), "scvModf-1cfa"),
+        //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures1cfa), "scvModf-1cfa"),
         (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore), "scvModf-sharedPs")
       )
 

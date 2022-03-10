@@ -18,21 +18,26 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
 
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathStore)] =
             val answers = super.runIntraSemantics(initialState)
-            writeMapAddr(cmp, answers.map(_._2).toSet)
+            //writeMapAddr(cmp, answers.map(_._2).toSet)
             answers
 
         override protected def afterCall(targetCmp: Component): EvalM[Unit] =
           // this is a very crude approximation, we propebably don't need the entire path condition from the target
           context(targetCmp) match
-              case Some(KPathCondition(_, _, _, _, changes)) =>
+              case Some(KPathCondition(_, _, _, _, changes, symArgs)) =>
                 val pss = readPathCondition(targetCmp)
                 val updatedPss = pss.map(_.revertChanges(changes)).toSet.toList
                 // Combine path store with current path store, branch if nessary
-                nondets(updatedPss.map { ps =>
-                  for
-                      pc <- getPc
-                      // TODO: emovep arts of the path condition that are about variables that are currently out-of-scope
-                      _ <- putPc((ps.pc.toSet ++ pc.toSet).toList)
-                  yield ()
-                }.toSet)
+                if updatedPss.size == 0 then unit(())
+                else
+                    nondets(updatedPss.map { ps =>
+                      for
+                          pc <- getPc
+                          // We only need those path conditions that actually contain information about the arguments
+                          // we passed.
+                          cleanedPc = ps.pc.filter(constraint => symArgs.exists(constraint.allSubexpressions.contains(_)))
+                          _ = { if ps.pc.size > 0 then println(s"filtered $cleanedPc coming from ${ps.pc} with $symArgs") }
+                          _ <- putPc((cleanedPc ++ pc.toSet).toList)
+                      yield ()
+                    }.toSet)
               case _ => unit(())

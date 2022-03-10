@@ -38,10 +38,18 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
      *   a mapping between names of variables and symbolic values that should be passed between components (also from the last k components)
      * @param changes
      *   a list of changes applied to obtain the current path condition
+     * @param symArgs
+     *   a list of (symbolic) arguments of the called function (TODO: this might not be a great place to add this)
      */
     // TODO: factor out rangeContract, because it is required for a sound implementation of scv, and cannot be disabled/enabled
     // for certain experiments.As such it is not part of a variable context.
-    case class KPathCondition[L](ps: PathStore, sstore: SymbolicStore, rangeContract: Option[L], callers: List[Position], changes: List[SymChange])
+    case class KPathCondition[L](
+        ps: PathStore,
+        sstore: SymbolicStore,
+        rangeContract: Option[L],
+        callers: List[Position],
+        changes: List[SymChange],
+        symArgs: List[SchemeExp])
         extends ScvContext[L]:
         override def toString: String = s"KPathCondition(rangeContract = $rangeContract, pc = ${ps.pc}, sstore = $sstore)"
     case class NoContext[L]() extends ScvContext[L]
@@ -78,11 +86,11 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
         case _             => f(None)
 
     protected def usingRangeContract[X](cmp: Component)(f: Option[Value] => X): X = context(cmp) match
-        case Some(KPathCondition(_, _, rangeContractOpt, _, _)) => f(rangeContractOpt)
-        case _                                                  => f(None)
+        case Some(KPathCondition(_, _, rangeContractOpt, _, _, _)) => f(rangeContractOpt)
+        case _                                                     => f(None)
 
     override def fromContext(cmp: Component): FromContext = context(cmp) match
-        case Some(KPathCondition(ps, sstore, _, cmps, _)) =>
+        case Some(KPathCondition(ps, sstore, _, cmps, _, _)) =>
           new FromContext:
               def pathCondition: List[SchemeExp] = ps.pc
               def vars: List[String] = ps.vars
@@ -90,7 +98,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
                 sstore.mapping.mapValues(sym => Some(sym.expr)).toMap.withDefaultValue(None)
         case _ => EmptyContext
 
-    override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None): ContextBuilder =
+    override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None, storeCacheLex: Option[StoreCache]): ContextBuilder =
       new ContextBuilder:
           def allocM(
               clo: (SchemeLambdaExp, Environment[Address]),
@@ -106,7 +114,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
               val roots = Symbolic.identifiers(symArgs.flatten)
 
               val nextCallers = (context(caller) match
-                  case Some(KPathCondition(_, _, _, callers, _)) =>
+                  case Some(KPathCondition(_, _, _, callers, _, _)) =>
                     (call :: callers)
                   case _ => List(call)
               ).take(m)
@@ -114,6 +122,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
               for
                   ps <- getPathStore
                   vars <- getVars
+                  _ = { println(s"got $ps and $vars for applying $clo with $args at $call") }
 
                   result <- SymbolicStore()
                     .addAll(symbolic.flatMap { case (vr, sym) =>
@@ -129,7 +138,13 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
                   lowest = psGc.lowest
                   newPs = psGc.reindex(lowest)
                   newSstore = sstore.gc(cleanedPs.pc).reindex(lowest)
-              yield KPathCondition[Value](newPs, newSstore, rangeContract, nextCallers, changes)
+              yield KPathCondition[Value](newPs,
+                                          newSstore,
+                                          rangeContract,
+                                          nextCallers,
+                                          changes,
+                                          symArgs.flatMap(_.map(List(_)).getOrElse(List())).toList
+              )
 
 trait ScvOneContextSensitivity(protected val m: Int) extends ScvKContextSensitivity:
     protected val k: Int = 1

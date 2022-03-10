@@ -55,13 +55,13 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
      * Looks up the symbolic representation of the given variable, and returns it if it exists. Otherwise, returns a fresh symbolic representation for
      * the variable.
      */
-    protected def lookupCache(id: Identifier): EvalM[Symbolic] =
+    protected def lookupCache(id: Identifier): EvalM[Option[Symbolic]] =
       for
           env <- getEnv
           addr <- unit(
             env.lookup(id.name).getOrElse(throw Exception(s"variable ${id.name} not found"))
           ) // exception should not happen because of lexical address pass
-          value <- lookupCache(addr).flatMap(v => v.map(unit).getOrElse(fresh.flatMap(writeSymbolic(addr)))) // TODO: check if it is actually good to freshly allocate an identifier each time we don't find something in the store cache
+          value <- lookupCache(addr)
       yield value
 
     extension (p: Prim)
@@ -435,6 +435,9 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                       unit(res)
                     }
                   }
+                  pc <- getPc
+                  _ = { println(s"got pc $pc") }
+                  _ = { println(s"got valus $argsV") }
                   // apply the range maker function
                   rangeContract <- applyFunPost(
                     SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
@@ -474,7 +477,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             val fromClosures = applyClosuresM(fval, simpleArgs, cll, ctx)
             val fromPrimitives = applyPrimitives(fexp, fval, args)
             val _ = applyContinuations(fval, simpleArgs)
-            baseEvalM.mjoin(List(fromClosures, fromPrimitives))
+            baseEvalM.mjoin(List(fromClosures, fromPrimitives)) >>= inject
 
         private def callFun(f: SchemeFuncall): EvalM[Value] =
           for

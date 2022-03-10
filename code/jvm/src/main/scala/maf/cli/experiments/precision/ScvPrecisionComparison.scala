@@ -32,6 +32,7 @@ object ScvPrecisionComparison
 
     def analyses: List[(SchemeExp => Analysis, String)] = List(
       (SchemeAnalyses.scvModAnalysisWithRacketFeatures, "scv-modf"),
+      (SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore, "scv-modf-sharedps")
       //(AAMAnalyses.scvAAMFnCallBoundaries, "scv-aam")
     )
 
@@ -74,7 +75,7 @@ object ScvPrecisionComparison
     override def parseProgram(txt: String): SchemeExp =
       SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
 
-    override def additionalCounts(path: Benchmark, r1: ResultMap, r2: ResultMap): Unit =
+    override def additionalCounts(analysisName: String, path: Benchmark, r1: ResultMap, r2: ResultMap): Unit =
         // the concrete results are in r2, so if a blame is in r1, but not in r1 then it is a false positive
         val nFalsePositives = r1.values
           .flatMap(r1Values =>
@@ -84,7 +85,7 @@ object ScvPrecisionComparison
           )
           .sum
 
-        results = results.add(path, "# false positives", Result.Success(nFalsePositives))
+        results = results.add(path, s"$analysisName" + "_# false positives", Result.Success(nFalsePositives))
 
     override def compareOrdered(r1: ResultMap, r2: ResultMap, check: Boolean = true): Set[Identity] =
       // override check flag: checking is already done in soundness tests (except for unrelated, but in scv this in unavoidable because of the many synthesized calls)

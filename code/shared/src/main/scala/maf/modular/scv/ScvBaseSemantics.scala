@@ -55,7 +55,7 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
    * @param rangeContract
    *   an optional range contract
    */
-  protected def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value]): ContextBuilder =
+  protected def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value], storeCacheLex: Option[StoreCache]): ContextBuilder =
     DefaultContextBuilder
 
   /////////////////////////////////////////////////////
@@ -188,6 +188,11 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   /** Tags the given value with the given Scheme expression */
   protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] =
     scvMonadInstance.unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(e), result)))
+  protected def tag(e: Option[Symbolic])(v: Value): EvalM[Value] =
+    // only tag if è` is Some
+    e match
+        case Some(sym) => tag(sym)(v)
+        case _         => scvMonadInstance.unit(v)
 
   /** Write a symbolic representation to the store cache */
   protected def writeSymbolic(addr: Addr)(e: Symbolic): EvalM[Symbolic] =
