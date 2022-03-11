@@ -107,7 +107,7 @@ The MAF framework is presented in the following publication:
   2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf). _See release: `SCAM 2020`_
  
 MAF is a complete rework of the [Scala-AM framework](https://github.com/acieroid/scala-am), which was not focused on
-modular static analysis but was primarily used to experiment with AAM-style analyses. An [AAM implementation](Documents/Programming/maf/docs/AAM.md) (inspired by Scala-AM) is provided in MAF for benchmarks comparisons. Scala-AM is described in the
+modular static analysis but was primarily used to experiment with AAM-style analyses. An [AAM implementation](docs/AAM.md) (inspired by Scala-AM) is provided in MAF for benchmarks comparisons. Scala-AM is described in the
 following publications:
 
 * _Scala-AM: A Modular Static Analysis Framework_. SCAM

@@ -9,6 +9,8 @@ sealed trait SchemeOp:
           throw new Exception(s"SchemeOp ${name} expects ${arity} arguments but got ${args.size}")
 
 object SchemeOp:
+    case class SyntheticSchemeOp(val name: String, val arity: Int) extends SchemeOp
+
     /** SchemeOpCat specifies a hierarchy of categories (implemented as blank traits used as markers) over the operations. */
     sealed trait SchemeOpCat
 
@@ -127,7 +129,7 @@ object SchemeOp:
       CharacterIsLower,
       CharacterIsUpper,
       MakeInputPort,
-      MakeOutputPort
+      MakeOutputPort,
     )
 
     sealed trait SchemeOp2(val name: String) extends SchemeOp:

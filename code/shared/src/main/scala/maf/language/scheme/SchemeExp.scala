@@ -11,7 +11,6 @@ import Label.*
 sealed trait SchemeExp extends Expression:
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
-
 /*
     case SchemeLambda(name, args, body, ann, idn) =>
     case SchemeVarArgLambda(name, args, vararg, body, ann, idn) =>

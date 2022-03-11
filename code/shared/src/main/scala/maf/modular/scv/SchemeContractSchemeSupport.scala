@@ -14,7 +14,7 @@ import maf.language.scheme.primitives.MF
  * For example a (mon contract expr) ingores the contract and simply evaluates expr.
  */
 trait SchemeContractSchemeSupport extends BigStepModFSemantics:
-    import EvalM.*
+    import evalM.*
 
     protected val valueClassTag: ClassTag[Value]
 

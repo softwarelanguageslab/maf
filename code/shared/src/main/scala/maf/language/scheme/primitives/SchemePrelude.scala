@@ -327,11 +327,12 @@ class BaseSchemePrelude:
       "ref-set" -> "(define ref-set set-car!)",
       "void" -> "(define (void) #f)",
       "__toplevel_cons" -> "(define __toplevel_cons cons)",
+      // "__toplevel_cons" -> "(define (__toplevel_cons a d) (cons a d))", ALTERNATIVE: lower precision, better analysis complexity
       "__toplevel_car" -> "(define __toplevel_car car)",
       "__toplevel_cdr" -> "(define __toplevel_cdr cdr)",
       "__toplevel_set-car!" -> "(define __toplevel_set-car! set-car!)",
       "__toplevel_set-cdr!" -> "(define __toplevel_set-cdr! set-cdr!)",
-      "__toplevel_append" -> "(define __toplevel_append append)",
+      "__toplevel_append" -> "(define (__toplevel_append l1 l2) (append l1 l2))",
       /*
     "ref" -> "(define (ref x) (cons x (new-lock))",
     "deref" ->

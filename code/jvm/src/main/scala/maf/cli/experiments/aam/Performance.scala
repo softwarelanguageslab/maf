@@ -51,18 +51,26 @@ object AAMModFPerformanceComparison extends AAMPerformanceComparison:
       run(timeoutFast = false)
 
 object ScvPerformanceComparison extends AAMPerformanceComparison:
+    override def maxWarmupRuns = 3
+    override def analysisRuns = 5
+
     override def parseProgram(txt: String): SchemeExp =
         val result = SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
         println(s"input program ${result.prettyString(0)}")
         result
 
-    //def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks
+    override protected val nameSuffix: String = "_time"
+
     def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks
+
+    //SchemeBenchmarkPrograms.scvNguyenBenchmarks
 
     def analyses: List[(SchemeExp => Analysis, String)] =
       List(
         //(wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
-        (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf")
+        (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf"),
+        //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures1cfa), "scvModf-1cfa"),
+        (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore), "scvModf-sharedPs")
       )
 
     def main(args: Array[String]): Unit =

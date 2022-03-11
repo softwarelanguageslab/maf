@@ -220,6 +220,7 @@ object SExpParser extends TokenParsers:
     def quasiquote = elem("quasiquote", _.isInstanceOf[TBackquote])
     def unquote = elem("unquote", _.isInstanceOf[TUnquote])
     def unquoteSplicing = elem("unquote-splicing", _.isInstanceOf[TUnquoteSplicing])
+    def hashParen = elem("hash paren", _.isInstanceOf[THashParen])
 
     def parenList(tag: PTag): Parser[SExp] = Parser { in =>
       (leftParen ~> rep1(exp(tag)) ~ opt(dot ~> exp(tag)) <~ rightParen)(in) match
@@ -241,6 +242,14 @@ object SExpParser extends TokenParsers:
 
     def list(tag: PTag): Parser[SExp] = parenList(tag) | bracketList(tag)
 
+    /** Parses a vector literal e.g., #(1 2 3) */
+    def vector(tag: PTag): Parser[SExp] = Parser { in =>
+      (hashParen ~> rep1(exp(tag)) <~ rightParen)(in) match
+          case Success(es, in1) =>
+            Success(SExpVector(es, Identity(in.pos, tag)), in1)
+          case ns: NoSuccess => ns
+    }
+
     def withQuote(tag: PTag)(p: Parser[_], make: (SExp, Identity) => SExp) = Parser { in =>
       (p ~> exp(tag))(in) match
           case Success(e, in1) => Success(make(e, Identity(in.pos, tag)), in1)
@@ -253,7 +262,7 @@ object SExpParser extends TokenParsers:
     def unquotedSplicing(tag: PTag): Parser[SExp] = withQuote(tag)(unquoteSplicing, SExpUnquotedSplicing(_, _))
 
     def exp(tag: PTag): Parser[SExp] =
-      value(tag) | identifier(tag) | list(tag) | quoted(tag) | quasiquoted(tag) | unquoted(tag) | unquotedSplicing(tag)
+      value(tag) | identifier(tag) | list(tag) | quoted(tag) | quasiquoted(tag) | unquoted(tag) | unquotedSplicing(tag) | vector(tag)
     def expList(tag: PTag): Parser[List[SExp]] = rep1(exp(tag))
 
     def parse(s: String, tag: PTag = noTag): List[SExp] = expList(tag)(new Scanner(s)) match

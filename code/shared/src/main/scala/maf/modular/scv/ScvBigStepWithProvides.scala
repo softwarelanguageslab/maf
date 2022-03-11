@@ -37,19 +37,21 @@ trait ScvBigStepWithProvides extends BaseScvBigStepSemantics:
               for
                   function <- extract(evalVariable(name))
                   evaluatedContract <- extract(eval(contract))
-                  result <- applyMon(function, evaluatedContract, SchemeVar(name), idn, false, contractExpr = Some(contract))
+                  result <- applyMon(evaluatedContract, function, SchemeVar(name), idn, false, contractExpr = Some(contract))
               yield (result, name, idn)
 
             case _ => throw new Exception("only contract-out is supported in provide")
 
-        protected def callWithOpq(values: List[(Value, Identifier, Identity)]): EvalM[List[Value]] =
+        protected def callWithOpq(values: List[(Value, Identifier, Identity)]): EvalM[Value] =
             def fresh(idn: Identity): SchemeExp = SchemeFuncall(SchemeVar(Identifier("fresh", idn)), List(), idn)
-            Monad.sequence(values.map { case (value, name, idn) =>
+            nondets(values.map { case (value, name, idn) =>
               lattice.getArrs(value).foldLeftM(lattice.bottom) { (vlu, arr) =>
-                applyArr(SchemeFuncall(SchemeVar(name), (0 to arr.expectedNumArgs).map(_ => fresh(idn)).toList, idn), PostValue.noSymbolic(arr.e))
+                applyArr(SchemeFuncall(SchemeVar(name), arr.contract.domainIdns.map(idnn => fresh(idnn)).toList, idn),
+                         PostValue.noSymbolic(lattice.arr(arr))
+                )
                   .map(lattice.join(vlu, _))
               }
-            })
+            }.toSet)
 
         override def eval(exp: SchemeExp): EvalM[Value] = exp match
             case ContractSchemeProvide(outs, idn) =>

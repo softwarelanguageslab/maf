@@ -44,13 +44,21 @@ object Symbolic:
       else vr
 
 sealed trait SymChange:
+    /** Apply the change described by a sublass of SymChange */
     def apply(old: Symbolic): Symbolic
+
+    /** Revert the change */
+    def revert(old: Symbolic): Symbolic
+
 case object NoChange extends SymChange:
     def apply(old: Symbolic): Symbolic = old
+    def revert(old: Symbolic): Symbolic = old
+
 case class SymReplace(from: Symbolic, to: Symbolic) extends SymChange:
-    def apply(old: Symbolic): Symbolic =
+    def apply(old: Symbolic, revert: Boolean): Symbolic =
         def visit(e: SchemeExp): SchemeExp =
-          if e == from.expr then to.expr
+          if !revert && e == from.expr then to.expr
+          else if revert && e == to.expr then from.expr
           else
               (e match
                   case SchemeFuncall(f, args, idn) =>
@@ -60,6 +68,8 @@ case class SymReplace(from: Symbolic, to: Symbolic) extends SymChange:
           )
 
         Symbolic(visit(old.expr))
+    def apply(old: Symbolic): Symbolic = apply(old, false)
+    def revert(old: Symbolic): Symbolic = apply(old, true)
 
 case class SymbolicStore(mapping: Map[String, Symbolic]):
     def roots: Set[String] =
@@ -101,7 +111,9 @@ case class SymbolicStore(mapping: Map[String, Symbolic]):
         allowed: Symbolic => Boolean = (_) => true
       ): M[(SymbolicStore, SymChange)] =
         import maf.core.Monad.MonadSyntaxOps
-        val symbolic = if allowed(sym) then Monad[M].unit((sym, NoChange)) else fresh.map(id => (Symbolic(id), SymReplace(sym, Symbolic(id))))
+        val symbolic =
+          if allowed(sym) then Monad[M].unit((sym, NoChange))
+          else fresh.map(id => (Symbolic(id), SymReplace(sym, Symbolic(id))))
         symbolic.map(sym => (this.copy(mapping = mapping + (name -> sym._1)), sym._2))
 
     /** Add a list of bindings to the symbolic store */
@@ -120,9 +132,11 @@ case class SymbolicStore(mapping: Map[String, Symbolic]):
                 yield (newStore, change :: result._2)
         )
 
-    def gc(roots: List[String]): SymbolicStore =
-        println(s"got roots $roots for $mapping")
-        this.copy(mapping = mapping.filterKeys(roots.contains).toMap)
+    /** Only keep those expressions in the symbolic store that are actually in the path condition */
+    def gc(pc: List[SchemeExp]): SymbolicStore =
+        val allSubexpressions = pc.flatMap(_.allSubexpressions)
+        //println(s"filtering $allSubexpressions with $mapping")
+        this.copy(mapping = mapping.filter { case (k, v) => allSubexpressions.contains(v.expr) }.toMap)
 
 object SymbolicStore:
     /** A symbolic store where only variables are allowed */
@@ -161,6 +175,11 @@ case class PathStore(pcs: Map[String, Set[Symbolic]] = Map(), cachedPc: Set[Symb
 
     private def computeMap(path: Set[Symbolic]): Map[String, Set[Symbolic]] =
       path.foldLeft(Map[String, Set[Symbolic]]())((acc, cnd) => extendMap(cnd, acc))
+
+    /** Revert the changes of the given list on the current path condition */
+    def revertChanges(changes: List[SymChange]): PathStore =
+        val newCachedPc = changes.foldLeft(cachedPc)((pc, change) => pc.map(change.revert))
+        this.copy(pcs = computeMap(newCachedPc), cachedPc = newCachedPc)
 
     /** Extend the path condition with the given constraint */
     def extendPc(addition: Symbolic): PathStore =

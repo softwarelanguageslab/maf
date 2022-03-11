@@ -3,7 +3,7 @@
          racket/contract)
 
 (define (wrap-at max i)
-  (if (i . >= . max)
+  (if (>= i max)
       (wrap-at max (- i max))
       i))
 (define (wrap+ max x y)

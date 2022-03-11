@@ -15,7 +15,7 @@ trait PerformanceEvaluationJMH:
         val _ = analysis(program).analyze()
 
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-@BenchmarkMode(Array(Mode.SampleTime))
+@BenchmarkMode(Array(Mode.AverageTime))
 class PerformanceEvaluationJMHZeroCFA extends PerformanceEvaluationJMH:
     def analysis = SchemeAnalyses.kCFAAnalysis(_, 0)
 
@@ -29,7 +29,7 @@ class PerformanceEvaluationJMHZeroCFA extends PerformanceEvaluationJMH:
     def scheme: Unit = runProgram("test/R5RS/gambit/scheme.scm", analysis)
 
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-@BenchmarkMode(Array(Mode.SampleTime))
+@BenchmarkMode(Array(Mode.AverageTime))
 class PerformanceEvaluationJMHOneCFA extends PerformanceEvaluationJMH:
     def analysis = SchemeAnalyses.kCFAAnalysis(_, 1)
 

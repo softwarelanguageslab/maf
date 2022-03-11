@@ -26,3 +26,19 @@ object SExpUtils:
         case SExpPair(car, cdr, _) =>
           f(car) :: smap(cdr, f)
         case snil => List()
+
+    /**
+     * Converts the given s-expression to a Scala list.
+     *
+     * If the given s-expression is not structued as a list (a sequence of pairs ending with the empty list) then an exception is thrown.
+     *
+     * @param sexp
+     *   the s-expression to convert to a list
+     * @return
+     *   a Scala list of s-expressions
+     */
+    extension (sexp: SExp)
+      def toList: List[SExp] = sexp match
+          case SNil(_)      => List()
+          case car :::: cdr => car :: cdr.toList
+          case _            => throw new Exception("not a list")

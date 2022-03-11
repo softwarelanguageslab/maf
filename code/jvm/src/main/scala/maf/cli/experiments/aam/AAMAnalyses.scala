@@ -121,11 +121,12 @@ object AAMAnalyses:
         with SchemeConstantPropagationDomain
         with SchemeAAMLocalStore
         with SimpleWorklistSystem[SchemeExp]
-        with SchemeAAMAnalysisResults {
+        with SchemeAAMAnalysisResults
+        with ScvReporter {
         //with SchemeStoreAllocateReturn
         lazy val satSolver: ScvSatSolver[LatVal] =
             given lat: SchemeLattice[LatVal, Address] = lattice
-            new JVMSatSolver
+            new JVMSatSolver(this)
       }
 
     def scvAAMFnCallBoundaries(
@@ -140,9 +141,10 @@ object AAMAnalyses:
         //with SchemeAAMLocalStore
         with BaseSchemeLoggingLocalStore
         with BaseSimpleWorklistSystem[SchemeExp]
-        with SchemeAAMAnalysisResults {
+        with SchemeAAMAnalysisResults
+        with ScvReporter {
         //with SchemeStoreAllocateReturn
         lazy val satSolver: ScvSatSolver[LatVal] =
             given lat: SchemeLattice[LatVal, Address] = lattice
-            new JVMSatSolver
+            new JVMSatSolver(this)
       }

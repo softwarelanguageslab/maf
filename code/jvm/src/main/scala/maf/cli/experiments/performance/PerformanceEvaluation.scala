@@ -101,9 +101,11 @@ trait PerformanceEvaluation:
             (Completed(result), resultMetrics)
         Future { run() }
 
+    protected val nameSuffix: String = ""
+
     protected def addResult(name: String, benchmark: Benchmark, result: PerformanceResult, metrics: List[Metrics]): Unit =
-        results = results.add(benchmark, name, result)
-        metrics.foreach(metric => results = results.add(benchmark, s"$name (${metric.name})", Completed(metric.results)))
+        results = results.add(benchmark, s"$name$nameSuffix", result)
+        metrics.foreach(metric => results = results.add(benchmark, s"$name" + "_" + s"${metric.name}", Completed(metric.results)))
 
     // Runs the evaluation
     def measureBenchmark(

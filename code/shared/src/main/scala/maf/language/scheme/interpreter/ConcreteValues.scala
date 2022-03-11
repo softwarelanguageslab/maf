@@ -34,6 +34,8 @@ object ConcreteValues:
             def idn = Identity.none
         case class PtrAddr(exp: SchemeExp) extends AddrInfo:
             def idn = exp.idn
+        case class PtrIgnoreAddr(exp: SchemeExp) extends AddrInfo:
+            def idn = exp.idn
 
     object Value:
 
@@ -104,3 +106,7 @@ object ConcreteValues:
 
         case object Void extends Value:
             override def toString: String = "#<void>"
+
+        /** An error as a value */
+        case class Error(e: ProgramError) extends Value:
+            override def toString: String = s"<#error: $e>"

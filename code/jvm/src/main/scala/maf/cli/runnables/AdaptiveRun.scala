@@ -24,13 +24,14 @@ import maf.core._
 
 object AdaptiveRun:
 
-    def main(args: Array[String]): Unit = testTransform()
+    def main(args: Array[String]): Unit = testConcrete()
 
     def testConcrete() =
         val txt =
           """
-          | (define x 2) 
-          | x
+          | (letrec ((x y)
+          |          (y 2))
+          |    y) 
           """.stripMargin
         val prg = CSchemeParser.parseProgram(txt)
         val int = new SchemeInterpreter(io = new FileIO(Map()))
@@ -42,12 +43,12 @@ object AdaptiveRun:
         }
 
     def testTransform(): Unit =
-        val txt = Reader.loadFile("test/R5RS/various/strong-update.scm")
+        val txt = Reader.loadFile("test/DEBUG2.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        println(prg)
+        println(prg.prettyString(2))
 
     def adaptiveAnalysisA(prg: SchemeExp, n: Int) =
       new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalCallSiteSensitivity(0) with FIFOWorklistAlgorithm[SchemeExp]:

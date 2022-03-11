@@ -89,11 +89,11 @@ object BaseSchemeMonadicUndefiner:
           _ <- put(currentState.copy(currentScope = newScope))
         } yield (currentState.currentScope.get.bindings.reverse, currentState.currentScope.get.topLevel)
 
-    def fresh: M[Identifier] =
+    def fresh(idn: Identity): M[Identifier] =
         import Ops.*
         for {
           currentState <- get
-          (newState, identifier) = currentState.fresh()
+          (newState, identifier) = currentState.fresh(idn)
           _ <- put(newState)
         } yield identifier
 
@@ -105,7 +105,7 @@ object BaseSchemeMonadicUndefiner:
           result <-
             if topLevel then
                 (for
-                    id <- fresh
+                    id <- fresh(exp.idn)
                     _ <- bind(id, exp)
                 yield List()
             )

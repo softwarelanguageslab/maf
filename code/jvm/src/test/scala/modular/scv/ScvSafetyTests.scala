@@ -26,4 +26,4 @@ trait ScvSafetyTests extends ScvAnalysisTests:
         }
       }
 
-class SimpleSafetyTests extends ScvSafetyTests with ContractSafetyTestsBenchmarks
+//class SimpleSafetyTests extends ScvSafetyTests with ContractSafetyTestsBenchmarks

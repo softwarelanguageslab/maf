@@ -10,9 +10,8 @@ import maf.util.benchmarks.Timeout
 import scala.concurrent.duration.*
 
 object InterpretProgram extends App:
-    val text = Reader.loadFile("test/changes/scheme/slip-1-to-2.scm")
-    println(CSchemeParser.parseProgram(text).prettyString())
-    val interpreter = new SchemeInterpreter((_, _) => (), stack = true)
+    val text = Reader.loadFile("test/R5RS/ad/stspaceCODE.scm")
+    val interpreter = new SchemeInterpreter((_, _) => ())
     try
         val res = interpreter.run(
           CSchemeParser.parseProgram(text),

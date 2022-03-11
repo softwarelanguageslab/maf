@@ -3,12 +3,16 @@ package maf.cli.experiments.precision
 import maf.language.scheme.interpreter.{EmptyIO, IO, SchemeInterpreter}
 import maf.language.ContractScheme.interpreter.{ConcreteValues, ContractSchemeInterpreter}
 import maf.cli.experiments.SchemeAnalyses
+import maf.util.*
 import maf.cli.experiments.aam.AAMAnalyses
 import maf.lattice.*
+import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.util.benchmarks.Timeout
+import scala.concurrent.duration.*
 import maf.language.scheme.*
 import maf.core.Identity
 import maf.language.ContractScheme.interpreter.ContractSchemeErrors.ContractSchemeBlame
+import maf.language.ContractScheme.*
 import maf.language.ContractScheme.ContractValues.*
 
 /**
@@ -28,7 +32,8 @@ object ScvPrecisionComparison
 
     def analyses: List[(SchemeExp => Analysis, String)] = List(
       (SchemeAnalyses.scvModAnalysisWithRacketFeatures, "scv-modf"),
-      (AAMAnalyses.scvAAMFnCallBoundaries, "scv-aam")
+      (SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore, "scv-modf-sharedps")
+      //(AAMAnalyses.scvAAMFnCallBoundaries, "scv-aam")
     )
 
     override def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO()): SchemeInterpreter =
@@ -62,3 +67,33 @@ object ScvPrecisionComparison
         case analysis.modularLatticeWrapper.modularLattice.StructSetterGetters(sgs) => baseDomain.StructSetterGetters(sgs)
         case analysis.modularLatticeWrapper.modularLattice.StructPredicates(p)      => baseDomain.StructPredicates(p)
         case _                                                                      => super.convertV(analysis)(value)
+
+    private val benchmarks: List[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks.toList
+
+    override def runs = 1
+
+    override def parseProgram(txt: String): SchemeExp =
+      SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
+
+    override def additionalCounts(analysisName: String, path: Benchmark, r1: ResultMap, r2: ResultMap): Unit =
+        // the concrete results are in r2, so if a blame is in r1, but not in r1 then it is a false positive
+        val nFalsePositives = r1.values
+          .flatMap(r1Values =>
+            baseDomain.schemeLattice
+              .getBlames(r1Values)
+              .map(r1Blame => if r2.values.flatMap(r2Value => baseDomain.schemeLattice.getBlames(r2Value)).toSet.contains(r1Blame) then 0 else 1)
+          )
+          .sum
+
+        results = results.add(path, s"$analysisName" + "_# false positives", Result.Success(nFalsePositives))
+
+    override def compareOrdered(r1: ResultMap, r2: ResultMap, check: Boolean = true): Set[Identity] =
+      // override check flag: checking is already done in soundness tests (except for unrelated, but in scv this in unavoidable because of the many synthesized calls)
+      super.compareOrdered(r1, r2, check = false)
+
+    def main(args: Array[String]) =
+        benchmarks.foreach(runBenchmark)
+        println(results.prettyString(format = _.toString))
+        Writer.setDefaultWriter(Writer.open("benchOutput/precision/scv-precision-benchmarks.csv"))
+        Writer.write(results.toCSVString(format = _.toString, rowName = "benchmark"))
+        Writer.closeDefaultWriter()

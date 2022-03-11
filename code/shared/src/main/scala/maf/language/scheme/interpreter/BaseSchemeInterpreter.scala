@@ -5,8 +5,10 @@ import maf.language.scheme._
 import maf.language.sexp
 import maf.language.sexp.{SExp, SExpId, SExpPair, SExpValue}
 import maf.util.benchmarks.Timeout
+import maf.core.Error
 
-case class ProgramError(msg: String) extends Exception
+case class ProgramError(msg: Error) extends Exception:
+    override def toString: String = msg.toString
 
 /** Common functionality for different Scheme interpreters, and interface methods needed for the primitives. */
 trait BaseSchemeInterpreter[V]:
@@ -60,10 +62,28 @@ trait BaseSchemeInterpreter[V]:
         store = s
       }
 
-    def allocateVal(exp: SchemeExp, value: Value): Value.Pointer =
-        val addr = newAddr(AddrInfo.PtrAddr(exp))
+    /**
+     * Allocate the given value on the address determined by the given Scheme expression.
+     *
+     * @param exp
+     *   the scheme expression that determines the address of the given value
+     * @param value
+     *   the value to allocate in the store
+     * @param ignore
+     *   whether to ignore the address for soundness tests
+     */
+    def allocateVal(exp: SchemeExp, value: Value, ignore: Boolean = false): Value.Pointer =
+        val addr = newAddr(if ignore then AddrInfo.PtrIgnoreAddr(exp) else AddrInfo.PtrAddr(exp))
         extendStore(addr, value)
         Value.Pointer(addr)
+
+    /** Allocate the given pair recursively in the store. */
+    def allocateAll(exp: SchemeExp, value: Value): ConcreteValues.Value = value match
+        case ConcreteValues.Value.Cons(car, cdr) =>
+          val carAlloc = allocateAll(exp, car)
+          val cdrAlloc = allocateAll(exp, cdr)
+          allocateVal(exp, ConcreteValues.Value.Cons(carAlloc, cdrAlloc))
+        case _ => value
 
     def allocateCons(
         exp: SchemeExp,
@@ -83,10 +103,8 @@ trait BaseSchemeInterpreter[V]:
         case Nil                  => Value.Nil
         case (exp, value) :: rest => allocateCons(exp, value, makeList(rest))
 
-    val stack: Boolean
-
     /** Signals an error in the program to the user. */
-    def signalException[R](msg: String): R = throw ProgramError(msg)
+    def signalException[R](msg: Error): R = throw ProgramError(msg)
 
     val io: IO
 
