@@ -129,7 +129,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
           ) match
               case None =>
                 results = results.add(file, columnName(timeS, initS), Timedout)
-                return
+                return ()
               case Some((ts, tsi)) =>
                 val stats = Statistics.all(ts)
                 val statsIntra = Statistics.all(tsi)
@@ -265,7 +265,8 @@ object IncrementalSchemeModXPerformance:
         val outDir: String = "benchOutput/"
 
         val (curatedSuite, generatedSuite) = args.count match {
-          case Some(n) => (IncrementalSchemeBenchmarkPrograms.sequential.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
+          case Some(n) =>
+            (IncrementalSchemeBenchmarkPrograms.sequential.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
           case None => (IncrementalSchemeBenchmarkPrograms.sequential.toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
         }
 

@@ -91,7 +91,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         if runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) || runAnalysis("rean ", timeOut => a2.analyzeWithTimeout(timeOut)) then
             print("timed out.")
             columns.foreach(c => results = results.add(file, c, infS))
-            return
+            return ()
 
         configurations.foreach { config =>
             val copy = a1.deepCopy()
@@ -112,7 +112,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         if runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) then
             print("timed out.")
             columns.foreach(c => resultsNoOpt = resultsNoOpt.add(file, c, infS))
-            return
+            return ()
 
         // Update the analysis without optimisations. Needs to finish as well.
         val a2 = a1.deepCopy()
@@ -120,7 +120,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         if runAnalysis("noOpt ", timeOut => a2.updateAnalysis(timeOut)) then
             print("timed out.")
             columns.foreach(c => resultsNoOpt = resultsNoOpt.add(file, c, infS))
-            return
+            return ()
 
         configurations.foreach { config =>
             val copy = a1.deepCopy()
