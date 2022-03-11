@@ -138,10 +138,10 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         .toCSVString(columns = columns, rowName = "benchmark")}"
 
     override def execute(args: Array[String]): String =
-      // Clear the state.
-      results = Table.empty.withDefaultValue(" ")
-      resultsNoOpt = Table.empty.withDefaultValue(" ")
-      super.execute(args)
+        // Clear the state.
+        results = Table.empty.withDefaultValue(" ")
+        resultsNoOpt = Table.empty.withDefaultValue(" ")
+        super.execute(args)
 
 /* ************************** */
 /* ***** Instantiations ***** */
@@ -205,17 +205,34 @@ object IncrementalSchemeModXPrecision:
         val outDir: String = "benchOutput/"
 
         val (curatedSuite, generatedSuite) = args.count match {
-          case Some(n) => (IncrementalSchemeBenchmarkPrograms.sequential.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
+          case Some(n) =>
+            (IncrementalSchemeBenchmarkPrograms.sequential.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
           case None => (IncrementalSchemeBenchmarkPrograms.sequential.toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
         }
 
         if args.typeLattice then
-            if args.curated then splitOutput(IncrementalSchemeModFTypePrecision.execute(curatedSuite), s"${outDir}type-curated-precision.csv", s"${outDir}type-curated-precision-noopt.csv")
-            if args.generated then splitOutput(IncrementalSchemeModFTypePrecision.execute(generatedSuite), s"${outDir}type-generated-precision.csv", s"${outDir}type-generated-precision-noopt.csv")
+            if args.curated then
+                splitOutput(IncrementalSchemeModFTypePrecision.execute(curatedSuite),
+                            s"${outDir}type-curated-precision.csv",
+                            s"${outDir}type-curated-precision-noopt.csv"
+                )
+            if args.generated then
+                splitOutput(IncrementalSchemeModFTypePrecision.execute(generatedSuite),
+                            s"${outDir}type-generated-precision.csv",
+                            s"${outDir}type-generated-precision-noopt.csv"
+                )
         end if
         if args.cpLattice then
-            if args.curated then splitOutput(IncrementalSchemeModFCPPrecision.execute(curatedSuite), s"${outDir}cp-curated-precision.csv", s"${outDir}cp-curated-precision-noopt.csv")
-            if args.generated then splitOutput(IncrementalSchemeModFCPPrecision.execute(generatedSuite), s"${outDir}cp-generated-precision.csv", s"${outDir}cp-generated-precision-noopt.csv")
+            if args.curated then
+                splitOutput(IncrementalSchemeModFCPPrecision.execute(curatedSuite),
+                            s"${outDir}cp-curated-precision.csv",
+                            s"${outDir}cp-curated-precision-noopt.csv"
+                )
+            if args.generated then
+                splitOutput(IncrementalSchemeModFCPPrecision.execute(generatedSuite),
+                            s"${outDir}cp-generated-precision.csv",
+                            s"${outDir}cp-generated-precision-noopt.csv"
+                )
         end if
     end main
 end IncrementalSchemeModXPrecision
