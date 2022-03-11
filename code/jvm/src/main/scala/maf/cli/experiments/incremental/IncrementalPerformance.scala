@@ -262,7 +262,7 @@ object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformanc
 
 object IncrementalSchemeModXPerformance:
     def main(args: IncArgs): Unit =
-        val outDir: String = "benchOutput/incremental/"
+        val outDir: String = "benchOutput/"
 
         val (curatedSuite, generatedSuite) = args.count match {
           case Some(n) => (IncrementalSchemeBenchmarkPrograms.sequential.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
