@@ -138,9 +138,15 @@ object IncrementalSchemeModConcCPProperties extends IncrementalSchemeProperties:
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXProperties:
-    def main(args: Array[String]): Unit =
-        //IncrementalSchemeModFTypeProperties.execute(args)
-        IncrementalSchemeModFCPProperties.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
-        IncrementalSchemeModFCPProperties.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
-//IncrementalSchemeModConcTypeProperties.execute(args)
-//IncrementalSchemeModConcCPProperties.execute(args)
+    def main(args: IncArgs): Unit =
+        if args.typeLattice then
+            if args.curated then IncrementalSchemeModFTypeProperties.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+            if args.generated then IncrementalSchemeModFTypeProperties.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        end if
+
+        if args.cpLattice then
+            if args.curated then IncrementalSchemeModFCPProperties.execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+            if args.generated then IncrementalSchemeModFCPProperties.execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+        end if
+    end main
+end IncrementalSchemeModXProperties

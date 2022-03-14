@@ -2,9 +2,11 @@ package maf.util
 
 import maf.util.StringUtil.NumberedStrings
 
-import java.io._
+import java.io.*
 import maf.util.Writer.Writer
 import maf.util.benchmarks.Clock
+
+import java.nio.file.{Paths, StandardCopyOption}
 
 // null values are used here due to Java interop
 import scala.language.unsafeNulls
@@ -228,3 +230,10 @@ object MAFLogger:
                     logger.enable()
                     loggers(level) = Some(logger)
                     logger.log(finalMsg)
+
+object FileOps:
+
+    def copy(source: String, destination: String): Unit =
+      java.nio.file.Files.copy(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING)
+
+end FileOps

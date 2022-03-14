@@ -245,7 +245,7 @@ class ContractSchemeInterpreter(
         ops.zip(argsv).zip(args).foreach { case ((op, argv), arg) =>
           Primitives.allPrimitives(opToPrimMapping(op)).call(call, List((arg, argv))) match
               case ConcreteValues.Value.Bool(b) if !b => throw new ContractSchemeBlame(call.idn, arg.idn, Some(idn))
-              case _ => ()
+              case _                                  => ()
         }
 
     override def applyFun(
