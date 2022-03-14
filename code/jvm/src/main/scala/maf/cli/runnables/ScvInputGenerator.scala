@@ -55,8 +55,8 @@ object ScvInputGenerator:
         val tmpFile = Files.createTempFile(null, ".rkt")
         val openFile = Writer.open(tmpFile.toString)
         // Write to the tmpFile
-        openFile.write(program)
-        openFile.close
+        Writer.write(openFile, program)
+        Writer.close(openFile)
         // Run the file using Racket
         import scala.sys.process._
         try s"racket ${tmpFile}".!!
@@ -68,8 +68,8 @@ object ScvInputGenerator:
     /** Write the given contents to a file */
     private def writeToFile(contents: String, path: String = ""): Unit =
         val writer = Writer.open(s"input/generated/${path.replace("/", "_")}.scm")
-        writer.write(contents)
-        writer.close
+        Writer.write(writer, contents)
+        Writer.close(writer)
 
     def main(args: Array[String]): Unit =
         val programs = benchmarks

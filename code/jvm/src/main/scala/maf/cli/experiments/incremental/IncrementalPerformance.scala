@@ -111,8 +111,8 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
       try
           results = Table.empty.withDefaultValue(NotRun)
           if first then
-              Writer.disableReporting()
-              Writer.writeln(results.toCSVString(columns = cols, rowName = "benchmark"))
+              Writer.disableReporting(output)
+              Writer.writeln(output, results.toCSVString(columns = cols, rowName = "benchmark"))
               first = false
 
           val program = parse(file)
@@ -203,12 +203,12 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
                       .add(file, columnName(stdIntraS, config.toString), Value(scala.math.round(statsIntra.stddev)))
           }
           val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
-          Writer.writeln(lst(1))
+          Writer.writeln(output, lst(1))
       catch
           case _ =>
             reportError(file)
             val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
-            Writer.writeln(lst(1))
+            Writer.writeln(output, lst(1))
     end onBenchmark
 
     def createOutput(): String = "" // Results are written during benchmarking.
