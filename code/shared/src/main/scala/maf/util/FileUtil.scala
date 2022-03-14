@@ -26,10 +26,7 @@ object Reader:
  */
 object Writer:
 
-    private case class W(w: BufferedWriter, var report: Boolean):
-      def enableReporting(): Unit = report = true
-      def disableReporting(): Unit = report = false
-      def isReporting: Boolean = report
+    private case class W(w: BufferedWriter, var report: Boolean)
 
     opaque type Writer = W
 
@@ -52,14 +49,14 @@ object Writer:
 
     def close(writer: Writer): Unit = writer._1.close()
 
-    def enableReporting(writer: Writer): Unit = writer.enableReporting()
-    def disableReporting(writer: Writer): Unit = writer.disableReporting()
+    def enableReporting(writer: Writer): Unit = writer.report = true
+    def disableReporting(writer: Writer): Unit = writer.report = false
 
     // Avoid output being buffered.
     def write(writer: Writer, data: String): String =
         writer.w.write(data)
         writer.w.flush()
-        if writer.isReporting then
+        if writer.report then
             System.out.print(data)
             System.out.flush()
         data
