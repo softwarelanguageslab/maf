@@ -137,12 +137,6 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
       s"Compared to full reanalysis:\n${results.toCSVString(columns = columns, rowName = "benchmark")}\n\nCompared to noOpt:\n${resultsNoOpt
         .toCSVString(columns = columns, rowName = "benchmark")}"
 
-    override def execute(args: Array[String]): String =
-        // Clear the state.
-        results = Table.empty.withDefaultValue(" ")
-        resultsNoOpt = Table.empty.withDefaultValue(" ")
-        super.execute(args)
-
 /* ************************** */
 /* ***** Instantiations ***** */
 /* ************************** */
@@ -155,23 +149,23 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
     override def timeout(): Timeout.T = Timeout.start(Duration(30, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
-object IncrementalSchemeModFTypePrecision extends IncrementalSchemePrecision:
+class IncrementalSchemeModFTypePrecision() extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
     val outputFile: String = "precision/modf-type.txt"
 
-object IncrementalSchemeModFCPPrecision extends IncrementalSchemePrecision:
+class IncrementalSchemeModFCPPrecision() extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
     val outputFile: String = "precision/modf-CP.txt"
 
-object IncrementalSchemeModConcTypePrecision extends IncrementalSchemePrecision:
+class IncrementalSchemeModConcTypePrecision() extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
     val outputFile: String = "precision/modconc-type.txt"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
-object IncrementalSchemeModConcCPPrecision extends IncrementalSchemePrecision:
+class IncrementalSchemeModConcCPPrecision() extends IncrementalSchemePrecision:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
     val outputFile: String = "precision/modconc-CP.txt"
@@ -212,24 +206,24 @@ object IncrementalSchemeModXPrecision:
 
         if args.typeLattice then
             if args.curated then
-                splitOutput(IncrementalSchemeModFTypePrecision.execute(curatedSuite),
+                splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite),
                             s"${outDir}type-curated-precision.csv",
                             s"${outDir}type-curated-precision-noopt.csv"
                 )
             if args.generated then
-                splitOutput(IncrementalSchemeModFTypePrecision.execute(generatedSuite),
+                splitOutput((new IncrementalSchemeModFTypePrecision).execute(generatedSuite),
                             s"${outDir}type-generated-precision.csv",
                             s"${outDir}type-generated-precision-noopt.csv"
                 )
         end if
         if args.cpLattice then
             if args.curated then
-                splitOutput(IncrementalSchemeModFCPPrecision.execute(curatedSuite),
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite),
                             s"${outDir}cp-curated-precision.csv",
                             s"${outDir}cp-curated-precision-noopt.csv"
                 )
             if args.generated then
-                splitOutput(IncrementalSchemeModFCPPrecision.execute(generatedSuite),
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite),
                             s"${outDir}cp-generated-precision.csv",
                             s"${outDir}cp-generated-precision-noopt.csv"
                 )

@@ -60,8 +60,13 @@ trait IncrementalExperiment[E <: Expression]:
             println()
         }
 
+    /** Ensure that an instance of an evaluation class can be used only once, to avoid polluting the wrong state. */
+    private var executed = false
+
     /** Runs the benchmarks. Returns the path to the output file. */
     def execute(args: Array[String]): String =
+        if executed then throw new Exception("Evaluation using this instance already executed. Create new instance of evaluation class.")
+        executed = true
         val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
         setDefaultWriter(writer)
         enableReporting()

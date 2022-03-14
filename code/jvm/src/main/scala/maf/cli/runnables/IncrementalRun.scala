@@ -165,8 +165,8 @@ object IncrementalRun extends App:
             opt.updateAnalysis(newTimeout())
             assert(opt.finished)
 
-        compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
-        //compareAnalyses(opt, noOpt, s"${opt.configuration.toString} vs. No Opt")
+            compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
+            //compareAnalyses(opt, noOpt, s"${opt.configuration.toString} vs. No Opt")
         }
 
       } catch {
