@@ -246,11 +246,17 @@ jobs:
           java-version: openjdk@1.15
       - name: Run incremental tests
         run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
+        env: 
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
         uses: voxmedia/github-action-slack-notify-build@v1
         with:
           message_id: ${{ steps.slack.outputs.message_id }}
@@ -277,6 +283,9 @@ jobs:
           java-version: openjdk@1.15
       - name: Run incremental tests
         run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
+        env: 
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
