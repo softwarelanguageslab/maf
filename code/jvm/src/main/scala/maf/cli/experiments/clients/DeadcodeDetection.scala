@@ -126,8 +126,8 @@ abstract class DeadcodeMain:
           table.add(benchmark, "% dead expressions", result.fractionDeadLines)
         }
         val writer = Writer.openTimeStamped(s"out/$name")
-        writer.write(outputTable.toCSVString(rowName = "benchmark"))
-        writer.close()
+        Writer.write(writer, outputTable.toCSVString(rowName = "benchmark"))
+        Writer.close(writer)
 
 object DeadcodeSchemeBenchmarks extends DeadcodeMain:
     val benchmarks: List[String] =

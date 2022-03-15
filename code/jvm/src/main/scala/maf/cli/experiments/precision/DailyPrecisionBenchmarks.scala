@@ -37,6 +37,6 @@ object DailyPrecisionBenchmarks
     def main(args: Array[String]) =
         benchmarks.foreach(runBenchmark)
         println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
-        Writer.setDefaultWriter(Writer.open("benchOutput/precision/daily-precision-benchmarks.csv"))
-        Writer.write(results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
-        Writer.closeDefaultWriter()
+        val writer = Writer.open("benchOutput/precision/daily-precision-benchmarks.csv")
+        Writer.write(writer, results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
+        Writer.close(writer)

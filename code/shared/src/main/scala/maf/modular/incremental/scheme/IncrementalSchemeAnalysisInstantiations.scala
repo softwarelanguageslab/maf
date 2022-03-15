@@ -78,7 +78,9 @@ object IncrementalSchemeAnalysisInstantiations:
         with SchemeModFNoSensitivity
         with SchemeModFSemanticsM
         with LIFOWorklistAlgorithm[SchemeExp]
-        with IncrementalSchemeModFBigStepSemantics
+        with IncrementalSchemeModFBigStepSemantics {
+      override def warn(msg: String): Unit = ()
+    }
 
     /**
      * Builds an incremental ModF Analysis for the given Scheme program with the following properties: <ul> <li>Uses standard scheme ModF components

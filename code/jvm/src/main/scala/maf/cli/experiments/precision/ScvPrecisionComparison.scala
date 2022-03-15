@@ -94,6 +94,6 @@ object ScvPrecisionComparison
     def main(args: Array[String]) =
         benchmarks.foreach(runBenchmark)
         println(results.prettyString(format = _.toString))
-        Writer.setDefaultWriter(Writer.open("benchOutput/precision/scv-precision-benchmarks.csv"))
-        Writer.write(results.toCSVString(format = _.toString, rowName = "benchmark"))
-        Writer.closeDefaultWriter()
+        val writer = Writer.open("benchOutput/precision/scv-precision-benchmarks.csv")
+        Writer.write(writer, results.toCSVString(format = _.toString, rowName = "benchmark"))
+        Writer.close(writer)

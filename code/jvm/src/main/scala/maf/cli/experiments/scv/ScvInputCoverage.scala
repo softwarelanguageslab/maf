@@ -21,8 +21,8 @@ object ScvInputCoverage:
         val table =
           coverage.zip(benchmarks).foldLeft(Table.empty[Double]) { case (table, (coverage, benchmark)) => table.add(benchmark, "coverage", coverage) }
         val (writer, name) = Writer.openTimeStampedGetName("out/scv-line-coverage.csv")
-        writer.write(table.toCSVString(rowName = "name"))
-        writer.close()
+        Writer.write(writer, table.toCSVString(rowName = "name"))
+        Writer.close(writer)
 
         val python = PythonBridge("./scripts/Python/scv/")
         val basePath = System.getProperty("user.dir")

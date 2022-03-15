@@ -1,8 +1,9 @@
 package maf.cli.experiments.incremental
 
 import maf.core.Expression
-import maf.modular.incremental._
-import maf.util.Writer._
+import maf.modular.incremental.*
+import maf.util.Writer.*
+import maf.util.Writer
 import maf.util.benchmarks.Timeout
 
 trait IncrementalExperiment[E <: Expression]:
@@ -60,15 +61,21 @@ trait IncrementalExperiment[E <: Expression]:
             println()
         }
 
+    var output: Writer = _
+
+    /** Ensure that an instance of an evaluation class can be used only once, to avoid polluting the wrong state. */
+    private var executed = false
+
     /** Runs the benchmarks. Returns the path to the output file. */
     def execute(args: Array[String]): String =
+        if executed then throw new Exception("Evaluation using this instance already executed. Create new instance of evaluation class.")
+        executed = true
         val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
-        setDefaultWriter(writer)
-        enableReporting()
+        output = writer
+        Writer.enableReporting(output)
         if args.isEmpty then measure()
         else measure(Some(args.toSet))
         val out: String = createOutput()
-        writeln(out)
-        closeDefaultWriter()
-        disableReporting()
+        writeln(output, out)
+        Writer.close(output)
         file

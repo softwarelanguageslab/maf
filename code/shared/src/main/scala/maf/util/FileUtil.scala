@@ -21,20 +21,19 @@ object Reader:
         content
 
 /**
- * Utility to write to plain text files. Can also be modifief to write to csv files using a CSVWriter, CSVWriter.NO_QUOTE_CHARACTER and the writeNext
+ * Utility to write to plain text files. Can also be modified to write to csv files using a CSVWriter, CSVWriter.NO_QUOTE_CHARACTER and the writeNext
  * method.
  */
 object Writer:
 
-    type Writer = BufferedWriter
+    private case class W(w: BufferedWriter, var report: Boolean)
 
-    private var defaultWriter: Writer = _
-    var report: Boolean = false
+    opaque type Writer = W
 
     def open(path: String): Writer =
         val file = new File(path)
         file.getParentFile().nn.mkdirs() // Creates the directory containing the file if it does not exists
-        new BufferedWriter(new FileWriter(file))
+        W(new BufferedWriter(new FileWriter(file)), false)
 
     def openTimeStamped(path: String): Writer =
       path.split("\\.").nn match
@@ -48,39 +47,30 @@ object Writer:
             (open(out), out)
           case _ => throw new Exception(s"Illegal path: $path")
 
-    def close(writer: Writer): Unit = writer.close()
+    def close(writer: Writer): Unit = writer._1.close()
 
-    def setDefaultWriter(writer: Writer): Unit = defaultWriter = writer
-    def closeDefaultWriter(): Unit = defaultWriter.close()
-
-    def enableReporting(): Unit = report = true
-    def disableReporting(): Unit = report = false
+    def enableReporting(writer: Writer): Unit = writer.report = true
+    def disableReporting(writer: Writer): Unit = writer.report = false
 
     // Avoid output being buffered.
     def write(writer: Writer, data: String): String =
-        writer.write(data)
-        writer.flush()
-        if report then
+        writer.w.write(data)
+        writer.w.flush()
+        if writer.report then
             System.out.print(data)
             System.out.flush()
         data
-
     def writeln(writer: Writer, data: String): String = write(writer, data + "\n")
-
-    def write(data: String = "\n"): String = write(defaultWriter, data)
-    def writeln(data: String = "\n"): String = writeln(defaultWriter, data)
 
     def writeErr(writer: Writer, data: String): String =
         System.err.print(data)
         System.err.flush()
-        writer.write(data)
-        writer.flush()
+        writer.w.write(data)
+        writer.w.flush()
         data
-
     def writeErrln(writer: Writer, data: String): String = writeErr(writer, data + "\n")
 
-    def writeErr(data: String = "\n"): String = writeErr(defaultWriter, data)
-    def writeErrln(data: String = "\n"): String = writeErrln(defaultWriter, data)
+    def flush(writer: Writer): Unit = writer._1.flush()
 
 object Formatter:
 
@@ -116,20 +106,20 @@ object Logger:
 
         /** Logs a message to a file. */
         def log(string: String): Unit = if enabled then
-            writer.write(string + "\n")
-            writer.flush()
+            Writer.write(writer, string + "\n")
+            Writer.flush(writer)
 
         /** Logs a message to a file, and includes a timestamp. */
         def logT(string: String): Unit = if enabled then
-            writer.write(s"${Clock.nowStr()} : $string\n")
-            writer.flush()
+            Writer.write(writer, s"${Clock.nowStr()} : $string\n")
+            Writer.flush(writer)
 
         /** Logs an exception and its corresponding stacktrace to a file. */
         def logException(t: Throwable): Unit = if enabled then
-            writer.write(t.toString + "\n" + t.getStackTrace.map(_.toString).mkString("\n"))
-            writer.flush()
+            Writer.write(writer, t.toString + "\n" + t.getStackTrace.map(_.toString).mkString("\n"))
+            Writer.flush(writer)
 
-        def close(): Unit = writer.close()
+        def close(): Unit = Writer.close(writer)
 
     class NumberedLog(private val writer: Writer) extends Log(writer) with NumberedStrings:
 

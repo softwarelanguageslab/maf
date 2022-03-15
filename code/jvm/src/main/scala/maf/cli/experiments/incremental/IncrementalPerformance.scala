@@ -111,8 +111,8 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
       try
           results = Table.empty.withDefaultValue(NotRun)
           if first then
-              Writer.disableReporting()
-              Writer.writeln(results.toCSVString(columns = cols, rowName = "benchmark"))
+              Writer.disableReporting(output)
+              Writer.writeln(output, results.toCSVString(columns = cols, rowName = "benchmark"))
               first = false
 
           val program = parse(file)
@@ -203,12 +203,12 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
                       .add(file, columnName(stdIntraS, config.toString), Value(scala.math.round(statsIntra.stddev)))
           }
           val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
-          Writer.writeln(lst(1))
+          Writer.writeln(output, lst(1))
       catch
           case _ =>
             reportError(file)
             val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
-            Writer.writeln(lst(1))
+            Writer.writeln(output, lst(1))
     end onBenchmark
 
     def createOutput(): String = "" // Results are written during benchmarking.
@@ -222,7 +222,7 @@ trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     override def timeout(): Timeout.T = Timeout.start(Duration(30, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
-object IncrementalSchemeModFTypePerformance extends IncrementalSchemePerformance:
+class IncrementalSchemeModFTypePerformance() extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with SplitPerformance[SchemeExp] {
@@ -231,7 +231,7 @@ object IncrementalSchemeModFTypePerformance extends IncrementalSchemePerformance
     }
     val outputFile: String = s"performance/modf-type.csv"
 
-object IncrementalSchemeModFCPPerformance extends IncrementalSchemePerformance:
+class IncrementalSchemeModFCPPerformance() extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
       with SplitPerformance[SchemeExp] {
@@ -240,7 +240,7 @@ object IncrementalSchemeModFCPPerformance extends IncrementalSchemePerformance:
     }
     val outputFile: String = s"performance/modf-CP.csv"
 
-object IncrementalSchemeModConcTypePerformance extends IncrementalSchemePerformance:
+class IncrementalSchemeModConcTypePerformance() extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
       with SplitPerformance[SchemeExp] {
@@ -250,7 +250,7 @@ object IncrementalSchemeModConcTypePerformance extends IncrementalSchemePerforma
     val outputFile: String = s"performance/modconc-type.csv"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
-object IncrementalSchemeModConcCPPerformance extends IncrementalSchemePerformance:
+class IncrementalSchemeModConcCPPerformance() extends IncrementalSchemePerformance:
     override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
       with SplitPerformance[SchemeExp] {
@@ -271,31 +271,35 @@ object IncrementalSchemeModXPerformance:
         }
 
         if args.typeLattice then
-            IncrementalSchemeModFTypePerformance.maxWarmupRuns = args.warmUp
-            IncrementalSchemeModFTypePerformance.measuredRuns = args.repetitions
-
             if args.curated then
-                val curatedType = IncrementalSchemeModFTypePerformance.execute(curatedSuite)
+                val modfTypeCur = new IncrementalSchemeModFTypePerformance()
+                modfTypeCur.maxWarmupRuns = args.warmUp
+                modfTypeCur.measuredRuns = args.repetitions
+                val curatedType = modfTypeCur.execute(curatedSuite)
                 FileOps.copy(curatedType, outDir + "type-curated-performance.csv")
             end if
             if args.generated then
-                IncrementalSchemeModFTypePerformance.first = true
-                val generatedType = IncrementalSchemeModFTypePerformance.execute(generatedSuite)
+                val modfTypeGen = new IncrementalSchemeModFTypePerformance()
+                modfTypeGen.maxWarmupRuns = args.warmUp
+                modfTypeGen.measuredRuns = args.repetitions
+                val generatedType = modfTypeGen.execute(generatedSuite)
                 FileOps.copy(generatedType, outDir + "type-generated-performance.csv")
             end if
         end if
 
         if args.cpLattice then
-            IncrementalSchemeModFCPPerformance.maxWarmupRuns = args.warmUp
-            IncrementalSchemeModFCPPerformance.measuredRuns = args.repetitions
-
             if args.curated then
-                val curatedCP = IncrementalSchemeModFCPPerformance.execute(curatedSuite)
+                val modfCPCur = new IncrementalSchemeModFCPPerformance()
+                modfCPCur.maxWarmupRuns = args.warmUp
+                modfCPCur.measuredRuns = args.repetitions
+                val curatedCP = modfCPCur.execute(curatedSuite)
                 FileOps.copy(curatedCP, outDir + "cp-curated-performance.csv")
             end if
             if args.generated then
-                IncrementalSchemeModFCPPerformance.first = true
-                val generatedCP = IncrementalSchemeModFCPPerformance.execute(generatedSuite)
+                val modfCPGen = new IncrementalSchemeModFCPPerformance()
+                modfCPGen.maxWarmupRuns = args.warmUp
+                modfCPGen.measuredRuns = args.repetitions
+                val generatedCP = modfCPGen.execute(generatedSuite)
                 FileOps.copy(generatedCP, outDir + "cp-generated-performance.csv")
             end if
         end if
