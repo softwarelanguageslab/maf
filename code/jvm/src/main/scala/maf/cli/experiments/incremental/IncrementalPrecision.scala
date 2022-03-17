@@ -150,12 +150,12 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypePrecision() extends IncrementalSchemePrecision:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
+    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequentialCurated //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
     val outputFile: String = "precision/modf-type.txt"
 
 class IncrementalSchemeModFCPPrecision() extends IncrementalSchemePrecision:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequentialCurated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
     val outputFile: String = "precision/modf-CP.txt"
 
@@ -200,8 +200,8 @@ object IncrementalSchemeModXPrecision:
 
         val (curatedSuite, generatedSuite) = args.count match {
           case Some(n) =>
-            (IncrementalSchemeBenchmarkPrograms.sequential.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
-          case None => (IncrementalSchemeBenchmarkPrograms.sequential.toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+            (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
+          case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated.toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
         }
 
         if args.typeLattice then

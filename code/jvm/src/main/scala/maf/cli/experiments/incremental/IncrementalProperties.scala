@@ -118,7 +118,7 @@ class IncrementalSchemeModFTypeProperties() extends IncrementalSchemeProperties:
     val outputFile: String = s"properties/modf-type.csv"
 
 class IncrementalSchemeModFCPProperties() extends IncrementalSchemeProperties:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequentialCurated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
       with CountIntraAnalyses[SchemeExp]
     val outputFile: String = s"properties/modf-CP.csv"
@@ -140,12 +140,12 @@ class IncrementalSchemeModConcCPProperties() extends IncrementalSchemeProperties
 object IncrementalSchemeModXProperties:
     def main(args: IncArgs): Unit =
         if args.typeLattice then
-            if args.curated then (new IncrementalSchemeModFTypeProperties).execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+            if args.curated then (new IncrementalSchemeModFTypeProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialCurated.toArray)
             if args.generated then (new IncrementalSchemeModFTypeProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
         end if
 
         if args.cpLattice then
-            if args.curated then (new IncrementalSchemeModFCPProperties).execute(IncrementalSchemeBenchmarkPrograms.sequential.toArray)
+            if args.curated then (new IncrementalSchemeModFCPProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialCurated.toArray)
             if args.generated then (new IncrementalSchemeModFCPProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
         end if
     end main

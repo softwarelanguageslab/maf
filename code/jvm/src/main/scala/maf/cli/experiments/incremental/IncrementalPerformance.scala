@@ -223,7 +223,7 @@ trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypePerformance() extends IncrementalSchemePerformance:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
+    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequentialCurated //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with SplitPerformance[SchemeExp] {
       override def intraAnalysis(cmp: Component) =
@@ -232,7 +232,7 @@ class IncrementalSchemeModFTypePerformance() extends IncrementalSchemePerformanc
     val outputFile: String = s"performance/modf-type.csv"
 
 class IncrementalSchemeModFCPPerformance() extends IncrementalSchemePerformance:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
+    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequentialCurated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
       with SplitPerformance[SchemeExp] {
       override def intraAnalysis(cmp: Component) =
@@ -266,8 +266,8 @@ object IncrementalSchemeModXPerformance:
 
         val (curatedSuite, generatedSuite) = args.count match {
           case Some(n) =>
-            (IncrementalSchemeBenchmarkPrograms.sequential.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
-          case None => (IncrementalSchemeBenchmarkPrograms.sequential.toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+            (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
+          case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated.toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
         }
 
         if args.typeLattice then

@@ -78,10 +78,7 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
 
 class ModFComparisonTests extends IncrementalModXComparisonTests:
 
-    override def benchmarks: Set[Benchmark] =
-      SmartUnion.sunion(SmartUnion.sunion(super.benchmarks, IncrementalSchemeBenchmarkPrograms.sequential),
-                        IncrementalSchemeBenchmarkPrograms.sequentialGenerated
-      )
+    override def benchmarks: Set[Benchmark] = super.benchmarks ++ IncrementalSchemeBenchmarkPrograms.sequential
 
     abstract class BaseAnalysis(program: SchemeExp)
         extends ModAnalysis[SchemeExp](program)
