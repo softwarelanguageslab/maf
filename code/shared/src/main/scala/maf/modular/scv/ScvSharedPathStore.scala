@@ -23,7 +23,9 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
             //println(s"=== intra sem $cmp ==")
             val answers = super.runIntraSemantics(initialState)
             // answers.map(_._2).foreach(answer => println(s"+++ answer: ${answer.pc}"))
-            writeMapAddr(cmp, Formula.join(answers.map(_._2.formula).toList: _*))
+            val formulas = answers.map(_._2.formula).toList
+            writeMapAddr(cmp, Formula.join(formulas: _*))
+            formulas.foreach { formula => println(s"+++ formula $formula") }
             //println(s"answer $answers")
             answers
 
@@ -33,7 +35,9 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
             context(targetCmp) match
                 case Some(k: KPathCondition[_]) =>
                   val readPc = readPathCondition(targetCmp)
-                  val revertedPc = k.changes.reverse.foldLeft(readPc)((pc, change) => pc.revert(change))
+                  val gcPc = readPc.gc(k.symArgs.values.toSet)
+
+                  val revertedPc = k.changes.reverse.foldLeft(gcPc)((pc, change) => pc.revert(change))
 
                   for
                       pc <- getPc

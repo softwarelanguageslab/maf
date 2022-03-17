@@ -103,6 +103,14 @@ case class PathCondition(formula: Formula):
     def revert(changeset: List[SymChange]): PathCondition =
       PathCondition(changeset.foldLeft(formula)((formula, change) => change.revert(formula)))
 
+    /** Garbage collect the path condition */
+    def gc(roots: Set[SchemeExp]): PathCondition =
+      PathCondition(
+        formula
+          .mapOption(expr => if expr.allSubexpressions.collect { case e: SchemeExp => e }.exists(roots.contains) then Some(expr) else None)
+          .getOrElse(EmptyFormula)
+      )
+
     /**
      * Simplify the current path expression, replacing assertions with simplified versions if required
      *
@@ -121,13 +129,7 @@ case class PathCondition(formula: Formula):
         var roots: Set[SchemeExp] = oldRoots
 
         // only keep those assertions that are in the set of roots
-        val garbageCollectedFormula =
-          PathCondition(
-            formula
-              .mapOption(expr => if expr.allSubexpressions.collect { case e: SchemeExp => e }.exists(roots.contains) then Some(expr) else None)
-              .getOrElse(EmptyFormula)
-          )
-
+        val garbageCollectedFormula = this.gc(roots)
         for
             // rewrite the formula such that only allowed roots are represented by their original expression
             rewrittenFormula <- garbageCollectedFormula.formula

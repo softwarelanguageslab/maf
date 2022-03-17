@@ -142,7 +142,9 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
               for
                   pc <- getPc
                   // simplify the path condition such that it only contains expressions in the root set
-                  result <- pc.simplify(roots, PathCondition.onlyVarsAllowed, fresh)
+                  result <- withFresh {
+                    pc.simplify(roots, PathCondition.onlyVarsAllowed, fresh)
+                  }
                   // get the new path condition and the changes performed to obtain the new path condition
                   (newPc, changes) = result
                   // apply the changes on the lexical store cache
