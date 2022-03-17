@@ -5,7 +5,7 @@ import maf.core.Address
 import maf.core.{Identifier, Identity}
 import maf.modular.scv.*
 import maf.core.Monad.*
-import maf.modular.scv.Symbolic.Implicits
+import maf.language.symbolic.*
 import maf.util.Trampoline.{given, *}
 import maf.language.scheme.*
 import maf.core.*
@@ -22,8 +22,9 @@ import maf.core.Monad.*
 trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
     /** We add SCV specific information to the each AAM state */
     type Ext = ScvState
+    type Symbolic = SchemeExp
     type StoreCache = Map[Address, Symbolic]
-    type PC = PathStore
+    type PC = PathCondition
     type Val = (LatVal, Option[Symbolic])
 
     /**
@@ -52,7 +53,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
     /** Initial SCV state */
     def emptyExt: Ext =
       // TODO: put information about the primitivesi n the store cache initially
-      ScvState(Map(), PathStore(), List(), CallGraph.empty, Map(), Map(), Map())
+      ScvState(Map(), PathCondition.empty, List(), CallGraph.empty, Map(), Map(), Map())
 
     // Errors
     case class Blame(blamer: Identity, blamed: Identity) extends SchemeError
@@ -67,14 +68,14 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
     protected lazy val satSolver: ScvSatSolver[LatVal]
     protected def checkPc(phi: PC, variables: List[String]): Boolean =
-        val res = satSolver.feasible(phi.pc, variables)
+        val res = satSolver.feasible(phi.formula, variables)
         res
 
     def ap(fexp: SchemeFuncall, argv: List[Val]): Option[SchemeExp] =
         import maf.core.Monad.MonadIterableOps
         import maf.core.OptionMonad.given
         for
-            args <- argv.foldRightM(List[SchemeExp]())((arg, symArgs) => arg._2.map(sym => sym.expr :: symArgs))
+            args <- argv.foldRightM(List[SchemeExp]())((arg, symArgs) => arg._2.map(sym => sym :: symArgs))
             symbolicExp = SchemeFuncall(fexp.f, args, Identity.none)
         yield symbolicExp
 
@@ -204,7 +205,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
     override def readStoV(sto: Sto, addr: Address, ext: Ext): (Val, Sto) =
         val (vlu, sto1) = super.readStoV(sto, addr, ext)
-        (tagOption(ext.m.get(addr).map(_.expr))(vlu), sto1)
+        (tagOption(ext.m.get(addr))(vlu), sto1)
 
     override def writeStoV(sto: Sto, addr: Address, value: Val, ext: Ext): (Sto, Ext) =
       (super.writeStoV(sto, addr, value, ext)._1,
@@ -350,7 +351,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
           case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) =>
             val (vrr, ext1) = fresh(ext)
-            ap(tag(vrr.expr)(inject(lattice.opq(Opq()))), sto, kont, t, ext1)
+            ap(tag(vrr)(inject(lattice.opq(Opq()))), sto, kont, t, ext1)
 
           case ContractSchemeMon(contract, expression, idn) =>
             mon(contract, expression, idn, env, sto, kont, t, ext)
@@ -398,7 +399,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
             // Rule added to evaluate flat contracts
             case FlatLitFrame(exp, idn, env, Some(next)) =>
-              ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2.map(_.expr), idn))), sto, next, t, ext)
+              ap(inject(lattice.flat(Flat(project(vlu), exp, vlu._2, idn))), sto, next, t, ext)
 
             // [MonArr]
             case ArrRangeMakerFrame(fexp, arr, argv, env, Some(next)) =>
@@ -450,7 +451,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
     private def fresh(ext: Ext): (Symbolic, Ext) =
         val next = ext.vars.size + 1
         val newName = s"x$next"
-        (Symbolic(SchemeVar(Identifier(newName, Identity.none))), ext.copy(vars = newName :: ext.vars))
+        (SchemeVar(Identifier(newName, Identity.none)), ext.copy(vars = newName :: ext.vars))
 
     /** Lookup the path condition of the given clojure */
     protected def phiOfClo(clo: (SchemeLambdaExp, Env), ext: Ext): PC =
@@ -495,7 +496,7 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
 
     /** Create a new post value from the given value where the symbolic representation is given by the given `SchemeExp` */
     protected def tag(e: SchemeExp)(v: Val): Val =
-      (v._1, Some(Symbolic(e)))
+      (v._1, Some(e))
 
     protected def tagOption(e: Option[SchemeExp])(v: Val): Val = e match
         case Some(exp) => tag(exp)(v)
@@ -529,8 +530,8 @@ trait BaseScvAAMSemantics extends BaseSchemeAAMSemantics:
         if lattice.isTrue(res) then
             value._2 match
                 case Some(sym) =>
-                  val arg = sym.expr
-                  val phi1 = phi.extendPc(Symbolic(SchemeFuncall(SchemeVar(Identifier(cond.name, Identity.none)), List(arg), Identity.none)))
+                  val arg = sym
+                  val phi1 = phi.extend(SchemeFuncall(SchemeVar(Identifier(cond.name, Identity.none)), List(arg), Identity.none))
                   if checkPc(phi1, vars) then Some(phi1) else None
                 case None => Some(phi)
         else None

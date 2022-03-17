@@ -1,6 +1,7 @@
 package maf.cli.modular.scv
 
 import maf.modular.scv.{IsSat, Sat, ScvReporter, ScvSatSolver, Unknown, Unsat}
+import maf.language.symbolic.*
 import maf.core.Address
 import maf.language.scheme._
 import maf.language.sexp.Value
@@ -25,7 +26,7 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
         interpreter.eval(Push(1))
 
     /** A cache where already solved path conditions are stored together with their result */
-    private var cache: Map[(List[SchemeExp], List[String]), IsSat[V]] = Map()
+    private var cache: Map[(Formula, List[String]), IsSat[V]] = Map()
 
     /**
      * Checks whether the path condition is already solved
@@ -35,13 +36,13 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
      * @param vars
      *   the variables used in the path condition
      */
-    def inCache(e: List[SchemeExp], vars: List[String]): Boolean = cache.contains((e, vars))
+    def inCache(e: Formula, vars: List[String]): Boolean = cache.contains((e, vars))
 
     /** Returns the cached version of the path condition */
-    private def lookupCache(e: List[SchemeExp], vars: List[String]): IsSat[V] = cache((e, vars))
+    private def lookupCache(e: Formula, vars: List[String]): IsSat[V] = cache((e, vars))
 
     /** Stores the answer in the cache */
-    private def storeCache(e: List[SchemeExp], vars: List[String], v: IsSat[V]): Unit =
+    private def storeCache(e: Formula, vars: List[String], v: IsSat[V]): Unit =
       cache = (cache + ((e, vars) -> v))
 
     /** A mapping between the name of Scheme primitives and their Z3 counter-parts */
@@ -54,7 +55,9 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
       "null?" -> "null?/v",
       "real?" -> "real?/v",
       "integer?" -> "integer?/v",
-      "any?" -> "any?/v"
+      "any?" -> "any?/v",
+      "conj/v" -> "and",
+      "disj/v" -> "or"
     )
 
     /** Translates a symbolic Scheme value to an instance of the `V` sort */
@@ -119,10 +122,16 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
     private var isInitiliazed = false
 
     /** Translate the given SchemeExp to a series of constraints */
-    def translate(e: SchemeExp): String = e match
+    def translate(e: Formula): String = e match
+        case Assertion(assertion)  => translateAssertion(assertion)
+        case Conjunction(formulas) => s"(and ${formulas.map(translate).mkString(" ")})"
+        case Disjunction(formulas) => s"(or ${formulas.map(translate).mkString(" ")})"
+        case EmptyFormula          => ""
+
+    def translateAssertion(e: SchemeExp): String = e match
         case SchemeVar(identifier)     => translateIdentifier(identifier)
         case SchemeValue(value, _)     => injectValue(value)
-        case SchemeFuncall(f, args, _) => s"(${translate(f)} ${args.map(translate).mkString(" ")})"
+        case SchemeFuncall(f, args, _) => s"(${translateAssertion(f)} ${args.map(translateAssertion).mkString(" ")})"
         case _                         => throw new Exception("Unsupported constraint")
 
     def parseStringToScript(s: String): Script =
@@ -133,13 +142,14 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
         script.commands.foreach { cmd =>
           interpreter.eval(cmd)
         }
+
         interpreter.eval(CheckSat()) match
             case CheckSatStatus(SatStatus)   => Sat(Map())
             case CheckSatStatus(UnsatStatus) => Unsat
             case _                           => Unknown
 
     /** Returns either Sat, Unsat or Unknown depending on the answer of Z3 */
-    def sat(e: List[SchemeExp], vars: List[String]): IsSat[V] =
+    def sat(e: Formula, vars: List[String]): IsSat[V] =
         import scala.concurrent.ExecutionContext.Implicits.global
         if !isInitiliazed then
             parsedPrelude.commands.foreach(z3Interpreter.eval)
@@ -151,7 +161,7 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
         else
             import scala.language.unsafeNulls
 
-            val translated = e.map(translate).map(assertion => s"(assert $assertion)").mkString("\n")
+            val translated = e.splitConj.filterNot { _ == EmptyFormula }.map(translate).map(assertion => s"(assert $assertion)").mkString("\n")
             val varsDeclarations = vars.map(v => s"(declare-const $v V)").mkString("\n")
             val program = varsDeclarations ++ translated
 

@@ -40,7 +40,9 @@ trait GlobalMapStore[V: Monoid, Exp <: Expression] extends ModAnalysis[Exp] { in
         case Some(oldValue) =>
           val newValue = Monoid[V].append(oldValue, value)
           if newValue == oldValue then None
-          else Some(store + (addr -> newValue))
+          else
+              //println(s"joining $value with $oldValue")
+              Some(store + (addr -> newValue))
 
   trait GlobalMapStoreIntra extends IntraAnalysis { intra =>
     private var store = inter.store
@@ -74,9 +76,12 @@ trait GlobalMapStore[V: Monoid, Exp <: Expression] extends ModAnalysis[Exp] { in
 
 object ScvSymbolicStore:
     import maf.language.scheme._
-    given Monoid[Set[PathStore]] with
-        def zero: Set[PathStore] = Set()
-        def append(x: Set[PathStore], y: => Set[PathStore]): Set[PathStore] = x ++ y
+    import maf.language.symbolic.*
 
-    trait GlobalSymbolicStore extends GlobalMapStore[Set[PathStore], SchemeExp]:
+    given Monoid[Formula] with
+        import FormulaAux.*
+        def zero: Formula = EmptyFormula
+        def append(x: Formula, y: => Formula): Formula = DNF.dnf(disj(x, y))
+
+    trait GlobalSymbolicStore extends GlobalMapStore[Formula, SchemeExp]:
         type A = Component

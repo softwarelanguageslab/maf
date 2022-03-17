@@ -81,3 +81,7 @@ object MonoidInstances:
       def append(x: Int, y: => Int): Int = Math.max(x, y)
       def zero: Int = 0
     }
+    val intMinMonoid: Monoid[Int] = new Monoid[Int] {
+      def append(x: Int, y: => Int): Int = Math.min(x, y)
+      def zero: Int = Int.MaxValue
+    }
