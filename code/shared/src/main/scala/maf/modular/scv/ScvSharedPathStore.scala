@@ -2,6 +2,12 @@ package maf.modular.scv
 
 import maf.core.Identity
 import maf.language.symbolic.*
+import maf.core.Address
+
+case class PcAddr(pc: PathCondition) extends Address:
+    def idn: Identity = Identity.none
+    def printable: Boolean = false
+    override def toString: String = s"pc($pc)"
 
 /**
  * Shares the entire path store (after restoring renames of symbolic variables) across function call components.
@@ -24,12 +30,18 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
             val answers = super.runIntraSemantics(initialState)
             // answers.map(_._2).foreach(answer => println(s"+++ answer: ${answer.pc}"))
             val formulas = answers.map(_._2.formula).toList
+            val values = answers.map(_._1._2).toList
             writeMapAddr(cmp, Formula.join(formulas: _*))
+
+            // TODO: do not register when reading
+            val readValue = readMapAddr(cmp)
+            values.foreach(writeAddr(PcAddr(PathCondition(readValue)), _))
+
             formulas.foreach { formula => println(s"+++ formula $formula") }
             //println(s"answer $answers")
             answers
 
-        override protected def afterCall(targetCmp: Component): EvalM[Unit] =
+        override protected def afterCall(vlu: Value, targetCmp: Component): EvalM[Value] =
             import FormulaAux.*
             // this is a very crude approximation, we propebably don't need the entire path condition from the target
             context(targetCmp) match
@@ -42,5 +54,5 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
                   for
                       pc <- getPc
                       _ <- putPc(PathCondition(DNF.dnf(conj(pc.formula, revertedPc.formula))))
-                  yield ()
-                case _ => unit(())
+                  yield vlu
+                case _ => unit(vlu)

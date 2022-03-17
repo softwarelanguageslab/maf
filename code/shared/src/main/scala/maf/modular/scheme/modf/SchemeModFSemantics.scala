@@ -194,7 +194,7 @@ trait BaseSchemeModFSemanticsM
        * @return
        *   nothing
        */
-      protected def afterCall(cmp: Component): M[Unit] = Monad[M].unit(())
+      protected def afterCall(vlu: Value, cmp: Component): M[Value] = Monad[M].unit(vlu)
 
       protected def applyClosuresM(
           fun: Value,
@@ -215,8 +215,8 @@ trait BaseSchemeModFSemanticsM
                         targetCmp = newComponent(targetCall)
                         _ = bindArgs(targetCmp, prs, argVals)
                         result = call(targetCmp)
-                        _ <- afterCall(targetCmp)
-                    yield result
+                        updatedResult <- afterCall(result, targetCmp)
+                    yield updatedResult
                 else baseEvalM.fail(ArityError(cll, prs.length, arity))
               case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
                 if prs.length <= arity then
@@ -231,8 +231,8 @@ trait BaseSchemeModFSemanticsM
                         _ = bindArgs(targetCmp, prs, fixedArgVals)
                         _ = bindArg(targetCmp, vararg, varArgVal)
                         result = call(targetCmp)
-                        _ <- afterCall(targetCmp)
-                    yield result
+                        updatedResult <- afterCall(result, targetCmp)
+                    yield updatedResult
                 else baseEvalM.fail(VarArityError(cll, prs.length, arity))
               case _ => Monad[M].unit(lattice.bottom)
             })
