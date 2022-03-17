@@ -150,23 +150,19 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypePrecision() extends IncrementalSchemePrecision:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequentialCurated //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
     val outputFile: String = "precision/modf-type.txt"
 
 class IncrementalSchemeModFCPPrecision() extends IncrementalSchemePrecision:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequentialCurated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
     val outputFile: String = "precision/modf-CP.txt"
 
 class IncrementalSchemeModConcTypePrecision() extends IncrementalSchemePrecision:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
     val outputFile: String = "precision/modconc-type.txt"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 class IncrementalSchemeModConcCPPrecision() extends IncrementalSchemePrecision:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
     val outputFile: String = "precision/modconc-CP.txt"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
@@ -200,8 +196,8 @@ object IncrementalSchemeModXPrecision:
 
         val (curatedSuite, generatedSuite) = args.count match {
           case Some(n) =>
-            (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
-          case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated.toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+            (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
+          case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated, IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
         }
 
         if args.typeLattice then
