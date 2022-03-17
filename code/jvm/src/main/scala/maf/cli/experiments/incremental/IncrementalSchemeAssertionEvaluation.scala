@@ -109,7 +109,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
   }*/
 
 trait IncrementalSchemeModFAssertionEvaluation extends IncrementalSchemeAssertionEvaluation:
-    def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequential
+    def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequentialCurated
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 

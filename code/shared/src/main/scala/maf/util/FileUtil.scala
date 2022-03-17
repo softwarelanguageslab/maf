@@ -32,7 +32,7 @@ object Writer:
 
     def open(path: String): Writer =
         val file = new File(path)
-        file.getParentFile().nn.mkdirs() // Creates the directory containing the file if it does not exists
+        file.getParentFile().nn.mkdirs() // Creates the directory containing the file if it does not exists.
         W(new BufferedWriter(new FileWriter(file)), false)
 
     def openTimeStamped(path: String): Writer =

@@ -223,7 +223,6 @@ trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypePerformance() extends IncrementalSchemePerformance:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential //Generated
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
       with SplitPerformance[SchemeExp] {
       override def intraAnalysis(cmp: Component) =
@@ -232,7 +231,6 @@ class IncrementalSchemeModFTypePerformance() extends IncrementalSchemePerformanc
     val outputFile: String = s"performance/modf-type.csv"
 
 class IncrementalSchemeModFCPPerformance() extends IncrementalSchemePerformance:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.sequential
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
       with SplitPerformance[SchemeExp] {
       override def intraAnalysis(cmp: Component) =
@@ -241,7 +239,6 @@ class IncrementalSchemeModFCPPerformance() extends IncrementalSchemePerformance:
     val outputFile: String = s"performance/modf-CP.csv"
 
 class IncrementalSchemeModConcTypePerformance() extends IncrementalSchemePerformance:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
       with SplitPerformance[SchemeExp] {
       override def intraAnalysis(cmp: Component) =
@@ -251,7 +248,6 @@ class IncrementalSchemeModConcTypePerformance() extends IncrementalSchemePerform
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 class IncrementalSchemeModConcCPPerformance() extends IncrementalSchemePerformance:
-    override def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.threads
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
       with SplitPerformance[SchemeExp] {
       override def intraAnalysis(cmp: Component) =
@@ -266,8 +262,8 @@ object IncrementalSchemeModXPerformance:
 
         val (curatedSuite, generatedSuite) = args.count match {
           case Some(n) =>
-            (IncrementalSchemeBenchmarkPrograms.sequential.take(n).toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n).toArray)
-          case None => (IncrementalSchemeBenchmarkPrograms.sequential.toArray, IncrementalSchemeBenchmarkPrograms.sequentialGenerated.toArray)
+            (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
+          case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated, IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
         }
 
         if args.typeLattice then

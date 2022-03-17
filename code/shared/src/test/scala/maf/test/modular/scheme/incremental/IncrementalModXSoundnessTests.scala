@@ -1,25 +1,26 @@
 package maf.test.modular.scheme.incremental
 
+import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
 import maf.core.Identity
 import org.scalatest.Tag
-import maf.language.CScheme._
-import maf.language.change.CodeVersion._
-import maf.language.scheme._
+import maf.language.CScheme.*
+import maf.language.change.CodeVersion.*
+import maf.language.scheme.*
 import maf.language.scheme.interpreter.ConcreteValues.Value
-import maf.language.scheme.interpreter._
+import maf.language.scheme.interpreter.*
 import maf.language.scheme.primitives.SchemePrelude
-import maf.modular._
-import maf.modular.incremental.IncrementalConfiguration._
-import maf.modular.incremental._
-import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
-import maf.modular.scheme._
-import maf.test._
+import maf.modular.*
+import maf.modular.incremental.IncrementalConfiguration.*
+import maf.modular.incremental.*
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
+import maf.modular.scheme.*
+import maf.test.*
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 
 import java.util.concurrent.TimeoutException
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
  * Trait implementing soundness tests for incremental analyses.<br> Following properties are checked: <ul> <li>The soundness of the initial analysis
@@ -198,7 +199,7 @@ class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialI
         "test/changes/scheme/mceval-dynamic.scm",
         "test/changes/scheme/nboyer.scm",
         "test/changes/scheme/peval.scm"
-      )(b)
+      )(b) || IncrementalSchemeBenchmarkPrograms.sequentialGenerated(b)
 
 /** Implements soundness tests for an incremental ModF CP analysis. */
 class IncrementalModFCP extends IncrementalModFType:

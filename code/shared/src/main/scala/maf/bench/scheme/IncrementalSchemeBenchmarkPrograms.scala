@@ -4,7 +4,7 @@ object IncrementalSchemeBenchmarkPrograms:
 
     // Sequential -- ModF
 
-    lazy val sequential: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme")(
+    lazy val sequentialCurated: Set[String] = SchemeBenchmarkPrograms.fromFolder("test/changes/scheme")(
       "qeval.scm", // define-syntax, force, delay
       "scheme.scm", // error in program
       "machine-simulator.scm", // map with three arguments
@@ -17,6 +17,9 @@ object IncrementalSchemeBenchmarkPrograms:
       "fail.txt",
       "info.csv"
     )
+
+    /** The curated and generated benchmarking suites. */
+    lazy val sequential: Set[String] = sequentialCurated ++ sequentialGenerated
 
     lazy val scam2020ModF: Set[String] = SchemeBenchmarkPrograms.toFolder("test/changes/scheme")(
       "leval.scm",
