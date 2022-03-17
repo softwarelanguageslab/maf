@@ -2,14 +2,27 @@ package maf.language.symbolic
 
 import maf.language.scheme.*
 import maf.core.*
+import maf.core.Monad.MonadSyntaxOps
+import maf.core.Monad.MonadIterableOps
+
+object Formula:
+    def join(formulas: Formula*): Formula =
+        import FormulaAux.*
+        DNF.dnf(disj(formulas: _*))
 
 /** A formula that can occur on the path condition */
 sealed trait Formula:
     /** Returns the consistuents of the formula */
-    def elements: List[Formula]
+    def elements: Set[Formula]
 
     /** Map a function over all the assertions in the formula. Returns a new formula where the assertions are mapped using the mapping function */
-    def map(f: SchemeExp => SchemeExp): Formula
+    def mapOptionM[M[_]: Monad](f: SchemeExp => M[Option[SchemeExp]]): M[Option[Formula]]
+
+    def mapOption(f: SchemeExp => Option[SchemeExp]): Option[Formula] =
+      mapOptionM[IdentityMonad.Id](f)
+
+    def map(f: SchemeExp => SchemeExp): Formula =
+      mapOptionM[IdentityMonad.Id](e => Some(f(e))).get
 
     /** Split the formula into its constituents if it is a conjunction */
     def splitConj: List[Formula]
@@ -17,12 +30,21 @@ sealed trait Formula:
     /** Split the formula into its constituents if it is a disjunction */
     def splitDisj: List[Formula]
 
+/** An empty formula */
+case object EmptyFormula extends Formula:
+    def elements: Set[Formula] = Set(this)
+
+    def mapOptionM[M[_]: Monad](f: SchemeExp => M[Option[SchemeExp]]): M[Option[Formula]] = Monad[M].unit(Some(this))
+    def splitConj: List[Formula] = List()
+    def splitDisj: List[Formula] = List()
+
 /** An assertion formed by constructing a scheme expression that can be interpreted as a boolean assertion */
 case class Assertion(contents: SchemeExp) extends Formula:
-    val elements: List[Formula] = List(this)
+    val elements: Set[Formula] = Set(this)
     override def toString = s"$contents"
-    def map(f: SchemeExp => SchemeExp): Formula =
-      Assertion(f(contents))
+
+    def mapOptionM[M[_]: Monad](f: SchemeExp => M[Option[SchemeExp]]): M[Option[Formula]] =
+      f(contents).map(_.map(Assertion(_)))
 
     /** Split the formula into its constituents if it is a conjunction */
     def splitConj: List[Formula] = List(this)
@@ -38,13 +60,14 @@ case class Assertion(contents: SchemeExp) extends Formula:
  * @see
  *   maf.language.symbolic.FormulaAux.conj
  */
-case class Conjunction(val elements: List[Formula]) extends Formula:
+case class Conjunction(val elements: Set[Formula]) extends Formula:
     override def toString: String = s"(${elements.mkString(" /\\ ")})"
-    def map(f: SchemeExp => SchemeExp): Formula =
-      Conjunction(elements.map(_.map(f)))
+
+    def mapOptionM[M[_]: Monad](f: SchemeExp => M[Option[SchemeExp]]): M[Option[Formula]] =
+      elements.mapM(_.mapOptionM(f)).map(_.flatten).map(elms => if elms.size == 0 then None else Some(Conjunction(elms.toSet)))
 
     /** Split the formula into its constituents if it is a conjunction */
-    def splitConj: List[Formula] = elements
+    def splitConj: List[Formula] = elements.toList
 
     /** Split the formula into its constituents if it is a disjunction */
     def splitDisj: List[Formula] = List(this)
@@ -57,16 +80,18 @@ case class Conjunction(val elements: List[Formula]) extends Formula:
  * @see
  *   maf.language.symbolic.FormulaAux.disj
  */
-case class Disjunction(val elements: List[Formula]) extends Formula:
-    override def toString: String = s"(${elements.mkString(" \\/ ")})"
-    def map(f: SchemeExp => SchemeExp): Formula =
-      Disjunction(elements.map(_.map(f)))
+case class Disjunction(val elements: Set[Formula]) extends Formula:
+    override def toString: String = if elements.size >= 1 then s"(${elements.mkString(" \\/ ")})"
+    else "(empty-or)"
+
+    def mapOptionM[M[_]: Monad](f: SchemeExp => M[Option[SchemeExp]]): M[Option[Formula]] =
+      elements.mapM(_.mapOptionM(f)).map(_.flatten).map(elms => if elms.size == 0 then None else Some(Disjunction(elms.toSet)))
 
     /** Split the formula into its constituents if it is a conjunction */
     def splitConj: List[Formula] = List(this)
 
     /** Split the formula into its constituents if it is a disjunction */
-    def splitDisj: List[Formula] = elements
+    def splitDisj: List[Formula] = elements.toList
 
 /** Auxiliary functions */
 object FormulaAux:
@@ -89,9 +114,11 @@ object FormulaAux:
      *   true if the conjunction needs to be flattened (default)
      */
     def conj(as: List[Formula], flatten: Boolean = true): Formula =
-      if as.size == 1 then as.head
-      else if flatten then flatConj(as)
-      else Conjunction(as.toSet.toList)
+        val asCleared = as.filterNot { _ == EmptyFormula }
+        if asCleared.size == 0 then EmptyFormula
+        else if asCleared.size == 1 then asCleared.head
+        else if flatten then flatConj(asCleared.toSet)
+        else Conjunction(asCleared.toSet)
 
     /** Same as <code>conj</code> but constructs a disjunction instead */
     def disj(as: Formula*): Formula =
@@ -99,9 +126,11 @@ object FormulaAux:
 
     /** Same as <code>conj</code> but constructs a disjunction instead */
     def disj(as: List[Formula], doFlat: Boolean = true): Formula =
-      if as.size == 1 then as.head
-      else if doFlat then flatten(as)
-      else Disjunction(as.toList)
+        val asCleared = as.filterNot { _ == EmptyFormula }
+        if asCleared.size == 0 then EmptyFormula
+        else if asCleared.size == 1 then asCleared.head
+        else if doFlat then flatten(asCleared.toSet)
+        else Disjunction(asCleared.toSet)
 
     /** Constructs an (isTrue? expr) expression */
     def isTrue(expr: SchemeExp): SchemeExp =
@@ -128,7 +157,7 @@ object FormulaAux:
      * @param conjunctions
      *   the list of formulas that should occur in a conjunction
      */
-    def flatConj(conjunctions: List[Formula]): Formula = conj(
+    def flatConj(conjunctions: Set[Formula]): Formula = conj(
       (conjunctions flatMap {
         case Conjunction(vs) =>
           flatConj(vs) match
@@ -140,7 +169,7 @@ object FormulaAux:
     )
 
     /** Flatten a list of disjunctions into a single disjunctions */
-    def flatten(disjunctions: List[Formula]): Formula = disj(
+    def flatten(disjunctions: Set[Formula]): Formula = disj(
       (disjunctions flatMap {
         case Disjunction(djs) =>
           flatten(djs) match
@@ -192,4 +221,5 @@ object FormulaAux:
 
     /** Distribute the a conjunction of disjunctions */
     def distribute(disjunctions: List[Formula]): Formula =
-      disj(cartesianProduct(disjunctions.map(_.elements): _*).map(conj(_)))
+        val res = disjunctions.map(_.elements)
+        disj(cartesianProduct(disjunctions.map(_.elements.toList): _*).map(conj(_)))

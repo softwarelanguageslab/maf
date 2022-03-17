@@ -8,6 +8,7 @@ import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.worklist._
 import maf.test._
+import maf.language.symbolic.Formula
 
 trait SchemeModFSoundnessTests extends SchemeSoundnessTests:
     override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModFTest
@@ -55,7 +56,7 @@ trait ScvModF extends SchemeModFSoundnessTests:
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             // we always return "unknown" here because the Z3 solver is not available in the `shared` module
             override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():
-                def sat(e: List[SchemeExp], vars: List[String]): IsSat[Value] = Unknown
+                def sat(e: Formula, vars: List[String]): IsSat[Value] = Unknown
 
 // concrete test suites to run ...
 

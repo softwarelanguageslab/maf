@@ -3,7 +3,9 @@ package maf.modular.scv
 import maf.core.*
 import maf.core.Position.*
 import maf.language.scheme.*
+import maf.language.symbolic.*
 import maf.modular.scheme.modf.*
+import maf.core.IdentityMonad
 
 /*
  * Soft contract verification uses the following forms of
@@ -44,14 +46,15 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
     // TODO: factor out rangeContract, because it is required for a sound implementation of scv, and cannot be disabled/enabled
     // for certain experiments.As such it is not part of a variable context.
     case class KPathCondition[L](
-        ps: PathStore,
-        sstore: SymbolicStore,
+        pc: PathCondition,
         rangeContract: Option[L],
         callers: List[Position],
         changes: List[SymChange],
-        symArgs: List[SchemeExp])
+        symArgs: Map[String, SchemeExp],
+        stoCache: Map[Addr, SchemeExp])
         extends ScvContext[L]:
-        override def toString: String = s"KPathCondition(rangeContract = $rangeContract, pc = ${ps.pc}, sstore = $sstore)"
+        override def toString: String =
+          s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
     case class NoContext[L]() extends ScvContext[L]
 
     def contractContext(cmp: Component): Option[ContractCallContext[Value]] = context(cmp).flatMap {
@@ -74,7 +77,7 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         caller: Component
       ): ComponentContext = NoContext() // contexts will be created by overriding them in the semantics
 
-trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
+trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis with ScvUpdateCount:
     import evalM.*
     import maf.core.Monad.MonadSyntaxOps
 
@@ -86,16 +89,23 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
         case _             => f(None)
 
     protected def usingRangeContract[X](cmp: Component)(f: Option[Value] => X): X = context(cmp) match
-        case Some(KPathCondition(_, _, rangeContractOpt, _, _, _)) => f(rangeContractOpt)
+        case Some(KPathCondition(_, rangeContractOpt, _, _, _, _)) => f(rangeContractOpt)
         case _                                                     => f(None)
 
     override def fromContext(cmp: Component): FromContext = context(cmp) match
-        case Some(KPathCondition(ps, sstore, _, cmps, _, _)) =>
+        case Some(KPathCondition(pc, _, _, _, symArgs, lcache)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
           new FromContext:
-              def pathCondition: List[SchemeExp] = ps.pc
-              def vars: List[String] = ps.vars
-              def symbolic: Map[String, Option[SchemeExp]] =
-                sstore.mapping.mapValues(sym => Some(sym.expr)).toMap.withDefaultValue(None)
+              def pathCondition: PathCondition = pc
+              def vars: List[String] =
+                symArgs.values
+                  .flatMap(PathCondition.visit[IdentityMonad.Id, List[String]](_) {
+                    case SchemeVar(name)       => Some(List(name.name))
+                    case SchemeVarLex(name, _) => Some(List(name.name))
+                    case _                     => None
+                  })
+                  .toList
+              def symbolic: Map[String, Option[SchemeExp]] = symArgs.mapValues(Some(_)).toMap
+              def lexStoCache: Map[Address, SchemeExp] = lcache
         case _ => EmptyContext
 
     override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None): ContextBuilder =
@@ -106,45 +116,50 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis:
               call: Position,
               caller: Component
             ): EvalM[ComponentContext] =
-              // TODO: put free variables and their possible sybolic representation in the map as well
               val symbolic = clo._1 match
                   case SchemeLambda(_, prs, _, _, _)          => prs.map(_.name).zip(symArgs)
                   case SchemeVarArgLambda(_, prs, _, _, _, _) => prs.map(_.name).zip(symArgs.take(prs.length))
 
-              val roots = Symbolic.identifiers(symArgs.flatten)
+              // Lexical symbolic store cache
+              val lcache = lexicalStoCaches(clo)
 
+              // Compute the store cache that will be shared with the next component:
+              // remove all addresses that have been updated more than once, as the stored cache will not be valid anymore
+              val ccache = lcache.filterKeys(!isUpdated(_)).toMap
+
+              // roots are the free variables of the function (if not changed) and the function arguments themselves
+              val roots: Set[SchemeExp] = symArgs.flatten.toSet ++ ccache.values.toSet
+
+              // m-cfa
               val nextCallers = (context(caller) match
-                  case Some(KPathCondition(_, _, _, callers, _, _)) =>
-                    (call :: callers)
+                  case Some(k: KPathCondition[_]) =>
+                    (call :: k.callers)
                   case _ => List(call)
               ).take(m)
 
+              val symArgsMap = symbolic.collect { case (k, Some(v)) => (k, v) }.toMap
+
               for
-                  ps <- getPathStore
-                  vars <- getVars
-                  _ = { println(s"got $ps and $vars for applying $clo with $args at $call") }
-
-                  result <- SymbolicStore()
-                    .addAll(symbolic.flatMap { case (vr, sym) =>
-                              sym.map(vr -> Symbolic(_))
-                            },
-                            fresh,
-                            SymbolicStore.onlyVarsAllowed
-                    )
-                  (sstore, changes) = result
-
-                  cleanedPs = ps.clean(changes)
-                  psGc = cleanedPs.gc(sstore.roots)
-                  lowest = psGc.lowest
-                  newPs = psGc.reindex(lowest)
-                  newSstore = sstore.gc(cleanedPs.pc).reindex(lowest)
-              yield KPathCondition[Value](newPs,
-                                          newSstore,
-                                          rangeContract,
-                                          nextCallers,
-                                          changes,
-                                          symArgs.flatMap(_.map(List(_)).getOrElse(List())).toList
-              )
+                  pc <- getPc
+                  // simplify the path condition such that it only contains expressions in the root set
+                  result <- pc.simplify(roots, PathCondition.onlyVarsAllowed, fresh)
+                  // get the new path condition and the changes performed to obtain the new path condition
+                  (newPc, changes) = result
+                  // apply the changes on the lexical store cache
+                  newCcache = changes.foldLeft(ccache) { case (ccache, change) =>
+                    ccache.map { case (k, v) =>
+                      change.apply(Assertion(v)) match
+                          case Assertion(v) => (k, v)
+                    }.toMap
+                  }
+                  // apply the changes on the symbolic arguments as well
+                  newSymArgs = changes.foldLeft(symArgsMap)((symArgs, change) =>
+                    symArgs.map { case (k, v) =>
+                      change.apply(Assertion(v)) match
+                          case Assertion(v) => (k, v)
+                    }.toMap
+                  )
+              yield KPathCondition(newPc, rangeContract, nextCallers, changes, newSymArgs, newCcache)
 
 trait ScvOneContextSensitivity(protected val m: Int) extends ScvKContextSensitivity:
     protected val k: Int = 1

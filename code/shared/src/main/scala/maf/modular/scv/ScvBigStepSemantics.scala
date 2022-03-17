@@ -1,6 +1,7 @@
 package maf.modular.scv
 
 import maf.language.scheme._
+import maf.language.symbolic.*
 import maf.language.ContractScheme._
 import maf.language.sexp.Value
 import maf.modular.ModAnalysis
@@ -34,9 +35,10 @@ object DebugLogger:
       enter(symbolStack.head)(c)
 
 /** This trait encodes the semantics of the ContractScheme language */
-trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvContextSensitivity with ScvReporter:
+trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with ScvContextSensitivity with ScvReporter with ScvUpdateCount:
     outer =>
 
+    /** An alias for a closure, which is a combination of a lambda and an environment */
     type Closure = (SchemeLambdaExp, Env)
 
     import maf.util.FunctionUtils.*
@@ -81,24 +83,26 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
          * @return
          *   a list of possible post values, and a path store
          */
-        protected def runIntraSemantics(initialState: State): Set[(PostValue, PathStore)] =
+        protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
             val resultsM = for
                 _ <- injectCtx
                 //_ <- injectPre
                 value <- extract(eval(expr(cmp)))
                 _ <- checkPost(value)
-                ps <- getPathStore
+                ps <- getPc
             yield (value, ps)
 
             resultsM.runValue(initialState).vs.map(_._2)
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            //println(s"analyzing $cmp")
             track(NumberOfComponents, cmp)
             count(NumberOfIntra)
 
             val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
             val answers = runIntraSemantics(initialState)
             answers.map(_._1.value).foreach(writeResult(_, cmp))
+        //println(s"done analyzing $cmp")
 
         /** Check the post contract on the value resulting from the analysis of the current component */
         private def checkPost(value: PostValue): EvalM[Unit] =
@@ -114,6 +118,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             val context = fromContext(cmp)
             for
                 // TODO: there is still something wrong here, if I disable this, things should start to fail but they don't...
+                _ <- putStoreCache(context.lexStoCache)
                 _ <- putPc(context.pathCondition)
                 _ <- putVars(context.vars)
                 _ <- Monad.sequence(context.symbolic.map {
@@ -163,7 +168,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                     // check if the path condition is feasible
                     pc <- getPc
                     vars <- getVars
-                    solved = sat.feasible(pc, vars)
+                    solved = sat.feasible(pc.formula, vars)
                     result <- if solved then cmp else void
                 yield result
 
@@ -215,51 +220,70 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
         protected def applyPrimitive(prim: Prim, args: List[Value]): EvalM[Value] =
           prim.call(SchemeValue(Value.Nil, Identity.none), args)
 
-        override def eval(exp: SchemeExp): EvalM[Value] = exp match
-            // literal Scheme values have a trivial symbolic representation -> their original expression
-            case SchemeValue(value, _)      => super.eval(exp).flatMap(tag(exp))
-            case SchemeVar(nam)             => evalVariable(nam)
-            case SchemeIf(prd, csq, alt, _) => evalIf(prd, csq, alt)
+        /** Evaluates the given lambda expression to a closure, keeps track of the lexical store cache as well */
+        override def evalClosure(exp: SchemeLambdaExp): EvalM[Value] =
+          for
+              lenv <- getEnv.map(_.restrictTo(exp.fv))
+              // compute the set of addresses in the free variables of the lambda expression
+              freeAddresses = lenv.addrs
+              //_ = { println(s"got free addrs $freeAddresses") }
+              fullCache <- getStoreCache
+              //_ = { println(s"fullcache $fullCache") }
+              // remove the other addresses from the store cache
+              cache = fullCache.filterKeys(freeAddresses.contains(_)).toMap
+              //_ = { println(s"got a cache $cache") }
+              // keep track of the lexical store cache
+              _ <- effectful { lexicalStoCaches = lexicalStoCaches + ((exp, lenv) -> cache) }
+              // then we use the evaluation semantics of the parent to obtain the closure itself
+              result <- super.evalClosure(exp)
+          yield result
 
-            // only enabled for testing, results in a nil value associated with a fresh symbol
-            case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) if DEBUG =>
-              for
-                  symbolic <- fresh
-                  value <- tag(symbolic)(lattice.opq(ContractValues.Opq()))
-              yield value
+        override def eval(exp: SchemeExp): EvalM[Value] =
+          exp match
+              // literal Scheme values have a trivial symbolic representation -> their original expression
+              case SchemeValue(value, _)      => super.eval(exp).flatMap(tag(exp))
+              case SchemeVar(nam)             => evalVariable(nam)
+              case SchemeIf(prd, csq, alt, _) => evalIf(prd, csq, alt)
 
-            // function calls have different behaviour in SCV as they can be guarded by contract
-            case f @ SchemeFuncall(_, _, _) => callFun(f)
+              // only enabled for testing, results in a nil value associated with a fresh symbol
+              case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) if DEBUG =>
+                for
+                    symbolic <- fresh
+                    value <- tag(symbolic)(lattice.opq(ContractValues.Opq()))
+                yield value
 
-            // contract specific evaluation rules
-            case ContractSchemeMon(contract, expression, idn) =>
-              for
-                  contractVal <- extract(eval(contract))
-                  expressionVal <- extract(eval(expression))
-                  result <- applyMon(contractVal, expressionVal, expression, idn, contractExpr = Some(contract))
-              yield result
+              // function calls have different behaviour in SCV as they can be guarded by contract
+              case f @ SchemeFuncall(_, _, _) => callFun(f)
 
-            case ContractSchemeFlatContract(expression, idn) =>
-              extract(eval(expression)).flatMap(pv => unit(lattice.flat(ContractValues.Flat(pv.value, expression, pv.symbolic, idn))))
+              // contract specific evaluation rules
+              case ContractSchemeMon(contract, expression, idn) =>
+                for
+                    contractVal <- extract(eval(contract))
+                    expressionVal <- extract(eval(expression))
+                    result <- applyMon(contractVal, expressionVal, expression, idn, contractExpr = Some(contract))
+                yield result
 
-            case ContractSchemeDepContract(domains, rangeMaker, idn) =>
-              for
-                  evaluatedDomains <- domains.mapM(eval)
-                  evaluatedRangeMaker <- eval(rangeMaker)
-              yield lattice.grd(ContractValues.Grd(evaluatedDomains, evaluatedRangeMaker, domains.map(_.idn), rangeMaker))
+              case ContractSchemeFlatContract(expression, idn) =>
+                extract(eval(expression)).flatMap(pv => unit(lattice.flat(ContractValues.Flat(pv.value, expression, pv.symbolic, idn))))
 
-            case contractExp @ ContractSchemeCheck(_, _, _) =>
-              evalCheck(contractExp)
+              case ContractSchemeDepContract(domains, rangeMaker, idn) =>
+                for
+                    evaluatedDomains <- domains.mapM(eval)
+                    evaluatedRangeMaker <- eval(rangeMaker)
+                yield lattice.grd(ContractValues.Grd(evaluatedDomains, evaluatedRangeMaker, domains.map(_.idn), rangeMaker))
 
-            case MatchExpr(value, clauses, _) =>
-              // TODO: same as maf.modular.scv.SchemeContractSchemeSupport see if this can be factored out
-              for
-                  _ <- eval(value) // evaluate value for side effects but ignore result
-                  evaluatedClauses <- merge(clauses.map(_.expr).map(evalSequence)) // over approximate by evaluating all clauses at once
-              yield evaluatedClauses
+              case contractExp @ ContractSchemeCheck(_, _, _) =>
+                evalCheck(contractExp)
 
-            // catch-all, dispatching to the default Scheme semantics
-            case _ => super.eval(exp)
+              case MatchExpr(value, clauses, _) =>
+                // TODO: same as maf.modular.scv.SchemeContractSchemeSupport see if this can be factored out
+                for
+                    _ <- eval(value) // evaluate value for side effects but ignore result
+                    evaluatedClauses <- merge(clauses.map(_.expr).map(evalSequence)) // over approximate by evaluating all clauses at once
+                yield evaluatedClauses
+
+              // catch-all, dispatching to the default Scheme semantics
+              case _ => super.eval(exp)
 
         override def evalVariable(id: Identifier): EvalM[Value] =
           // the symbolic representation of a variable is the stored symbolic representation or a fresh symbolic variable
@@ -280,7 +304,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 cnd.symbolic match
                     case _ if !lattice.isTrue(primResult) =>
                       void // if it is not possible according to the lattice, we do not execute "m"
-                    case Some(symbolic) if ! { count(SATExec); time(Z3Time) { sat.feasible(pc, vars) } } =>
+                    case Some(symbolic) if ! { count(SATExec); time(Z3Time) { sat.feasible(pc.formula, vars) } } =>
                       void // if the path condition is unfeasible we also do not execute "m"
                     case Some(symbolic) =>
                       extendPc(prim.symApply(symbolic)) >>> m
@@ -295,17 +319,25 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
         protected def evalCheck(checkExpr: ContractSchemeCheck): EvalM[Value] =
             track(EvalCheck, checkExpr)
 
-            def appl(procedureOrPrimitive: Closure | String, checkExpr: ContractSchemeCheck, vlu: PostValue): EvalM[Value] =
+            def appl(procedureOrPrimitive: Closure | String, checkExpr: ContractSchemeCheck, vlu: PostValue): EvalM[PostValue] =
                 val injV = procedureOrPrimitive match
                     case v: Closure => lattice.closure(v)
                     case p: String  => lattice.primitive(p)
 
-                applyFunPost(
-                  SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
-                  injV,
-                  List((checkExpr.valueExpression, vlu)),
-                  checkExpr.idn.pos
-                )
+                val optionalTag = procedureOrPrimitive match
+                    case p: String => Some(SchemeVar(Identifier(p, Identity.none)))
+                    case _         => None
+
+                for
+                    result <- extract(
+                      applyFunPost(
+                        SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
+                        injV,
+                        List((checkExpr.valueExpression, vlu)),
+                        checkExpr.idn.pos
+                      ).flatMap(tag(symCall(optionalTag, List(vlu.symbolic))))
+                    )
+                yield result
 
             for
                 contract <- eval(checkExpr.contract)
@@ -313,21 +345,33 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
                 // TODO: refactor such that most of this code is in applyMon
                 flats = lattice.getFlats(contract).map { flat =>
-                  applyFunPost(
-                    SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
-                    flat.contract,
-                    List((checkExpr.valueExpression, value)),
-                    checkExpr.idn.pos
+                  // TODO: add a tag here such that the result of executing this flat contract also has a symbolic reprsentation
+                  extract(
+                    applyFunPost(
+                      SchemeFuncall(checkExpr.contract, List(checkExpr.valueExpression), Identity.none),
+                      flat.contract,
+                      List((checkExpr.valueExpression, value)),
+                      checkExpr.idn.pos
+                    ).flatMap(tag(symCall(flat.sym, List(value.symbolic))))
                   )
                 }
 
                 // coerce procedures and primitives into flat contracts, in this case no wrapping is required and we can directly apply the
                 // procedure predicate.
+                // TODO: add a tag to lattice.getPrimitives such that the result of this check expression also is symbolically represented
                 procedures = ((lattice.getClosures(contract) ++ lattice.getPrimitives(contract)): Set[Closure | String])
                   .map(appl(_, checkExpr, value))
 
-                result <- nondets[Value](flats ++ procedures)
-            yield result
+                joinedResult <- nondets[PostValue](flats ++ procedures)
+
+                // Since applying the contract on the value does not (always) generate seperate branches,
+                // we split the join again here.
+                splitResult <- nondets(
+                  ifFeasible(`true?`, joinedResult) { unit(lattice.bool(true)) >>= tag(joinedResult.symbolic) },
+                  ifFeasible(`false?`, joinedResult) { unit(lattice.bool(false)) >>= tag(joinedResult.symbolic) }
+                )
+            //_ <- getPc >>= trace("pc")
+            yield splitResult
 
         /**
          * The semantics of a "mon" expression.
@@ -404,10 +448,11 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             track(AppFlat, (contract, value))
             val call = SchemeFuncall(contract.fexp, List(expr), monIdn)
             val resultSymbolic = symCall(contract.sym, List(value.symbolic))
+            val ctx = buildCtx(List(value.symbolic), None)
             for
                 // TODO: find better position information
                 result <- nondets(
-                  applyFunPost(call, contract.contract, List((expr, value)), Position(-1, 0)),
+                  applyFunPost(call, contract.contract, List((expr, value)), Position(-1, 0), ctx),
                   callFun(PostValue.noSymbolic(contract.contract), List(value))
                 )
                 pv = PostValue(resultSymbolic, result)
@@ -436,8 +481,6 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                     }
                   }
                   pc <- getPc
-                  _ = { println(s"got pc $pc") }
-                  _ = { println(s"got valus $argsV") }
                   // apply the range maker function
                   rangeContract <- applyFunPost(
                     SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),

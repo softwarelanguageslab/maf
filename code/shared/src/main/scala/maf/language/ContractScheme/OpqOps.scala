@@ -6,7 +6,7 @@ import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
 import maf.language.ContractScheme.ContractValues.Opq
 import maf.core.Address
 import maf.language.scheme.primitives.{SchemePrimM, SchemePrimitives}
-import maf.modular.scv.Symbolic
+import maf.language.symbolic.*
 
 /**
  * This object defines the signatures for the native Scheme functions. The reason for this is that it can automatically resolve operations involving

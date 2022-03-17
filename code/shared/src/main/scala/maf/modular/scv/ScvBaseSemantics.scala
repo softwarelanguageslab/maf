@@ -1,5 +1,6 @@
 package maf.modular.scv
 
+import maf.language.symbolic.*
 import maf.modular.scheme.modf._
 import maf.modular.scheme.SchemeDomain
 import maf.language.scheme._
@@ -16,20 +17,20 @@ import maf.lattice.interfaces.BoolLattice
 trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   import TaggedSet.*
   import MonadStateT.*
-  import Symbolic.Implicits.*
   import Monad.MonadSyntaxOps
 
   case class State(
       env: Environment[Address],
       store: StoreCache,
       lstore: BasicStore[Addr, Value],
-      ps: PathStore,
+      pc: PathCondition,
       freshVar: Int,
       vars: List[String]):
-      def extendPc(addition: Symbolic) = this.copy(ps = ps.extendPc(addition))
+      def extendPc(addition: SchemeExp) = this.copy(pc = pc.extend(addition))
 
   object State:
-      def empty: State = State(env = BasicEnvironment(Map()), store = Map(), new BasicStore(content = Map()), ps = PathStore(), freshVar = 0, List())
+      def empty: State =
+        State(env = BasicEnvironment(Map()), store = Map(), new BasicStore(content = Map()), pc = PathCondition(EmptyFormula), freshVar = 0, List())
 
   case class PostValue(symbolic: Option[Symbolic], value: Value)
 
@@ -121,29 +122,28 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
         _ <- scvMonadInstance.put(st.extendPc(symb))
     yield ()
 
-  protected def getPc: EvalM[List[Symbolic]] =
-    scvMonadInstance.get.map(_.ps.pc)
+  protected def getPc: EvalM[PathCondition] =
+    scvMonadInstance.get.map(_.pc)
 
   /** Replaces the current path condition with the one given as a parameter */
-  protected def putPc(pc: List[SchemeExp]): EvalM[Unit] =
+  protected def putPc(pc: PathCondition): EvalM[Unit] =
     for
         st <- scvMonadInstance.get
-        _ <- scvMonadInstance.put(st.copy(ps = PathStore().extendPc(pc)))
+        _ <- scvMonadInstance.put(st.copy(pc = pc))
     yield ()
 
-  /** Replaces the current path store with the given new path store */
-  protected def putPathStore(ps: PathStore): EvalM[Unit] =
+  /** Replaces the current store cache with the given new store cache */
+  protected def putStoreCache(cache: StoreCache): EvalM[Unit] =
     for
         st <- scvMonadInstance.get
-        _ <- scvMonadInstance.put(st.copy(ps = ps))
+        _ <- scvMonadInstance.put(st.copy(store = cache))
     yield ()
-
-  /** Get a copy of the current path store */
-  protected def getPathStore: EvalM[PathStore] =
-    scvMonadInstance.get.map(_.ps)
 
   protected def getVars: EvalM[List[String]] =
     scvMonadInstance.get.map(_.vars)
+
+  protected def getStoreCache: EvalM[StoreCache] =
+    scvMonadInstance.get.map(_.store)
 
   /** Replaces the current set of variables that are in the path condition with the given list */
   protected def putVars(vars: List[String]): EvalM[Unit] =
@@ -153,7 +153,7 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
     yield ()
 
   /** Generates a fresh symbolic variable */
-  protected def fresh: EvalM[Symbolic] =
+  protected def fresh: EvalM[SchemeExp] =
     for
         st <- scvMonadInstance.get
         _ <- scvMonadInstance.put(st.copy(freshVar = st.freshVar + 1, vars = s"x${st.freshVar}" :: st.vars))
@@ -168,6 +168,9 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
       c
       TaggedSet.taggedSetMonad.unit(((), state))
   )
+
+  protected def trace[X](prefix: String)(x: X): EvalM[X] =
+    effectful { println(s"==== trace $prefix: $x ====") } >>> scvMonadInstance.unit(x)
 
   /** Executes the given computations non-determinstically */
   protected def nondets[X](branches: EvalM[X]*): EvalM[X] =
@@ -185,9 +188,16 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
     case e: SchemeExp => e
   }
 
+  protected def stripIdn(exp: SchemeExp): SchemeExp = exp match
+      case SchemeVar(Identifier(x, _))         => SchemeVar(Identifier(x, Identity.none))
+      case SchemeVarLex(Identifier(x, _), lex) => SchemeVarLex(Identifier(x, Identity.none), lex)
+      case SchemeFuncall(fexp, fargs, _) =>
+        SchemeFuncall(stripIdn(fexp), fargs.map(stripIdn), Identity.none)
+      case SchemeValue(vlu, _) => SchemeValue(vlu, Identity.none)
+
   /** Tags the given value with the given Scheme expression */
   protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] =
-    scvMonadInstance.unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(e), result)))
+    scvMonadInstance.unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(stripIdn(e)), result)))
   protected def tag(e: Option[Symbolic])(v: Value): EvalM[Value] =
     // only tag if è` is Some
     e match
