@@ -31,9 +31,9 @@ trait IncrementalTestBase extends SchemeBenchmarkTests {
   val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
   def eqState(a: IncrementalAnalysis, b: IncrementalAnalysis): Boolean =
-      a.store == b.store &&
+    a.store == b.store &&
       a.visited == b.visited &&
-      a.deps == b.deps && 
+      a.deps == b.deps &&
       a.mapping == b.mapping &&
       a.cachedReadDeps == b.cachedReadDeps &&
       a.cachedSpawns == b.cachedSpawns &&

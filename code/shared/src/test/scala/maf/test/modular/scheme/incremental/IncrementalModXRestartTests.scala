@@ -39,18 +39,15 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
           copy = a.deepCopy()
           copy.configuration = c
           copy.updateAnalysis(analysisTimeout())
-          if !copy.finished
-          then alert(s"Updating timed out for $c.")
+          if !copy.finished then alert(s"Updating timed out for $c.")
           else
-            val updated = copy.deepCopy()
-            copy.addToWorkList(copy.visited)
-            copy.analyzeWithTimeout(analysisTimeout())
-            assert(copy.finished, s"Restart of incremental update using $c timed out unexpectedly.")
-            assert(eqState(updated, copy), s"Restarting $c alters the analysis result.")
+              val updated = copy.deepCopy()
+              copy.addToWorkList(copy.visited)
+              copy.analyzeWithTimeout(analysisTimeout())
+              assert(copy.finished, s"Restart of incremental update using $c timed out unexpectedly.")
+              assert(eqState(updated, copy), s"Restarting $c alters the analysis result.")
           end if
-      end for
-
-      // Full reanalysis
+      end for // Full reanalysis
       val b = analysis(program)
       b.version = New
       b.analyzeWithTimeout(analysisTimeout())
@@ -68,19 +65,19 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
       val program = CSchemeParser.parseProgram(content)
 
       try
-        // First check that the program analysis can be restarted without altering the result.
-        restartTest(program)
+          // First check that the program analysis can be restarted without altering the result.
+          restartTest(program)
       catch
-        case e: VirtualMachineError =>
-          System.gc()
-          cancel(s"Analysis of $benchmark encountered an error: $e")
+          case e: VirtualMachineError =>
+            System.gc()
+            cancel(s"Analysis of $benchmark encountered an error: $e")
     }
 }
 
 class IncrementalModFTypeRestartTests extends IncrementalModXRestartTests with SequentialIncrementalBenchmarks:
-  val name = "Incremental ModF Type"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, ci_di_wi)
+    val name = "Incremental ModF Type"
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, ci_di_wi)
 
 class IncrementalModFCPRestartTests extends IncrementalModXRestartTests with SequentialIncrementalBenchmarks:
-  val name = "Incremental ModF CP"
-  override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, ci_di_wi)
+    val name = "Incremental ModF CP"
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, ci_di_wi)

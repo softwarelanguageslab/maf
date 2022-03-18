@@ -207,9 +207,10 @@ object IncrementalSchemeModXPrecision:
                             s"${outDir}type-curated-precision-noopt.csv"
                 )
             if args.generated then
-                splitOutput((new IncrementalSchemeModFTypePrecision).execute(generatedSuite),
-                            s"${outDir}type-generated-precision.csv",
-                            s"${outDir}type-generated-precision-noopt.csv"
+                splitOutput(
+                  (new IncrementalSchemeModFTypePrecision).execute(generatedSuite),
+                  s"${outDir}type-generated-precision.csv",
+                  s"${outDir}type-generated-precision-noopt.csv"
                 )
         end if
         if args.cpLattice then
