@@ -30,15 +30,15 @@ trait IncrementalTestBase extends SchemeBenchmarkTests {
 
   val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
-  def eqState(a: IncrementalAnalysis, b: IncrementalAnalysis): Boolean =
-    a.store == b.store &&
-      a.visited == b.visited &&
-      a.deps == b.deps &&
-      a.mapping == b.mapping &&
-      a.cachedReadDeps == b.cachedReadDeps &&
-      a.cachedSpawns == b.cachedSpawns &&
-      a.provenance == b.provenance &&
-      a.cachedWrites == b.cachedWrites &&
-      a.implicitFlows == b.implicitFlows &&
-      a.dataFlowR == b.dataFlowR
+  def checkEqState(a: IncrementalAnalysis, b: IncrementalAnalysis, message: String): Unit =
+      if a.store != b.store then fail(message + " (store mismatch)")
+      if a.visited != b.visited then fail(message +  " (visited set mismatch)")
+      if a.deps != b.deps then fail(message + " (dependency mismatch)")
+      if a.mapping != b.mapping then fail(message + " (mapping mismatch)")
+      if a.cachedReadDeps != b.cachedReadDeps then fail(message + " (read deps mismatch)")
+      if a.cachedSpawns != b.cachedSpawns then fail(message + " (spawns mismatch)")
+      if a.provenance != b.provenance then fail(message + " (provenance mismatch)")
+      if a.cachedWrites != b.cachedWrites then fail(message + " (write cache mismatch)")
+      if a.implicitFlows != b.implicitFlows then fail(message + " (flow mismatch)")
+      if a.dataFlowR != b.dataFlowR then fail(message + " (reverse flow mismatch)")
 }

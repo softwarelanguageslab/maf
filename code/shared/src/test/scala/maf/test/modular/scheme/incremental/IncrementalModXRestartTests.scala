@@ -31,7 +31,7 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
       copy.addToWorkList(copy.visited)
       copy.analyzeWithTimeout(analysisTimeout())
       assert(copy.finished, "Restart of initial analysis timed out unexpectedly.")
-      assert(eqState(a, copy), "Restarting initial analysis alters the analysis result.")
+      checkEqState(a, copy, "Restarting initial analysis alters the analysis result.")
 
       // Incremental update.
       for c <- configurations do
@@ -45,7 +45,7 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
               copy.addToWorkList(copy.visited)
               copy.analyzeWithTimeout(analysisTimeout())
               assert(copy.finished, s"Restart of incremental update using $c timed out unexpectedly.")
-              assert(eqState(updated, copy), s"Restarting $c alters the analysis result.")
+              checkEqState(updated, copy, s"Restarting $c alters the analysis result.")
           end if
       end for //
 
@@ -58,8 +58,8 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
       copy = b.deepCopy()
       copy.addToWorkList(copy.visited)
       copy.analyzeWithTimeout(analysisTimeout())
-      assert(copy.finished, "Restart of initial analysis timed out unexpectedly.")
-      assert(eqState(b, copy), "Restarting initial analysis alters the analysis result.")
+      assert(copy.finished, "Restart of full reanalysis timed out unexpectedly.")
+      checkEqState(b, copy, "Restarting full reanalysis alters the analysis result.")
   end restartTest
 
   override def onBenchmark(benchmark: Benchmark): Unit =

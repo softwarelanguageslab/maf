@@ -35,8 +35,8 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
       rand.analyzeWithTimeout(analysisTimeout())
       assume(rand.finished, "Initial RAND analysis timed out.")
 
-      assert(eqState(lifo, fifo), "Initial analysis is equal using LIFO and FIFO.")
-      assert(eqState(lifo, rand), "Initial analysis is equal using LIFO and RAND.")
+      checkEqState(lifo, fifo, "Initial analysis is not equal when using LIFO and FIFO.")
+      checkEqState(lifo, rand, "Initial analysis is not equal when using LIFO and RAND.")
 
       // Incremental update.
       for c <- configurations do
@@ -52,14 +52,14 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
           if !randCopy.finished then alert("RAND did not finish incremental update.")
           (lifoCopy.finished, fifoCopy.finished, randCopy.finished) match {
             case (true, true, true) =>
-              assert(eqState(lifoCopy, fifoCopy), s"Incremental update using $c is not equal when using LIFO and FIFO.")
-              assert(eqState(lifoCopy, randCopy), s"Incremental update using $c is not equal when using LIFO and RAND.")
+              checkEqState(lifoCopy, fifoCopy, s"Incremental update using $c is not equal when using LIFO and FIFO.")
+              checkEqState(lifoCopy, randCopy, s"Incremental update using $c is not equal when using LIFO and RAND.")
             case (true, true, false) =>
-              assert(eqState(lifoCopy, fifoCopy), s"Incremental update using $c is not equal when using LIFO and FIFO.")
+              checkEqState(lifoCopy, fifoCopy, s"Incremental update using $c is not equal when using LIFO and FIFO.")
             case (true, false, true) =>
-              assert(eqState(lifoCopy, randCopy), s"Incremental update using $c is not equal when using LIFO and RAND.")
+              checkEqState(lifoCopy, randCopy, s"Incremental update using $c is not equal when using LIFO and RAND.")
             case (false, true, true) =>
-              assert(eqState(fifoCopy, randCopy), s"Incremental update using $c is not equal when using FIFO and RAND.")
+              checkEqState(fifoCopy, randCopy, s"Incremental update using $c is not equal when using FIFO and RAND.")
             case _ => alert("Not enough incremental updates succeeded to compare.")
           }
       end for //
@@ -79,8 +79,8 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
       rand2.analyzeWithTimeout(analysisTimeout())
       assume(rand2.finished, "Full RAND reanalysis timed out.")
 
-      assert(eqState(lifo2, fifo2), "Full reanalysis is equal using LIFO and FIFO.")
-      assert(eqState(lifo2, rand2), "Full reanalysis is equal using LIFO and RAND.")
+      checkEqState(lifo2, fifo2, "Full reanalysis is not equal when using LIFO and FIFO.")
+      checkEqState(lifo2, rand2, "Full reanalysis is not equal when using LIFO and RAND.")
 
   end workListTest
 
