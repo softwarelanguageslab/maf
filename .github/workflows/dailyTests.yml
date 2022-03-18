@@ -272,7 +272,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test_class: [ IncrementalModXMachineryTests, ModFComparisonTests, ModConcComparisonTests, IncrementalModFTypeSane, IncrementalModFCPSane ]
+        test_class: [ IncrementalModXMachineryTests,
+                      ModFComparisonTests,
+                      ModConcComparisonTests,
+                      IncrementalModFTypeRestartTests,
+                      IncrementalModFCPRestartTests
+                    ]
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2

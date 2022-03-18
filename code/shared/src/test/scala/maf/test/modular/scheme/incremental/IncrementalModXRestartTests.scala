@@ -14,28 +14,10 @@ import maf.util.benchmarks.Timeout
 import org.scalatest.Tag
 import maf.language.change.CodeVersion.*
 
-import scala.concurrent.duration.{Duration, MINUTES}
+import scala.concurrent.duration.*
 
-trait IncrementalModXSanityTests extends SchemeBenchmarkTests {
-
-  val name: String
-
-  def testTags(b: Benchmark): Seq[Tag] = Seq(IncrementalTest, SlowTest)
-
-  type IncrementalAnalysis = ModAnalysis[SchemeExp]
-    with GlobalStore[SchemeExp]
-    with ReturnValue[SchemeExp]
-    with SchemeDomain
-    with StandardSchemeModFComponents
-    with IncrementalModAnalysis[SchemeExp]
-
-  def analysis(b: SchemeExp): IncrementalAnalysis
-
-  def analysisTimeout(): Timeout.T = Timeout.start(Duration(3, MINUTES))
-
-  val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
-
-  def compare(a: IncrementalAnalysis, b: IncrementalAnalysis): Boolean = a.store == b.store && a.visited == b.visited && a.deps == b.deps
+/** Tests whether restarting an analysis after completion does not alter the result. */
+trait IncrementalModXRestartTests extends IncrementalTestBase {
 
   /** Tests whether the analysis result does not change when the analysis is restarted after completion. */
   private def restartTest(program: SchemeExp): Unit =
@@ -49,7 +31,7 @@ trait IncrementalModXSanityTests extends SchemeBenchmarkTests {
       copy.addToWorkList(copy.visited)
       copy.analyzeWithTimeout(analysisTimeout())
       assert(copy.finished, "Restart of initial analysis timed out unexpectedly.")
-      assert(compare(a, copy), "Restarting initial analysis alters the analysis result.")
+      assert(eqState(a, copy), "Restarting initial analysis alters the analysis result.")
 
       // Incremental update
       for c <- configurations do
@@ -64,7 +46,7 @@ trait IncrementalModXSanityTests extends SchemeBenchmarkTests {
             copy.addToWorkList(copy.visited)
             copy.analyzeWithTimeout(analysisTimeout())
             assert(copy.finished, s"Restart of incremental update using $c timed out unexpectedly.")
-            assert(compare(updated, copy), s"Restarting $c alters the analysis result.")
+            assert(eqState(updated, copy), s"Restarting $c alters the analysis result.")
           end if
       end for
 
@@ -77,7 +59,7 @@ trait IncrementalModXSanityTests extends SchemeBenchmarkTests {
       copy.addToWorkList(copy.visited)
       copy.analyzeWithTimeout(analysisTimeout())
       assert(copy.finished, "Restart of initial analysis timed out unexpectedly.")
-      assert(compare(b, copy), "Restarting initial analysis alters the analysis result.")
+      assert(eqState(b, copy), "Restarting initial analysis alters the analysis result.")
   end restartTest
 
   override def onBenchmark(benchmark: Benchmark): Unit =
@@ -95,10 +77,10 @@ trait IncrementalModXSanityTests extends SchemeBenchmarkTests {
     }
 }
 
-class IncrementalModFTypeSane extends IncrementalModXSanityTests with SequentialIncrementalBenchmarks:
+class IncrementalModFTypeRestartTests extends IncrementalModXRestartTests with SequentialIncrementalBenchmarks:
   val name = "Incremental ModF Type"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, ci_di_wi)
 
-class IncrementalModFCPSane extends IncrementalModXSanityTests with SequentialIncrementalBenchmarks:
+class IncrementalModFCPRestartTests extends IncrementalModXRestartTests with SequentialIncrementalBenchmarks:
   val name = "Incremental ModF CP"
   override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, ci_di_wi)
