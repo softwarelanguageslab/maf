@@ -7,7 +7,7 @@ import maf.util.Writer
 import maf.util.benchmarks.Timeout
 
 trait IncrementalExperiment[E <: Expression]:
-  
+
     // Type bound for an analysis.
     type Analysis <: IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
