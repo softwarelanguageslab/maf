@@ -57,7 +57,16 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
       "integer?" -> "integer?/v",
       "any?" -> "any?/v",
       "conj/v" -> "and",
-      "disj/v" -> "or"
+      "disj/v" -> "or",
+      "not" -> "not/v",
+      "-" -> "-/v",
+      "+" -> "+/v",
+      "*" -> "*/v",
+      "/" -> "//v",
+      ">" -> ">/v",
+      "<" -> "</v",
+      "<=" -> "<=/v",
+      ">=" -> ">=/v"
     )
 
     /** Translates a symbolic Scheme value to an instance of the `V` sort */
@@ -107,6 +116,108 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
      | 
      |  (define-fun any?/v ((n V)) V 
      |      (VBool true))
+     | 
+      | (define-fun +/v ((a V) (b V)) V
+      |   (ite (and (is-VInteger a) (is-VInteger b)) 
+      |        (VInteger (+ (unwrap-VInteger a) (unwrap-VInteger b)))
+      |        (ite (and (is-VReal a) (is-VInteger b))
+      |             (VReal (+ (unwrap-VReal a) (unwrap-VInteger b)))
+      |             (ite (and (is-VInteger a) (is-VReal b))
+      |                  (VReal (+ (unwrap-VInteger a) (unwrap-VReal b)))
+      |                  (ite (and (is-VReal a) (is-VReal b))
+      |                       (VReal (+ (unwrap-VReal a) (unwrap-VReal b)))
+      |                       VError)))))
+      |   
+      | (define-fun -/v ((a V) (b V)) V
+      |   (ite (and (is-VInteger a) (is-VInteger b)) 
+      |        (VInteger (- (unwrap-VInteger a) (unwrap-VInteger b)))
+      |        (ite (and (is-VReal a) (is-VInteger b))
+      |             (VReal (- (unwrap-VReal a) (unwrap-VInteger b)))
+      |             (ite (and (is-VInteger a) (is-VReal b))
+      |                  (VReal (- (unwrap-VInteger a) (unwrap-VReal b)))
+      |                  (ite (and (is-VReal a) (is-VReal b))
+      |                       (VReal (- (unwrap-VReal a) (unwrap-VReal b)))
+      |                       VError)))))
+      |   
+      | (define-fun */v ((a V) (b V)) V
+      |   (ite (and (is-VInteger a) (is-VInteger b)) 
+      |        (VInteger (* (unwrap-VInteger a) (unwrap-VInteger b)))
+      |        (ite (and (is-VReal a) (is-VInteger b))
+      |             (VReal (* (unwrap-VReal a) (unwrap-VInteger b)))
+      |             (ite (and (is-VInteger a) (is-VReal b))
+      |                  (VReal (* (unwrap-VInteger a) (unwrap-VReal b)))
+      |                  (ite (and (is-VReal a) (is-VReal b))
+      |                       (VReal (* (unwrap-VReal a) (unwrap-VReal b)))
+      |                       VError)))))
+      |   
+      | (define-fun //v ((a V) (b V)) V
+      |   (ite (and (is-VInteger a) (is-VInteger b)) 
+      |        (VInteger (/ (unwrap-VInteger a) (unwrap-VInteger b)))
+      |        (ite (and (is-VReal a) (is-VInteger b))
+      |             (VReal (/ (unwrap-VReal a) (unwrap-VInteger b)))
+      |             (ite (and (is-VInteger a) (is-VReal b))
+      |                  (VReal (/ (unwrap-VInteger a) (unwrap-VReal b)))
+      |                  (ite (and (is-VReal a) (is-VReal b))
+      |                       (VReal (/ (unwrap-VReal a) (unwrap-VReal b)))
+      |                       VError)))))
+      |   (define-fun =/v ((a V) (b V)) V
+      |   (ite (and (is-VInteger a) (is-VInteger b)) 
+      |        (VBool (= (unwrap-VInteger a) (unwrap-VInteger b)))
+      |        (ite (and (is-VReal a) (is-VInteger b))
+      |             (VBool (= (unwrap-VReal a) (unwrap-VInteger b)))
+      |             (ite (and (is-VInteger a) (is-VReal b))
+      |                  (VBool (= (unwrap-VInteger a) (unwrap-VReal b)))
+      |                  (ite (and (is-VReal a) (is-VReal b))
+      |                       (VBool (= (unwrap-VReal a) (unwrap-VReal b)))
+      |                       VError)))))
+      |   
+      | (define-fun </v ((a V) (b V)) V
+      |   (ite (and (is-VInteger a) (is-VInteger b)) 
+      |        (VBool (< (unwrap-VInteger a) (unwrap-VInteger b)))
+      |        (ite (and (is-VReal a) (is-VInteger b))
+      |             (VBool (< (unwrap-VReal a) (unwrap-VInteger b)))
+      |             (ite (and (is-VInteger a) (is-VReal b))
+      |                  (VBool (< (unwrap-VInteger a) (unwrap-VReal b)))
+      |                  (ite (and (is-VReal a) (is-VReal b))
+      |                       (VBool (< (unwrap-VReal a) (unwrap-VReal b)))
+      |                       VError)))))
+      |   
+      | (define-fun >/v ((a V) (b V)) V
+      |   (ite (and (is-VInteger a) (is-VInteger b)) 
+      |        (VBool (> (unwrap-VInteger a) (unwrap-VInteger b)))
+      |        (ite (and (is-VReal a) (is-VInteger b))
+      |             (VBool (> (unwrap-VReal a) (unwrap-VInteger b)))
+      |             (ite (and (is-VInteger a) (is-VReal b))
+      |                  (VBool (> (unwrap-VInteger a) (unwrap-VReal b)))
+      |                  (ite (and (is-VReal a) (is-VReal b))
+      |                       (VBool (> (unwrap-VReal a) (unwrap-VReal b)))
+      |                       VError)))))
+      |   
+      | (define-fun <=/v ((a V) (b V)) V
+      |   (ite (and (is-VInteger a) (is-VInteger b)) 
+      |        (VBool (<= (unwrap-VInteger a) (unwrap-VInteger b)))
+      |        (ite (and (is-VReal a) (is-VInteger b))
+      |             (VBool (<= (unwrap-VReal a) (unwrap-VInteger b)))
+      |             (ite (and (is-VInteger a) (is-VReal b))
+      |                  (VBool (<= (unwrap-VInteger a) (unwrap-VReal b)))
+      |                  (ite (and (is-VReal a) (is-VReal b))
+      |                       (VBool (<= (unwrap-VReal a) (unwrap-VReal b)))
+      |                       VError)))))
+      |   
+      | (define-fun >=/v ((a V) (b V)) V
+      |   (ite (and (is-VInteger a) (is-VInteger b)) 
+      |        (VBool (>= (unwrap-VInteger a) (unwrap-VInteger b)))
+      |        (ite (and (is-VReal a) (is-VInteger b))
+      |             (VBool (>= (unwrap-VReal a) (unwrap-VInteger b)))
+      |             (ite (and (is-VInteger a) (is-VReal b))
+      |                  (VBool (>= (unwrap-VInteger a) (unwrap-VReal b)))
+      |                  (ite (and (is-VReal a) (is-VReal b))
+      |                       (VBool (>= (unwrap-VReal a) (unwrap-VReal b)))
+      |                       VError)))))
+      | 
+     |
+     | (define-fun not/v ((a V)) V
+     |   (ite (is-VBool a) (VBool (not (unwrap-VBool a))) VError))
      |
      |  (define-fun true?/v ((n V)) Bool
      |     (ite (is-VBool n) (unwrap-bool n) false))
