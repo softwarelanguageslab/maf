@@ -167,7 +167,7 @@ object MAFLogger:
         case LogEnvironment.CI =>
           val logLocation: String = sys.env.get("LOG_LOCATION").getOrElse("log.txt")
           Map(
-            AnalysisError -> FileLog(logLocation),
+            AnalysisError -> NoLog, //FileLog(logLocation),
             Info -> NoLog,
             Debug -> NoLog
           )
