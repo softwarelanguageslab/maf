@@ -33,7 +33,7 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
       assert(copy.finished, "Restart of initial analysis timed out unexpectedly.")
       assert(eqState(a, copy), "Restarting initial analysis alters the analysis result.")
 
-      // Incremental update
+      // Incremental update.
       for c <- configurations do
           info(s"Checking $c.")
           copy = a.deepCopy()
@@ -47,9 +47,12 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
               assert(copy.finished, s"Restart of incremental update using $c timed out unexpectedly.")
               assert(eqState(updated, copy), s"Restarting $c alters the analysis result.")
           end if
-      end for // Full reanalysis
+      end for //
+
+      // Full reanalysis.
       val b = analysis(program)
       b.version = New
+      b.configuration = noOptimisations
       b.analyzeWithTimeout(analysisTimeout())
       assume(b.finished, "Full reanalysis timed out.")
       copy = b.deepCopy()

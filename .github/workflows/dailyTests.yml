@@ -276,7 +276,8 @@ jobs:
                       ModFComparisonTests,
                       ModConcComparisonTests,
                       IncrementalModFTypeRestartTests,
-                      IncrementalModFCPRestartTests
+                      IncrementalModFCPRestartTests,
+                      IncrementalModFCPWLIndependenceTests
                     ]
     steps:
       - name: Checkout the repository
