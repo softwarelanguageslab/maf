@@ -95,7 +95,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             resultsM.runValue(initialState).vs.map(_._2)
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            //println(s"analyzing $cmp")
+            println(s"analyzing $cmp")
             track(NumberOfComponents, cmp)
             count(NumberOfIntra)
 
@@ -366,12 +366,14 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
                 // Since applying the contract on the value does not (always) generate seperate branches,
                 // we split the join again here.
-                splitResult <- nondets(
-                  ifFeasible(`true?`, joinedResult) { unit(lattice.bool(true)) >>= tag(joinedResult.symbolic) },
-                  ifFeasible(`false?`, joinedResult) { unit(lattice.bool(false)) >>= tag(joinedResult.symbolic) }
+                splitResult <- extract(
+                  nondets(
+                    ifFeasible(`true?`, joinedResult) { unit(lattice.bool(true)) >>= tag(joinedResult.symbolic) },
+                    ifFeasible(`false?`, joinedResult) { unit(lattice.bool(false)) >>= tag(joinedResult.symbolic) }
+                  )
                 )
-            //_ <- getPc >>= trace("pc")
-            yield splitResult
+                _ <- effectful { println(s"${splitResult._1} is result of $checkExpr") }
+            yield splitResult._2
 
         /**
          * The semantics of a "mon" expression.
@@ -470,11 +472,11 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
           // TODO: check that the value is indeed a function value, otherwise this should result in a blame (also check which blame)
           unit(lattice.arr(ContractValues.Arr(monIdn, expression.idn, contract, value.value)))
 
-        protected def applyArr(fc: SchemeFuncall, fv: PostValue): EvalM[Value] = nondets {
+        protected def applyArr(fc: SchemeFuncall, fv: PostValue, argsvOpt: Option[List[PostValue]] = None): EvalM[Value] = nondets {
           lattice.getArrs(fv.value).map { arr =>
               track(AppArr, (arr, fc))
               for
-                  argsV <- fc.args.mapM(eval andThen extract)
+                  argsV <- argsvOpt.map(unit).getOrElse(fc.args.mapM(eval andThen extract))
                   values <- argsV.zip(arr.contract.domain).zip(fc.args).mapM { case ((arg, domain), expr) =>
                     applyMon(PostValue.noSymbolic(domain), arg, expr, fc.idn) >>= { res =>
                       unit(res)
@@ -532,7 +534,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 if argsV.map(_.value).exists(lattice.isBottom(_)) then void
                 else
                     nondets(
-                      applyArr(f, fv),
+                      applyArr(f, fv, Some(argsV)),
                       callFun(fv, argsV),
                       applyFunPost(f, fv.value, f.args.zip(argsV), f.idn.pos, ctx)
                     ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))

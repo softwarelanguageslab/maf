@@ -69,7 +69,15 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
       export scvMonadInstance._
       def getEnv: EvalM[Environment[Address]] = get.map(_.env)
       def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
-        withState(s => s.copy(env = f(s.env)))(ev)
+        for
+            s <- get
+            oldEnv = s.env
+            _ <- put(s.copy(env = f(oldEnv)))
+            result <- ev
+            newSt <- get
+            _ <- put(newSt.copy(env = oldEnv))
+        yield result
+
       //def guard(bln: Boolean): EvalM[Unit] =
       //  if bln then unit(()) else mzero
       def mzero[X]: EvalM[X] = MonadStateT.lift(TaggedSet.empty)
@@ -149,8 +157,16 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
   protected def putVars(vars: List[String]): EvalM[Unit] =
     for
         st <- scvMonadInstance.get
-        _ <- scvMonadInstance.put(st.copy(vars = vars, freshVar = vars.size + 1))
+        _ <- scvMonadInstance.put(st.copy(vars = vars, freshVar = vars.size))
     yield ()
+
+  protected def withFresh[X](m: EvalM[X]): EvalM[X] =
+    for
+        oldSt <- scvMonadInstance.get
+        result <- m
+        newSt <- scvMonadInstance.get
+        _ <- scvMonadInstance.put(newSt.copy(freshVar = oldSt.freshVar, vars = oldSt.vars))
+    yield result
 
   /** Generates a fresh symbolic variable */
   protected def fresh: EvalM[SchemeExp] =

@@ -68,7 +68,8 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
         protected def evalClosure(lam: SchemeLambdaExp): EvalM[Value] =
           for env <- getEnv yield newClosure(lam, env)
         protected def evalSequence(exps: List[SchemeExp]): EvalM[Value] =
-          exps.foldLeftM(lattice.void)((_, exp) => eval(exp))
+          Monad.sequence(exps.map(eval)).map(_.last)
+        //exps.foldLeftM(lattice.void)((_, exp) => eval(exp))
         private def evalSet(id: Identifier, exp: SchemeExp): EvalM[Value] =
           for
               rhs <- eval(exp)
