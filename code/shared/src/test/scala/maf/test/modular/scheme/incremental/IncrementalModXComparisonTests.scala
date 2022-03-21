@@ -92,7 +92,7 @@ class ModFComparisonTests extends IncrementalModXComparisonTests:
         extends BaseAnalysis(program)
         with IncrementalSchemeModFBigStepSemantics
         with IncrementalGlobalStore[SchemeExp]:
-        var configuration: IncrementalConfiguration = allOptimisations
+        var configuration: IncrementalConfiguration = ci_di_wi // allOptimisations
         override def intraAnalysis(
             cmp: Component
           ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
