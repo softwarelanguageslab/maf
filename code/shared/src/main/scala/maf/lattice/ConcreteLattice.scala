@@ -79,8 +79,8 @@ class ConcreteLattice:
               to: I2
             ): S = (s, from, to) match
               case (Values(bot), _, _) if bot.isEmpty            => makeValues(bot)
-              case (_, from, _) if from == IntLattice[I2].bottom => bottom
-              case (_, _, to) if to == IntLattice[I2].bottom     => bottom
+              case (_, from, _) if IntLattice[I2].isBottom(from) => bottom
+              case (_, _, to) if IntLattice[I2].isBottom(to)     => bottom
               case (Top, _, _) | (_, Top, _) | (_, _, Top)       => Top /* This could be further refined, but that wouldn't be too useful */
               case (Values(s), from, to)                         =>
                 // Assumptions: from and to are in the string, we perform no bound check
@@ -121,7 +121,7 @@ class ConcreteLattice:
               i: I2,
               c: C2
             ): S = s match
-              case _ if s == bottom || i == IntLattice[I2].bottom || c == CharLattice[C2].bottom => bottom
+              case _ if s == bottom || IntLattice[I2].isBottom(i) || CharLattice[C2].isBottom(c) => bottom
               case _                                                                             => Top // TODO: more precise implementation
           def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match
               case (Values(bot), _) if bot.isEmpty => BoolLattice[B2].bottom

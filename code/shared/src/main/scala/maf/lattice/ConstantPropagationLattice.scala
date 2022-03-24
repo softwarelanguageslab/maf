@@ -102,8 +102,8 @@ object ConstantPropagation:
               to: I2
             ): S = (s, from, to) match
               case (Bottom, _, _)                                => Bottom
-              case (_, from, _) if from == IntLattice[I2].bottom => Bottom
-              case (_, _, to) if to == IntLattice[I2].bottom     => Bottom
+              case (_, from, _) if IntLattice[I2].isBottom(from) => Bottom
+              case (_, _, to) if IntLattice[I2].isBottom(to)     => Bottom
               case (Top, _, _)                                   => Top
               case (Constant(s), from, to)                       =>
                 // This is duplicated code from ConcreteLattice, it should be refactored
@@ -139,7 +139,7 @@ object ConstantPropagation:
               c: C2
             ): S = s match
               case Bottom                                                         => Bottom
-              case _ if i == IntLattice[I2].bottom || c == CharLattice[C2].bottom => Bottom
+              case _ if IntLattice[I2].isBottom(i) || CharLattice[C2].isBottom(c) => Bottom
               case Top                                                            => Top
               case Constant(str) =>
                 (i, c) match

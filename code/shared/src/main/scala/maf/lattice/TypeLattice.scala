@@ -50,14 +50,14 @@ object Type:
               case (Top, _) | (Top, _)       => Top
           def ref[I2: IntLattice, C2: CharLattice](s: S, i: I2): C2 = s match
               case Bottom                            => CharLattice[C2].bottom
-              case Top if i == IntLattice[I2].bottom => CharLattice[C2].bottom
+              case Top if IntLattice[I2].isBottom(i) => CharLattice[C2].bottom
               case Top                               => CharLattice[C2].top
           def set[I2: IntLattice, C2: CharLattice](
               s: S,
               i: I2,
               c: C2
             ): S =
-            if s == Bottom || i == IntLattice[I2].bottom || c == CharLattice[C2].bottom then Bottom
+            if s == Bottom || IntLattice[I2].isBottom(i) || CharLattice[C2].isBottom(c) then Bottom
             else Top
           def lt[B2: BoolLattice](s1: T, s2: T) = (s1, s2) match
               case (Bottom, _) | (_, Bottom) => BoolLattice[B2].bottom
@@ -68,8 +68,8 @@ object Type:
               to: I2
             ): T = s match
               case Bottom                             => Bottom
-              case _ if from == IntLattice[I2].bottom => Bottom
-              case _ if to == IntLattice[I2].bottom   => Bottom
+              case _ if IntLattice[I2].isBottom(from) => Bottom
+              case _ if IntLattice[I2].isBottom(to)   => Bottom
               case Top                                => Top
 
           def toSymbol[Sym2: SymbolLattice](s: S) = s.to[Sym2]
