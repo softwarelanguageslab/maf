@@ -30,16 +30,16 @@ object IncrementalRun extends App:
 
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
       new IncrementalSchemeModFAnalysisTypeLattice(text, configuration)
-      //with IncrementalLogging[SchemeExp]
+      with IncrementalLogging[SchemeExp]
       //with IncrementalDataFlowVisualisation[SchemeExp]
       {
         //override def focus(a: Addr): Boolean = false //a.toString.toLowerCase().nn.contains("ret")
-
+        mode = Mode.Summary
         override def intraAnalysis(
             cmp: SchemeModFComponent
           ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
         //  with AssertionModFIntra
-        //with IncrementalLoggingIntra
+        with IncrementalLoggingIntra
         //with IncrementalVisualIntra
       }
 

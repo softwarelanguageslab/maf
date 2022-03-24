@@ -24,7 +24,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     var botRead: Option[Addr] = None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
     var repeats: Map[Component, Integer] = Map.empty.withDefaultValue(0) // Keep track of how many times every component has been analysed.
 
-    def focus(a: Addr): Boolean = false // Whether to "watch"" an address and insert it into the table.
+    def focus(a: Addr): Boolean = false // Whether to "watch" an address and insert it into the table.
 
     var maxLen: Int = 75
     def crop(string: String, length: Int = maxLen): String = if string.length <= length then string else string.take(length) + "..."

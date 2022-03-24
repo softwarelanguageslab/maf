@@ -69,7 +69,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
             )
         then
             println()
-            return
+            return ()
 
         configurations.foreach { config =>
             val copy = a1.deepCopy()
