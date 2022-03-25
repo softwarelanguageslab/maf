@@ -33,8 +33,8 @@ object IncrementalRun extends App:
             with IncrementalLogging[SchemeExp]
             //with IncrementalDataFlowVisualisation[SchemeExp]
             {
-            //override def focus(a: Addr): Boolean = false //a.toString.toLowerCase().nn.contains("ret")
-            mode = Mode.Fine
+            override def focus(a: Addr): Boolean = a.toString == "VarAddr(x@<=:1:13)[Some(ε)]"
+            mode = Mode.Coarse
             override def intraAnalysis(
                 cmp: SchemeModFComponent
               ) = new IntraAnalysis(cmp)
@@ -107,7 +107,7 @@ object IncrementalRun extends App:
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
-    val configs = allConfigurations
+    val configs = List(ci_wi)
 
     modFbenchmarks.foreach { bench =>
         try {
@@ -120,17 +120,17 @@ object IncrementalRun extends App:
             a.analyzeWithTimeout(newTimeout())
             assert(a.finished)
 
-            val noOpt = a.deepCopy()
-            noOpt.configuration = noOptimisations
+            //val noOpt = a.deepCopy()
+            //noOpt.configuration = noOptimisations
             //noOpt.logger.logU("***** NO OPT *****")
-            noOpt.updateAnalysis(newTimeout())
-            assert(noOpt.finished)
+            //noOpt.updateAnalysis(newTimeout())
+            //assert(noOpt.finished)
 
-            val full = newAnalysis(text, noOptimisations)
-            full.version = New
+            //val full = newAnalysis(text, noOptimisations)
+            //full.version = New
             //full.logger.logU("***** FULL *****")
-            full.analyzeWithTimeout(newTimeout())
-            assert(full.finished)
+            //full.analyzeWithTimeout(newTimeout())
+            //assert(full.finished)
 
             configs.foreach { config =>
                 println(config)
