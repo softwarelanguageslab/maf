@@ -29,12 +29,12 @@ import scala.concurrent.duration.*
 object IncrementalRun extends App:
 
     def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
-      new IncrementalSchemeModFAnalysisTypeLattice(text, configuration)
+      new IncrementalSchemeModFAnalysisCPLattice(text, configuration)
       with IncrementalLogging[SchemeExp]
       //with IncrementalDataFlowVisualisation[SchemeExp]
       {
         //override def focus(a: Addr): Boolean = false //a.toString.toLowerCase().nn.contains("ret")
-        mode = Mode.Summary
+        mode = Mode.Fine
         override def intraAnalysis(
             cmp: SchemeModFComponent
           ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
@@ -85,34 +85,6 @@ object IncrementalRun extends App:
       //with IncrementalVisualIntra
     }
 
-    def compareAnalyses(
-        inc: IncrementalModAnalysis[SchemeExp] with GlobalStore[SchemeExp],
-        rean: IncrementalModAnalysis[SchemeExp] with GlobalStore[SchemeExp],
-        name: String
-      ): Unit =
-        val cName = inc.configuration.toString
-        // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
-        val iStore = inc.store.filterNot(kv => inc.lattice.isBottom(kv._2)).withDefaultValue(inc.lattice.bottom)
-        val rStore = rean.store.filterNot(kv => rean.lattice.isBottom(kv._2)).withDefaultValue(rean.lattice.bottom)
-        println(iStore.keySet.size)
-        val allAddr = (iStore.keySet ++ rStore.keySet).filter(!_.isInstanceOf[PrmAddr])
-        var e: Long = 0L
-        var l: Long = 0L
-        var m: Long = 0L
-        allAddr.foreach({ a =>
-            val incr = iStore(a)
-            val rean = rStore(a)
-            if incr == rean then e += 1 // Both results are the same => equally precise.
-            else if inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]) then l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
-            else {
-              //System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
-              //System.err.nn.flush()
-              m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
-            }
-        })
-        System.err.nn.println(s"$name: less precise: $l -- equal: $e -- more precise: $m")
-    end compareAnalyses
-
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
     // Useful when reducing a program when debugging the analysis.
     def interpretProgram(file: String): Unit =
@@ -129,11 +101,11 @@ object IncrementalRun extends App:
         println("Done interpreting.")
 
     val modFbenchmarks: List[String] = List(
-      "test/changes/scheme/slip-1-to-2.scm"
+      "test/changes/scheme/generated/R5RS_various_four-in-a-row-2.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
-    val configs = List(wi, ci_wi)
+    val configs = allConfigurations
 
     modFbenchmarks.foreach { bench =>
       try {
@@ -159,13 +131,14 @@ object IncrementalRun extends App:
         assert(full.finished)
 
         configs.foreach { config =>
+            println(config)
             val opt = a.deepCopy()
             opt.configuration = config
             //opt.logger.logU(s"***** ${config.toString} *****")
             opt.updateAnalysis(newTimeout())
             assert(opt.finished)
 
-            compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
+           // compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
         //compareAnalyses(opt, noOpt, s"${opt.configuration.toString} vs. No Opt")
         }
 
