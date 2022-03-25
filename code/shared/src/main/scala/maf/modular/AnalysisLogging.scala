@@ -17,7 +17,7 @@ trait AnalysisLogging[Expr <: Expression] extends GlobalStore[Expr]:
     var table: Table[String] = Table.empty.withDefaultValue("")
     var step: Int = 0 // The current intra-component analysis.
     var botRead: Option[Addr] =
-      None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
+        None // The analysis of a component (sometimes) stops when reading bottom. Keep whether bottom was the last read value, and if so, the corresponding address read.
     var repeats: Map[Component, Integer] = Map.empty.withDefaultValue(0) // Keep track of how many times every component has been analysed.
 
     def focus(a: Addr): Boolean = !a.toString.contains("Prm") // Whether to "watch"" an address and insert it into the table.
@@ -33,18 +33,18 @@ trait AnalysisLogging[Expr <: Expression] extends GlobalStore[Expr]:
         step = step + 1
         messageOrComponent match
             case Left(msg) =>
-              table = table.add(stepString, "Phase", msg)
+                table = table.add(stepString, "Phase", msg)
             case Right(cmp) =>
-              val addrs = store.keySet
-              table = table.add(stepString, "Phase", cmp.toString)
-              addrs.foreach(addr =>
-                if focus(addr) then {
-                  val v = store.getOrElse(addr, lattice.bottom)
-                  table = table.add(stepString, s"σ($addr)", v.toString)
-                }
-              )
-              botRead.foreach(addr => table = table.add(stepString, "Bot", addr.toString))
-              botRead = None
+                val addrs = store.keySet
+                table = table.add(stepString, "Phase", cmp.toString)
+                addrs.foreach(addr =>
+                    if focus(addr) then {
+                        val v = store.getOrElse(addr, lattice.bottom)
+                        table = table.add(stepString, s"σ($addr)", v.toString)
+                    }
+                )
+                botRead.foreach(addr => table = table.add(stepString, "Bot", addr.toString))
+                botRead = None
 
     private def tableToString(): String =
         val storeCols = table.allColumns.filter(_.startsWith("σ")).toList.sorted
@@ -55,7 +55,7 @@ trait AnalysisLogging[Expr <: Expression] extends GlobalStore[Expr]:
     private var intraC: Long = 0
 
     def getSummary(): String =
-      s"""##########################################
+        s"""##########################################
          |Analysis Summary:
          |  - components: ${visited.size}
          |      ${visited.mkString(", ")}

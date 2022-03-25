@@ -27,9 +27,9 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
 
     private var policyPerFn: Map[LambdaModule, ContextSensitivityPolicy] = Map.empty
     private def getCurrentPolicy(fn: LambdaModule): ContextSensitivityPolicy =
-      policyPerFn.getOrElse(fn, defaultPolicy)
+        policyPerFn.getOrElse(fn, defaultPolicy)
     private def setCurrentPolicy(fn: LambdaModule, ply: ContextSensitivityPolicy): Unit =
-      policyPerFn += fn -> ply
+        policyPerFn += fn -> ply
 
     def allocCtx(
         clo: lattice.Closure,
@@ -37,18 +37,18 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
         call: Position,
         caller: Component
       ): ComponentContext =
-      getCurrentPolicy(LambdaModule(clo._1)).allocCtx(clo, args, call, caller)
+        getCurrentPolicy(LambdaModule(clo._1)).allocCtx(clo, args, call, caller)
     def adaptCall(cll: Call[ComponentContext]): Call[ComponentContext] = cll match
         case Call(clo, ctx) => Call(adaptClosure(clo), adaptCtx(LambdaModule(clo._1), ctx))
     def adaptCtx(fn: LambdaModule, ctx: ComponentContext): ComponentContext =
-      getCurrentPolicy(fn).adaptCtx(ctx)
+        getCurrentPolicy(fn).adaptCtx(ctx)
 
     // allocation context = component context
     // (also store the function that the context came from)
 
     type AllocationContext = Option[(ComponentContext, LambdaModule)]
     def adaptAllocCtx(ctx: AllocationContext): AllocationContext = ctx.map { case (ctx, idn) =>
-      (getCurrentPolicy(idn).adaptCtx(ctx), idn)
+        (getCurrentPolicy(idn).adaptCtx(ctx), idn)
     }
     private def addrContext(cmp: SchemeModFComponent) = cmp match
         case Main                                             => None
@@ -94,12 +94,12 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
     // adapting the analysis
 
     def modulesToAdapt =
-      selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, _._2.cardinality)
+        selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, _._2.cardinality)
 
     def inspect() =
         // start the adaptation
         modulesToAdapt.foreach { case (module, _) =>
-          reduceModule(module)
+            reduceModule(module)
         }
         // update the analysis
         if reducedModules.nonEmpty then { adaptAnalysis() }
@@ -143,36 +143,36 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
 
     // find a fitting policy
     private def reduceContextsForModule(module: LambdaModule): Unit =
-      if !reducedModules(module) then // ensure this is only done once per module per adaptation
-          reducedModules += module
-          // find a fitting CS policy
-          var ctxs = allCmpsPerFn(module).map(_.ctx)
-          var plcy = getCurrentPolicy(module)
-          val target = Math.max(1, ctxs.size * reduceFactor)
-          while ctxs.size > target do
-              // need to decrease precision further
-              plcy = nextPolicy(module.lambda, plcy, ctxs)
-              ctxs = ctxs.map(plcy.adaptCtx)
-          // register the new policy
-          debug(s"$module -> $plcy")
-          setCurrentPolicy(module, plcy)
+        if !reducedModules(module) then // ensure this is only done once per module per adaptation
+            reducedModules += module
+            // find a fitting CS policy
+            var ctxs = allCmpsPerFn(module).map(_.ctx)
+            var plcy = getCurrentPolicy(module)
+            val target = Math.max(1, ctxs.size * reduceFactor)
+            while ctxs.size > target do
+                // need to decrease precision further
+                plcy = nextPolicy(module.lambda, plcy, ctxs)
+                ctxs = ctxs.map(plcy.adaptCtx)
+            // register the new policy
+            debug(s"$module -> $plcy")
+            setCurrentPolicy(module, plcy)
 
     private def reduceDep(dep: Dependency) =
-      if !reducedDeps(dep) then
-          reducedDeps += dep
-          dep match
-              case AddrDependency(addr) => reduceValueAbs(store(addr))
-              case _                    => throw new Exception("Unknown dependency for adaptive analysis")
+        if !reducedDeps(dep) then
+            reducedDeps += dep
+            dep match
+                case AddrDependency(addr) => reduceValueAbs(store(addr))
+                case _                    => throw new Exception("Unknown dependency for adaptive analysis")
 
     private def reduceValueAbs(value: Value): Unit = value.vs.maxBy(sizeOfV) match
         case modularLatticeWrapper.modularLattice.Pointer(pts) => reduceAddresses(pts)
         case modularLatticeWrapper.modularLattice.Clo(cls)     => reduceClosures(cls)
         case modularLatticeWrapper.modularLattice.Cons(car, cdr) =>
-          if sizeOfValue(car) > sizeOfValue(cdr) then reduceValueAbs(car)
-          else reduceValueAbs(cdr)
+            if sizeOfValue(car) > sizeOfValue(cdr) then reduceValueAbs(car)
+            else reduceValueAbs(cdr)
         case modularLatticeWrapper.modularLattice.Vec(_, elms) =>
-          val value = elms.map(_._2).maxBy(sizeOfValue) // assume elms is not empty!
-          reduceValueAbs(value)
+            val value = elms.map(_._2).maxBy(sizeOfValue) // assume elms is not empty!
+            reduceValueAbs(value)
         case v => warn(s"Attempting to adapt a non-set-based value $v")
 
     private def reduceAddresses(addrs: Set[Addr]) =
@@ -181,8 +181,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
         selected.foreach { case (loc, addrs) => reduceAddressesForLocation(loc, addrs) }
 
     private def reduceAddressesForLocation(loc: Expression, addrs: Set[Addr]) =
-      //debug(s"Reducing ${addrs.size} addrs")
-      reduceContextsForModule(getAddrModule(addrs.head).asInstanceOf[LambdaModule])
+        //debug(s"Reducing ${addrs.size} addrs")
+        reduceContextsForModule(getAddrModule(addrs.head).asInstanceOf[LambdaModule])
 
     private def reduceClosures(cls: Set[(SchemeLambdaExp, Environment[Addr])]) =
         val groupByFunction = cls.groupBy[SchemeLambdaExp](_._1)
@@ -190,8 +190,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
         selected.foreach { case (fn, closures) => reduceClosuresForFunction(fn, closures) }
 
     private def reduceClosuresForFunction(fn: SchemeLambdaExp, closures: Set[(SchemeLambdaExp, Environment[Addr])]) =
-      //debug(s"Reducing ${closures.size} closures")
-      reduceContextsForModule(getParentModule(closures.head).asInstanceOf[LambdaModule])
+        //debug(s"Reducing ${closures.size} closures")
+        reduceContextsForModule(getParentModule(closures.head).asInstanceOf[LambdaModule])
 
     override def adaptAnalysis() =
         super.adaptAnalysis()
@@ -206,7 +206,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
      */
 
     def selectLargest[D](data: Iterable[D], size: D => Int): Iterable[D] =
-      selectLargest(data, size, size(data.maxBy(size)))
+        selectLargest(data, size, size(data.maxBy(size)))
     def selectLargest[D](
         data: Iterable[D],
         size: D => Int,
@@ -221,24 +221,24 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
     private def getAddrExp(addr: Addr): Expression = addr match
         case returnAddr: ReturnAddr[Component] @unchecked => expr(returnAddr.cmp)
         case schemeAddr: SchemeAddr[AllocationContext] @unchecked =>
-          schemeAddr match
-              case VarAddr(idf, _) => idf
-              case PtrAddr(exp, _) => exp
-              case PrmAddr(nam)    => Identifier(nam, Identity.none)
+            schemeAddr match
+                case VarAddr(idf, _) => idf
+                case PtrAddr(exp, _) => exp
+                case PrmAddr(nam)    => Identifier(nam, Identity.none)
     private def getAddrModule(addr: Addr): SchemeModule = addr match
         case returnAddr: ReturnAddr[Component] @unchecked => module(returnAddr.cmp)
         case schemeAddr: SchemeAddr[AllocationContext] @unchecked =>
-          schemeAddr match
-              case VarAddr(_, ctx) => getAllocCtxModule(ctx)
-              case PtrAddr(_, ctx) => getAllocCtxModule(ctx)
-              case PrmAddr(_)      => MainModule
+            schemeAddr match
+                case VarAddr(_, ctx) => getAllocCtxModule(ctx)
+                case PtrAddr(_, ctx) => getAllocCtxModule(ctx)
+                case PrmAddr(_)      => MainModule
     private def getAllocCtxModule(ctx: AllocationContext): SchemeModule = ctx match
         case None          => MainModule
         case Some((_, lm)) => lm
     def getParentModule(clo: (SchemeLambdaExp, Environment[Addr])): SchemeModule =
-      clo._2.asInstanceOf[WrappedEnv[Addr, SchemeModule]].data
+        clo._2.asInstanceOf[WrappedEnv[Addr, SchemeModule]].data
     private def sizeOfValue(value: Value): Int =
-      value.vs.map(sizeOfV).sum
+        value.vs.map(sizeOfV).sum
     private def sizeOfV(v: ValueElement): Int = v match
         case modularLatticeWrapper.modularLattice.Pointer(ptrs)    => ptrs.size
         case modularLatticeWrapper.modularLattice.Clo(closures)    => closures.size

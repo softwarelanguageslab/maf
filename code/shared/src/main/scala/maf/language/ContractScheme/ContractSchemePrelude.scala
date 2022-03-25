@@ -37,6 +37,6 @@ object ContractSchemePrelude extends BaseSchemePrelude:
     )
 
     override def parseDef(dff: String, nam: String): List[SchemeExp] =
-      List(ContractSchemeParser.compile(dff, Position.newTag(nam)))
+        List(ContractSchemeParser.compile(dff, Position.newTag(nam)))
 
 end ContractSchemePrelude

@@ -19,11 +19,11 @@ import maf.util._
  */
 trait ScvSafetyTests extends ScvAnalysisTests:
     override def onBenchmark(b: Benchmark): Unit =
-      property(s"$b should contain no contract violations") {
-        runFromFile(b) { an =>
-            assert(an.summary.blames.size == 0)
-            assert(an.returnValue(an.initialComponent) != an.lattice.bottom)
+        property(s"$b should contain no contract violations") {
+            runFromFile(b) { an =>
+                assert(an.summary.blames.size == 0)
+                assert(an.returnValue(an.initialComponent) != an.lattice.bottom)
+            }
         }
-      }
 
 //class SimpleSafetyTests extends ScvSafetyTests with ContractSafetyTestsBenchmarks

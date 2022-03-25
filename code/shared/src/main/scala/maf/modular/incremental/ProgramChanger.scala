@@ -54,7 +54,7 @@ object ProgramChanger:
 
     // Creates a display expression.
     private def createDisplayExp(exp: String): SchemeExp =
-      SchemeFuncall(SchemeVar(Identifier("display", id0)), List(SchemeVar(Identifier(exp, id0))), id0)
+        SchemeFuncall(SchemeVar(Identifier("display", id0)), List(SchemeVar(Identifier(exp, id0))), id0)
     private def createDisplayExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("display", id0)), List(exp), id0)
 
     // Gets an IfAction with a certain probability:
@@ -68,30 +68,39 @@ object ProgramChanger:
 
     private def createNotExp(exp: SchemeExp) = SchemeFuncall(SchemeVar(Identifier("not", id0)), List(exp), id0)
     private def createIdFunCall(exp: SchemeExp) =
-      SchemeFuncall(SchemeLambda(None, List(Identifier("x", id0)), List(SchemeVar(Identifier("x", id0))), None, id0), List(exp), id0)
+        SchemeFuncall(SchemeLambda(None, List(Identifier("x", id0)), List(SchemeVar(Identifier("x", id0))), None, id0), List(exp), id0)
 
     private def changeIf(ifE: SchemeIf, nested: Boolean): SchemeExp =
-      getIfAction() match {
-        case Retain => SchemeIf(changeExpression(ifE.cond, nested), changeExpression(ifE.cons, nested), changeExpression(ifE.alt, nested), ifE.idn)
-        case NegatePredicate if nested =>
-          negatedPredicate += 1
-          SchemeIf(createNotExp(changeExpression(ifE.cond, nested)), changeExpression(ifE.cons, nested), changeExpression(ifE.alt, nested), ifE.idn)
-        case NegatePredicate =>
-          negatedPredicate += 1
-          val pred = changeExpression(ifE.cond, true)
-          SchemeIf(SchemeCodeChange(pred, createNotExp(pred), id0), changeExpression(ifE.cons, nested), changeExpression(ifE.alt, nested), ifE.idn)
-        case SwapBranches if nested =>
-          branchesSwapped += 1
-          SchemeIf(changeExpression(ifE.cond, nested), changeExpression(ifE.alt, nested), changeExpression(ifE.cons, nested), ifE.idn)
-        case SwapBranches =>
-          branchesSwapped += 1
-          SchemeIf(
-            changeExpression(ifE.cond, nested),
-            SchemeCodeChange(ifE.cons, changeExpression(ifE.alt, true), id0),
-            SchemeCodeChange(ifE.alt, changeExpression(ifE.cons, true), id0),
-            ifE.idn
-          )
-      }
+        getIfAction() match {
+            case Retain =>
+                SchemeIf(changeExpression(ifE.cond, nested), changeExpression(ifE.cons, nested), changeExpression(ifE.alt, nested), ifE.idn)
+            case NegatePredicate if nested =>
+                negatedPredicate += 1
+                SchemeIf(createNotExp(changeExpression(ifE.cond, nested)),
+                         changeExpression(ifE.cons, nested),
+                         changeExpression(ifE.alt, nested),
+                         ifE.idn
+                )
+            case NegatePredicate =>
+                negatedPredicate += 1
+                val pred = changeExpression(ifE.cond, true)
+                SchemeIf(SchemeCodeChange(pred, createNotExp(pred), id0),
+                         changeExpression(ifE.cons, nested),
+                         changeExpression(ifE.alt, nested),
+                         ifE.idn
+                )
+            case SwapBranches if nested =>
+                branchesSwapped += 1
+                SchemeIf(changeExpression(ifE.cond, nested), changeExpression(ifE.alt, nested), changeExpression(ifE.cons, nested), ifE.idn)
+            case SwapBranches =>
+                branchesSwapped += 1
+                SchemeIf(
+                  changeExpression(ifE.cond, nested),
+                  SchemeCodeChange(ifE.cons, changeExpression(ifE.alt, true), id0),
+                  SchemeCodeChange(ifE.alt, changeExpression(ifE.cons, true), id0),
+                  ifE.idn
+                )
+        }
 
     // Gets a random expression of the body to add, or returns a print expression.
     private def getExpressionToAdd(body: List[SchemeExp]): SchemeExp =
@@ -104,74 +113,75 @@ object ProgramChanger:
         else result
 
     private def changeBody(lst: List[SchemeExp], fullbody: List[SchemeExp], nested: Boolean): List[SchemeExp] =
-      (lst, getExpressionAction()) match {
-        case (Nil, _) => Nil
+        (lst, getExpressionAction()) match {
+            case (Nil, _) => Nil
 
-        // No changes.
-        case (l @ (h :: Nil), NoChange) => changeExpression(h, nested) :: Nil
-        case (h :: t, NoChange)         => changeExpression(h, nested) :: changeBody(t, fullbody, nested)
+            // No changes.
+            case (l @ (h :: Nil), NoChange) => changeExpression(h, nested) :: Nil
+            case (h :: t, NoChange)         => changeExpression(h, nested) :: changeBody(t, fullbody, nested)
 
-        // Remove an expression.
-        case (h :: Nil, Remove) => h :: Nil // Avoid empty bodies.
-        case (h :: t, Remove) if nested =>
-          removed += 1
-          changeBody(t, fullbody, nested)
-        case (h :: t, Remove) =>
-          removed += 1
-          SchemeCodeChange(h, SchemeValue(Value.Nil, id0), id0) :: changeBody(t, fullbody, nested)
+            // Remove an expression.
+            case (h :: Nil, Remove) => h :: Nil // Avoid empty bodies.
+            case (h :: t, Remove) if nested =>
+                removed += 1
+                changeBody(t, fullbody, nested)
+            case (h :: t, Remove) =>
+                removed += 1
+                SchemeCodeChange(h, SchemeValue(Value.Nil, id0), id0) :: changeBody(t, fullbody, nested)
 
-        // Add an expression.
-        case (l, Add) if nested =>
-          added += 1
-          changeExpression(getExpressionToAdd(fullbody), nested) :: changeBody(l, fullbody, nested)
-        case (l, Add) =>
-          added += 1
-          SchemeCodeChange(SchemeValue(Value.Nil, id0), changeExpression(getExpressionToAdd(fullbody), true), id0) :: changeBody(
-            l,
-            fullbody,
-            nested
-          )
+            // Add an expression.
+            case (l, Add) if nested =>
+                added += 1
+                changeExpression(getExpressionToAdd(fullbody), nested) :: changeBody(l, fullbody, nested)
+            case (l, Add) =>
+                added += 1
+                SchemeCodeChange(SchemeValue(Value.Nil, id0), changeExpression(getExpressionToAdd(fullbody), true), id0) :: changeBody(
+                  l,
+                  fullbody,
+                  nested
+                )
 
-        // Swap expressions.
-        case (l @ (h :: Nil), Swap) => l // When there is only one statement, don't do anything (previously, it would equal add).
-        case (l @ (h1 :: h2 :: t), Swap) if nested =>
-          swaps += 1
-          changeExpression(h2, nested) :: changeBody(h1 :: t, fullbody, nested)
-        // TODO: let h1 swap with any of h2 :: t as in the case above.
-        case (l @ (h1 :: h2 :: t), Swap) =>
-          swaps += 1
-          SchemeCodeChange(h1, changeExpression(h2, true), id0) :: SchemeCodeChange(h2, changeExpression(h1, true), id0) :: changeBody(t,
-                                                                                                                                       fullbody,
-                                                                                                                                       nested
-          )
+            // Swap expressions.
+            case (l @ (h :: Nil), Swap) => l // When there is only one statement, don't do anything (previously, it would equal add).
+            case (l @ (h1 :: h2 :: t), Swap) if nested =>
+                swaps += 1
+                changeExpression(h2, nested) :: changeBody(h1 :: t, fullbody, nested)
+            // TODO: let h1 swap with any of h2 :: t as in the case above.
+            case (l @ (h1 :: h2 :: t), Swap) =>
+                swaps += 1
+                SchemeCodeChange(h1, changeExpression(h2, true), id0) :: SchemeCodeChange(h2, changeExpression(h1, true), id0) :: changeBody(t,
+                                                                                                                                             fullbody,
+                                                                                                                                             nested
+                )
 
-        // Add a call to the identity function.
-        case (h :: t, IDCall) if nested =>
-          idCallsAdded += 1
-          createIdFunCall(changeExpression(h, nested)) :: changeBody(t, fullbody, nested)
-        case (h :: t, IDCall) =>
-          idCallsAdded += 1
-          SchemeCodeChange(h, createIdFunCall(changeExpression(h, nested)), id0) :: changeBody(t, fullbody, nested)
-      }
+            // Add a call to the identity function.
+            case (h :: t, IDCall) if nested =>
+                idCallsAdded += 1
+                createIdFunCall(changeExpression(h, nested)) :: changeBody(t, fullbody, nested)
+            case (h :: t, IDCall) =>
+                idCallsAdded += 1
+                SchemeCodeChange(h, createIdFunCall(changeExpression(h, nested)), id0) :: changeBody(t, fullbody, nested)
+        }
 
     // Nested indicated whether we are already in a changed expression (the "new" expression), and hence the changes can be made without introducing a change expression again.
     private def changeExpression(e: SchemeExp, nested: Boolean): SchemeExp = e match {
-      case SchemeLambda(name, args, body, ann, idn)               => SchemeLambda(name, args, changeBody(body, body, nested), ann, idn)
-      case SchemeVarArgLambda(name, args, vararg, body, ann, idn) => SchemeVarArgLambda(name, args, vararg, changeBody(body, body, nested), ann, idn)
-      case SchemeFuncall(f, args, idn)                            => SchemeFuncall(f, args.map(changeExpression(_, nested)), idn)
-      case ifE @ SchemeIf(cond, cons, alt, idn)                   => changeIf(ifE, nested)
-      case SchemeLet(bindings, body, idn) =>
-        SchemeLet(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
-      case SchemeLetStar(bindings, body, idn) =>
-        SchemeLetStar(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
-      case SchemeLetrec(bindings, body, idn) =>
-        SchemeLetrec(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
-      case SchemeSet(variable, value, idn) => SchemeSet(variable, changeExpression(value, nested), idn)
-      case SchemeBegin(exps, idn)          => SchemeBegin(changeBody(exps, exps, nested), idn)
-      //case SchemeDefineVariable(name, value, idn) => SchemeDefineVariable(name, changeExpression(value, nested), idn)
-      //case SchemeVar(id) =>
-      //case SchemeValue(value, idn) =>
-      case exp => exp
+        case SchemeLambda(name, args, body, ann, idn) => SchemeLambda(name, args, changeBody(body, body, nested), ann, idn)
+        case SchemeVarArgLambda(name, args, vararg, body, ann, idn) =>
+            SchemeVarArgLambda(name, args, vararg, changeBody(body, body, nested), ann, idn)
+        case SchemeFuncall(f, args, idn)          => SchemeFuncall(f, args.map(changeExpression(_, nested)), idn)
+        case ifE @ SchemeIf(cond, cons, alt, idn) => changeIf(ifE, nested)
+        case SchemeLet(bindings, body, idn) =>
+            SchemeLet(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
+        case SchemeLetStar(bindings, body, idn) =>
+            SchemeLetStar(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
+        case SchemeLetrec(bindings, body, idn) =>
+            SchemeLetrec(bindings.map(bnd => (bnd._1, changeExpression(bnd._2, nested))), changeBody(body, body, nested), idn)
+        case SchemeSet(variable, value, idn) => SchemeSet(variable, changeExpression(value, nested), idn)
+        case SchemeBegin(exps, idn)          => SchemeBegin(changeBody(exps, exps, nested), idn)
+        //case SchemeDefineVariable(name, value, idn) => SchemeDefineVariable(name, changeExpression(value, nested), idn)
+        //case SchemeVar(id) =>
+        //case SchemeValue(value, idn) =>
+        case exp => exp
 
     }
 
@@ -211,12 +221,12 @@ object ProgramChanger:
             Writer.write(writer, newProgramString)
             Writer.close(writer)
             stats = stats
-              .add(out, "added", added)
-              .add(out, "removed", removed)
-              .add(out, "swaps", swaps)
-              .add(out, "if-neg", negatedPredicate)
-              .add(out, "if-swap", branchesSwapped)
-              .add(out, "idFn", idCallsAdded)
+                .add(out, "added", added)
+                .add(out, "removed", removed)
+                .add(out, "swaps", swaps)
+                .add(out, "if-neg", negatedPredicate)
+                .add(out, "if-swap", branchesSwapped)
+                .add(out, "idFn", idCallsAdded)
             Some(newProgramString) // Returns true if something has changed.
         else None
 
@@ -261,4 +271,4 @@ end ProgramChanger
 
 object Mover:
     def main(args: Array[String]): Unit =
-      ProgramChanger.moveErroneousPrograms()
+        ProgramChanger.moveErroneousPrograms()

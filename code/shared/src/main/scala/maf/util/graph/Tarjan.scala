@@ -32,10 +32,10 @@ object Tarjan:
         def pop(node: Node, stack: List[Node]): Unit = stack match
             case Nil => throw new Error("Unexpected empty stack")
             case `node` :: t =>
-              stk = t
+                stk = t
             case h :: t =>
-              low += (h -> ids(node))
-              pop(node, t)
+                low += (h -> ids(node))
+                pop(node, t)
 
         def dft(node: Node): Unit =
             unvisited -= node
@@ -44,11 +44,11 @@ object Tarjan:
             low += (node -> id)
             id += 1
             edges
-              .get(node)
-              .foreach(_.foreach { to =>
-                  if unvisited.contains(to) then dft(to)
-                  if stk.contains(to) then low += (node -> math.min(low(node), low(to)))
-              })
+                .get(node)
+                .foreach(_.foreach { to =>
+                    if unvisited.contains(to) then dft(to)
+                    if stk.contains(to) then low += (node -> math.min(low(node), low(to)))
+                })
             if ids(node) == low(node) then pop(node, stk)
 
         // Apply the filter, to avoid singleton SCCs being included into the result if there is no self-edge.

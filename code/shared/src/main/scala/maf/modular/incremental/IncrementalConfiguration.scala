@@ -30,7 +30,7 @@ case class IncrementalConfiguration(
     private def booleanToString(b: Boolean): String = if b then "enabled" else "disabled"
 
     def infoString(): String =
-      s"""****** Incremental configuration ******
+        s"""****** Incremental configuration ******
        | + Component invalidation: ${booleanToString(componentInvalidation)}
        | + Dependency invalidation: ${booleanToString(dependencyInvalidation)}
        | + Write invalidation: ${booleanToString(writeInvalidation)}
@@ -41,8 +41,8 @@ case class IncrementalConfiguration(
         val ci = if componentInvalidation then "CI" else ""
         val di = if dependencyInvalidation then "DI" else ""
         val wi =
-          if writeInvalidation then if cyclicValueInvalidation then "WI+CY" else "WI"
-          else ""
+            if writeInvalidation then if cyclicValueInvalidation then "WI+CY" else "WI"
+            else ""
         val string = List(ci, di, wi).filterNot(_.isEmpty).mkString("-")
         if string.isEmpty then "NoOpt" else string
 
@@ -90,24 +90,24 @@ object IncrementalConfiguration:
 
     /** A list of all possible configurations for the incremental analysis (CY requires WI). */
     lazy val allConfigurations: List[IncrementalConfiguration] =
-      List(
-        // No optimisations
-        noOptimisations,
-        // One optimisation
-        ci,
-        di,
-        wi,
-        // Two optimisations
-        ci_di,
-        ci_wi,
-        di_wi,
-        //wi_cy,
-        // Three optimisations
-        ci_di_wi,
-        //ci_wi_cy,
-        //di_wi_cy,
-        // Four optimisations
-        //allOptimisations,
-      )
+        List(
+          // No optimisations
+          noOptimisations,
+          // One optimisation
+          ci,
+          di,
+          wi,
+          // Two optimisations
+          ci_di,
+          ci_wi,
+          di_wi,
+          //wi_cy,
+          // Three optimisations
+          ci_di_wi,
+          //ci_wi_cy,
+          //di_wi_cy,
+          // Four optimisations
+          //allOptimisations,
+        )
 
     case class InvalidConfigurationException(message: String, config: IncrementalConfiguration) extends Exception(message)

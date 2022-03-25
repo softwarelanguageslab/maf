@@ -50,21 +50,21 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
         val concreteResult = runInterpreter(program, path, Timeout.none, runs).get // no timeout set for the concrete interpreter
         // run the other analyses on the benchmark
         analyses.foreach { case (analysis, name) =>
-          val t0 = System.nanoTime
-          val otherResult = runAnalysis(analysis, name, program, path, timeout())
-          val t1 = System.nanoTime
-          val duration = (System.nanoTime - t0) / 1e9d
-          println(s"duration: $duration")
-          val (lessPrecise, size) = otherResult match
-              case Terminated(analysisResult) =>
-                additionalCounts(name, path, analysisResult, concreteResult)
-                (Result.Success(compareOrdered(analysisResult, concreteResult).size), Result.Success(analysisResult.keys.size))
-              case TimedOut(partialResult) =>
-                additionalCounts(name, path, partialResult, concreteResult)
-                (Result.Timeout(compareOrdered(partialResult, concreteResult, check = false).size), Result.Timeout(partialResult.keys.size))
-              case Errored(_) => (Result.Errored, Result.Errored)
-          results = results.add(path, name, lessPrecise)
-          results = results.add(path, s"$name-total", size)
+            val t0 = System.nanoTime
+            val otherResult = runAnalysis(analysis, name, program, path, timeout())
+            val t1 = System.nanoTime
+            val duration = (System.nanoTime - t0) / 1e9d
+            println(s"duration: $duration")
+            val (lessPrecise, size) = otherResult match
+                case Terminated(analysisResult) =>
+                    additionalCounts(name, path, analysisResult, concreteResult)
+                    (Result.Success(compareOrdered(analysisResult, concreteResult).size), Result.Success(analysisResult.keys.size))
+                case TimedOut(partialResult) =>
+                    additionalCounts(name, path, partialResult, concreteResult)
+                    (Result.Timeout(compareOrdered(partialResult, concreteResult, check = false).size), Result.Timeout(partialResult.keys.size))
+                case Errored(_) => (Result.Errored, Result.Errored)
+            results = results.add(path, name, lessPrecise)
+            results = results.add(path, s"$name-total", size)
         }
 
 object AnalysisComparisonAlt1
@@ -83,7 +83,7 @@ object AnalysisComparisonAlt1
     lazy val wdss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modFlocalAnalysisWidened(_, k), s"$k-CFA WDSS")
     lazy val dssFS: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalFSAnalysis(_, k), s"$k-CFA DSS-FS")
     lazy val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
-      (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
+        (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
     }
     def analyses = modf :: dssFS :: dss :: Nil
     def main0(args: Array[String]) = check("test/R5RS/gambit/matrix.scm")

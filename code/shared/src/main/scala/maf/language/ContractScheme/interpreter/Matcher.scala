@@ -35,11 +35,11 @@ class Matcher(vlu: ConcreteValues.Value, eval: SchemeExp => ConcreteValues.Value
      *   exception if the identifier is already bound
      */
     private def checkDuplicate(name: String): Unit =
-      if bindings.values.toSet.contains(name) then throw new Exception(s"cannot define identifier $name twice in the same pattern")
+        if bindings.values.toSet.contains(name) then throw new Exception(s"cannot define identifier $name twice in the same pattern")
 
     /** Reset the internal state of the matcher such that the value can be matched again against a different pattern */
     def reset(): Unit =
-      bindings = Map()
+        bindings = Map()
 
     /** Resolve the bindings in the last pattern we matched against */
     def resolveBindings: List[(Identifier, ConcreteValues.Value)] = bindings.toList
@@ -64,12 +64,12 @@ class Matcher(vlu: ConcreteValues.Value, eval: SchemeExp => ConcreteValues.Value
         // id                       matches anything and binds the value to id
         // (var id)                 same as id
         case IdPat(name, idn) =>
-          checkDuplicate(name)
-          bindings = bindings + (Identifier(name, idn) -> vlu)
-          true
+            checkDuplicate(name)
+            bindings = bindings + (Identifier(name, idn) -> vlu)
+            true
         // _                        matches anything
         case WildcardPat(_) =>
-          true
+            true
         // (quote datum)            value equal? datum
         // TODO
         // (list lvp ...)
@@ -104,18 +104,18 @@ class Matcher(vlu: ConcreteValues.Value, eval: SchemeExp => ConcreteValues.Value
         // UNSUPPORTED
         // (and pat ...)          value matches all the given patterns
         case AndPat(patterns) =>
-          patterns.forall(matches(_, vlu))
+            patterns.forall(matches(_, vlu))
         // (or pat ...)           matches if the value matches on of the patterns
         case OrPat(patterns) =>
-          patterns.exists(matches(_, vlu))
+            patterns.exists(matches(_, vlu))
         // (not pat ...)          matches if the value matches none of the patterns
         case NotPat(patterns) =>
-          patterns.forall(!matches(_, vlu))
+            patterns.forall(!matches(_, vlu))
         // (app expr pats ...)
         case AppPat(expr, pats) =>
-          assert(pats.size == 1, "unsupported: multiple return value (app pattern)")
-          val res = eval(expr)
-          pats.forall(matches(_, res))
+            assert(pats.size == 1, "unsupported: multiple return value (app pattern)")
+            val res = eval(expr)
+            pats.forall(matches(_, res))
 
         // (? expr pat ...)
         // TODO

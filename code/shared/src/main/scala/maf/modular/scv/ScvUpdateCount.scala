@@ -14,15 +14,15 @@ trait ScvUpdateCount extends ScvModAnalysis:
     private var writeCounts: Map[Addr, Count] = Map().withDefaultValue(Zero)
 
     override def writeAddr(addr: Addr, value: Value): Boolean =
-      if super.writeAddr(addr, value) then
-          writeCounts = writeCounts(addr) match
-              case Zero         => writeCounts + (addr -> Once)
-              case Once         => writeCounts + (addr -> MoreThanOnce)
-              case MoreThanOnce => writeCounts
-          true
-      else false
+        if super.writeAddr(addr, value) then
+            writeCounts = writeCounts(addr) match
+                case Zero         => writeCounts + (addr -> Once)
+                case Once         => writeCounts + (addr -> MoreThanOnce)
+                case MoreThanOnce => writeCounts
+            true
+        else false
 
     def isUpdated(addr: Addr): Boolean =
-      writeCounts(addr) match
-          case MoreThanOnce => true
-          case _            => false
+        writeCounts(addr) match
+            case MoreThanOnce => true
+            case _            => false

@@ -45,18 +45,18 @@ object DeadcodeDetection:
      *   the program to analyze
      */
     def createAnalysis(program: SchemeExp): DeadcodeDetection =
-      new ModAnalysis[SchemeExp](program)
-        with StandardSchemeModFComponents
-        with SchemeModFSemanticsM
-        with SchemeModFNoSensitivity
-        with BigStepModFSemantics
-        with SchemeConstantPropagationDomain
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with DeadcodeDetection:
+        new ModAnalysis[SchemeExp](program)
+            with StandardSchemeModFComponents
+            with SchemeModFSemanticsM
+            with SchemeModFNoSensitivity
+            with BigStepModFSemantics
+            with SchemeConstantPropagationDomain
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with DeadcodeDetection:
 
-          class AnalysisIntra(cmp: Component) extends IntraAnalysis(cmp) with DeadcodeDetectionIntra with BigStepModFIntra
-          override def intraAnalysis(cmp: Component): AnalysisIntra =
-            new AnalysisIntra(cmp)
+            class AnalysisIntra(cmp: Component) extends IntraAnalysis(cmp) with DeadcodeDetectionIntra with BigStepModFIntra
+            override def intraAnalysis(cmp: Component): AnalysisIntra =
+                new AnalysisIntra(cmp)
 
     /**
      * Creates a dead code detection analysis for SCV programs
@@ -68,15 +68,15 @@ object DeadcodeDetection:
         import maf.modular.scv.ScvSymbolicStore.given
         import maf.modular.scv.*
         new ModAnalysis(program)
-          with ScvBigStepSemantics
-          with ScvBigStepWithProvides
-          with ScvWithStructs
-          with SchemeConstantPropagationDomain
-          with StandardSchemeModFComponents
-          with FIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFSemanticsM
-          with ScvOneContextSensitivity(0)
-          with DeadcodeDetection:
+            with ScvBigStepSemantics
+            with ScvBigStepWithProvides
+            with ScvWithStructs
+            with SchemeConstantPropagationDomain
+            with StandardSchemeModFComponents
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFSemanticsM
+            with ScvOneContextSensitivity(0)
+            with DeadcodeDetection:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
             override def intraAnalysis(
@@ -89,7 +89,7 @@ object DeadcodeDetection:
 
     /** Parses the given program text to a SchemeExp */
     def parseProgram(txt: String): SchemeExp =
-      CSchemeParser.parseProgram(txt)
+        CSchemeParser.parseProgram(txt)
 
     /**
      * Returns a set of expressions that was not visited during the analysis.
@@ -123,7 +123,7 @@ abstract class DeadcodeMain:
     def run(name: String, analysis: SchemeExp => DeadcodeDetection): Unit =
         val results = benchmarks.map(logFile andThen Reader.loadFile andThen DeadcodeDetection.run(analysis))
         val outputTable = results.zip(benchmarks).foldLeft(Table.empty[Double]) { case (table, (result, benchmark)) =>
-          table.add(benchmark, "% dead expressions", result.fractionDeadLines)
+            table.add(benchmark, "% dead expressions", result.fractionDeadLines)
         }
         val writer = Writer.openTimeStamped(s"out/$name")
         Writer.write(writer, outputTable.toCSVString(rowName = "benchmark"))
@@ -131,17 +131,17 @@ abstract class DeadcodeMain:
 
 object DeadcodeSchemeBenchmarks extends DeadcodeMain:
     val benchmarks: List[String] =
-      (SchemeBenchmarkPrograms.sequentialBenchmarks.filterNot(p =>
-        // undefiner issues (define in invalid context) TODO: check if this is the case or it is an error in the undefiner
-        p.startsWith("test/R5RS/ad") || p.startsWith("test/R5RS/WeiChenRompf2019/the-little-schemer")
-      ) -- Set(
-        // also undefiner issues
-        "test/R5RS/various/lambda-update.scm",
-        "test/R5RS/scp1/car-counter.scm",
-        "test/R5RS/scp1/twitter.scm",
-        "test/R5RS/scp1/university.scm",
-        "test/R5RS/various/strong-update.scm", // not sure what's wrong here? thought we fixed that.
-      )).toList
+        (SchemeBenchmarkPrograms.sequentialBenchmarks.filterNot(p =>
+            // undefiner issues (define in invalid context) TODO: check if this is the case or it is an error in the undefiner
+            p.startsWith("test/R5RS/ad") || p.startsWith("test/R5RS/WeiChenRompf2019/the-little-schemer")
+        ) -- Set(
+          // also undefiner issues
+          "test/R5RS/various/lambda-update.scm",
+          "test/R5RS/scp1/car-counter.scm",
+          "test/R5RS/scp1/twitter.scm",
+          "test/R5RS/scp1/university.scm",
+          "test/R5RS/various/strong-update.scm", // not sure what's wrong here? thought we fixed that.
+        )).toList
 
     def main(args: Array[String]): Unit =
         // progamatically disable the logger

@@ -27,7 +27,7 @@ trait Coverage:
     def compute(program: String): Double
 
     def parseProgram(program: String): SchemeExp =
-      SchemeParser.parseProgram(program)
+        SchemeParser.parseProgram(program)
 
 /** An interpreter for computing the line coverage */
 trait LineCoverageInterpreter extends SchemeInterpreter, Coverage:
@@ -46,21 +46,21 @@ trait LineCoverageInterpreter extends SchemeInterpreter, Coverage:
 
         // even if the execution timed-out we will run with the coverage results we already obtained
         this.visitedLines.size.toDouble / (program.linesIterator
-          .filterNot(line =>
-            // ignore lines that start with a comment, or that do not contain any characters except for whitespaces
-            line.trim.nn.startsWith(";") || line.trim.nn.size == 0
-          )
-          .size
-          .toDouble)
+            .filterNot(line =>
+                // ignore lines that start with a comment, or that do not contain any characters except for whitespaces
+                line.trim.nn.startsWith(";") || line.trim.nn.size == 0
+            )
+            .size
+            .toDouble)
 
 trait ScvParser extends Coverage:
     override def parseProgram(program: String): SchemeExp =
-      ContractSchemeParser.parse(program)
+        ContractSchemeParser.parse(program)
 
 /** Measures the coverage of the given program */
 object CodeCoverage:
     def scvSelectRandomGenerator(programPath: String): RandomInputGenerator =
-      RandomInputsFromFile(s"input/generated/${programPath.replace("/", "_")}.scm")
+        RandomInputsFromFile(s"input/generated/${programPath.replace("/", "_")}.scm")
 
     /**
      * Computes the line coverage of the given ContractScheme program.

@@ -27,40 +27,40 @@ trait BaseSchemeInterpreter[V]:
         val emptyEnv = Map.empty[String, Addr]
         val emptySto = Map.empty[Addr, Value]
         Primitives.allPrimitives.foldLeft((emptyEnv, emptySto)) { case ((env: Env, sto: Store), (name: String, _: Prim)) =>
-          val addr = newAddr(AddrInfo.PrmAddr(name))
-          (env + (name -> addr), sto + (addr -> Value.Primitive(name)))
+            val addr = newAddr(AddrInfo.PrmAddr(name))
+            (env + (name -> addr), sto + (addr -> Value.Primitive(name)))
         }
 
     // Both access to 'lastAddr' and 'store' should be synchronized on 'this'!
     var lastAddr = 0
 
     def newAddr(meta: AddrInfo): (Int, AddrInfo) =
-      synchronized {
-        lastAddr += 1
-        (lastAddr, meta)
-      }
+        synchronized {
+            lastAddr += 1
+            (lastAddr, meta)
+        }
 
     var store = Map[Addr, Value]()
 
     def extendStore(a: Addr, v: Value): Unit =
-      synchronized {
-        store = store + (a -> v)
-      }
+        synchronized {
+            store = store + (a -> v)
+        }
 
     def lookupStore(a: Addr): Value =
-      synchronized {
-        store(a)
-      }
+        synchronized {
+            store(a)
+        }
 
     def lookupStoreOption(a: Addr): Option[Value] =
-      synchronized {
-        store.get(a)
-      }
+        synchronized {
+            store.get(a)
+        }
 
     def setStore(s: Map[Addr, Value]): Unit =
-      synchronized {
-        store = s
-      }
+        synchronized {
+            store = s
+        }
 
     /**
      * Allocate the given value on the address determined by the given Scheme expression.
@@ -80,9 +80,9 @@ trait BaseSchemeInterpreter[V]:
     /** Allocate the given pair recursively in the store. */
     def allocateAll(exp: SchemeExp, value: Value): ConcreteValues.Value = value match
         case ConcreteValues.Value.Cons(car, cdr) =>
-          val carAlloc = allocateAll(exp, car)
-          val cdrAlloc = allocateAll(exp, cdr)
-          allocateVal(exp, ConcreteValues.Value.Cons(carAlloc, cdrAlloc))
+            val carAlloc = allocateAll(exp, car)
+            val cdrAlloc = allocateAll(exp, cdr)
+            allocateVal(exp, ConcreteValues.Value.Cons(carAlloc, cdrAlloc))
         case _ => value
 
     def allocateCons(
@@ -90,10 +90,10 @@ trait BaseSchemeInterpreter[V]:
         car: Value,
         cdr: Value
       ): Value =
-      allocateVal(exp, Value.Cons(car, cdr))
+        allocateVal(exp, Value.Cons(car, cdr))
 
     def allocateStr(exp: SchemeExp, str: String): Value.Pointer =
-      allocateVal(exp, Value.Str(str))
+        allocateVal(exp, Value.Str(str))
 
     def getString(addr: Addr): String = lookupStore(addr) match
         case Value.Str(str) => str
@@ -112,9 +112,9 @@ trait BaseSchemeInterpreter[V]:
         case SExpId(id)          => Value.Symbol(id.name)
         case SExpValue(value, _) => evalLiteral(value, exp)
         case SExpPair(car, cdr, _) =>
-          val carValue = evalSExp(car, exp)
-          val cdrValue = evalSExp(cdr, exp)
-          allocateCons(exp, carValue, cdrValue)
+            val carValue = evalSExp(car, exp)
+            val cdrValue = evalSExp(cdr, exp)
+            allocateCons(exp, carValue, cdrValue)
 
     def evalLiteral(lit: sexp.Value, exp: SchemeExp): ConcreteValues.Value = lit match
         case maf.language.sexp.Value.String(s)    => allocateStr(exp, s)

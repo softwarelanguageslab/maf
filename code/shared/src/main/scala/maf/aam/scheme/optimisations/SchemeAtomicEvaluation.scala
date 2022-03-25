@@ -27,17 +27,17 @@ trait SchemeAtomicEvaluation extends BaseSchemeAAMSemantics:
         call: Boolean = false
       ): Result = e match
         case lit: SchemeValue =>
-          val (res, sto1, ext1) = super.evalLiteralValToVal(lit, env, sto, frame.link(next), t, ext)
-          tailcall(continue(inject(res), sto1, frame.link(next), t, ext))
+            val (res, sto1, ext1) = super.evalLiteralValToVal(lit, env, sto, frame.link(next), t, ext)
+            tailcall(continue(inject(res), sto1, frame.link(next), t, ext))
         case SchemeVar(id) =>
-          val (vlu, sto1): (Val, Sto) = env
-            .lookup(id.name)
-            .map(readStoV(sto, _, ext))
-            .getOrElse {
-              println(s"ERR: undefined variable $id")
-              (inject(lattice.bottom), sto)
-            }
+            val (vlu, sto1): (Val, Sto) = env
+                .lookup(id.name)
+                .map(readStoV(sto, _, ext))
+                .getOrElse {
+                    println(s"ERR: undefined variable $id")
+                    (inject(lattice.bottom), sto)
+                }
 
-          tailcall(continue(vlu, sto1, frame.link(next), t, ext))
+            tailcall(continue(vlu, sto1, frame.link(next), t, ext))
 
         case _ => super.pushFrameEv(e, env, sto, next, frame, t, ext, call)

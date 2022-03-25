@@ -44,7 +44,7 @@ trait VisualisationSetup:
         val analysis = createAnalysis(program)
         // remove the old visualisation if present
         this.webvis.foreach {
-          document.body.removeChild(_)
+            document.body.removeChild(_)
         }
         // create a new visualisation
         val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
@@ -56,7 +56,7 @@ trait VisualisationSetup:
         current = Some((analysis, webvis))
 
     protected def keyHandler(key: String): Unit =
-      if analysis.isDefined then analysisCommandHandler(analysis.get).lift(key)
+        if analysis.isDefined then analysisCommandHandler(analysis.get).lift(key)
 
     protected def analysisCommandHandler(anl: Analysis): PartialFunction[String, Unit] =
         case "n" | "N" | " " => stepAnalysis(anl)
@@ -69,16 +69,16 @@ trait VisualisationSetup:
     protected def onClick() = this.analysis.foreach(stepAnalysis)
 
     private def stepAnalysis(anl: Analysis) =
-      if !anl.finished then anl.step(Timeout.none)
-      else println("The analysis has already terminated")
+        if !anl.finished then anl.step(Timeout.none)
+        else println("The analysis has already terminated")
 
     private def stepUntil(
         anl: Analysis,
         timeout: Timeout.T = Timeout.none,
         stepLimit: Option[Int] = None
       ): Unit =
-      if !anl.finished && !timeout.reached && stepLimit.map(_ > 0).getOrElse(true) then
-          anl.step(timeout)
-          js.timers.setTimeout(0) { // <- gives JS time to update between steps
-            stepUntil(anl, timeout, stepLimit.map(_ - 1))
-          }
+        if !anl.finished && !timeout.reached && stepLimit.map(_ > 0).getOrElse(true) then
+            anl.step(timeout)
+            js.timers.setTimeout(0) { // <- gives JS time to update between steps
+                stepUntil(anl, timeout, stepLimit.map(_ - 1))
+            }

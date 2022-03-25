@@ -4,9 +4,9 @@ sealed trait SchemeOp:
     val arity: Int
     val name: String
     def checkArity[L](args: List[L]): Unit =
-      if args.size != arity then
-          // This is a runtime error because a lattice operation is improperly called by the analysis developper
-          throw new Exception(s"SchemeOp ${name} expects ${arity} arguments but got ${args.size}")
+        if args.size != arity then
+            // This is a runtime error because a lattice operation is improperly called by the analysis developper
+            throw new Exception(s"SchemeOp ${name} expects ${arity} arguments but got ${args.size}")
 
 object SchemeOp:
     case class SyntheticSchemeOp(val name: String, val arity: Int) extends SchemeOp

@@ -66,8 +66,8 @@ trait AdaptiveKCFA extends AdaptiveContextSensitivityPolicy:
         cts: Set[ComponentContext]
       ): ContextSensitivityPolicy = cur match
         case KUnlimited =>
-          val highestK = cts.maxBy(_.length).length
-          KCallSites(highestK - 1)
+            val highestK = cts.maxBy(_.length).length
+            KCallSites(highestK - 1)
         case KCallSites(k) if k > 0 => KCallSites(k - 1)
         case _                      => throw new Exception("Can not lower precision any further!")
 
@@ -90,10 +90,10 @@ trait AdaptiveArgSensitivity extends AdaptiveContextSensitivityPolicy:
             call: Position,
             caller: Component
           ) =
-          filterArgs(clo._1.args.zip(args).toMap)
+            filterArgs(clo._1.args.zip(args).toMap)
         def adaptCtx(ctx: ComponentContext): ComponentContext = filterArgs(ctx)
         private def filterArgs(argValues: Map[Identifier, Value]): Map[Identifier, Value] =
-          argValues.filter { case (id, _) => !excluded(id) }
+            argValues.filter { case (id, _) => !excluded(id) }
 
     val defaultPolicy = ArgValues(Set.empty)
     def nextPolicy(
@@ -102,8 +102,8 @@ trait AdaptiveArgSensitivity extends AdaptiveContextSensitivityPolicy:
         cts: Set[ComponentContext]
       ): ContextSensitivityPolicy = cur match
         case ArgValues(excluded) =>
-          val parWithMostValues = fun.args.maxBy { par =>
-            cts.map(ctx => ctx.getOrElse(par, lattice.bottom)).size
-          }
-          ArgValues(excluded + parWithMostValues)
+            val parWithMostValues = fun.args.maxBy { par =>
+                cts.map(ctx => ctx.getOrElse(par, lattice.bottom)).size
+            }
+            ArgValues(excluded + parWithMostValues)
         case _ => throw new Exception(s"Unsupported policy $cur")

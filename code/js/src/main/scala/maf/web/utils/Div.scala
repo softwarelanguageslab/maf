@@ -25,7 +25,7 @@ object Div:
 // for convenience
 object HStack:
     def apply(children: dom.Node*): html.Div =
-      Div(Div.Horizontal)(children: _*)
+        Div(Div.Horizontal)(children: _*)
 object VStack:
     def apply(children: dom.Node*): html.Div =
-      Div(Div.Vertical)(children: _*)
+        Div(Div.Vertical)(children: _*)

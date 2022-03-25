@@ -38,17 +38,17 @@ object AAMModFPerformanceComparison extends AAMPerformanceComparison:
     )
 
     def analyses: List[(SchemeExp => Analysis, String)] =
-      List(
-        //(wrap(AAMAnalyses.aamBase), "aamBase"),
-        //(wrap(AAMAnalyses.aamConf1), "aamConf1"),
-        //(wrap(AAMAnalyses.aamConf2), "aamConf2"),
-        //(wrap(AAMAnalyses.aamConf3), "aamConf3"),
-        //(wrap(AAMAnalyses.aamConf4), "aamConf4"),
-        (wrap(AAMAnalyses.aamConf6), "aamConf6"),
-        (wrapModF(SchemeAnalyses.kCFAAnalysis(_, 1)), "1cfaModf")
-      )
+        List(
+          //(wrap(AAMAnalyses.aamBase), "aamBase"),
+          //(wrap(AAMAnalyses.aamConf1), "aamConf1"),
+          //(wrap(AAMAnalyses.aamConf2), "aamConf2"),
+          //(wrap(AAMAnalyses.aamConf3), "aamConf3"),
+          //(wrap(AAMAnalyses.aamConf4), "aamConf4"),
+          (wrap(AAMAnalyses.aamConf6), "aamConf6"),
+          (wrapModF(SchemeAnalyses.kCFAAnalysis(_, 1)), "1cfaModf")
+        )
     def main(args: Array[String]): Unit =
-      run(timeoutFast = false)
+        run(timeoutFast = false)
 
 object ScvPerformanceComparison extends AAMPerformanceComparison:
     override def maxWarmupRuns = 3
@@ -66,21 +66,21 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
     //SchemeBenchmarkPrograms.scvNguyenBenchmarks
 
     def analyses: List[(SchemeExp => Analysis, String)] =
-      List(
-        //(wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
-        (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf"),
-        //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures1cfa), "scvModf-1cfa"),
-        (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore), "scvModf-sharedPs")
-      )
+        List(
+          //(wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
+          (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf"),
+          //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures1cfa), "scvModf-1cfa"),
+          (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore), "scvModf-sharedPs")
+        )
 
     def main(args: Array[String]): Unit =
-      run(timeoutFast = false)
+        run(timeoutFast = false)
 
 object ModFSingleBenchmark extends AAMPerformanceComparison with ParallelPerformanceEvaluation(6):
     def benchmarks = SchemeBenchmarkPrograms.various
 
     def analyses: List[(SchemeExp => Analysis, String)] =
-      List((wrapModF(SchemeAnalyses.kCFAAnalysis(_, 0)), "0cfaModf"))
+        List((wrapModF(SchemeAnalyses.kCFAAnalysis(_, 0)), "0cfaModf"))
 
     def main(args: Array[String]): Unit =
         Thread.sleep(20000)

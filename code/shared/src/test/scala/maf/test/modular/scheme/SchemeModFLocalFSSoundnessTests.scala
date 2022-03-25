@@ -18,27 +18,27 @@ trait SchemeModFLocalFSSoundnessTests extends SchemeSoundnessTests:
 class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) (context-insensitive)"
     def analysis(prg: SchemeExp) =
-      new SchemeModFLocalFS(prg)
-        with SchemeConstantPropagationDomain
-        with SchemeModFLocalNoSensitivity
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFLocalFSAnalysisResults
+        new SchemeModFLocalFS(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalNoSensitivity
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFLocalFSAnalysisResults
     override def isSlow(b: Benchmark): Boolean =
-      Set(
-        "test/R5RS/various/SICP-compiler.scm", // TIMES OUT
-        "test/R5RS/various/four-in-a-row.scm", // TIMES OUT
-        // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
-        "test/R5RS/various/infinite-1.scm",
-        "test/R5RS/various/infinite-2.scm",
-        "test/R5RS/various/infinite-3.scm",
-      ).contains(b)
+        Set(
+          "test/R5RS/various/SICP-compiler.scm", // TIMES OUT
+          "test/R5RS/various/four-in-a-row.scm", // TIMES OUT
+          // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
+          "test/R5RS/various/infinite-1.scm",
+          "test/R5RS/various/infinite-2.scm",
+          "test/R5RS/various/infinite-3.scm",
+        ).contains(b)
 
 class SchemeModFLocalFSCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) call-site sensitive)"
     def analysis(prg: SchemeExp) =
-      new SchemeModFLocalFS(prg)
-        with SchemeConstantPropagationDomain
-        with SchemeModFLocalCallSiteSensitivity(1)
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFLocalFSAnalysisResults
+        new SchemeModFLocalFS(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalCallSiteSensitivity(1)
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFLocalFSAnalysisResults
     override def isSlow(b: String): Boolean = true // don't run this for fast tests

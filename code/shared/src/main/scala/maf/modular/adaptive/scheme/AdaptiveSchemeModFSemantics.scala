@@ -33,13 +33,13 @@ trait AdaptiveSchemeModFSemantics
         case modularLatticeWrapper.modularLattice.Elements(vs) => modularLatticeWrapper.modularLattice.Elements(vs.map(adaptV))
     def adaptV(value: modularLatticeWrapper.modularLattice.Value): modularLatticeWrapper.modularLattice.Value = value match
         case modularLatticeWrapper.modularLattice.Pointer(ps) =>
-          modularLatticeWrapper.modularLattice.Pointer(ps.map(adaptAddr))
+            modularLatticeWrapper.modularLattice.Pointer(ps.map(adaptAddr))
         case modularLatticeWrapper.modularLattice.Clo(cs) =>
-          modularLatticeWrapper.modularLattice.Clo(cs.map(adaptClosure))
+            modularLatticeWrapper.modularLattice.Clo(cs.map(adaptClosure))
         case modularLatticeWrapper.modularLattice.Cons(car, cdr) =>
-          modularLatticeWrapper.modularLattice.Cons(adaptValue(car), adaptValue(cdr))
+            modularLatticeWrapper.modularLattice.Cons(adaptValue(car), adaptValue(cdr))
         case modularLatticeWrapper.modularLattice.Vec(siz, els) =>
-          modularLatticeWrapper.modularLattice.Vec(siz, els.view.mapValues(adaptValue).toMap)
+            modularLatticeWrapper.modularLattice.Vec(siz, els.view.mapValues(adaptValue).toMap)
         case _ => value
     // adapting a component
     def adaptComponent(cmp: Component): Component = cmp match

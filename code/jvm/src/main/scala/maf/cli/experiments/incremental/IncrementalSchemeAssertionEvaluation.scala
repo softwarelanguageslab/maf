@@ -25,9 +25,9 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
     val error: String = errS
 
     type Analysis = IncrementalModAnalysis[SchemeExp]
-      with IncrementalGlobalStore[SchemeExp]
-      with IncrementalSchemeModFBigStepSemantics
-      with SchemeAssertSemantics
+        with IncrementalGlobalStore[SchemeExp]
+        with IncrementalSchemeModFBigStepSemantics
+        with SchemeAssertSemantics
 
     def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
 
@@ -63,8 +63,8 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
         if runAnalysis(file,
                        "init",
                        timeOut => {
-                         a1.analyzeWithTimeout(timeOut);
-                         a1
+                           a1.analyzeWithTimeout(timeOut);
+                           a1
                        }
             )
         then
@@ -77,8 +77,8 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
             runAnalysis(file,
                         config.toString,
                         timeOut => {
-                          copy.updateAnalysis(timeOut);
-                          copy
+                            copy.updateAnalysis(timeOut);
+                            copy
                         }
             )
         }
@@ -86,8 +86,8 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
         runAnalysis(file,
                     "rean",
                     timeOut => {
-                      a2.analyzeWithTimeout(timeOut);
-                      a2
+                        a2.analyzeWithTimeout(timeOut);
+                        a2
                     }
         )
 

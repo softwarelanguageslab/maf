@@ -33,16 +33,16 @@ trait SchemeContractSchemeSupport extends BigStepModFSemantics:
             case ContractSchemeMon(_, exp, _) => eval(exp)
             /** Flat contracts evaluate to their inner value, so check can be translated to simple function applications and then evaluated */
             case ContractSchemeCheck(contract, valueExpression, idn) =>
-              eval(SchemeFuncall(contract, List(valueExpression), idn))
+                eval(SchemeFuncall(contract, List(valueExpression), idn))
             /** Provide expressions are ignored and evaluate to nil */
             case ContractSchemeProvide(_, _) => unit(lattice.nil)
             /** Struct semantics are preserved */
             case mk: MakeStruct => unit(structOps.evaluate(mk))
             case MatchExpr(value, clauses, _) =>
-              for
-                  _ <- eval(value) // evaluate value for side effects but ignore result
-                  evaluatedClauses <- merge(clauses.map(_.expr).map(evalSequence)) // over approximate by evaluating all clauses at once
-              yield evaluatedClauses
+                for
+                    _ <- eval(value) // evaluate value for side effects but ignore result
+                    evaluatedClauses <- merge(clauses.map(_.expr).map(evalSequence)) // over approximate by evaluating all clauses at once
+                yield evaluatedClauses
             case _ => super.eval(exp)
 
         override def applyFun(

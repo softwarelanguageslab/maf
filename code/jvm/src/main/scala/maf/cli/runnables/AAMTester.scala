@@ -44,11 +44,11 @@ trait AAMTesterT:
                 println(s"state $state ${state.map(_.hsh)}")
                 state match
                     case Some(state) =>
-                      states.find(state.hsh == _.hashCode)
+                        states.find(state.hsh == _.hashCode)
                     case None => None
 
         val (time, analysisResult) = Timer.time {
-          theAnalysis.analyzeWithTimeout(Timeout.start(Duration(60, SECONDS)), graph.G.typeclass.empty)
+            theAnalysis.analyzeWithTimeout(Timeout.start(Duration(60, SECONDS)), graph.G.typeclass.empty)
         }
 
         val states = analysisResult.allConfs
@@ -94,10 +94,10 @@ object AAMTester extends AAMTesterT:
         with SimpleWorklistSystem[SchemeExp]
         //with SchemeAtomicEvaluation
         with SchemeAAMAnalysisResults {
-      //override type System = LoggingLocalStoreSystem
+        //override type System = LoggingLocalStoreSystem
     }
 
     protected def analysis(b: SchemeExp): Analysis = SimpleAnalysis(b)
 
     def main(args: Array[String]): Unit =
-      if args.size > 0 then run(args(0)) else println("Please provide a file")
+        if args.size > 0 then run(args(0)) else println("Please provide a file")

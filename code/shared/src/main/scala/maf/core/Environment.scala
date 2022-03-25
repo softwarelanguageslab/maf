@@ -3,25 +3,25 @@ package maf.core
 import maf.util.SmartHash
 
 sealed trait Environment[A <: Address] extends SmartHash { outer =>
-  type This >: this.type <: Environment[A] { type This = outer.This }
+    type This >: this.type <: Environment[A] { type This = outer.This }
 
-  /** Restrict the environment to only certain keys */
-  def restrictTo(keys: Set[String]): This
+    /** Restrict the environment to only certain keys */
+    def restrictTo(keys: Set[String]): This
 
-  /** Looks up a value in the environment */
-  def lookup(name: String): Option[A]
-  def apply(name: String): A = lookup(name).get
+    /** Looks up a value in the environment */
+    def lookup(name: String): Option[A]
+    def apply(name: String): A = lookup(name).get
 
-  /** Extend the environment */
-  def extend(name: String, a: A): This
-  def extend(values: Iterable[(String, A)]): This
+    /** Extend the environment */
+    def extend(name: String, a: A): This
+    def extend(values: Iterable[(String, A)]): This
 
-  /** Mapping over the environment */
-  def mapAddrs(f: A => A): This
+    /** Mapping over the environment */
+    def mapAddrs(f: A => A): This
 
-  def addrs: Set[Address]
+    def addrs: Set[Address]
 
-  def size: Int
+    def size: Int
 }
 
 /** Mapping from variable name to addresses */

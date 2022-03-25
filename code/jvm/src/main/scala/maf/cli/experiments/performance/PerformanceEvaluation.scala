@@ -82,7 +82,7 @@ trait PerformanceEvaluation:
                 if a.finished then
                     val analysisMetrics = a.metrics
                     metrics = analysisMetrics.foldLeft(metrics)((metrics, metric) =>
-                      metrics + (metric.name -> (metric.result :: metrics.get(metric.name).getOrElse(List())))
+                        metrics + (metric.name -> (metric.result :: metrics.get(metric.name).getOrElse(List())))
                     )
 
                     times = (t.toDouble / 1000000) :: times
@@ -95,7 +95,7 @@ trait PerformanceEvaluation:
 
             // Also compute statistics about additional metrics reported by the analysis
             val resultMetrics = metrics.map { case (name, metrics) =>
-              Metrics(name, Statistics.all(metrics))
+                Metrics(name, Statistics.all(metrics))
             }.toList
 
             (Completed(result), resultMetrics)
@@ -116,25 +116,25 @@ trait PerformanceEvaluation:
         failFast: Boolean
       )(using ExecutionContext
       ): Unit =
-      analyses.foreach { case (analysis, name) =>
-        try
-            println(s"***** Running $name on $benchmark [$current/$total] *****")
-            val (result, metrics) = Await.result(measureAnalysis(benchmark, analysis), Duration.Inf)
-            addResult(name, benchmark, result, metrics)
-            result match
-                case TimedOut if timeoutFast => return
-                case _                       => ()
-        catch
-            case e: Exception =>
-              println(s"Encountered an exception: ${e.getMessage}")
-              e.printStackTrace()
-              if failFast then return
-            case e: VirtualMachineError =>
-              System.gc()
-              println(s"Running $benchmark resulted in an error: ${e.getMessage}")
-              e.printStackTrace()
-              if failFast then return
-      }
+        analyses.foreach { case (analysis, name) =>
+            try
+                println(s"***** Running $name on $benchmark [$current/$total] *****")
+                val (result, metrics) = Await.result(measureAnalysis(benchmark, analysis), Duration.Inf)
+                addResult(name, benchmark, result, metrics)
+                result match
+                    case TimedOut if timeoutFast => return
+                    case _                       => ()
+            catch
+                case e: Exception =>
+                    println(s"Encountered an exception: ${e.getMessage}")
+                    e.printStackTrace()
+                    if failFast then return
+                case e: VirtualMachineError =>
+                    System.gc()
+                    println(s"Running $benchmark resulted in an error: ${e.getMessage}")
+                    e.printStackTrace()
+                    if failFast then return
+        }
 
     def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using ExecutionContext) =
         var current = 0
@@ -145,7 +145,7 @@ trait PerformanceEvaluation:
         }
 
     def printResults() =
-      println(results.prettyString(format = format))
+        println(results.prettyString(format = format))
     def exportCSV(
         path: String,
         format: PerformanceResult => String,

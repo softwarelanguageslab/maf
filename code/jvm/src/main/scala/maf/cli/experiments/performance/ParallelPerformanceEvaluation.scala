@@ -8,9 +8,9 @@ import scala.concurrent.duration.*
 
 trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
     override def addResult(name: String, benchmark: Benchmark, result: PerformanceResult, metrics: List[Metrics]): Unit =
-      synchronized {
-        super.addResult(name, benchmark, result, metrics)
-      }
+        synchronized {
+            super.addResult(name, benchmark, result, metrics)
+        }
 
     private def measureBenchmarkFuture(
         benchmark: Benchmark,
@@ -19,22 +19,22 @@ trait ParallelPerformanceEvaluation(cores: Int) extends PerformanceEvaluation:
         failFast: Boolean
       )(using ExecutionContext
       ): List[Future[Any]] =
-      analyses.map { case (analysis, name) =>
-        println(s"***** Scheduling $name on $benchmark [$current/$total] (futures) *****")
-        measureAnalysis(benchmark, analysis)
-          .map { case (result, metrics) =>
-            println(s"Analysis $name on $benchmark done, with result $result")
-            addResult(name, benchmark, result, metrics)
-          }
-          .recover { case cause =>
-            println(s"$name of $benchmark encountered exception ${cause.getMessage}")
-          }
-      }
+        analyses.map { case (analysis, name) =>
+            println(s"***** Scheduling $name on $benchmark [$current/$total] (futures) *****")
+            measureAnalysis(benchmark, analysis)
+                .map { case (result, metrics) =>
+                    println(s"Analysis $name on $benchmark done, with result $result")
+                    addResult(name, benchmark, result, metrics)
+                }
+                .recover { case cause =>
+                    println(s"$name of $benchmark encountered exception ${cause.getMessage}")
+                }
+        }
 
     override def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using ExecutionContext) =
         val total = benchmarks.size
         val futs = (0 to total).zip(benchmarks).flatMap { case (current, b) =>
-          measureBenchmarkFuture(b, current, total, failFast)
+            measureBenchmarkFuture(b, current, total, failFast)
         }
         Thread.sleep(100)
         //println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());

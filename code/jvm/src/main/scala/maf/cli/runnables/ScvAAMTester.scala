@@ -15,24 +15,24 @@ object ScvAAMTester extends AAMTesterT:
     type Analysis = ScvAAMSemantics
 
     protected def analysis(b: SchemeExp): Analysis =
-      new ScvAAMSemantics(b)
-        with BaseSchemeAAMSemantics
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain
-        //with SchemeStoreAllocateReturn
-        with SchemeFunctionCallBoundary
-        with SchemeAAMLocalStore
-        with SimpleWorklistSystem[SchemeExp]
-        with SchemeAAMAnalysisResults
-        with ScvReporter {
-        lazy val satSolver: ScvSatSolver[LatVal] =
-            given lat: SchemeLattice[LatVal, Address] = lattice
-            new JVMSatSolver(this)
-      }
+        new ScvAAMSemantics(b)
+            with BaseSchemeAAMSemantics
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            with SchemeConstantPropagationDomain
+            //with SchemeStoreAllocateReturn
+            with SchemeFunctionCallBoundary
+            with SchemeAAMLocalStore
+            with SimpleWorklistSystem[SchemeExp]
+            with SchemeAAMAnalysisResults
+            with ScvReporter {
+            lazy val satSolver: ScvSatSolver[LatVal] =
+                given lat: SchemeLattice[LatVal, Address] = lattice
+                new JVMSatSolver(this)
+        }
 
     override protected def parseProgram(txt: String): SchemeExp =
-      SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
+        SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
 
     def main(args: Array[String]): Unit =
-      if args.size > 0 then run(args(0)) else println("Please provide a file")
+        if args.size > 0 then run(args(0)) else println("Please provide a file")

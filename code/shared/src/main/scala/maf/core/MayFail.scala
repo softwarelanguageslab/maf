@@ -14,7 +14,7 @@ sealed trait MayFail[A, E] extends Serializable:
         case (MayFailSuccess(a1), MayFailError(errs2))    => MayFailBoth(a1, errs2)
         case (MayFailBoth(a1, errs1), MayFailSuccess(a2)) => MayFailBoth(joinA(a1, a2), errs1)
         case (MayFailBoth(a1, errs1), MayFailBoth(a2, errs2)) =>
-          MayFailBoth(joinA(a1, a2), errs1 ++ errs2)
+            MayFailBoth(joinA(a1, a2), errs1 ++ errs2)
         case (MayFailBoth(a1, errs1), MayFailError(errs2)) => MayFailBoth(a1, errs1 ++ errs2)
         case (MayFailError(errs1), MayFailSuccess(a2))     => MayFailBoth(a2, errs1)
         case (MayFailError(errs1), MayFailBoth(a2, errs2)) => MayFailBoth(a2, errs1 ++ errs2)
@@ -24,10 +24,10 @@ sealed trait MayFail[A, E] extends Serializable:
         case MayFailSuccess(a)  => f(a)
         case MayFailError(errs) => MayFailError(errs)
         case MayFailBoth(a, errs) =>
-          f(a) match
-              case MayFailSuccess(a)     => MayFailBoth(a, errs)
-              case MayFailError(errs2)   => MayFailError(errs ++ errs2)
-              case MayFailBoth(a, errs2) => MayFailBoth(a, errs ++ errs2)
+            f(a) match
+                case MayFailSuccess(a)     => MayFailBoth(a, errs)
+                case MayFailError(errs2)   => MayFailError(errs ++ errs2)
+                case MayFailBoth(a, errs2) => MayFailBoth(a, errs ++ errs2)
     def >>=[B](f: A => MayFail[B, E]): MayFail[B, E] = flatMap[B](f)
 
     def map[B](f: A => B): MayFail[B, E] = this match

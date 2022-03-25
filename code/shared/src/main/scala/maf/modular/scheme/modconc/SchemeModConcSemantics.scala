@@ -85,57 +85,57 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiv
         with BaseSchemeModFSemantics
         with BigStepModFSemantics
         with StandardSchemeModFComponents { modf =>
-      import evalM.*
+        import evalM.*
 
-      // SCHEME ENVIRONMENT SETUP
-      lazy val baseEnv = env(intra.component)
-      // SCHEME LATTICE SETUP
-      type Value = inter.Value
-      lazy val lattice = inter.lattice
-      lazy val primitives = inter.primitives
-      // MODF ADDRESS ALLOCATION
-      type AllocationContext = inter.AllocationContext
-      def allocVar(id: Identifier, cmp: SchemeModFComponent) = inter.allocVar(id, cmp, intra.component)
-      def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = inter.allocPtr(exp, cmp, intra.component)
-      // GLOBAL STORE SETUP
-      override def store = intra.store
-      override def store_=(s: Map[Addr, Value]) = intra.store = s
-      // SYNCING DEPENDENCIES
-      override def register(target: modf.Component, dep: Dependency) =
-          super.register(target, dep)
-          intra.register(dep)
-      override def trigger(dep: Dependency) =
-          super.trigger(dep)
-          intra.trigger(dep)
-      // MODF INTRA-ANALYSIS EXTENDED WITH SUPPORT FOR THREADS
-      def intraAnalysis(cmp: modf.Component) = new InnerModFIntra(cmp)
-      class InnerModFIntra(cmp: modf.Component) extends IntraAnalysis(cmp) with BigStepModFIntra { modf =>
-        var T: Set[inter.Component] = Set.empty
-        def spawnThread(t: inter.Component) = T += t
-        def readThreadResult(t: inter.Component) = readAddr(inter.returnAddr(t))
-        override def eval(exp: SchemeExp): EvalM[Value] = exp match
-            case CSchemeFork(bdy, _) => evalFork(bdy)
-            case CSchemeJoin(thr, _) => evalJoin(thr)
-            case _                   => super.eval(exp)
-        private def evalFork(exp: SchemeExp): EvalM[Value] =
-          for
-              env <- getEnv
-              ctx = inter.allocCtx(exp, env, component, intra.component)
-              targetCmp = inter.newComponent(Thread(exp, env, ctx))
-              _ = spawnThread(targetCmp)
-          yield lattice.thread(targetCmp)
-        private def evalJoin(thrExp: SchemeExp): EvalM[Value] =
-          for
-              thrVal <- eval(thrExp)
-              threads = lattice.getThreads(thrVal)
-              values = threads.map(tid => inject(readThreadResult(tid.asInstanceOf[inter.Component]))(lattice))
-              res <- merge(values)(lattice)
-          yield res
-        override def currentThread = intra.component
-        override def commit() =
-            super.commit()
-            T.foreach(intra.spawn)
-      }
+        // SCHEME ENVIRONMENT SETUP
+        lazy val baseEnv = env(intra.component)
+        // SCHEME LATTICE SETUP
+        type Value = inter.Value
+        lazy val lattice = inter.lattice
+        lazy val primitives = inter.primitives
+        // MODF ADDRESS ALLOCATION
+        type AllocationContext = inter.AllocationContext
+        def allocVar(id: Identifier, cmp: SchemeModFComponent) = inter.allocVar(id, cmp, intra.component)
+        def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = inter.allocPtr(exp, cmp, intra.component)
+        // GLOBAL STORE SETUP
+        override def store = intra.store
+        override def store_=(s: Map[Addr, Value]) = intra.store = s
+        // SYNCING DEPENDENCIES
+        override def register(target: modf.Component, dep: Dependency) =
+            super.register(target, dep)
+            intra.register(dep)
+        override def trigger(dep: Dependency) =
+            super.trigger(dep)
+            intra.trigger(dep)
+        // MODF INTRA-ANALYSIS EXTENDED WITH SUPPORT FOR THREADS
+        def intraAnalysis(cmp: modf.Component) = new InnerModFIntra(cmp)
+        class InnerModFIntra(cmp: modf.Component) extends IntraAnalysis(cmp) with BigStepModFIntra { modf =>
+            var T: Set[inter.Component] = Set.empty
+            def spawnThread(t: inter.Component) = T += t
+            def readThreadResult(t: inter.Component) = readAddr(inter.returnAddr(t))
+            override def eval(exp: SchemeExp): EvalM[Value] = exp match
+                case CSchemeFork(bdy, _) => evalFork(bdy)
+                case CSchemeJoin(thr, _) => evalJoin(thr)
+                case _                   => super.eval(exp)
+            private def evalFork(exp: SchemeExp): EvalM[Value] =
+                for
+                    env <- getEnv
+                    ctx = inter.allocCtx(exp, env, component, intra.component)
+                    targetCmp = inter.newComponent(Thread(exp, env, ctx))
+                    _ = spawnThread(targetCmp)
+                yield lattice.thread(targetCmp)
+            private def evalJoin(thrExp: SchemeExp): EvalM[Value] =
+                for
+                    thrVal <- eval(thrExp)
+                    threads = lattice.getThreads(thrVal)
+                    values = threads.map(tid => inject(readThreadResult(tid.asInstanceOf[inter.Component]))(lattice))
+                    res <- merge(values)(lattice)
+                yield res
+            override def currentThread = intra.component
+            override def commit() =
+                super.commit()
+                T.foreach(intra.spawn)
+        }
     }
 
     override def configString(): String = super.configString() ++ "\n  applying ModConc Scheme semantics"

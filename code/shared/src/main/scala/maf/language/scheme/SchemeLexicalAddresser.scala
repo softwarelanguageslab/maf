@@ -39,69 +39,69 @@ trait BaseSchemeLexicalAddresser:
     def initialLEnv(globals: String => Boolean) = LexicalEnv(emptyScope)(globals)
 
     def translateProgram(prg: List[SchemeExp], globals: String => Boolean = _ => true): List[SchemeExp] =
-      translateBody(prg, initialLEnv(globals).newFrame.extend(SchemeBody.defs(prg)))
+        translateBody(prg, initialLEnv(globals).newFrame.extend(SchemeBody.defs(prg)))
 
     def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = exp match
         case vexp: SchemeValue =>
-          vexp
+            vexp
         case SchemeLambda(nam, prs, bdy, ann, pos) =>
-          SchemeLambda(nam, prs, translateBody(bdy, lenv.newFrame.extend(prs)), ann, pos)
+            SchemeLambda(nam, prs, translateBody(bdy, lenv.newFrame.extend(prs)), ann, pos)
         case SchemeVarArgLambda(nam, prs, vararg, bdy, ann, pos) =>
-          SchemeVarArgLambda(nam, prs, vararg, translateBody(bdy, lenv.newFrame.extend(prs).extend(vararg)), ann, pos)
+            SchemeVarArgLambda(nam, prs, vararg, translateBody(bdy, lenv.newFrame.extend(prs).extend(vararg)), ann, pos)
         case SchemeVar(id) =>
-          SchemeVarLex(id, lenv.resolve(id.name))
+            SchemeVarLex(id, lenv.resolve(id.name))
         case SchemeBegin(eps, pos) =>
-          SchemeBegin(translate(eps, lenv), pos)
+            SchemeBegin(translate(eps, lenv), pos)
         case SchemeDefineVariable(id, vexp, pos) =>
-          SchemeDefineVariable(id, translate(vexp, lenv), pos)
+            SchemeDefineVariable(id, translate(vexp, lenv), pos)
         case SchemeSet(id, vexp, pos) =>
-          SchemeSetLex(id, lenv.resolve(id.name), translate(vexp, lenv), pos)
+            SchemeSetLex(id, lenv.resolve(id.name), translate(vexp, lenv), pos)
         case SchemeIf(prd, csq, alt, pos) =>
-          SchemeIf(translate(prd, lenv), translate(csq, lenv), translate(alt, lenv), pos)
+            SchemeIf(translate(prd, lenv), translate(csq, lenv), translate(alt, lenv), pos)
         case SchemeFuncall(fun, args, pos) =>
-          SchemeFuncall(translate(fun, lenv), translate(args, lenv), pos)
+            SchemeFuncall(translate(fun, lenv), translate(args, lenv), pos)
         case SchemeAssert(exp, pos) =>
-          SchemeAssert(translate(exp, lenv), pos)
+            SchemeAssert(translate(exp, lenv), pos)
         case SchemeLet(bindings, body, pos) =>
-          val (vrs, eps) = bindings.unzip
-          val bdsLex = vrs.zip(translate(eps, lenv))
-          val bdyLex = translateBody(body, lenv.newFrame.extend(vrs))
-          SchemeLet(bdsLex, bdyLex, pos)
+            val (vrs, eps) = bindings.unzip
+            val bdsLex = vrs.zip(translate(eps, lenv))
+            val bdyLex = translateBody(body, lenv.newFrame.extend(vrs))
+            SchemeLet(bdsLex, bdyLex, pos)
         case SchemeLetStar(bindings, body, pos) =>
-          val (bdsLex, extEnv) = bindings.foldLeft[(List[(Identifier, SchemeExp)], LexicalEnv)]((Nil, lenv.newFrame)) {
-            case ((accBds, accEnv), (id, vexp)) => ((id, translate(vexp, accEnv)) :: accBds, accEnv.extend(id))
-          }
-          val bdyLex = translateBody(body, extEnv)
-          SchemeLetStar(bdsLex.reverse, bdyLex, pos)
+            val (bdsLex, extEnv) = bindings.foldLeft[(List[(Identifier, SchemeExp)], LexicalEnv)]((Nil, lenv.newFrame)) {
+                case ((accBds, accEnv), (id, vexp)) => ((id, translate(vexp, accEnv)) :: accBds, accEnv.extend(id))
+            }
+            val bdyLex = translateBody(body, extEnv)
+            SchemeLetStar(bdsLex.reverse, bdyLex, pos)
         case SchemeLetrec(bindings, body, pos) =>
-          val (vrs, eps) = bindings.unzip
-          val extEnv = lenv.newFrame.extend(vrs)
-          val bdsLex = vrs.zip(translate(eps, extEnv))
-          val bdyLex = translateBody(body, extEnv)
-          SchemeLetrec(bdsLex, bdyLex, pos)
+            val (vrs, eps) = bindings.unzip
+            val extEnv = lenv.newFrame.extend(vrs)
+            val bdsLex = vrs.zip(translate(eps, extEnv))
+            val bdyLex = translateBody(body, extEnv)
+            SchemeLetrec(bdsLex, bdyLex, pos)
         // TODO: HACK: ContractScheme expression should no be here, but no easy way for MutableVarBoxer
         // to make this parametric
         case ContractSchemeMon(contract, expression, idn) =>
-          ContractSchemeMon(translate(contract, lenv), translate(expression, lenv), idn)
+            ContractSchemeMon(translate(contract, lenv), translate(expression, lenv), idn)
         case ContractSchemeFlatContract(contract, idn) =>
-          ContractSchemeFlatContract(translate(contract, lenv), idn)
+            ContractSchemeFlatContract(translate(contract, lenv), idn)
         case ContractSchemeDepContract(domains, rangeMaker, idn) =>
-          ContractSchemeDepContract(domains.map(translate(_, lenv)), translate(rangeMaker, lenv), idn)
+            ContractSchemeDepContract(domains.map(translate(_, lenv)), translate(rangeMaker, lenv), idn)
         case ContractSchemeProvide(outs, idn) =>
-          ContractSchemeProvide(translateContractSchemeOut(outs, lenv), idn)
+            ContractSchemeProvide(translateContractSchemeOut(outs, lenv), idn)
         case ContractSchemeCheck(contract, valueExpression, idn) =>
-          ContractSchemeCheck(translate(contract, lenv), translate(valueExpression, lenv), idn)
+            ContractSchemeCheck(translate(contract, lenv), translate(valueExpression, lenv), idn)
         case m: MakeStruct => m // no variables inside a makestruct expression so lexical adressing does not need to be recursively called
         case _             => throw new Exception(s"Unsupported Scheme expression: $exp")
 
     def translateContractSchemeOut(outs: List[ContractSchemeProvideOut], lenv: LexicalEnv): List[ContractSchemeProvideOut] =
-      outs.map { case ContractSchemeContractOut(name, contract, idn) =>
-        ContractSchemeContractOut(name, translate(contract, lenv), idn)
-      }
+        outs.map { case ContractSchemeContractOut(name, contract, idn) =>
+            ContractSchemeContractOut(name, translate(contract, lenv), idn)
+        }
 
     def translate(bdy: List[SchemeExp], lenv: LexicalEnv): List[SchemeExp] =
-      bdy.map(translate(_, lenv))
+        bdy.map(translate(_, lenv))
     def translateBody(body: List[SchemeExp], lenv: LexicalEnv): List[SchemeExp] =
-      translate(body, lenv.newFrame.extend(SchemeBody.defs(body)))
+        translate(body, lenv.newFrame.extend(SchemeBody.defs(body)))
 
 object SchemeLexicalAddresser extends BaseSchemeLexicalAddresser

@@ -12,13 +12,13 @@ import maf.core.{Lattice, Monad}
  */
 case class TaggedSet[T, X](vs: Set[(Option[T], X)]):
     def ++(other: TaggedSet[T, X]): TaggedSet[T, X] =
-      TaggedSet(vs ++ other.vs)
+        TaggedSet(vs ++ other.vs)
 
     /** Returns the set of tags embedded in the tagged set (unordered), the connection with the tagged values is therefore lost. */
     def tags: Set[T] = vs.flatMap(_._1)
 
     def merge(using Lattice[X]): X =
-      vs.map(_._2).foldLeft(Lattice[X].bottom)((acc, el) => Lattice[X].join(acc, el))
+        vs.map(_._2).foldLeft(Lattice[X].bottom)((acc, el) => Lattice[X].join(acc, el))
 
 object TaggedSet:
     /** A monad instance for the tagged set that is fixed in the type of the tag */
@@ -28,11 +28,11 @@ object TaggedSet:
         def unit[X](x: X): M[X] = TaggedSet(Set((None, x)))
         // Map preserves the tag of the original value
         def map[X, Y](m: M[X])(f: X => Y): M[Y] = TaggedSet(m.vs.map { case (tag, v) =>
-          (tag, f(v))
+            (tag, f(v))
         })
         // Flatmap use the tag of the resulting tagged set
         def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y] = TaggedSet(m.vs.flatMap { case (tag, v) =>
-          f(v).vs
+            f(v).vs
         })
 
     def empty[T, X]: TaggedSet[T, X] = TaggedSet(Set())
@@ -42,7 +42,7 @@ object TaggedSet:
 
     /** Replace the tag in the given tagged set with the given tag */
     def tag[T, X](tag: T, v: X): TaggedSet[T, X] =
-      TaggedSet(Set((Some(tag), v)))
+        TaggedSet(Set((Some(tag), v)))
 
     def flatten[T, X](sets: Set[TaggedSet[T, X]]): TaggedSet[T, X] =
-      sets.foldLeft(TaggedSet.empty)((acc, el) => TaggedSet(acc.vs ++ el.vs))
+        sets.foldLeft(TaggedSet.empty)((acc, el) => TaggedSet(acc.vs ++ el.vs))

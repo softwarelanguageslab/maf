@@ -56,28 +56,28 @@ class CPSSchemeInterpreter(
                     case Step(exp, env, cc) => eval(exp, env, version, cc)
                     case Kont(v, EndC())    => return v
                     case Kont(v, TrdC(tid)) =>
-                      val blocked = waiting(tid)
-                      waiting = waiting + (tid -> Right(v))
-                      blocked match
-                          case Left(continuations) => work = work.enqueueAll(continuations.map(Kont(v, _)))
-                          case Right(_)            => throw new Exception(s"Thread with $tid already finished.")
-                      scheduleNext()
-                      state
+                        val blocked = waiting(tid)
+                        waiting = waiting + (tid -> Right(v))
+                        blocked match
+                            case Left(continuations) => work = work.enqueueAll(continuations.map(Kont(v, _)))
+                            case Right(_)            => throw new Exception(s"Thread with $tid already finished.")
+                        scheduleNext()
+                        state
                     case Kont(v, cc) => apply(v, cc)
             throw new TimeoutException()
         catch
             // Use the continuations to print the stack trace.
             case e @ ProgramError(message) =>
-              var cc = state.cc
-              var msg: String = s"$message\n Callstack:"
-              if stack then
-                  while
-                      msg = msg + s"\n * ${cc.toString}"
-                      cc = cc.asInstanceOf[InternalContinuation].cc
-                      cc != EndC() && cc != TrdC()
-                  do ()
-                  msg += "\n **********"
-              throw e
+                var cc = state.cc
+                var msg: String = s"$message\n Callstack:"
+                if stack then
+                    while
+                        msg = msg + s"\n * ${cc.toString}"
+                        cc = cc.asInstanceOf[InternalContinuation].cc
+                        cc != EndC() && cc != TrdC()
+                    do ()
+                    msg += "\n **********"
+                throw e
 
     /* ************************* */
     /* ***** CONTINUATIONS ***** */
@@ -158,29 +158,29 @@ class CPSSchemeInterpreter(
         case let @ SchemeLet((_, e) :: rest, _, _)         => Step(e, env, LetC(rest, env, Nil, let, cc))
         case SchemeLetrec(Nil, body, pos)                  => Step(SchemeBegin(body, pos), env, cc)
         case let @ SchemeLetrec(bnd @ (i, e) :: rest, _, _) =>
-          val extEnv = env ++ bnd.map((idf, _) => (idf.name, newAddr(AddrInfo.VarAddr(idf))))
-          Step(e, extEnv, LtrC(i, rest, extEnv, let, cc))
+            val extEnv = env ++ bnd.map((idf, _) => (idf.name, newAddr(AddrInfo.VarAddr(idf))))
+            Step(e, extEnv, LtrC(i, rest, extEnv, let, cc))
         case SchemeLetStar(Nil, body, pos)             => Step(SchemeBegin(body, pos), env, cc)
         case let @ SchemeLetStar((i, e) :: rest, _, _) => Step(e, env, LtsC(i, rest, env, let, cc))
         case SchemeSet(variable, value, _) =>
-          env.get(variable.name) match
-              case Some(addr) => Step(value, env, SetC(addr, cc))
-              case None       => signalException(UndefinedVariableError(variable))
+            env.get(variable.name) match
+                case Some(addr) => Step(value, env, SetC(addr, cc))
+                case None       => signalException(UndefinedVariableError(variable))
         case SchemeSetLex(_, _, _, _) => signalException(UnsupportedExpression(exp))
         case SchemeValue(value, _)    => Kont(evalLiteral(value, exp), cc)
         case SchemeVar(id) =>
-          env.get(id.name) match
-              case None => signalException(UndefinedVariableError(id))
-              case Some(addr) =>
-                lookupStoreOption(addr) match
-                    case None        => signalException(UninitialisedVariableError(id))
-                    case Some(value) => Kont(value, cc)
+            env.get(id.name) match
+                case None => signalException(UndefinedVariableError(id))
+                case Some(addr) =>
+                    lookupStoreOption(addr) match
+                        case None        => signalException(UninitialisedVariableError(id))
+                        case Some(value) => Kont(value, cc)
         case SchemeVarLex(_, _) => signalException(UnsupportedExpression(exp))
 
         case CSchemeFork(body, _) =>
-          val tid = allocTID()
-          work = work.enqueue(Step(body, env, TrdC(tid)))
-          Kont(Value.CThread(tid), cc)
+            val tid = allocTID()
+            work = work.enqueue(Step(body, env, TrdC(tid)))
+            Kont(Value.CThread(tid), cc)
         case CSchemeJoin(tExp, _) => Step(tExp, env, JoiC(cc))
 
         case _ => signalException(UnsupportedExpression(exp))
@@ -194,22 +194,22 @@ class CPSSchemeInterpreter(
         case IffC(_, alt, env, cc) if v == Value.Bool(false) => Step(alt, env, cc)
         case IffC(cons, _, env, cc)                          => Step(cons, env, cc)
         case JoiC(cc) =>
-          v match
-              case Value.CThread(tid) =>
-                waiting(tid) match
-                    case Left(continuations) =>
-                      waiting = waiting + (tid -> Left(continuations + cc))
-                      scheduleNext()
-                      state
-                    case Right(v) => Kont(v, cc)
-              case v => signalException(TypeError(s"Cannot join non-thread value.", v))
+            v match
+                case Value.CThread(tid) =>
+                    waiting(tid) match
+                        case Left(continuations) =>
+                            waiting = waiting + (tid -> Left(continuations + cc))
+                            scheduleNext()
+                            state
+                        case Right(v) => Kont(v, cc)
+                case v => signalException(TypeError(s"Cannot join non-thread value.", v))
         case LetC(Nil, env, bvals, let, cc) => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
         case LetC((_, e) :: rest, env, bvals, let, cc) => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
         case LtrC(i1, bnd, env, let, cc) =>
-          extendStore(env(i1.name), v) // Overwrite the previous binding.
-          bnd match
-              case Nil             => Step(SchemeBegin(let.body, let.idn), env, cc)
-              case (i2, e) :: rest => Step(e, env, LtrC(i2, rest, env, let, cc))
+            extendStore(env(i1.name), v) // Overwrite the previous binding.
+            bnd match
+                case Nil             => Step(SchemeBegin(let.body, let.idn), env, cc)
+                case (i2, e) :: rest => Step(e, env, LtrC(i2, rest, env, let, cc))
         case LtsC(i, Nil, env, let, cc)              => Step(SchemeBegin(let.body, let.idn), extendEnv(env, (i, v)), cc)
         case LtsC(i1, (i2, e) :: rest, env, let, cc) => val extEnv = extendEnv(env, (i1, v)); Step(e, extEnv, LtsC(i2, rest, extEnv, let, cc))
         case PaiC(car, e, cc)                        => Kont(allocateCons(e, car, v), cc)
@@ -227,15 +227,15 @@ class CPSSchemeInterpreter(
         // First, check the arity.
         f match
             case Value.Clo(lambda @ SchemeLambda(_, argNames, _, _, idn), _) =>
-              if args.length != argNames.length then
-                  signalException(
-                    ArityError(idn.pos, argNames.length, args.length)
-                  )
+                if args.length != argNames.length then
+                    signalException(
+                      ArityError(idn.pos, argNames.length, args.length)
+                    )
             case Value.Clo(lambda @ SchemeVarArgLambda(_, argNames, _, _, _, idn), _) =>
-              if args.length < argNames.length then
-                  signalException(
-                    VarArityError(idn.pos, argNames.length, args.length)
-                  )
+                if args.length < argNames.length then
+                    signalException(
+                      VarArityError(idn.pos, argNames.length, args.length)
+                    )
             case Value.Primitive(_) => // Arity is checked upon primitive call.
             case v                  => signalException(ValueNotApplicable(v, call.idn))
         // If the arity is ok, evaluate the arguments.
@@ -253,12 +253,12 @@ class CPSSchemeInterpreter(
         val argvs = argvsRev.reverse
         f match
             case Value.Clo(SchemeLambda(_, argNames, body, _, _), env2) =>
-              Step(SchemeBody(body), extendEnv(argNames, argvs, env2), cc)
+                Step(SchemeBody(body), extendEnv(argNames, argvs, env2), cc)
             case Value.Clo(SchemeVarArgLambda(_, argNames, vararg, body, _, _), env2) =>
-              val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
-              extendStore(varArgAddr, makeList(call.args.drop(argNames.length).zip(argvs.drop(argNames.length))))
-              val envExt = extendEnv(argNames, argvs, env2) + (vararg.name -> varArgAddr)
-              Step(SchemeBody(body), envExt, cc)
+                val varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
+                extendStore(varArgAddr, makeList(call.args.drop(argNames.length).zip(argvs.drop(argNames.length))))
+                val envExt = extendEnv(argNames, argvs, env2) + (vararg.name -> varArgAddr)
+                Step(SchemeBody(body), envExt, cc)
             case Value.Primitive(p) => Kont(Primitives.allPrimitives(p).call(call, call.args.zip(argvs)), cc)
             case _                  => throw new Exception("Expected a function or primitive to apply")
 

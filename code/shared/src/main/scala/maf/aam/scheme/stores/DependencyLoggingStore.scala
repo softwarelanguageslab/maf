@@ -7,36 +7,36 @@ import maf.core.{Address, BasicStore, Lattice}
 
 object DepLoggingStore:
     def from[V: Lattice](sto: BasicStore[Address, V], tt: Int): DepLoggingStore[V] =
-      DepLoggingStore(sto, Map().withDefaultValue(List()), Set(), tt)
+        DepLoggingStore(sto, Map().withDefaultValue(List()), Set(), tt)
 
 /** A logging store that keeps track of the read dependencies in addition to the changes that it makes. */
 case class DepLoggingStore[V: Lattice](originalSto: BasicStore[Address, V], W: Map[Address, List[V]], R: Set[Address], tt: Int):
     /** Replays the store against the given global store. Returns the set of addresses that it has affected */
     def replay(store: BasicStore[Address, V]): (BasicStore[Address, V], Set[Address]) =
         val (sto1, writes) = W.foldLeft((store, Set[Address]())) { case ((store, writes), (adr, vlus)) =>
-          val before = store.lookup(adr)
-          val newStore = vlus.foldLeft(store)((sto, vlu) => sto.extend(adr, vlu))
-          (newStore, if before != newStore.lookup(adr) then writes + adr else writes)
+            val before = store.lookup(adr)
+            val newStore = vlus.foldLeft(store)((sto, vlu) => sto.extend(adr, vlu))
+            (newStore, if before != newStore.lookup(adr) then writes + adr else writes)
         }
 
         (sto1, writes)
 
     /** Append the given write to the log */
     def append(a: Address, value: V): DepLoggingStore[V] =
-      this.copy(W = W + (a -> (value :: W(a))))
+        this.copy(W = W + (a -> (value :: W(a))))
 
     /** Returns true if the address is already part of the log */
     def contains(a: Address): Boolean = W.contains(a)
 
     /** Returns the value from the log */
     def lookup(addr: Address): V =
-      W.get(addr)
-        .getOrElse(List())
-        .foldLeft(Lattice[V].bottom)((joined, vlu) => Lattice[V].join(joined, vlu))
+        W.get(addr)
+            .getOrElse(List())
+            .foldLeft(Lattice[V].bottom)((joined, vlu) => Lattice[V].join(joined, vlu))
 
     /** Register a read dependency from the current state to the given address */
     def register(readDep: Address): DepLoggingStore[V] =
-      this.copy(R = R + readDep)
+        this.copy(R = R + readDep)
 
     def readDeps: Set[Address] = R
 
@@ -64,8 +64,8 @@ trait BaseSchemeDependencyLoggingStore extends BaseSchemeAAMSemantics, BaseSimpl
         /** Replay the logs from all the collected stores in the global store, and return the set of address that were written */
         private def appendAll(logs: List[DepLoggingStore[Storable]]): Set[Address] =
             val (sto1, writes) = logs.foldLeft((sto, Set[Address]())) { case ((sto, writes), log) =>
-              val (sto1, writes1) = log.replay(sto)
-              (sto1, writes ++ writes1)
+                val (sto1, writes1) = log.replay(sto)
+                (sto1, writes ++ writes1)
             }
 
             sto = sto1
@@ -81,17 +81,17 @@ trait BaseSchemeDependencyLoggingStore extends BaseSchemeAAMSemantics, BaseSimpl
 
                 // Only add those to the worklist that are in the candidate list
                 val tmpWorkList = newWork.toSet
-                  .filter { case (_, conf) =>
-                    writes.exists(a => R(a).contains(conf)) || !seen.contains(conf)
-                  }
-                  .map { (prev, conf) => (prev, conf.copy(tt = t)) }
-                  .toList
+                    .filter { case (_, conf) =>
+                        writes.exists(a => R(a).contains(conf)) || !seen.contains(conf)
+                    }
+                    .map { (prev, conf) => (prev, conf.copy(tt = t)) }
+                    .toList
 
                 tmpWorkList.foreach(c => addSeen(c._2))
 
                 (newWork.toSet -- tmpWorkList.toSet).foreach {
-                  case (Some(from), to) => addBump(from, to)
-                  case _                => println(s"warn")
+                    case (Some(from), to) => addBump(from, to)
+                    case _                => println(s"warn")
                 }
 
                 // if the writes are > 0 then we increment t
@@ -102,7 +102,7 @@ trait BaseSchemeDependencyLoggingStore extends BaseSchemeAAMSemantics, BaseSimpl
             super.popWork()
 
         def register(conf: Conf, a: Address): Unit =
-          R = R + (a -> (R(a) + conf))
+            R = R + (a -> (R(a) + conf))
 
     case class SchemeConf(c: Control, k: Address | Frame, t: Timestamp, extra: Ext, tt: Int)
 
@@ -117,30 +117,30 @@ trait BaseSchemeDependencyLoggingStore extends BaseSchemeAAMSemantics, BaseSimpl
         (sys, depGraph)
 
     override def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
-      sto.append(addr, value)
+        sto.append(addr, value)
 
     override def readSto(sto: Sto, addr: Address): (Storable, Sto) =
-      if sto.contains(addr) then
-          // look in the log for the value, this is different in the Optimizing AAM paper
-          // as we assume there that the invriant holds that states do not read from the log
-          (sto.lookup(addr), sto.register(addr))
-      else
-          println(s"lookup for $addr yields ${sto.originalSto.lookup(addr)}")
-          (sto.originalSto.lookup(addr).getOrElse(Storable.V(lattice.bottom)), sto.register(addr))
+        if sto.contains(addr) then
+            // look in the log for the value, this is different in the Optimizing AAM paper
+            // as we assume there that the invriant holds that states do not read from the log
+            (sto.lookup(addr), sto.register(addr))
+        else
+            println(s"lookup for $addr yields ${sto.originalSto.lookup(addr)}")
+            (sto.originalSto.lookup(addr).getOrElse(Storable.V(lattice.bottom)), sto.register(addr))
 
     override def asState(conf: Conf, sys: System): State =
-      SchemeState(conf.c, DepLoggingStore.from(sto, conf.tt), conf.k, conf.t, conf.extra)
+        SchemeState(conf.c, DepLoggingStore.from(sto, conf.tt), conf.k, conf.t, conf.extra)
 
     override def asConf(state: State, sys: System): Conf =
-      SchemeConf(state.c, state.k, state.t, state.extra, state.s.tt)
+        SchemeConf(state.c, state.k, state.t, state.extra, state.s.tt)
 
     override def injectConf(e: Expr): Conf =
-      SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt, 0)
+        SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt, 0)
 
     override def inject(e: Expr): System =
-      DepLoggingStoreSystem().pushWork(None, injectConf(e))
+        DepLoggingStoreSystem().pushWork(None, injectConf(e))
 
     override def asGraphElement(c: Conf, sys: System): GraphElementAAM =
-      asGraphElement(c.c, c.k, DepLoggingStore.from(sto, c.tt), c.extra, c.hashCode)
+        asGraphElement(c.c, c.k, DepLoggingStore.from(sto, c.tt), c.extra, c.hashCode)
 
     override lazy val initialStore: Sto = DepLoggingStore.from(originalSto, 0)

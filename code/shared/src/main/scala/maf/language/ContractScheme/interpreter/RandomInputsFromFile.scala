@@ -10,7 +10,7 @@ import maf.language.ContractScheme.ContractValues
 
 object RandomInputsFromFile:
     def toInputPath(sourcePath: String): String =
-      s"input/generated/${sourcePath.replace("/", "_")}.scm"
+        s"input/generated/${sourcePath.replace("/", "_")}.scm"
 
 /**
  * MAF can read random inputs that serve as the source for provide/contract-out forms from an input file
@@ -36,11 +36,11 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
         val contents = Reader.loadFile(sourcePath)
         val parsed = SExpParser.parse(contents)
         parsed.foldLeft(Map[String, List[SExp]]())((resultMap, exp) =>
-          resultMap + (exp match
-              case Ident(name) :::: values => name -> values.toList
-              case Ident("fail")           => "fail" -> List()
-              case _                       => throw new Exception(s"could not load $sourcePath as a source of random inputs, incorrect format")
-          )
+            resultMap + (exp match
+                case Ident(name) :::: values => name -> values.toList
+                case Ident("fail")           => "fail" -> List()
+                case _                       => throw new Exception(s"could not load $sourcePath as a source of random inputs, incorrect format")
+            )
         )
 
     import SExpUtils.*
@@ -49,15 +49,15 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
         import maf.core.Monad.MonadSyntaxOps
         sexp match
             case SExpValue(vlu, _) =>
-              noalloc(vlu match
-                  case Value.String(v)    => ConcreteValues.Value.Str(v)
-                  case Value.Symbol(s)    => ConcreteValues.Value.Symbol(s)
-                  case Value.Integer(v)   => ConcreteValues.Value.Integer(v)
-                  case Value.Real(v)      => ConcreteValues.Value.Real(v)
-                  case Value.Boolean(v)   => ConcreteValues.Value.Bool(v)
-                  case Value.Character(v) => ConcreteValues.Value.Character(v)
-                  case Value.Nil          => ConcreteValues.Value.Nil
-              )
+                noalloc(vlu match
+                    case Value.String(v)    => ConcreteValues.Value.Str(v)
+                    case Value.Symbol(s)    => ConcreteValues.Value.Symbol(s)
+                    case Value.Integer(v)   => ConcreteValues.Value.Integer(v)
+                    case Value.Real(v)      => ConcreteValues.Value.Real(v)
+                    case Value.Boolean(v)   => ConcreteValues.Value.Bool(v)
+                    case Value.Character(v) => ConcreteValues.Value.Character(v)
+                    case Value.Nil          => ConcreteValues.Value.Nil
+                )
             case Ident("+inf.0") => noalloc(ConcreteValues.Value.Real(Double.PositiveInfinity))
             case Ident("-inf.0") => noalloc(ConcreteValues.Value.Real(Double.NegativeInfinity))
 
@@ -65,22 +65,22 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
             case Ident("quote") :::: contents => convertToConcreteValue(quoted = true)(contents)
             // What follows is how to convert a quoted expression to concrete pairs
             case car :::: cdr if quoted =>
-              for
-                  mcar <- convertToConcreteValue(quoted)(car)
-                  mcdr <- convertToConcreteValue(quoted)(cdr)
-                  mcons <- alloc(ConcreteValues.Value.Cons(mcar, mcdr))
-              yield mcons
+                for
+                    mcar <- convertToConcreteValue(quoted)(car)
+                    mcdr <- convertToConcreteValue(quoted)(cdr)
+                    mcons <- alloc(ConcreteValues.Value.Cons(mcar, mcdr))
+                yield mcons
 
             case SNil(_) if quoted =>
-              noalloc(ConcreteValues.Value.Nil)
+                noalloc(ConcreteValues.Value.Nil)
 
             case Ident("fail") =>
-              throw new Exception("could not generate value")
+                throw new Exception("could not generate value")
 
             case SExpVector(Ident(head) :: elements, _) if head.startsWith("struct:") =>
-              // for now vectors only enable the definition of structs.
-              for elementValues <- Monad.sequence(elements.map(convertToConcreteValue(false)))
-              yield ConcreteValues.ContractValue(ContractValues.Struct(head.replace("struct:", "").nn, ArrayEq.from(elementValues)))
+                // for now vectors only enable the definition of structs.
+                for elementValues <- Monad.sequence(elements.map(convertToConcreteValue(false)))
+                yield ConcreteValues.ContractValue(ContractValues.Struct(head.replace("struct:", "").nn, ArrayEq.from(elementValues)))
 
             // if not quoted
             case l @ (_ :::: _) => convertToConcreteValue(quoted = true)(l)
@@ -91,12 +91,12 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
 
     /** Convert the given map of value literal to a map of concrete values */
     def convertMapToConcreteValue(input: Map[String, List[SExp]]): Map[String, List[InputGenerator]] =
-      input.view
-        .mapValues(vlus => Try(vlus map convertToConcreteValue(quoted = false)).getOrElse(List()))
-        .toMap
+        input.view
+            .mapValues(vlus => Try(vlus map convertToConcreteValue(quoted = false)).getOrElse(List()))
+            .toMap
 
     private lazy val inputs: Map[String, List[InputGenerator]] =
-      convertMapToConcreteValue(loadFile())
+        convertMapToConcreteValue(loadFile())
 
     /**
      * For the given contracts and topLevel function (if available) generate a concrete input from the file.
@@ -104,5 +104,5 @@ class RandomInputsFromFile(sourcePath: String) extends RandomInputGenerator:
      * If the file does not contain any concrete input, then randomly generated a concrete input
      */
     override def generateInput(topLevelFunction: String, contract: Set[String] = Set()): List[InputGenerator] =
-      // ignore the set of contracts, lets hope that Racket was able to generate some useful values
-      inputs.get(topLevelFunction).getOrElse(List())
+        // ignore the set of contracts, lets hope that Racket was able to generate some useful values
+        inputs.get(topLevelFunction).getOrElse(List())

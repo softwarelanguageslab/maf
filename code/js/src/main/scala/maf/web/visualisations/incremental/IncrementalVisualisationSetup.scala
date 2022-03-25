@@ -33,7 +33,7 @@ object IncrementalVisualisationSetup extends VisualisationSetup:
         width: Int,
         height: Int
       ): Element =
-      (new WebVisualisationIncremental(analysis, width: Int, height: Int) with RetainAllIncremental with AddressVisualisationIncremental).node
+        (new WebVisualisationIncremental(analysis, width: Int, height: Int) with RetainAllIncremental with AddressVisualisationIncremental).node
 
     override def loadFile(program: String): Unit =
         initialised = false
@@ -48,10 +48,10 @@ object IncrementalVisualisationSetup extends VisualisationSetup:
 
     // Avoid handling keys while initialisation is in progress.
     override def analysisCommandHandler(anl: Analysis): PartialFunction[String, Unit] =
-      if initialised then super.analysisCommandHandler(anl)
-      else { case (_: String) =>
-        println("Setup in progress, cannot step analysis.")
-      }
+        if initialised then super.analysisCommandHandler(anl)
+        else { case (_: String) =>
+            println("Setup in progress, cannot step analysis.")
+        }
 
 class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfiguration)
     extends IncrementalSchemeModFAnalysisCPLattice(program, configuration)
@@ -83,33 +83,33 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
     override def intraAnalysis(
         cmp: SchemeModFComponent
       ) = new IntraAnalysis(cmp)
-      with IncrementalSchemeModFBigStepIntra
-      with IncrementalGlobalStoreIntraAnalysis
-      // with AssertionModFIntra
-      with VisualisableIntraAnalysis {
+        with IncrementalSchemeModFBigStepIntra
+        with IncrementalGlobalStoreIntraAnalysis
+        // with AssertionModFIntra
+        with VisualisableIntraAnalysis {
 
-      override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          println(s"Analysing $cmp")
-          super.analyzeWithTimeout(timeout)
+        override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            println(s"Analysing $cmp")
+            super.analyzeWithTimeout(timeout)
 
-      override def trigger(dep: Dependency): Unit =
-          println(s"$component triggers $dep")
-          super.trigger(dep)
+        override def trigger(dep: Dependency): Unit =
+            println(s"$component triggers $dep")
+            super.trigger(dep)
     }
 
     // We need to wait with doing this until the visualisation is created.
     def initAnalysis(): Unit =
-      try
-          println("Starting initial analysis.") // Will be logged to console.
-          analyzeWithTimeout(Timeout.start(Duration(5, MINUTES)))
-          if finished then println("Finished initial analysis. Preparing for reanalysis.")
-          else throw new TimeoutException("Initial analysis timed out.")
-          version = New
-          val affected = findUpdatedExpressions(program).flatMap(mapping)
-          affected.foreach(addToWorkList)
-          println(s"Directly affected components: ${affected.toList.mkString(", ")}")
-          println("Preparation finished. Starting reanalysis.")
-      catch
-          case t: Throwable =>
-            System.err.nn.println(t.getMessage) // Will display an error in the console.
-            throw t
+        try
+            println("Starting initial analysis.") // Will be logged to console.
+            analyzeWithTimeout(Timeout.start(Duration(5, MINUTES)))
+            if finished then println("Finished initial analysis. Preparing for reanalysis.")
+            else throw new TimeoutException("Initial analysis timed out.")
+            version = New
+            val affected = findUpdatedExpressions(program).flatMap(mapping)
+            affected.foreach(addToWorkList)
+            println(s"Directly affected components: ${affected.toList.mkString(", ")}")
+            println("Preparation finished. Starting reanalysis.")
+        catch
+            case t: Throwable =>
+                System.err.nn.println(t.getMessage) // Will display an error in the console.
+                throw t

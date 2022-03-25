@@ -16,7 +16,7 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
 
     var widened: Set[Adr] = Set.empty
     override def customPolicy(adr: Adr): AddrPolicy =
-      if widened(adr) then AddrPolicy.Widened else AddrPolicy.Local
+        if widened(adr) then AddrPolicy.Widened else AddrPolicy.Local
 
     // BOOKKEEPING: keep track of all components per (lam, ctx)
     var cmps: Map[(Lam, Ctx), Set[Cll]] = Map.empty
@@ -54,13 +54,13 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
         def widenDlt(dlt: Dlt): Dlt = dlt -- wid
         def widenCll(cll: Cll): Cll = cll.copy(sto = widenSto(cll.sto))
         def widenCmp(cmp: Cmp): Cmp =
-          cmp match
-              case MainComponent => cmp
-              case cll: Cll      => widenCll(cll)
+            cmp match
+                case MainComponent => cmp
+                case cll: Cll      => widenCll(cll)
         def widenDep(dep: Dep): Dep =
-          dep match
-              case res: ResultDependency => res.copy(cmp = widenCmp(res.cmp))
-              case _                     => dep
+            dep match
+                case res: ResultDependency => res.copy(cmp = widenCmp(res.cmp))
+                case _                     => dep
         // add widened addresses
         widened ++= wid
         // update analysis data
@@ -68,16 +68,16 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
         visited = visited.map(widenCmp)
         workList = workList.map(widenCmp)
         deps = deps
-          .foldLeft(Map.empty[Dep, Set[Cmp]]) { case (acc, (dep, cps)) =>
-            val updatedCps = cps.map(widenCmp)
-            val updatedDep = widenDep(dep)
-            acc.get(updatedDep) match
-                case None => acc + (updatedDep -> updatedCps)
-                case Some(oth) =>
-                  toTrigger += updatedDep
-                  acc + (updatedDep -> (oth ++ updatedCps))
-          }
-          .withDefaultValue(Set.empty)
+            .foldLeft(Map.empty[Dep, Set[Cmp]]) { case (acc, (dep, cps)) =>
+                val updatedCps = cps.map(widenCmp)
+                val updatedDep = widenDep(dep)
+                acc.get(updatedDep) match
+                    case None => acc + (updatedDep -> updatedCps)
+                    case Some(oth) =>
+                        toTrigger += updatedDep
+                        acc + (updatedDep -> (oth ++ updatedCps))
+            }
+            .withDefaultValue(Set.empty)
         lcls = lcls.map((adr, rfs) => (adr, rfs -- wid))
         cmps = cmps.map((nod, cls) => (nod, cls.map(widenCll)))
         shadowDeps = shadowDeps.map((adr, cps) => (adr, cps.map(widenCmp)))
@@ -90,13 +90,13 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
         }
         // update results
         results = results.foldLeft(Map.empty: Res) { case (acc, (cmp, (vlu, dlt))) =>
-          val updatedCmp = widenCmp(cmp)
-          val updatedDlt = widenDlt(dlt)
-          acc.get(updatedCmp) match
-              case None =>
-                acc + (updatedCmp -> (vlu, updatedDlt))
-              case Some((othVlu, othDlt)) =>
-                acc + (updatedCmp -> (lattice.join(othVlu, vlu), updatedCmp.sto.join(othDlt, updatedDlt)))
+            val updatedCmp = widenCmp(cmp)
+            val updatedDlt = widenDlt(dlt)
+            acc.get(updatedCmp) match
+                case None =>
+                    acc + (updatedCmp -> (vlu, updatedDlt))
+                case Some((othVlu, othDlt)) =>
+                    acc + (updatedCmp -> (lattice.join(othVlu, vlu), updatedCmp.sto.join(othDlt, updatedDlt)))
         }
         // trigger "merged" dependencies
         toTrigger.foreach(trigger)
@@ -106,21 +106,21 @@ trait SchemeModFLocalAdaptiveWidening extends SchemeModFLocal with SequentialWor
     protected def pickAddrs(sts: Set[Sto], cut: Int): Set[Adr] =
         val kys = sts.flatMap(_.content.keySet)
         val ads = sts.foldLeft(Map.empty[Adr, Set[(Val, Cnt)]]) { (acc, sto) =>
-          kys.foldLeft(acc) { case (acc2, adr) =>
-            val bnd = sto.content.getOrElse(adr, (lattice.bottom, CountZero))
-            acc2.get(adr) match
-                case None      => acc2 + (adr -> Set(bnd))
-                case Some(bds) => acc2 + (adr -> (bds + bnd))
-          }
+            kys.foldLeft(acc) { case (acc2, adr) =>
+                val bnd = sto.content.getOrElse(adr, (lattice.bottom, CountZero))
+                acc2.get(adr) match
+                    case None      => acc2 + (adr -> Set(bnd))
+                    case Some(bds) => acc2 + (adr -> (bds + bnd))
+            }
         }
         val lst = ads.toList.sortBy((adr, bds) => bds.size)(Ordering[Int].reverse)
         pickAddrsRec(lst, sts, cut)
 
     private def pickAddrsRec(lst: List[(Adr, Set[(Val, Cnt)])], sts: Set[Sto], cut: Int): Set[Adr] =
-      if sts.size > cut then
-          val (adr, _) :: rst = lst
-          pickAddrsRec(rst, sts.map(_ - adr), cut) + adr
-      else Set.empty
+        if sts.size > cut then
+            val (adr, _) :: rst = lst
+            pickAddrsRec(rst, sts.map(_ - adr), cut) + adr
+        else Set.empty
 
 // DEBUGGING CODE
 

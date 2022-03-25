@@ -28,9 +28,9 @@ class BooleanGenerator[B: BoolLattice] extends LatticeGenerator[B]:
 
     def any = Gen.oneOf(bot, t, f, top)
     def le(l: B) =
-      if l == bot then { Gen.const(bot) }
-      else if l == top then { Gen.oneOf(bot, t, f) }
-      else { Gen.oneOf(l, bot) }
+        if l == bot then { Gen.const(bot) }
+        else if l == top then { Gen.oneOf(bot, t, f) }
+        else { Gen.oneOf(l, bot) }
 object ConcreteBooleanGenerator extends BooleanGenerator[Concrete.B]
 
 case class SetGen[A](g: Gen[A]):
@@ -62,9 +62,9 @@ class ConcreteGenerator[T](g: Gen[T])(implicit lat: Lattice[Concrete.L[T]]) exte
         case Concrete.Top             => any
         case Concrete.Values(content) => isetgen.genSubset(content.toSet[T]).map(x => Concrete.Values(x))
     override val shrink = Shrink {
-      case Concrete.Top => Stream.empty
-      case Concrete.Values(vs) =>
-        Shrink.shrinkContainer[Set, T].shrink(vs.toSet[T]).map(Concrete.Values(_))
+        case Concrete.Top => Stream.empty
+        case Concrete.Values(vs) =>
+            Shrink.shrinkContainer[Set, T].shrink(vs.toSet[T]).map(Concrete.Values(_))
     }
 
 object ConcreteStringGenerator extends ConcreteGenerator[String](Generators.str)(Concrete.L.stringConcrete)

@@ -62,15 +62,15 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             if incr == rean then e += 1 // Both results are the same => equally precise.
             else if inc.lattice.subsumes(incr, rean.asInstanceOf[inc.Value]) then l += 1 // The incremental value subsumes the value of the full reanalysis => less precise.
             else {
-              //System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
-              //System.err.nn.flush()
-              m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
+                //System.err.nn.println(s"$a: $incr < $rean") // Soundness error.
+                //System.err.nn.flush()
+                m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
             }
         })
         table
-          .add(file, columnName(eqS, cName), Formatter.withPercent(e, t))
-          .add(file, columnName(lpS, cName), Formatter.withPercent(l, t))
-          .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
+            .add(file, columnName(eqS, cName), Formatter.withPercent(e, t))
+            .add(file, columnName(lpS, cName), Formatter.withPercent(l, t))
+            .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
 
     def onBenchmark(file: String): Unit =
         compareToFullReanalysis(file)
@@ -134,8 +134,8 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
 
     def interestingAddress[A <: Address](a: A): Boolean
     def createOutput(): String =
-      s"Compared to full reanalysis:\n${results.toCSVString(columns = columns, rowName = "benchmark")}\n\nCompared to noOpt:\n${resultsNoOpt
-        .toCSVString(columns = columns, rowName = "benchmark")}"
+        s"Compared to full reanalysis:\n${results.toCSVString(columns = columns, rowName = "benchmark")}\n\nCompared to noOpt:\n${resultsNoOpt
+            .toCSVString(columns = columns, rowName = "benchmark")}"
 
 /* ************************** */
 /* ***** Instantiations ***** */
@@ -195,9 +195,9 @@ object IncrementalSchemeModXPrecision:
         val outDir: String = "benchOutput/"
 
         val (curatedSuite, generatedSuite) = args.count match {
-          case Some(n) =>
-            (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
-          case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated, IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
+            case Some(n) =>
+                (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
+            case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated, IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
         }
 
         if args.typeLattice then

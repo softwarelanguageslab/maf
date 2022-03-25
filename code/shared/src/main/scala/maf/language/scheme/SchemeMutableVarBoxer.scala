@@ -22,8 +22,8 @@ trait BaseSchemeMutableVarBoxer:
 
         override def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = super.translate(exp, lenv) match
             case res @ SchemeSetLex(_, ref, _, _) =>
-              mutable += ref
-              res
+                mutable += ref
+                res
             case res => res
 
     def lexicalTranslator: LexicalTranslator.type = LexicalTranslator
@@ -51,50 +51,51 @@ trait BaseSchemeMutableVarBoxer:
         if rewPrms.isEmpty then rewriteBody(exp, mut, Map.empty)
         else
             val bds = rewPrms.toList.map { (prm: LexicalRef.PrmRef, idf: Identifier) =>
-              (idf, SchemeRef(SchemeVar(Identifier(prm.nam, Identity.none)), Identity.none))
+                (idf, SchemeRef(SchemeVar(Identifier(prm.nam, Identity.none)), Identity.none))
             }
             List(SchemeLet(bds, rewriteBody(exp, mut, rewPrms.toMap[LexicalRef, Identifier]), Identity.none))
 
     private def varRef(rew: Rewrites, id: Identifier, lex: LexicalRef): SchemeVar =
-      rew.get(lex) match
-          case Some(oth) => SchemeVar(Identifier(oth.name, id.idn)) // SchemeVarLex(Identifier(oth.name, id.idn), LexicalRef.VarRef(oth))
-          case None      => SchemeVar(id) // SchemeVarLex(id, lex)
+        rew.get(lex) match
+            case Some(oth) => SchemeVar(Identifier(oth.name, id.idn)) // SchemeVarLex(Identifier(oth.name, id.idn), LexicalRef.VarRef(oth))
+            case None      => SchemeVar(id) // SchemeVarLex(id, lex)
 
     protected def rewrite(exp: SchemeExp, mut: Set[LexicalRef], rew: Rewrites): SchemeExp = exp match
         case vlu: SchemeValue => vlu
         case SchemeVarLex(id, lex) =>
-          if mut(lex) then SchemeDeref(varRef(rew, id, lex), id.idn)
-          else SchemeVar(id)
+            if mut(lex) then SchemeDeref(varRef(rew, id, lex), id.idn)
+            else SchemeVar(id)
         case SchemeSetLex(id, lex, vexp, idn) =>
-          assert(mut(lex)) // must mean that lex is marked as mutable!
-          SchemeSetRef(varRef(rew, id, lex), rewrite(vexp, mut, rew), idn)
+            assert(mut(lex)) // must mean that lex is marked as mutable!
+            SchemeSetRef(varRef(rew, id, lex), rewrite(vexp, mut, rew), idn)
         case SchemeDefineVariable(id, vexp, pos) =>
-          if mut(LexicalRef.VarRef(id)) then SchemeDefineVariable(Identifier(id.name, Identity.none), SchemeRef(rewrite(vexp, mut, rew), id.idn), pos)
-          else SchemeDefineVariable(id, rewrite(vexp, mut, rew), pos)
+            if mut(LexicalRef.VarRef(id)) then
+                SchemeDefineVariable(Identifier(id.name, Identity.none), SchemeRef(rewrite(vexp, mut, rew), id.idn), pos)
+            else SchemeDefineVariable(id, rewrite(vexp, mut, rew), pos)
         case SchemeLambda(nam, prs, bdy, ann, pos) =>
-          SchemeLambda(nam, prs, rewriteLambdaBody(prs, bdy, mut, rew), ann, pos)
+            SchemeLambda(nam, prs, rewriteLambdaBody(prs, bdy, mut, rew), ann, pos)
         case SchemeVarArgLambda(nam, prs, vararg, bdy, ann, pos) =>
-          SchemeVarArgLambda(nam, prs, vararg, rewriteLambdaBody(prs :+ vararg, bdy, mut, rew), ann, pos)
+            SchemeVarArgLambda(nam, prs, vararg, rewriteLambdaBody(prs :+ vararg, bdy, mut, rew), ann, pos)
         case SchemeBegin(eps, pos) =>
-          SchemeBegin(eps.map(rewrite(_, mut, rew)), pos)
+            SchemeBegin(eps.map(rewrite(_, mut, rew)), pos)
         case SchemeIf(prd, csq, alt, pos) =>
-          SchemeIf(rewrite(prd, mut, rew), rewrite(csq, mut, rew), rewrite(alt, mut, rew), pos)
+            SchemeIf(rewrite(prd, mut, rew), rewrite(csq, mut, rew), rewrite(alt, mut, rew), pos)
         case SchemeFuncall(fun, args, pos) =>
-          SchemeFuncall(rewrite(fun, mut, rew), args.map(rewrite(_, mut, rew)), pos)
+            SchemeFuncall(rewrite(fun, mut, rew), args.map(rewrite(_, mut, rew)), pos)
         case SchemeAssert(exp, pos) =>
-          SchemeAssert(rewrite(exp, mut, rew), pos)
+            SchemeAssert(rewrite(exp, mut, rew), pos)
         case SchemeLet(bds, body, pos) =>
-          SchemeLet(rewriteBindings(bds, mut, rew), rewriteBody(body, mut, rew), pos)
+            SchemeLet(rewriteBindings(bds, mut, rew), rewriteBody(body, mut, rew), pos)
         case SchemeLetStar(bds, body, pos) =>
-          SchemeLetStar(rewriteBindings(bds, mut, rew), rewriteBody(body, mut, rew), pos)
+            SchemeLetStar(rewriteBindings(bds, mut, rew), rewriteBody(body, mut, rew), pos)
         case SchemeLetrec(bds, body, pos) =>
-          SchemeLetrec(rewriteBindings(bds, mut, rew), rewriteBody(body, mut, rew), pos)
+            SchemeLetrec(rewriteBindings(bds, mut, rew), rewriteBody(body, mut, rew), pos)
 
     private def rewriteBindings(bds: List[(Identifier, SchemeExp)], mut: Set[LexicalRef], rew: Rewrites): List[(Identifier, SchemeExp)] =
-      bds.map { (idf, exp) =>
-        if mut(LexicalRef.VarRef(idf)) then (Identifier(idf.name, Identity.none), SchemeRef(rewrite(exp, mut, rew), idf.idn))
-        else (idf, rewrite(exp, mut, rew))
-      }
+        bds.map { (idf, exp) =>
+            if mut(LexicalRef.VarRef(idf)) then (Identifier(idf.name, Identity.none), SchemeRef(rewrite(exp, mut, rew), idf.idn))
+            else (idf, rewrite(exp, mut, rew))
+        }
 
     private def rewriteLambdaBody(prs: List[Identifier], bdy: List[SchemeExp], mut: Set[LexicalRef], rew: Rewrites): List[SchemeExp] =
         val mutPrs = prs.map(LexicalRef.VarRef(_): LexicalRef.VarRef).filter(mut)
@@ -102,12 +103,12 @@ trait BaseSchemeMutableVarBoxer:
         if rewPrs.isEmpty then rewriteBody(bdy, mut, rew)
         else
             val bds = rewPrs.map { (ref: LexicalRef.VarRef, idf: Identifier) =>
-              (idf, SchemeRef(SchemeVar(Identifier(ref.id.name, Identity.none)), ref.id.idn))
+                (idf, SchemeRef(SchemeVar(Identifier(ref.id.name, Identity.none)), ref.id.idn))
             }
             List(SchemeLet(bds, rewriteBody(bdy, mut, rew ++ rewPrs), Identity.none))
 
     private def rewriteBody(bdy: List[SchemeExp], mut: Set[LexicalRef], rew: Rewrites): List[SchemeExp] =
-      bdy.map(rewrite(_, mut, rew))
+        bdy.map(rewrite(_, mut, rew))
 
 object SchemeMutableVarBoxer extends BaseSchemeMutableVarBoxer
 
@@ -126,8 +127,8 @@ object SchemeTopLevelVars:
         case SchemeFuncall(fun, ags, _)                                              => collect(fun) ++ collect(ags)
         case SchemeAssert(cnd, _)                                                    => collect(cnd)
         case let: SchemeLettishExp =>
-          val (ids, eps) = let.bindings.unzip
-          ids.toSet ++ collect(eps) ++ collect(let.body)
+            val (ids, eps) = let.bindings.unzip
+            ids.toSet ++ collect(eps) ++ collect(let.body)
         case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
     def collect(eps: List[SchemeExp]): Set[Identifier] =
-      eps.foldLeft(Set.empty)((acc, exp) => acc ++ collect(exp))
+        eps.foldLeft(Set.empty)((acc, exp) => acc ++ collect(exp))

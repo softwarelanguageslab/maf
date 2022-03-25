@@ -23,7 +23,7 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
         import maf.core.Monad.MonadSyntaxOps
 
         private def readPathCondition(targetCmp: Component): PathCondition =
-          PathCondition(readMapAddr(targetCmp))
+            PathCondition(readMapAddr(targetCmp))
 
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
             //println(s"=== intra sem $cmp ==")
@@ -46,13 +46,13 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
             // this is a very crude approximation, we propebably don't need the entire path condition from the target
             context(targetCmp) match
                 case Some(k: KPathCondition[_]) =>
-                  val readPc = readPathCondition(targetCmp)
-                  val gcPc = readPc.gc(k.symArgs.values.toSet)
+                    val readPc = readPathCondition(targetCmp)
+                    val gcPc = readPc.gc(k.symArgs.values.toSet)
 
-                  val revertedPc = k.changes.reverse.foldLeft(gcPc)((pc, change) => pc.revert(change))
+                    val revertedPc = k.changes.reverse.foldLeft(gcPc)((pc, change) => pc.revert(change))
 
-                  for
-                      pc <- getPc
-                      _ <- putPc(PathCondition(DNF.dnf(conj(pc.formula, revertedPc.formula))))
-                  yield vlu
+                    for
+                        pc <- getPc
+                        _ <- putPc(PathCondition(DNF.dnf(conj(pc.formula, revertedPc.formula))))
+                    yield vlu
                 case _ => unit(vlu)

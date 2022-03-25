@@ -10,15 +10,15 @@ import maf.modular.worklist._
 import maf.test._
 
 trait AdaptiveSchemeModF extends SchemeModFSoundnessTests { outer =>
-  def budget: Int
-  def name = s"adaptive analysis (b = $budget)"
-  def analysis(program: SchemeExp) =
-    new AdaptiveModAnalysis(program)
-      with AdaptiveSchemeModFSemantics
-      with AdaptiveContextSensitivity
-      with AdaptiveKCFA
-      with SchemeConstantPropagationDomain
-      with FIFOWorklistAlgorithm[SchemeExp]
+    def budget: Int
+    def name = s"adaptive analysis (b = $budget)"
+    def analysis(program: SchemeExp) =
+        new AdaptiveModAnalysis(program)
+            with AdaptiveSchemeModFSemantics
+            with AdaptiveContextSensitivity
+            with AdaptiveKCFA
+            with SchemeConstantPropagationDomain
+            with FIFOWorklistAlgorithm[SchemeExp]
 }
 
 class AdaptiveSchemeModFSoundnessTests extends AdaptiveSchemeModF with AllSequentialBenchmarks:

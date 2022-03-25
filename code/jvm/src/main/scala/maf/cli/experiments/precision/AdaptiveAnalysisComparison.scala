@@ -35,13 +35,13 @@ abstract class AdaptiveAnalysisComparison[
         program: SchemeExp,
         concreteResult: ResultMap
       ): Unit =
-      analyses.foreach { case (analysis, name) =>
-        runAnalysis(analysis, name, program, path, Timeout.start(timeout)) match
-            case Terminated(store) =>
-              val lessPrecise = compareOrdered(store, concreteResult).size
-              results = results.add(path, name, Some(lessPrecise))
-            case _ => return // don't run the other analyses anymore
-      }
+        analyses.foreach { case (analysis, name) =>
+            runAnalysis(analysis, name, program, path, Timeout.start(timeout)) match
+                case Terminated(store) =>
+                    val lessPrecise = compareOrdered(store, concreteResult).size
+                    results = results.add(path, name, Some(lessPrecise))
+                case _ => return // don't run the other analyses anymore
+        }
 
     /**
      * For a given benchmark, compare non-adaptive analyses with adaptive ones To do so, two results are included per benchmark

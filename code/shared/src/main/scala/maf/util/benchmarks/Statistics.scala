@@ -24,9 +24,9 @@ object Statistics:
         median: Double,
         stddev: Double):
         override def toString: String =
-          s"* Values in [$min,$max]\n" ++
-            s"* Mean: $mean , Median: $median\n" ++
-            s"* Standard deviation: $stddev"
+            s"* Values in [$min,$max]\n" ++
+                s"* Mean: $mean , Median: $median\n" ++
+                s"* Standard deviation: $stddev"
 
     /** Computes the mean value of a list of measurements. */
     def mean(l: List[Double]): Double = l.sum / l.length
@@ -39,11 +39,11 @@ object Statistics:
 
     /** Computes the standard deviation of a list of measurements. */
     def stddev(l: List[Double]): Double =
-      if l.length == 1 then 0
-      else
-          val mea: Double = mean(l)
-          val sqDiffs: List[Double] = l.map(v => scala.math.pow(v - mea, 2))
-          scala.math.sqrt(sqDiffs.sum / (l.length - 1))
+        if l.length == 1 then 0
+        else
+            val mea: Double = mean(l)
+            val sqDiffs: List[Double] = l.map(v => scala.math.pow(v - mea, 2))
+            scala.math.sqrt(sqDiffs.sum / (l.length - 1))
 
     /** Computes all statistics of a list of measurements and returns an object containing these statistics. */
     def all(l: List[Double]): Stats = Stats(l.min, l.max, mean(l), median(l), stddev(l))
@@ -68,4 +68,4 @@ object Statistics:
      *   The weighted sum of the input list.
      */
     def weightedSum(l: List[(Double, Double)]): Double =
-      l.foldLeft(0.0)((acc, t) => acc + t._1 * t._2)
+        l.foldLeft(0.0)((acc, t) => acc + t._1 * t._2)

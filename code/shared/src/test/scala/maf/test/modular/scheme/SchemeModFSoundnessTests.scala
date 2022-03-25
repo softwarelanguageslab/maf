@@ -22,24 +22,24 @@ trait BigStepSchemeModF extends SchemeModFSoundnessTests:
 trait SmallStepSchemeModF extends SchemeModFSoundnessTests:
     def name = "small-step semantics"
     def analysis(program: SchemeExp) = new ModAnalysis(program)
-      with SchemeModFSemanticsM
-      with SmallStepModFSemantics
-      with StandardSchemeModFComponents
-      with SchemeConstantPropagationDomain
-      with SchemeModFNoSensitivity
-      with LIFOWorklistAlgorithm[SchemeExp] {
-      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with SmallStepIntra
+        with SchemeModFSemanticsM
+        with SmallStepModFSemantics
+        with StandardSchemeModFComponents
+        with SchemeConstantPropagationDomain
+        with SchemeModFNoSensitivity
+        with LIFOWorklistAlgorithm[SchemeExp] {
+        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with SmallStepIntra
     }
 
 trait ParallelSchemeModF extends SchemeModFSoundnessTests:
     def name = "parallel analysis (n = 8)"
     def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
-      with SchemeConstantPropagationDomain
-      with SchemeModFNoSensitivity
-      with CallDepthFirstWorklistAlgorithm[SchemeExp]
-      with ParallelWorklistAlgorithm[SchemeExp] {
-      override def workers = 8
-      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
+        with SchemeConstantPropagationDomain
+        with SchemeModFNoSensitivity
+        with CallDepthFirstWorklistAlgorithm[SchemeExp]
+        with ParallelWorklistAlgorithm[SchemeExp] {
+        override def workers = 8
+        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
 trait ScvModF extends SchemeModFSoundnessTests:
@@ -47,12 +47,12 @@ trait ScvModF extends SchemeModFSoundnessTests:
     def analysis(program: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(program)
-          with ScvBigStepSemantics
-          with SchemeConstantPropagationDomain
-          with StandardSchemeModFComponents
-          with LIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFSemanticsM
-          with ScvOneContextSensitivity(m = 0):
+            with ScvBigStepSemantics
+            with SchemeConstantPropagationDomain
+            with StandardSchemeModFComponents
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFSemanticsM
+            with ScvOneContextSensitivity(m = 0):
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             // we always return "unknown" here because the Z3 solver is not available in the `shared` module
             override val sat: ScvSatSolver[Value] = new ScvSatSolver[Value]():

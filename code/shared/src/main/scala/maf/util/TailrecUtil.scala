@@ -6,7 +6,7 @@ object TailrecUtil:
     def sequence[A](tailrecs: List[TailRec[A]]): TailRec[List[A]] = tailrecs match
         case List() => done(List())
         case x :: xs =>
-          for
-              v <- x
-              vs <- sequence(xs)
-          yield (v :: vs)
+            for
+                v <- x
+                vs <- sequence(xs)
+            yield (v :: vs)

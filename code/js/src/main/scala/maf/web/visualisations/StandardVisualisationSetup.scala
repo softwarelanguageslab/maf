@@ -25,7 +25,7 @@ trait StandardVisualisationSetup extends VisualisationSetup:
         width: Int,
         height: Int
       ) =
-      new SimpleWebVisualisation(analysis, width, height).node
+        new SimpleWebVisualisation(analysis, width, height).node
 
 @JSExportTopLevel("standardModFVisualisationSetup")
 object StandardModFVisualisationSetup extends StandardVisualisationSetup:
@@ -33,18 +33,18 @@ object StandardModFVisualisationSetup extends StandardVisualisationSetup:
     def createAnalysis(text: String): Analysis =
         val program = SchemeParser.parseProgram(text)
         new SimpleSchemeModFAnalysis(program, None)
-          with SchemeModFNoSensitivity
-          with SchemeConstantPropagationDomain
-          with FIFOWorklistAlgorithm[SchemeExp]
-          with WebVisualisationAnalysis[SchemeExp] {
-          override def intraAnalysis(cmp: SchemeModFComponent) =
-            new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-          // TODO: move this to somewhere in `maf.modular` directly
-          type Module = Option[SchemeLambdaExp]
-          def module(cmp: Component) = cmp match
-              case Main                 => None
-              case Call((lambda, _), _) => Some(lambda)
-          def moduleName(mdl: Module) = mdl.map(_.lambdaName).getOrElse("main")
+            with SchemeModFNoSensitivity
+            with SchemeConstantPropagationDomain
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with WebVisualisationAnalysis[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+            // TODO: move this to somewhere in `maf.modular` directly
+            type Module = Option[SchemeLambdaExp]
+            def module(cmp: Component) = cmp match
+                case Main                 => None
+                case Call((lambda, _), _) => Some(lambda)
+            def moduleName(mdl: Module) = mdl.map(_.lambdaName).getOrElse("main")
         }
 
 @JSExportTopLevel("standardModFLocalVisualisationSetup")

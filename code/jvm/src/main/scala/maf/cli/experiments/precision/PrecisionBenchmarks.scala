@@ -16,9 +16,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
 
     type Benchmark = String
     type Analysis = AnalysisEntry[SchemeExp] with AnalysisResults[SchemeExp] with ModularSchemeDomain {
-      val modularLatticeWrapper: ModularSchemeLatticeWrapper {
-        val modularLattice: ModularSchemeLattice[Address, Str, Bln, Num, Rea, Chr, Smb]
-      }
+        val modularLatticeWrapper: ModularSchemeLatticeWrapper {
+            val modularLattice: ModularSchemeLattice[Address, Str, Bln, Num, Rea, Chr, Smb]
+        }
     }
 
     implicit def cpAnalysis(anl: ModularSchemeDomain): Analysis = anl.asInstanceOf[Analysis]
@@ -79,18 +79,18 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         case ConcreteValues.Value.Cons(a, d)   => baseLattice.cons(convertConcreteValue(a), convertConcreteValue(d))
         case ConcreteValues.Value.Pointer(a)   => baseLattice.pointer(convertConcreteAddr(a))
         case ConcreteValues.Value.Vector(siz, els, _) =>
-          def convertNumber(n: BigInt): Num = baseLattice.number(n) match
-              case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
+            def convertNumber(n: BigInt): Num = baseLattice.number(n) match
+                case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
 
-          val cSiz = convertNumber(siz)
-          val cEls = els.foldLeft(Map[Num, BaseValue]()) { case (acc, (idx, vlu)) =>
-            val cIdx = convertNumber(idx)
-            val cVlu = convertConcreteValue(vlu)
-            val prevVlu = acc.getOrElse(cIdx, baseLattice.bottom)
-            val newVlu = baseLattice.join(cVlu, prevVlu)
-            acc + (cIdx -> newVlu)
-          }
-          baseDomain.Element(baseDomain.Vec(cSiz, cEls))
+            val cSiz = convertNumber(siz)
+            val cEls = els.foldLeft(Map[Num, BaseValue]()) { case (acc, (idx, vlu)) =>
+                val cIdx = convertNumber(idx)
+                val cVlu = convertConcreteValue(vlu)
+                val prevVlu = acc.getOrElse(cIdx, baseLattice.bottom)
+                val newVlu = baseLattice.join(cVlu, prevVlu)
+                acc + (cIdx -> newVlu)
+            }
+            baseDomain.Element(baseDomain.Vec(cSiz, cEls))
         case v => throw new Exception(s"Unsupported value for concrete conversion: $v")
 
     // compares the results of concrete and/or abstract interpreters using a `ResultMap`
@@ -165,10 +165,10 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   a ResultMap containing the context-insensitive results for that analysis
      */
     protected def extract(analysis: Analysis): ResultMap =
-      analysis.resultsPerIdn.view
-        .mapValues(vs => analysis.lattice.join(vs))
-        .mapValues(convertValue(analysis))
-        .toMap
+        analysis.resultsPerIdn.view
+            .mapValues(vs => analysis.lattice.join(vs))
+            .mapValues(convertValue(analysis))
+            .toMap
 
     /**
      * Run the analysis on a given program
@@ -195,21 +195,21 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         path: Benchmark,
         timeout: Timeout.T = Timeout.none
       ): AnalysisResult =
-      try
-          val anl = analysis(program)
-          println(s"... analysing $path using $name ...")
-          anl.analyzeWithTimeout(timeout)
-          val res = extract(anl)
-          if anl.finished then Terminated(res)
-          else TimedOut(res)
-      catch
-          case e: Exception =>
-            println(s"Analyzer failed with exception $e")
-            Errored(e)
-          case e: VirtualMachineError =>
-            System.gc()
-            println(s"Analyzer failed with error $e")
-            Errored(e)
+        try
+            val anl = analysis(program)
+            println(s"... analysing $path using $name ...")
+            anl.analyzeWithTimeout(timeout)
+            val res = extract(anl)
+            if anl.finished then Terminated(res)
+            else TimedOut(res)
+        catch
+            case e: Exception =>
+                println(s"Analyzer failed with exception $e")
+                Errored(e)
+            case e: VirtualMachineError =>
+                System.gc()
+                println(s"Analyzer failed with error $e")
+                Errored(e)
 
     /**
      * Create a concrete interpeter.
@@ -220,7 +220,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   a mock FileIO class that is used when the concrete interpreter requires some input
      */
     def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO()): SchemeInterpreter =
-      new SchemeInterpreter(addResult, io)
+        new SchemeInterpreter(addResult, io)
 
     /**
      * Hook that gets executed when the interpreter throws an exception.
@@ -257,7 +257,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         print(s"Running concrete interpreter on $path ($times times)")
         var idnResults: ResultMap = Map.empty.withDefaultValue(baseLattice.bottom)
         def addResult(idn: Identity, vlu: ConcreteValues.Value) =
-          idnResults += idn -> (baseLattice.join(idnResults(idn), convertConcreteValue(vlu)))
+            idnResults += idn -> (baseLattice.join(idnResults(idn), convertConcreteValue(vlu)))
         try
             for _ <- 1 to times do
                 print(".")
@@ -268,12 +268,12 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
             Some(idnResults)
         catch
             case e: Exception =>
-              println(s"Concrete interpreter failed with $e")
-              None
+                println(s"Concrete interpreter failed with $e")
+                None
             case e: VirtualMachineError =>
-              System.gc()
-              println(s"Concrete interpreter failed with $e")
-              None
+                System.gc()
+                println(s"Concrete interpreter failed with $e")
+                None
 
     /**
      * Specify what needs to be done for a given benchmark program

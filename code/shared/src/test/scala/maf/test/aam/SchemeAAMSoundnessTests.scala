@@ -41,15 +41,15 @@ class SchemeInsensitiveSoundnessTests extends SchemeAAMSoundnessTests with Vario
 
     override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(12, SECONDS))
     override def analysis(b: SchemeExp): Analysis =
-      new SchemeAAMSemantics(b)
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMNoExt
-        with SchemeStoreAllocateReturn // important for termination of some programs
-        with SchemeFunctionCallBoundary
-        with SchemeAAMLocalStore
-        //with BaseSchemeLoggingLocalStore TODO: this seems to be unsound for lambda-update.scm check
-        with SimpleWorklistSystem[SchemeExp]
-        //with maf.aam.scheme.stores.SchemeImperativeStoreWidening
-        with SchemeAAMAnalysisResults
+        new SchemeAAMSemantics(b)
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeAAMNoExt
+            with SchemeStoreAllocateReturn // important for termination of some programs
+            with SchemeFunctionCallBoundary
+            with SchemeAAMLocalStore
+            //with BaseSchemeLoggingLocalStore TODO: this seems to be unsound for lambda-update.scm check
+            with SimpleWorklistSystem[SchemeExp]
+            //with maf.aam.scheme.stores.SchemeImperativeStoreWidening
+            with SchemeAAMAnalysisResults

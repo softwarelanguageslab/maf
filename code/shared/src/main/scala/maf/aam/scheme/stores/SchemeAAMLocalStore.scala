@@ -22,11 +22,11 @@ trait SchemeAAMLocalStore extends BaseSchemeAAMSemantics:
     override lazy val initialStore: Sto = BasicStore(initialBds.map(p => (p._2, p._3)).toMap).extend(Kont0Addr, Storable.K(Set(HltFrame)))
 
     def readSto(sto: Sto, addr: Address): (Storable, Sto) =
-      (sto.lookup(addr).getOrElse(Storable.V(lattice.bottom)), sto)
+        (sto.lookup(addr).getOrElse(Storable.V(lattice.bottom)), sto)
 
     /** Write to the given address in the store, returns the updated store */
     override def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
-      sto.extend(addr, value)
+        sto.extend(addr, value)
 
     override def compareStates(s1: Conf, s2: Conf): Boolean =
         println("==================================================================================")
@@ -49,7 +49,7 @@ trait SchemeAAMLocalStore extends BaseSchemeAAMSemantics:
 
     /** Inject the initial state for the given expression */
     def injectConf(expr: Expr): Conf =
-      SchemeState(Control.Ev(expr, initialEnv), initialStore, Kont0Addr, initialTime, emptyExt)
+        SchemeState(Control.Ev(expr, initialEnv), initialStore, Kont0Addr, initialTime, emptyExt)
 
     override def asGraphElement(c: Conf, sys: System): GraphElementAAM =
-      asGraphElement(c.c, c.k, c.s, c.extra, c.hashCode)
+        asGraphElement(c.c, c.k, c.s, c.extra, c.hashCode)

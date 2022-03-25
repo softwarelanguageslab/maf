@@ -36,16 +36,16 @@ object Writer:
         W(new BufferedWriter(new FileWriter(file)), false)
 
     def openTimeStamped(path: String): Writer =
-      path.split("\\.").nn match
-          case Array(file, ext) => open(file + " " + Clock.nowStr() + "." + ext)
-          case _                => throw new Exception(s"Illegal path: $path")
+        path.split("\\.").nn match
+            case Array(file, ext) => open(file + " " + Clock.nowStr() + "." + ext)
+            case _                => throw new Exception(s"Illegal path: $path")
 
     def openTimeStampedGetName(path: String): (Writer, String) = // Also returns the name of the file.
-      path.split("\\.").nn match
-          case Array(file, ext) =>
-            val out = file + " " + Clock.nowStr() + "." + ext
-            (open(out), out)
-          case _ => throw new Exception(s"Illegal path: $path")
+        path.split("\\.").nn match
+            case Array(file, ext) =>
+                val out = file + " " + Clock.nowStr() + "." + ext
+                (open(out), out)
+            case _ => throw new Exception(s"Illegal path: $path")
 
     def close(writer: Writer): Unit = writer._1.close()
 
@@ -165,24 +165,24 @@ object MAFLogger:
 
     private def configs(env: LogEnvironment): Map[LogLevel, LogLevelPolicy] = env match
         case LogEnvironment.CI =>
-          val logLocation: String = sys.env.get("LOG_LOCATION").getOrElse("log.txt")
-          Map(
-            AnalysisError -> NoLog, //FileLog(logLocation),
-            Info -> NoLog,
-            Debug -> NoLog
-          )
+            val logLocation: String = sys.env.get("LOG_LOCATION").getOrElse("log.txt")
+            Map(
+              AnalysisError -> NoLog, //FileLog(logLocation),
+              Info -> NoLog,
+              Debug -> NoLog
+            )
         case LogEnvironment.Local =>
-          Map(
-            AnalysisError -> Print,
-            Info -> Print,
-            Debug -> Print
-          )
+            Map(
+              AnalysisError -> Print,
+              Info -> Print,
+              Debug -> Print
+            )
         case LogEnvironment.Benchmarking =>
-          Map(
-            AnalysisError -> NoLog,
-            Info -> NoLog,
-            Debug -> NoLog
-          )
+            Map(
+              AnalysisError -> NoLog,
+              Info -> NoLog,
+              Debug -> NoLog
+            )
 
     /** A mapping from log levels to actual loggers, depending on the policy */
     private val loggers: mutable.Map[LogLevel, Option[Logger.Log]] = mutable.Map(
@@ -193,11 +193,11 @@ object MAFLogger:
 
     /** Loads the config that is applicable for the current environment */
     private def currentConfig: Map[LogLevel, LogLevelPolicy] =
-      sys.env.get("LOG_ENV").getOrElse("local") match
-          case "local" => configs(LogEnvironment.Local)
-          case "ci"    => configs(LogEnvironment.CI)
-          case "bench" => configs(LogEnvironment.Benchmarking)
-          case env     => throw new Exception(s"invalid logging environment $env")
+        sys.env.get("LOG_ENV").getOrElse("local") match
+            case "local" => configs(LogEnvironment.Local)
+            case "ci"    => configs(LogEnvironment.CI)
+            case "bench" => configs(LogEnvironment.Benchmarking)
+            case env     => throw new Exception(s"invalid logging environment $env")
 
     private var disabled: Boolean = false
     def enable(): Unit = disabled = false
@@ -212,18 +212,18 @@ object MAFLogger:
             case Print => println(finalMsg)
             case NoLog => ()
             case FileLog(to) =>
-              val log = loggers(level)
-              log match
-                  case Some(log) => log.log(finalMsg)
-                  case None =>
-                    val logger = Logger.raw(to)
-                    logger.enable()
-                    loggers(level) = Some(logger)
-                    logger.log(finalMsg)
+                val log = loggers(level)
+                log match
+                    case Some(log) => log.log(finalMsg)
+                    case None =>
+                        val logger = Logger.raw(to)
+                        logger.enable()
+                        loggers(level) = Some(logger)
+                        logger.log(finalMsg)
 
 object FileOps:
 
     def copy(source: String, destination: String): Unit =
-      java.nio.file.Files.copy(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING)
+        java.nio.file.Files.copy(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING)
 
 end FileOps

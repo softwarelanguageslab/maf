@@ -26,10 +26,10 @@ class ConcreteGenerators(primitives: List[String]):
     protected def character: Gen[Character] = Generators.char.map(Character(_))
     protected def nil: Gen[Nil.type] = Gen.oneOf(List(Nil))
     protected def cons: Gen[Cons] =
-      for
-          car <- any
-          cdr <- any
-      yield Cons(car, cdr)
+        for
+            car <- any
+            cdr <- any
+        yield Cons(car, cdr)
 
     /** Generates a random value in the concrete domain */
     def any: Gen[V] = Gen.oneOf(str, prim, undefined, symbol, integer, real, bool, character, nil, cons)

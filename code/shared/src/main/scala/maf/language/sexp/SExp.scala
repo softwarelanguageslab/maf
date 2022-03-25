@@ -45,12 +45,12 @@ case class SExpPair(
         val content = toStringRest
         s"($content)"
     def toStringRest: String =
-      cdr match
-          case pair: SExpPair =>
-            val rest = pair.toStringRest
-            s"$car $rest"
-          case SExpValue(Value.Nil, _) => s"$car"
-          case _                       => s"$car . $cdr"
+        cdr match
+            case pair: SExpPair =>
+                val rest = pair.toStringRest
+                s"$car $rest"
+            case SExpValue(Value.Nil, _) => s"$car"
+            case _                       => s"$car . $cdr"
     val label: Label = Label.PAI
     def subexpressions: List[Expression] = List(car, cdr)
 
@@ -68,7 +68,7 @@ object SExpList:
     /** Alternative constructor to automatically construct a bunch of pair from a list of expressions */
     def apply(content: List[SExp], end: SExp): SExp = fromList(content, end)
     def apply(content: List[SExp], idn: Identity): SExp =
-      fromList(content, SExpValue(Value.Nil, idn))
+        fromList(content, SExpValue(Value.Nil, idn))
 
     def fromList(content: List[SExp], end: SExp): SExp = content match
         case Nil          => end
@@ -91,19 +91,19 @@ case class SExpValue(value: Value, idn: Identity) extends SExp:
 /** A quoted element, such as 'foo, '(foo (bar)), etc. */
 object SExpQuoted:
     def apply(content: SExp, idn: Identity): SExp =
-      SExpList(List(SExpId(Identifier("quote", idn)), content), idn)
+        SExpList(List(SExpId(Identifier("quote", idn)), content), idn)
 
 /** A quasiquoted element, such as `foo */
 object SExpQuasiquoted:
     def apply(content: SExp, idn: Identity): SExp =
-      SExpList(List(SExpId(Identifier("quasiquote", idn)), content), idn)
+        SExpList(List(SExpId(Identifier("quasiquote", idn)), content), idn)
 
 /** An unquoted element, such as ,foo */
 object SExpUnquoted:
     def apply(content: SExp, idn: Identity): SExp =
-      SExpList(List(SExpId(Identifier("unquote", idn)), content), idn)
+        SExpList(List(SExpId(Identifier("unquote", idn)), content), idn)
 
 /** A unquoted-splicing element, such as ,@foo */
 object SExpUnquotedSplicing:
     def apply(content: SExp, idn: Identity): SExp =
-      SExpList(List(SExpId(Identifier("unquote-splicing", idn)), content), idn)
+        SExpList(List(SExpId(Identifier("unquote-splicing", idn)), content), idn)

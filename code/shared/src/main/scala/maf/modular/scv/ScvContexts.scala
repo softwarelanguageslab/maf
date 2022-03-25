@@ -54,20 +54,20 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         stoCache: Map[Addr, SchemeExp])
         extends ScvContext[L]:
         override def toString: String =
-          s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
+            s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
     case class NoContext[L]() extends ScvContext[L]
 
     def contractContext(cmp: Component): Option[ContractCallContext[Value]] = context(cmp).flatMap {
-      case c: ContractCallContext[_] =>
-        // safety: the ComponentContext is constrained to ScvContext[Value] (where
-        // the type paremeter is invariant) which
-        // means that ContractCallContext is always in L = Value otherwise
-        // it does not type check. But unfortunately type parameters are erased
-        // at runtime, and the isInstanceOf check cannot garuantee the type
-        //  of the type parameter at runtime.
-        Some(c.asInstanceOf[ContractCallContext[Value]])
+        case c: ContractCallContext[_] =>
+            // safety: the ComponentContext is constrained to ScvContext[Value] (where
+            // the type paremeter is invariant) which
+            // means that ContractCallContext is always in L = Value otherwise
+            // it does not type check. But unfortunately type parameters are erased
+            // at runtime, and the isInstanceOf check cannot garuantee the type
+            //  of the type parameter at runtime.
+            Some(c.asInstanceOf[ContractCallContext[Value]])
 
-      case _ => None
+        case _ => None
     }
 
     override def allocCtx(
@@ -94,74 +94,74 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
 
     override def fromContext(cmp: Component): FromContext = context(cmp) match
         case Some(KPathCondition(pc, _, _, _, symArgs, lcache)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
-          new FromContext:
-              def pathCondition: PathCondition = pc
-              def vars: List[String] =
-                symArgs.values
-                  .flatMap(PathCondition.visit[IdentityMonad.Id, List[String]](_) {
-                    case SchemeVar(name)       => Some(List(name.name))
-                    case SchemeVarLex(name, _) => Some(List(name.name))
-                    case _                     => None
-                  })
-                  .toList
-              def symbolic: Map[String, Option[SchemeExp]] = symArgs.mapValues(Some(_)).toMap
-              def lexStoCache: Map[Address, SchemeExp] = lcache
+            new FromContext:
+                def pathCondition: PathCondition = pc
+                def vars: List[String] =
+                    symArgs.values
+                        .flatMap(PathCondition.visit[IdentityMonad.Id, List[String]](_) {
+                            case SchemeVar(name)       => Some(List(name.name))
+                            case SchemeVarLex(name, _) => Some(List(name.name))
+                            case _                     => None
+                        })
+                        .toList
+                def symbolic: Map[String, Option[SchemeExp]] = symArgs.mapValues(Some(_)).toMap
+                def lexStoCache: Map[Address, SchemeExp] = lcache
         case _ => EmptyContext
 
     override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None): ContextBuilder =
-      new ContextBuilder:
-          def allocM(
-              clo: (SchemeLambdaExp, Environment[Address]),
-              args: List[Value],
-              call: Position,
-              caller: Component
-            ): EvalM[ComponentContext] =
-              val symbolic = clo._1 match
-                  case SchemeLambda(_, prs, _, _, _)          => prs.map(_.name).zip(symArgs)
-                  case SchemeVarArgLambda(_, prs, _, _, _, _) => prs.map(_.name).zip(symArgs.take(prs.length))
+        new ContextBuilder:
+            def allocM(
+                clo: (SchemeLambdaExp, Environment[Address]),
+                args: List[Value],
+                call: Position,
+                caller: Component
+              ): EvalM[ComponentContext] =
+                val symbolic = clo._1 match
+                    case SchemeLambda(_, prs, _, _, _)          => prs.map(_.name).zip(symArgs)
+                    case SchemeVarArgLambda(_, prs, _, _, _, _) => prs.map(_.name).zip(symArgs.take(prs.length))
 
-              // Lexical symbolic store cache
-              val lcache = lexicalStoCaches(clo)
+                // Lexical symbolic store cache
+                val lcache = lexicalStoCaches(clo)
 
-              // Compute the store cache that will be shared with the next component:
-              // remove all addresses that have been updated more than once, as the stored cache will not be valid anymore
-              val ccache = lcache.filterKeys(!isUpdated(_)).toMap
+                // Compute the store cache that will be shared with the next component:
+                // remove all addresses that have been updated more than once, as the stored cache will not be valid anymore
+                val ccache = lcache.filterKeys(!isUpdated(_)).toMap
 
-              // roots are the free variables of the function (if not changed) and the function arguments themselves
-              val roots: Set[SchemeExp] = symArgs.flatten.toSet ++ ccache.values.toSet
+                // roots are the free variables of the function (if not changed) and the function arguments themselves
+                val roots: Set[SchemeExp] = symArgs.flatten.toSet ++ ccache.values.toSet
 
-              // m-cfa
-              val nextCallers = (context(caller) match
-                  case Some(k: KPathCondition[_]) =>
-                    (call :: k.callers)
-                  case _ => List(call)
-              ).take(m)
+                // m-cfa
+                val nextCallers = (context(caller) match
+                    case Some(k: KPathCondition[_]) =>
+                        (call :: k.callers)
+                    case _ => List(call)
+                ).take(m)
 
-              val symArgsMap = symbolic.collect { case (k, Some(v)) => (k, v) }.toMap
+                val symArgsMap = symbolic.collect { case (k, Some(v)) => (k, v) }.toMap
 
-              for
-                  pc <- getPc
-                  // simplify the path condition such that it only contains expressions in the root set
-                  result <- withFresh {
-                    pc.simplify(roots, PathCondition.onlyVarsAllowed, fresh)
-                  }
-                  // get the new path condition and the changes performed to obtain the new path condition
-                  (newPc, changes) = result
-                  // apply the changes on the lexical store cache
-                  newCcache = changes.foldLeft(ccache) { case (ccache, change) =>
-                    ccache.map { case (k, v) =>
-                      change.apply(Assertion(v)) match
-                          case Assertion(v) => (k, v)
-                    }.toMap
-                  }
-                  // apply the changes on the symbolic arguments as well
-                  newSymArgs = changes.foldLeft(symArgsMap)((symArgs, change) =>
-                    symArgs.map { case (k, v) =>
-                      change.apply(Assertion(v)) match
-                          case Assertion(v) => (k, v)
-                    }.toMap
-                  )
-              yield KPathCondition(newPc, rangeContract, nextCallers, changes, newSymArgs, newCcache)
+                for
+                    pc <- getPc
+                    // simplify the path condition such that it only contains expressions in the root set
+                    result <- withFresh {
+                        pc.simplify(roots, PathCondition.onlyVarsAllowed, fresh)
+                    }
+                    // get the new path condition and the changes performed to obtain the new path condition
+                    (newPc, changes) = result
+                    // apply the changes on the lexical store cache
+                    newCcache = changes.foldLeft(ccache) { case (ccache, change) =>
+                        ccache.map { case (k, v) =>
+                            change.apply(Assertion(v)) match
+                                case Assertion(v) => (k, v)
+                        }.toMap
+                    }
+                    // apply the changes on the symbolic arguments as well
+                    newSymArgs = changes.foldLeft(symArgsMap)((symArgs, change) =>
+                        symArgs.map { case (k, v) =>
+                            change.apply(Assertion(v)) match
+                                case Assertion(v) => (k, v)
+                        }.toMap
+                    )
+                yield KPathCondition(newPc, rangeContract, nextCallers, changes, newSymArgs, newCcache)
 
 trait ScvOneContextSensitivity(protected val m: Int) extends ScvKContextSensitivity:
     protected val k: Int = 1

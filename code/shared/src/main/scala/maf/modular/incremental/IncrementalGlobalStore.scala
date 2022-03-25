@@ -59,7 +59,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     var SCAs: Map[SCA, Value] = Map()
 
     def computeSCAs(): Set[SCA] =
-      Tarjan.scc[Addr](store.keySet, dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
+        Tarjan.scc[Addr](store.keySet, dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
 
     /*
     /**
@@ -305,7 +305,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
          *   were written but for which the store did not change. This is needed to handle strictly anti-monotonic changes.
          */
         def doWriteIncremental(): Unit = intraProvenance.foreach({ case (addr, value) =>
-          if updateAddrInc(component, addr, value) then inter.trigger(AddrDependency(addr))
+            if updateAddrInc(component, addr, value) then inter.trigger(AddrDependency(addr))
         })
 
         /** Refines values in the store that are no longer written to by a component. */

@@ -14,30 +14,30 @@ object TrampolineT:
     given trampoline[M[_]: Monad]: Monad[TrampolineM[M]] with
         def unit[A](v: A): TrampolineT[M, A] = Done(Monad[M].unit(v))
         def flatMap[A, B](m: TrampolineT[M, A])(f: A => TrampolineT[M, B]): TrampolineT[M, B] =
-          FlatMap(m, f)
+            FlatMap(m, f)
         def map[A, B](m: TrampolineT[M, A])(f: A => B): TrampolineT[M, B] =
-          flatMap(m)(x => unit(f(x)))
+            flatMap(m)(x => unit(f(x)))
 
 object Trampoline:
     def done[M[_]: Monad, T](v: T): TrampolineT[M, T] = Done(Monad[M].unit(v))
 
     def tailcall[M[_], T](v: => TrampolineT[M, T]): TrampolineT[M, T] =
-      More(() => v)
+        More(() => v)
 
     @tailrec
     def run[T](trampoline: TrampolineT[IdentityMonad.Id, T]): IdentityMonad.Id[T] =
-      trampoline match
-          case Done(v) => v
-          case More(f) => run(f())
-          case FlatMap((m: TrampolineT[IdentityMonad.Id, T]), (f: (T => TrampolineT[IdentityMonad.Id, T]))) =>
-            m match {
-              case Done(v: IdentityMonad.Id[T]) => run(f(v))
-              case More(k)                      => run(FlatMap(k(), f))
-              case FlatMap(sub2, cont2) =>
-                run(FlatMap(sub2, (x) => FlatMap(cont2(x), f)))
-            }
+        trampoline match
+            case Done(v) => v
+            case More(f) => run(f())
+            case FlatMap((m: TrampolineT[IdentityMonad.Id, T]), (f: (T => TrampolineT[IdentityMonad.Id, T]))) =>
+                m match {
+                    case Done(v: IdentityMonad.Id[T]) => run(f(v))
+                    case More(k)                      => run(FlatMap(k(), f))
+                    case FlatMap(sub2, cont2) =>
+                        run(FlatMap(sub2, (x) => FlatMap(cont2(x), f)))
+                }
 
     def lift[M[_]: Monad, A](m: M[A]): TrampolineT[M, A] =
-      Done(m)
+        Done(m)
 
 type Trampoline[T] = TrampolineT[IdentityMonad.Id, T]

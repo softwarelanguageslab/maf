@@ -23,7 +23,7 @@ object SchemeAnalysesBoundedDomain:
           )(
             prg: SchemeExp
           ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeBoundedDomain(bnd) with LIFOWorklistAlgorithm[SchemeExp] {
-          override def toString = "no-sensitivity"
+            override def toString = "no-sensitivity"
         }
     object CallSiteSensitivity:
         def boundAnalysis(
@@ -31,8 +31,8 @@ object SchemeAnalysesBoundedDomain:
           )(
             prg: SchemeExp
           ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFCallSiteSensitivity with SchemeBoundedDomain(bnd) with LIFOWorklistAlgorithm[SchemeExp] {
-          val bound = bnd
-          override def toString = "call-site-sensitivity"
+            val bound = bnd
+            override def toString = "call-site-sensitivity"
         }
     object TwoCallSiteSensitivity:
         def boundAnalysis(
@@ -40,7 +40,7 @@ object SchemeAnalysesBoundedDomain:
           )(
             prg: SchemeExp
           ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFCallSiteSensitivity with SchemeBoundedDomain(bnd) with LIFOWorklistAlgorithm[SchemeExp] {
-          override def toString = "call-site-sensitivity"
+            override def toString = "call-site-sensitivity"
         }
 
 object SchemeAnalyses:
@@ -50,55 +50,55 @@ object SchemeAnalyses:
     def contextInsensitiveAnalysis(
         prg: SchemeExp
       ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
-      override def toString = "no-sensitivity"
+        override def toString = "no-sensitivity"
     }
     def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
-      with SchemeModFCallSiteSensitivity
-      with SchemeConstantPropagationDomain
-      with FIFOWorklistAlgorithm[SchemeExp] {
-      override def toString = "call-site-sensitivity"
+        with SchemeModFCallSiteSensitivity
+        with SchemeConstantPropagationDomain
+        with FIFOWorklistAlgorithm[SchemeExp] {
+        override def toString = "call-site-sensitivity"
     }
     def kCFAAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModFAnalysis(prg)
-      with SchemeModFKCallSiteSensitivity
-      with SchemeConstantPropagationDomain
-      with FIFOWorklistAlgorithm[SchemeExp] {
-      override def toString = s"kCFA (k = $kcfa)"
-      val k = kcfa
+        with SchemeModFKCallSiteSensitivity
+        with SchemeConstantPropagationDomain
+        with FIFOWorklistAlgorithm[SchemeExp] {
+        override def toString = s"kCFA (k = $kcfa)"
+        val k = kcfa
     }
     def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
-      with SchemeModFFullArgumentSensitivity
-      with SchemeConstantPropagationDomain
-      with FIFOWorklistAlgorithm[SchemeExp] {
-      override def toString = "full-argument-sensitivity"
+        with SchemeModFFullArgumentSensitivity
+        with SchemeConstantPropagationDomain
+        with FIFOWorklistAlgorithm[SchemeExp] {
+        override def toString = "full-argument-sensitivity"
     }
     def parallelKCFAAnalysis(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
       ) = new ModAnalysis(prg)
-      with SchemeModFSemanticsM
-      with StandardSchemeModFComponents
-      with BigStepModFSemantics
-      with CallDepthFirstWorklistAlgorithm[SchemeExp]
-      with ParallelWorklistAlgorithm[SchemeExp]
-      with SchemeModFKCallSiteSensitivity
-      with SchemeConstantPropagationDomain {
+        with SchemeModFSemanticsM
+        with StandardSchemeModFComponents
+        with BigStepModFSemantics
+        with CallDepthFirstWorklistAlgorithm[SchemeExp]
+        with ParallelWorklistAlgorithm[SchemeExp]
+        with SchemeModFKCallSiteSensitivity
+        with SchemeConstantPropagationDomain {
 
-      override def toString = s"parallel k-CFA (n = $n ; k = $kcfa)"
-      val k = kcfa
-      override def workers = n
-      override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
+        override def toString = s"parallel k-CFA (n = $n ; k = $kcfa)"
+        val k = kcfa
+        override def workers = n
+        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
     def modConcAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModConcAnalysis(prg)
-      with SchemeModConcStandardSensitivity
-      with SchemeConstantPropagationDomain
-      with CallDepthFirstWorklistAlgorithm[SchemeExp] {
-      override def toString = s"base modconc"
-      override def modFAnalysis(
-          intra: SchemeModConcIntra
-        ) = new InnerModFAnalysis(intra) with SchemeModFKCallSiteSensitivity with CallDepthFirstWorklistAlgorithm[SchemeExp] {
-        val k = kcfa
-      }
+        with SchemeModConcStandardSensitivity
+        with SchemeConstantPropagationDomain
+        with CallDepthFirstWorklistAlgorithm[SchemeExp] {
+        override def toString = s"base modconc"
+        override def modFAnalysis(
+            intra: SchemeModConcIntra
+          ) = new InnerModFAnalysis(intra) with SchemeModFKCallSiteSensitivity with CallDepthFirstWorklistAlgorithm[SchemeExp] {
+            val k = kcfa
+        }
     }
     def parallelModConc(
         prg: SchemeExp,
@@ -106,69 +106,69 @@ object SchemeAnalyses:
         m: Int,
         kcfa: Int
       ) = new SimpleSchemeModConcAnalysis(prg)
-      with SchemeModConcStandardSensitivity
-      with SchemeConstantPropagationDomain
-      with CallDepthFirstWorklistAlgorithm[SchemeExp]
-      with ParallelWorklistAlgorithm[SchemeExp] {
-      override def workers = n
-      override def toString = s"parallel modconc (n = $n ; m = $m)"
-      override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
-      override def modFAnalysis(
-          intra: SchemeModConcIntra
-        ) = new InnerModFAnalysis(intra)
-        with SchemeModFKCallSiteSensitivity
+        with SchemeModConcStandardSensitivity
+        with SchemeConstantPropagationDomain
         with CallDepthFirstWorklistAlgorithm[SchemeExp]
         with ParallelWorklistAlgorithm[SchemeExp] {
-        val k = kcfa
-        override def workers = m
-        override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra
-      }
+        override def workers = n
+        override def toString = s"parallel modconc (n = $n ; m = $m)"
+        override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
+        override def modFAnalysis(
+            intra: SchemeModConcIntra
+          ) = new InnerModFAnalysis(intra)
+            with SchemeModFKCallSiteSensitivity
+            with CallDepthFirstWorklistAlgorithm[SchemeExp]
+            with ParallelWorklistAlgorithm[SchemeExp] {
+            val k = kcfa
+            override def workers = m
+            override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra
+        }
     }
 
     def modflocalAnalysis(prg: SchemeExp, k: Int) =
-      new SchemeModFLocal(prg)
-        with SchemeConstantPropagationDomain
-        with SchemeModFLocalCallSiteSensitivity(k)
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFLocalAnalysisResults
+        new SchemeModFLocal(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalCallSiteSensitivity(k)
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFLocalAnalysisResults
     def modflocalFSAnalysis(prg: SchemeExp, k: Int) =
-      new SchemeModFLocalFS(prg)
-        with SchemeConstantPropagationDomain
-        with SchemeModFLocalCallSiteSensitivity(k)
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFLocalFSAnalysisResults
+        new SchemeModFLocalFS(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalCallSiteSensitivity(k)
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFLocalFSAnalysisResults
     def modflocalAnalysisAdaptiveA(prg: SchemeExp, k: Int, n: Int) =
-      new SchemeModFLocal(prg)
-        with SchemeConstantPropagationDomain
-        with SchemeModFLocalCallSiteSensitivity(k)
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFLocalAnalysisResults
-        with SchemeModFLocalAdaptiveWideningPolicyA(n)
+        new SchemeModFLocal(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalCallSiteSensitivity(k)
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFLocalAnalysisResults
+            with SchemeModFLocalAdaptiveWideningPolicyA(n)
     def modFlocalAnalysisSelective(prg: SchemeExp, k: Int, widened: Set[Address]) =
-      new SchemeModFLocal(prg)
-        with SchemeConstantPropagationDomain
-        with SchemeModFLocalCallSiteSensitivity(k)
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFLocalAnalysisResults:
-          override def customPolicy(adr: Adr): AddrPolicy =
-            if widened(adr) then AddrPolicy.Widened else AddrPolicy.Local
+        new SchemeModFLocal(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalCallSiteSensitivity(k)
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFLocalAnalysisResults:
+            override def customPolicy(adr: Adr): AddrPolicy =
+                if widened(adr) then AddrPolicy.Widened else AddrPolicy.Local
     def modFlocalAnalysisWidened(prg: SchemeExp, k: Int) =
-      new SchemeModFLocal(prg)
-        with SchemeConstantPropagationDomain
-        with SchemeModFLocalCallSiteSensitivity(k)
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFLocalAnalysisResults:
-          override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
+        new SchemeModFLocal(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalCallSiteSensitivity(k)
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFLocalAnalysisResults:
+            override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
 
     def scvModAnalysis(prg: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
-          with ScvBigStepSemantics
-          with SchemeConstantPropagationDomain
-          with StandardSchemeModFComponents
-          with LIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFSemanticsM
-          with ScvOneContextSensitivity(0):
+            with ScvBigStepSemantics
+            with SchemeConstantPropagationDomain
+            with StandardSchemeModFComponents
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFSemanticsM
+            with ScvOneContextSensitivity(0):
             override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp)
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
@@ -183,14 +183,14 @@ object SchemeAnalyses:
     def scvModAnalysisWithRacketFeatures(prg: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
-          with ScvBigStepSemantics
-          with SchemeConstantPropagationDomain
-          with StandardSchemeModFComponents
-          with LIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFSemanticsM
-          with ScvOneContextSensitivity(0)
-          with ScvBigStepWithProvides
-          with ScvWithStructs:
+            with ScvBigStepSemantics
+            with SchemeConstantPropagationDomain
+            with StandardSchemeModFComponents
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFSemanticsM
+            with ScvOneContextSensitivity(0)
+            with ScvBigStepWithProvides
+            with ScvWithStructs:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
             override def intraAnalysis(
@@ -203,14 +203,14 @@ object SchemeAnalyses:
     def scvModAnalysisWithRacketFeatures1cfa(prg: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
-          with ScvBigStepSemantics
-          with SchemeConstantPropagationDomain
-          with StandardSchemeModFComponents
-          with LIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFSemanticsM
-          with ScvOneContextSensitivity(1)
-          with ScvBigStepWithProvides
-          with ScvWithStructs:
+            with ScvBigStepSemantics
+            with SchemeConstantPropagationDomain
+            with StandardSchemeModFComponents
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFSemanticsM
+            with ScvOneContextSensitivity(1)
+            with ScvBigStepWithProvides
+            with ScvWithStructs:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
             override def intraAnalysis(
@@ -223,15 +223,15 @@ object SchemeAnalyses:
     def scvModAnalysisWithRacketFeaturesWithSharedPathStore(prg: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
-          with ScvBigStepSemantics
-          with SchemeConstantPropagationDomain
-          with StandardSchemeModFComponents
-          with LIFOWorklistAlgorithm[SchemeExp]
-          with SchemeModFSemanticsM
-          with ScvOneContextSensitivity(0)
-          with ScvBigStepWithProvides
-          with ScvWithStructs
-          with ScvSharedPathStore:
+            with ScvBigStepSemantics
+            with SchemeConstantPropagationDomain
+            with StandardSchemeModFComponents
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFSemanticsM
+            with ScvOneContextSensitivity(0)
+            with ScvBigStepWithProvides
+            with ScvWithStructs
+            with ScvSharedPathStore:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
             override def intraAnalysis(

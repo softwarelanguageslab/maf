@@ -12,7 +12,7 @@ case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) 
     def metadata: GraphMetadata = GraphMetadataString(data)
     override def hashCode: Int = hsh
     override def equals(other: Any): Boolean =
-      this.hashCode == other.hashCode
+        this.hashCode == other.hashCode
 
 case class AnalysisResult[G, V, C](dependencyGraph: G, values: Set[V], allConfs: Set[C])
 
@@ -113,7 +113,7 @@ trait AAMAnalysis[E <: Expression] extends AnalysisEntry[E]:
 
     /** Register the error in the analysis */
     def registerError(error: Error, state: State): Unit =
-      errors += ErrorState(error, state)
+        errors += ErrorState(error, state)
 
     /** Transition from one system to another (step the semantics) */
     protected def transition[G](sys: System, dependencyGraph: G)(using AAMGraph[G]): (System, G)

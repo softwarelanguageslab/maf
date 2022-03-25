@@ -36,7 +36,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     var mode: Mode = Fine
 
     private def legend(): String =
-      """***** LEGEND OF ABBREVIATIONS *****
+        """***** LEGEND OF ABBREVIATIONS *****
       |ADEP  An address value dependency is registered. Includes the "source" address and the address where the value flows to.
       |ADP*  Similar to ADEP, but the address dependency originates from an implicit value flow (e.g., due to a conditional).
       |ANLY  Analysis of a component, indicating the step of the analysis and the number of times the current component is now analysed.
@@ -61,22 +61,22 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         step = step + 1
         messageOrComponent match
             case Left(msg) =>
-              table = table.add(stepString, "Phase", msg)
+                table = table.add(stepString, "Phase", msg)
             case Right(cmp) =>
-              val addrs = store.keySet
-              table = table.add(stepString, "Phase", cmp.toString)
-              addrs.foreach(addr =>
-                if focus(addr) then {
-                  val v = store.getOrElse(addr, lattice.bottom)
-                  val p = provenance(addr).map({ case (c, v) => s"${crop(v.toString)} ($c)" }).mkString("; ")
-                  table = table.add(stepString, s"σ(${crop(addr.toString)}", crop(v.toString)).add(stepString, s"P(${crop(addr.toString)}", p)
+                val addrs = store.keySet
+                table = table.add(stepString, "Phase", cmp.toString)
+                addrs.foreach(addr =>
+                    if focus(addr) then {
+                        val v = store.getOrElse(addr, lattice.bottom)
+                        val p = provenance(addr).map({ case (c, v) => s"${crop(v.toString)} ($c)" }).mkString("; ")
+                        table = table.add(stepString, s"σ(${crop(addr.toString)}", crop(v.toString)).add(stepString, s"P(${crop(addr.toString)}", p)
+                    }
+                )
+                dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach { case (addr, valueSources) =>
+                    if focus(addr) then table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
                 }
-              )
-              dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach { case (addr, valueSources) =>
-                if focus(addr) then table = table.add(stepString, s"~> $addr", valueSources.mkString(";")) // Show the addresses on which the value at addr depends.
-              }
-              botRead.foreach(addr => table = table.add(stepString, "Bot", crop(addr.toString)))
-              botRead = None
+                botRead.foreach(addr => table = table.add(stepString, "Bot", crop(addr.toString)))
+                botRead = None
 
     private def tableToString(): String =
         val storeCols = table.allColumns.filter(_.startsWith("σ")).toList.sorted
@@ -91,8 +91,8 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         // Map[W, Set[R]]
         val deps = dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) })
         val depString = deps
-          .foldLeft(Table.empty.withDefaultValue(""))({ case (table, dep) => table.add(dep._1.toString, "Value sources", dep._2.mkString("; ")) })
-          .prettyString()
+            .foldLeft(Table.empty.withDefaultValue(""))({ case (table, dep) => table.add(dep._1.toString, "Value sources", dep._2.mkString("; ")) })
+            .prettyString()
         val scaString = computeSCAs().map(_.map(a => crop(a.toString)).mkString("{", ", ", "}")).mkString("\n")
         depString + (if configuration.cyclicValueInvalidation then "\nSCAs:\n" + (if scaString.isEmpty then "none" else scaString) else "")
 
@@ -114,8 +114,8 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     private var deletedC: List[Component] = Nil
 
     def getSummary(): String =
-      configuration.infoString() + "\n" +
-        s"""##########################################
+        configuration.infoString() + "\n" +
+            s"""##########################################
          |Analysis Summary:
          |  - components: ${visited.size}
          |      ${visited.mkString(", ")}
@@ -152,9 +152,9 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             logData(true)
         catch
             case t: Throwable =>
-              logger.logException(t)
-              logData(true)
-              throw t
+                logger.logException(t)
+                logData(true)
+                throw t
 
     override def deregister(target: Component, dep: Dependency): Unit =
         if mode == Fine then logger.log(s"DINV $target <-\\- $dep")

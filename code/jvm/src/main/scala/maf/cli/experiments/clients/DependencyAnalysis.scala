@@ -25,12 +25,12 @@ trait DependencyAnalysis extends ModAnalysis[SchemeExp]:
     /** Return the component associated with the given address */
     def viewComponent(adr: Dependency): Component = adr match
         case AddrDependency(addr) =>
-          (addr match
-              case ReturnAddr(cmp, _) => cmp
-              case VarAddr(_, cmp)    => cmp
-              case PtrAddr(_, cmp)    => cmp
-              case _                  => throw new Exception(s"unsupported address $addr")
-          ).asInstanceOf[Component] // UNSAFE
+            (addr match
+                case ReturnAddr(cmp, _) => cmp
+                case VarAddr(_, cmp)    => cmp
+                case PtrAddr(_, cmp)    => cmp
+                case _                  => throw new Exception(s"unsupported address $addr")
+            ).asInstanceOf[Component] // UNSAFE
 
     /** Set of read dependencies from a given component to another component */
     var readDeps: Set[(Component, Component)] = Set()
@@ -62,7 +62,7 @@ trait DependencyAnalysisRunner extends ClientAnalysisRunner:
 
     def computeAverageAndTotal(anl: Analysis, results: Set[(anl.Component, anl.Component)]): (Double, Double) =
         val asMap = results.foldLeft(Map[anl.Component, List[anl.Component]]()) { case (result, (from, to)) =>
-          result + (from -> (to :: result.get(from).getOrElse(List())))
+            result + (from -> (to :: result.get(from).getOrElse(List())))
         }
         val numberOfComponents = asMap.keys.size
         val total = asMap.values.map(_.size).sum

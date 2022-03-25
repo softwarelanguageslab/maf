@@ -43,11 +43,11 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
             case _               => throw new Exception("This should not happen for the base analysis!")
         // run the other analyses on the benchmark
         otherAnalyses().foreach { case (analysis, name) =>
-          val otherResult = runAnalysis(analysis, name, program, path, analysisTimeout())
-          val refined = otherResult match
-              case Terminated(store) => Some(compareOrdered(baseResult, store).size)
-              case _                 => None
-          results = results.add(path, name, refined)
+            val otherResult = runAnalysis(analysis, name, program, path, analysisTimeout())
+            val refined = otherResult match
+                case Terminated(store) => Some(compareOrdered(baseResult, store).size)
+                case _                 => None
+            results = results.add(path, name, refined)
         }
         // run a concrete interpreter on the benchmarks
         val concreteResult = runInterpreter(program, path, concreteTimeout(), concreteRuns())
@@ -66,13 +66,13 @@ object AnalysisComparison1
     val k = 0
     val l = 1000
     def baseAnalysis(prg: SchemeExp): Analysis =
-      SchemeAnalyses.kCFAAnalysis(prg, k)
+        SchemeAnalyses.kCFAAnalysis(prg, k)
     def otherAnalyses() =
-      // run some regular k-cfa analyses
-      List(
-        //(SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
-        (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
-      )
+        // run some regular k-cfa analyses
+        List(
+          //(SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
+          (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
+        )
 
     def main(args: Array[String]) = runBenchmarks(
       Set(

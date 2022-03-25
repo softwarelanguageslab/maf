@@ -63,9 +63,9 @@ abstract class WebVisualisation(width: Int, height: Int):
     def colorFor(cmp: analysis.Component): JsAny = colorForKey(componentKey(cmp))
     def colorForKey(key: Any): JsAny = colorWheel.get(key) match
         case None =>
-          val newColor = randomColor()
-          colorWheel += (key -> newColor)
-          newColor
+            val newColor = randomColor()
+            colorWheel += (key -> newColor)
+            newColor
         case Some(existingColor) => existingColor
 
     //
@@ -99,16 +99,16 @@ abstract class WebVisualisation(width: Int, height: Int):
 
     def getNode(cmp: analysis.Component): CmpNode = nodesColl.get(cmp) match
         case None =>
-          val newNode = new CmpNode(cmp)
-          nodesColl += (cmp -> newNode)
-          newNode
+            val newNode = new CmpNode(cmp)
+            nodesColl += (cmp -> newNode)
+            newNode
         case Some(existingNode) => existingNode
 
     def getEdge(source: Node, target: Node): Edge = edgesColl.get((source, target)) match
         case None =>
-          val newEdge = new Edge(source, target)
-          edgesColl += ((source, target) -> newEdge)
-          newEdge
+            val newEdge = new Edge(source, target)
+            edgesColl += ((source, target) -> newEdge)
+            newEdge
         case Some(existingEdge) => existingEdge
 
     //
@@ -128,11 +128,11 @@ abstract class WebVisualisation(width: Int, height: Int):
     setupMarker(svg) // <- this allows us to use a fancy arrow in the svg
     svg.call(
       d3.zoom()
-        .on("zoom",
-            () => { // <- this sets up a fancy zoom effect
-              outerContainer.attr("transform", d3.event.transform)
-            }
-        )
+          .on("zoom",
+              () => { // <- this sets up a fancy zoom effect
+                  outerContainer.attr("transform", d3.event.transform)
+              }
+          )
     )
     // setup the nodes infrastructure
     private val nodesContainer = innerContainer.append("g").attr("class", "nodes")
@@ -146,28 +146,28 @@ abstract class WebVisualisation(width: Int, height: Int):
     // setup the simulation
     private val simulation = d3.forceSimulation()
     simulation
-      .force(__FORCE_COLLIDE__, d3.forceCollide().radius(__CIRCLE_RADIUS__))
-      .force(__FORCE_CHARGE__, d3.forceManyBody().strength(-500))
-      .force(__FORCE_LINKS__, d3.forceLink().distance(150))
-      .force(__FORCE_CENTER__, d3.forceCenter())
-      .on("tick", () => onTick())
+        .force(__FORCE_COLLIDE__, d3.forceCollide().radius(__CIRCLE_RADIUS__))
+        .force(__FORCE_CHARGE__, d3.forceManyBody().strength(-500))
+        .force(__FORCE_LINKS__, d3.forceLink().distance(150))
+        .force(__FORCE_CENTER__, d3.forceCenter())
+        .on("tick", () => onTick())
 
     // Adds a new base marker to the given svg. The marker is returned, so extra attributes can be added later.
     protected def newMarker(svg: JsAny, id: String) =
         // adapted from http://bl.ocks.org/fancellu/2c782394602a93921faff74e594d1bb1
         val marker: js.Dynamic = svg
-          .append("defs")
-          .append("marker")
-          .attr("id", id)
-          .attr("viewBox", "-0 -5 10 10")
-          .attr("refX", 0)
-          .attr("refY", 0)
-          .attr("orient", "auto")
-          .attr("markerWidth", 5)
-          .attr("markerHeight", 5)
+            .append("defs")
+            .append("marker")
+            .attr("id", id)
+            .attr("viewBox", "-0 -5 10 10")
+            .attr("refX", 0)
+            .attr("refY", 0)
+            .attr("orient", "auto")
+            .attr("markerWidth", 5)
+            .attr("markerHeight", 5)
         marker
-          .append("svg:path")
-          .attr("d", "M 0,-5 L 10 ,0 L 0,5")
+            .append("svg:path")
+            .attr("d", "M 0,-5 L 10 ,0 L 0,5")
         marker
 
     protected def setupMarker(svg: JsAny) = newMarker(svg, __SVG_ARROW_ID__)
@@ -184,30 +184,30 @@ abstract class WebVisualisation(width: Int, height: Int):
         edges.attr(
           "d",
           (edge: JsAny) =>
-            if edge.source == edge.target then {
-              val cx = edge.source.x.asInstanceOf[Double]
-              val cy = edge.source.y.asInstanceOf[Double]
-              val x1 = cx - __CIRCLE_RADIUS__
-              val y1 = cy
-              val x2 = cx - 9
-              val y2 = cy - __CIRCLE_RADIUS__ - 8
-              s"M$x1 $y1 A ${__CIRCLE_RADIUS__} ${__CIRCLE_RADIUS__} 1 1 1 $x2 $y2"
-            } else {
-              val sourceX = edge.source.x.asInstanceOf[Double]
-              val sourceY = edge.source.y.asInstanceOf[Double]
-              val targetX = edge.target.x.asInstanceOf[Double]
-              val targetY = edge.target.y.asInstanceOf[Double]
-              val deltaX = targetX - sourceX
-              val deltaY = targetY - sourceY
-              val dist = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY))
-              val scaleFactorSource = __CIRCLE_RADIUS__ / dist
-              val scaleFactorTarget = (__CIRCLE_RADIUS__ + 10) / dist
-              val x1 = sourceX + (deltaX * scaleFactorSource)
-              val x2 = targetX - (deltaX * scaleFactorTarget)
-              val y1 = sourceY + (deltaY * scaleFactorSource)
-              val y2 = targetY - (deltaY * scaleFactorTarget)
-              s"M$x1 $y1 L$x2 $y2"
-            }
+              if edge.source == edge.target then {
+                  val cx = edge.source.x.asInstanceOf[Double]
+                  val cy = edge.source.y.asInstanceOf[Double]
+                  val x1 = cx - __CIRCLE_RADIUS__
+                  val y1 = cy
+                  val x2 = cx - 9
+                  val y2 = cy - __CIRCLE_RADIUS__ - 8
+                  s"M$x1 $y1 A ${__CIRCLE_RADIUS__} ${__CIRCLE_RADIUS__} 1 1 1 $x2 $y2"
+              } else {
+                  val sourceX = edge.source.x.asInstanceOf[Double]
+                  val sourceY = edge.source.y.asInstanceOf[Double]
+                  val targetX = edge.target.x.asInstanceOf[Double]
+                  val targetY = edge.target.y.asInstanceOf[Double]
+                  val deltaX = targetX - sourceX
+                  val deltaY = targetY - sourceY
+                  val dist = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY))
+                  val scaleFactorSource = __CIRCLE_RADIUS__ / dist
+                  val scaleFactorTarget = (__CIRCLE_RADIUS__ + 10) / dist
+                  val x1 = sourceX + (deltaX * scaleFactorSource)
+                  val x2 = targetX - (deltaX * scaleFactorTarget)
+                  val y1 = sourceY + (deltaY * scaleFactorSource)
+                  val y2 = targetY - (deltaY * scaleFactorTarget)
+                  s"M$x1 $y1 L$x2 $y2"
+              }
         )
         // Maybe perform other updates.
         // TODO: just override the existing onTick method (using super.onTick())?
@@ -276,20 +276,20 @@ abstract class WebVisualisation(width: Int, height: Int):
         // update the nodes
         val nodesUpdate = nodes.data(nodesData, (n: Node) => n.data())
         val newGroup = nodesUpdate
-          .enter()
-          .append("g")
-          .call(dragEffect)
+            .enter()
+            .append("g")
+            .call(dragEffect)
         newGroup
-          .append("circle")
-          .attr("r", __CIRCLE_RADIUS__)
+            .append("circle")
+            .attr("r", __CIRCLE_RADIUS__)
         newGroup
-          .append("text")
-          .attr("dx", __CIRCLE_RADIUS__)
-          .attr("dy", __CIRCLE_RADIUS__)
+            .append("text")
+            .attr("dx", __CIRCLE_RADIUS__)
+            .attr("dy", __CIRCLE_RADIUS__)
         nodes = newGroup.merge(nodesUpdate)
         nodes
-          .select("text")
-          .text((node: Node) => node.displayText())
+            .select("text")
+            .text((node: Node) => node.displayText())
         nodesUpdate.exit().remove()
         classifyNodes()
         // update the edges
@@ -308,29 +308,29 @@ abstract class WebVisualisation(width: Int, height: Int):
 
     /** Classifies every node based on its role in the analysis, so the node can be coloured correctly. */
     def classifyNodes(): Unit =
-      nodes
-        // Apparently the Scala compiler does not just accept the cases as anonymous function, hence the longer implementation.
-        .classed(__CSS_IN_WORKLIST__,
-                 (node: Node) =>
-                   node match {
-                     case node: CmpNode => analysis.workList.toSet.contains(node.component)
-                     case _             => false
-                   }
-        )
-        .classed(__CSS_NOT_VISITED__,
-                 (node: Node) =>
-                   node match {
-                     case node: CmpNode => !analysis.visited.contains(node.component)
-                     case _             => false
-                   }
-        )
-        .classed(__CSS_NEXT_COMPONENT__,
-                 (node: Node) =>
-                   node match {
-                     case node: CmpNode => analysis.workList.toList.headOption.contains(node.component)
-                     case _             => false
-                   }
-        )
+        nodes
+            // Apparently the Scala compiler does not just accept the cases as anonymous function, hence the longer implementation.
+            .classed(__CSS_IN_WORKLIST__,
+                     (node: Node) =>
+                         node match {
+                             case node: CmpNode => analysis.workList.toSet.contains(node.component)
+                             case _             => false
+                         }
+            )
+            .classed(__CSS_NOT_VISITED__,
+                     (node: Node) =>
+                         node match {
+                             case node: CmpNode => !analysis.visited.contains(node.component)
+                             case _             => false
+                         }
+            )
+            .classed(__CSS_NEXT_COMPONENT__,
+                     (node: Node) =>
+                         node match {
+                             case node: CmpNode => analysis.workList.toList.headOption.contains(node.component)
+                             case _             => false
+                         }
+            )
 
     //.style("fill", (node: Node) => colorFor(node.component))
 
@@ -344,10 +344,10 @@ abstract class WebVisualisation(width: Int, height: Int):
 
     // create a fancy drag effect
     val dragEffect = d3
-      .drag()
-      .on("start", (node: JsAny) => onDragStart(node))
-      .on("drag", (node: JsAny) => onDragDrag(node))
-      .on("end", (node: JsAny) => onDragEnd(node))
+        .drag()
+        .on("start", (node: JsAny) => onDragStart(node))
+        .on("drag", (node: JsAny) => onDragDrag(node))
+        .on("end", (node: JsAny) => onDragEnd(node))
 
     private def onDragStart(node: JsAny): Unit =
         val isActive = d3.event.active.asInstanceOf[Int]

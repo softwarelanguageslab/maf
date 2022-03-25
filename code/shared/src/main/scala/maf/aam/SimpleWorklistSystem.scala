@@ -17,46 +17,46 @@ trait BaseSimpleWorklistSystem[E <: Expression] extends AAMAnalysis[E], AAMPefor
         var newWork: List[(Option[Conf], Conf)] = List()
 
         def popWork(): Option[(Option[Conf], Conf)] =
-          if work.nonEmpty then
-              change {
-                val conf = work.head
-                work = work.tail
-                Some(conf)
-              }
-          else if newWork.nonEmpty then
-              change {
-                val conf = newWork.head
-                // return work from new work and swap work and new work
-                val keep = work
-                work = newWork.tail
-                newWork = keep
-                Some(conf)
-              }
-          else None
+            if work.nonEmpty then
+                change {
+                    val conf = work.head
+                    work = work.tail
+                    Some(conf)
+                }
+            else if newWork.nonEmpty then
+                change {
+                    val conf = newWork.head
+                    // return work from new work and swap work and new work
+                    val keep = work
+                    work = newWork.tail
+                    newWork = keep
+                    Some(conf)
+                }
+            else None
 
         def pushWork(prev: Option[Conf], work: Conf): this.type = change {
-          newWork = (prev, work) :: newWork
-          this
+            newWork = (prev, work) :: newWork
+            this
         }
 
         def addSeen(work: Conf): Unit = change {
-          report(Seen, seen.size) // logging
-          seen = seen + work
+            report(Seen, seen.size) // logging
+            seen = seen + work
         }
 
         def addBump(from: Conf, to: Conf): Unit = change {
-          bumps = bumps + (from -> to)
+            bumps = bumps + (from -> to)
         }
 
         def allConfs: Set[Conf] = seen
 
         def finalStates: Set[State] =
-          seen.map(asState(_, this)).filter(isFinal)
+            seen.map(asState(_, this)).filter(isFinal)
 
     type System <: SeenStateSystem
 
     protected def integrate(st: State, sys: System): (Conf, System) =
-      (asConf(st, sys), sys)
+        (asConf(st, sys), sys)
 
     protected def decideSuccessors[G](depGraph: G, prev: Conf, successors: Set[State], sys: System)(using g: AAMGraph[G]): (System, G) =
         var depGraph2 = depGraph
@@ -83,14 +83,14 @@ trait BaseSimpleWorklistSystem[E <: Expression] extends AAMAnalysis[E], AAMPefor
         // no more work; reached fixed point
         if conf.isEmpty then
             val fpdg =
-              if enableGraph then
-                  system.bumps.foldLeft(dependencyGraph) { case (deps, (from, to)) =>
-                    val n1 = asGraphElement(from, system)
-                    val n2 = asGraphElement(to, system)
+                if enableGraph then
+                    system.bumps.foldLeft(dependencyGraph) { case (deps, (from, to)) =>
+                        val n1 = asGraphElement(from, system)
+                        val n2 = asGraphElement(to, system)
 
-                    g.addEdge(deps, n1, BumpTransition(), n2)
-                  }
-              else dependencyGraph
+                        g.addEdge(deps, n1, BumpTransition(), n2)
+                    }
+                else dependencyGraph
 
             (system, fpdg)
         else
@@ -109,4 +109,4 @@ trait BaseSimpleWorklistSystem[E <: Expression] extends AAMAnalysis[E], AAMPefor
 trait SimpleWorklistSystem[E <: Expression] extends BaseSimpleWorklistSystem[E]:
     type System = SeenStateSystem
     override def inject(expr: Expr): System =
-      new SeenStateSystem {}.pushWork(None, injectConf(expr))
+        new SeenStateSystem {}.pushWork(None, injectConf(expr))

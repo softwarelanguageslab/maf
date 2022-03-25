@@ -43,7 +43,7 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
 
     /** Stores the answer in the cache */
     private def storeCache(e: Formula, vars: List[String], v: IsSat[V]): Unit =
-      cache = (cache + ((e, vars) -> v))
+        cache = (cache + ((e, vars) -> v))
 
     /** A mapping between the name of Scheme primitives and their Z3 counter-parts */
     private val primMap: Map[String, String] = Map(
@@ -81,7 +81,7 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
         case Value.Nil             => s"(VNil)"
 
     private def translateIdentifier(idn: Identifier): String =
-      primMap.get(idn.name).getOrElse(idn.name)
+        primMap.get(idn.name).getOrElse(idn.name)
 
     /** A SMTLIB2 program that will be prepended to the actual constraints generated b our analyses */
     private val prelude: String = """
@@ -246,12 +246,12 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
         case _                         => throw new Exception("Unsupported constraint")
 
     def parseStringToScript(s: String): Script =
-      Parser.fromString(s).parseScript
+        Parser.fromString(s).parseScript
 
     def isSat(script: Script)(using interpreter: Interpreter, ec: ExecutionContext): IsSat[V] =
 
         script.commands.foreach { cmd =>
-          interpreter.eval(cmd)
+            interpreter.eval(cmd)
         }
 
         interpreter.eval(CheckSat()) match

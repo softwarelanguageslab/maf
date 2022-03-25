@@ -21,11 +21,11 @@ object SimpleTimingTest extends App:
     type Analysis = ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]
 
     def analysis(program: SchemeExp): Analysis =
-      new ModAnalysis(program) with KKallocModConc with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] {
-        val k = 1
-        override def intraAnalysis(component: SmallStepModConcComponent) =
-          new IntraAnalysis(component) with SmallStepIntra with KCFAIntra
-      }
+        new ModAnalysis(program) with KKallocModConc with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp] {
+            val k = 1
+            override def intraAnalysis(component: SmallStepModConcComponent) =
+                new IntraAnalysis(component) with SmallStepIntra with KCFAIntra
+        }
 
     def run(benchmark: String): Unit =
         System.out.print(benchmark + " ")
@@ -59,7 +59,7 @@ object SimpleTimingTest extends App:
             val root = new File(directory)
             val base = root.getAbsolutePath.nn.length - directory.length
             files(root).filter(!_.isDirectory).map(_.getAbsolutePath.nn.substring(base).nn).toSet -- exclude
-              .map(file => s"$directory/$file")
+                .map(file => s"$directory/$file")
 
         lazy val other: Set[String] = Set(
           "test/R5RS/gambit/peval.scm",

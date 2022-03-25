@@ -10,7 +10,7 @@ import maf.language.scheme._
  */
 trait SchemeAddr[+Context] extends Address:
     protected def showCtx(ctx: Any) =
-      if (ctx == ()) then "" else s"[$ctx]"
+        if (ctx == ()) then "" else s"[$ctx]"
 case class VarAddr[Context](id: Identifier, ctx: Context) extends SchemeAddr[Context]:
     def printable = true
     def idn: Identity = id.idn

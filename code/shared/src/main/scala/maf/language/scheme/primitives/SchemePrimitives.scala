@@ -14,7 +14,7 @@ trait StoreM[M[_], A <: Address, V] extends Monad[M]:
     def lookupSto(a: A): M[V]
     def extendSto(a: A, v: V): M[Unit]
     def extendSto(bds: Iterable[(A, V)]): M[Unit] =
-      bds.mapM_ { case (adr, vlu) => extendSto(adr, vlu) }
+        bds.mapM_ { case (adr, vlu) => extendSto(adr, vlu) }
     def updateSto(a: A, v: V): M[Unit]
     // let Scala know to use the instance itself as an implicit
     implicit final private val self: StoreM[M, A, V] = this
@@ -26,9 +26,9 @@ trait SchemeAllocM[M[_], A] extends Monad[M]:
 trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with MonadError[M, Error] with SchemeAllocM[M, A] with StoreM[M, A, V]:
     // for convenience
     def allocVal(exp: SchemeExp, vlu: V): M[A] =
-      flatMap(allocPtr(exp))(adr => map(extendSto(adr, vlu))(_ => adr))
+        flatMap(allocPtr(exp))(adr => map(extendSto(adr, vlu))(_ => adr))
     def deref[X: Lattice](x: Set[A])(f: (A, V) => M[X]): M[X] =
-      mfoldMap(x)(a => flatMap(lookupSto(a))(v => f(a, v)))
+        mfoldMap(x)(a => flatMap(lookupSto(a))(v => f(a, v)))
     // exotic -- not so important if not implemented yet
     def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] = throw new Exception("Not supported")
     def currentThread: M[TID] = throw new Exception("Not supported")
@@ -50,7 +50,7 @@ trait SchemePrimitive[V, A <: Address] extends Primitive:
         args: List[V]
       )(using bridge: SchemeInterpreterBridge[V, A]
       ): MayFail[V, Error] =
-      call[MF](fexp, args)
+        call[MF](fexp, args)
 
 // To support the "old" interface (i.e., for usage in callMF)
 
@@ -65,11 +65,11 @@ trait SchemeInterpreterBridge[V, A <: Address]:
     def writeSto(a: A, v: V): Unit
     def currentThread: TID
     def addrEq: MaybeEq[A] =
-      new MaybeEq[A] {
-        def apply[B: BoolLattice](a1: A, a2: A) =
-          if a1 == a2 then BoolLattice[B].top // we don't know (could be different concrete addresses abstracted to the same abstract address)
-          else BoolLattice[B].inject(false) // definitely not the same address
-      }
+        new MaybeEq[A] {
+            def apply[B: BoolLattice](a1: A, a2: A) =
+                if a1 == a2 then BoolLattice[B].top // we don't know (could be different concrete addresses abstracted to the same abstract address)
+                else BoolLattice[B].inject(false) // definitely not the same address
+        }
 
 type MF[X] = MayFail[X, Error]
 given MFInstance[A <: Address, V](using bri: SchemeInterpreterBridge[V, A]): SchemePrimM[MF, A, V] with
@@ -106,4 +106,4 @@ abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: Sch
     def allPrimitives: Map[String, SchemePrimitive[V, A]]
     def apply(name: String): SchemePrimitive[V, A] = allPrimitives(name)
     def ofList(prims: List[SchemePrimitive[V, A]]): Map[String, SchemePrimitive[V, A]] =
-      prims.map(prim => (prim.name, prim)).toMap
+        prims.map(prim => (prim.name, prim)).toMap
