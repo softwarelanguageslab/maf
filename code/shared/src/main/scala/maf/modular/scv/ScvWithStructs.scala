@@ -26,11 +26,11 @@ trait ScvWithStructs extends BaseScvBigStepSemantics:
         override def eval(exp: SchemeExp): ScvEvalM[Value] = exp match
             // (_make_constr tag siz)
             case mk: MakeStruct =>
-              unit(structOps.evaluate(mk))
+                unit(structOps.evaluate(mk))
 
             case _ => super.eval(exp)
 
         override def callFun(f: PostValue, args: List[PostValue]): ScvEvalM[Value] =
-          // the result of the computation diverges if the abstract value is more than one of the above.
-          // to avoid a loss of precision, a widening operation is not performed.
-          nondets(structOps.call(f.value, args.map(_.value)))
+            // the result of the computation diverges if the abstract value is more than one of the above.
+            // to avoid a loss of precision, a widening operation is not performed.
+            nondets(structOps.call(f.value, args.map(_.value)))

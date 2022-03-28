@@ -39,10 +39,10 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
 
     /** Computes the color of an edge based on its specifications. */
     private def edgeColor(directFlow: Boolean, indirectFlow: Boolean): Option[Color] = (directFlow, indirectFlow) match {
-      case (true, true)  => Some(Colors.DarkBlue) // Both direct and indirect flows
-      case (true, false) => Some(Colors.Black) // Direct flows
-      case (false, true) => Some(Colors.Grey) // Indirect flows
-      case _             => Some(Colors.Red) // No flow, should not happen...
+        case (true, true)  => Some(Colors.DarkBlue) // Both direct and indirect flows
+        case (true, false) => Some(Colors.Black) // Direct flows
+        case (false, true) => Some(Colors.Grey) // Indirect flows
+        case _             => Some(Colors.Red) // No flow, should not happen...
     }
 
     /** Creates a dotgraph from the existing flow information and writes this to a file with the given filename. */
@@ -51,22 +51,22 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         case class GE(label: String, color: Color = Colors.White, metadata: GraphMetadata = GraphMetadataNone) extends GraphElement
         // Colour nodes by SCA.
         val nodeColors = computeSCAs().toList.zipWithIndex
-          .flatMap({ case (sca, index) => val color = allColors(index); sca.map(v => (v, color)) })
-          .toMap
-          .withDefaultValue(Colors.White)
+            .flatMap({ case (sca, index) => val color = allColors(index); sca.map(v => (v, color)) })
+            .toMap
+            .withDefaultValue(Colors.White)
         // Generate the nodes. Create a mapping from addresses to graph elements (nodes).
         val nodes: Map[Addr, GE] =
-          (addressDependenciesLog.values.flatMap(_.keySet) ++ addressDependenciesLog.values.flatMap(_.values).flatten.map(_.a).toSet)
-            .map(addr => (addr, GE(addr.toString(), nodeColors(addr))))
-            .toMap
+            (addressDependenciesLog.values.flatMap(_.keySet) ++ addressDependenciesLog.values.flatMap(_.values).flatten.map(_.a).toSet)
+                .map(addr => (addr, GE(addr.toString(), nodeColors(addr))))
+                .toMap
         // Compute the edges.
         val edges: Set[(GE, GE, AdrDep)] =
-          addressDependenciesLog.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r.a), nodes(w), r)) }).toSet
+            addressDependenciesLog.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r.a), nodes(w), r)) }).toSet
         // Create the graph and write it to a file. Only edges that are assigned a colour will be drawn.
         val g = DotGraph[GE, GE]().G.typeclass
         edges
-          .foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
-            case (graph, (source: GE, target: GE, adrDep: AdrDep)) =>
-              edgeColor(adrDep.directFlow, adrDep.indirectFlow).map(color => g.addEdge(graph, source, GE("", color), target)).getOrElse(graph)
-          }
-          .toFile(fileName)
+            .foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
+                case (graph, (source: GE, target: GE, adrDep: AdrDep)) =>
+                    edgeColor(adrDep.directFlow, adrDep.indirectFlow).map(color => g.addEdge(graph, source, GE("", color), target)).getOrElse(graph)
+            }
+            .toFile(fileName)

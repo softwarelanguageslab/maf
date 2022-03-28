@@ -53,18 +53,18 @@ class AdaptiveSummaryVisualisation(
 
     val node = document.createElement("div")
     d3.select(node)
-      .style("overflow-x", "scroll")
-      .style("width", s"${width}px")
-      .style("height", s"${height}px")
+        .style("overflow-x", "scroll")
+        .style("width", s"${width}px")
+        .style("height", s"${height}px")
     private val widthPerView = width / 3
 
     // TODO: this logic can be factored out in a trait for greater reuseability
     // keep a stack of views currently shown
     private var viewStack: List[View] = List.empty
     private def unrollViewStackUntil(view: View) =
-      while viewStack.head != view do
-          node.removeChild(viewStack.head.node)
-          viewStack = viewStack.tail
+        while viewStack.head != view do
+            node.removeChild(viewStack.head.node)
+            viewStack = viewStack.tail
     private def pushViewStack(view: View) =
         // append the node
         d3.select(view.node).style("float", "left")
@@ -76,10 +76,10 @@ class AdaptiveSummaryVisualisation(
 
     def refresh() = viewStack.foreach(_.refresh())
     def adapt() =
-      viewStack.foreach { view =>
-          view.adapt()
-          view.refresh()
-      }
+        viewStack.foreach { view =>
+            view.adapt()
+            view.refresh()
+        }
 
     sealed trait View:
         val node: dom.Node
@@ -87,68 +87,71 @@ class AdaptiveSummaryVisualisation(
         def adapt(): Unit = ()
 
     sealed trait BarChartView extends View { view =>
-      // a bar chart that can create a new view when a bar is clicked
-      abstract class NavigationBarChart(className: String) extends BarChart(widthPerView, height, padding = 50) with BarChartFocus with BarChartStats:
-          // TODO: factor our "selection logic" in separate trait
-          // things that can be selected in the bar chart
-          sealed private trait Selection
-          private case object None extends Selection
-          private case object TotalSelected extends Selection
-          private case object AverageSelected extends Selection
-          private case class DataSelected(d: Data) extends Selection
-          // keep track of the current selection
-          private var currentSelection: Selection = None
-          private def setup(sel: Selection) = sel match
-              case None => ()
-              case TotalSelected =>
-                domainView.foreach(pushViewStack)
-                totalText.classed("selected", true)
-                focus(_ => false) // hide all the bars
-              case AverageSelected =>
-                averageText.classed("selected", true)
-                focus(d => highlightedDataKeys.contains(key(d))) // highlight some of the bars
-              case DataSelected(d) =>
-                detailView(d).foreach(pushViewStack)
-                focus(d)
-          private def teardown() = currentSelection match
-              case None => ()
-              case TotalSelected =>
-                unrollViewStackUntil(view)
-                totalText.classed("selected", false)
-                resetFocus()
-              case AverageSelected =>
-                averageText.classed("selected", false)
-                resetFocus()
-              case DataSelected(_) =>
-                unrollViewStackUntil(view)
-                resetFocus()
-          private def setSelection(sel: Selection) =
-              teardown() // teardown the current focus
-              setup(sel) // setup the new focus
-              currentSelection = sel
-          private def toggle(sel: Selection) =
-            if currentSelection == sel then setSelection(None)
-            else setSelection(sel)
-          // automatically provide navigation logic when clicking on a bar
-          // should be implemented: what next view to produce for given data
-          protected def detailView(d: Data): Option[View]
-          override protected def onClick(d: Data): Unit = toggle(DataSelected(d))
-          // clicking on average -> highlight bars (usually those with high values)
-          // should be implemented to indicate which bars need to be highlighed
-          protected def highlightedDataKeys: Set[String]
-          override protected def onAverageClick(node: dom.Node) = toggle(AverageSelected)
-          // clicking on total -> open new view for domain
-          // should be implemented to offer a detail view for the domain
-          protected def domainView: Option[View]
-          override protected def onTotalClick(node: dom.Node) = toggle(TotalSelected)
-          // set the correct CSS class for the barchart
-          this.classed(className)
-      // expects a bar chart + method to fetch the latest data
-      val BarChart: NavigationBarChart
-      def data: Iterable[BarChart.Data]
-      // node = barchart node; refresh = barchart refresh
-      val node = BarChart.node
-      def refresh() = BarChart.loadDataSorted(data)
+        // a bar chart that can create a new view when a bar is clicked
+        abstract class NavigationBarChart(className: String)
+            extends BarChart(widthPerView, height, padding = 50)
+            with BarChartFocus
+            with BarChartStats:
+            // TODO: factor our "selection logic" in separate trait
+            // things that can be selected in the bar chart
+            sealed private trait Selection
+            private case object None extends Selection
+            private case object TotalSelected extends Selection
+            private case object AverageSelected extends Selection
+            private case class DataSelected(d: Data) extends Selection
+            // keep track of the current selection
+            private var currentSelection: Selection = None
+            private def setup(sel: Selection) = sel match
+                case None => ()
+                case TotalSelected =>
+                    domainView.foreach(pushViewStack)
+                    totalText.classed("selected", true)
+                    focus(_ => false) // hide all the bars
+                case AverageSelected =>
+                    averageText.classed("selected", true)
+                    focus(d => highlightedDataKeys.contains(key(d))) // highlight some of the bars
+                case DataSelected(d) =>
+                    detailView(d).foreach(pushViewStack)
+                    focus(d)
+            private def teardown() = currentSelection match
+                case None => ()
+                case TotalSelected =>
+                    unrollViewStackUntil(view)
+                    totalText.classed("selected", false)
+                    resetFocus()
+                case AverageSelected =>
+                    averageText.classed("selected", false)
+                    resetFocus()
+                case DataSelected(_) =>
+                    unrollViewStackUntil(view)
+                    resetFocus()
+            private def setSelection(sel: Selection) =
+                teardown() // teardown the current focus
+                setup(sel) // setup the new focus
+                currentSelection = sel
+            private def toggle(sel: Selection) =
+                if currentSelection == sel then setSelection(None)
+                else setSelection(sel)
+            // automatically provide navigation logic when clicking on a bar
+            // should be implemented: what next view to produce for given data
+            protected def detailView(d: Data): Option[View]
+            override protected def onClick(d: Data): Unit = toggle(DataSelected(d))
+            // clicking on average -> highlight bars (usually those with high values)
+            // should be implemented to indicate which bars need to be highlighed
+            protected def highlightedDataKeys: Set[String]
+            override protected def onAverageClick(node: dom.Node) = toggle(AverageSelected)
+            // clicking on total -> open new view for domain
+            // should be implemented to offer a detail view for the domain
+            protected def domainView: Option[View]
+            override protected def onTotalClick(node: dom.Node) = toggle(TotalSelected)
+            // set the correct CSS class for the barchart
+            this.classed(className)
+        // expects a bar chart + method to fetch the latest data
+        val BarChart: NavigationBarChart
+        def data: Iterable[BarChart.Data]
+        // node = barchart node; refresh = barchart refresh
+        val node = BarChart.node
+        def refresh() = BarChart.loadDataSorted(data)
     }
 
     object ModuleView extends BarChartView:

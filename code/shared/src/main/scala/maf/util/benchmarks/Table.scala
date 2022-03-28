@@ -97,7 +97,7 @@ case class Table[V](data: Map[(String, String), V], default: Option[V]):
       ): List[List[String]] =
         val firstRow = rowName :: columns
         val otherRows = rows.foldRight(List[List[String]]()) { (row, restRows) =>
-          (row :: columns.map(col => format(this(row, col)))) :: restRows
+            (row :: columns.map(col => format(this(row, col)))) :: restRows
         }
         firstRow :: otherRows
 
@@ -122,8 +122,8 @@ case class Table[V](data: Map[(String, String), V], default: Option[V]):
       ): String =
         val headerStr = s"\\begin{table}\n\\center\n\\begin{tabular}{l${"c" * columns.length}}\n\\toprule\n"
         val content = extract(rows, columns, rowName, v => format(v).replace("_", "\\_").nn)
-          .map(_.mkString(" & "))
-          .mkString("", "\\\\\n", "\\\\\n")
+            .map(_.mkString(" & "))
+            .mkString("", "\\\\\n", "\\\\\n")
         val footerStr = "\\bottomrule\n\\end{tabular}\n\\end{table}"
         headerStr ++ content ++ footerStr
 
@@ -146,9 +146,9 @@ case class Table[V](data: Map[(String, String), V], default: Option[V]):
         rowName: String = "",
         format: V => String = _.toString()
       ): String =
-      extract(rows, columns, rowName, format)
-        .map(_.mkString(","))
-        .mkString("\n")
+        extract(rows, columns, rowName, format)
+            .map(_.mkString(","))
+            .mkString("\n")
 
     /**
      * Generate a string formatted as a table (useable for pretty printing)

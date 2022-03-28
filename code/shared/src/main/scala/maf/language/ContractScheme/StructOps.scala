@@ -20,21 +20,21 @@ case class StructInvalidArity(name: String, expected: Int, got: Int) extends Err
 class StructOps[Value](using lat: SchemeLattice[Value, Address], clsT: ClassTag[Value]):
     /** Can be inserted in the evaluation process to evaluate one of the expressions related to structs to values */
     def evaluate(exp: MakeStruct): Value =
-      exp match
-          case MakeStructConstr(tag, siz, _) =>
-            lat.structConstructor(StructConstructor(tag, siz))
+        exp match
+            case MakeStructConstr(tag, siz, _) =>
+                lat.structConstructor(StructConstructor(tag, siz))
 
-          // (_make_struct_getter tag idx)
-          case MakeStructGetter(tag, idx, _) =>
-            lat.structSetterGetter(StructSetterGetter(tag, idx, false))
+            // (_make_struct_getter tag idx)
+            case MakeStructGetter(tag, idx, _) =>
+                lat.structSetterGetter(StructSetterGetter(tag, idx, false))
 
-          // (_make_struct_setter tag idx)
-          case MakeStructSetter(tag, idx, _) =>
-            lat.structSetterGetter(StructSetterGetter(tag, idx, true))
+            // (_make_struct_setter tag idx)
+            case MakeStructSetter(tag, idx, _) =>
+                lat.structSetterGetter(StructSetterGetter(tag, idx, true))
 
-          // (make_struct_predicate tag)
-          case MakeStructPredicate(tag, _) =>
-            lat.structPredicate(StructPredicate(tag))
+            // (make_struct_predicate tag)
+            case MakeStructPredicate(tag, _) =>
+                lat.structPredicate(StructPredicate(tag))
 
     /** Call a setter, getter or constructor */
     def call[M[_]](op: Value, args: List[Value])(using monad: SchemePrimM[M, Address, Value]): Set[M[Value]] =
@@ -80,7 +80,7 @@ class StructOps[Value](using lat: SchemeLattice[Value, Address], clsT: ClassTag[
             assert(args.size == 1)
             val structArg = args(0)
             val nonOpq = lat.getStructs(structArg).map { struct =>
-              monad.unit(lat.bool(struct.tag == pred.tag))
+                monad.unit(lat.bool(struct.tag == pred.tag))
             }
 
             // If the struct is an opaque value, then it could be the struct of the correct type or filterNot
@@ -92,6 +92,6 @@ class StructOps[Value](using lat: SchemeLattice[Value, Address], clsT: ClassTag[
 
 object StructOps:
     def unapply(that: Any): Option[MakeStruct] =
-      that match
-          case ms: MakeStruct => Some(ms)
-          case _              => None
+        that match
+            case ms: MakeStruct => Some(ms)
+            case _              => None

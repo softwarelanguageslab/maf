@@ -25,7 +25,7 @@ object ScvInputGenerator:
      *   the program as a string
      */
     private def readProgram(path: String): String =
-      Reader.loadFile(path)
+        Reader.loadFile(path)
 
     /**
      * Replace the first line with <code>#lang reader random-scv</code> if that line starts with a <code>#lang</code>
@@ -62,8 +62,8 @@ object ScvInputGenerator:
         try s"racket ${tmpFile}".!!
         catch
             case e: Exception =>
-              println(s"$benchmark $e")
-              "(fail)"
+                println(s"$benchmark $e")
+                "(fail)"
 
     /** Write the given contents to a file */
     private def writeToFile(contents: String, path: String = ""): Unit =

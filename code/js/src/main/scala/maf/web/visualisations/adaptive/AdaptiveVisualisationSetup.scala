@@ -28,30 +28,30 @@ object AdaptiveVisualisationSetup extends VisualisationSetup:
     def createAnalysis(text: String) =
         val prg = SchemeParser.parseProgram(text)
         new AdaptiveModAnalysis(prg, rate = 100)
-          with AdaptiveSchemeModFSemantics
-          with AdaptiveContextSensitivity
-          with SchemeConstantPropagationDomain
-          with FIFOWorklistAlgorithm[SchemeExp]
-          with WebVisualisationAnalysisAdaptive[SchemeExp]
-          with WebSummaryAdaptiveAnalysis
-          with AdaptiveKCFA {
+            with AdaptiveSchemeModFSemantics
+            with AdaptiveContextSensitivity
+            with SchemeConstantPropagationDomain
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with WebVisualisationAnalysisAdaptive[SchemeExp]
+            with WebSummaryAdaptiveAnalysis
+            with AdaptiveKCFA {
 
-          override def intraAnalysis(cmp: Component) =
-            new AdaptiveSchemeModFIntra(cmp) with DependencyTrackingIntra
+            override def intraAnalysis(cmp: Component) =
+                new AdaptiveSchemeModFIntra(cmp) with DependencyTrackingIntra
 
-          type Module = SchemeModule
-          def moduleName(mdl: Module) = mdl.toString
+            type Module = SchemeModule
+            def moduleName(mdl: Module) = mdl.toString
 
-          // setup the budget
-          lazy val n = 100
-          lazy val t = 100
-          // log every step in the console
-          var step = 0
-          override def step(timeout: Timeout.T): Unit =
-              val cmp = workList.head
-              step += 1
-              println(s"[$step] Analysing ${view(cmp)}")
-              super.step(timeout)
+            // setup the budget
+            lazy val n = 100
+            lazy val t = 100
+            // log every step in the console
+            var step = 0
+            override def step(timeout: Timeout.T): Unit =
+                val cmp = workList.head
+                step += 1
+                println(s"[$step] Analysing ${view(cmp)}")
+                super.step(timeout)
         }
 
     def createVisualisation(
@@ -72,15 +72,15 @@ object AdaptiveVisualisationSetup extends VisualisationSetup:
     override def onClick(): Unit = () // don't do anything when clicking
 
     override def analysisCommandHandler(anl: Analysis) =
-      analysisCommandHandlerAdaptive(anl).orElse(super.analysisCommandHandler(anl))
+        analysisCommandHandlerAdaptive(anl).orElse(super.analysisCommandHandler(anl))
 
     private def analysisCommandHandlerAdaptive(anl: Analysis): PartialFunction[String, Unit] =
         case "a" | "A" => anl.adaptAnalysis()
         case "c" | "C" => stepUntilAdapt(anl)
 
     private def stepUntilAdapt(anl: Analysis): Unit =
-      if !anl.finished && !anl.willAdapt then
-          anl.step(Timeout.none)
-          js.timers.setTimeout(0) {
-            stepUntilAdapt(anl)
-          }
+        if !anl.finished && !anl.willAdapt then
+            anl.step(Timeout.none)
+            js.timers.setTimeout(0) {
+                stepUntilAdapt(anl)
+            }

@@ -16,16 +16,16 @@ object VerifyAssertions:
         val txt = Reader.loadFile(program)
         val prg = SchemeParser.parseProgram(txt)
         val analysis = new ModAnalysis(prg)
-          with SchemeModFSemanticsM
-          with SchemeAssertSemantics
-          with StandardSchemeModFComponents
-          with SchemeTypeDomain
-          with SchemeModFKCallSiteSensitivity
-          with LIFOWorklistAlgorithm[SchemeExp] {
-          val k = 2
+            with SchemeModFSemanticsM
+            with SchemeAssertSemantics
+            with StandardSchemeModFComponents
+            with SchemeTypeDomain
+            with SchemeModFKCallSiteSensitivity
+            with LIFOWorklistAlgorithm[SchemeExp] {
+            val k = 2
 
-          override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp) with AssertionModFIntra
+            override def intraAnalysis(cmp: Component) =
+                new IntraAnalysis(cmp) with AssertionModFIntra
         }
         analysis.analyzeWithTimeout(Timeout.none)
         val failed = analysis.assertionsFailed

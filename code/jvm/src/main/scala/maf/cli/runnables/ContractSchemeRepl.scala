@@ -13,7 +13,7 @@ import maf.util.benchmarks.Timeout
  */
 object ContractSchemeRepl:
     private def parseProgram(input: String): SchemeExp =
-      ContractSchemeParser.parse(input)
+        ContractSchemeParser.parse(input)
 
     def main(args: Array[String]): Unit =
         val interpreter = ContractSchemeInterpreter()
@@ -24,14 +24,14 @@ object ContractSchemeRepl:
             if input == ":q" then running = false
             else
                 try {
-                  val program = parseProgram(input)
-                  try {
-                    println(interpreter.run(program, Timeout.none))
-                  } catch {
-                    case e => println(s"unexpected error $e")
-                  }
+                    val program = parseProgram(input)
+                    try {
+                        println(interpreter.run(program, Timeout.none))
+                    } catch {
+                        case e => println(s"unexpected error $e")
+                    }
                 } catch {
-                  case e =>
-                    println(s"parse error $e")
-                    e.printStackTrace
+                    case e =>
+                        println(s"parse error $e")
+                        e.printStackTrace
                 }

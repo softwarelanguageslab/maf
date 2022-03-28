@@ -21,7 +21,7 @@ trait AdaptiveGlobalStore[Expr <: Expression] extends AdaptiveModAnalysis[Expr] 
         // TODO: can this be done in one go?
         store = adaptMap(adaptAddr, adaptValue)(store)
         oldDeps.collect { case (AddrDependency(oldAddr), oldCmps) =>
-          val oldValue = oldStore.getOrElse(oldAddr, lattice.bottom)
-          val newValue = store.getOrElse(adaptAddr(oldAddr), lattice.bottom)
-          if adaptValue(oldValue) != newValue then oldCmps.map(adaptComponent).foreach(addToWorkList)
+            val oldValue = oldStore.getOrElse(oldAddr, lattice.bottom)
+            val newValue = store.getOrElse(adaptAddr(oldAddr), lattice.bottom)
+            if adaptValue(oldValue) != newValue then oldCmps.map(adaptComponent).foreach(addToWorkList)
         }

@@ -33,25 +33,25 @@ trait AddressVisualisation extends WebVisualisation:
 
     def getNode(addr: analysis.Addr): AddrNode = adrNodesColl.get(addr) match
         case None =>
-          val newNode = new AddrNode(addr)
-          adrNodesColl += (addr -> newNode)
-          newNode
+            val newNode = new AddrNode(addr)
+            adrNodesColl += (addr -> newNode)
+            newNode
         case Some(existingNode) => existingNode
 
     override def refreshData(): Unit =
         super.refreshData()
         // Also add nodes for the addresses.
         analysis.store.keySet.foreach { addr =>
-          if !addr.isInstanceOf[PrmAddr] then
-              val node = getNode(addr)
-              nodesData += node
-              // Using the standard Global Store, we can only visualise read dependencies.
-              val readers: Set[analysis.Component] = analysis.deps(AddrDependency(addr))
-              readers.foreach { reader =>
-                  val readerNode = getNode(reader)
-                  val edge = getEdge(node, readerNode) // Edge from addr -> reader.
-                  edgesData += edge
-              }
+            if !addr.isInstanceOf[PrmAddr] then
+                val node = getNode(addr)
+                nodesData += node
+                // Using the standard Global Store, we can only visualise read dependencies.
+                val readers: Set[analysis.Component] = analysis.deps(AddrDependency(addr))
+                readers.foreach { reader =>
+                    val readerNode = getNode(reader)
+                    val edge = getEdge(node, readerNode) // Edge from addr -> reader.
+                    edgesData += edge
+                }
         }
 
     def deleteOnStep(component: analysis.Component): Unit
@@ -63,12 +63,12 @@ trait AddressVisualisation extends WebVisualisation:
         deleteOnStep(prevComponent)
         // Add the new edges.
         analysis.deps.filter(_._2.contains(prevComponent)).keySet.foreach {
-          case AddrDependency(addr) =>
-            val addrNode: AddrNode = getNode(addr)
-            val edge = getEdge(addrNode, readerNode)
-            nodesData += addrNode
-            edgesData += edge
-          case _ =>
+            case AddrDependency(addr) =>
+                val addrNode: AddrNode = getNode(addr)
+                val edge = getEdge(addrNode, readerNode)
+                nodesData += addrNode
+                edgesData += edge
+            case _ =>
         }
         oldReadDeps = analysis.deps // Avoid having to override stepAnalysis etc. by saving the new state of the dependencies.
 
@@ -76,10 +76,10 @@ trait AddressVisualisation extends WebVisualisation:
         super.classifyNodes()
         nodes.classed(__CSS_ADDRESS_NODE__,
                       (node: Node) =>
-                        node match {
-                          case _: AddrNode => true;
-                          case _           => false
-                        }
+                          node match {
+                              case _: AddrNode => true;
+                              case _           => false
+                          }
         )
 
     override def classifyEdges(): Unit =
@@ -103,11 +103,11 @@ trait RetainAll extends AddressRetentionPolicy:
     def deleteOnStep(cmp: analysis.Component): Unit =
         val readerNode = getNode(cmp)
         oldReadDeps.filter(_._2.contains(cmp)).keySet.foreach {
-          case AddrDependency(addr) =>
-            val addrNode: AddrNode = getNode(addr)
-            val edge = getEdge(addrNode, readerNode)
-            edgesData -= edge
-          case _ =>
+            case AddrDependency(addr) =>
+                val addrNode: AddrNode = getNode(addr)
+                val edge = getEdge(addrNode, readerNode)
+                edgesData -= edge
+            case _ =>
         }
 
 // Only shows the addresses read by the component last analysed.

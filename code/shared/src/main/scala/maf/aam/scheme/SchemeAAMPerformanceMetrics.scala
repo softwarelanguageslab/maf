@@ -18,17 +18,17 @@ trait AAMPeformanceMetrics[E <: Expression] extends AAMAnalysis[E]:
     private val collectedMetrics: Map[Metric, Double] = Map().withDefault(_ => 0.0)
 
     protected inline def report(metricType: Metric, value: Double): Unit =
-      collectedMetrics.update(metricType, value)
+        collectedMetrics.update(metricType, value)
 
     protected inline def increment(metricType: Metric): Unit =
-      collectedMetrics.updateWith(metricType) {
-        case Some(old) => Some(old + 1)
-        case None      => Some(1)
-      }
+        collectedMetrics.updateWith(metricType) {
+            case Some(old) => Some(old + 1)
+            case None      => Some(1)
+        }
 
     override def metrics: List[maf.modular.Metric] = List()
 
     def reportMetrics: List[(String, Double)] =
-      collectedMetrics.map { case (key, v) =>
-        (key.name, v)
-      }.toList
+        collectedMetrics.map { case (key, v) =>
+            (key.name, v)
+        }.toList

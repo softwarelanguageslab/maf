@@ -23,18 +23,18 @@ object AnalyzeProgram extends App:
         val a = analysis(text)
         print(s"Analysis of $bench ")
         try {
-          val time = Timer.timeOnly {
-            a.analyzeWithTimeout(timeout())
-            //println(a.program.prettyString())
-          }
-          println(s"terminated in ${time / 1000000} ms.")
-          //a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) }).foreach(println)
+            val time = Timer.timeOnly {
+                a.analyzeWithTimeout(timeout())
+                //println(a.program.prettyString())
+            }
+            println(s"terminated in ${time / 1000000} ms.")
+            //a.deps.toSet[(Dependency, Set[a.Component])].flatMap({ case (d, cmps) => cmps.map(c => (d, c).toString()) }).foreach(println)
         } catch {
-          case t: Throwable =>
-            println(s"raised exception.")
-            System.err.println(t.getMessage)
-            t.printStackTrace()
-            System.err.flush()
+            case t: Throwable =>
+                println(s"raised exception.")
+                System.err.println(t.getMessage)
+                t.printStackTrace()
+                System.err.flush()
         }
 
     val bench: List[String] = List(
@@ -45,38 +45,38 @@ object AnalyzeProgram extends App:
     def newStandardAnalysis(text: String) =
         val program = SchemeParser.parseProgram(text)
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with FIFOWorklistAlgorithm[SchemeExp] {
-          override def intraAnalysis(cmp: SchemeModFComponent) =
-            new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+            with SchemeModFNoSensitivity
+            with SchemeConstantPropagationDomain
+            with DependencyTracking[SchemeExp]
+            with FIFOWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     // Used by incremental analyses.
     def newNonIncAnalysis(program: SchemeExp) =
-      new ModAnalysis[SchemeExp](program)
-        with StandardSchemeModFComponents
-        with SchemeModFNoSensitivity
-        with SchemeModFSemanticsM
-        with LIFOWorklistAlgorithm[SchemeExp]
-        with BigStepModFSemantics
-        with SchemeTypeDomain
-        with GlobalStore[SchemeExp] {
-        var cnt = 0
-        override def run(timeout: Timeout.T) =
-            super.run(timeout)
-            println(cnt)
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra {
-          override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-              cnt = cnt + 1
-              super.analyzeWithTimeout(timeout)
+        new ModAnalysis[SchemeExp](program)
+            with StandardSchemeModFComponents
+            with SchemeModFNoSensitivity
+            with SchemeModFSemanticsM
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with BigStepModFSemantics
+            with SchemeTypeDomain
+            with GlobalStore[SchemeExp] {
+            var cnt = 0
+            override def run(timeout: Timeout.T) =
+                super.run(timeout)
+                println(cnt)
+            override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with GlobalStoreIntra {
+                override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+                    cnt = cnt + 1
+                    super.analyzeWithTimeout(timeout)
+            }
         }
-      }
 
     bench.foreach({ b =>
-      // for(i <- 1 to 10) {
-      //runAnalysis(b, program => SchemeAnalyses.kCFAAnalysis(program, 0), () => Timeout.start(Duration(2, MINUTES)))
-      runAnalysis(b, program => newNonIncAnalysis(program), () => Timeout.start(Duration(10, MINUTES)))
-      //  }
+        // for(i <- 1 to 10) {
+        //runAnalysis(b, program => SchemeAnalyses.kCFAAnalysis(program, 0), () => Timeout.start(Duration(2, MINUTES)))
+        runAnalysis(b, program => newNonIncAnalysis(program), () => Timeout.start(Duration(10, MINUTES)))
+        //  }
     })

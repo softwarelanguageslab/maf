@@ -38,11 +38,11 @@ trait RandomInputGenerator:
     given Monad[InputGeneratorM] with
         def unit[X](v: X): InputGeneratorM[X] = InputGeneratorM { _ => v }
         def flatMap[A, B](m: InputGeneratorM[A])(f: A => InputGeneratorM[B]): InputGeneratorM[B] = InputGeneratorM { alloc =>
-          f(m.run(alloc)).run(alloc)
+            f(m.run(alloc)).run(alloc)
         }
 
         def map[A, B](m: InputGeneratorM[A])(f: A => B): InputGeneratorM[B] = InputGeneratorM { alloc =>
-          f(m.run(alloc))
+            f(m.run(alloc))
         }
 
     /** The InputGenerator only needs to generate values, not arbitrary types */
@@ -96,136 +96,136 @@ class ContractSchemeInterpreter(
         if timeout.reached then throw new TimeoutException()
         e match
             case ContractSchemeMon(contract, expression, idn) =>
-              // first evaluate the contract
-              // then evaluate expression, and finally apply the contract on the expression
-              for
-                  evaluatedContract <- tailcall(eval(contract, env, timeout, version))
-                  evaluatedExpression <- tailcall(eval(expression, env, timeout, version))
-                  result <- tailcall(mon(evaluatedContract, evaluatedExpression, contract, expression, idn, timeout, version))
-              yield result
+                // first evaluate the contract
+                // then evaluate expression, and finally apply the contract on the expression
+                for
+                    evaluatedContract <- tailcall(eval(contract, env, timeout, version))
+                    evaluatedExpression <- tailcall(eval(expression, env, timeout, version))
+                    result <- tailcall(mon(evaluatedContract, evaluatedExpression, contract, expression, idn, timeout, version))
+                yield result
 
             case ContractSchemeFlatContract(expression, idn) =>
-              // evaluates to a flat contract
-              for evaluatedExpression <- tailcall(eval(expression, env, timeout, version))
-              yield ContractValue(ContractValues.Flat(evaluatedExpression, e, None, idn))
+                // evaluates to a flat contract
+                for evaluatedExpression <- tailcall(eval(expression, env, timeout, version))
+                yield ContractValue(ContractValues.Flat(evaluatedExpression, e, None, idn))
 
             case ContractSchemeDepContract(domains, rangeMaker, idn) =>
-              import TailrecUtil.*
-              // evaluates to a guard
-              for
-                  evaluatedDomains <- sequence(domains.map(domain => tailcall(eval(domain, env, timeout, version))))
-                  evaluatedRangeMaker <- tailcall(eval(rangeMaker, env, timeout, version))
-              yield ContractValue(ContractValues.Grd(evaluatedDomains, evaluatedRangeMaker, domains.map(_.idn), rangeMaker))
+                import TailrecUtil.*
+                // evaluates to a guard
+                for
+                    evaluatedDomains <- sequence(domains.map(domain => tailcall(eval(domain, env, timeout, version))))
+                    evaluatedRangeMaker <- tailcall(eval(rangeMaker, env, timeout, version))
+                yield ContractValue(ContractValues.Grd(evaluatedDomains, evaluatedRangeMaker, domains.map(_.idn), rangeMaker))
 
             case ContractSchemeCheck(flat, valueExpression, idn) =>
-              // a check applies the given flat contract as a function on the given value
-              for
-                  evaluatedFlat <- tailcall(eval(flat, env, timeout, version))
-                  evaluatedValue <- tailcall(eval(valueExpression, env, timeout, version))
-                  ret <- tailcall(mon(evaluatedFlat, evaluatedValue, flat, valueExpression, idn, timeout, version, isCheck = true))
-              yield ret
+                // a check applies the given flat contract as a function on the given value
+                for
+                    evaluatedFlat <- tailcall(eval(flat, env, timeout, version))
+                    evaluatedValue <- tailcall(eval(valueExpression, env, timeout, version))
+                    ret <- tailcall(mon(evaluatedFlat, evaluatedValue, flat, valueExpression, idn, timeout, version, isCheck = true))
+                yield ret
 
             // Structures
             case MakeStructConstr(tag, siz, idn) =>
-              done(ContractValue(ContractValues.StructConstructor(tag, siz)))
+                done(ContractValue(ContractValues.StructConstructor(tag, siz)))
 
             case MakeStructPredicate(tag, idn) =>
-              done(ContractValue(ContractValues.StructPredicate(tag)))
+                done(ContractValue(ContractValues.StructPredicate(tag)))
 
             case MakeStructGetter(tag, idx, idn) =>
-              done(ContractValue(ContractValues.StructSetterGetter(tag, idx, false)))
+                done(ContractValue(ContractValues.StructSetterGetter(tag, idx, false)))
 
             case MakeStructSetter(tag, idx, idn) =>
-              done(ContractValue(ContractValues.StructSetterGetter(tag, idx, true)))
+                done(ContractValue(ContractValues.StructSetterGetter(tag, idx, true)))
 
             case call @ SchemeFuncall(f, args, idn) =>
-              for
-                  fv <- tailcall(eval(f, env, timeout, version))
-                  argsv <- evalArgs(args, env, timeout, version)
-                  res <- applyFun(fv, call, argsv, args, idn, timeout, version)
-              yield res
+                for
+                    fv <- tailcall(eval(f, env, timeout, version))
+                    argsv <- evalArgs(args, env, timeout, version)
+                    res <- applyFun(fv, call, argsv, args, idn, timeout, version)
+                yield res
 
             // match expression
             case MatchExpr(value, clauses, _) =>
-              for
-                  evaluatedValue <- eval(value, env, timeout, version)
-                  // create a matcher for trying the clauses
-                  matcher = Matcher(evaluatedValue, (exp) => eval(exp, env, timeout, version).result)
-                  // try the clauses in order, if one matches then the expression is evaluated
-                  ret <- tryClauses(env, timeout, version, clauses, matcher)
-              yield ret
+                for
+                    evaluatedValue <- eval(value, env, timeout, version)
+                    // create a matcher for trying the clauses
+                    matcher = Matcher(evaluatedValue, (exp) => eval(exp, env, timeout, version).result)
+                    // try the clauses in order, if one matches then the expression is evaluated
+                    ret <- tryClauses(env, timeout, version, clauses, matcher)
+                yield ret
 
             // provide contract/out
             case ContractSchemeProvide(outs, idn) =>
-              // map over all the contracts and execute those that have primitive contracts
-              // with generated values. This is a rather incomplete strategy as some inputs might
-              // be missed that cause certain program paths to be executed.
-              //
-              // In terms of soundness this might cause the analysis to be marked as "sound" while it does not
-              // soundly overapproximate the programs concrete semantics.
-              //
-              // However, for precision, this is sufficient. The concrete analyis provides a worst case (lower bound) on the
-              // precision of the analysis: i.e., if the program does not concretely execute certain program paths but the
-              // static analyser does interpret them abstractly then the "distance" between the results of the concrete
-              // execution and the static analysis will be larger.
-              sequence(outs.map { case ContractSchemeContractOut(name, contract, idn) =>
-                for
-                    // the name of the contract should refer to a bound identifier in the environment
-                    v <- done(lookupStore(env.get(name.name).get))
-                    // evaluate the contract as well (even if we do not use its value, we must execute it for its side-effects)
-                    vcontract <- eval(contract, env, timeout, version)
-                    // generate a random value for the given function using the input generator
-                    // if one of the input fail, then simply do not execute the "provide" (todo: check if this generates sufficient line coverage)
-                    vlus = generator.map(_.generateInput(name.name)).getOrElse(List())
-                    // check if we can apply the given value (if the contract represents a function, then we apply the value as a function) ;
-                    // it we have an insufficient number of arguments we simply not execute the function
-                    _ <- vcontract match
-                        case ConcreteValues.ContractValue(ContractValues.Grd(domains, _, domainIdns, _)) =>
-                          if vlus.size < domains.size then done(ConcreteValues.Value.Nil)
-                          else
-                              // the input file might accidentily contain too many values
-                              val actualVlus = vlus.take(domains.size).zip(domainIdns) map {
-                                // the primitives expect pairs to be allocated in the store, so we make sure they are
-                                case (v, idn) =>
-                                  v.run(new Allocator {
-                                    def alloc(vlu: ConcreteValues.Value): Value.Pointer =
-                                      allocateVal(SchemeValue(maf.language.sexp.Value.Nil, idn), vlu, true)
-                                  })
-                              }
-                              // we don't actually have syntactic function call arguments, so we synthesize them here.
-                              val synArgs = actualVlus.zip(domainIdns).map { case (_, idn) => SchemeValue(maf.language.sexp.Value.Nil, idn) }
-                              // we also don't have an operator, so we will use the identifier from the provide contract-out
-                              val synOperator = SchemeVar(name)
-                              // now we can make the function call
-                              val call = SchemeFuncall(synOperator, synArgs, idn)
-                              applyFun(v, call, actualVlus, synArgs, idn, timeout, version)
-                        case _ =>
-                          // any other value does not represent a function and does not need to be applied
-                          // TODO: check the contracts on exported values (monitored by a flat contract)
-                          done(ConcreteValues.Value.Nil)
-                yield ConcreteValues.Value.Nil
-              }).flatMap(_ => done(ConcreteValues.Value.Nil))
+                // map over all the contracts and execute those that have primitive contracts
+                // with generated values. This is a rather incomplete strategy as some inputs might
+                // be missed that cause certain program paths to be executed.
+                //
+                // In terms of soundness this might cause the analysis to be marked as "sound" while it does not
+                // soundly overapproximate the programs concrete semantics.
+                //
+                // However, for precision, this is sufficient. The concrete analyis provides a worst case (lower bound) on the
+                // precision of the analysis: i.e., if the program does not concretely execute certain program paths but the
+                // static analyser does interpret them abstractly then the "distance" between the results of the concrete
+                // execution and the static analysis will be larger.
+                sequence(outs.map { case ContractSchemeContractOut(name, contract, idn) =>
+                    for
+                        // the name of the contract should refer to a bound identifier in the environment
+                        v <- done(lookupStore(env.get(name.name).get))
+                        // evaluate the contract as well (even if we do not use its value, we must execute it for its side-effects)
+                        vcontract <- eval(contract, env, timeout, version)
+                        // generate a random value for the given function using the input generator
+                        // if one of the input fail, then simply do not execute the "provide" (todo: check if this generates sufficient line coverage)
+                        vlus = generator.map(_.generateInput(name.name)).getOrElse(List())
+                        // check if we can apply the given value (if the contract represents a function, then we apply the value as a function) ;
+                        // it we have an insufficient number of arguments we simply not execute the function
+                        _ <- vcontract match
+                            case ConcreteValues.ContractValue(ContractValues.Grd(domains, _, domainIdns, _)) =>
+                                if vlus.size < domains.size then done(ConcreteValues.Value.Nil)
+                                else
+                                    // the input file might accidentily contain too many values
+                                    val actualVlus = vlus.take(domains.size).zip(domainIdns) map {
+                                        // the primitives expect pairs to be allocated in the store, so we make sure they are
+                                        case (v, idn) =>
+                                            v.run(new Allocator {
+                                                def alloc(vlu: ConcreteValues.Value): Value.Pointer =
+                                                    allocateVal(SchemeValue(maf.language.sexp.Value.Nil, idn), vlu, true)
+                                            })
+                                    }
+                                    // we don't actually have syntactic function call arguments, so we synthesize them here.
+                                    val synArgs = actualVlus.zip(domainIdns).map { case (_, idn) => SchemeValue(maf.language.sexp.Value.Nil, idn) }
+                                    // we also don't have an operator, so we will use the identifier from the provide contract-out
+                                    val synOperator = SchemeVar(name)
+                                    // now we can make the function call
+                                    val call = SchemeFuncall(synOperator, synArgs, idn)
+                                    applyFun(v, call, actualVlus, synArgs, idn, timeout, version)
+                            case _ =>
+                                // any other value does not represent a function and does not need to be applied
+                                // TODO: check the contracts on exported values (monitored by a flat contract)
+                                done(ConcreteValues.Value.Nil)
+                    yield ConcreteValues.Value.Nil
+                }).flatMap(_ => done(ConcreteValues.Value.Nil))
 
             case _ => super.eval(e, env, timeout, version)
 
     private def tryClauses(env: Env, timeout: Timeout.T, version: Version, clauses: List[MatchExprClause], matcher: Matcher): TailRec[Value] =
-      clauses match
-          case List() => throw ContractSchemeNoMatchClauseMatched()
-          case clause :: rest =>
-            if matcher.matches(clause.pat) then
-                val newBindings = matcher.resolveBindings
-                // if it matches we need to extend the environment and sotre with the given bindings
-                val newEnv = newBindings.foldLeft(env)((env, binding) =>
-                    val addr = newAddr(AddrInfo.VarAddr(binding._1))
-                    extendStore(addr, binding._2)
-                    env + (binding._1.name -> addr)
-                )
-                // then evaluate the value of the clause
-                evalSequence(clause.expr, newEnv, timeout, version)
-            else tryClauses(env, timeout, version, rest, matcher)
+        clauses match
+            case List() => throw ContractSchemeNoMatchClauseMatched()
+            case clause :: rest =>
+                if matcher.matches(clause.pat) then
+                    val newBindings = matcher.resolveBindings
+                    // if it matches we need to extend the environment and sotre with the given bindings
+                    val newEnv = newBindings.foldLeft(env)((env, binding) =>
+                        val addr = newAddr(AddrInfo.VarAddr(binding._1))
+                        extendStore(addr, binding._2)
+                        env + (binding._1.name -> addr)
+                    )
+                    // then evaluate the value of the clause
+                    evalSequence(clause.expr, newEnv, timeout, version)
+                else tryClauses(env, timeout, version, rest, matcher)
 
     private def checkArity[T](argsv: List[T], expected: Int): Unit =
-      if expected != argsv.size then throw ContractSchemeInvalidArity(argsv.size, expected)
+        if expected != argsv.size then throw ContractSchemeInvalidArity(argsv.size, expected)
 
     private val opToPrimMapping: Map[SchemeOp, String] = Map(
       SchemeOp.IsReal -> "real?",
@@ -243,9 +243,9 @@ class ContractSchemeInterpreter(
         val signature = OpqOps.signatures(p)
         val ops = OpqOps.symbolicContracts(signature, argsv.map(_ => ()))
         ops.zip(argsv).zip(args).foreach { case ((op, argv), arg) =>
-          Primitives.allPrimitives(opToPrimMapping(op)).call(call, List((arg, argv))) match
-              case ConcreteValues.Value.Bool(b) if !b => throw new ContractSchemeBlame(call.idn, arg.idn, Some(idn))
-              case _                                  => ()
+            Primitives.allPrimitives(opToPrimMapping(op)).call(call, List((arg, argv))) match
+                case ConcreteValues.Value.Bool(b) if !b => throw new ContractSchemeBlame(call.idn, arg.idn, Some(idn))
+                case _                                  => ()
         }
 
     override def applyFun(
@@ -259,52 +259,52 @@ class ContractSchemeInterpreter(
       ): TailRec[Value] = f match
         // Application of monitored functions
         case ContractValue(Arr(_, _, contract, f, _)) =>
-          for
-              // first apply the range maker on the input arguments
-              // TODO: call is not entirely correct in this context, probably needs to be synthesized
-              rangeContract <- tailcall(applyFun(contract.rangeMaker, call, argsv, args, idn, timeout, version))
-              _ = checkArity(argsv, contract.domain.size)
-              // then check whether the domain contract holds on the arguments
-              checkedArguments <- sequence(argsv.zip(contract.domain).zip(args).map { case ((argv, contract), arg) =>
-                tailcall(mon(contract, argv, call, arg, idn, timeout, version))
-              })
-              // after all checks have been performed evaluate the actual function
-              ret <- tailcall(applyFun(f, call, argsv, args, idn, timeout, version))
-              // then check the range contract on the return value
-              // TODO: call is not entirely correct in this context, probably needs to be synthesized
-              checkedRet <- tailcall(mon(rangeContract, ret, call, call, NoCodeIdentityDebug, timeout, version))
-          yield checkedRet
+            for
+                // first apply the range maker on the input arguments
+                // TODO: call is not entirely correct in this context, probably needs to be synthesized
+                rangeContract <- tailcall(applyFun(contract.rangeMaker, call, argsv, args, idn, timeout, version))
+                _ = checkArity(argsv, contract.domain.size)
+                // then check whether the domain contract holds on the arguments
+                checkedArguments <- sequence(argsv.zip(contract.domain).zip(args).map { case ((argv, contract), arg) =>
+                    tailcall(mon(contract, argv, call, arg, idn, timeout, version))
+                })
+                // after all checks have been performed evaluate the actual function
+                ret <- tailcall(applyFun(f, call, argsv, args, idn, timeout, version))
+                // then check the range contract on the return value
+                // TODO: call is not entirely correct in this context, probably needs to be synthesized
+                checkedRet <- tailcall(mon(rangeContract, ret, call, call, NoCodeIdentityDebug, timeout, version))
+            yield checkedRet
 
         // Structures
         case ContractValue(StructConstructor(tag, size)) =>
-          done(ContractValue(ContractValues.Struct(tag, ArrayEq.from(argsv))))
+            done(ContractValue(ContractValues.Struct(tag, ArrayEq.from(argsv))))
 
         case ContractValue(StructSetterGetter(tag, idx, isSetter)) =>
-          if isSetter then
-              checkArity(argsv, 2)
-              argsv(0) match
-                  case ContractValue(ContractValues.Struct(tag, fields: ArrayEq[Value])) =>
-                    fields.update(idx, argsv(1).asInstanceOf)
-                    done(Value.Nil)
+            if isSetter then
+                checkArity(argsv, 2)
+                argsv(0) match
+                    case ContractValue(ContractValues.Struct(tag, fields: ArrayEq[Value])) =>
+                        fields.update(idx, argsv(1).asInstanceOf)
+                        done(Value.Nil)
 
-                  case v => throw ContractSchemeTypeError(s"expected a struct but got $v at ${call.idn}")
-          else
-              checkArity(argsv, 1)
-              argsv(0) match
-                  case ContractValue(ContractValues.Struct(tag, fields)) => done(fields(idx))
-                  case v => throw ContractSchemeTypeError(s"expected a struct but got $v at ${call.idn}")
+                    case v => throw ContractSchemeTypeError(s"expected a struct but got $v at ${call.idn}")
+            else
+                checkArity(argsv, 1)
+                argsv(0) match
+                    case ContractValue(ContractValues.Struct(tag, fields)) => done(fields(idx))
+                    case v => throw ContractSchemeTypeError(s"expected a struct but got $v at ${call.idn}")
 
         case ContractValue(StructPredicate(tag)) =>
-          checkArity(argsv, 1)
-          argsv(0) match
-              case ContractValue(ContractValues.Struct(actualTag, _)) => done(Value.Bool(tag == actualTag))
-              case v                                                  => done(Value.Bool(false))
+            checkArity(argsv, 1)
+            argsv(0) match
+                case ContractValue(ContractValues.Struct(actualTag, _)) => done(Value.Bool(tag == actualTag))
+                case v                                                  => done(Value.Bool(false))
 
         case Value.Primitive(p) =>
-          for
-              _ <- done(checkPrimitiveContracts(p, call, args, argsv, idn))
-              result <- super.applyFun(f, call, argsv, args, idn, timeout, version)
-          yield result
+            for
+                _ <- done(checkPrimitiveContracts(p, call, args, argsv, idn))
+                result <- super.applyFun(f, call, argsv, args, idn, timeout, version)
+            yield result
 
         case _ => super.applyFun(f, call, argsv, args, idn, timeout, version)
 
@@ -331,34 +331,34 @@ class ContractSchemeInterpreter(
         version: Version,
         isCheck: Boolean = false,
       ): TailRec[Value] =
-      // first try to see what type the contract value is
-      contractv match
-          case ContractValue(ContractValues.Flat(flatv, _, _, _)) =>
-            // it is a flat contract, so we must apply the inner function value, if return value is true the monitored value is returned, otherwise an error is thrown
-            for
-                ret <- tailcall(applyFun(flatv, SchemeFuncall(contract, List(arg), monIdn), List(value), List(arg), monIdn, timeout, version))
-                vlu = ret match
-                    case Value.Bool(b) if !b =>
-                      if isCheck then Value.Bool(false) else throw new ContractSchemeBlame(contract.idn, arg.idn, Some(monIdn))
-                    case _ => if isCheck then Value.Bool(true) else value
-            yield vlu
+        // first try to see what type the contract value is
+        contractv match
+            case ContractValue(ContractValues.Flat(flatv, _, _, _)) =>
+                // it is a flat contract, so we must apply the inner function value, if return value is true the monitored value is returned, otherwise an error is thrown
+                for
+                    ret <- tailcall(applyFun(flatv, SchemeFuncall(contract, List(arg), monIdn), List(value), List(arg), monIdn, timeout, version))
+                    vlu = ret match
+                        case Value.Bool(b) if !b =>
+                            if isCheck then Value.Bool(false) else throw new ContractSchemeBlame(contract.idn, arg.idn, Some(monIdn))
+                        case _ => if isCheck then Value.Bool(true) else value
+                yield vlu
 
-          case ContractValue(c: ContractValues.Grd[Value]) if isProcedure(value) =>
-            done(ContractValue(ContractValues.Arr[Value](contract.idn, arg.idn, c, value)))
-          case _ if isProcedure(contractv) =>
-            // a procedure can be turned into a flat contract
-            mon(
-              ContractValue(ContractValues.Flat(contractv, ContractSchemeFlatContract(contract, contract.idn), None, contract.idn)),
-              value,
-              contract,
-              arg,
-              monIdn,
-              timeout,
-              version
-            )
+            case ContractValue(c: ContractValues.Grd[Value]) if isProcedure(value) =>
+                done(ContractValue(ContractValues.Arr[Value](contract.idn, arg.idn, c, value)))
+            case _ if isProcedure(contractv) =>
+                // a procedure can be turned into a flat contract
+                mon(
+                  ContractValue(ContractValues.Flat(contractv, ContractSchemeFlatContract(contract, contract.idn), None, contract.idn)),
+                  value,
+                  contract,
+                  arg,
+                  monIdn,
+                  timeout,
+                  version
+                )
 
-          // everything else is an invalid monitor
-          case _ =>
-            throw ContractSchemeTypeError(s"cannot monitor value $value using $contract")
+            // everything else is an invalid monitor
+            case _ =>
+                throw ContractSchemeTypeError(s"cannot monitor value $value using $contract")
 
 end ContractSchemeInterpreter

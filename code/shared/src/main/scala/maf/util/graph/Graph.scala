@@ -56,7 +56,7 @@ trait Graph[G, N <: GraphElement, E <: GraphElement]:
 
     /** Add multiple edges at a time */
     def addEdges(g: G, l: Iterable[(N, E, N)]): G =
-      l.foldLeft(g)({ case (g, (n1, e, n2)) => addEdge(g, n1, e, n2) })
+        l.foldLeft(g)({ case (g, (n1, e, n2)) => addEdge(g, n1, e, n2) })
 
     /** Remove a node from the graph */
     def removeNode(g: G, node: N): G
@@ -83,7 +83,7 @@ trait Graph[G, N <: GraphElement, E <: GraphElement]:
 
 object Graph:
     def apply[G, N <: GraphElement, E <: GraphElement]()(implicit g: Graph[G, N, E]): Graph[G, N, E] =
-      g
+        g
 
     implicit class GraphOps[G, N <: GraphElement, E <: GraphElement](
         g: G

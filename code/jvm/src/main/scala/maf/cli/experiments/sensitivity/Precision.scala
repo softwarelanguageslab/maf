@@ -22,25 +22,25 @@ object PrecisionComparison
       ConstantPropagation.Sym
     ]:
     val benchmarks =
-      SchemeBenchmarkPrograms.gabriel ++
-        List(
-          "test/R5RS/mceval.scm"
-        )
+        SchemeBenchmarkPrograms.gabriel ++
+            List(
+              "test/R5RS/mceval.scm"
+            )
 
     var path: String = "<none>"
 
     // The base analysis
     def baseAnalysis(prg: SchemeExp): Analysis =
-      new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp]
+        new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with LIFOWorklistAlgorithm[SchemeExp]
 
     // The analysis with improved precision
     def improvedAnalysis(prg: SchemeExp): Analysis =
-      new SimpleSchemeModFAnalysis(prg)
-        with SchemeModFUserGuidedSensitivity1
-        with SchemeConstantPropagationDomain
-        with LIFOWorklistAlgorithm[SchemeExp] {
-        override def toString() = "Improved"
-      }
+        new SimpleSchemeModFAnalysis(prg)
+            with SchemeModFUserGuidedSensitivity1
+            with SchemeConstantPropagationDomain
+            with LIFOWorklistAlgorithm[SchemeExp] {
+            override def toString() = "Improved"
+        }
 
     def otherAnalyses() = List((improvedAnalysis, "Improved"))
 
@@ -57,7 +57,7 @@ object PrecisionComparison
         val Terminated(abs) = runAnalysis(baseAnalysis, "base analysis", prg, path)
         val allKeys = con.keys ++ abs.keys
         allKeys.foreach { k =>
-          println(s"$k -> ${abs.getOrElse(k, "⊥")} ; ${con.getOrElse(k, "⊥")} ")
+            println(s"$k -> ${abs.getOrElse(k, "⊥")} ; ${con.getOrElse(k, "⊥")} ")
         }
 
     def runBenchmarks() =

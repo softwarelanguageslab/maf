@@ -15,8 +15,8 @@ trait MutableIndirectComponents[Expr <: Expression] extends IndirectComponents[E
      */
     def updateCPtr(cmp: ComponentData, ptr: ComponentPointer): Unit =
         cMap
-          .get(ptr.addr)
-          .foreach(oldC => cMapR = cMapR - oldC) // If the component was already registered, remove it from cMapR so that it can be gc'ed.
+            .get(ptr.addr)
+            .foreach(oldC => cMapR = cMapR - oldC) // If the component was already registered, remove it from cMapR so that it can be gc'ed.
         register(cmp, ptr.addr)
 
     /** Allows to replace the data of a component with new data. */

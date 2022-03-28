@@ -39,6 +39,14 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     /** Updates the provenance information for a specific component and address. */
     def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit = provenance = provenance + (addr -> (provenance(addr) + (cmp -> value)))
 
+    /*
+    TODO Only update the provenance if the value is not bottom? Or remove the provenance when the value has become bottom?
+        // This is needed because the same happens for the store.
+        // If we allow bottom to be written as part of the provenance,
+        // then this will lead to a key not found error in deleteProvenance since the key (addr) might not be in the store.
+        // Currently solved by using getOrElse.
+    */
+
     /* ******************************************** */
     /* ***** Managing cyclic value provenance ***** */
     /* ******************************************** */
@@ -59,7 +67,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     var SCAs: Map[SCA, Value] = Map()
 
     def computeSCAs(): Set[SCA] =
-      Tarjan.scc[Addr](store.keySet, dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
+        Tarjan.scc[Addr](store.keySet, dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
 
     /*
     /**
@@ -140,8 +148,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         provenance += (addr -> (provenance(addr) - cmp))
         // Compute the new value for the address and update it in the store.
         val value: Value = provenanceValue(addr)
-        if configuration.checkAsserts then assert(lattice.subsumes(inter.store(addr), value)) // The new value can never be greater than the old value.
-        if value != inter.store(addr) then
+        if configuration.checkAsserts then assert(lattice.subsumes(inter.store.getOrElse(addr, lattice.bottom), value)) // The new value can never be greater than the old value.
+        if value != inter.store.getOrElse(addr, lattice.bottom) then
             trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
             // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
             if provenance(addr).isEmpty then deleteAddress(addr)
@@ -305,7 +313,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
          *   were written but for which the store did not change. This is needed to handle strictly anti-monotonic changes.
          */
         def doWriteIncremental(): Unit = intraProvenance.foreach({ case (addr, value) =>
-          if updateAddrInc(component, addr, value) then inter.trigger(AddrDependency(addr))
+            if updateAddrInc(component, addr, value) then inter.trigger(AddrDependency(addr))
         })
 
         /** Refines values in the store that are no longer written to by a component. */

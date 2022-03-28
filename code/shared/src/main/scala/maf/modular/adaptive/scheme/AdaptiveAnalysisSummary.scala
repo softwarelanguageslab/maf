@@ -17,15 +17,15 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics with SchemeMod
     case class AnalysisSummary(content: Map[SchemeModule, ModuleSummary], depFns: Map[Dependency, Set[SchemeModule]]):
         def apply(fn: SchemeModule) = content(fn)
         def get(fn: SchemeModule) =
-          content.getOrElse(fn, ModuleSummary.empty)
+            content.getOrElse(fn, ModuleSummary.empty)
         def addComponent(cmp: Component): AnalysisSummary =
-          addComponent(module(cmp), cmp)
+            addComponent(module(cmp), cmp)
         def addComponent(fun: SchemeModule, cmp: Component): AnalysisSummary =
             val prv = this.get(fun)
             val upd = prv.addComponent(cmp)
             AnalysisSummary(content + (fun -> upd), depFns)
         def addDependency(cmp: Component, dep: Dependency): AnalysisSummary =
-          addDependency(module(cmp), cmp, dep)
+            addDependency(module(cmp), cmp, dep)
         def addDependency(
             fun: SchemeModule,
             cmp: Component,
@@ -40,11 +40,11 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics with SchemeMod
         def clearDependency(dep: Dependency) =
             val fns = depFns(dep)
             val upd = fns.foldLeft(content) { (acc, fun) =>
-              acc + (fun -> acc(fun).clearDependency(dep))
+                acc + (fun -> acc(fun).clearDependency(dep))
             }
             AnalysisSummary(upd, depFns - dep)
         def clearDependencies(deps: Iterable[Dependency]) =
-          deps.foldLeft(this)((acc, dep) => acc.clearDependency(dep))
+            deps.foldLeft(this)((acc, dep) => acc.clearDependency(dep))
 
     object AnalysisSummary:
         def empty = AnalysisSummary(Map.empty, Map.empty)
@@ -67,9 +67,9 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics with SchemeMod
         def depCounts = content.values.reduce(_ ++ _) // only safe if cost > 0
         def apply(cmp: Component) = content(cmp)
         def addComponent(cmp: Component) =
-          ModuleSummary(content + (cmp -> MultiSet.empty), depCmps, totalDepCount)
+            ModuleSummary(content + (cmp -> MultiSet.empty), depCmps, totalDepCount)
         def addDependency(cmp: Component, dep: Dependency) =
-          ModuleSummary(content + (cmp -> (content(cmp) + dep)), depCmps + (dep -> (depCmps.getOrElse(dep, Set.empty) + cmp)), totalDepCount + 1)
+            ModuleSummary(content + (cmp -> (content(cmp) + dep)), depCmps + (dep -> (depCmps.getOrElse(dep, Set.empty) + cmp)), totalDepCount + 1)
         def clearDependency(dep: Dependency) =
             val cps = depCmps(dep)
             val (upd, cnt) = cps.foldLeft((content, totalDepCount)) { (acc, cmp) =>
@@ -84,7 +84,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics with SchemeMod
         def empty = ModuleSummary(Map.empty, Map.empty, 0)
 
     private def adaptAnalysisSummary(as: AnalysisSummary): AnalysisSummary =
-      AnalysisSummary(adaptMap(adaptModuleSummary)(as.content), adaptMap(adaptDep, (s: Set[SchemeModule]) => s)(as.depFns))
+        AnalysisSummary(adaptMap(adaptModuleSummary)(as.content), adaptMap(adaptDep, (s: Set[SchemeModule]) => s)(as.depFns))
     private def adaptModuleSummary(ms: ModuleSummary): ModuleSummary =
         val updated = adaptMap(adaptComponent, adaptMultiSet(adaptDep, Math.max))(ms.content)(MonoidInstances.multiSetMaxMonoid)
         ModuleSummary(updated, adaptMap(adaptDep, adaptSet(adaptComponent))(ms.depCmps), updated.values.map(_.cardinality).sum)
@@ -98,7 +98,7 @@ trait AdaptiveAnalysisSummary extends AdaptiveSchemeModFSemantics with SchemeMod
     // update the summary each time a dependency triggers a component
     override def trigger(dep: Dependency) =
         deps.getOrElse(dep, Set.empty).foreach { cmp =>
-          summary = summary.addDependency(cmp, dep)
+            summary = summary.addDependency(cmp, dep)
         }
         super.trigger(dep)
     // correctly update the summary after adaptation

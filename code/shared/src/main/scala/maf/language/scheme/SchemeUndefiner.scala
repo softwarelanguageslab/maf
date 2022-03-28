@@ -41,7 +41,7 @@ trait UndefinerTester:
      * This function returns true if a define is in the wrong context.
      */
     protected def check(s: List[SchemeExp], allowed: Boolean): Result =
-      s.foldLeft[Result](NoError(allowed))(_ || check(_, allowed))
+        s.foldLeft[Result](NoError(allowed))(_ || check(_, allowed))
 
     /**
      * Checks wether the given variable denotes an annotation.
@@ -49,7 +49,7 @@ trait UndefinerTester:
      * Annotations are currently used as sensitivity annoations, and start with "@"
      */
     private def isAnnotation(vrr: SchemeVarExp): Boolean =
-      vrr.id.name.startsWith("@")
+        vrr.id.name.startsWith("@")
 
     /**
      * Checks the given list as a sequence of expressions.
@@ -60,100 +60,100 @@ trait UndefinerTester:
         given allowedB: Boolean = allowed
         s match
             case (SchemeDefineVariable(name, value, idn)) :: rest =>
-              if allowed then check(value, false) || checkSequence(rest)(true) else Error(idn)
+                if allowed then check(value, false) || checkSequence(rest)(true) else Error(idn)
             case (e @ SchemeBegin(_, _)) :: rest =>
-              check(e, allowed) ||> checkSequence(rest)
+                check(e, allowed) ||> checkSequence(rest)
             case (e @ SchemeCodeChange(nw, old, _)) :: rest =>
-              // ignore the old expression (TODO verify)
-              check(nw, allowed) ||> checkSequence(rest)
+                // ignore the old expression (TODO verify)
+                check(nw, allowed) ||> checkSequence(rest)
 
             case (vrr: SchemeVarExp) :: rest if isAnnotation(vrr) =>
-              // annotations of the form @... are ignored as expressions
-              checkSequence(rest)(allowed)
+                // annotations of the form @... are ignored as expressions
+                checkSequence(rest)(allowed)
 
             case x :: xs =>
-              check(x, false) ||> checkSequence(xs)
+                check(x, false) ||> checkSequence(xs)
 
             case Nil =>
-              NoError(allowed)
+                NoError(allowed)
 
     /** Checks whether the given expression contains defines in invalid contexts */
     protected def check(s: SchemeExp, allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
             case SchemeLambda(name, args, body, ann, idn) =>
-              checkSequence(body)(true)
+                checkSequence(body)(true)
 
             case SchemeVarArgLambda(name, args, vararg, body, ann, idn) =>
-              checkSequence(body)(true)
+                checkSequence(body)(true)
 
             case SchemeFuncall(f, args, idn) =>
-              check(f, false)
+                check(f, false)
 
             case SchemeIf(cond, cons, alt, idn) =>
-              check(cond, false) || check(cons, false) || check(alt, false)
+                check(cond, false) || check(cons, false) || check(alt, false)
 
             case SchemeLet(bindings, body, idn) =>
-              bindings.map(_._2).foldLeft[Result](false)(_ || check(_, false)) || checkSequence(body)(true)
+                bindings.map(_._2).foldLeft[Result](false)(_ || check(_, false)) || checkSequence(body)(true)
 
             case SchemeLetStar(bindings, body, idn) =>
-              bindings.map(_._2).foldLeft[Result](false)(_ || check(_, false)) || checkSequence(body)(true)
+                bindings.map(_._2).foldLeft[Result](false)(_ || check(_, false)) || checkSequence(body)(true)
 
             case SchemeLetrec(bindings, body, idn) =>
-              bindings.map(_._2).foldLeft[Result](false)(_ || check(_, false)) || checkSequence(body)(true)
+                bindings.map(_._2).foldLeft[Result](false)(_ || check(_, false)) || checkSequence(body)(true)
 
             case SchemeSet(variable, value, idn) =>
-              check(value, false)
+                check(value, false)
 
             case SchemeSetLex(variable, lexAddr, value, idn) =>
-              check(value, false)
+                check(value, false)
 
             case SchemeBegin(exps, idn) =>
-              checkSequence(exps)(allowed)
+                checkSequence(exps)(allowed)
 
             case SchemeDefineVariable(name, value, idn) =>
-              if allowed then check(value, false) else Error(idn)
+                if allowed then check(value, false) else Error(idn)
 
             case SchemeVar(id)            => false
             case SchemeVarLex(id, lexAdr) => false
             case SchemeValue(value, idn)  => false
             case SchemeAssert(exp, _) =>
-              check(exp, false)
+                check(exp, false)
 
             // CScheme
             case CSchemeFork(body, _) =>
-              check(body, false) // TODO: check if this is correct. Defines allowed at the start of the body
+                check(body, false) // TODO: check if this is correct. Defines allowed at the start of the body
             case CSchemeJoin(texp, _) =>
-              check(texp, false)
+                check(texp, false)
 
             // Change expressions
             case SchemeCodeChange(old, nw, _) =>
-              // ignore the old expression while checking (TODO: verify)
-              check(nw, allowed)
+                // ignore the old expression while checking (TODO: verify)
+                check(nw, allowed)
 
             // ContractScheme
             case ContractSchemeDepContract(domains, rangeMaker, _) =>
-              domains.foldLeft[Result](false)(_ || check(_, false)) || check(rangeMaker, false)
+                domains.foldLeft[Result](false)(_ || check(_, false)) || check(rangeMaker, false)
             case ContractSchemeFlatContract(expression, _) =>
-              check(expression, false)
+                check(expression, false)
             case ContractSchemeMon(contract, expression, _) =>
-              check(contract, false) || check(expression, false)
+                check(contract, false) || check(expression, false)
             case ContractSchemeDefineContract(name, params, contract, expression, _) =>
-              if allowed then check(contract, false) || check(expression, true) else true
+                if allowed then check(contract, false) || check(expression, true) else true
             case ContractSchemeCheck(contract, valueExpression, _) =>
-              check(contract, false) || check(valueExpression, false)
+                check(contract, false) || check(valueExpression, false)
             case ContractSchemeProvide(outs, idn) => false // TODO: actually only allowed on the top-level, but we don't have any information about the level of the definition yet
             case _: MakeStruct => false
             case m: MatchExpr =>
-              m.clauses.foldLeft[Result](false)((acc, cl) => acc || checkSequence(cl.expr)(false))
+                m.clauses.foldLeft[Result](false)((acc, cl) => acc || checkSequence(cl.expr)(false))
 
             case _ =>
-              //false
-              throw new Exception(s"unrecongized expression $s")
+                //false
+                throw new Exception(s"unrecongized expression $s")
 end UndefinerTester
 
 class BaseSchemeUndefiner:
     def undefine(exps: List[SchemeExp]): SchemeExp =
-      SchemeBody(SchemeMonadicUndefiner.undefineExps(exps))
+        SchemeBody(SchemeMonadicUndefiner.undefineExps(exps))
 
 object SchemeUndefiner extends BaseSchemeUndefiner

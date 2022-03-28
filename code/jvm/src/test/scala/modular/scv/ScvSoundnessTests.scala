@@ -33,12 +33,12 @@ import maf.core.Position.SourcePathTag
  */
 trait ScvHasContractViolationsSoundnessTests extends ScvAnalysisTests:
     def onBenchmark(b: Benchmark): Unit =
-      property(s"$b should contain contract violations") {
-        runFromFile(b) { an =>
-          // TODO: this is not very precise and does not check where the actual error should be
-          assert(an.summary.blames.size > 0)
+        property(s"$b should contain contract violations") {
+            runFromFile(b) { an =>
+                // TODO: this is not very precise and does not check where the actual error should be
+                assert(an.summary.blames.size > 0)
+            }
         }
-      }
 
 class ScvSmallSoundnessTests extends ContractSoundnessTestsBenchmarks with ScvHasContractViolationsSoundnessTests
 
@@ -77,14 +77,15 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
         io: IO = new EmptyIO(),
         benchmark: String
       ): SchemeInterpreter =
-      ContractSchemeInterpreter(cb = addResult, generator = Some(RandomInputsFromFile(RandomInputsFromFile.toInputPath(benchmark))))
+        ContractSchemeInterpreter(cb = addResult, generator = Some(RandomInputsFromFile(RandomInputsFromFile.toInputPath(benchmark))))
 
     override def parseProgram(txt: String, benchmark: String): SchemeExp =
-      ContractSchemeParser.parse(txt, SourcePathTag(benchmark))
+        ContractSchemeParser.parse(txt, SourcePathTag(benchmark))
 
     override def handleInterpreterError(addResult: (Identity, ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = {
-      case ContractSchemeBlame(lcontract, lserver, _) => addResult(lcontract, ConcreteValues.ContractValue(ContractValues.Blame(lcontract, lserver)))
-      case e                                          => throw e
+        case ContractSchemeBlame(lcontract, lserver, _) =>
+            addResult(lcontract, ConcreteValues.ContractValue(ContractValues.Blame(lcontract, lserver)))
+        case e => throw e
     }
 
     /** View the given analysis as an ScvModAnalysis */
@@ -109,7 +110,7 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
     //        super.compareResults(analysis, concreteResults, message)
     //
     override def compareResults(analysis: Analysis, concreteResults: Map[Identity, Set[Value]], message: String): Unit =
-      super.compareResults(analysis, concreteResults, message)
+        super.compareResults(analysis, concreteResults, message)
 
     override def checkSubsumption(analysis: Analysis)(v: Value, abs: analysis.Value): Boolean =
         import ConcreteValues.ContractValue
@@ -119,36 +120,38 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
         lat.isOpq(abs) || (v match
             case ContractValue(b: Blame) => lat.subsumes(abs, lat.blame(b))
             case ContractValue(g: Grd[Value]) =>
-              lat.getGrds(abs).exists { grd =>
-                g.domain.zip(grd.domain).forall(checkSubsumption(analysis)(_, _)) &&
-                checkSubsumption(analysis)(g.rangeMaker, grd.rangeMaker) && g.domainIdns == grd.domainIdns && g.rangeMakerExpr == grd.rangeMakerExpr
-              }
+                lat.getGrds(abs).exists { grd =>
+                    g.domain.zip(grd.domain).forall(checkSubsumption(analysis)(_, _)) &&
+                    checkSubsumption(analysis)(g.rangeMaker,
+                                               grd.rangeMaker
+                    ) && g.domainIdns == grd.domainIdns && g.rangeMakerExpr == grd.rangeMakerExpr
+                }
             case ContractValue(a: Arr[Value]) =>
-              lat.getArrs(abs).exists { arr =>
-                a.lcontract == arr.lcontract &&
-                a.lserver == arr.lserver &&
-                checkSubsumption(analysis)(ContractValue(a.contract), lat.grd(arr.contract))
-              }
+                lat.getArrs(abs).exists { arr =>
+                    a.lcontract == arr.lcontract &&
+                    a.lserver == arr.lserver &&
+                    checkSubsumption(analysis)(ContractValue(a.contract), lat.grd(arr.contract))
+                }
             case ContractValue(f: Flat[Value]) =>
-              lat.getFlats(abs).exists { fl =>
-                checkSubsumption(analysis)(f.contract, fl.contract) && /* f.fexp == fl.fexp && */ f.contractIdn == fl.contractIdn
-              }
+                lat.getFlats(abs).exists { fl =>
+                    checkSubsumption(analysis)(f.contract, fl.contract) && /* f.fexp == fl.fexp && */ f.contractIdn == fl.contractIdn
+                }
 
             case ContractValue(Struct(tag, fields)) =>
-              lat.getStructs(abs).exists { s => s.tag == tag && fields.contents.zip(s.fields.contents).forall(checkSubsumption(analysis)(_, _)) }
+                lat.getStructs(abs).exists { s => s.tag == tag && fields.contents.zip(s.fields.contents).forall(checkSubsumption(analysis)(_, _)) }
             case ContractValue(StructSetterGetter(tag, idx, isSetter)) =>
-              lat.getGetterSetter(abs).exists { s => s.tag == tag && s.idx == idx && s.isSetter == isSetter }
+                lat.getGetterSetter(abs).exists { s => s.tag == tag && s.idx == idx && s.isSetter == isSetter }
             case ContractValue(StructConstructor(tag, size)) =>
-              lat.getStructConstructor(abs).exists { s => s.tag == tag && s.size == size }
+                lat.getStructConstructor(abs).exists { s => s.tag == tag && s.size == size }
             case ContractValue(StructPredicate(tag)) =>
-              lat.getStructPredicates(abs).exists { s => s.tag == tag }
+                lat.getStructPredicates(abs).exists { s => s.tag == tag }
             case _ =>
-              // if there is a single opaque value in the abstract value, it supercedes the other values
-              super.checkSubsumption(analysis)(v, abs)
+                // if there is a single opaque value in the abstract value, it supercedes the other values
+                super.checkSubsumption(analysis)(v, abs)
         )
 
     def analysis(program: SchemeExp): Analysis =
-      SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore(program)
+        SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore(program)
 
 /** Automated soundness tests  on the set of benchmarks from the Nguyen paper */
 class ScvNguyenSoundnessTests extends ScvSoundnessTests:

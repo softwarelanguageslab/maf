@@ -22,9 +22,9 @@ trait TEvalM[M[_]] extends Monad[M], MonadError[M, Error], MonadJoin[M]:
     //def inject[X: Lattice](x: X): M[X] = if Lattice[X].isBottom(x) then mzero else unit(x)
     def merge[X: Lattice](x: M[X], y: M[X]): M[X]
     def merge[X: Lattice](xs: Iterable[M[X]]): M[X] =
-      xs.foldLeft[M[X]](mzero)((acc, x) => merge(acc, x))
+        xs.foldLeft[M[X]](mzero)((acc, x) => merge(acc, x))
     def merge[X: Lattice](xs: M[X]*): M[X] =
-      merge(xs)
+        merge(xs)
 
 trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
     import maf.core.Monad.{MonadIterableOps, MonadSyntaxOps}
@@ -64,69 +64,69 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
             case SchemeAssert(exp, _)               => evalAssert(exp)
             case _                                  => throw new Exception(s"Unsupported Scheme expression: $exp")
         protected def evalVariable(id: Identifier): EvalM[Value] =
-          getEnv.flatMap(env => lookup(id, env))
+            getEnv.flatMap(env => lookup(id, env))
         protected def evalClosure(lam: SchemeLambdaExp): EvalM[Value] =
-          for env <- getEnv yield newClosure(lam, env)
+            for env <- getEnv yield newClosure(lam, env)
         protected def evalSequence(exps: List[SchemeExp]): EvalM[Value] =
-          Monad.sequence(exps.map(eval)).map(_.last)
+            Monad.sequence(exps.map(eval)).map(_.last)
         //exps.foldLeftM(lattice.void)((_, exp) => eval(exp))
         private def evalSet(id: Identifier, exp: SchemeExp): EvalM[Value] =
-          for
-              rhs <- eval(exp)
-              env <- getEnv
-              _ <- assign(id, env, rhs)
-          yield lattice.void
+            for
+                rhs <- eval(exp)
+                env <- getEnv
+                _ <- assign(id, env, rhs)
+            yield lattice.void
         protected def evalIf(
             prd: SchemeExp,
             csq: SchemeExp,
             alt: SchemeExp
           ): EvalM[Value] =
-          for
-              prdVal <- eval(prd)
-              resVal <- cond(prdVal, eval(csq), eval(alt))
-          yield resVal
-        private def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
-          for
-              bds <- bindings.mapM { case (id, exp) => eval(exp).map(vlu => (id, vlu)) }
-              res <- withEnv(env => bind(bds, env)) {
-                evalSequence(body)
-              }
-          yield res
-        private def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
-          bindings match
-              case Nil => evalSequence(body)
-              case (id, exp) :: restBds =>
-                eval(exp).flatMap { rhs =>
-                  withEnv(env => bind(id, env, rhs)) {
-                    evalLetStar(restBds, body)
-                  }
-                }
-        private def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
-          withEnv(env => bindings.foldLeft(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
             for
-                extEnv <- getEnv
-                _ <- bindings.mapM_ { case (id, exp) =>
-                  eval(exp).map(value => assign(id, extEnv, value))
+                prdVal <- eval(prd)
+                resVal <- cond(prdVal, eval(csq), eval(alt))
+            yield resVal
+        private def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            for
+                bds <- bindings.mapM { case (id, exp) => eval(exp).map(vlu => (id, vlu)) }
+                res <- withEnv(env => bind(bds, env)) {
+                    evalSequence(body)
                 }
-                res <- evalSequence(body)
             yield res
-          }
+        private def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            bindings match
+                case Nil => evalSequence(body)
+                case (id, exp) :: restBds =>
+                    eval(exp).flatMap { rhs =>
+                        withEnv(env => bind(id, env, rhs)) {
+                            evalLetStar(restBds, body)
+                        }
+                    }
+        private def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            withEnv(env => bindings.foldLeft(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
+                for
+                    extEnv <- getEnv
+                    _ <- bindings.mapM_ { case (id, exp) =>
+                        eval(exp).map(value => assign(id, extEnv, value))
+                    }
+                    res <- evalSequence(body)
+                yield res
+            }
 
         protected def evalAssert(exp: SchemeExp): EvalM[Value] =
-          // Assertions are not evaluated by default
-          unit(lattice.void)
+            // Assertions are not evaluated by default
+            unit(lattice.void)
 
         private def evalCall(
             exp: SchemeFuncall,
             fun: SchemeExp,
             args: List[SchemeExp]
           ): EvalM[Value] =
-          for
-              funVal <- eval(fun)
-              argVals <- args.mapM(eval)
-              returned <- applyFun(exp, funVal, args.zip(argVals), fun.idn.pos)
-              result <- inject(returned)
-          yield result
+            for
+                funVal <- eval(fun)
+                argVals <- args.mapM(eval)
+                returned <- applyFun(exp, funVal, args.zip(argVals), fun.idn.pos)
+                result <- inject(returned)
+            yield result
 
 /** A collection of possible configurations of the EvalM monad */
 object TEvalM:
@@ -149,31 +149,31 @@ object TEvalM:
             def mapM[Y](f: X => EvalM[Y]): EvalM[List[Y]] = xs match
                 case Nil => unit(Nil)
                 case x :: xs =>
-                  for
-                      fx <- f(x)
-                      rest <- xs.mapM(f)
-                  yield fx :: rest
+                    for
+                        fx <- f(x)
+                        rest <- xs.mapM(f)
+                    yield fx :: rest
             def mapM_(f: X => EvalM[Unit]): EvalM[Unit] = xs match
                 case Nil     => unit(())
                 case x :: xs => f(x).flatMap(_ => xs.mapM_(f))
         def getEnv: EvalM[Environment[Address]] = EvalM(env => Some(env))
         // TODO: withExtendedEnv would make more sense
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
-          EvalM(env => ev.run(f(env)))
+            EvalM(env => ev.run(f(env)))
         def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] = EvalM { env =>
-          (x.run(env), y.run(env)) match
-              case (None, yres)             => yres
-              case (xres, None)             => xres
-              case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
+            (x.run(env), y.run(env)) match
+                case (None, yres)             => yres
+                case (xres, None)             => xres
+                case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
         }
 
         def fail[X](e: Error): EvalM[X] =
-          throw new Exception(e.toString)
+            throw new Exception(e.toString)
 
     /** Instead of throwing an error, fails with bottom so that evaluation stops at that point in the analysis */
     trait FailSilentMonadEvalM extends MonadEvalM:
         override def fail[X](e: Error): EvalM[X] =
-          mzero
+            mzero
 
     /** Same as "FailSilent" but prints a warning first */
     trait LogFailMonadEValM extends FailSilentMonadEvalM:
@@ -183,21 +183,21 @@ object TEvalM:
             super.fail(e)
 
 trait BigStepModFSemantics extends BigStepModFSemanticsT { outer =>
-  import TEvalM.{EvalM as BaseEvalM, *}
+    import TEvalM.{EvalM as BaseEvalM, *}
 
-  object BaseEvalM extends LogFailMonadEValM:
-      def warn(msg: String) = outer.warn(msg)
+    object BaseEvalM extends LogFailMonadEValM:
+        def warn(msg: String) = outer.warn(msg)
 
-  override type EvalM[X] = BaseEvalM[X]
+    override type EvalM[X] = BaseEvalM[X]
 
-  implicit val evalM = BaseEvalM
-  override def intraAnalysis(component: Component): BigStepModFIntra
+    implicit val evalM = BaseEvalM
+    override def intraAnalysis(component: Component): BigStepModFIntra
 
-  trait BigStepModFIntra extends BigStepModFIntraT {
-    // analysis entry point
-    def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-      eval(fnBody).run(fnEnv).foreach(res => writeResult(res))
-  }
+    trait BigStepModFIntra extends BigStepModFIntraT {
+        // analysis entry point
+        def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
+            eval(fnBody).run(fnEnv).foreach(res => writeResult(res))
+    }
 
-  override def configString(): String = super.configString() + "\n  applying big-step ModF Scheme semantics"
+    override def configString(): String = super.configString() + "\n  applying big-step ModF Scheme semantics"
 }

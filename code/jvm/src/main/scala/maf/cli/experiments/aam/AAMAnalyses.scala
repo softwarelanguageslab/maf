@@ -25,126 +25,126 @@ import maf.aam.scheme.stores.SchemeImperativeStoreWidening
 object AAMAnalyses:
 
     def aamBase(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
-      new BaseSchemeAAMSemantics(b)
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMNoExt
-        with SchemeStoreAllocateReturn
-        with SchemeAAMLocalStore
-        with SimpleWorklistSystem
-        with SchemeAAMAnalysisResults
+        new BaseSchemeAAMSemantics(b)
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeAAMNoExt
+            with SchemeStoreAllocateReturn
+            with SchemeAAMLocalStore
+            with SimpleWorklistSystem
+            with SchemeAAMAnalysisResults
 
     def aamConf1(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
-      new SchemeAAMSemantics(b)
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMNoExt
-        with SchemeStoreAllocateReturn
-        with SchemeFunctionCallBoundary
-        with SchemeAAMLocalStore
-        with SimpleWorklistSystem
-        with SchemeAAMAnalysisResults
+        new SchemeAAMSemantics(b)
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeAAMNoExt
+            with SchemeStoreAllocateReturn
+            with SchemeFunctionCallBoundary
+            with SchemeAAMLocalStore
+            with SimpleWorklistSystem
+            with SchemeAAMAnalysisResults
 
     def aamConf2(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
-      new SchemeAAMSemantics(b)
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMNoExt
-        with SchemeFunctionCallBoundary
-        with SchemeAAMLocalStore
-        with SimpleWorklistSystem
-        with SchemeAAMAnalysisResults
+        new SchemeAAMSemantics(b)
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeAAMNoExt
+            with SchemeFunctionCallBoundary
+            with SchemeAAMLocalStore
+            with SimpleWorklistSystem
+            with SchemeAAMAnalysisResults
 
     def aamConf3(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
-      new SchemeAAMSemantics(b)
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        //with SchemeAAMCallSiteSensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMNoExt
-        with SchemeStoreAllocateReturn
-        with SchemeFunctionCallBoundary
-        with SchemeWideningAfterCondition
-        with BaseSchemeLoggingLocalStore
-        with BaseSimpleWorklistSystem
-        with SchemeAAMAnalysisResults
+        new SchemeAAMSemantics(b)
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            //with SchemeAAMCallSiteSensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeAAMNoExt
+            with SchemeStoreAllocateReturn
+            with SchemeFunctionCallBoundary
+            with SchemeWideningAfterCondition
+            with BaseSchemeLoggingLocalStore
+            with BaseSimpleWorklistSystem
+            with SchemeAAMAnalysisResults
 
     def aamConf4(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
-      new SchemeAAMSemantics(b)
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMNoExt
-        with SchemeStoreAllocateReturn
-        with BaseSchemeLoggingLocalStore
-        with BaseSimpleWorklistSystem
-        with SchemeAAMAnalysisResults
+        new SchemeAAMSemantics(b)
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeAAMNoExt
+            with SchemeStoreAllocateReturn
+            with BaseSchemeLoggingLocalStore
+            with BaseSimpleWorklistSystem
+            with SchemeAAMAnalysisResults
 
     def aamConf5(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
-      new SchemeAAMSemantics(b)
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        //with SchemeAAMCallSiteSensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMNoExt
-        with SchemeStoreAllocateReturn
-        with SchemeFunctionCallBoundary
-        with SchemeWideningAfterCondition
-        with SchemeImperativeStoreWidening
-        //with BaseSchemeLoggingLocalStore
-        //with BaseSimpleWorklistSystem
-        with SchemeAAMAnalysisResults
+        new SchemeAAMSemantics(b)
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            //with SchemeAAMCallSiteSensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeAAMNoExt
+            with SchemeStoreAllocateReturn
+            with SchemeFunctionCallBoundary
+            with SchemeWideningAfterCondition
+            with SchemeImperativeStoreWidening
+            //with BaseSchemeLoggingLocalStore
+            //with BaseSimpleWorklistSystem
+            with SchemeAAMAnalysisResults
 
     def aamConf6(b: SchemeExp): AAMPeformanceMetrics[SchemeExp] =
-      new SchemeAAMSemantics(b)
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        //with SchemeAAMCallSiteSensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMNoExt
-        with SchemeStoreAllocateReturn
-        with SchemeFunctionCallBoundary
-        with SchemeWideningAfterCondition
-        //with SchemeImperativeStoreWidening
-        with BaseSchemeDependencyLoggingStore
-        with BaseSimpleWorklistSystem
-        with SchemeAAMAnalysisResults
+        new SchemeAAMSemantics(b)
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            //with SchemeAAMCallSiteSensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeAAMNoExt
+            with SchemeStoreAllocateReturn
+            with SchemeFunctionCallBoundary
+            with SchemeWideningAfterCondition
+            //with SchemeImperativeStoreWidening
+            with BaseSchemeDependencyLoggingStore
+            with BaseSimpleWorklistSystem
+            with SchemeAAMAnalysisResults
 
     def scvAAMbase(b: SchemeExp): ScvAAMSemantics with AAMPeformanceMetrics[SchemeExp] =
-      new ScvAAMSemantics(b)
-        with BaseSchemeAAMSemantics
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeAAMLocalStore
-        with SimpleWorklistSystem[SchemeExp]
-        with SchemeAAMAnalysisResults
-        with ScvReporter {
-        //with SchemeStoreAllocateReturn
-        lazy val satSolver: ScvSatSolver[LatVal] =
-            given lat: SchemeLattice[LatVal, Address] = lattice
-            new JVMSatSolver(this)
-      }
+        new ScvAAMSemantics(b)
+            with BaseSchemeAAMSemantics
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeAAMLocalStore
+            with SimpleWorklistSystem[SchemeExp]
+            with SchemeAAMAnalysisResults
+            with ScvReporter {
+            //with SchemeStoreAllocateReturn
+            lazy val satSolver: ScvSatSolver[LatVal] =
+                given lat: SchemeLattice[LatVal, Address] = lattice
+                new JVMSatSolver(this)
+        }
 
     def scvAAMFnCallBoundaries(
         b: SchemeExp
       ): AnalysisEntry[SchemeExp] with ScvAAMSemantics with AAMPeformanceMetrics[SchemeExp] with ModularSchemeDomain =
-      new ScvAAMSemantics(b)
-        with BaseSchemeAAMSemantics
-        with AAMAnalysis[SchemeExp]
-        with SchemeAAMContextInsensitivity
-        with SchemeConstantPropagationDomain
-        with SchemeFunctionCallBoundary
-        //with SchemeAAMLocalStore
-        with BaseSchemeLoggingLocalStore
-        with BaseSimpleWorklistSystem[SchemeExp]
-        with SchemeAAMAnalysisResults
-        with ScvReporter {
-        //with SchemeStoreAllocateReturn
-        lazy val satSolver: ScvSatSolver[LatVal] =
-            given lat: SchemeLattice[LatVal, Address] = lattice
-            new JVMSatSolver(this)
-      }
+        new ScvAAMSemantics(b)
+            with BaseSchemeAAMSemantics
+            with AAMAnalysis[SchemeExp]
+            with SchemeAAMContextInsensitivity
+            with SchemeConstantPropagationDomain
+            with SchemeFunctionCallBoundary
+            //with SchemeAAMLocalStore
+            with BaseSchemeLoggingLocalStore
+            with BaseSimpleWorklistSystem[SchemeExp]
+            with SchemeAAMAnalysisResults
+            with ScvReporter {
+            //with SchemeStoreAllocateReturn
+            lazy val satSolver: ScvSatSolver[LatVal] =
+                given lat: SchemeLattice[LatVal, Address] = lattice
+                new JVMSatSolver(this)
+        }

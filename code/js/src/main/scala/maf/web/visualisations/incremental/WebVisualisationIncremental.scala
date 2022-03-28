@@ -45,17 +45,17 @@ class WebVisualisationIncremental(
         super.classifyNodes()
         nodes.classed(__CSS_DELETED_NODE__,
                       (node: Node) =>
-                        node match {
-                          case node: CmpNode => deletedComponent(node.component);
-                          case _             => false
-                        }
+                          node match {
+                              case node: CmpNode => deletedComponent(node.component);
+                              case _             => false
+                          }
         )
         nodes.classed(__CSS_MAIN_NODE__,
                       (node: Node) =>
-                        node match {
-                          case node: CmpNode => node.component == analysis.initialComponent;
-                          case _             => false
-                        }
+                          node match {
+                              case node: CmpNode => node.component == analysis.initialComponent;
+                              case _             => false
+                          }
         )
 
     override def classifyEdges(): Unit =
@@ -63,19 +63,19 @@ class WebVisualisationIncremental(
         edges.classed(
           __CSS_DELETED_EDGE__,
           (edge: Edge) =>
-            (edge.source, edge.target) match {
-              case (source, target) if source.isInstanceOf[CmpNode] && target.isInstanceOf[CmpNode] =>
-                val src = source.asInstanceOf[CmpNode].component
-                val trg = target.asInstanceOf[CmpNode].component
-                deletedComponent(src) || deletedComponent(trg) || (
-                  !analysis
-                    .cachedSpawns(src)
-                    .contains(
-                      trg
-                    )
-                ) && !(src == trg && analysis.recursive.contains(src))
-              case _ =>
-            }
+              (edge.source, edge.target) match {
+                  case (source, target) if source.isInstanceOf[CmpNode] && target.isInstanceOf[CmpNode] =>
+                      val src = source.asInstanceOf[CmpNode].component
+                      val trg = target.asInstanceOf[CmpNode].component
+                      deletedComponent(src) || deletedComponent(trg) || (
+                        !analysis
+                            .cachedSpawns(src)
+                            .contains(
+                              trg
+                            )
+                      ) && !(src == trg && analysis.recursive.contains(src))
+                  case _ =>
+              }
         ) // Check that it is not a currently existing self-edge.
 
     /**
@@ -95,14 +95,14 @@ class WebVisualisationIncremental(
         }
         // Add all edges currently in the analysis.
         nodesData.foreach {
-          case sourceNode: CmpNode =>
-            val targets = analysis.dependencies(sourceNode.component)
-            targets.foreach { target =>
-                val targetNode = getNode(target)
-                val edge = getEdge(sourceNode, targetNode)
-                edgesData += edge
-            }
-          case _ =>
+            case sourceNode: CmpNode =>
+                val targets = analysis.dependencies(sourceNode.component)
+                targets.foreach { target =>
+                    val targetNode = getNode(target)
+                    val edge = getEdge(sourceNode, targetNode)
+                    edgesData += edge
+                }
+            case _ =>
         }
 
     override def refreshDataAfterStep() =
@@ -118,15 +118,15 @@ class WebVisualisationIncremental(
     override def setupMarker(svg: JsAny): js.Dynamic =
         super.setupMarker(svg)
         val marker = svg
-          .select("defs")
-          .append("marker")
-          .attr("id", __SVG_DELETED_ARROW__)
-          .attr("viewBox", "-0 -5 10 10")
-          .attr("refX", 0)
-          .attr("refY", 0)
-          .attr("orient", "auto")
-          .attr("markerWidth", 5)
-          .attr("markerHeight", 5)
-          .attr("fill", "darkgray")
-          .attr("stroke", "darkgray")
+            .select("defs")
+            .append("marker")
+            .attr("id", __SVG_DELETED_ARROW__)
+            .attr("viewBox", "-0 -5 10 10")
+            .attr("refX", 0)
+            .attr("refY", 0)
+            .attr("orient", "auto")
+            .attr("markerWidth", 5)
+            .attr("markerHeight", 5)
+            .attr("fill", "darkgray")
+            .attr("stroke", "darkgray")
         marker.append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5")

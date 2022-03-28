@@ -27,11 +27,11 @@ object Metric:
         type M = SequenceBasedMetric
         def name = "exp-depth"
         def computeDepths(exp: Expression, depths: Map[Identity, Int] = Map.empty): Map[Identity, Int] =
-          exp.subexpressions
-            .foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
-            .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
+            exp.subexpressions
+                .foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
+                .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
         def forProgram(program: SchemeExp): M =
-          SequenceBasedMetric(computeDepths(program).values.toList)
+            SequenceBasedMetric(computeDepths(program).values.toList)
 
     class CallDepth(val kCFA: Int) extends Metric:
         def name = s"call-depth"
@@ -39,14 +39,14 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemanticsM
-              with StandardSchemeModFComponents
-              with BigStepModFSemantics
-              with CallDepthFirstWorklistAlgorithm[SchemeExp]
-              with SchemeModFKCallSiteSensitivity
-              with SchemeConstantPropagationDomain {
-              val k = kCFA
-              override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
+                with SchemeModFSemanticsM
+                with StandardSchemeModFComponents
+                with BigStepModFSemantics
+                with CallDepthFirstWorklistAlgorithm[SchemeExp]
+                with SchemeModFKCallSiteSensitivity
+                with SchemeConstantPropagationDomain {
+                val k = kCFA
+                override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
             }
             analysis.analyze()
             SequenceBasedMetric(analysis.depth.values.toList)
@@ -57,14 +57,14 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemanticsM
-              with StandardSchemeModFComponents
-              with BigStepModFSemantics
-              with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
-              with SchemeModFKCallSiteSensitivity
-              with SchemeConstantPropagationDomain {
-              val k = kCFA
-              override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
+                with SchemeModFSemanticsM
+                with StandardSchemeModFComponents
+                with BigStepModFSemantics
+                with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
+                with SchemeModFKCallSiteSensitivity
+                with SchemeConstantPropagationDomain {
+                val k = kCFA
+                override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
             }
             analysis.analyze()
             SequenceBasedMetric(analysis.count.values.toList)
@@ -74,14 +74,14 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemanticsM
-              with StandardSchemeModFComponents
-              with BigStepModFSemantics
-              with MostVisitedFirstWorklistAlgorithm[SchemeExp]
-              with SchemeModFKCallSiteSensitivity
-              with SchemeConstantPropagationDomain {
-              val k = kCFA
-              override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
+                with SchemeModFSemanticsM
+                with StandardSchemeModFComponents
+                with BigStepModFSemantics
+                with MostVisitedFirstWorklistAlgorithm[SchemeExp]
+                with SchemeModFKCallSiteSensitivity
+                with SchemeConstantPropagationDomain {
+                val k = kCFA
+                override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
             }
             analysis.analyze()
             SequenceBasedMetric(analysis.count.values.toList)
@@ -92,14 +92,14 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemanticsM
-              with StandardSchemeModFComponents
-              with BigStepModFSemantics
-              with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
-              with SchemeModFKCallSiteSensitivity
-              with SchemeConstantPropagationDomain {
-              val k = kCFA
-              override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
+                with SchemeModFSemanticsM
+                with StandardSchemeModFComponents
+                with BigStepModFSemantics
+                with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
+                with SchemeModFKCallSiteSensitivity
+                with SchemeConstantPropagationDomain {
+                val k = kCFA
+                override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
             }
             analysis.analyze()
             SequenceBasedMetric(analysis.depCount.values.toList)
@@ -110,14 +110,14 @@ object Metric:
 
         def forProgram(program: SchemeExp): M =
             val analysis = new ModAnalysis(program)
-              with SchemeModFSemanticsM
-              with StandardSchemeModFComponents
-              with BigStepModFSemantics
-              with BiggerEnvironmentFirstWorklistAlgorithm.ModF
-              with SchemeModFKCallSiteSensitivity
-              with SchemeConstantPropagationDomain {
-              val k = kCFA
-              override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
+                with SchemeModFSemanticsM
+                with StandardSchemeModFComponents
+                with BigStepModFSemantics
+                with BiggerEnvironmentFirstWorklistAlgorithm.ModF
+                with SchemeModFKCallSiteSensitivity
+                with SchemeConstantPropagationDomain {
+                val k = kCFA
+                override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
             }
             analysis.analyze()
             SequenceBasedMetric(analysis.visited.map(analysis.environmentSize).toList)
@@ -134,22 +134,22 @@ trait Metrics:
         metric.forProgram(program)
 
     def metricsForFile(file: String): Unit =
-      metrics.foreach { metric =>
-        try
-            println(s"***** Computing metric ${metric.name} on $file *****")
-            val result = metricForFile(file, metric)
-            println(result)
-            results = results.add(file, metric.name, result)
-        catch
-            case e: Exception =>
-              println(s"Encountered an exception: ${e.getMessage}")
-            case e: VirtualMachineError =>
-              System.gc()
-              println(s"VM Error: ${e.getMessage}")
-      }
+        metrics.foreach { metric =>
+            try
+                println(s"***** Computing metric ${metric.name} on $file *****")
+                val result = metricForFile(file, metric)
+                println(result)
+                results = results.add(file, metric.name, result)
+            catch
+                case e: Exception =>
+                    println(s"Encountered an exception: ${e.getMessage}")
+                case e: VirtualMachineError =>
+                    System.gc()
+                    println(s"VM Error: ${e.getMessage}")
+        }
 
     def printResults() =
-      println(results.prettyString())
+        println(results.prettyString())
     def exportCSV(
         path: String,
         format: Metric.SequenceBasedMetric => String,

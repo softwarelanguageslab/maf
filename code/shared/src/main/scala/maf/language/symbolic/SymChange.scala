@@ -17,15 +17,15 @@ case object NoChange extends SymChange:
 case class SymReplace(from: SchemeExp, to: SchemeExp) extends SymChange:
     def apply(old: SchemeExp, revert: Boolean): SchemeExp =
         def visit(e: SchemeExp): SchemeExp =
-          if !revert && e == from then to
-          else if revert && e == to then from
-          else
-              (e match
-                  case SchemeFuncall(f, args, idn) =>
-                    SchemeFuncall(visit(f), args.map(visit), idn)
-                  case SchemeVar(_) | SchemeVarLex(_, _) | SchemeValue(_, _) => e
-                  case _                                                     => throw new Exception(s"unsupported symbolic expression $e")
-          )
+            if !revert && e == from then to
+            else if revert && e == to then from
+            else
+                (e match
+                    case SchemeFuncall(f, args, idn) =>
+                        SchemeFuncall(visit(f), args.map(visit), idn)
+                    case SchemeVar(_) | SchemeVarLex(_, _) | SchemeValue(_, _) => e
+                    case _                                                     => throw new Exception(s"unsupported symbolic expression $e")
+            )
 
         visit(old)
 

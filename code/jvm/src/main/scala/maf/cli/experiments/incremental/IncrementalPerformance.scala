@@ -39,7 +39,7 @@ trait SplitPerformance[E <: Expression] extends IncrementalModAnalysis[E] with I
 
     trait SplitPerformanceIntra extends IncrementalIntraAnalysis with IncrementalGlobalStoreIntraAnalysis:
         abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-          intraComponentAnalysisTimeAcc = intraComponentAnalysisTimeAcc + Timer.timeOnly(super.analyzeWithTimeout(timeout))
+            intraComponentAnalysisTimeAcc = intraComponentAnalysisTimeAcc + Timer.timeOnly(super.analyzeWithTimeout(timeout))
     end SplitPerformanceIntra
 
     override def configString(): String = super.configString() + s"\n  splitting performance measurements"
@@ -95,11 +95,11 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
             val analysis = createAnalysis() // Don't measure analysis creation.
             runOneTime(analysis, block) match
                 case Some(t) =>
-                  times = t :: times
-                  timesIntra = (analysis.intraComponentAnalysisTimeAcc.toDouble / 1000000) :: timesIntra
+                    times = t :: times
+                    timesIntra = (analysis.intraComponentAnalysisTimeAcc.toDouble / 1000000) :: timesIntra
                 case None =>
-                  println(" timed out.")
-                  return None
+                    println(" timed out.")
+                    return None
         println()
         Some((times, timesIntra))
 
@@ -108,107 +108,107 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
     // A single program run with the analysis.
     def onBenchmark(file: String): Unit =
-      try
-          results = Table.empty.withDefaultValue(NotRun)
-          if first then
-              Writer.disableReporting(output)
-              Writer.writeln(output, results.toCSVString(columns = cols, rowName = "benchmark"))
-              first = false
+        try
+            results = Table.empty.withDefaultValue(NotRun)
+            if first then
+                Writer.disableReporting(output)
+                Writer.writeln(output, results.toCSVString(columns = cols, rowName = "benchmark"))
+                first = false
 
-          val program = parse(file)
+            val program = parse(file)
 
-          var times: Map[String, List[Double]] = Map().withDefaultValue(List.empty)
-          var timeOuts: Map[String, Boolean] = Map().withDefaultValue(false)
+            var times: Map[String, List[Double]] = Map().withDefaultValue(List.empty)
+            var timeOuts: Map[String, Boolean] = Map().withDefaultValue(false)
 
-          // Initial analysis.
+            // Initial analysis.
 
-          warmUp("initial analysis", timeout => analysis(program, noOptimisations.disableAsserts()).analyzeWithTimeout(timeout))
-          runNTimes("initial analysis",
-                    () => analysis(program, noOptimisations.disableAsserts()),
-                    (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
-          ) match
-              case None =>
-                results = results.add(file, columnName(timeS, initS), Timedout)
-                return ()
-              case Some((ts, tsi)) =>
-                val stats = Statistics.all(ts)
-                val statsIntra = Statistics.all(tsi)
-                results = results
-                  .add(file, columnName(timeS, initS), Value(scala.math.round(stats.mean)))
-                  .add(file, columnName(stdS, initS), Value(scala.math.round(stats.stddev)))
-                  .add(file, columnName(timeIntraS, initS), Value(scala.math.round(statsIntra.mean)))
-                  .add(file, columnName(stdIntraS, initS), Value(scala.math.round(statsIntra.stddev)))
-
-          // Full reanalysis.
-
-          warmUp("reanalysis",
-                 timeout => {
-                   val a = analysis(program, noOptimisations.disableAsserts())
-                   a.version = New
-                   a.analyzeWithTimeout(timeout)
-                 }
-          )
-          runNTimes(
-            "reanalysis",
-            () => {
-              val a = analysis(program, noOptimisations.disableAsserts())
-              a.version = New
-              a
-            },
-            (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
-          ) match
-              case None => results = results.add(file, columnName(timeS, reanS), Timedout)
-              case Some((ts, tsi)) =>
-                val stats = Statistics.all(ts)
-                val statsIntra = Statistics.all(tsi)
-                results = results
-                  .add(file, columnName(timeS, reanS), Value(scala.math.round(stats.mean)))
-                  .add(file, columnName(stdS, reanS), Value(scala.math.round(stats.stddev)))
-                  .add(file, columnName(timeIntraS, reanS), Value(scala.math.round(statsIntra.mean)))
-                  .add(file, columnName(stdIntraS, reanS), Value(scala.math.round(statsIntra.stddev)))
-
-          // Incremental measurements.
-
-          // Run the initial analysis.
-          val initAnalysis = analysis(program, ci_di_wi.disableAsserts()) // Allow all caches to be initialised (may increase memory footprint).
-          initAnalysis.analyzeWithTimeout(timeout())
-          if !initAnalysis.finished then return () // Put unit explicitly to stop the formatter from putting the next line here.
-
-          initAnalysis.intraComponentAnalysisTimeAcc = 0 // Reset the timer.
-
-          configurations.foreach { config =>
-              warmUp(config.toString,
-                     timeout => {
-                       val a = initAnalysis.deepCopy()
-                       a.configuration = config.disableAsserts()
-                       a.updateAnalysis(timeout)
-                     }
-              )
-              runNTimes(config.toString,
-                        () => {
-                          val a = initAnalysis.deepCopy()
-                          a.configuration = config.disableAsserts()
-                          a
-                        },
-                        (timeout, analysis) => analysis.updateAnalysis(timeout)
-              ) match
-                  case None => results = results.add(file, columnName(timeS, config.toString), Timedout)
-                  case Some((ts, tsi)) =>
+            warmUp("initial analysis", timeout => analysis(program, noOptimisations.disableAsserts()).analyzeWithTimeout(timeout))
+            runNTimes("initial analysis",
+                      () => analysis(program, noOptimisations.disableAsserts()),
+                      (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
+            ) match
+                case None =>
+                    results = results.add(file, columnName(timeS, initS), Timedout)
+                    return ()
+                case Some((ts, tsi)) =>
                     val stats = Statistics.all(ts)
                     val statsIntra = Statistics.all(tsi)
                     results = results
-                      .add(file, columnName(timeS, config.toString), Value(scala.math.round(stats.mean)))
-                      .add(file, columnName(stdS, config.toString), Value(scala.math.round(stats.stddev)))
-                      .add(file, columnName(timeIntraS, config.toString), Value(scala.math.round(statsIntra.mean)))
-                      .add(file, columnName(stdIntraS, config.toString), Value(scala.math.round(statsIntra.stddev)))
-          }
-          val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
-          Writer.writeln(output, lst(1))
-      catch
-          case _ =>
-            reportError(file)
+                        .add(file, columnName(timeS, initS), Value(scala.math.round(stats.mean)))
+                        .add(file, columnName(stdS, initS), Value(scala.math.round(stats.stddev)))
+                        .add(file, columnName(timeIntraS, initS), Value(scala.math.round(statsIntra.mean)))
+                        .add(file, columnName(stdIntraS, initS), Value(scala.math.round(statsIntra.stddev)))
+
+            // Full reanalysis.
+
+            warmUp("reanalysis",
+                   timeout => {
+                       val a = analysis(program, noOptimisations.disableAsserts())
+                       a.version = New
+                       a.analyzeWithTimeout(timeout)
+                   }
+            )
+            runNTimes(
+              "reanalysis",
+              () => {
+                  val a = analysis(program, noOptimisations.disableAsserts())
+                  a.version = New
+                  a
+              },
+              (timeout, analysis) => analysis.analyzeWithTimeout(timeout)
+            ) match
+                case None => results = results.add(file, columnName(timeS, reanS), Timedout)
+                case Some((ts, tsi)) =>
+                    val stats = Statistics.all(ts)
+                    val statsIntra = Statistics.all(tsi)
+                    results = results
+                        .add(file, columnName(timeS, reanS), Value(scala.math.round(stats.mean)))
+                        .add(file, columnName(stdS, reanS), Value(scala.math.round(stats.stddev)))
+                        .add(file, columnName(timeIntraS, reanS), Value(scala.math.round(statsIntra.mean)))
+                        .add(file, columnName(stdIntraS, reanS), Value(scala.math.round(statsIntra.stddev)))
+
+            // Incremental measurements.
+
+            // Run the initial analysis.
+            val initAnalysis = analysis(program, ci_di_wi.disableAsserts()) // Allow all caches to be initialised (may increase memory footprint).
+            initAnalysis.analyzeWithTimeout(timeout())
+            if !initAnalysis.finished then return () // Put unit explicitly to stop the formatter from putting the next line here.
+
+            initAnalysis.intraComponentAnalysisTimeAcc = 0 // Reset the timer.
+
+            configurations.foreach { config =>
+                warmUp(config.toString,
+                       timeout => {
+                           val a = initAnalysis.deepCopy()
+                           a.configuration = config.disableAsserts()
+                           a.updateAnalysis(timeout)
+                       }
+                )
+                runNTimes(config.toString,
+                          () => {
+                              val a = initAnalysis.deepCopy()
+                              a.configuration = config.disableAsserts()
+                              a
+                          },
+                          (timeout, analysis) => analysis.updateAnalysis(timeout)
+                ) match
+                    case None => results = results.add(file, columnName(timeS, config.toString), Timedout)
+                    case Some((ts, tsi)) =>
+                        val stats = Statistics.all(ts)
+                        val statsIntra = Statistics.all(tsi)
+                        results = results
+                            .add(file, columnName(timeS, config.toString), Value(scala.math.round(stats.mean)))
+                            .add(file, columnName(stdS, config.toString), Value(scala.math.round(stats.stddev)))
+                            .add(file, columnName(timeIntraS, config.toString), Value(scala.math.round(statsIntra.mean)))
+                            .add(file, columnName(stdIntraS, config.toString), Value(scala.math.round(statsIntra.stddev)))
+            }
             val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
             Writer.writeln(output, lst(1))
+        catch
+            case _ =>
+                reportError(file)
+                val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
+                Writer.writeln(output, lst(1))
     end onBenchmark
 
     def createOutput(): String = "" // Results are written during benchmarking.
@@ -224,34 +224,34 @@ trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
 
 class IncrementalSchemeModFTypePerformance() extends IncrementalSchemePerformance:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
-      with SplitPerformance[SchemeExp] {
-      override def intraAnalysis(cmp: Component) =
-        new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
+        with SplitPerformance[SchemeExp] {
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
     }
     val outputFile: String = s"performance/modf-type.csv"
 
 class IncrementalSchemeModFCPPerformance() extends IncrementalSchemePerformance:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisCPLattice(e, config)
-      with SplitPerformance[SchemeExp] {
-      override def intraAnalysis(cmp: Component) =
-        new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
+        with SplitPerformance[SchemeExp] {
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
     }
     val outputFile: String = s"performance/modf-CP.csv"
 
 class IncrementalSchemeModConcTypePerformance() extends IncrementalSchemePerformance:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
-      with SplitPerformance[SchemeExp] {
-      override def intraAnalysis(cmp: Component) =
-        new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
+        with SplitPerformance[SchemeExp] {
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
     }
     val outputFile: String = s"performance/modconc-type.csv"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 class IncrementalSchemeModConcCPPerformance() extends IncrementalSchemePerformance:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
-      with SplitPerformance[SchemeExp] {
-      override def intraAnalysis(cmp: Component) =
-        new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
+        with SplitPerformance[SchemeExp] {
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
     }
     val outputFile: String = s"performance/modconc-CP.csv"
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
@@ -261,9 +261,9 @@ object IncrementalSchemeModXPerformance:
         val outDir: String = "benchOutput/"
 
         val (curatedSuite, generatedSuite) = args.count match {
-          case Some(n) =>
-            (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
-          case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated, IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
+            case Some(n) =>
+                (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
+            case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated, IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
         }
 
         if args.typeLattice then

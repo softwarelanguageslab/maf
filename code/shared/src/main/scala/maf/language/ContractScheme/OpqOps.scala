@@ -15,10 +15,10 @@ import maf.language.symbolic.*
 object OpqOps:
     trait Tpy:
         def ==>:(other: Tpy): Tpy =
-          ArrowTpy(other, this)
+            ArrowTpy(other, this)
 
         def |||(other: Tpy): Tpy =
-          Union(this, other)
+            Union(this, other)
 
     /**
      * Everything can be expressed as an uncurried function type,
@@ -31,22 +31,22 @@ object OpqOps:
      */
 
     def uncurry(tpy: Tpy): Uncurried =
-      tpy match
-          case ArrowTpy(domain, range) =>
-            val rangeUncurried = uncurry(range)
-            Uncurried(domains = domain :: rangeUncurried.domains, rangeUncurried.range)
-          case _ =>
-            Uncurried(domains = List(), tpy)
+        tpy match
+            case ArrowTpy(domain, range) =>
+                val rangeUncurried = uncurry(range)
+                Uncurried(domains = domain :: rangeUncurried.domains, rangeUncurried.range)
+            case _ =>
+                Uncurried(domains = List(), tpy)
 
     def symbolicContracts(tpy: Tpy, args: List[Unit]): List[SchemeOp] =
         val uncurried = uncurry(tpy)
         def iter(tpys: List[Tpy], args: List[Unit]): List[SchemeOp] = (tpys, args) match
             case (List(VarArg(tpy)), rest) =>
-              (0 to rest.size).map(_ => typePredicates(tpy)).toList
+                (0 to rest.size).map(_ => typePredicates(tpy)).toList
             case (List(Optional(tpy)), List(rest)) =>
-              List(typePredicates(tpy))
+                List(typePredicates(tpy))
             case (tpy :: restTpys, arg :: restArgs) =>
-              typePredicates(tpy) :: iter(restTpys, restArgs)
+                typePredicates(tpy) :: iter(restTpys, restArgs)
             case (List(), _ /*List()*/ ) => List()
 
         iter(uncurried.domains, args)
@@ -92,7 +92,7 @@ object OpqOps:
      */
     case class Var(name: String, boundTo: Option[Tpy] = None) extends Tpy:
         def bind(tpy: Tpy): Var =
-          Var(name, Some(tpy))
+            Var(name, Some(tpy))
 
         /** Checks whether the condition is satisfies for the concrete values the variable is bound to */
         def forall(pred: Tpy => Boolean): Tpy = Forall(this, pred)
@@ -256,21 +256,21 @@ object OpqOps:
     def matches[V: Lat](value: V, tpy: Tpy): Boolean = tpy match
         case Union(a, b) => matches(value, a) || matches(value, b)
         case _ =>
-          val operation = typePredicates(tpy)
-          operation match
-              case SchemeOp.IsAny => true
-              case _ =>
-                Lat[V].op(operation)(List(value)).map(Lat[V].isTrue).getOrElse(false) ||
-                  Lat[V].isOpq(value)
+            val operation = typePredicates(tpy)
+            operation match
+                case SchemeOp.IsAny => true
+                case _ =>
+                    Lat[V].op(operation)(List(value)).map(Lat[V].isTrue).getOrElse(false) ||
+                        Lat[V].isOpq(value)
 
     /** Returns true if the arguments match (both in number *and* type) */
     def checkArgs[V: Lat](values: List[V], tpys: List[Tpy]): Boolean = (values, tpys) match
         case (v :: vs, List(VarArg(tpy))) =>
-          (v :: vs).forall(v => matches(v, tpy))
+            (v :: vs).forall(v => matches(v, tpy))
         case (List(), List(Optional(_)) | List()) => true
         case (List(v), List(Optional(tpy)))       => matches(v, tpy)
         case (v :: vs, tpy :: tpys) =>
-          matches(v, tpy) && checkArgs(vs, tpys)
+            matches(v, tpy) && checkArgs(vs, tpys)
         case _ => throw new Exception(s"Unsupported comparison of $values witgh $tpys")
 
     import maf.core.Monad.MonadSyntaxOps
@@ -296,13 +296,13 @@ object OpqOps:
       )(using SchemePrimM[M, Address, V]
       ): M[Boolean] = primName match
         case "cons" =>
-          // cons is always directly applicable, not matter what the arguments are
-          Monad[M].unit(true)
+            // cons is always directly applicable, not matter what the arguments are
+            Monad[M].unit(true)
 
         case "set-car!" | "set-cdr!" =>
-          // set-car! and set-cdr! are only applicable if the first argument is a pair
-          val isPair = primitives("pair?")
-          isPair.call(fexp, List(args(0))) map (Lat[V].isTrue)
+            // set-car! and set-cdr! are only applicable if the first argument is a pair
+            val isPair = primitives("pair?")
+            isPair.call(fexp, List(args(0))) map (Lat[V].isTrue)
 
         case _ => Monad[M].unit(false)
 
@@ -313,7 +313,7 @@ object OpqOps:
         primitives: SchemePrimitives[V, Address]
       )(using SchemePrimM[M, Address, V]
       ): M[V] =
-      primitives(primName).call(fexp, args)
+        primitives(primName).call(fexp, args)
 
     /* Computations with OPQ values
      *
@@ -336,10 +336,10 @@ object OpqOps:
             return Monad[M].unit(Lat[V].bottom) // TODO: use failure op
 
         Monad.mIf(directlyApplicable(fexp, primName, args, primitives)) /* then */ { appl(fexp, primName, args, primitives) } /* else */ {
-          if signature.range == Unsupported || !checkArgs(args, signature.domains) then Monad[M].unit(Lat[V].bottom)
-          else Monad[M].unit(inject(signature.range))
+            if signature.range == Unsupported || !checkArgs(args, signature.domains) then Monad[M].unit(Lat[V].bottom)
+            else Monad[M].unit(inject(signature.range))
         }
 
     /** Checks whether the abstract computations can be ran using the semantics of opaque values */
     def eligible[V: Lat](args: List[V]): Boolean =
-      args.exists(arg => Lat[V].isOpq(arg)) && !args.exists(arg => Lat[V].isBottom(arg))
+        args.exists(arg => Lat[V].isOpq(arg)) && !args.exists(arg => Lat[V].isBottom(arg))

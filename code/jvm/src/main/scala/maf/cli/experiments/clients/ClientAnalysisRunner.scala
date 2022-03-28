@@ -32,9 +32,9 @@ trait ClientAnalysisRunner:
     def results(analysis: Analysis): Map[String, Result]
 
     protected def toTable(results: Map[String, Map[String, Result]], inTable: Table[Result] = Table.empty): Table[Result] =
-      results.foldLeft(inTable) { case (table, (programName, metrics)) =>
-        metrics.foldLeft(table) { case (table, (name, vlu)) => table.add(programName, name, vlu) }
-      }
+        results.foldLeft(inTable) { case (table, (programName, metrics)) =>
+            metrics.foldLeft(table) { case (table, (name, vlu)) => table.add(programName, name, vlu) }
+        }
 
     protected def runBenchmark(table: Table[Result], name: String): Table[Result] =
         val program = Reader.loadFile(name)

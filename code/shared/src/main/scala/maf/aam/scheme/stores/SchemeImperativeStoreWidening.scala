@@ -34,7 +34,7 @@ case class ReadDep() extends GraphElement:
     def metadata = GraphMetadataNone
 
 def addrNode(adr: Address): GraphElementAAM =
-  GraphElementAAM(adr.hashCode, adr.toString, Colors.Grass, "")
+    GraphElementAAM(adr.hashCode, adr.toString, Colors.Grass, "")
 
 /** An effect driven imperative store */
 trait SchemeImperativeStoreWidening extends AAMAnalysis[SchemeExp], BaseSchemeAAMSemantics, AAMPeformanceMetrics[SchemeExp]:
@@ -50,7 +50,7 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis[SchemeExp], BaseSchemeAA
     var store: BasicStore[Address, Storable] = originalSto
 
     override def asGraphElement(c: Conf, sys: System): GraphElementAAM =
-      asGraphElement(c.c, c.k, EffectSto(Set(), Set(), c.tt), c.extra, c.hashCode)
+        asGraphElement(c.c, c.k, EffectSto(Set(), Set(), c.tt), c.extra, c.hashCode)
 
     override lazy val initialStore: Sto = EffectSto(Set(), Set(), 0)
 
@@ -66,57 +66,57 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis[SchemeExp], BaseSchemeAA
      */
     case class EffectSto(w: Set[Address], r: Set[Address], tt: Int, c: Set[State] = Set()):
         def writeDep(a: Address): EffectSto =
-          this.copy(w = w + a)
+            this.copy(w = w + a)
 
         def callDep(a: Set[State]): EffectSto =
-          this.copy(c = c ++ a)
+            this.copy(c = c ++ a)
 
         def readDep(a: Address): EffectSto =
-          this.copy(r = r + a)
+            this.copy(r = r + a)
 
         override def toString: String =
-          s"EffectSto { w = ${w.size}, r = ${r.size}, c = ${c.size})"
+            s"EffectSto { w = ${w.size}, r = ${r.size}, c = ${c.size})"
 
     class EffectDrivenAnalysisSystem extends BaseSystem:
         def allConfs: Set[Conf] = seen
 
         def finalStates: Set[State] =
-          seen.map(asState(_, this)).filter(isFinal)
+            seen.map(asState(_, this)).filter(isFinal)
 
         private var seen: Set[Conf] = Set()
         private var R: Map[Address, Set[Conf]] = Map().withDefaultValue(Set())
         private val worklist: Queue[(Option[Conf], Conf)] = Queue()
 
         def popWork(): Option[(Option[Conf], Conf)] =
-          if worklist.nonEmpty then
-              change {
-                val conf = worklist.dequeue
-                Some(conf)
-              }
-          else None
+            if worklist.nonEmpty then
+                change {
+                    val conf = worklist.dequeue
+                    Some(conf)
+                }
+            else None
 
         /** Trigger some read dependencies */
         def trigger(w: Set[Address], from: Conf): Unit =
-          change {
-            w.foreach(adr => R(adr).foreach(conf => worklist.enqueue((Some(from), conf.copy(tt = conf.tt)))))
-          }
+            change {
+                w.foreach(adr => R(adr).foreach(conf => worklist.enqueue((Some(from), conf.copy(tt = conf.tt)))))
+            }
 
         /** Register a read dependency */
         def register(r: Set[Address], conf: Conf): Unit =
-          change {
-            r.foreach(adr => R = R + (adr -> (R(adr) + conf)))
-          }
+            change {
+                r.foreach(adr => R = R + (adr -> (R(adr) + conf)))
+            }
 
         /** Spawn a configuration */
         def spawn(conf: Conf, from: Conf): Boolean =
-          spawn(conf, Some(from))
+            spawn(conf, Some(from))
 
         def spawn(conf: Conf, from: Option[Conf]): Boolean =
             if !seen.contains(conf) then
                 increment(Seen)
                 change {
-                  seen = seen + conf
-                  worklist.enqueue((from, conf))
+                    seen = seen + conf
+                    worklist.enqueue((from, conf))
                 }
                 true
             else increment(Bump); false
@@ -169,13 +169,13 @@ trait SchemeImperativeStoreWidening extends AAMAnalysis[SchemeExp], BaseSchemeAA
         (vlu, sto.readDep(addr))
 
     override def asState(conf: Conf, system: System): State =
-      SchemeState(conf.c, EffectSto(Set(), Set(), conf.tt), conf.k, conf.t, conf.extra)
+        SchemeState(conf.c, EffectSto(Set(), Set(), conf.tt), conf.k, conf.t, conf.extra)
 
     override def asConf(s: State, system: System): Conf =
-      SchemeConf(s.c, s.k, s.t, s.extra, s.s.tt)
+        SchemeConf(s.c, s.k, s.t, s.extra, s.s.tt)
 
     override def injectConf(e: Expr): Conf =
-      SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt, 0)
+        SchemeConf(Control.Ev(e, initialEnv), Kont0Addr, initialTime, emptyExt, 0)
 
     override def inject(expr: Expr): System =
         val sys = EffectDrivenAnalysisSystem()

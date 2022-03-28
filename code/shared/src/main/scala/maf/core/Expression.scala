@@ -34,15 +34,15 @@ trait Expression extends SmartHash:
      * Returns whether this expression is isomorphic to another expression. This is a basic implementation which should be specialised in subclasses.
      */
     def isomorphic(other: Expression): Boolean =
-      label == other.label &&
-        subexpressions.length == other.subexpressions.length &&
-        subexpressions.zip(other.subexpressions).forall { case (x, y) => x.isomorphic(y) }
+        label == other.label &&
+            subexpressions.length == other.subexpressions.length &&
+            subexpressions.zip(other.subexpressions).forall { case (x, y) => x.isomorphic(y) }
 
     /** Indicates whether this expression is equal to another expression when identity information of the expression is ignored. */
     def eql(other: Expression): Boolean = (hash == other.hash
-      && label == other.label
-      && subexpressions.length == other.subexpressions.length
-      && subexpressions.zip(other.subexpressions).forall(p => p._1.eql(p._2)))
+        && label == other.label
+        && subexpressions.length == other.subexpressions.length
+        && subexpressions.zip(other.subexpressions).forall(p => p._1.eql(p._2)))
 
     /** A hash code that ignores positional information of the expression within the source code. */
     lazy val hash: Int = (label, subexpressions.map(_.hash)).hashCode()

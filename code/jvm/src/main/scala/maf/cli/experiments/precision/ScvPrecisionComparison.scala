@@ -37,11 +37,11 @@ object ScvPrecisionComparison
     )
 
     override def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO()): SchemeInterpreter =
-      new ContractSchemeInterpreter(addResult)
+        new ContractSchemeInterpreter(addResult)
 
     override def handleInterpreterError(addResult: (Identity, ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = {
-      case ContractSchemeBlame(lcontract, lserver, _) => addResult(lcontract, ConcreteValues.ContractValue(Blame(lcontract, lserver)))
-      case e                                          => throw e // rethrow error if not a blame
+        case ContractSchemeBlame(lcontract, lserver, _) => addResult(lcontract, ConcreteValues.ContractValue(Blame(lcontract, lserver)))
+        case e                                          => throw e // rethrow error if not a blame
     }
 
     override protected def convertConcreteValue(value: ConcreteValues.Value): BaseValue = value match
@@ -73,23 +73,23 @@ object ScvPrecisionComparison
     override def runs = 1
 
     override def parseProgram(txt: String): SchemeExp =
-      SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
+        SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
 
     override def additionalCounts(analysisName: String, path: Benchmark, r1: ResultMap, r2: ResultMap): Unit =
         // the concrete results are in r2, so if a blame is in r1, but not in r1 then it is a false positive
         val nFalsePositives = r1.values
-          .flatMap(r1Values =>
-            baseDomain.schemeLattice
-              .getBlames(r1Values)
-              .map(r1Blame => if r2.values.flatMap(r2Value => baseDomain.schemeLattice.getBlames(r2Value)).toSet.contains(r1Blame) then 0 else 1)
-          )
-          .sum
+            .flatMap(r1Values =>
+                baseDomain.schemeLattice
+                    .getBlames(r1Values)
+                    .map(r1Blame => if r2.values.flatMap(r2Value => baseDomain.schemeLattice.getBlames(r2Value)).toSet.contains(r1Blame) then 0 else 1)
+            )
+            .sum
 
         results = results.add(path, s"$analysisName" + "_# false positives", Result.Success(nFalsePositives))
 
     override def compareOrdered(r1: ResultMap, r2: ResultMap, check: Boolean = true): Set[Identity] =
-      // override check flag: checking is already done in soundness tests (except for unrelated, but in scv this in unavoidable because of the many synthesized calls)
-      super.compareOrdered(r1, r2, check = false)
+        // override check flag: checking is already done in soundness tests (except for unrelated, but in scv this in unavoidable because of the many synthesized calls)
+        super.compareOrdered(r1, r2, check = false)
 
     def main(args: Array[String]) =
         benchmarks.foreach(runBenchmark)

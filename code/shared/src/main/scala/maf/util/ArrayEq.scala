@@ -6,18 +6,18 @@ import scala.reflect.ClassTag
 final class ArrayEq[T: ClassTag](val contents: Array[T]):
     override def equals(that: Any): Boolean = that match
         case e: ArrayEq[_] =>
-          contents.zip(e.contents).forall { case (a, b) => a == b }
+            contents.zip(e.contents).forall { case (a, b) => a == b }
         case _ => false
 
     def update(idx: Int, vlu: T): Unit =
-      contents(idx) = vlu
+        contents(idx) = vlu
 
     def apply(idx: Int): T =
-      contents(idx)
+        contents(idx)
 
     def map[A: ClassTag](f: T => A): ArrayEq[A] =
-      ArrayEq(contents.map(f))
+        ArrayEq(contents.map(f))
 
 object ArrayEq:
     def from[T: ClassTag](vlus: scala.collection.Iterable[T]): ArrayEq[T] =
-      ArrayEq(Array.from(vlus))
+        ArrayEq(Array.from(vlus))

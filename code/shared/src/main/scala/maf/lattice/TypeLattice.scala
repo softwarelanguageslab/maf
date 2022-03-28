@@ -26,9 +26,9 @@ object Type:
         def subsumes(x: T, y: => T): Boolean = x match
             case Top => true
             case Bottom =>
-              y match
-                  case Top    => false
-                  case Bottom => true
+                y match
+                    case Top    => false
+                    case Bottom => true
         def eql[B2: BoolLattice](n1: T, n2: T): B2 = (n1, n2) match
             case (Top, Top) => BoolLattice[B2].top
             case _          => BoolLattice[B2].bottom
@@ -43,117 +43,117 @@ object Type:
     object T:
 
         implicit val typeIsString: StringLattice[S] = new BaseInstance("Str") with StringLattice[S] {
-          def inject(x: String): T = Top
-          def length[I2: IntLattice](s: T) = s.to[I2]
-          def append(s1: T, s2: T) = (s1, s2) match
-              case (Bottom, _) | (_, Bottom) => Bottom
-              case (Top, _) | (Top, _)       => Top
-          def ref[I2: IntLattice, C2: CharLattice](s: S, i: I2): C2 = s match
-              case Bottom                            => CharLattice[C2].bottom
-              case Top if i == IntLattice[I2].bottom => CharLattice[C2].bottom
-              case Top                               => CharLattice[C2].top
-          def set[I2: IntLattice, C2: CharLattice](
-              s: S,
-              i: I2,
-              c: C2
-            ): S =
-            if s == Bottom || i == IntLattice[I2].bottom || c == CharLattice[C2].bottom then Bottom
-            else Top
-          def lt[B2: BoolLattice](s1: T, s2: T) = (s1, s2) match
-              case (Bottom, _) | (_, Bottom) => BoolLattice[B2].bottom
-              case (Top, _) | (Top, _)       => BoolLattice[B2].top
-          def substring[I2: IntLattice](
-              s: T,
-              from: I2,
-              to: I2
-            ): T = s match
-              case Bottom                             => Bottom
-              case _ if from == IntLattice[I2].bottom => Bottom
-              case _ if to == IntLattice[I2].bottom   => Bottom
-              case Top                                => Top
+            def inject(x: String): T = Top
+            def length[I2: IntLattice](s: T) = s.to[I2]
+            def append(s1: T, s2: T) = (s1, s2) match
+                case (Bottom, _) | (_, Bottom) => Bottom
+                case (Top, _) | (Top, _)       => Top
+            def ref[I2: IntLattice, C2: CharLattice](s: S, i: I2): C2 = s match
+                case Bottom                            => CharLattice[C2].bottom
+                case Top if IntLattice[I2].isBottom(i) => CharLattice[C2].bottom
+                case Top                               => CharLattice[C2].top
+            def set[I2: IntLattice, C2: CharLattice](
+                s: S,
+                i: I2,
+                c: C2
+              ): S =
+                if s == Bottom || IntLattice[I2].isBottom(i) || CharLattice[C2].isBottom(c) then Bottom
+                else Top
+            def lt[B2: BoolLattice](s1: T, s2: T) = (s1, s2) match
+                case (Bottom, _) | (_, Bottom) => BoolLattice[B2].bottom
+                case (Top, _) | (Top, _)       => BoolLattice[B2].top
+            def substring[I2: IntLattice](
+                s: T,
+                from: I2,
+                to: I2
+              ): T = s match
+                case Bottom                             => Bottom
+                case _ if IntLattice[I2].isBottom(from) => Bottom
+                case _ if IntLattice[I2].isBottom(to)   => Bottom
+                case Top                                => Top
 
-          def toSymbol[Sym2: SymbolLattice](s: S) = s.to[Sym2]
-          def toNumber[I2: IntLattice](s: S) = s match
-              case Bottom => MayFail.success(IntLattice[I2].bottom)
-              case Top    => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
+            def toSymbol[Sym2: SymbolLattice](s: S) = s.to[Sym2]
+            def toNumber[I2: IntLattice](s: S) = s match
+                case Bottom => MayFail.success(IntLattice[I2].bottom)
+                case Top    => MayFail.success(IntLattice[I2].top).addError(NotANumberString)
         }
         implicit val typeIsBoolean: BoolLattice[B] = new BaseInstance("Bool") with BoolLattice[B] {
-          def inject(x: Boolean): T = Top
-          def isTrue(b: T) = b == Top
-          def isFalse(b: T) = b == Top
-          def not(b: T) = b
+            def inject(x: Boolean): T = Top
+            def isTrue(b: T) = b == Top
+            def isFalse(b: T) = b == Top
+            def not(b: T) = b
         }
         implicit val typeIsInteger: IntLattice[I] = new BaseInstance("Int") with IntLattice[I] {
-          def inject(x: BigInt): T = Top
+            def inject(x: BigInt): T = Top
 
-          def toReal[R2: RealLattice](n: T): R2 = n.to[R2]
-          def random(n: T): T = n
-          def plus(n1: T, n2: T): T = meet(n1, n2)
-          def minus(n1: T, n2: T): T = meet(n1, n2)
-          def times(n1: T, n2: T): T = meet(n1, n2)
-          def div[R2: RealLattice](n1: T, n2: T): R2 = (n1, n2) match
-              case (Top, Top) => RealLattice[R2].top
-              case _          => RealLattice[R2].bottom
-          def expt(n1: T, n2: T): T = meet(n1, n2)
-          def quotient(n1: T, n2: T): T = meet(n1, n2)
-          def modulo(n1: T, n2: T): T = meet(n1, n2)
-          def remainder(n1: T, n2: T): T = meet(n1, n2)
-          def lt[B2: BoolLattice](n1: T, n2: T): B2 = (n1, n2) match
-              case (Top, Top) => BoolLattice[B2].top
-              case _          => BoolLattice[B2].bottom
-          def valuesBetween(n1: T, n2: T): Set[T] = Set(Top)
-          def makeString[C2: CharLattice, S2: StringLattice](length: I, char: C2): S2 = StringLattice[S2].top
-          def toString[S2: StringLattice](n: T): S2 = n.to[S2]
-          def toChar[C2: CharLattice](n: T): C2 = n.to[C2]
+            def toReal[R2: RealLattice](n: T): R2 = n.to[R2]
+            def random(n: T): T = n
+            def plus(n1: T, n2: T): T = meet(n1, n2)
+            def minus(n1: T, n2: T): T = meet(n1, n2)
+            def times(n1: T, n2: T): T = meet(n1, n2)
+            def div[R2: RealLattice](n1: T, n2: T): R2 = (n1, n2) match
+                case (Top, Top) => RealLattice[R2].top
+                case _          => RealLattice[R2].bottom
+            def expt(n1: T, n2: T): T = meet(n1, n2)
+            def quotient(n1: T, n2: T): T = meet(n1, n2)
+            def modulo(n1: T, n2: T): T = meet(n1, n2)
+            def remainder(n1: T, n2: T): T = meet(n1, n2)
+            def lt[B2: BoolLattice](n1: T, n2: T): B2 = (n1, n2) match
+                case (Top, Top) => BoolLattice[B2].top
+                case _          => BoolLattice[B2].bottom
+            def valuesBetween(n1: T, n2: T): Set[T] = Set(Top)
+            def makeString[C2: CharLattice, S2: StringLattice](length: I, char: C2): S2 = StringLattice[S2].top
+            def toString[S2: StringLattice](n: T): S2 = n.to[S2]
+            def toChar[C2: CharLattice](n: T): C2 = n.to[C2]
         }
         implicit val typeIsReal: RealLattice[R] = new BaseInstance("Real") with RealLattice[R] {
-          def inject(x: Double): T = Top
-          def toInt[I2: IntLattice](n: T): I2 = n.to[I2]
-          def ceiling(n: T): T = n
-          def floor(n: T): T = n
-          def round(n: T): T = n
-          def log(n: T): T = n
-          def random(n: T): T = n
-          def sin(n: T): T = n
-          def asin(n: T): T = n
-          def cos(n: T): T = n
-          def acos(n: T): T = n
-          def tan(n: T): T = n
-          def atan(n: T): T = n
-          def sqrt(n: T): T = n
-          def plus(n1: T, n2: T): T = meet(n1, n2)
-          def minus(n1: T, n2: T): T = meet(n1, n2)
-          def times(n1: T, n2: T): T = meet(n1, n2)
-          def div(n1: T, n2: T): T = meet(n1, n2)
-          def expt(n1: T, n2: T): T = meet(n1, n2)
-          def lt[B2: BoolLattice](n1: T, n2: T): B2 = (n1, n2) match
-              case (Top, Top) => BoolLattice[B2].top
-              case _          => BoolLattice[B2].bottom
-          def toString[S2: StringLattice](n: T): S2 = n.to[S2]
+            def inject(x: Double): T = Top
+            def toInt[I2: IntLattice](n: T): I2 = n.to[I2]
+            def ceiling(n: T): T = n
+            def floor(n: T): T = n
+            def round(n: T): T = n
+            def log(n: T): T = n
+            def random(n: T): T = n
+            def sin(n: T): T = n
+            def asin(n: T): T = n
+            def cos(n: T): T = n
+            def acos(n: T): T = n
+            def tan(n: T): T = n
+            def atan(n: T): T = n
+            def sqrt(n: T): T = n
+            def plus(n1: T, n2: T): T = meet(n1, n2)
+            def minus(n1: T, n2: T): T = meet(n1, n2)
+            def times(n1: T, n2: T): T = meet(n1, n2)
+            def div(n1: T, n2: T): T = meet(n1, n2)
+            def expt(n1: T, n2: T): T = meet(n1, n2)
+            def lt[B2: BoolLattice](n1: T, n2: T): B2 = (n1, n2) match
+                case (Top, Top) => BoolLattice[B2].top
+                case _          => BoolLattice[B2].bottom
+            def toString[S2: StringLattice](n: T): S2 = n.to[S2]
         }
         implicit val typeIsChar: CharLattice[C] = new BaseInstance("Char") with CharLattice[C] {
-          def inject(c: Char): T = Top
-          def downCase(c: C): C = c
-          def upCase(c: C): C = c
-          def toString[S2: StringLattice](c: C): S2 = c.to[S2]
-          def toInt[I2: IntLattice](c: C): I2 = c.to[I2]
-          def isLower[B2: BoolLattice](c: C): B2 = c.to[B2]
-          def isUpper[B2: BoolLattice](c: C): B2 = c.to[B2]
+            def inject(c: Char): T = Top
+            def downCase(c: C): C = c
+            def upCase(c: C): C = c
+            def toString[S2: StringLattice](c: C): S2 = c.to[S2]
+            def toInt[I2: IntLattice](c: C): I2 = c.to[I2]
+            def isLower[B2: BoolLattice](c: C): B2 = c.to[B2]
+            def isUpper[B2: BoolLattice](c: C): B2 = c.to[B2]
 
-          override def charEq[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match
-              case (Top, Top) => BoolLattice[B2].top
-              case _          => BoolLattice[B2].bottom
-          override def charLt[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match
-              case (Top, Top) => BoolLattice[B2].top
-              case _          => BoolLattice[B2].bottom
-          def charEqCI[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match
-              case (Top, Top) => BoolLattice[B2].top
-              case _          => BoolLattice[B2].bottom
-          def charLtCI[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match
-              case (Top, Top) => BoolLattice[B2].top
-              case _          => BoolLattice[B2].bottom
+            override def charEq[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match
+                case (Top, Top) => BoolLattice[B2].top
+                case _          => BoolLattice[B2].bottom
+            override def charLt[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match
+                case (Top, Top) => BoolLattice[B2].top
+                case _          => BoolLattice[B2].bottom
+            def charEqCI[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match
+                case (Top, Top) => BoolLattice[B2].top
+                case _          => BoolLattice[B2].bottom
+            def charLtCI[B2: BoolLattice](c1: C, c2: C): B2 = (c1, c2) match
+                case (Top, Top) => BoolLattice[B2].top
+                case _          => BoolLattice[B2].bottom
         }
         implicit val typeIsSymbol: SymbolLattice[Sym] = new BaseInstance("Sym") with SymbolLattice[Sym] {
-          def inject(sym: String): T = Top
-          def toString[S2: StringLattice](s: T): S2 = StringLattice[S2].top
+            def inject(sym: String): T = Top
+            def toString[S2: StringLattice](s: T): S2 = StringLattice[S2].top
         }

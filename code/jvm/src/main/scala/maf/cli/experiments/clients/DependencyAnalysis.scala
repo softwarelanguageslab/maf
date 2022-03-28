@@ -23,9 +23,8 @@ import scala.reflect.ClassTag
  */
 trait DependencyAnalysis extends ModAnalysis[SchemeExp]:
     /** Return the component associated with the given address */
-    def viewComponent(adr: Dependency): Component =
-      adr match
-          case AddrDependency(addr) =>
+    def viewComponent(adr: Dependency): Component = adr match
+        case AddrDependency(addr) =>
             (addr match
                 case ReturnAddr(cmp, _) => cmp
                 case VarAddr(_, cmp)    => cmp
@@ -46,12 +45,12 @@ trait DependencyAnalysis extends ModAnalysis[SchemeExp]:
 
     trait IntraDependencyAnalysis extends IntraAnalysis:
         override def register(dep: Dependency): Unit =
-          //readDeps = readDeps + (this.component -> viewComponent(dep))
-          super.register(dep)
+            //readDeps = readDeps + (this.component -> viewComponent(dep))
+            super.register(dep)
 
         override def trigger(dep: Dependency): Unit =
-          //writeDeps = writeDeps + (this.component -> viewComponent(dep))
-          super.trigger(dep)
+            //writeDeps = writeDeps + (this.component -> viewComponent(dep))
+            super.trigger(dep)
 
         override def spawn(cmp: Component): Unit =
             calls = calls + (this.component -> cmp)
@@ -62,9 +61,9 @@ trait DependencyAnalysisRunner extends ClientAnalysisRunner:
     override type Result = Double
 
     def setToMap[T](set: Set[(T, T)]): Map[T, List[T]] =
-      set.foldLeft(Map[T, List[T]]()) { case (result, (from, to)) =>
-        result + (from -> (to :: result.get(from).getOrElse(List())))
-      }
+        set.foldLeft(Map[T, List[T]]()) { case (result, (from, to)) =>
+            result + (from -> (to :: result.get(from).getOrElse(List())))
+        }
 
     def computeAverageAndTotal(anl: Analysis, results: Set[(anl.Component, anl.Component)]): (Double, Double) =
         val asMap = setToMap(results)
@@ -82,10 +81,10 @@ trait DependencyAnalysisRunner extends ClientAnalysisRunner:
 
         var visited: Set[anl.Component] = Set()
         def visit(calls: Map[anl.Component, List[anl.Component]], from: anl.Component, depth: Int): Int =
-          if !visited.contains(from) && calls.contains(from) then
-              visited += from
-              calls(from).foldMap(to => visit(calls, to, depth + 1))
-          else depth
+            if !visited.contains(from) && calls.contains(from) then
+                visited += from
+                calls(from).foldMap(to => visit(calls, to, depth + 1))
+            else depth
 
         result.map(_._1).foldMap(visit(setToMap(result), _, 0)).toDouble
 
@@ -134,9 +133,9 @@ trait ScvDependencyAnalysisRunner extends DependencyAnalysisRunner with ScvClien
 
         override def viewComponent(dep: Dependency): Component = dep match
             case AddrDependency(adr) =>
-              adr match
-                  case ScvExceptionAddr(component, _) => component.asInstanceOf[Component]
-                  case _                              => super.viewComponent(dep)
+                adr match
+                    case ScvExceptionAddr(component, _) => component.asInstanceOf[Component]
+                    case _                              => super.viewComponent(dep)
 
         protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 

@@ -34,11 +34,11 @@ import scala.concurrent.duration.*
 trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
 
     type IncrementalAnalysis = ModAnalysis[SchemeExp]
-      with GlobalStore[SchemeExp]
-      with ReturnValue[SchemeExp]
-      with SchemeDomain
-      with IncrementalModAnalysis[SchemeExp]
-      with AnalysisResults[SchemeExp]
+        with GlobalStore[SchemeExp]
+        with ReturnValue[SchemeExp]
+        with SchemeDomain
+        with IncrementalModAnalysis[SchemeExp]
+        with AnalysisResults[SchemeExp]
 
     def analysis(b: SchemeExp): IncrementalAnalysis
 
@@ -69,14 +69,14 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
                 runInterpreterWithVersion(interpreter, program, timeout, version)
         catch
             case _: TimeoutException =>
-              alert(s"Concrete evaluation of $benchmark timed out.")
+                alert(s"Concrete evaluation of $benchmark timed out.")
             case ProgramError(msg) =>
-              alert(s"Concrete evaluation of $benchmark encountered a program error:\n$msg")
+                alert(s"Concrete evaluation of $benchmark encountered a program error:\n$msg")
             case ChildThreadDiedException(_) =>
-              alert(s"Concrete evaluation of $benchmark aborted due to a fatal crash in a child thread.")
+                alert(s"Concrete evaluation of $benchmark aborted due to a fatal crash in a child thread.")
             case e: VirtualMachineError =>
-              System.gc()
-              alert(s"Concrete evaluation of $benchmark failed with $e")
+                System.gc()
+                alert(s"Concrete evaluation of $benchmark failed with $e")
         idnResults
 
     protected def runAnalysisWithConfiguration(
@@ -84,68 +84,68 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
         benchmark: Benchmark,
         config: IncrementalConfiguration
       ): IncrementalAnalysis =
-      try
-          // analyze the program using a ModF analysis
-          val anl = analysis(program)
-          anl.configuration = config
-          val timeout = analysisTimeout(benchmark)
-          anl.analyzeWithTimeout(timeout)
-          anl
-      catch
-          case e: VirtualMachineError =>
-            System.gc()
-            cancel(s"Analysis of $benchmark encountered an error: $e")
+        try
+            // analyze the program using a ModF analysis
+            val anl = analysis(program)
+            anl.configuration = config
+            val timeout = analysisTimeout(benchmark)
+            anl.analyzeWithTimeout(timeout)
+            anl
+        catch
+            case e: VirtualMachineError =>
+                System.gc()
+                cancel(s"Analysis of $benchmark encountered an error: $e")
     // case InvalidConfigurationException(msg, config) =>
     //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
 
     // This is horrible code.
     override def onBenchmark(benchmark: Benchmark): Unit =
-      property(s"Incremental analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
+        property(s"Incremental analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
 
-        // load the benchmark program
-        val content = Reader.loadFile(benchmark)
-        val program = CSchemeParser.parseProgram(content)
+            // load the benchmark program
+            val content = Reader.loadFile(benchmark)
+            val program = CSchemeParser.parseProgram(content)
 
-        val cResultsOld = evalConcreteWithVersion(program, benchmark, Old)
+            val cResultsOld = evalConcreteWithVersion(program, benchmark, Old)
 
-        val anlOld = runAnalysisWithConfiguration(program, benchmark, allOptimisations)
-        assume(anlOld.finished, "Initial analysis timed out.")
+            val anlOld = runAnalysisWithConfiguration(program, benchmark, allOptimisations)
+            assume(anlOld.finished, "Initial analysis timed out.")
 
-        // Check soundness on the original version of the program.
-        info("Checking initial analysis results.")
-        compareResults(anlOld, cResultsOld, "initial analysis")
+            // Check soundness on the original version of the program.
+            info("Checking initial analysis results.")
+            compareResults(anlOld, cResultsOld, "initial analysis")
 
-        val cResultsNew = evalConcreteWithVersion(program, benchmark, New)
+            val cResultsNew = evalConcreteWithVersion(program, benchmark, New)
 
-        for c <- configurations do
-            //try {
-            // Check soundness on the updated version of the program.
-            info(s"Checking results of $c")
-            val anlCopy = anlOld.deepCopy()
-            anlCopy.configuration = c
-            updateAnalysis(anlCopy, benchmark)
-            compareResults(anlCopy, cResultsNew, c.toString)
-        // } catch {
-        //   case a: AssertionError      => throw new Exception(s"Assertion violation using ${c}.", a)
-        //   case t: java.lang.Throwable => throw new Exception(s"Analysis error using ${c}.", t)
-        // }
-      }
+            for c <- configurations do
+                //try {
+                // Check soundness on the updated version of the program.
+                info(s"Checking results of $c")
+                val anlCopy = anlOld.deepCopy()
+                anlCopy.configuration = c
+                updateAnalysis(anlCopy, benchmark)
+                compareResults(anlCopy, cResultsNew, c.toString)
+            // } catch {
+            //   case a: AssertionError      => throw new Exception(s"Assertion violation using ${c}.", a)
+            //   case t: java.lang.Throwable => throw new Exception(s"Analysis error using ${c}.", t)
+            // }
+        }
 
     private def updateAnalysis(anl: IncrementalAnalysis, benchmark: Benchmark): Unit =
-      try
-          val timeout = analysisTimeout(benchmark)
-          anl.updateAnalysis(timeout)
-          assume(anl.finished, "Reanalysis timed out.")
-      catch
-          case e: VirtualMachineError =>
-            System.gc()
-            cancel(s"Reanalysis of $benchmark encountered an error: $e.")
+        try
+            val timeout = analysisTimeout(benchmark)
+            anl.updateAnalysis(timeout)
+            assume(anl.finished, "Reanalysis timed out.")
+        catch
+            case e: VirtualMachineError =>
+                System.gc()
+                cancel(s"Reanalysis of $benchmark encountered an error: $e.")
 
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ IncrementalTest
 
 trait RemainingConfigurations extends IncrementalModXSoundnessTests:
     override val configurations: List[IncrementalConfiguration] =
-      (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
+        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
     override def isSlow(b: Benchmark) = true
 
 trait noCY extends IncrementalModXSoundnessTests:
@@ -154,7 +154,7 @@ trait noCY extends IncrementalModXSoundnessTests:
         benchmark: Benchmark,
         config: IncrementalConfiguration
       ): IncrementalAnalysis =
-      super.runAnalysisWithConfiguration(program, benchmark, config.copy(cyclicValueInvalidation = false))
+        super.runAnalysisWithConfiguration(program, benchmark, config.copy(cyclicValueInvalidation = false))
 
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks with noCY:
@@ -165,12 +165,12 @@ class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with
 
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
     override def isSlow(b: Benchmark): Boolean =
-      Set(
-        "test/changes/cscheme/threads/actors.scm",
-        "test/changes/cscheme/threads/crypt.scm",
-        "test/changes/cscheme/threads/crypt2.scm",
-        "test/changes/cscheme/threads/stm.scm"
-      )(b)
+        Set(
+          "test/changes/cscheme/threads/actors.scm",
+          "test/changes/cscheme/threads/crypt.scm",
+          "test/changes/cscheme/threads/crypt2.scm",
+          "test/changes/cscheme/threads/stm.scm"
+        )(b)
 
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with noCY:
@@ -191,15 +191,15 @@ class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialI
 
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModFTest :+ BigStepTest
     override def isSlow(b: Benchmark): Boolean =
-      Set(
-        "test/changes/scheme/multiple-dwelling (coarse).scm",
-        "test/changes/scheme/multiple-dwelling (fine).scm",
-        "test/changes/scheme/leval.scm",
-        "test/changes/scheme/machine-simulator.scm",
-        "test/changes/scheme/mceval-dynamic.scm",
-        "test/changes/scheme/nboyer.scm",
-        "test/changes/scheme/peval.scm"
-      )(b) || IncrementalSchemeBenchmarkPrograms.sequentialGenerated(b)
+        Set(
+          "test/changes/scheme/multiple-dwelling (coarse).scm",
+          "test/changes/scheme/multiple-dwelling (fine).scm",
+          "test/changes/scheme/leval.scm",
+          "test/changes/scheme/machine-simulator.scm",
+          "test/changes/scheme/mceval-dynamic.scm",
+          "test/changes/scheme/nboyer.scm",
+          "test/changes/scheme/peval.scm"
+        )(b) || IncrementalSchemeBenchmarkPrograms.sequentialGenerated(b)
 
 /** Implements soundness tests for an incremental ModF CP analysis. */
 class IncrementalModFCP extends IncrementalModFType:

@@ -26,7 +26,7 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr]:
         protected def writeResult(result: Value, cmp: Component = component) = writeAddr(returnAddr(cmp), result)
         // reading the result of a component
         protected def readResult(cmp: Component): Value =
-          readAddr(returnAddr(cmp))
+            readAddr(returnAddr(cmp))
         // convenience method: "calling" other components registers a dependency and immediately reads their prior analysis result
         protected def call(cmp: Component): Value =
             spawn(cmp)

@@ -38,15 +38,15 @@ trait SchemeWideningAfterCondition extends SchemeFunctionCallBoundary:
         super.cond(value, csq, alt, env, sto, frame, t, ext, ifIdn)
 
     override def continue(value: Val, sto: Sto, kont: KonA, t: Timestamp, ext: Ext): Result =
-      readKonts(sto, kont).map { (kont, sto) =>
-        kont match
-            case WidenConditionalFrame(idn, Some(next)) =>
-              val addr = WidenAddr(idn, t)
-              // write the result to that address
-              val (sto1, ext1) = writeStoV(sto, addr, value, ext)
-              // use that address as a return value, in the global store case, this
-              // will make the state of the alternative and consequence the same before
-              // the actual divergent paths are explored.
-              done(Set(SchemeState(Control.Ret(addr), sto1, next, t, ext1)))
-            case _ => super.continue(value, sto, kont, t, ext)
-      }.flattenM
+        readKonts(sto, kont).map { (kont, sto) =>
+            kont match
+                case WidenConditionalFrame(idn, Some(next)) =>
+                    val addr = WidenAddr(idn, t)
+                    // write the result to that address
+                    val (sto1, ext1) = writeStoV(sto, addr, value, ext)
+                    // use that address as a return value, in the global store case, this
+                    // will make the state of the alternative and consequence the same before
+                    // the actual divergent paths are explored.
+                    done(Set(SchemeState(Control.Ret(addr), sto1, next, t, ext1)))
+                case _ => super.continue(value, sto, kont, t, ext)
+        }.flattenM

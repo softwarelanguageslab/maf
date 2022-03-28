@@ -34,7 +34,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
 
     // step until worklist is empty or timeout is reached
     def run(timeout: Timeout.T): Unit =
-      while !finished && !timeout.reached do step(timeout)
+        while !finished && !timeout.reached do step(timeout)
 
 /** Provides a work list with a depth-first exploration order to a modular analysis. */
 trait LIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr]:
@@ -59,9 +59,9 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
     var worklistSet: Set[Component] = Set(initialComponent)
     lazy val worklist: PriorityQueue[Component] = PriorityQueue(initialComponent)
     def push(cmp: Component) =
-      if !worklistSet.contains(cmp) then
-          worklistSet += cmp
-          worklist += cmp
+        if !worklistSet.contains(cmp) then
+            worklistSet += cmp
+            worklist += cmp
     def pop(): Component =
         val cmp = worklist.dequeue()
         worklistSet -= cmp
@@ -84,7 +84,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
 
     // step until worklist is empty or timeout is reached
     def run(timeout: Timeout.T): Unit =
-      while !finished && !timeout.reached do step(timeout)
+        while !finished && !timeout.reached do step(timeout)
 
     override def configString(): String = super.configString() + "\n  using a priority queue work list"
 
@@ -93,10 +93,10 @@ trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueW
     var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)
     lazy val ordering: Ordering[Component] = Ordering.by(depth)
     override def spawn(cmp: Component, from: Component): Unit =
-      if !visited(cmp) then // TODO[easy]: a mutable set could do visited.add(...) in a single call
-          visited += cmp
-          depth += cmp -> (depth(from) + 1)
-          addToWorkList(cmp)
+        if !visited(cmp) then // TODO[easy]: a mutable set could do visited.add(...) in a single call
+            visited += cmp
+            depth += cmp -> (depth(from) + 1)
+            addToWorkList(cmp)
 
 trait LeastVisitedFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr]:
     var count: Map[Component, Int] = Map.empty.withDefaultValue(0)
@@ -111,9 +111,9 @@ trait MostVisitedFirstWorklistAlgorithm[Expr <: Expression] extends LeastVisited
 
 trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr]:
     def computeDepths(exp: Expression, depths: Map[Identity, Int] = Map.empty): Map[Identity, Int] =
-      exp.subexpressions
-        .foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
-        .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
+        exp.subexpressions
+            .foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
+            .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
     val depths: Map[Identity, Int] = computeDepths(program)
     var cmps: Map[Component, Int] = Map.empty.withDefaultValue(0)
     lazy val ordering: Ordering[Component] = Ordering.by(cmps)

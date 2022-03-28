@@ -102,16 +102,16 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
                 work = work.tail
                 state match
                     case Kont(vl, KEmpty) =>
-                      result = lattice.join(result, vl)
+                        result = lattice.join(result, vl)
                     case _ if !visited.contains(state) =>
-                      val successors = step(state)
-                      work = work.addAll(successors)
-                      // Clear the visited set when one of the global stores has changed.
-                      if storeChanged || kstoreChanged then
-                          visited = Set()
-                          storeChanged = false
-                          kstoreChanged = false
-                      visited += state
+                        val successors = step(state)
+                        work = work.addAll(successors)
+                        // Clear the visited set when one of the global stores has changed.
+                        if storeChanged || kstoreChanged then
+                            visited = Set()
+                            storeChanged = false
+                            kstoreChanged = false
+                        visited += state
                     case _ => ()
 
             // Write the result value to the store.
@@ -127,11 +127,11 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
             addr: Addr,
             env: Env
           ): Env =
-          env.extend(id.name, addr)
+            env.extend(id.name, addr)
 
         // Should not be used directly.
         def lookupEnv(id: Identifier, env: Env): Addr =
-          env.lookup(id.name).getOrElse(throw new NoSuchElementException(s"$id in $env"))
+            env.lookup(id.name).getOrElse(throw new NoSuchElementException(s"$id in $env"))
 
         // Tracks changes to the global store.
         private var storeChanged: Boolean = false
@@ -157,7 +157,7 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
 
         /** Looks up a variable in the store, given the current environment. */
         private def lookup(variable: Identifier, env: Env): Value =
-          readAddr(lookupEnv(variable, env))
+            readAddr(lookupEnv(variable, env))
 
         //--------//
         // KSTORE //
@@ -302,14 +302,14 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
             env: Env,
             stack: Stack
           ): Set[State] =
-          Set(Eval(cond, env, extendKStore(cond, IfFrame(cons, alt, env), stack)))
+            Set(Eval(cond, env, extendKStore(cond, IfFrame(cons, alt, env), stack)))
 
         private def evalAssert(
             exp: SchemeExp,
             env: Env,
             stack: Stack
           ): Set[State] =
-          Set(Kont(lattice.void, stack))
+            Set(Kont(lattice.void, stack))
 
         private def evalArgs(
             todo: Exps,
@@ -331,8 +331,8 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
             stack: Stack
           ): Set[State] = todo match
             case Nil =>
-              val env2 = done.reverse.foldLeft(env)((env, bnd) => define(bnd._1, bnd._2, env))
-              evalSequence(body, env2, stack)
+                val env2 = done.reverse.foldLeft(env)((env, bnd) => define(bnd._1, bnd._2, env))
+                evalSequence(body, env2, stack)
             case (id, exp) :: rest => Set(Eval(exp, env, extendKStore(exp, LetFrame(id, rest, done, body, env), stack)))
 
         // Let*: bindings are made immediately (in continue).
@@ -354,8 +354,8 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
           ): Set[State] = bindings match
             case Nil => evalSequence(body, env, stack)
             case (id, exp) :: rest =>
-              val env2 = bindings.map(_._1).foldLeft(env)((env, id) => define(id, lattice.bottom, env))
-              Set(Eval(exp, env2, extendKStore(exp, LetRecFrame(id, rest, body, env2), stack)))
+                val env2 = bindings.map(_._1).foldLeft(env)((env, id) => define(id, lattice.bottom, env))
+                Set(Eval(exp, env2, extendKStore(exp, LetRecFrame(id, rest, body, env2), stack)))
 
         private def evalFork(
             body: Exp,
@@ -381,9 +381,9 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
             case LetStarFrame(id, todo, body, env)       => evalLetStar(todo, body, define(id, vl, env), stack)
             case LetRecFrame(id, todo, body, env)        => assign(id, vl, env); continueLetRec(todo, body, env, stack)
             case JoinFrame =>
-              lattice
-                .getThreads(vl)
-                .map(tid => Kont(readResult(tid.asInstanceOf[Component]), stack)) //TODO: parameterize ModularLattice with type of TID to avoid asInstanceOf here
+                lattice
+                    .getThreads(vl)
+                    .map(tid => Kont(readResult(tid.asInstanceOf[Component]), stack)) //TODO: parameterize ModularLattice with type of TID to avoid asInstanceOf here
 
         private def conditional(
             value: Value,
@@ -430,36 +430,36 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
           ): Set[State] =
             // Application of primitives.
             def applyPrimitives(): Set[State] =
-              lattice
-                .getPrimitives(fval)
-                .map(prm =>
-                  Kont(
-                    primitives(prm).callMF(fexp, args.map(_._2)) match {
-                      case MayFailSuccess(vlu) => vlu
-                      case MayFailBoth(vlu, _) => vlu
-                      case MayFailError(_)     => lattice.bottom
-                    },
-                    stack
-                  )
-                )
-                .toSet
+                lattice
+                    .getPrimitives(fval)
+                    .map(prm =>
+                        Kont(
+                          primitives(prm).callMF(fexp, args.map(_._2)) match {
+                              case MayFailSuccess(vlu) => vlu
+                              case MayFailBoth(vlu, _) => vlu
+                              case MayFailError(_)     => lattice.bottom
+                          },
+                          stack
+                        )
+                    )
+                    .toSet
 
             // Application of closures.
             def applyClosures(): Set[State] =
-              lattice
-                .getClosures(fval)
-                .flatMap({
-                  case (SchemeLambda(_, prs, body, _, _), env) if prs.length == args.length =>
-                    val env2 = prs.zip(args.map(_._2)).foldLeft(env)({ case (env, (f, a)) => define(f, a, env) })
-                    evalSequence(body, env2, stack)
-                  case (SchemeVarArgLambda(_, prs, vararg, body, _, _), env) if prs.length <= args.length =>
-                    val (fixedArgs, varArgs) = args.splitAt(prs.length)
-                    val fixedArgVals = fixedArgs.map(_._2)
-                    val varArgVal = allocateList(varArgs)
-                    val env2 = define(vararg, varArgVal, prs.zip(fixedArgVals).foldLeft(env)({ case (env, (f, a)) => define(f, a, env) }))
-                    evalSequence(body, env2, stack)
-                  case _ => Set()
-                })
+                lattice
+                    .getClosures(fval)
+                    .flatMap({
+                        case (SchemeLambda(_, prs, body, _, _), env) if prs.length == args.length =>
+                            val env2 = prs.zip(args.map(_._2)).foldLeft(env)({ case (env, (f, a)) => define(f, a, env) })
+                            evalSequence(body, env2, stack)
+                        case (SchemeVarArgLambda(_, prs, vararg, body, _, _), env) if prs.length <= args.length =>
+                            val (fixedArgs, varArgs) = args.splitAt(prs.length)
+                            val fixedArgVals = fixedArgs.map(_._2)
+                            val varArgVal = allocateList(varArgs)
+                            val env2 = define(vararg, varArgVal, prs.zip(fixedArgVals).foldLeft(env)({ case (env, (f, a)) => define(f, a, env) }))
+                            evalSequence(body, env2, stack)
+                        case _ => Set()
+                    })
 
             // Function application.
             if args.forall(_._2 != lattice.bottom) then applyClosures() ++ applyPrimitives()
@@ -475,10 +475,10 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
             lattice.pointer(addr)
 
         protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value =
-          allocateVal(pairExp)(lattice.cons(car, cdr))
+            allocateVal(pairExp)(lattice.cons(car, cdr))
 
         protected def allocateStr(strExp: SchemeExp)(str: String): Value =
-          allocateVal(strExp)(lattice.string(str))
+            allocateVal(strExp)(lattice.string(str))
 
         protected def allocateList(elms: List[(SchemeExp, Value)]): Value = elms match
             case Nil                => lattice.nil

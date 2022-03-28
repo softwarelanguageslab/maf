@@ -19,7 +19,9 @@ object ScvInputCoverage:
         val benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks.toList
         val coverage = benchmarks.map(runCoverage)
         val table =
-          coverage.zip(benchmarks).foldLeft(Table.empty[Double]) { case (table, (coverage, benchmark)) => table.add(benchmark, "coverage", coverage) }
+            coverage.zip(benchmarks).foldLeft(Table.empty[Double]) { case (table, (coverage, benchmark)) =>
+                table.add(benchmark, "coverage", coverage)
+            }
         val (writer, name) = Writer.openTimeStampedGetName("out/scv-line-coverage.csv")
         Writer.write(writer, table.toCSVString(rowName = "name"))
         Writer.close(writer)

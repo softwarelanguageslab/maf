@@ -12,7 +12,7 @@ class BaseSchemePrelude:
       ">=" -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
       "abs" -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
       "append" ->
-        """(define (append . lsts)
+          """(define (append . lsts)
         |  (define (app lsts)
         |    @sensitivity:No
         |    (cond ((null? lsts) '())
@@ -27,7 +27,7 @@ class BaseSchemePrelude:
         |                                  rest)))))))
         |  (app lsts))""".stripMargin,
       "assoc" ->
-        """(define (assoc k l)
+          """(define (assoc k l)
         |  @sensitivity:FA
         |  (assert (list? l))
         |  (if (null? l)
@@ -36,7 +36,7 @@ class BaseSchemePrelude:
         |     (car l)
         |     (assoc k (cdr l)))))""".stripMargin,
       "assq" ->
-        """(define (assq k l)
+          """(define (assq k l)
         |  @sensitivity:FA
         |  (assert (list? l))
         |  (if (null? l)
@@ -45,7 +45,7 @@ class BaseSchemePrelude:
         |     (car l)
         |     (assq k (cdr l)))))""".stripMargin,
       "assv" ->
-        """(define (assv k l)
+          """(define (assv k l)
         |  @sensitivity:FA
         |  (assert (list? l))
         |  (if (null? l)
@@ -55,7 +55,7 @@ class BaseSchemePrelude:
         |     (assq k (cdr l)))))""".stripMargin,
       "call-with-current-continuation" -> "(define call-with-current-continuation call/cc)",
       "call-with-input-file" ->
-        """(define (call-with-input-file filename proc)
+          """(define (call-with-input-file filename proc)
         |  (assert (string? filename))
         |  (assert (procedure? proc))
         |  (let* ((input-port (open-input-file filename))
@@ -63,7 +63,7 @@ class BaseSchemePrelude:
         |    (close-input-port input-port)
         |    res))""".stripMargin,
       "call-with-output-file" ->
-        """(define (call-with-output-file filename proc)
+          """(define (call-with-output-file filename proc)
         |  (assert (string? filename))
         |  (assert (procedure? proc))
         |  (let* ((output-port (open-output-file filename))
@@ -108,7 +108,7 @@ class BaseSchemePrelude:
       "char-numeric?" -> "(define (char-numeric? c) @sensitivity:FA (and (char<=? #\\0 c) (char<=? c #\\9)))",
       "char-whitespace?" -> "(define (char-whitespace? c) @sensitivity:FA (or (= (char->integer c) 9) (= (char->integer c) 10) (= (char->integer c) 32)))",
       "equal?" ->
-        """(define (equal? a b)
+          """(define (equal? a b)
         |  @sensitivity:FA
         |  (or (eq? a b)
         |    (and (null? a) (null? b))
@@ -128,7 +128,7 @@ class BaseSchemePrelude:
       // TODO: expt // TODO isn't this a primop (easier to handle real exponents).
       // TODO: exp
       "for-each" ->
-        """(define (for-each f l)
+          """(define (for-each f l)
         |  @sensitivity:1A
         |  (assert (procedure? f))
         |  (assert (list? l))
@@ -139,7 +139,7 @@ class BaseSchemePrelude:
       "gcd" -> "(define (gcd a b) @sensitivity:FA (if (= b 0) a (gcd b (modulo a b))))",
       "lcm" -> "(define (lcm m n) @sensitivity:FA (/ (abs (* m n)) (gcd m n)))",
       "length" ->
-        """(define (length l)
+          """(define (length l)
         |  @sensitivity:FA
         |  (assert (list? l))
         |  (letrec ((rec (lambda (l)
@@ -149,7 +149,7 @@ class BaseSchemePrelude:
         |  (rec l)))""".stripMargin,
       "list" -> "(define (list . args) args)",
       "list-ref" ->
-        """(define (list-ref l index)
+          """(define (list-ref l index)
         |  @sensitivity:FA
         |  (assert (list? l))
         |  (assert (number? index))
@@ -158,13 +158,13 @@ class BaseSchemePrelude:
         |    (car l)
         |    (list-ref (cdr l) (- index 1))))""".stripMargin,
       "list->string" ->
-        """(define (list->string l)
+          """(define (list->string l)
         |   (assert (list? l))
         |   (if (null? l)
         |     ""
         |     (string-append (char->string (car l)) (list->string (cdr l)))))""".stripMargin,
       "list->vector" ->
-        """(define (list->vector l)
+          """(define (list->vector l)
         |  @sensitivity:FA
         |  (assert (list? l))
         |  (let ((v (make-vector (length l))))
@@ -174,7 +174,7 @@ class BaseSchemePrelude:
         |          (begin (vector-set! v i (car lst))
         |                 (fill (cdr lst) (+ i 1)))))))""".stripMargin,
       "list-tail" ->
-        """(define (list-tail x k)
+          """(define (list-tail x k)
         |  @sensitivity:FA
         |  (assert (list? l))
         |  (assert (numer? ))
@@ -183,7 +183,7 @@ class BaseSchemePrelude:
         |    (list-tail (cdr x) (- k 1))))""".stripMargin, // Based on definition in R5RS specification.
       "list?" -> "(define (list? l) @sensitivity:FA (or (and (pair? l) (list? (cdr l))) (null? l)))",
       "map" ->
-        """(define (map f l)
+          """(define (map f l)
         |  @sensitivity:1A
         |  (assert (procedure? f))
         |  (assert (list? l))
@@ -191,7 +191,7 @@ class BaseSchemePrelude:
         |      '()
         |      (cons (f (car l)) (map f (cdr l)))))""".stripMargin,
       "max" ->
-        """(define (max ag0 . ags)
+          """(define (max ag0 . ags)
         | (let loop ((cur ags)
         |            (acc ag0))
         |   (if (null? cur)
@@ -200,7 +200,7 @@ class BaseSchemePrelude:
         |             (rst (cdr cur))]
         |         (loop rst (if (> elm acc) elm acc))))))""".stripMargin,
       "member" ->
-        """(define (member e l)
+          """(define (member e l)
         |  @sensitivity:FA
         |  (assert (list? l))
         |  (if (null? l)
@@ -209,7 +209,7 @@ class BaseSchemePrelude:
         |      l
         |      (member e (cdr l)))))""".stripMargin,
       "memq" ->
-        """(define (memq e l)
+          """(define (memq e l)
                 |  @sensitivity:FA
                 |  (assert (list? l))
                 |  (if (null? l)
@@ -219,7 +219,7 @@ class BaseSchemePrelude:
                 |      (memq e (cdr l)))))""".stripMargin,
       "memv" -> "(define (memv e l) @sensitivity:FA (memq e l))",
       "min" ->
-        """(define (min ag0 . ags)
+          """(define (min ag0 . ags)
         | (let loop ((cur ags)
         |            (acc ag0))
         |   (if (null? cur)
@@ -233,7 +233,7 @@ class BaseSchemePrelude:
       "odd?" -> "(define (odd? x) @sensitivity:FA (assert (number? x)) (= 1 (modulo x 2)))",
       "positive?" -> "(define (positive? x) @sensitivity:FA (assert (number? x)) (> x 0))",
       "reverse" ->
-        """(define (reverse l)
+          """(define (reverse l)
         |  @sensitivity:No
         |  (assert (list? l))
         |  (if (null? l)
@@ -245,14 +245,14 @@ class BaseSchemePrelude:
       "string>=?" -> "(define (string>=? s1 s2) @sensitivity:FA (or (string>? s1 s2) (string=? s1 s2)))",
       "string" -> "(define (string . chars) (list->string chars))",
       "string-fill!" ->
-        """(define (string-fill! s c)
+          """(define (string-fill! s c)
         |  (let loop ((i (- (string-length s) 1)))
         |    (if (< i 0)
         |        #t
         |        (begin (string-set! s i c)
         |               (loop (- i 1))))))""".stripMargin,
       "string->list" ->
-        """(define (string->list string)
+          """(define (string->list string)
         |  @sensitivity:FA
         |  (assert (string? string))
         |  (let ((len (string-length string)))
@@ -287,7 +287,7 @@ class BaseSchemePrelude:
                        |                 (loop (- i 1)))))))""".stripMargin,
       "truncate" -> "(define (truncate x) @sensitivity:FA (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))",
       "vector->list" ->
-        """(define (vector->list v)
+          """(define (vector->list v)
         |  @sensitivity:FA
         |  (assert (vector? v))
         |  (let construct ((i (- (vector-length v) 1)) (lst '()))
@@ -351,11 +351,11 @@ class BaseSchemePrelude:
     )
 
     def parseDef(dff: String, nam: String): List[SchemeExp] =
-      SchemeParser.parse(dff, Position.newTag(nam))
+        SchemeParser.parse(dff, Position.newTag(nam))
 
     lazy val primDefsParsed: Map[String, SchemeExp] = primDefs.map { case (nam, str) =>
-      val exp = SchemeBody(parseDef(str, nam))
-      (nam, exp)
+        val exp = SchemeBody(parseDef(str, nam))
+        (nam, exp)
     }
 
     val primNames: Set[String] = primDefs.keySet

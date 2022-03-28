@@ -41,8 +41,8 @@ trait SchemeR5RSTests extends AnyPropSpec:
 class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests:
 
     def analysis(text: SchemeExp) =
-      // Not really clean, we only want a proper ConstantPropagationLattice definition
-      new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+        // Not really clean, we only want a proper ConstantPropagationLattice definition
+        new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 
     override def testExpr(program: String, answer: Any): Unit =
         val text = SchemeParser.parseProgram(program)
@@ -52,7 +52,7 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests:
         import l.Injector._
 
         val interpreter =
-          new SchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
+            new SchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")))
         val v = interpreter.run(text, Timeout.start(Duration(30, SECONDS)))
         val result = v match
             case ConcreteValues.Value.Nil          => l.nil
@@ -71,8 +71,8 @@ class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSTests:
 class SchemeCPSInterpreterR5RSCorrectnessTests extends SchemeR5RSTests:
 
     def analysis(text: SchemeExp) =
-      // Not really clean, we only want a proper ConstantPropagationLattice definition
-      new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
+        // Not really clean, we only want a proper ConstantPropagationLattice definition
+        new SimpleSchemeModFAnalysis(text) with SchemeConstantPropagationDomain with SchemeModFNoSensitivity with LIFOWorklistAlgorithm[SchemeExp]
 
     override def testExpr(program: String, answer: Any): Unit =
         val text = SchemeParser.parseProgram(program)
@@ -82,9 +82,9 @@ class SchemeCPSInterpreterR5RSCorrectnessTests extends SchemeR5RSTests:
         import l.Injector._
 
         val interpreter =
-          new CPSSchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (),
-                                   io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
-          )
+            new CPSSchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (),
+                                     io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> ""))
+            )
         val v = interpreter.run(text, Timeout.start(Duration(30, SECONDS)))
         val result = v match
             case ConcreteValues.Value.Nil          => l.nil

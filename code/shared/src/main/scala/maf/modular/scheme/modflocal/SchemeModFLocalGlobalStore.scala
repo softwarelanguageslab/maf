@@ -20,13 +20,13 @@ trait SchemeModFLocalGlobalStore extends GlobalStore[SchemeExp]:
             val addrs = lattice.refs(vlu)
             // update refs
             addrs.foreach { oth =>
-              refs += oth -> (refs.getOrElse(oth, Set.empty) + adr)
+                refs += oth -> (refs.getOrElse(oth, Set.empty) + adr)
             }
             // update lcls
             val cur = addrs.flatMap { oth =>
-              policy(oth) match
-                  case AddrPolicy.Local   => Set(oth)
-                  case AddrPolicy.Widened => lcls.getOrElse(oth, Set.empty)
+                policy(oth) match
+                    case AddrPolicy.Local   => Set(oth)
+                    case AddrPolicy.Widened => lcls.getOrElse(oth, Set.empty)
             }
             propagate(adr, cur)
         hasChanged

@@ -20,12 +20,12 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     object WorkListMonitor
     // val worklist: PriorityQueue[Component] = PriorityQueue.empty
     def popWorklist(): Component = WorkListMonitor.synchronized {
-      while worklist.isEmpty do WorkListMonitor.wait()
-      worklist.dequeue()
+        while worklist.isEmpty do WorkListMonitor.wait()
+        worklist.dequeue()
     }
     def pushWorklist(cmp: Component) = WorkListMonitor.synchronized {
-      worklist += cmp
-      WorkListMonitor.notify()
+        worklist += cmp
+        WorkListMonitor.notify()
     }
     class Worker(i: Int) extends Thread(s"worker-thread-$i"):
         override def run(): Unit = try
@@ -56,12 +56,12 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     val results: PriorityQueue[Result] = PriorityQueue.empty
 
     def popResult(): Result = ResultsMonitor.synchronized {
-      while results.isEmpty do ResultsMonitor.wait()
-      results.dequeue()
+        while results.isEmpty do ResultsMonitor.wait()
+        results.dequeue()
     }
     def pushResult(res: Result) = ResultsMonitor.synchronized {
-      results += res
-      ResultsMonitor.notify()
+        results += res
+        ResultsMonitor.notify()
     }
 
     //
@@ -75,9 +75,9 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     var queued: Set[Component] = Set.empty
 
     override def addToWorkList(cmp: Component): Unit =
-      if !queued.contains(cmp) then
-          queued += cmp
-          pushWorklist(cmp)
+        if !queued.contains(cmp) then
+            queued += cmp
+            pushWorklist(cmp)
 
     private def processTimeout(cmp: Component): Unit =
         todo += cmp
@@ -92,26 +92,26 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     override def finished: Boolean = todo.isEmpty
 
     override def run(timeout: Timeout.T): Unit =
-      if !finished then
-          // initialize timeout and initial analysis state
-          currentTimeout = timeout
-          latest = (store, depVersion, deps, visited)
-          // spawn the workers
-          workerThreads = List.tabulate(this.workers)(spawnWorker)
-          // fill the worklist with initial items
-          todo.foreach(addToWorkList)
-          todo = Set.empty
-          // main workflow: continuously commit analysis results
-          while queued.nonEmpty do
-              //println(s"QUEUED: ${queued.size} ; RESULTS: ${results.size}")
-              popResult() match
-                  case Completed(intra) => processTerminated(intra)
-                  case TimedOut(cmp)    => processTimeout(cmp)
-          // wait for all workers to finish
-          workerThreads.foreach { t =>
-              t.interrupt()
-              t.join()
-          }
+        if !finished then
+            // initialize timeout and initial analysis state
+            currentTimeout = timeout
+            latest = (store, depVersion, deps, visited)
+            // spawn the workers
+            workerThreads = List.tabulate(this.workers)(spawnWorker)
+            // fill the worklist with initial items
+            todo.foreach(addToWorkList)
+            todo = Set.empty
+            // main workflow: continuously commit analysis results
+            while queued.nonEmpty do
+                //println(s"QUEUED: ${queued.size} ; RESULTS: ${results.size}")
+                popResult() match
+                    case Completed(intra) => processTerminated(intra)
+                    case TimedOut(cmp)    => processTimeout(cmp)
+            // wait for all workers to finish
+            workerThreads.foreach { t =>
+                t.interrupt()
+                t.join()
+            }
 
     //
     // INTRA-ANALYSIS
@@ -131,20 +131,20 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     // May only be called when holding the lock, as constructing an analysis entails reading the global analysis state
     def intraAnalysis(component: Component): ParallelIntra with GlobalStoreIntra
     trait ParallelIntra extends IntraAnalysis with GlobalStoreIntra { intra =>
-      val (latestStore, depVersion, deps, visited) = latest
-      store = latestStore
-      var toCheck = Set[Dependency]()
-      override def doWrite(dep: Dependency): Boolean =
-        if super.doWrite(dep) then
-            inter.depVersion += dep -> (inter.depVersion(dep) + 1)
-            true
-        else false
-      override def register(dep: Dependency): Unit =
-          toCheck += dep
-          if !deps(dep)(component) then R += dep // only register dependencies that are not yet registered for that component
-      override def spawn(cmp: Component): Unit =
-        if !visited(cmp) then C += cmp
-      def isDone = toCheck.forall(dep => inter.depVersion(dep) == intra.depVersion(dep))
+        val (latestStore, depVersion, deps, visited) = latest
+        store = latestStore
+        var toCheck = Set[Dependency]()
+        override def doWrite(dep: Dependency): Boolean =
+            if super.doWrite(dep) then
+                inter.depVersion += dep -> (inter.depVersion(dep) + 1)
+                true
+            else false
+        override def register(dep: Dependency): Unit =
+            toCheck += dep
+            if !deps(dep)(component) then R += dep // only register dependencies that are not yet registered for that component
+        override def spawn(cmp: Component): Unit =
+            if !visited(cmp) then C += cmp
+        def isDone = toCheck.forall(dep => inter.depVersion(dep) == intra.depVersion(dep))
     }
 
     override def configString(): String = super.configString() + "\n  using a parallel work list algorithm"

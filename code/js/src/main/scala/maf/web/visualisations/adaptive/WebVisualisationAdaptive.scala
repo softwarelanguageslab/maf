@@ -15,9 +15,9 @@ object WebVisualisationAdaptive:
     lazy val __NODE_COLORS__ = List("blue", "green", "yellow", "red")
     lazy val __NO_OF_COLORS__ = __NODE_COLORS__.length
     lazy val __COLOR_SCALE__ = d3
-      .scaleOrdinal()
-      .domain(d3.range(__NO_OF_COLORS__))
-      .range(__NODE_COLORS__)
+        .scaleOrdinal()
+        .domain(d3.range(__NO_OF_COLORS__))
+        .range(__NODE_COLORS__)
 
 //
 // REQUIRED ANALYSIS EXTENSION
@@ -51,8 +51,8 @@ class WebVisualisationAdaptive(
     override def componentText(cmp: analysis.Component) = s"$cmp"
 
     override def refreshDataAfterStep() =
-      if this.dirty then super.refreshData() // <- do a full refresh
-      else super.refreshDataAfterStep()
+        if this.dirty then super.refreshData() // <- do a full refresh
+        else super.refreshDataAfterStep()
 
     override def refreshData() =
         super.refreshData()

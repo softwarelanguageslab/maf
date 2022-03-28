@@ -13,22 +13,22 @@ case class MultiSet[X](content: Map[X, Int], cardinality: Int):
     def ++(ms: MultiSet[X]) = combine(ms)(_ + _)
     def --(ms: MultiSet[X]) = combine(ms)(_ - _)
     def combine(ms: MultiSet[X])(f: (Int, Int) => Int) =
-      ms.content.foldLeft(this) { case (acc, (elm, cnt)) =>
-        acc.updateMult(elm)(f(_, cnt))
-      }
+        ms.content.foldLeft(this) { case (acc, (elm, cnt)) =>
+            acc.updateMult(elm)(f(_, cnt))
+        }
     def removeAll(elm: X) =
-      MultiSet(content - elm, cardinality - getMult(elm))
+        MultiSet(content - elm, cardinality - getMult(elm))
     def distinctElements = content.keys
     def distinctCount = content.size
     def toList = content.toList
     def toSet = content.keySet
     def toMap = content
     def groupBy[K](key: X => K): Map[K, MultiSet[X]] =
-      this.content.foldLeft(Map.empty[K, MultiSet[X]]) { case (acc, (elm, cnt)) =>
-        val k = key(elm)
-        val m = acc.getOrElse(k, MultiSet.empty)
-        acc + (k -> MultiSet(m.content + (elm -> cnt), m.cardinality + cnt))
-      }
+        this.content.foldLeft(Map.empty[K, MultiSet[X]]) { case (acc, (elm, cnt)) =>
+            val k = key(elm)
+            val m = acc.getOrElse(k, MultiSet.empty)
+            acc + (k -> MultiSet(m.content + (elm -> cnt), m.cardinality + cnt))
+        }
 object MultiSet:
     def empty[X] = MultiSet[X](Map.empty, 0)
     def apply[X](map: Map[X, Int]): MultiSet[X] = MultiSet(map, map.values.sum)

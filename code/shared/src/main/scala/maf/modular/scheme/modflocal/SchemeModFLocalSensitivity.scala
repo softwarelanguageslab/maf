@@ -8,10 +8,10 @@ import maf.modular.scheme._
 //
 
 trait SchemeModFLocalSensitivity extends SchemeSemantics { this: SchemeDomain =>
-  // parameterised by context-sensitivity policy
-  type Ctx
-  def initialCtx: Ctx
-  def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx
+    // parameterised by context-sensitivity policy
+    type Ctx
+    def initialCtx: Ctx
+    def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx
 }
 
 //
@@ -19,9 +19,9 @@ trait SchemeModFLocalSensitivity extends SchemeSemantics { this: SchemeDomain =>
 //
 
 trait SchemeModFLocalNoSensitivity extends SchemeModFLocalSensitivity { this: SchemeDomain =>
-  type Ctx = Unit
-  def initialCtx: Unit = ()
-  def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx = ()
+    type Ctx = Unit
+    def initialCtx: Unit = ()
+    def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx = ()
 }
 
 //
@@ -29,9 +29,9 @@ trait SchemeModFLocalNoSensitivity extends SchemeModFLocalSensitivity { this: Sc
 //
 
 trait SchemeModFLocalCallSiteSensitivity(k: Int) extends SchemeModFLocalSensitivity { this: SchemeDomain =>
-  // context = list of call sites
-  type Ctx = List[Position]
-  def initialCtx = Nil
-  def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx) =
-    (fex.idn.pos :: ctx).take(k)
+    // context = list of call sites
+    type Ctx = List[Position]
+    def initialCtx = Nil
+    def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx) =
+        (fex.idn.pos :: ctx).take(k)
 }

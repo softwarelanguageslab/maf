@@ -27,22 +27,22 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
     def isWriteEdge(edge: Edge): Boolean = edge.source.isInstanceOf[CmpNode] && edge.target.isInstanceOf[AddrNode]
 
     def isExistingReadEdge(edge: Edge): Boolean =
-      analysis.cachedReadDeps(edge.target.asInstanceOf[CmpNode].component).contains(AddrDependency(edge.source.asInstanceOf[AddrNode].address))
+        analysis.cachedReadDeps(edge.target.asInstanceOf[CmpNode].component).contains(AddrDependency(edge.source.asInstanceOf[AddrNode].address))
 
     def isExistingWriteEdge(edge: Edge): Boolean =
-      analysis.cachedWrites(edge.source.asInstanceOf[CmpNode].component).contains(edge.target.asInstanceOf[AddrNode].address)
+        analysis.cachedWrites(edge.source.asInstanceOf[CmpNode].component).contains(edge.target.asInstanceOf[AddrNode].address)
 
     // Now also add edges for writes.
     override def refreshData(): Unit =
         super.refreshData()
         analysis.provenance.foreach { case (addr, prov) =>
-          val addrNode = getNode(addr)
-          nodesData += addrNode // Should normally already be there.
-          prov.foreach { case (cmp, _) =>
-            val writerNode = getNode(cmp)
-            val edge = getEdge(writerNode, addrNode) // Edge from writer -> addr.
-            edgesData += edge
-          }
+            val addrNode = getNode(addr)
+            nodesData += addrNode // Should normally already be there.
+            prov.foreach { case (cmp, _) =>
+                val writerNode = getNode(cmp)
+                val edge = getEdge(writerNode, addrNode) // Edge from writer -> addr.
+                edgesData += edge
+            }
         }
 
     override def refreshDataAfterStep(): Unit =
@@ -60,24 +60,24 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
         super.classifyNodes()
         nodes.classed(__CSS_DELADDR_NODE__,
                       (node: Node) =>
-                        node match {
-                          case n: AddrNode => !analysis.store.contains(n.address)
-                          case _           => false
-                        }
+                          node match {
+                              case n: AddrNode => !analysis.store.contains(n.address)
+                              case _           => false
+                          }
         )
 
     override def classifyEdges(): Unit =
         super.classifyEdges()
         edges
-          .classed(__CSS_DELREAD_EDGE__, (edge: Edge) => isReadEdge(edge) && !isExistingReadEdge(edge))
-          .classed(__CSS_WRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && isExistingWriteEdge(edge))
-          .classed(__CSS_DELWRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && !isExistingWriteEdge(edge))
+            .classed(__CSS_DELREAD_EDGE__, (edge: Edge) => isReadEdge(edge) && !isExistingReadEdge(edge))
+            .classed(__CSS_WRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && isExistingWriteEdge(edge))
+            .classed(__CSS_DELWRITE_EDGE__, (edge: Edge) => isWriteEdge(edge) && !isExistingWriteEdge(edge))
 
     override def classifyLabels(): Unit =
         super.classifyLabels()
         labels
-          .classed(__CSS_EXISTING_WRITE__, (edge: Edge) => isWriteEdge(edge) && isExistingWriteEdge(edge))
-          .classed(__CSS_FORMER_WRITE__, (edge: Edge) => isWriteEdge(edge) && !isExistingWriteEdge(edge))
+            .classed(__CSS_EXISTING_WRITE__, (edge: Edge) => isWriteEdge(edge) && isExistingWriteEdge(edge))
+            .classed(__CSS_FORMER_WRITE__, (edge: Edge) => isWriteEdge(edge) && !isExistingWriteEdge(edge))
 
     override def setupMarker(svg: JsAny): js.Dynamic =
         super.setupMarker(svg)
@@ -92,20 +92,20 @@ trait AddressVisualisationIncremental extends WebVisualisationIncremental with A
         // Update the labels on the edges
         val labelsUpdate = labels.data(edgesData, (e: Edge) => (e.source.data(), e.target.data()))
         labels = labelsUpdate
-          .enter()
-          .remove("text")
-          .append("text")
-          .style("pointer-events", "none")
-          .attr("class", "labels")
+            .enter()
+            .remove("text")
+            .append("text")
+            .style("pointer-events", "none")
+            .attr("class", "labels")
         labelsUpdate
-          .append("textPath")
-          .attr("xlink:href", (e: Edge) => "#" + e.id)
-          .text((e: Edge) =>
-            e.target match {
-              case node: AddrNode => analysis.provenance(node.address)(e.source.asInstanceOf[CmpNode].component).toString.take(15)
-              case _              => ""
-            }
-          )
+            .append("textPath")
+            .attr("xlink:href", (e: Edge) => "#" + e.id)
+            .text((e: Edge) =>
+                e.target match {
+                    case node: AddrNode => analysis.provenance(node.address)(e.source.asInstanceOf[CmpNode].component).toString.take(15)
+                    case _              => ""
+                }
+            )
         classifyLabels()
         labelsUpdate.exit().remove()
 

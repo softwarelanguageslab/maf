@@ -19,13 +19,13 @@ trait IncrementalSchemeModConcSmallStepSemantics extends SmallStepModConcSemanti
     trait IncrementalSmallStepIntra extends SmallStepIntra with IncrementalIntraAnalysis:
         override protected def evaluate(exp: Exp, env: Env, stack: Stack): Set[State] = exp match
             case SchemeCodeChange(e, _, _) if version == Old =>
-              registerComponent(e, component)
-              Set(Eval(e, env, stack))
+                registerComponent(e, component)
+                Set(Eval(e, env, stack))
             case SchemeCodeChange(_, e, _) if version == New =>
-              registerComponent(e, component)
-              Set(Eval(e, env, stack))
+                registerComponent(e, component)
+                Set(Eval(e, env, stack))
             case _ =>
-              registerComponent(exp, component)
-              super.evaluate(exp, env, stack)
+                registerComponent(exp, component)
+                super.evaluate(exp, env, stack)
 
     override def configString(): String = super.configString() + "\n  applying incremental ModConc Scheme semantics"

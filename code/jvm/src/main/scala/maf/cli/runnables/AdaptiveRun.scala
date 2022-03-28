@@ -28,7 +28,7 @@ object AdaptiveRun:
 
     def testConcrete() =
         val txt =
-          """
+            """
           | (letrec ((x y)
           |          (y 2))
           |    y) 
@@ -37,9 +37,9 @@ object AdaptiveRun:
         val int = new SchemeInterpreter(io = new FileIO(Map()))
         int.run(prg, Timeout.none)
         int.store.foreach {
-          case (addr, value) if !addr._2.isInstanceOf[ConcreteValues.AddrInfo.PrmAddr] =>
-            println(s"${addr} -> ${value}")
-          case _ => ()
+            case (addr, value) if !addr._2.isInstanceOf[ConcreteValues.AddrInfo.PrmAddr] =>
+                println(s"${addr} -> ${value}")
+            case _ => ()
         }
 
     def testTransform(): Unit =
@@ -51,30 +51,30 @@ object AdaptiveRun:
         println(prg.prettyString(2))
 
     def adaptiveAnalysisA(prg: SchemeExp, n: Int) =
-      new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalCallSiteSensitivity(0) with FIFOWorklistAlgorithm[SchemeExp]:
-          override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
-          //override def debug(msg: => String): Unit = println(s"[DEBUG $i] $msg")
-          var i = 0
-          override def step(t: Timeout.T): Unit =
-              i += 1
-              val cmp = workList.head
-              println(s"[$i] Analysing $cmp")
-              super.step(t)
-          def printStore(sto: Sto) =
-            sto.content.view.toMap
-              .foreach { case (a, (v, _)) => println(s"$a -> $v") }
-          def printDelta(dlt: Dlt) =
-            dlt.delta.view.toMap
-              .foreach { case (a, (v, _)) => println(s"$a -> $v") }
-          def printCmp(cmp: Cmp) =
-              val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
-              println()
-              println(s"COMPONENT $cmp WHERE")
-              printStore(cmp.sto)
-              println(s"==> RESULTS: $res")
-              println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
-              printDelta(dlt)
-              println()
+        new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalCallSiteSensitivity(0) with FIFOWorklistAlgorithm[SchemeExp]:
+            override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
+            //override def debug(msg: => String): Unit = println(s"[DEBUG $i] $msg")
+            var i = 0
+            override def step(t: Timeout.T): Unit =
+                i += 1
+                val cmp = workList.head
+                println(s"[$i] Analysing $cmp")
+                super.step(t)
+            def printStore(sto: Sto) =
+                sto.content.view.toMap
+                    .foreach { case (a, (v, _)) => println(s"$a -> $v") }
+            def printDelta(dlt: Dlt) =
+                dlt.delta.view.toMap
+                    .foreach { case (a, (v, _)) => println(s"$a -> $v") }
+            def printCmp(cmp: Cmp) =
+                val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
+                println()
+                println(s"COMPONENT $cmp WHERE")
+                printStore(cmp.sto)
+                println(s"==> RESULTS: $res")
+                println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
+                printDelta(dlt)
+                println()
 
     def testModFLocal(): Unit =
         val txt = Reader.loadFile("test/R5RS/gambit/peval.scm")
@@ -96,15 +96,15 @@ object AdaptiveRun:
         val txt = Reader.loadFile("test/R5RS/various/my-test.scm")
         val prg = CSchemeParser.parseProgram(txt)
         val anl = new SimpleSchemeModFAnalysis(prg)
-          with SchemeModFNoSensitivity
-          with SchemeConstantPropagationDomain
-          with FIFOWorklistAlgorithm[SchemeExp] {
-          var step = 0
-          override def step(timeout: Timeout.T): Unit =
-              val cmp = workList.head
-              step += 1
-              println(s"[$step] Analysing ${view(cmp)}")
-              super.step(timeout)
+            with SchemeModFNoSensitivity
+            with SchemeConstantPropagationDomain
+            with FIFOWorklistAlgorithm[SchemeExp] {
+            var step = 0
+            override def step(timeout: Timeout.T): Unit =
+                val cmp = workList.head
+                step += 1
+                println(s"[$step] Analysing ${view(cmp)}")
+                super.step(timeout)
         }
         anl.analyze()
         //debugClosures(analysis)
@@ -115,20 +115,20 @@ object AdaptiveRun:
         val txt = Reader.loadFile("test/R5RS/various/mceval.scm")
         val prg = CSchemeParser.parseProgram(txt)
         val anl = new AdaptiveModAnalysis(prg, rate = 1000)
-          with AdaptiveSchemeModFSemantics
-          with AdaptiveContextSensitivity
-          with AdaptiveKCFA
-          with SchemeConstantPropagationDomain
-          with FIFOWorklistAlgorithm[SchemeExp] {
-          // logging the analysis
-          var step = 0
-          override def step(timeout: Timeout.T): Unit =
-              //val cmp = workList.head
-              step += 1
-              //println(s"[$step] Analysing ${view(cmp)}")
-              super.step(timeout)
-          override protected def debug(message: => String) = println(s"DEBUG: [$step] $message")
-          override protected def warn(message: => String) = println(s"WARN: [$step] $message")
+            with AdaptiveSchemeModFSemantics
+            with AdaptiveContextSensitivity
+            with AdaptiveKCFA
+            with SchemeConstantPropagationDomain
+            with FIFOWorklistAlgorithm[SchemeExp] {
+            // logging the analysis
+            var step = 0
+            override def step(timeout: Timeout.T): Unit =
+                //val cmp = workList.head
+                step += 1
+                //println(s"[$step] Analysing ${view(cmp)}")
+                super.step(timeout)
+            override protected def debug(message: => String) = println(s"DEBUG: [$step] $message")
+            override protected def warn(message: => String) = println(s"WARN: [$step] $message")
         }
         anl.analyze()
         //debugClosures(analysis)
@@ -138,8 +138,8 @@ object AdaptiveRun:
         debugResults(anl, false)
 
     def debugResults(machine: BaseSchemeModFSemantics, printMore: Boolean = false): Unit =
-      machine.store.foreach {
-        case (ReturnAddr(cmp: machine.Component @unchecked, _), result) if cmp == machine.initialComponent || printMore =>
-          println(s"$cmp => $result")
-        case _ => ()
-      }
+        machine.store.foreach {
+            case (ReturnAddr(cmp: machine.Component @unchecked, _), result) if cmp == machine.initialComponent || printMore =>
+                println(s"$cmp => $result")
+            case _ => ()
+        }

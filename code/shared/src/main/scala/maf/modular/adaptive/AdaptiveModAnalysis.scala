@@ -40,16 +40,16 @@ abstract class AdaptiveModAnalysis[Expr <: Expression](program: Expr, val rate: 
     def adaptSet[V](adapt: V => V)(set: Set[V]): Set[V] = set.map(adapt)
     def adaptMap[K, V](adapt: V => V)(map: Map[K, V]): Map[K, V] = map.view.mapValues(adapt).toMap
     def adaptMap[K, V: Monoid](adaptK: K => K, adaptV: V => V)(map: Map[K, V]): Map[K, V] =
-      map.foldLeft(Map[K, V]().withDefaultValue(Monoid[V].zero)) { case (acc, (key, vlu)) =>
-        val keyAbs = adaptK(key)
-        acc + (keyAbs -> Monoid[V].append(acc(keyAbs), adaptV(vlu)))
-      }
+        map.foldLeft(Map[K, V]().withDefaultValue(Monoid[V].zero)) { case (acc, (key, vlu)) =>
+            val keyAbs = adaptK(key)
+            acc + (keyAbs -> Monoid[V].append(acc(keyAbs), adaptV(vlu)))
+        }
     def adaptPair[P, Q](adaptA: P => P, adaptB: Q => Q)(p: (P, Q)): (P, Q) = (adaptA(p._1), adaptB(p._2))
     def adaptMultiSet[X](adaptX: X => X, intOp: (Int, Int) => Int)(ms: MultiSet[X]): MultiSet[X] =
-      ms.toMap.foldLeft(MultiSet.empty[X]) { case (acc, (elm, count)) =>
-        val elmAbs = adaptX(elm)
-        acc.updateMult(elmAbs) {
-          case 0 => count
-          case n => intOp(n, count)
+        ms.toMap.foldLeft(MultiSet.empty[X]) { case (acc, (elm, count)) =>
+            val elmAbs = adaptX(elm)
+            acc.updateMult(elmAbs) {
+                case 0 => count
+                case n => intOp(n, count)
+            }
         }
-      }

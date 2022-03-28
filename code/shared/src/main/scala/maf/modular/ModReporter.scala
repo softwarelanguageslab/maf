@@ -25,18 +25,18 @@ trait ModReporter[E <: Expression] extends AnalysisEntry[E]:
     private var countMetrics: Map[ModMetric, Long] = Map()
 
     override def metrics: List[Metric] =
-      reportedMetrics.map { case (k, v) => Metric(k.name, v) }.toList ++
-        trackMetrics.map { case (k, v) => Metric(k.name, v.size.toDouble) }.toList ++
-        countMetrics.map { case (k, v) => Metric(k.name, v.toDouble) }.toList
+        reportedMetrics.map { case (k, v) => Metric(k.name, v) }.toList ++
+            trackMetrics.map { case (k, v) => Metric(k.name, v.size.toDouble) }.toList ++
+            countMetrics.map { case (k, v) => Metric(k.name, v.toDouble) }.toList
 
     def count(metric: ModMetric): Unit =
-      countMetrics = countMetrics + (metric -> (countMetrics.get(metric).getOrElse(0L) + 1))
+        countMetrics = countMetrics + (metric -> (countMetrics.get(metric).getOrElse(0L) + 1))
 
     def accumulate(metric: ModMetric, vlu: Long): Unit =
-      countMetrics = countMetrics + (metric -> (countMetrics.get(metric).getOrElse(0L) + vlu))
+        countMetrics = countMetrics + (metric -> (countMetrics.get(metric).getOrElse(0L) + vlu))
 
     def track(metric: ModMetric, vlu: Any): Unit =
-      trackMetrics = trackMetrics + (metric -> (trackMetrics.get(metric).getOrElse(Set()) + vlu))
+        trackMetrics = trackMetrics + (metric -> (trackMetrics.get(metric).getOrElse(Set()) + vlu))
 
     def report(metric: ModMetric, vlu: Double): Unit = reportedMetrics = (metric, vlu) :: reportedMetrics
 

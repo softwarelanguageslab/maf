@@ -41,7 +41,7 @@ object ContractValues:
         extends Value[L]:
         def map[AL](f: L => AL): Arr[AL] = Arr(lcontract, lserver, contract.map(f), f(e), topLevel)
         def checkArgs[A](l: List[A]): Boolean =
-          contract.domain.size == l.size
+            contract.domain.size == l.size
         def expectedNumArgs: Int = contract.domain.size
 
     /**
@@ -83,7 +83,7 @@ object ContractValues:
      */
     case class Struct[L](tag: String, fields: maf.util.ArrayEq[L]) extends Value[L]:
         def map[AL: ClassTag](f: L => AL): Struct[AL] =
-          this.copy(fields = fields.map(f))
+            this.copy(fields = fields.map(f))
 
     /**
      * A struct getter/setter. Works just like an application of _struct_set!.

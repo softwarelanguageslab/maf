@@ -13,12 +13,12 @@ import sys.process.*
 class PythonBridge(pwd: String = "./"):
     /** Prepares the virtual environment if none can be found */
     private def prepareEnvironment(): Boolean =
-      // TODO: also run pip3 install -r requirements.txt to install dependencies
-      if !Files.exists(Paths.get(s"$pwd/.venv")) then s"python3 -m venv $pwd/.venv".! == 0
-      else true
+        // TODO: also run pip3 install -r requirements.txt to install dependencies
+        if !Files.exists(Paths.get(s"$pwd/.venv")) then s"python3 -m venv $pwd/.venv".! == 0
+        else true
 
     def runScript(program: String, arguments: String*): Boolean =
-      s"cd $pwd && python3 $program ${arguments.mkString(" ")}".! == 0
+        s"cd $pwd && python3 $program ${arguments.mkString(" ")}".! == 0
 
     if prepareEnvironment() then println("Successfully prepared the Python virtual environment")
     else throw new Exception("Could not prepare the Python virtual environment")

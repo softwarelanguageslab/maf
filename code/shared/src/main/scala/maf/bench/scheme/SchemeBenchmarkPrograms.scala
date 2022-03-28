@@ -94,7 +94,7 @@ object SchemeBenchmarkPrograms:
     )
     lazy val WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
     lazy val sequentialBenchmarks: Set[String] =
-      SmartUnion.sunionList(List(ad, gabriel, gambit, icp1, rosetta, scp1, sigscheme, WeiChenRompf2019, various))
+        SmartUnion.sunionList(List(ad, gabriel, gambit, icp1, rosetta, scp1, sigscheme, WeiChenRompf2019, various))
 
     def selectRandomSeq(n: Int): Set[String] = Random.shuffle(sequentialBenchmarks).take(n)
 
@@ -108,7 +108,7 @@ object SchemeBenchmarkPrograms:
     lazy val threads: Set[String] = fromFolder("test/concurrentScheme/threads")()
     lazy val threadsVariations: Set[String] = fromFolder("test/concurrentScheme/threads/variations")()
     lazy val concurrentBenchmarks: Set[String] =
-      SmartUnion.sunionList(List(actors, futures, futuresVariations, savina, soter, threads, threadsVariations))
+        SmartUnion.sunionList(List(actors, futures, futuresVariations, savina, soter, threads, threadsVariations))
 
     def selectRandomPar(n: Int): Set[String] = Random.shuffle(concurrentBenchmarks).take(n)
 
@@ -154,32 +154,32 @@ object SchemeBenchmarkPrograms:
     // Publications ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     lazy val jss2021: Set[String] =
-      Set(
-        "test/R5RS/WeiChenRompf2019/meta-circ.scm",
-        "test/R5RS/WeiChenRompf2019/earley.sch",
-        "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
-        "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
-        "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
-        "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm",
-        "test/R5RS/gambit/peval.scm",
-        "test/R5RS/gambit/scheme.scm",
-        "test/R5RS/gambit/sboyer.scm",
-        "test/R5RS/gambit/nboyer.scm",
-        "test/R5RS/gambit/matrix.scm",
-        "test/R5RS/gambit/browse.scm",
-        "test/R5RS/scp1-compressed/all.scm",
-        "test/R5RS/ad/all.scm",
-        "test/R5RS/various/SICP-compiler.scm",
-        "test/R5RS/icp/icp_1c_ambeval.scm",
-        "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
-        "test/R5RS/icp/icp_1c_ontleed.scm",
-        "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
-        "test/R5RS/icp/icp_7_eceval.scm",
-        "test/R5RS/icp/icp_8_compiler.scm",
-        "test/R5RS/icp/icp_5_regsim.scm",
-        "test/R5RS/icp/icp_3_leval.scm",
-        "test/R5RS/icp/icp_2_aeval.scm",
-      )
+        Set(
+          "test/R5RS/WeiChenRompf2019/meta-circ.scm",
+          "test/R5RS/WeiChenRompf2019/earley.sch",
+          "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
+          "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
+          "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
+          "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm",
+          "test/R5RS/gambit/peval.scm",
+          "test/R5RS/gambit/scheme.scm",
+          "test/R5RS/gambit/sboyer.scm",
+          "test/R5RS/gambit/nboyer.scm",
+          "test/R5RS/gambit/matrix.scm",
+          "test/R5RS/gambit/browse.scm",
+          "test/R5RS/scp1-compressed/all.scm",
+          "test/R5RS/ad/all.scm",
+          "test/R5RS/various/SICP-compiler.scm",
+          "test/R5RS/icp/icp_1c_ambeval.scm",
+          "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+          "test/R5RS/icp/icp_1c_ontleed.scm",
+          "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+          "test/R5RS/icp/icp_7_eceval.scm",
+          "test/R5RS/icp/icp_8_compiler.scm",
+          "test/R5RS/icp/icp_5_regsim.scm",
+          "test/R5RS/icp/icp_3_leval.scm",
+          "test/R5RS/icp/icp_2_aeval.scm",
+        )
 
     // ALL ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

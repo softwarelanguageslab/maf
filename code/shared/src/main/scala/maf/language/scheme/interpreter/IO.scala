@@ -69,24 +69,24 @@ class FileIO(val files: Map[String, String]) extends IO:
     var positions: Map[Handle, Int] = Map.empty // Accesses to `positions` need synchronization on `this`.
 
     def fromString(string: String): Handle = synchronized {
-      val handle = new Handle.StringHandle(string)
-      positions = positions + (handle -> 0)
-      handle
+        val handle = new Handle.StringHandle(string)
+        positions = positions + (handle -> 0)
+        handle
     }
 
     def open(filename: String): Handle = synchronized {
-      if files.contains(filename) then
-          val handle = new Handle.FileHandle(filename)
-          positions = positions + (handle -> 0)
-          handle
-      else throw new Exception(s"Cannot open virtual file $filename")
+        if files.contains(filename) then
+            val handle = new Handle.FileHandle(filename)
+            positions = positions + (handle -> 0)
+            handle
+        else throw new Exception(s"Cannot open virtual file $filename")
     }
 
     def close(h: Handle): Unit = synchronized {
-      h match
-          case Handle.ConsoleHandle   => ()
-          case h: Handle.FileHandle   => positions += h -> files(h.filename).size
-          case h: Handle.StringHandle => positions += h -> h.content.size
+        h match
+            case Handle.ConsoleHandle   => ()
+            case h: Handle.FileHandle   => positions += h -> files(h.filename).size
+            case h: Handle.StringHandle => positions += h -> h.content.size
     }
 
     val console = Handle.ConsoleHandle
@@ -98,36 +98,36 @@ class FileIO(val files: Map[String, String]) extends IO:
         case h: Handle.StringHandle => readUsingString(h.content, h)
 
     private def readUsingString(str: String, hdl: Handle): Option[SExp] = synchronized {
-      val pos = positions(hdl)
-      if pos >= str.size then None
-      else
-          val reader = new CharSequenceReader(str, pos)
-          val (sexp, offset) = SExpParser.parseIn(reader)
-          positions += hdl -> offset
-          Some(sexp)
+        val pos = positions(hdl)
+        if pos >= str.size then None
+        else
+            val reader = new CharSequenceReader(str, pos)
+            val (sexp, offset) = SExpParser.parseIn(reader)
+            positions += hdl -> offset
+            Some(sexp)
     }
 
     def readChar(h: Handle): ConcreteValues.Value = synchronized {
-      peekChar(h) match
-          case ConcreteValues.Value.EOF => ConcreteValues.Value.EOF
-          case c =>
-            positions = positions + (h -> (positions(h) + 1))
-            c
+        peekChar(h) match
+            case ConcreteValues.Value.EOF => ConcreteValues.Value.EOF
+            case c =>
+                positions = positions + (h -> (positions(h) + 1))
+                c
     }
 
     def peekChar(h: Handle): ConcreteValues.Value = synchronized {
-      h match
-          case Handle.ConsoleHandle =>
-            /* Console is never opened with this IO class */
-            ConcreteValues.Value.EOF
-          case h: Handle.FileHandle =>
-            val pos = positions(h)
-            if pos >= files(h.filename).size then ConcreteValues.Value.EOF
-            else ConcreteValues.Value.Character(files(h.filename).charAt(pos))
-          case h: Handle.StringHandle =>
-            val pos = positions(h)
-            if pos >= h.content.size then ConcreteValues.Value.EOF
-            else ConcreteValues.Value.Character(h.content.charAt(pos))
+        h match
+            case Handle.ConsoleHandle =>
+                /* Console is never opened with this IO class */
+                ConcreteValues.Value.EOF
+            case h: Handle.FileHandle =>
+                val pos = positions(h)
+                if pos >= files(h.filename).size then ConcreteValues.Value.EOF
+                else ConcreteValues.Value.Character(files(h.filename).charAt(pos))
+            case h: Handle.StringHandle =>
+                val pos = positions(h)
+                if pos >= h.content.size then ConcreteValues.Value.EOF
+                else ConcreteValues.Value.Character(h.content.charAt(pos))
     }
 
     def writeChar(c: Char, h: Handle): Unit = ()

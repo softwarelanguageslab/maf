@@ -131,10 +131,10 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
          * Removes outdated dependencies of a component, by only keeping the dependencies that were used during the latest analysis of the component.
          */
         def refineDependencies(): Unit =
-          if version == New then // Check for efficiency but can be omitted.
-              // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
-              val deltaR = cachedReadDeps(component) -- R
-              deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
+            if version == New then // Check for efficiency but can be omitted.
+                // All dependencies that were previously inferred, but are no longer inferred. This set should normally only contain elements once for every component due to monotonicity of the analysis.
+                val deltaR = cachedReadDeps(component) -- R
+                deltaR.foreach(deregister(component, _)) // Remove these dependencies. Attention: this can only be sound if the component is FULLY reanalysed!
 
         /* ---------------------------------- */
         /* ----- Component invalidation ----- */
@@ -165,4 +165,4 @@ trait IncrementalModAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with 
     end IncrementalIntraAnalysis
 
     override def configString(): String =
-      super.configString() + s"\n  with incremental capabilities\n  using the following configuration: $configuration"
+        super.configString() + s"\n  with incremental capabilities\n  using the following configuration: $configuration"

@@ -16,7 +16,7 @@ object ContractSchemeParser:
      *   a transformed program text
      */
     def preprocess(program: String): String =
-      if program.startsWith("#lang racket") then program.split('\n').map(_.nn).toList.tail.mkString("\n") else program
+        if program.startsWith("#lang racket") then program.split('\n').map(_.nn).toList.tail.mkString("\n") else program
 
     /** Compiles the given program to a ContractScheme AST */
     def compile(program: String, tag: PTag = noTag): SchemeExp =
@@ -25,4 +25,4 @@ object ContractSchemeParser:
 
     /** Parses a Scheme program with contracts into a scheme body, and runs the undefiner on top of it */
     def parse(program: String, tag: PTag = noTag): SchemeExp =
-      ContractSchemeUndefiner.undefine(ContractSchemePrelude.addPrelude(List(compile(program, tag))))
+        ContractSchemeUndefiner.undefine(ContractSchemePrelude.addPrelude(List(compile(program, tag))))

@@ -9,7 +9,7 @@ import maf.test.lattice._
 class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeLattice: SchemeLattice[L, _]) extends LatticeTest(gen):
     // because of higher entropy in Scheme lattice values, verify each property with more examples!
     implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
-      PropertyCheckConfiguration(minSuccessful = 1000)
+        PropertyCheckConfiguration(minSuccessful = 1000)
     val schemeLaws = newProperties("Scheme") { p =>
         implicit val arb = gen.anyArb
         implicit val shr = gen.shrink
@@ -29,9 +29,9 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
         p.property("∀ x: ⊥ ⊑ x") = forAll((x: L) => subsumes(x, bottom))
         p.property("∀ x: join(x, ⊥) = join(⊥, x) = x") = forAll((x: L) => join(x, bottom) == x && join(bottom, x) == x)
         p.property("∀ x, y: y ⊑ x ⇒ join(x, y) = x") = forAll { (x: L) =>
-          forAll(gen.le(x)) { (y: L) =>
-            join(x, y) == x
-          }
+            forAll(gen.le(x)) { (y: L) =>
+                join(x, y) == x
+            }
         }
         p.property("∀ x, y: x ⊑ join(x, y), y ⊑ join(x, y)") = forAll { (x: L, y: L) =>
             val xy = join(x, y)
@@ -62,25 +62,25 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
         } */
         /* Binary operators preverse bottom */
         p.property("∀ binop, a: binop(⊥,a) = ⊥ = binop(a,⊥)") = forAll((binop: SchemeOp.SchemeOp2, a: L) =>
-          if binop == SchemeOp.MakeVector then {
-            /* MakeVector is a strange beast as it accepts bottom as a second argument to create an uninitialized vector */
-            true
-          } else {
-            convert(op(binop)(List(bottom, a))) == bottom &&
-            convert(op(binop)(List(a, bottom))) == bottom
-          }
+            if binop == SchemeOp.MakeVector then {
+                /* MakeVector is a strange beast as it accepts bottom as a second argument to create an uninitialized vector */
+                true
+            } else {
+                convert(op(binop)(List(bottom, a))) == bottom &&
+                convert(op(binop)(List(a, bottom))) == bottom
+            }
         )
 
         /* Ternary operators preserve bottom */
         p.property("∀ ternop, a: ternop(⊥,a,b) = ⊥ = ternop(a,⊥,b) = ternop(a,b,⊥)") = forAll((ternop: SchemeOp.SchemeOp3, a: L, b: L) =>
-          convert(op(ternop)(List(bottom, a, b))) == bottom &&
-            convert(op(ternop)(List(a, bottom, b))) == bottom &&
-            convert(op(ternop)(List(a, b, bottom))) == bottom
+            convert(op(ternop)(List(bottom, a, b))) == bottom &&
+                convert(op(ternop)(List(a, bottom, b))) == bottom &&
+                convert(op(ternop)(List(a, b, bottom))) == bottom
         )
 
         /* not is correct */
         p.property("isFalse(not(true)) && isTrue(not(false)") =
-          isFalse(convert(op(SchemeOp.Not)(List(inject(true))))) && isTrue(convert(op(SchemeOp.Not)(List(inject(false)))))
+            isFalse(convert(op(SchemeOp.Not)(List(inject(true))))) && isTrue(convert(op(SchemeOp.Not)(List(inject(false)))))
 
         /* and is correct */
         p.property("∀ b1, b2: b1 && b2 = and(inject(b1), inject(b2))") = forAll { (b1: Boolean, b2: Boolean) =>
@@ -116,17 +116,17 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
 
         /* Properties about vectors */
         p.property("∀ vct, idx1, val1, idx2, val2: vectorSet(vectorSet(vct,idx1,val1),idx2,val2) = vectorSet(vectorSet(vct,idx2,val2),idx1,val1)") =
-          forAll(gen.anyVec, gen.anyInt, gen.any, gen.anyInt, gen.any) { (vct: L, idx1: L, val1: L, idx2: L, val2: L) =>
-              val vct1 = convert(vectorSet(vct, idx1, val1))
-              val vct2 = convert(vectorSet(vct, idx2, val2))
-              val vct12 = convert(vectorSet(vct1, idx2, val2))
-              val vct21 = convert(vectorSet(vct2, idx1, val1))
-              s"vectorSet(vct,$idx1,$val1) = $vct1" |:
-                s"vectorSet(vct,$idx2,$val2) = $vct2" |:
-                s"vectorSet(vectorSet(vct,$idx1,$val1),$idx2,$val2) = $vct12" |:
-                s"vectorSet(vectorSet(vct,$idx2,$val2),$idx1,$val1) = $vct21" |:
-                vct12 == vct21
-          }
+            forAll(gen.anyVec, gen.anyInt, gen.any, gen.anyInt, gen.any) { (vct: L, idx1: L, val1: L, idx2: L, val2: L) =>
+                val vct1 = convert(vectorSet(vct, idx1, val1))
+                val vct2 = convert(vectorSet(vct, idx2, val2))
+                val vct12 = convert(vectorSet(vct1, idx2, val2))
+                val vct21 = convert(vectorSet(vct2, idx1, val1))
+                s"vectorSet(vct,$idx1,$val1) = $vct1" |:
+                    s"vectorSet(vct,$idx2,$val2) = $vct2" |:
+                    s"vectorSet(vectorSet(vct,$idx1,$val1),$idx2,$val2) = $vct12" |:
+                    s"vectorSet(vectorSet(vct,$idx2,$val2),$idx1,$val1) = $vct21" |:
+                    vct12 == vct21
+            }
         // return the properties
         p
     }

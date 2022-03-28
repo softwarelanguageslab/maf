@@ -29,19 +29,19 @@ trait SchemeAssertSemantics extends BigStepModFSemantics:
 
     trait AssertionModFIntra extends IntraAnalysis with BigStepModFIntra:
         override def evalAssert(exp: SchemeExp): EvalM[Value] =
-          for
-              v <- eval(exp)
-              res <- merge(
-                // We are conservative: we only consider an assertion verified if it is certainly only true. (Putting this tests here avoids a dependency on the order in which assertViolated and assertVerified are called.Ò
-                guard(lattice.isTrue(v) && !lattice.isFalse(v)).map { _ =>
-                    assertVerified(component, exp)
-                    lattice.void
-                },
-                guard(lattice.isFalse(v)).map { _ =>
-                    assertViolated(component, exp)
-                    lattice.void
-                }
-              )
-          yield res
+            for
+                v <- eval(exp)
+                res <- merge(
+                  // We are conservative: we only consider an assertion verified if it is certainly only true. (Putting this tests here avoids a dependency on the order in which assertViolated and assertVerified are called.Ò
+                  guard(lattice.isTrue(v) && !lattice.isFalse(v)).map { _ =>
+                      assertVerified(component, exp)
+                      lattice.void
+                  },
+                  guard(lattice.isFalse(v)).map { _ =>
+                      assertViolated(component, exp)
+                      lattice.void
+                  }
+                )
+            yield res
 
     override def configString(): String = super.configString() + "\n  with assertion checking enabled"
