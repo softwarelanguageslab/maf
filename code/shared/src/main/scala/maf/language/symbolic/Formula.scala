@@ -30,6 +30,9 @@ sealed trait Formula:
     /** Split the formula into its constituents if it is a disjunction */
     def splitDisj: List[Formula]
 
+    /** The number of assertions in the path condition */
+    def size: Int
+
 /** An empty formula */
 case object EmptyFormula extends Formula:
     def elements: Set[Formula] = Set(this)
@@ -37,6 +40,7 @@ case object EmptyFormula extends Formula:
     def mapOptionM[M[_]: Monad](f: SchemeExp => M[Option[SchemeExp]]): M[Option[Formula]] = Monad[M].unit(Some(this))
     def splitConj: List[Formula] = List()
     def splitDisj: List[Formula] = List()
+    def size: Int = 0
 
 /** An assertion formed by constructing a scheme expression that can be interpreted as a boolean assertion */
 case class Assertion(contents: SchemeExp) extends Formula:
@@ -51,6 +55,8 @@ case class Assertion(contents: SchemeExp) extends Formula:
 
     /** Split the formula into its constituents if it is a disjunction */
     def splitDisj: List[Formula] = List(this)
+
+    def size: Int = 1
 
 /**
  * A conjunction of two (or more) formulas
@@ -72,6 +78,8 @@ case class Conjunction(val elements: Set[Formula]) extends Formula:
     /** Split the formula into its constituents if it is a disjunction */
     def splitDisj: List[Formula] = List(this)
 
+    def size: Int = elements.map(_.size).sum
+
 /**
  * A disjunction of two (or more) formulas
  *
@@ -92,6 +100,9 @@ case class Disjunction(val elements: Set[Formula]) extends Formula:
 
     /** Split the formula into its constituents if it is a disjunction */
     def splitDisj: List[Formula] = elements.toList
+
+    def size: Int = elements.map(_.size).sum
+
 
 /** Auxiliary functions */
 object FormulaAux:

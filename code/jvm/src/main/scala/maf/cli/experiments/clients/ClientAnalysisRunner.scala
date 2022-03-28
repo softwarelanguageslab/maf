@@ -46,4 +46,4 @@ trait ClientAnalysisRunner:
     def main(args: Array[String]): Unit =
         val table: Table[Result] = Table.empty
         val resultTable = benchmarks.foldLeft(table)(runBenchmark)
-        println(resultTable.toString)
+        println(resultTable.prettyString())

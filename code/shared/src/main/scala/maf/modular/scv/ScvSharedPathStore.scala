@@ -26,19 +26,10 @@ trait ScvSharedPathStore extends maf.modular.scv.BaseScvBigStepSemantics with Sc
           PathCondition(readMapAddr(targetCmp))
 
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
-            //println(s"=== intra sem $cmp ==")
             val answers = super.runIntraSemantics(initialState)
-            // answers.map(_._2).foreach(answer => println(s"+++ answer: ${answer.pc}"))
             val formulas = answers.map(_._2.formula).toList
             val values = answers.map(_._1._2).toList
             writeMapAddr(cmp, Formula.join(formulas: _*))
-
-            // TODO: do not register when reading
-            val readValue = readMapAddr(cmp)
-            values.foreach(writeAddr(PcAddr(PathCondition(readValue)), _))
-
-            formulas.foreach { formula => println(s"+++ formula $formula") }
-            //println(s"answer $answers")
             answers
 
         override protected def afterCall(vlu: Value, targetCmp: Component): EvalM[Value] =

@@ -296,7 +296,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
               _ <- cnd.symbolic match
                   case None => unit(())
                   case Some(symbolic) =>
-                    extendPc(SchemeFuncall(SchemeVar(Identifier(prim.name, Identity.none)), List(symbolic), Identity.none))
+                    extendPc(prim.symApply(symbolic))
 
               pc <- getPc
               vars <- getVars
@@ -304,10 +304,8 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 cnd.symbolic match
                     case _ if !lattice.isTrue(primResult) =>
                       void // if it is not possible according to the lattice, we do not execute "m"
-                    case Some(symbolic) if ! { count(SATExec); time(Z3Time) { sat.feasible(pc.formula, vars) } } =>
+                    case _ if ! { count(SATExec); time(Z3Time) { sat.feasible(pc.formula, vars) } } =>
                       void // if the path condition is unfeasible we also do not execute "m"
-                    case Some(symbolic) =>
-                      extendPc(prim.symApply(symbolic)) >>> m
                     case _ => m // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"
           yield result
 
