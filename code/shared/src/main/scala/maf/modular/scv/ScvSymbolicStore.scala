@@ -1,8 +1,11 @@
 package maf.modular.scv
 
-import maf.modular.{Dependency, ModAnalysis}
-import maf.core.Expression
+import maf.modular.{AbstractDomain, Dependency, ModAnalysis}
+import maf.lattice.interfaces.BoolLattice
+import maf.core.{Expression, Lattice, LatticeTopUndefined}
+import maf.util.datastructures.ListOps.Crossable
 import maf.util.{Monoid, StringUtil}
+import java.awt.Component
 
 /**
  * A generic global store, which is not constrained on the type of values it can store, and is only concerned with values that can be appended
@@ -13,8 +16,11 @@ import maf.util.{Monoid, StringUtil}
  * @tparam Exp
  *   the type of expression used in the analysis
  */
-trait GlobalMapStore[V: Monoid, Exp <: Expression] extends ModAnalysis[Exp] { inter =>
+trait GlobalMapStore[Exp <: Expression] extends ModAnalysis[Exp] { inter =>
+    type V
     type A
+
+    given vMonoid: Monoid[V]
 
     private var store: Map[A, V] = Map()
     override def intraAnalysis(cmp: Component): GlobalMapStoreIntra
@@ -78,10 +84,50 @@ object ScvSymbolicStore:
     import maf.language.scheme._
     import maf.language.symbolic.*
 
-    given Monoid[Formula] with
-        import FormulaAux.*
-        def zero: Formula = EmptyFormula
-        def append(x: Formula, y: => Formula): Formula = DNF.dnf(disj(x, y))
-
-    trait GlobalSymbolicStore extends GlobalMapStore[Formula, SchemeExp]:
+    trait GlobalSymbolicStore extends GlobalMapStore[SchemeExp]:
+        type V = Formula
         type A = Component
+
+        given vMonoid: Monoid[Formula] with
+            import FormulaAux.*
+            def zero: Formula = EmptyFormula
+            def append(x: Formula, y: => Formula): Formula = DNF.dnf(disj(x, y))
+
+object ScvPathSensitiveSymbolicStore:
+    import maf.language.scheme._
+    import maf.language.symbolic.*
+
+    trait GlobalPathSensitiveSymbolicStore extends GlobalMapStore[SchemeExp] with AbstractDomain[SchemeExp]:
+        type V = Map[Formula, Value]
+        type A = Component
+
+        def subsumes(x: Formula, y: Formula): Boolean = (x, y) match
+            case (Conjunction(xs), Conjunction(ys)) => xs subsetOf ys
+            case (_, _)                             =>
+                // TODO: make this more precise by finding an order to works on more than conjunctions
+                false
+
+        def joinValue(x: Value, y: Value): Value =
+            lattice.join(x, y)
+
+        given vMonoid: Monoid[V] with
+            def zero: V = Map()
+            def append(x: V, y: => V): V =
+                x.toList
+                    .cartesian(y.toList)
+                    .flatMap { case ((p1, v1), (p2, v2)) =>
+                        // path conditions are equal
+                        if subsumes(p2, p1) && subsumes(p1, p2) then
+                            // we keep p1 (p2 would be equivalent) and join the value
+                            List((p1 -> joinValue(v1, v2)))
+                        else if subsumes(p2, p1) && !subsumes(p1, p2) then
+                            // p2 is more generic then p1 so we keep p2 and throw away p1
+                            List((p2 -> joinValue(v1, v2)))
+                        else if !subsumes(p2, p1) && subsumes(p1, p2) then
+                            // p1 is more generic then p2 we keep p1 and throw away p2
+                            List((p1 -> joinValue(v1, v2)))
+                        else
+                            // p1 and p2 do not have any relation with each other, we keep them both in the map
+                            List((p1 -> v1), (p2 -> v2))
+                    }
+                    .toMap
