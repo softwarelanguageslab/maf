@@ -85,14 +85,14 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
                 prdVal <- eval(prd)
                 resVal <- cond(prdVal, eval(csq), eval(alt))
             yield resVal
-        private def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+        protected def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
             for
                 bds <- bindings.mapM { case (id, exp) => eval(exp).map(vlu => (id, vlu)) }
                 res <- withEnv(env => bind(bds, env)) {
                     evalSequence(body)
                 }
             yield res
-        private def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+        protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
             bindings match
                 case Nil => evalSequence(body)
                 case (id, exp) :: restBds =>
@@ -101,7 +101,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
                             evalLetStar(restBds, body)
                         }
                     }
-        private def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+        protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
             withEnv(env => bindings.foldLeft(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
                 for
                     extEnv <- getEnv

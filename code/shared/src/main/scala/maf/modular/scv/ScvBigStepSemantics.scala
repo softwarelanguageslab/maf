@@ -10,7 +10,7 @@ import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.util.benchmarks.Timeout
 import maf.util.{MonoidInstances, TaggedSet}
-import maf.core.{Identifier, Identity, Monad, NoCodeIdentityDebug, Position}
+import maf.core.{Identifier, Identity, Monad, NoCodeIdentityDebug, Position, UndefinedVariableError}
 import java.util.UUID
 
 object DebugLogger:
@@ -240,6 +240,59 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 result <- super.evalClosure(exp)
             yield result
 
+        protected def assignPost(
+            id: Identifier,
+            env: Env,
+            vlu: PostValue
+          ): M[Unit] = env.lookup(id.name) match
+            case None =>
+                println("err!")
+                baseEvalM.fail(UndefinedVariableError(id))
+            case Some(addr) =>
+                extendStoCache(addr, vlu)
+
+        protected def assignPost(bds: List[(Identifier, PostValue)], env: Env): M[Unit] =
+            import maf.core.Monad.MonadSyntaxOps
+            Monad.sequence(bds.map { case (id, vlu) => assignPost(id, env, vlu) }) >>> baseEvalM.unit(())
+
+        private def bindPost(id: Identifier, env: Env, vlu: PostValue): EvalM[Env] =
+            val addr = allocVar(id, component)
+            val env2 = env.extend(id.name, addr)
+            extendStoCache(addr, vlu).map(_ => env2)
+
+        private def bindPost(bds: List[(Identifier, PostValue)], env: Env): EvalM[Env] =
+            import maf.core.Monad.MonadIterableOps
+            bds.foldLeftM(env) { case (env, (id, pv)) => bindPost(id, env, pv) }
+
+        override protected def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            for
+                bds <- bindings.mapM { case (id, exp) => extract(eval(exp)).map(vlu => (id, vlu)) }
+                res <- withEnvM(env => bindPost(bds, env)) {
+                    evalSequence(body)
+                }
+            yield res
+
+        override protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            bindings match
+                case Nil => evalSequence(body)
+                case (id, exp) :: restBds =>
+                    extract(eval(exp)).flatMap { rhs =>
+                        withEnvM(env => bindPost(id, env, rhs)) {
+                            evalLetStar(restBds, body)
+                        }
+                    }
+
+        override protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            withEnv(env => bindings.foldLeft(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
+                for
+                    extEnv <- getEnv
+                    _ <- bindings.mapM_ { case (id, exp) =>
+                        extract(eval(exp)).flatMap(value => assignPost(id, extEnv, value))
+                    }
+                    res <- evalSequence(body)
+                yield res
+            }
+
         override def eval(exp: SchemeExp): EvalM[Value] =
             exp match
                 // literal Scheme values have a trivial symbolic representation -> their original expression
@@ -289,7 +342,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
         override def evalVariable(id: Identifier): EvalM[Value] =
             // the symbolic representation of a variable is the stored symbolic representation or a fresh symbolic variable
-            lookupCache(id).flatMap(sym => super.evalVariable(id).flatMap(tag(sym)))
+            lookupCache(id).flatMap(trace(s"cache $id")).flatMap(sym => super.evalVariable(id).flatMap(tag(sym)))
 
         /** Executes the monadic action `m` if the given condition is feasible */
         private def ifFeasible[X](prim: Prim, cnd: PostValue)(m: EvalM[X]): EvalM[X] =
@@ -364,16 +417,21 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
                 joinedResult <- nondets[PostValue](flats ++ procedures)
 
+                _ <- effectful { println(s"got joined result $joinedResult") }
+
                 // Since applying the contract on the value does not (always) generate seperate branches,
                 // we split the join again here.
-                splitResult <- extract(
-                  nondets(
-                    ifFeasible(`true?`, joinedResult) { unit(lattice.bool(true)) >>= tag(joinedResult.symbolic) },
-                    ifFeasible(`false?`, joinedResult) { unit(lattice.bool(false)) >>= tag(joinedResult.symbolic) }
-                  )
-                )
-                _ <- effectful { println(s"${splitResult._1} is result of $checkExpr") }
-            yield splitResult._2
+                // splitResult <- extract(
+                //   nondets(
+                //     ifFeasible(`true?`, joinedResult) { unit(lattice.bool(true)) >>= tag(joinedResult.symbolic) },
+                //     ifFeasible(`false?`, joinedResult) { unit(lattice.bool(false)) >>= tag(joinedResult.symbolic) }
+                //   )
+                // )
+                splitResult = joinedResult
+                pc <- getPc
+                _ <- effectful { println(s"${splitResult} is result of $checkExpr, $pc") }
+                vlu <- tag(splitResult._1)(splitResult._2)
+            yield vlu
 
         /**
          * The semantics of a "mon" expression.
@@ -548,6 +606,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             // the if expression is evaluated in a different way, because we use symbolic information to extend the path condition and rule out unfeasible paths
             for
                 prdValWithSym <- extract(eval(prd))
+                _ <- effectful { println(s"prdval with sym $prdValWithSym") }
                 ifVal <- symCond(prdValWithSym, csq, alt)
             yield ifVal
 

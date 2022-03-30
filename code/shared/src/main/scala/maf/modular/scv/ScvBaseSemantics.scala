@@ -64,19 +64,27 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
     /////////////////////////////////////////////////////
 
     final lazy val scvMonadInstance: StateOps[State, ScvEvalM] = MonadStateT.stateInstance[State, SymbolicSet]
+
+    def withEnvM[X](f: Environment[Address] => EvalM[Environment[Address]])(ev: EvalM[X]): EvalM[X] =
+        import scvMonadInstance.{get, impure, put, withState}
+
+        for
+            s <- get
+            oldEnv = s.env
+            newEnv <- f(oldEnv)
+            s1 <- get
+            _ <- put(s1.copy(env = newEnv))
+            result <- ev
+            newSt <- get
+            _ <- put(newSt.copy(env = oldEnv))
+        yield result
+
     implicit val evalM = new TEvalM:
         import scvMonadInstance.{get, impure, put, withState}
         export scvMonadInstance._
         def getEnv: EvalM[Environment[Address]] = get.map(_.env)
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
-            for
-                s <- get
-                oldEnv = s.env
-                _ <- put(s.copy(env = f(oldEnv)))
-                result <- ev
-                newSt <- get
-                _ <- put(newSt.copy(env = oldEnv))
-            yield result
+            withEnvM(f andThen unit)(ev)
 
         //def guard(bln: Boolean): EvalM[Unit] =
         //  if bln then unit(()) else mzero
@@ -235,6 +243,17 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
     override def intraAnalysis(cmp: Component): BaseIntraAnalysis
 
     trait BaseIntraAnalysis extends BigStepModFIntraT:
+
+        /** Extending the store means that we need to extend both the local and global store */
+        def extendStoCache(a: Address, v: PostValue): EvalM[Unit] =
+            for
+                st <- scvMonadInstance.get
+                _ <- scvMonadInstance.put(
+                  st.copy(lstore = st.lstore.extend(a, v.value), store = v.symbolic.map(sym => st.store + (a -> sym)).getOrElse(st.store))
+                )
+                _ <- effectful { writeAddr(a, v.value) }
+            yield ()
+
         given SchemePrimM[EvalM, Address, Value] with
             export scvMonadInstance._
             def fail[X](err: Error): EvalM[X] = void // TODO: register error
@@ -255,13 +274,9 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
                       if a1 == a2 then BoolLattice[B].top else BoolLattice[B].inject(false)
             )
 
-            /** Extending the store means that we need to extend both the local and global store */
+            /** Extend the store without a post value */
             def extendSto(a: Address, v: Value): EvalM[Unit] =
-                for
-                    st <- scvMonadInstance.get
-                    _ <- scvMonadInstance.put(st.copy(lstore = st.lstore.extend(a, v)))
-                    _ <- scvMonadInstance.impure(writeAddr(a, v))
-                yield ()
+                extendStoCache(a, PostValue(None, v))
 
             /**
              * Store lookup will return the value from the local store (if available) and otherwise the value from the global store.
@@ -279,4 +294,5 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
             }
 
             def updateSto(a: Address, v: Value): EvalM[Unit] = extendSto(a, v)
+
 }
