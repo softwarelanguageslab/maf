@@ -42,6 +42,36 @@ case object EmptyFormula extends Formula:
     def splitDisj: List[Formula] = List()
     def size: Int = 0
 
+object Symbolic:
+    type Symbolic = SchemeExp
+
+    export maf.language.scheme.{SchemeFuncall => Funcall, SchemeValue => Value, SchemeVar => Var}
+
+    /** An alias for a Hole. */
+    def `□` : Symbolic = Hole()
+
+    /** A hole is a symbolic representation that must be later filled in with an actual fresh symbolic variable */
+    object Hole:
+        def unapply(v: SchemeExp): Option[(Identity)] = v match
+            case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), idn) => Some(idn)
+
+        def apply(): SchemeExp =
+            SchemeFuncall(SchemeVar(Identifier("fresh", Identity.none)), List(), Identity.none)
+
+    /** Checks whether the given assertion has a valid form */
+    def isValid(ass: SchemeExp): Boolean = ass match
+        // Any assertion of the form (x e e) is valid
+        case SchemeFuncall(SchemeVar(_), fargs, _) =>
+            fargs.foldLeft(true)((acc, farg) => acc && isValid(farg))
+        // Any identifier is a valid assertion
+        case SchemeVar(_) => true
+        // Any literal value is a valid assertion
+        case SchemeValue(_, _) => true
+        // A hole is a valid assertion
+        case Hole(_) => true
+        // Anything else is not a valid assertion
+        case _ => false
+
 /** An assertion formed by constructing a scheme expression that can be interpreted as a boolean assertion */
 case class Assertion(contents: SchemeExp) extends Formula:
     val elements: Set[Formula] = Set(this)
@@ -102,7 +132,6 @@ case class Disjunction(val elements: Set[Formula]) extends Formula:
     def splitDisj: List[Formula] = elements.toList
 
     def size: Int = elements.map(_.size).sum
-
 
 /** Auxiliary functions */
 object FormulaAux:
