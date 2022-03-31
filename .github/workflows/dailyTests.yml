@@ -231,8 +231,8 @@ jobs:
         test_class: [
                       IncrementalModFType,
                       IncrementalModFCP,
-                      IncrementalModFTypeRemainingConfigs,
-                      IncrementalModFCPRemainingConfigs
+                      IncrementalModFTypeRemainingConfigsWithoutWI,
+                      IncrementalModFCPRemainingConfigsWithoutWI
                     ]
     steps:
       - name: Checkout the repository
@@ -260,6 +260,44 @@ jobs:
           channel: maf-logs
           status: FAILED
           color: danger
+  test-soundness-incremental-modf-2:
+    name: Execute incremental soundness tests (using ${{ matrix.test_class }})
+    runs-on: ubuntu-latest
+    needs: compile
+    timeout-minutes: 360 # 6 hours
+    strategy:
+      fail-fast: false
+      matrix:
+        test_class: [
+          IncrementalModFTypeRemainingConfigsWithWI,
+          IncrementalModFCPRemainingConfigsWithWI
+        ]
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: openjdk@1.15
+      - name: Run incremental tests
+        run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
+        env:
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
+      # If failed, update the Slack notification.
+      - name: Notify slack fail
+        if: failure() || cancelled()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf-logs
+          status: FAILED
+          color: danger
   # The test-soundness-incremental-modconc job executes the soundness tests for the incremental ModConc analyses.
   test-soundness-incremental-modconc:
     name: Execute incremental soundness tests (using ${{ matrix.test_class }})
@@ -272,9 +310,47 @@ jobs:
         test_class: [
                       IncrementalSmallStepModConcType,
                       IncrementalSmallStepModConcCP,
-                      IncrementalSmallStepModConcTypeRemainingConfigs,
-                      IncrementalSmallStepModConcCPRemainingConfigs
+                      IncrementalSmallStepModConcTypeRemainingConfigsWithoutWI,
+                      IncrementalSmallStepModConcCPRemainingConfigsWithoutWI
                     ]
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: openjdk@1.15
+      - name: Run incremental tests
+        run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
+        env:
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
+      # If failed, update the Slack notification.
+      - name: Notify slack fail
+        if: failure() || cancelled()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf-logs
+          status: FAILED
+          color: danger
+  test-soundness-incremental-modconc-2:
+    name: Execute incremental soundness tests (using ${{ matrix.test_class }})
+    runs-on: ubuntu-latest
+    needs: compile
+    timeout-minutes: 360 # 6 hours
+    strategy:
+      fail-fast: false
+      matrix:
+        test_class: [
+          IncrementalSmallStepModConcTypeRemainingConfigsWithWI,
+          IncrementalSmallStepModConcCPRemainingConfigsWithWI
+        ]
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2
@@ -353,6 +429,7 @@ jobs:
               test-interpreter,
               test-soundness,
               test-soundness-incremental-modf,
+              test-soundness-incremental-modf-2,
               test-soundness-incremental-modconc,
               test-incremental-properties
            ]
