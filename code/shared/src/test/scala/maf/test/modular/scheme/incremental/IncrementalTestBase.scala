@@ -14,7 +14,7 @@ import scala.concurrent.duration.{Duration, MINUTES}
 
 trait IncrementalTestBase extends SchemeBenchmarkTests {
 
-    val name: String
+    def name(): String
 
     def testTags(b: Benchmark): Seq[Tag] = Seq(IncrementalTest, SlowTest)
 

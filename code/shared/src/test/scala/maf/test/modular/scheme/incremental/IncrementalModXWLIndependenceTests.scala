@@ -28,6 +28,7 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
         rand.configuration = ci_di_wi
 
         // Initial analysis.
+        info("Checking initial analysis.")
         lifo.analyzeWithTimeout(analysisTimeout())
         assume(lifo.finished, "Initial LIFO analysis timed out.")
         fifo.analyzeWithTimeout(analysisTimeout())
@@ -65,6 +66,7 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
         end for //
 
         // Full reanalysis.
+        info("Checking full reanalysis.")
         val lifo2 = lifoAnalysis(program)
         val fifo2 = fifoAnalysis(program)
         val rand2 = randAnalysis(program)
@@ -85,7 +87,7 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
     end workListTest
 
     override def onBenchmark(benchmark: Benchmark): Unit =
-        property(s"The result of the incremental analysis of $benchmark using $name is independent of the work list order.",
+        property(s"The result of the incremental analysis of $benchmark using ${name()} is independent of the work list order.",
                  testTags(benchmark): _*
         ) {
             val content = Reader.loadFile(benchmark)
@@ -102,7 +104,7 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
 }
 
 class IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependenceTests with SequentialIncrementalBenchmarks:
-    val name = "Incremental ModF CP"
+    override def name(): String = "Incremental ModF CP"
     abstract class BaseModFAnalysisIncremental(prg: SchemeExp, var configuration: IncrementalConfiguration)
         extends ModAnalysis[SchemeExp](prg)
         with StandardSchemeModFComponents
