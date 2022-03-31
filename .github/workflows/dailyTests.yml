@@ -431,6 +431,7 @@ jobs:
               test-soundness-incremental-modf,
               test-soundness-incremental-modf-2,
               test-soundness-incremental-modconc,
+              test-soundness-incremental-modconc-2,
               test-incremental-properties
            ]
     steps:
