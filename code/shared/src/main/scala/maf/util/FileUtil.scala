@@ -30,14 +30,28 @@ object Writer:
 
     opaque type Writer = W
 
-    def open(path: String): Writer =
+    /** Avoids a file to be accidentally overwritten.*/
+    private def addSuffix(f: File): File =
+        var file = f
+        if !file.exists() then return file
+        val path = file.getPath
+        val idx = path.lastIndexOf(".")
+        val (name, ext) = (path.substring(0, idx), path.substring(idx))
+        var suffix = 1
+        while file.exists() do
+            val n = s"$name-$suffix$ext"
+            file = new File(n)
+            suffix += 1
+        file
+
+    def open(path: String, avoidDuplicate: Boolean = false): Writer =
         val file = new File(path)
         file.getParentFile().nn.mkdirs() // Creates the directory containing the file if it does not exists.
-        W(new BufferedWriter(new FileWriter(file)), false)
+        W(new BufferedWriter(new FileWriter(if avoidDuplicate then addSuffix(file) else file)), false)
 
     def openTimeStamped(path: String): Writer =
         path.split("\\.").nn match
-            case Array(file, ext) => open(file + " " + Clock.nowStr() + "." + ext)
+            case Array(file, ext) => open(file + " " + Clock.nowStr() + "." + ext, true)
             case _                => throw new Exception(s"Illegal path: $path")
 
     def openTimeStampedGetName(path: String): (Writer, String) = // Also returns the name of the file.
