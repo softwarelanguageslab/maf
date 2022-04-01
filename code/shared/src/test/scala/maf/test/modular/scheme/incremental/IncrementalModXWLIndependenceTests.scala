@@ -103,7 +103,7 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
         }
 }
 
-class IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependenceTests with SequentialIncrementalBenchmarks:
+trait IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependenceTests with SequentialIncrementalBenchmarks:
     override def name(): String = "Incremental ModF CP"
     abstract class BaseModFAnalysisIncremental(prg: SchemeExp, var configuration: IncrementalConfiguration)
         extends ModAnalysis[SchemeExp](prg)
@@ -122,3 +122,9 @@ class IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependence
     def fifoAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, ci_di_wi) with FIFOWorklistAlgorithm[SchemeExp]
     def randAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, ci_di_wi) with RandomWorklistAlgorithm[SchemeExp]
 end IncrementalModFCPWLIndependenceTests
+
+class IncrementalModFCPWLIndependenceTestsWithWI extends IncrementalModFCPWLIndependenceTests:
+    override def configurations: List[IncrementalConfiguration] = super.configurations.filter(_.writeInvalidation)
+    
+class IncrementalModFCPWLIndependenceTestsWithoutWI extends IncrementalModFCPWLIndependenceTests:
+    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.writeInvalidation)

@@ -6,21 +6,21 @@ import maf.core.worklist.FIFOWorkList
 import maf.language.CScheme.*
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
-import maf.language.scheme.interpreter.{ProgramError, SchemeInterpreter}
+import maf.language.scheme.interpreter.*
 import maf.language.scheme.primitives.SchemePrelude
-import maf.modular.{GlobalStore, ModAnalysis}
+import maf.modular.*
 import maf.modular.incremental.IncrementalConfiguration.*
 import maf.modular.scheme.modf.*
-import maf.modular.incremental.{IncrementalLogging, IncrementalModAnalysis, *}
+import maf.modular.incremental.*
 import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
 import maf.modular.incremental.ProgramVersionExtracter.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
-import maf.modular.scheme.{PrmAddr, SchemeTypeDomain}
-import maf.modular.worklist.{FIFOWorklistAlgorithm, LIFOWorklistAlgorithm}
-import maf.util.{Reader, Writer}
+import maf.modular.scheme.*
+import maf.modular.worklist.*
+import maf.util.*
 import maf.util.Writer.Writer
-import maf.util.benchmarks.{Timeout, Timer}
+import maf.util.benchmarks.*
 import maf.util.graph.DotGraph
 import maf.util.graph.DotGraph.*
 
@@ -87,6 +87,24 @@ object IncrementalRun extends App:
         //with IncrementalVisualIntra
     }
 
+    abstract class BaseModFAnalysisIncremental(prg: SchemeExp, var configuration: IncrementalConfiguration)
+        extends ModAnalysis[SchemeExp](prg)
+            with StandardSchemeModFComponents
+            with SchemeModFNoSensitivity
+            with SchemeModFSemanticsM
+            with IncrementalSchemeModFBigStepSemantics
+            with IncrementalSchemeConstantPropagationDomain
+            with IncrementalGlobalStore[SchemeExp]
+            with IncrementalLogging[SchemeExp]
+             {
+        override def warn(msg: String): Unit = ()
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
+    }
+
+    def lifoAnalysis(b: SchemeExp) = new BaseModFAnalysisIncremental(b, ci_di_wi) with LIFOWorklistAlgorithm[SchemeExp]
+    def fifoAnalysis(b: SchemeExp) = new BaseModFAnalysisIncremental(b, ci_di_wi) with FIFOWorklistAlgorithm[SchemeExp]
+
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
     // Useful when reducing a program when debugging the analysis.
     def interpretProgram(file: String): Unit =
@@ -102,12 +120,24 @@ object IncrementalRun extends App:
         }
         println("Done interpreting.")
 
+    def checkEqState(a: BaseModFAnalysisIncremental, b: BaseModFAnalysisIncremental, message: String): Unit =
+        assert(a.store == b.store, message + " (store mismatch)")
+        assert(a.visited == b.visited, message + " (visited set mismatch)")
+        assert(a.deps == b.deps, message + " (dependency mismatch)")
+        assert(a.mapping == b.mapping, message + " (mapping mismatch)")
+        assert(a.cachedReadDeps == b.cachedReadDeps, message + " (read deps mismatch)")
+        assert(a.cachedSpawns == b.cachedSpawns, message + " (spawns mismatch)")
+        assert(a.provenance == b.provenance, message + " (provenance mismatch)")
+        assert(a.cachedWrites == b.cachedWrites, message + " (write cache mismatch)")
+        //assert(a.implicitFlows == b.implicitFlows, message + " (flow mismatch)") // TODO Readd?
+        assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)")
+
     val modFbenchmarks: List[String] = List(
-      "test/changes/scheme/generated/R5RS_various_four-in-a-row-2.scm"
+      "test/changes/scheme/generated/R5RS_scp1_leap-year-1.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
-    val configs = List(ci_wi)
+    val configs = List(noOptimisations)
 
     modFbenchmarks.foreach { bench =>
         try {
@@ -115,10 +145,24 @@ object IncrementalRun extends App:
             //interpretProgram(bench)
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
 
-            val a = newAnalysis(text, ci_di_wi)
+            val l = lifoAnalysis(text)
+            l.configuration = ci_di_wi
+            val f = fifoAnalysis(text)
+            f.configuration = ci_di_wi
             //a.logger.logU("***** INIT *****")
-            a.analyzeWithTimeout(newTimeout())
-            assert(a.finished)
+            l.analyzeWithTimeout(newTimeout())
+            f.analyzeWithTimeout(newTimeout())
+            assert(l.finished)
+            assert(f.finished)
+
+            l.configuration = noOptimisations
+            f.configuration = noOptimisations
+
+            l.updateAnalysis(newTimeout())
+            f.updateAnalysis(newTimeout())
+
+            assert(l.store == f.store)
+            checkEqState(f, l,"")
 
             //val noOpt = a.deepCopy()
             //noOpt.configuration = noOptimisations
@@ -131,10 +175,10 @@ object IncrementalRun extends App:
             //full.logger.logU("***** FULL *****")
             //full.analyzeWithTimeout(newTimeout())
             //assert(full.finished)
-
+            /*
             configs.foreach { config =>
                 println(config)
-                val opt = a.deepCopy()
+                val opt = l.deepCopy()
                 opt.configuration = config
                 //opt.logger.logU(s"***** ${config.toString} *****")
                 opt.updateAnalysis(newTimeout())
@@ -143,6 +187,7 @@ object IncrementalRun extends App:
             // compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
             //compareAnalyses(opt, noOpt, s"${opt.configuration.toString} vs. No Opt")
             }
+            */
 
         } catch {
             case e: Exception =>
@@ -154,7 +199,7 @@ object IncrementalRun extends App:
 end IncrementalRun
 
 // Prints the maximal heap size.
-object Memorycheck extends App:
+object JVMMemorySize extends App:
     def formatSize(v: Long): String =
         if v < 1024 then return s"$v B"
         val z = (63 - java.lang.Long.numberOfLeadingZeros(v)) / 10
