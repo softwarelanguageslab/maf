@@ -79,6 +79,7 @@ object SchemeOp:
     case object CharacterIsUpper extends SchemeOp1("char-is-upper?")
     case object MakeInputPort extends SchemeOp1("make-input-port")
     case object MakeOutputPort extends SchemeOp1("make-input-port")
+    case object IsNumber extends SchemeOp1("number?")
 
     val unaryOperators: Iterable[SchemeOp1] = Set(
       Car,
@@ -100,6 +101,7 @@ object SchemeOp:
       IsProcedure,
       IsInputPort,
       IsOutputPort,
+      IsNumber,
       Not,
       Ceiling,
       Floor,

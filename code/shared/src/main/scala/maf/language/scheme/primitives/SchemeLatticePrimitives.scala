@@ -239,7 +239,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         case object `log` extends SchemePrimOp1("log", SchemeOp.Log)
         case object `modulo` extends SchemePrimOp2("modulo", SchemeOp.Modulo)
         case object `null?` extends SchemePrimOp1("null?", SchemeOp.IsNull)
-        case object `number?` extends SchemePrimOp1("number?", SchemeOp.IsReal)
+        case object `number?` extends SchemePrimOp1("number?", SchemeOp.IsNumber)
         case object `real?` extends SchemePrimOp1("real?", SchemeOp.IsReal)
         /* No support for complex number, so number? is equivalent as real? */
         case object `procedure?` extends SchemePrimOp1("procedure?", SchemeOp.IsProcedure)

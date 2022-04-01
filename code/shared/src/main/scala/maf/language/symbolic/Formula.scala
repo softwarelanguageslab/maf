@@ -51,6 +51,9 @@ object Symbolic:
 
     export maf.language.scheme.{SchemeFuncall => Funcall, SchemeValue => Value, SchemeVar => Var}
 
+    object VarId:
+        def apply(id: String): SchemeVar = SchemeVar(Identifier(id, Identity.none))
+
     object SymbolicCompiler extends BaseSchemeCompiler:
         override def _compile(exp: SExp): TailRec[SchemeExp] = exp match
             case SExpId(Identifier("□", _)) => done(Hole())

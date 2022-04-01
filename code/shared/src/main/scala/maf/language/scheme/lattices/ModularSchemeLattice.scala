@@ -7,6 +7,7 @@ import maf.language.scheme.primitives.SchemePrimitive
 import maf.lattice.interfaces._
 import maf.util.datastructures.SmartUnion._
 import maf.util._
+import smtlib.theories.Core.False
 
 /**
  * Defines a Scheme lattice based on other lattices. Example usage: val address = NameAddress val lattice = new ModularSchemeLattice[SchemeExp,
@@ -16,6 +17,10 @@ import maf.util._
 /** TODO[medium]: use Show and ShowStore here */
 class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: IntLattice, R: RealLattice, C: CharLattice, Sym: SymbolLattice]
     extends Serializable:
+
+    trait ModularSchemeConvertor[BaseAddr <: Address, V]:
+        def convertAddr(addr: Address): BaseAddr
+        def convertValue(baseDomain: ModularSchemeLattice[A, S, B, I, R, C, Sym])(v: V): baseDomain.L
 
     // TODO: make this a type parameter for type safety!
     type K = Any
@@ -326,6 +331,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
                         case _ => False
                     })
+                case IsNumber =>
+                    MayFail.success(args(0) match {
+                        case (_: Real) | (_: Int) => True
+                        case _                    => False
+                    })
+
                 case IsTrue =>
                     MayFail.success(bool(isTrue(args(0))))
                 case IsFalse =>
@@ -924,6 +935,33 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 }
             }
     }
+
+    private def emptyEnv[A <: Address] = Environment[A](Iterable.empty)
+
+    def convertV[BaseAddr <: Address](
+        baseDomain: ModularSchemeLattice[A, S, B, I, R, C, Sym]
+      )(
+        aux: ModularSchemeConvertor[BaseAddr, L]
+      )(
+        value: Value
+      ): baseDomain.Value =
+        value match
+            case Nil        => baseDomain.Nil
+            case Bool(b)    => baseDomain.Bool(b)
+            case Int(i)     => baseDomain.Int(i)
+            case Real(r)    => baseDomain.Real(r)
+            case Char(c)    => baseDomain.Char(c)
+            case Str(s)     => baseDomain.Str(s)
+            case Symbol(s)  => baseDomain.Symbol(s)
+            case Prim(ps)   => baseDomain.Prim(ps)
+            case Clo(cs)    => baseDomain.Clo(cs.map(c => (c._1, emptyEnv)))
+            case Cons(a, d) => baseDomain.Cons(aux.convertValue(baseDomain)(a), aux.convertValue(baseDomain)(d))
+            //TODO:case Pointer(ps)  => baseDomain.Pointer(ps.map(aux.convertAddr))
+            case Vec(s, e)    => baseDomain.Vec(s, e.view.mapValues(aux.convertValue(baseDomain)).toMap)
+            case Void         => baseDomain.Void
+            case Lock(tids)   => baseDomain.Lock(tids)
+            case Thread(tids) => baseDomain.Thread(tids)
+            case v            => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
 
     object L:
         implicit val lattice: SchemeLattice[L, A] = schemeLattice

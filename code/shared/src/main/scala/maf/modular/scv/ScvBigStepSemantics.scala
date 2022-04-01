@@ -108,6 +108,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
         private def checkPost(value: PostValue): EvalM[Unit] =
             usingRangeContract(cmp) {
                 case Some(contract) =>
+                    println(s"------------- got $value and $contract")
                     // TODO: check the monIdn parameter
                     applyMon(PostValue.noSymbolic(contract), value, expr(cmp), expr(cmp).idn).flatMap(_ => unit(()))
                 case None => unit(())
@@ -118,7 +119,8 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             val context = fromContext(cmp)
             for
                 // TODO: there is still something wrong here, if I disable this, things should start to fail but they don't...
-                _ <- putStoreCache(context.lexStoCache)
+                cache <- getStoreCache
+                _ <- putStoreCache(cache ++ context.lexStoCache)
                 _ <- putPc(context.pathCondition)
                 _ <- putVars(context.vars)
                 _ <- Monad.sequence(context.symbolic.map {
@@ -347,7 +349,8 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
         /** Executes the monadic action `m` if the given condition is feasible */
         private def ifFeasible[X](prim: Prim, cnd: PostValue)(m: EvalM[X]): EvalM[X] =
             for
-                primResult <- applyPrimitive(prim, List(cnd.value))
+                primResult <- applyPrimitive(prim, List(cnd.value)) >>= trace("prim")
+                _ <- effectful { println(s"$primResult is ${lattice.isTrue(primResult)}") }
                 _ <- cnd.symbolic match
                     case None => unit(())
                     case Some(symbolic) =>
@@ -421,13 +424,13 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
                 // Since applying the contract on the value does not (always) generate seperate branches,
                 // we split the join again here.
-                // splitResult <- extract(
-                //   nondets(
-                //     ifFeasible(`true?`, joinedResult) { unit(lattice.bool(true)) >>= tag(joinedResult.symbolic) },
-                //     ifFeasible(`false?`, joinedResult) { unit(lattice.bool(false)) >>= tag(joinedResult.symbolic) }
-                //   )
-                // )
-                splitResult = joinedResult
+                splitResult <- extract(
+                  nondets(
+                    ifFeasible(`true?`, joinedResult) { unit(lattice.bool(true)) >>= tag(joinedResult.symbolic) },
+                    ifFeasible(`false?`, joinedResult) { unit(lattice.bool(false)) >>= tag(joinedResult.symbolic) }
+                  )
+                )
+                //splitResult = joinedResult
                 pc <- getPc
                 _ <- effectful { println(s"${splitResult} is result of $checkExpr, $pc") }
                 vlu <- tag(splitResult._1)(splitResult._2)
@@ -518,7 +521,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 result <- nondets(
                   applyFunPost(call, contract.contract, List((expr, value)), Position(-1, 0), ctx),
                   callFun(PostValue.noSymbolic(contract.contract), List(value))
-                )
+                ) >>= trace("monFlat result")
                 pv = PostValue(resultSymbolic, result)
                 tru = ifFeasible(`true?`, pv) { unit(value.value).flatMap(value.symbolic.map(tag).getOrElse(unit)) }
                 fls =

@@ -8,6 +8,7 @@ import maf.language.scheme._
 import maf.util.TaggedSet
 import maf.core._
 import maf.language.scheme.primitives.SchemePrimM
+import maf.language.symbolic.Symbolic
 import maf.lattice.interfaces.BoolLattice
 
 /**
