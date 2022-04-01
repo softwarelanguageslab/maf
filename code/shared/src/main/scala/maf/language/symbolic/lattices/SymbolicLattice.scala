@@ -43,6 +43,9 @@ case object WidenRecurringPatterns extends SymbolicWidenPolicy:
 
         visit(v, recurring.toSet)
 
+object SymbolicLattice:
+    type L = Set[Symbolic]
+
 /**
  * A lattice for representing symbolic representations of values.
  *
