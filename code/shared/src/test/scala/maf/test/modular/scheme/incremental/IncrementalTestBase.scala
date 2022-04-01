@@ -14,7 +14,7 @@ import scala.concurrent.duration.{Duration, MINUTES}
 
 trait IncrementalTestBase extends SchemeBenchmarkTests {
 
-    val name: String
+    def name(): String
 
     def testTags(b: Benchmark): Seq[Tag] = Seq(IncrementalTest, SlowTest)
 
@@ -28,7 +28,7 @@ trait IncrementalTestBase extends SchemeBenchmarkTests {
 
     def analysisTimeout(): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
-    val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
+    def configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
     def checkEqState(a: IncrementalAnalysis, b: IncrementalAnalysis, message: String): Unit =
         assert(a.store == b.store, message + " (store mismatch)")

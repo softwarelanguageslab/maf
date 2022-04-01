@@ -143,9 +143,14 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
 
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ IncrementalTest
 
-trait RemainingConfigurations extends IncrementalModXSoundnessTests:
+trait RemainingConfigurationsWithWI extends IncrementalModXSoundnessTests:
     override val configurations: List[IncrementalConfiguration] =
-        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).toList
+        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filter(_.writeInvalidation).toList
+    override def isSlow(b: Benchmark) = true
+
+trait RemainingConfigurationsWithoutWI extends IncrementalModXSoundnessTests:
+    override val configurations: List[IncrementalConfiguration] =
+        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filterNot(_.writeInvalidation).toList
     override def isSlow(b: Benchmark) = true
 
 trait noCY extends IncrementalModXSoundnessTests:
@@ -178,10 +183,10 @@ class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with
     override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, ci_di_wi) // allOptimisations)
     override def isSlow(b: Benchmark): Boolean = true
 
-class IncrementalSmallStepModConcTypeRemainingConfigs extends IncrementalSmallStepModConcType with RemainingConfigurations:
-    override val configurations = allConfigurations.filterNot(_.cyclicValueInvalidation)
-class IncrementalSmallStepModConcCPRemainingConfigs extends IncrementalSmallStepModConcCP with RemainingConfigurations:
-    override val configurations = allConfigurations.filterNot(_.cyclicValueInvalidation)
+class IncrementalSmallStepModConcTypeRemainingConfigsWithWI extends IncrementalSmallStepModConcType with RemainingConfigurationsWithWI
+class IncrementalSmallStepModConcCPRemainingConfigsWithWI extends IncrementalSmallStepModConcCP with RemainingConfigurationsWithWI
+class IncrementalSmallStepModConcTypeRemainingConfigsWithoutWI extends IncrementalSmallStepModConcType with RemainingConfigurationsWithoutWI
+class IncrementalSmallStepModConcCPRemainingConfigsWithoutWI extends IncrementalSmallStepModConcCP with RemainingConfigurationsWithoutWI
 
 /** Implements soundness tests for an incremental ModF type analysis. */
 class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks:
@@ -207,5 +212,7 @@ class IncrementalModFCP extends IncrementalModFType:
     override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, ci_di_wi)
     override def isSlow(b: Benchmark): Boolean = true
 
-class IncrementalModFTypeRemainingConfigs extends IncrementalModFType with RemainingConfigurations
-class IncrementalModFCPRemainingConfigs extends IncrementalModFCP with RemainingConfigurations
+class IncrementalModFTypeRemainingConfigsWithWI extends IncrementalModFType with RemainingConfigurationsWithWI
+class IncrementalModFCPRemainingConfigsWithWI extends IncrementalModFCP with RemainingConfigurationsWithWI
+class IncrementalModFTypeRemainingConfigsWithoutWI extends IncrementalModFType with RemainingConfigurationsWithoutWI
+class IncrementalModFCPRemainingConfigsWithoutWI extends IncrementalModFCP with RemainingConfigurationsWithoutWI

@@ -63,7 +63,7 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
     end restartTest
 
     override def onBenchmark(benchmark: Benchmark): Unit =
-        property(s"Incremental analysis of $benchmark using $name behaves sane.", testTags(benchmark): _*) {
+        property(s"Incremental analysis of $benchmark using ${name()} behaves sane.", testTags(benchmark): _*) {
             val content = Reader.loadFile(benchmark)
             val program = CSchemeParser.parseProgram(content)
 
@@ -78,9 +78,9 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
 }
 
 class IncrementalModFTypeRestartTests extends IncrementalModXRestartTests with SequentialIncrementalBenchmarks:
-    val name = "Incremental ModF Type"
+    override def name() = "Incremental ModF Type"
     override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisTypeLattice(b, ci_di_wi)
 
 class IncrementalModFCPRestartTests extends IncrementalModXRestartTests with SequentialIncrementalBenchmarks:
-    val name = "Incremental ModF CP"
+    override def name() = "Incremental ModF CP"
     override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, ci_di_wi)

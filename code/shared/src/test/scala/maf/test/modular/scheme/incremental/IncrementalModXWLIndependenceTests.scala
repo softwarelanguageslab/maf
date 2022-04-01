@@ -1,10 +1,11 @@
 package maf.test.modular.scheme.incremental
 import maf.language.CScheme.CSchemeParser
+import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
 import maf.modular.ModAnalysis
 import maf.modular.incremental.IncrementalConfiguration.*
-import maf.modular.incremental.{IncrementalConfiguration, IncrementalGlobalStore}
-import maf.modular.incremental.scheme.lattice.{IncrementalSchemeConstantPropagationDomain, IncrementalSchemeTypeDomain}
+import maf.modular.incremental.*
+import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.modf.*
 import maf.modular.worklist.*
@@ -28,6 +29,7 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
         rand.configuration = ci_di_wi
 
         // Initial analysis.
+        info("Checking initial analysis.")
         lifo.analyzeWithTimeout(analysisTimeout())
         assume(lifo.finished, "Initial LIFO analysis timed out.")
         fifo.analyzeWithTimeout(analysisTimeout())
@@ -44,6 +46,9 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
             val lifoCopy = lifo.deepCopy()
             val fifoCopy = fifo.deepCopy()
             val randCopy = rand.deepCopy()
+            lifoCopy.configuration = c
+            fifoCopy.configuration = c
+            randCopy.configuration = c
             lifoCopy.updateAnalysis(analysisTimeout())
             fifoCopy.updateAnalysis(analysisTimeout())
             randCopy.updateAnalysis(analysisTimeout())
@@ -65,9 +70,13 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
         end for //
 
         // Full reanalysis.
+        info("Checking full reanalysis.")
         val lifo2 = lifoAnalysis(program)
         val fifo2 = fifoAnalysis(program)
         val rand2 = randAnalysis(program)
+        lifo2.version = New
+        fifo2.version = New
+        rand2.version = New
         lifo2.configuration = noOptimisations
         fifo2.configuration = noOptimisations
         rand2.configuration = noOptimisations
@@ -85,7 +94,7 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
     end workListTest
 
     override def onBenchmark(benchmark: Benchmark): Unit =
-        property(s"The result of the incremental analysis of $benchmark using $name is independent of the work list order.",
+        property(s"The result of the incremental analysis of $benchmark using ${name()} is independent of the work list order.",
                  testTags(benchmark): _*
         ) {
             val content = Reader.loadFile(benchmark)
@@ -101,8 +110,8 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
         }
 }
 
-class IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependenceTests with SequentialIncrementalBenchmarks:
-    val name = "Incremental ModF CP"
+trait IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependenceTests with SequentialIncrementalBenchmarks:
+    override def name(): String = "Incremental ModF CP"
     abstract class BaseModFAnalysisIncremental(prg: SchemeExp, var configuration: IncrementalConfiguration)
         extends ModAnalysis[SchemeExp](prg)
         with StandardSchemeModFComponents
@@ -120,3 +129,9 @@ class IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependence
     def fifoAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, ci_di_wi) with FIFOWorklistAlgorithm[SchemeExp]
     def randAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, ci_di_wi) with RandomWorklistAlgorithm[SchemeExp]
 end IncrementalModFCPWLIndependenceTests
+
+class IncrementalModFCPWLIndependenceTestsWithWI extends IncrementalModFCPWLIndependenceTests:
+    override def configurations: List[IncrementalConfiguration] = super.configurations.filter(_.writeInvalidation)
+    
+class IncrementalModFCPWLIndependenceTestsWithoutWI extends IncrementalModFCPWLIndependenceTests:
+    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.writeInvalidation)
