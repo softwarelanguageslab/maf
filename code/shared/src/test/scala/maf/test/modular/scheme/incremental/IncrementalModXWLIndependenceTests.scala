@@ -1,5 +1,6 @@
 package maf.test.modular.scheme.incremental
 import maf.language.CScheme.CSchemeParser
+import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
 import maf.modular.ModAnalysis
 import maf.modular.incremental.IncrementalConfiguration.*
