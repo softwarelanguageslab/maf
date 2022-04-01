@@ -3,8 +3,8 @@ import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.SchemeExp
 import maf.modular.ModAnalysis
 import maf.modular.incremental.IncrementalConfiguration.*
-import maf.modular.incremental.{IncrementalConfiguration, IncrementalGlobalStore}
-import maf.modular.incremental.scheme.lattice.{IncrementalSchemeConstantPropagationDomain, IncrementalSchemeTypeDomain}
+import maf.modular.incremental.*
+import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.modf.*
 import maf.modular.worklist.*
@@ -45,6 +45,9 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
             val lifoCopy = lifo.deepCopy()
             val fifoCopy = fifo.deepCopy()
             val randCopy = rand.deepCopy()
+            lifoCopy.configuration = c
+            fifoCopy.configuration = c
+            randCopy.configuration = c
             lifoCopy.updateAnalysis(analysisTimeout())
             fifoCopy.updateAnalysis(analysisTimeout())
             randCopy.updateAnalysis(analysisTimeout())
@@ -70,6 +73,9 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
         val lifo2 = lifoAnalysis(program)
         val fifo2 = fifoAnalysis(program)
         val rand2 = randAnalysis(program)
+        lifo2.version = New
+        fifo2.version = New
+        rand2.version = New
         lifo2.configuration = noOptimisations
         fifo2.configuration = noOptimisations
         rand2.configuration = noOptimisations
