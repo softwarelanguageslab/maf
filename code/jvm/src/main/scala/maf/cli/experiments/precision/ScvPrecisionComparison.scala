@@ -31,8 +31,8 @@ object ScvPrecisionComparison
     ]:
 
     def analyses: List[(SchemeExp => Analysis, String)] = List(
-      (SchemeAnalyses.scvModAnalysisWithRacketFeatures, "scv-modf"),
-      (SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore, "scv-modf-sharedps")
+      //(SchemeAnalyses.scvModAnalysisWithRacketFeatures, "scv-modf"),
+      //(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore, "scv-modf-sharedps")
       //(AAMAnalyses.scvAAMFnCallBoundaries, "scv-aam")
     )
 

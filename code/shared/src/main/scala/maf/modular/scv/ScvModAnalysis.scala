@@ -1,6 +1,7 @@
 package maf.modular.scv
 
 import maf.language.symbolic.*
+import maf.language.symbolic.lattices.*
 import maf.modular.{GlobalStore, ModAnalysis}
 import maf.language.scheme.{SchemeExp, SchemeLambdaExp}
 import maf.modular.ReturnValue
@@ -34,7 +35,12 @@ trait ScvSatSolver[V] {
 }
 
 /** Main trait for the soft-contract verification analysis. */
-trait ScvModAnalysis extends ModAnalysis[SchemeExp] with GlobalStore[SchemeExp] with ReturnValue[SchemeExp] with SchemeDomain with ScvBaseSemantics {
+trait ScvModAnalysis
+    extends ModAnalysis[SchemeExp]
+    with GlobalStore[SchemeExp]
+    with ReturnValue[SchemeExp]
+    with SymbolicSchemeDomain
+    with ScvBaseSemantics {
     outer =>
     protected val DEBUG: Boolean = true
 

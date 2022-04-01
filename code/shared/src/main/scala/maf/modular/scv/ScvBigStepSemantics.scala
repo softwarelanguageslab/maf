@@ -212,9 +212,9 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             for
                 _ <- checkPrimitiveContract(fexp, fval, args)
                 result <- nondet(
-                  super.applyPrimitives(fexp, fval, simpleArgs),
+                  void,
                   if OpqOps.eligible(values) then lattice.getPrimitives(fval).foldMapM(prim => OpqOps.compute(fexp, prim, values, primitives))
-                  else void
+                  else super.applyPrimitives(fexp, fval, simpleArgs)
                 )
             yield result
 
@@ -353,7 +353,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                     case Some(symbolic) =>
                         extendPc(prim.symApply(symbolic))
 
-                pc <- getPc
+                pc <- getPc >>= trace("pc tracing")
                 vars <- getVars
                 result <-
                     cnd.symbolic match
@@ -361,7 +361,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                             void // if it is not possible according to the lattice, we do not execute "m"
                         case _ if ! { count(SATExec); time(Z3Time) { sat.feasible(pc.formula, vars) } } =>
                             void // if the path condition is unfeasible we also do not execute "m"
-                        case _ => m // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"
+                        case _ => m >>= trace("exec m") // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"
             yield result
 
         private def symCond(prdValWithSym: PostValue, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =

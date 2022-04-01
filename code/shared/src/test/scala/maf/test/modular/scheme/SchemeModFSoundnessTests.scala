@@ -2,6 +2,7 @@ package maf.test.modular.scheme
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.language.scheme._
+import maf.language.symbolic.lattices.*
 import maf.modular._
 import maf.modular.scv._
 import maf.modular.scheme._
@@ -48,7 +49,7 @@ trait ScvModF extends SchemeModFSoundnessTests:
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(program)
             with ScvBigStepSemantics
-            with SchemeConstantPropagationDomain
+            with SymbolicSchemeConstantPropagationDomain
             with StandardSchemeModFComponents
             with LIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFSemanticsM

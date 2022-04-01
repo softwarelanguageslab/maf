@@ -1,5 +1,6 @@
 package maf.cli.experiments.clients
 
+import maf.language.symbolic.lattices.*
 import maf.modular.scheme.modf.SimpleSchemeModFAnalysis
 import maf.util.{Reader, Writer}
 import maf.core.Identity
@@ -50,7 +51,7 @@ object DeadcodeDetection:
             with SchemeModFSemanticsM
             with SchemeModFNoSensitivity
             with BigStepModFSemantics
-            with SchemeConstantPropagationDomain
+            with SymbolicSchemeConstantPropagationDomain
             with FIFOWorklistAlgorithm[SchemeExp]
             with DeadcodeDetection:
 
@@ -71,7 +72,7 @@ object DeadcodeDetection:
             with ScvBigStepSemantics
             with ScvBigStepWithProvides
             with ScvWithStructs
-            with SchemeConstantPropagationDomain
+            with SymbolicSchemeConstantPropagationDomain
             with StandardSchemeModFComponents
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFSemanticsM

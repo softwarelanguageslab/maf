@@ -1,5 +1,6 @@
 package maf.cli.experiments.clients
 
+import maf.language.symbolic.lattices.*
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.cli.modular.scv.*
 import maf.modular.*
@@ -124,7 +125,7 @@ trait ScvDependencyAnalysisRunner extends DependencyAnalysisRunner with ScvClien
         with ScvBigStepSemantics
         with ScvBigStepWithProvides
         with ScvWithStructs
-        with SchemeConstantPropagationDomain
+        with SymbolicSchemeConstantPropagationDomain
         with StandardSchemeModFComponents
         with FIFOWorklistAlgorithm[SchemeExp]
         with SchemeModFSemanticsM

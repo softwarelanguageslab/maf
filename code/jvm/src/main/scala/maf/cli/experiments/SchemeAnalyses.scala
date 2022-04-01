@@ -2,6 +2,7 @@ package maf.cli.experiments
 
 import maf.language.scheme._
 import maf.modular._
+import maf.language.symbolic.lattices.*
 import maf.modular.adaptive._
 import maf.modular.adaptive.scheme._
 import maf.modular.scheme._
@@ -164,7 +165,7 @@ object SchemeAnalyses:
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
             with ScvBigStepSemantics
-            with SchemeConstantPropagationDomain
+            with SymbolicSchemeConstantPropagationDomain
             with StandardSchemeModFComponents
             with LIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFSemanticsM
@@ -184,7 +185,7 @@ object SchemeAnalyses:
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
             with ScvBigStepSemantics
-            with SchemeConstantPropagationDomain
+            with SymbolicSchemeConstantPropagationDomain
             with StandardSchemeModFComponents
             with LIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFSemanticsM
@@ -204,7 +205,7 @@ object SchemeAnalyses:
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
             with ScvBigStepSemantics
-            with SchemeConstantPropagationDomain
+            with SymbolicSchemeConstantPropagationDomain
             with StandardSchemeModFComponents
             with LIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFSemanticsM
@@ -224,7 +225,7 @@ object SchemeAnalyses:
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
             with ScvBigStepSemantics
-            with SchemeConstantPropagationDomain
+            with SymbolicSchemeConstantPropagationDomain
             with StandardSchemeModFComponents
             with LIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFSemanticsM
@@ -245,7 +246,7 @@ object SchemeAnalyses:
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
             with ScvBigStepSemantics
-            with SchemeConstantPropagationDomain
+            with SymbolicSchemeConstantPropagationDomain
             with StandardSchemeModFComponents
             with LIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFSemanticsM
