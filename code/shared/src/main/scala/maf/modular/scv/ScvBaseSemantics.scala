@@ -1,6 +1,7 @@
 package maf.modular.scv
 
 import maf.language.symbolic.*
+import maf.language.symbolic.lattices.*
 import maf.modular.scheme.modf._
 import maf.modular.scheme.SchemeDomain
 import maf.language.scheme._
@@ -14,7 +15,7 @@ import maf.lattice.interfaces.BoolLattice
  *
  * The actual contract semantics are implemented in traits extending from this base trait
  */
-trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
+trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain { outer =>
     import TaggedSet.*
     import MonadStateT.*
     import Monad.MonadSyntaxOps
@@ -124,7 +125,13 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
 
     /** Extracts the tag along with the value from a computation returning such a tagged value */
     protected def extract(computation: EvalM[Value]): EvalM[PostValue] =
-        flatten(unlift(computation)).map(v => PostValue(v._1, v._2))
+        for
+            vlu <- computation
+            symbolic = lattice.getRight(vlu)
+            postvlu <-
+                if symbolic.size == 0 then scvMonadInstance.unit(PostValue(None, vlu))
+                else nondets(symbolic.map(s => PostValue(Some(s), vlu)).map(scvMonadInstance.unit))
+        yield postvlu
 
     /**
      * Extend the path condition in the current state, and propogate it.
@@ -221,7 +228,8 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT { outer =>
 
     /** Tags the given value with the given Scheme expression */
     protected def tag(e: SchemeExp | Symbolic)(v: Value): EvalM[Value] =
-        scvMonadInstance.unit(v).flatMap(result => lift(TaggedSet.tag(symbolic(stripIdn(e)), result)))
+        scvMonadInstance.unit(lattice.setRight(v, Set(e)))
+
     protected def tag(e: Option[Symbolic])(v: Value): EvalM[Value] =
         // only tag if è` is Some
         e match

@@ -10,7 +10,7 @@ import maf.modular.scheme.SchemeDomain
 trait SymbolicSchemeDomain extends SchemeDomain:
     implicit lazy val lattice: Product2SchemeLattice[Value, SymbolicLattice.L, Address]
 
-object SymbolicSchemeConstantPropgationDomain extends SymbolicSchemeDomain:
+trait SymbolicSchemeConstantPropagationDomain extends SymbolicSchemeDomain:
     type S = ConstantPropagation.S
     type B = ConstantPropagation.B
     type I = ConstantPropagation.I

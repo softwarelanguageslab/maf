@@ -19,11 +19,32 @@ trait SchemeDomain extends AbstractDomain[SchemeExp]:
     /** Implementation of abstract values. */
     implicit lazy val lattice: SchemeLattice[Value, Address]
 
+trait ProvideModularLattice extends SchemeDomain:
+    type S
+    type B
+    type I
+    type R
+    type C
+    type Sym
+
+    lazy val modularLattice: ModularSchemeLattice[Address, S, B, I, R, C, Sym]
+
+    def convertValue(baseDomain: ModularSchemeLattice[Address, S, B, I, R, C, Sym])(value: Value): baseDomain.L
+
 trait ModularSchemeDomain extends SchemeDomain:
     val modularLatticeWrapper: ModularSchemeLatticeWrapper
     // extracts value and lattice definition from this wrapper
     type Value = modularLatticeWrapper.modularLattice.L
     type ValueElement = modularLatticeWrapper.modularLattice.Value
+
+    type S = modularLatticeWrapper.S
+    type B = modularLatticeWrapper.B
+    type I = modularLatticeWrapper.I
+    type R = modularLatticeWrapper.R
+    type C = modularLatticeWrapper.C
+    type Sym = modularLatticeWrapper.Sym
+
+    final lazy val modularLattice = modularLatticeWrapper.modularLattice
     final lazy val lattice = modularLatticeWrapper.modularLattice.schemeLattice
     final lazy val primitives = modularLatticeWrapper.primitives
 
