@@ -20,7 +20,7 @@ trait SymbolicWidenPolicy:
  *
  * where □ is a hole that must be filled later on
  */
-object WidenRecurringPatterns extends SymbolicWidenPolicy:
+case object WidenRecurringPatterns extends SymbolicWidenPolicy:
     /** Recursively decend the given symbolic representation, and replace all the recurring expressions with a hole */
     private def visit(v: Symbolic, recurring: Set[Symbolic]): Symbolic =
         v match
@@ -39,7 +39,7 @@ object WidenRecurringPatterns extends SymbolicWidenPolicy:
             .collect { case f @ Funcall(_, _, _) =>
                 f
             }
-            .filter(rest.contains)
+            .filter(e => rest.exists(_.isomorphic(e)))
 
         visit(v, recurring.toSet)
 

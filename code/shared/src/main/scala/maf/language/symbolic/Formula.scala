@@ -2,6 +2,7 @@ package maf.language.symbolic
 
 import maf.language.scheme.*
 import maf.core.*
+import maf.core.Position.*
 import maf.core.Monad.MonadSyntaxOps
 import maf.core.Monad.MonadIterableOps
 
@@ -45,7 +46,18 @@ case object EmptyFormula extends Formula:
 object Symbolic:
     type Symbolic = SchemeExp
 
+    import maf.language.sexp.*
+    import scala.util.control.TailCalls._
+
     export maf.language.scheme.{SchemeFuncall => Funcall, SchemeValue => Value, SchemeVar => Var}
+
+    object SymbolicCompiler extends BaseSchemeCompiler:
+        override def _compile(exp: SExp): TailRec[SchemeExp] = exp match
+            case SExpId(Identifier("□", _)) => done(Hole())
+            case _                          => super._compile(exp)
+
+    object Parser:
+        def parse(s: String, tag: PTag = noTag): List[SchemeExp] = SExpParser.parse(s, tag).map(SymbolicCompiler.compile)
 
     /** An alias for a Hole. */
     def `□` : Symbolic = Hole()
