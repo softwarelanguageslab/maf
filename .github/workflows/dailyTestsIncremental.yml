@@ -278,7 +278,7 @@ jobs:
       fail-fast: false
       matrix:
         test_class: [
-          IncrementalModFCPWLIndependenceTestsWithoutWI
+       #   IncrementalModFCPWLIndependenceTestsWithoutWI
         ]
     steps:
       - name: Checkout the repository
@@ -315,7 +315,7 @@ jobs:
       fail-fast: false
       matrix:
         test_class: [
-          IncrementalModFCPWLIndependenceTestsWithWI
+        #  IncrementalModFCPWLIndependenceTestsWithWI
         ]
     steps:
       - name: Checkout the repository

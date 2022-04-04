@@ -93,7 +93,7 @@ object IncrementalRun extends App:
             with IncrementalGlobalStore[SchemeExp]
             with IncrementalLogging[SchemeExp]
             {
-         override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(y@<=:1:15)[Some(ε)]")
+         override def focus(a: Addr): Boolean = a.toString.contains("ret (zero? [ε])")
         override def warn(msg: String): Unit = ()
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
