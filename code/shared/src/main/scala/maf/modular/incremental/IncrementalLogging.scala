@@ -176,7 +176,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
     override def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean =
         val b = super.updateAddrInc(cmp, addr, nw)
         if mode == Fine then
-            logger.log(s"IUPD ${crop(addr.toString)} <<= ${crop(inter.store.getOrElse(addr, lattice.bottom).toString)} (W ${crop(nw.toString)}")
+            logger.log(s"IUPD ${crop(addr.toString)} <<= ${crop(inter.store.getOrElse(addr, lattice.bottom).toString)} (W ${crop(nw.toString)})")
         b
 
     override def spawn(cmp: Component): Unit =

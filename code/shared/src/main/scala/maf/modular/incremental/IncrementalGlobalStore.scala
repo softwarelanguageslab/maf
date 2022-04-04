@@ -148,8 +148,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         provenance += (addr -> (provenance(addr) - cmp))
         // Compute the new value for the address and update it in the store.
         val value: Value = provenanceValue(addr)
-        if configuration.checkAsserts then assert(lattice.subsumes(inter.store.getOrElse(addr, lattice.bottom), value)) // The new value can never be greater than the old value.
-        if value != inter.store.getOrElse(addr, lattice.bottom) then
+        if configuration.checkAsserts then assert(lattice.subsumes(inter.store(addr), value)) // The new value can never be greater than the old value.
+        if value != inter.store(addr) then
             trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
             // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
             if provenance(addr).isEmpty then deleteAddress(addr)
@@ -289,7 +289,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 dataFlow += (addr -> newDependencies)
 
             // WI: Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
-            intraProvenance += (addr -> lattice.join(intraProvenance(addr), value))
+            if !lattice.isBottom(value) then intraProvenance += (addr -> lattice.join(intraProvenance(addr), value))
 
             // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
             // Same than super.writeAddr(addr, value) except that we do not need to trigger when WI is enabled (all written addresses will be scrutinized later upon commit by doWriteIncremental).
