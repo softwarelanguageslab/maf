@@ -148,9 +148,14 @@ trait RemainingConfigurationsWithWI extends IncrementalModXSoundnessTests:
         (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filter(_.writeInvalidation).toList
     override def isSlow(b: Benchmark) = true
 
-trait RemainingConfigurationsWithoutWI extends IncrementalModXSoundnessTests:
+trait RemainingConfigurationsWithCIWithoutWI extends IncrementalModXSoundnessTests:
     override val configurations: List[IncrementalConfiguration] =
-        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filterNot(_.writeInvalidation).toList
+        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filterNot(_.writeInvalidation).filter(_.componentInvalidation).toList
+override def isSlow(b: Benchmark) = true
+
+trait RemainingConfigurationsWithoutCIWI extends IncrementalModXSoundnessTests:
+    override val configurations: List[IncrementalConfiguration] =
+        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filterNot(_.writeInvalidation).filterNot(_.componentInvalidation).toList
     override def isSlow(b: Benchmark) = true
 
 trait noCY extends IncrementalModXSoundnessTests:
@@ -185,6 +190,8 @@ class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with
 
 class IncrementalSmallStepModConcTypeRemainingConfigsWithWI extends IncrementalSmallStepModConcType with RemainingConfigurationsWithWI
 class IncrementalSmallStepModConcCPRemainingConfigsWithWI extends IncrementalSmallStepModConcCP with RemainingConfigurationsWithWI
+class IncrementalSmallStepModConcTypeRemainingConfigsWithCIWithoutWI extends IncrementalSmallStepModConcType with RemainingConfigurationsWithCIWithoutWI
+class IncrementalSmallStepModConcCPRemainingConfigsWithCIWithoutWI extends  IncrementalSmallStepModConcCP with RemainingConfigurationsWithCIWithoutWI
 class IncrementalSmallStepModConcTypeRemainingConfigsWithoutWI extends IncrementalSmallStepModConcType with RemainingConfigurationsWithoutWI
 class IncrementalSmallStepModConcCPRemainingConfigsWithoutWI extends IncrementalSmallStepModConcCP with RemainingConfigurationsWithoutWI
 
@@ -214,5 +221,7 @@ class IncrementalModFCP extends IncrementalModFType:
 
 class IncrementalModFTypeRemainingConfigsWithWI extends IncrementalModFType with RemainingConfigurationsWithWI
 class IncrementalModFCPRemainingConfigsWithWI extends IncrementalModFCP with RemainingConfigurationsWithWI
-class IncrementalModFTypeRemainingConfigsWithoutWI extends IncrementalModFType with RemainingConfigurationsWithoutWI
-class IncrementalModFCPRemainingConfigsWithoutWI extends IncrementalModFCP with RemainingConfigurationsWithoutWI
+class IncrementalModFTypeRemainingConfigsWithCIWithoutWI extends IncrementalModFType with RemainingConfigurationsWithCIWithoutWI
+class IncrementalModFCPRemainingConfigsWithCIWithoutWI extends  IncrementalModFCP with RemainingConfigurationsWithCIWithoutWI
+class IncrementalModFTypeRemainingConfigsWithoutCIWI extends IncrementalModFType with RemainingConfigurationsWithoutCIWI
+class IncrementalModFCPRemainingConfigsWithoutCIWI extends IncrementalModFCP with RemainingConfigurationsWithoutCIWI

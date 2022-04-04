@@ -69,8 +69,10 @@ jobs:
         test_class: [
           IncrementalModFType,
           IncrementalModFCP,
-          IncrementalModFTypeRemainingConfigsWithoutWI,
-          IncrementalModFCPRemainingConfigsWithoutWI
+          IncrementalModFTypeRemainingConfigsWithCIWithoutWI,
+          IncrementalModFCPRemainingConfigsWithCIWithoutWI,
+          IncrementalModFTypeRemainingConfigsWithoutCIWI,
+          IncrementalModFCPRemainingConfigsWithoutCIWI
         ]
     steps:
       - name: Checkout the repository
@@ -154,7 +156,9 @@ jobs:
           IncrementalSmallStepModConcType,
           IncrementalSmallStepModConcCP,
           IncrementalSmallStepModConcTypeRemainingConfigsWithoutWI,
-          IncrementalSmallStepModConcCPRemainingConfigsWithoutWI
+          IncrementalSmallStepModConcCPRemainingConfigsWithoutWI,
+          IncrementalSmallStepModConcTypeRemainingConfigsWithCIWithoutWI,
+          IncrementalSmallStepModConcCPRemainingConfigsWithCIWithoutWI
         ]
     steps:
       - name: Checkout the repository
