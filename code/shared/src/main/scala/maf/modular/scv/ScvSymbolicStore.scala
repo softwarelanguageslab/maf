@@ -98,7 +98,7 @@ object ScvPathSensitiveSymbolicStore:
     import maf.language.symbolic.*
 
     trait GlobalPathSensitiveSymbolicStore extends GlobalMapStore[SchemeExp] with AbstractDomain[SchemeExp]:
-        type V = Map[Formula, (Value, Set[SchemeExp])]
+        type V = Map[Formula, Value]
         type A = Component
 
         def subsumes(x: Formula, y: Formula): Boolean = (x, y) match
@@ -115,19 +115,19 @@ object ScvPathSensitiveSymbolicStore:
             def append(x: V, y: => V): V =
                 x.toList
                     .cartesian(y.toList)
-                    .flatMap { case ((p1, (v1, s1)), (p2, (v2, s2))) =>
+                    .flatMap { case ((p1, (v1)), (p2, (v2))) =>
                         // path conditions are equal
                         if subsumes(p2, p1) && subsumes(p1, p2) then
                             // we keep p1 (p2 would be equivalent) and join the value
-                            List((p1 -> (joinValue(v1, v2), s1 ++ s2)))
+                            List((p1 -> (joinValue(v1, v2))))
                         else if subsumes(p2, p1) && !subsumes(p1, p2) then
                             // p2 is more generic then p1 so we keep p2 and throw away p1
-                            List((p2 -> (joinValue(v1, v2), s1 ++ s2)))
+                            List((p2 -> (joinValue(v1, v2))))
                         else if !subsumes(p2, p1) && subsumes(p1, p2) then
                             // p1 is more generic then p2 we keep p1 and throw away p2
-                            List((p1 -> (joinValue(v1, v2), s1 ++ s2)))
+                            List((p1 -> (joinValue(v1, v2))))
                         else
                             // p1 and p2 do not have any relation with each other, we keep them both in the map
-                            List((p1 -> (v1, s1)), (p2 -> (v2, s2)))
+                            List((p1 -> joinValue(v1, lattice.bottom)), (p2 -> joinValue(v2, lattice.bottom)))
                     }
                     .toMap

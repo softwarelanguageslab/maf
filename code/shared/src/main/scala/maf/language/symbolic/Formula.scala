@@ -68,8 +68,8 @@ object Symbolic:
     /** A hole is a symbolic representation that must be later filled in with an actual fresh symbolic variable */
     object Hole:
         def unapply(v: SchemeExp): Option[(Identity)] = v match
-            case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), idn) => Some(idn)
-            case _                                                             => None
+            case SchemeFuncall(SchemeVar(Identifier("fresh", _)), _, idn) => Some(idn)
+            case _                                                        => None
 
         def apply(): SchemeExp =
             SchemeFuncall(SchemeVar(Identifier("fresh", Identity.none)), List(), Identity.none)

@@ -10,6 +10,7 @@ import maf.core.Identifier
 import smtlib.parser.Parser
 import smtlib.trees.Commands._
 import smtlib.Interpreter
+import maf.language.symbolic.Symbolic
 import smtlib.trees.CommandsResponses.{CheckSatStatus, SatStatus, UnsatStatus}
 import smtlib.interpreters.{Z3Interpreter, Z3InterpreterNative}
 import scala.concurrent.ExecutionContext
@@ -101,6 +102,8 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
      |
      |  (define-fun null?/v ((n V)) V
      |     (VBool (is-VNil n)))
+     |
+     |  (declare-fun fresh () V)
      |
      |  (define-fun string?/v ((s V)) V
      |     (VBool (is-VString s)))
@@ -243,6 +246,7 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
     def translateAssertion(e: SchemeExp): String = e match
         case SchemeVar(identifier)     => translateIdentifier(identifier)
         case SchemeValue(value, _)     => injectValue(value)
+        case Symbolic.Hole(_)          => s"fresh"
         case SchemeFuncall(f, args, _) => s"(${translateAssertion(f)} ${args.map(translateAssertion).mkString(" ")})"
         case _                         => throw new Exception("Unsupported constraint")
 

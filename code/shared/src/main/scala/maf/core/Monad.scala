@@ -144,6 +144,29 @@ trait StateOps[S, M[_]] extends Monad[M]:
 class MonadStateT[S, M[_]: Monad, A](val run: S => M[(A, S)]):
     def runValue(init: S) = Monad[M].map(run(init))(_._1)
 
+object MonadOptionT:
+
+    import maf.core.Monad.MonadSyntaxOps
+    case class OptionT[M[_], T](inner: M[Option[T]])
+    def lift[M[_]: Monad, T](m: M[T]): OptionT[M, T] =
+        OptionT(m.map(Some(_)))
+
+    given optionInstance[M[_]: Monad]: Monad[[T] =>> OptionT[M, T]] with
+        private type OM[T] = OptionT[M, T]
+        def unit[X](x: X): OM[X] =
+            OptionT(Monad[M].unit(Some(x)))
+        def flatMap[X, Y](m: OM[X])(f: X => OM[Y]): OM[Y] =
+            OptionT(
+              m.inner.flatMap(vlu =>
+                  vlu match
+                      case Some(vlu) =>
+                          f(vlu).inner
+                      case None => Monad[M].unit(None)
+              )
+            )
+        def map[X, Y](m: OM[X])(f: X => Y): OM[Y] =
+            flatMap(m)(f andThen unit)
+
 object MonadStateT:
     import maf.core.Monad.MonadSyntaxOps
     def apply[S, M[_]: Monad, A](run: S => M[(A, S)]): MonadStateT[S, M, A] =

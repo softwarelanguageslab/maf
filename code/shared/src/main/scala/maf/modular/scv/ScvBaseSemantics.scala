@@ -252,6 +252,9 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain {
     override def intraAnalysis(cmp: Component): BaseIntraAnalysis
 
     trait BaseIntraAnalysis extends BigStepModFIntraT:
+        /** We override `writeAddr` so that symbolic information is not leaked in the global store (except for return values, if desired) */
+        override def writeAddr(addr: Addr, value: Value): Boolean =
+            super.writeAddr(addr, lattice.setRight(value, Set()))
 
         /** Extending the store means that we need to extend both the local and global store */
         def extendStoCache(a: Address, v: PostValue): EvalM[Unit] =

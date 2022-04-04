@@ -26,3 +26,10 @@ class SymbolicLatticeTests extends AnyFlatSpec:
     shouldWidenTo("(+ (+ □ 1) 1)", "(+ □ 1)", Set("(+ □ 1)", "(+ x 1)"), WidenRecurringPatterns)
     // or this, which are both stable:
     shouldWidenTo("(+ (+ x 1) 1)", "(+ □ 1)", Set("(+ □ 1)", "(+ x 1)"), WidenRecurringPatterns)
+
+    //
+    shouldWidenTo("(+ x0 0)", "(+ x0 0)", Set(), WidenRecurringPatterns)
+    // next iteration
+    shouldWidenTo("(+ x0 (+ x0 0))", "(+ x0 □)", Set("(+ x0 0)"), WidenRecurringPatterns)
+    // next iteration
+    shouldWidenTo("(+ x0 (+ x0 □))", "(+ x0 □)", Set("(+ x0 0)", "(+ x0 □)"), WidenRecurringPatterns)

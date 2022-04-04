@@ -3,15 +3,21 @@ package maf.language.symbolic
 import maf.language.scheme.*
 import maf.core.Monad.{MonadIterableOps, MonadSyntaxOps}
 import maf.core.{Identifier, Identity, IdentityMonad, Monad}
+import maf.core.MonadOptionT.given
+
+import maf.core.MonadOptionT
+import maf.core.MonadOptionT.OptionT
 import maf.util.{Monoid, MonoidInstances}
 import maf.util.MonoidImplicits.FoldMapExtension
 
 object PathCondition:
     def empty: PathCondition = PathCondition(EmptyFormula)
-    def onlyVarsAllowed(symbolic: SchemeExp): Boolean =
+    def onlyVarsAllowed(symbolic: SchemeExp, level: Int): Boolean =
         symbolic match
-            case SchemeVar(_) | SchemeVarLex(_, _) | SchemeValue(_, _) => true
-            case _                                                     => false
+            case SchemeFuncall(_, _, _) if level == 0                     => true
+            case SchemeFuncall(Identifier(("true?" | "false?"), _), _, _) => true
+            case SchemeVar(_) | SchemeVarLex(_, _) | SchemeValue(_, _)    => true
+            case _                                                        => false
 
     def visit[M[_]: Monad, T: Monoid](expr: SchemeExp)(f: SchemeExp => M[Option[T]]): M[T] = expr match
         case funcall @ SchemeFuncall(fexp, args, _) =>
@@ -123,32 +129,43 @@ case class PathCondition(formula: Formula):
      * @return
      *   a path condition where only the roots are available and potentially replaced
      */
-    def simplify[M[_]: Monad](oldRoots: Set[SchemeExp], allowed: SchemeExp => Boolean, fresh: M[SchemeExp]): M[(PathCondition, List[SymChange])] =
+    def simplify[M[_]: Monad](oldRoots: Set[SchemeExp], allowed: (SchemeExp, Int) => Boolean, fresh: M[SchemeExp]): M[(PathCondition, List[SymChange])] =
+
         var changes: List[SymChange] = List()
         var rewrites: Map[SchemeExp, SchemeExp] = Map()
         var roots: Set[SchemeExp] = oldRoots
 
         // only keep those assertions that are in the set of roots
         val garbageCollectedFormula = this.gc(roots)
+
+        def visit(
+            exp: SchemeExp,
+            level: Int,
+          ): OptionT[M, SchemeExp] = exp match
+            case SchemeFuncall(SchemeVar(id @ Identifier(("true?" | "false?"), _)), args, idn) =>
+                for fargsSimplified <- args.mapM(visit(_, level))
+                yield SchemeFuncall(SchemeVar(id), fargsSimplified, idn)
+
+            case SchemeFuncall(fexp, args, idn) if allowed(exp, level) =>
+                for
+                    fexpSimplified <- visit(fexp, level + 1)
+                    argsSimplified <- args.mapM(visit(_, level + 1))
+                yield SchemeFuncall(fexpSimplified, argsSimplified, idn)
+            case SchemeVar(_) if allowed(exp, level)       => MonadOptionT.optionInstance.unit(exp)
+            case SchemeVarLex(_, _) if allowed(exp, level) => MonadOptionT.optionInstance.unit(exp)
+            case SchemeValue(_, _) if allowed(exp, level)  => MonadOptionT.optionInstance.unit(exp)
+            // If none of the above is true, we will allocate a fresh variable
+            case _ =>
+                for
+                    nww <- rewrites.get(exp).map(MonadOptionT.optionInstance.unit).getOrElse(MonadOptionT.lift(fresh))
+                    _ = { rewrites = rewrites + (exp -> nww) }
+                    _ = { changes = SymReplace(exp, nww) :: changes }
+                yield nww
+
         for
             // rewrite the formula such that only allowed roots are represented by their original expression
             rewrittenFormula <- garbageCollectedFormula.formula
-                .mapOptionM(expr =>
-                    mapExpr[M](expr) { subexpr =>
-                        // if the sub expression is in the roots, and it is allowed, it can be kepts as is
-                        if roots.contains(subexpr) && allowed(subexpr) then Monad[M].unit(Some(subexpr))
-                        // if it is in the roots, but it is not allowed, it needs to be rewritten
-                        else if roots.contains(subexpr) then
-                            for
-                                nww <- rewrites.get(subexpr).map(Monad[M].unit).getOrElse(fresh)
-                                _ = { rewrites = rewrites + (subexpr -> nww) }
-                                _ = { roots = roots + nww }
-                                _ = { changes = SymReplace(subexpr, nww) :: changes }
-                            yield Some(nww)
-                        // if it is not in the roots it is kept to be cleaned up in the next pass
-                        else Monad[M].unit(None)
-                    }.map(Some(_))
-                )
+                .mapOptionM(expr => visit(expr, 0).inner)
                 .map(formula => PathCondition(formula.getOrElse(EmptyFormula)))
 
             // then re-index

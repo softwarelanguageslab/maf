@@ -53,8 +53,8 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         symArgs: Map[String, SchemeExp],
         stoCache: Map[Addr, SchemeExp])
         extends ScvContext[L]:
-        override def toString: String =
-            s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
+        override def toString: String = s"KPathCondition($rangeContract)"
+    //s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
     case class NoContext[L]() extends ScvContext[L]
 
     def contractContext(cmp: Component): Option[ContractCallContext[Value]] = context(cmp).flatMap {
@@ -161,6 +161,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
                                 case Assertion(v) => (k, v)
                         }.toMap
                     )
+                //_ <- effectful { println(s"old: $pc, new: $newPc") }
                 yield KPathCondition(newPc, rangeContract, nextCallers, changes, newSymArgs, newCcache)
 
 trait ScvOneContextSensitivity(protected val m: Int) extends ScvKContextSensitivity:

@@ -43,6 +43,21 @@ case object WidenRecurringPatterns extends SymbolicWidenPolicy:
 
         visit(v, recurring.toSet)
 
+class WidenNesting(maxDeep: Int, maxWide: Int) extends SymbolicWidenPolicy:
+    private def visit(v: Symbolic, wide: Int, deep: Int): Symbolic =
+        v match
+            case Funcall(fexp, fargs, idn) if wide <= maxWide && deep <= maxDeep =>
+                val replacedFexp = visit(fexp, wide, deep + 1)
+                val replacedFargs = fargs.foldRight((List[Symbolic](), 0)) { case (farg, (fargs, wideness)) =>
+                    (visit(farg, wideness, deep + 1) :: fargs, wideness + 1)
+                }
+                Funcall(replacedFexp, replacedFargs._1, idn)
+
+            case Var(_) | Value(_, _) => v
+            case _                    => Hole()
+
+    def widen(v: Symbolic, rest: Set[Symbolic]): Symbolic = visit(v, 0, 0)
+
 object SymbolicLattice:
     type L = Set[Symbolic]
 
@@ -59,11 +74,13 @@ class SymbolicLattice[B: BoolLattice] extends Lattice[Set[Symbolic]]:
     def bottom: L = Set()
     override def isBottom(x: L): Boolean = x.isEmpty
     def top: L = throw LatticeTopUndefined
-    def join(x: L, y: => L): L = x ++ y
+    def join(x: L, y: => L): L =
+        (widen(WidenRecurringPatterns) andThen widen(WidenNesting(maxDeep = 2, maxWide = 4)))(x ++ y)
+
     def subsumes(x: L, y: => L): Boolean =
         y subsetOf x
 
     def eql[B: BoolLattice](x: L, y: L): B = BoolLattice[B].inject(x == y)
     def show(v: L): String = s"{${v.mkString(",")}}"
 
-    def widen(v: L, p: SymbolicWidenPolicy): L = v.map(p.widen(_, v))
+    def widen(p: SymbolicWidenPolicy)(v: L): L = v.map(e => p.widen(e, v.filterNot(e == _)))

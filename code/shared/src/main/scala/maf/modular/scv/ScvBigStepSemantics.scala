@@ -95,6 +95,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             resultsM.runValue(initialState).vs.map(_._2)
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            //println(s"analyzing $cmp")
             track(NumberOfComponents, cmp)
             count(NumberOfIntra)
 
