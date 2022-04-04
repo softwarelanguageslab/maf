@@ -148,8 +148,8 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         provenance += (addr -> (provenance(addr) - cmp))
         // Compute the new value for the address and update it in the store.
         val value: Value = provenanceValue(addr)
-        if configuration.checkAsserts then assert(lattice.subsumes(inter.store.getOrElse(addr, lattice.bottom), value)) // The new value can never be greater than the old value.
-        if value != inter.store.getOrElse(addr, lattice.bottom) then
+        if configuration.checkAsserts then assert(lattice.subsumes(inter.store(addr), value)) // The new value can never be greater than the old value.
+        if value != inter.store(addr) then
             trigger(AddrDependency(addr)) // Trigger first, as the dependencies may be removed should the address be deleted.
             // Small memory optimisation: clean up addresses entirely when they become not written anymore. This will also cause return addresses to be removed upon component deletion.
             if provenance(addr).isEmpty then deleteAddress(addr)
