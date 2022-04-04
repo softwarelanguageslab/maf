@@ -151,7 +151,7 @@ trait RemainingConfigurationsWithWI extends IncrementalModXSoundnessTests:
 trait RemainingConfigurationsWithCIWithoutWI extends IncrementalModXSoundnessTests:
     override val configurations: List[IncrementalConfiguration] =
         (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filterNot(_.writeInvalidation).filter(_.componentInvalidation).toList
-override def isSlow(b: Benchmark) = true
+    override def isSlow(b: Benchmark) = true
 
 trait RemainingConfigurationsWithoutCIWI extends IncrementalModXSoundnessTests:
     override val configurations: List[IncrementalConfiguration] =
@@ -192,8 +192,8 @@ class IncrementalSmallStepModConcTypeRemainingConfigsWithWI extends IncrementalS
 class IncrementalSmallStepModConcCPRemainingConfigsWithWI extends IncrementalSmallStepModConcCP with RemainingConfigurationsWithWI
 class IncrementalSmallStepModConcTypeRemainingConfigsWithCIWithoutWI extends IncrementalSmallStepModConcType with RemainingConfigurationsWithCIWithoutWI
 class IncrementalSmallStepModConcCPRemainingConfigsWithCIWithoutWI extends  IncrementalSmallStepModConcCP with RemainingConfigurationsWithCIWithoutWI
-class IncrementalSmallStepModConcTypeRemainingConfigsWithoutWI extends IncrementalSmallStepModConcType with RemainingConfigurationsWithoutWI
-class IncrementalSmallStepModConcCPRemainingConfigsWithoutWI extends IncrementalSmallStepModConcCP with RemainingConfigurationsWithoutWI
+class IncrementalSmallStepModConcTypeRemainingConfigsWithoutWI extends IncrementalSmallStepModConcType with RemainingConfigurationsWithoutCIWI
+class IncrementalSmallStepModConcCPRemainingConfigsWithoutWI extends IncrementalSmallStepModConcCP with RemainingConfigurationsWithoutCIWI
 
 /** Implements soundness tests for an incremental ModF type analysis. */
 class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialIncrementalBenchmarks:
