@@ -2,7 +2,6 @@ package maf.cli.runnables
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.cli.experiments.incremental.SplitPerformance
-import maf.core.worklist.FIFOWorkList
 import maf.language.CScheme.*
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
@@ -13,7 +12,6 @@ import maf.modular.incremental.IncrementalConfiguration.*
 import maf.modular.scheme.modf.*
 import maf.modular.incremental.*
 import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
-import maf.modular.incremental.ProgramVersionExtracter.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.*
@@ -21,8 +19,6 @@ import maf.modular.worklist.*
 import maf.util.*
 import maf.util.Writer.Writer
 import maf.util.benchmarks.*
-import maf.util.graph.DotGraph
-import maf.util.graph.DotGraph.*
 
 import scala.concurrent.duration.*
 
@@ -96,7 +92,8 @@ object IncrementalRun extends App:
             with IncrementalSchemeConstantPropagationDomain
             with IncrementalGlobalStore[SchemeExp]
             with IncrementalLogging[SchemeExp]
-             {
+            {
+         override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(y@<=:1:15)[Some(ε)]")
         override def warn(msg: String): Unit = ()
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
@@ -133,7 +130,7 @@ object IncrementalRun extends App:
         assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)")
 
     val modFbenchmarks: List[String] = List(
-      "test/changes/scheme/generated/R5RS_scp1_leap-year-1.scm"
+      "test/DEBUG1.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
@@ -144,6 +141,7 @@ object IncrementalRun extends App:
             println(s"***** $bench *****")
             //interpretProgram(bench)
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+            println(text.prettyString())
 
             val l = lifoAnalysis(text)
             l.configuration = ci_di_wi
@@ -155,13 +153,12 @@ object IncrementalRun extends App:
             assert(l.finished)
             assert(f.finished)
 
-            l.configuration = noOptimisations
-            f.configuration = noOptimisations
+            l.configuration = wi
+            f.configuration = wi
 
             l.updateAnalysis(newTimeout())
             f.updateAnalysis(newTimeout())
 
-            assert(l.store == f.store)
             checkEqState(f, l,"")
 
             //val noOpt = a.deepCopy()

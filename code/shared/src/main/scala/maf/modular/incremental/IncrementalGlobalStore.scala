@@ -289,7 +289,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 dataFlow += (addr -> newDependencies)
 
             // WI: Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
-            intraProvenance += (addr -> lattice.join(intraProvenance(addr), value))
+            if !lattice.isBottom(value) then intraProvenance += (addr -> lattice.join(intraProvenance(addr), value))
 
             // Ensure the intra-store is updated so it can be used. TODO should updateAddrInc be used here (but working on the intra-store) for an improved precision?
             // Same than super.writeAddr(addr, value) except that we do not need to trigger when WI is enabled (all written addresses will be scrutinized later upon commit by doWriteIncremental).
