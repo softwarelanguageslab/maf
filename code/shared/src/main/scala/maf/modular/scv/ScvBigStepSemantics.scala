@@ -95,7 +95,6 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             resultsM.runValue(initialState).vs.map(_._2)
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            println(s"analyzing $cmp")
             track(NumberOfComponents, cmp)
             count(NumberOfIntra)
 
@@ -107,11 +106,10 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
         /** Check the post contract on the value resulting from the analysis of the current component */
         private def checkPost(value: PostValue): EvalM[Unit] =
             usingRangeContract(cmp) {
-                case Some(contract) =>
-                    println(s"------------- got $value and $contract")
+                case Some(contract) if true =>
                     // TODO: check the monIdn parameter
                     applyMon(PostValue.noSymbolic(contract), value, expr(cmp), expr(cmp).idn).flatMap(_ => unit(()))
-                case None => unit(())
+                case _ => unit(())
             }
 
         /** Injects information from the components context in the current analysis */
@@ -344,19 +342,18 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
         override def evalVariable(id: Identifier): EvalM[Value] =
             // the symbolic representation of a variable is the stored symbolic representation or a fresh symbolic variable
-            lookupCache(id).flatMap(trace(s"cache $id")).flatMap(sym => super.evalVariable(id).flatMap(tag(sym)))
+            lookupCache(id).flatMap(sym => super.evalVariable(id).flatMap(tag(sym)))
 
         /** Executes the monadic action `m` if the given condition is feasible */
         private def ifFeasible[X](prim: Prim, cnd: PostValue)(m: EvalM[X]): EvalM[X] =
             for
-                primResult <- applyPrimitive(prim, List(cnd.value)) >>= trace("prim")
-                _ <- effectful { println(s"$primResult is ${lattice.isTrue(primResult)}") }
+                primResult <- applyPrimitive(prim, List(cnd.value))
                 _ <- cnd.symbolic match
                     case None => unit(())
                     case Some(symbolic) =>
                         extendPc(prim.symApply(symbolic))
 
-                pc <- getPc >>= trace("pc tracing")
+                pc <- getPc
                 vars <- getVars
                 result <-
                     cnd.symbolic match
@@ -364,7 +361,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                             void // if it is not possible according to the lattice, we do not execute "m"
                         case _ if ! { count(SATExec); time(Z3Time) { sat.feasible(pc.formula, vars) } } =>
                             void // if the path condition is unfeasible we also do not execute "m"
-                        case _ => m >>= trace("exec m") // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"
+                        case _ => m // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"
             yield result
 
         private def symCond(prdValWithSym: PostValue, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
@@ -420,8 +417,6 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
 
                 joinedResult <- nondets[PostValue](flats ++ procedures)
 
-                _ <- effectful { println(s"got joined result $joinedResult") }
-
                 // Since applying the contract on the value does not (always) generate seperate branches,
                 // we split the join again here.
                 splitResult <- extract(
@@ -432,7 +427,6 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 )
                 //splitResult = joinedResult
                 pc <- getPc
-                _ <- effectful { println(s"${splitResult} is result of $checkExpr, $pc") }
                 vlu <- tag(splitResult._1)(splitResult._2)
             yield vlu
 
@@ -521,7 +515,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 result <- nondets(
                   applyFunPost(call, contract.contract, List((expr, value)), Position(-1, 0), ctx),
                   callFun(PostValue.noSymbolic(contract.contract), List(value))
-                ) >>= trace("monFlat result")
+                )
                 pv = PostValue(resultSymbolic, result)
                 tru = ifFeasible(`true?`, pv) { unit(value.value).flatMap(value.symbolic.map(tag).getOrElse(unit)) }
                 fls =
@@ -609,7 +603,6 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             // the if expression is evaluated in a different way, because we use symbolic information to extend the path condition and rule out unfeasible paths
             for
                 prdValWithSym <- extract(eval(prd))
-                _ <- effectful { println(s"prdval with sym $prdValWithSym") }
                 ifVal <- symCond(prdValWithSym, csq, alt)
             yield ifVal
 

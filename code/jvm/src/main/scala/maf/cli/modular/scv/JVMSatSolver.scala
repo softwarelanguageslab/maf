@@ -88,8 +88,8 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
      | ;; represent the Scheme/Racket types as Z3 types 
      | ;; TODO: check how cons, vector, ptr, and procedures can be represented, maybe we will need some representation of the heap?
      |  (declare-datatypes ()
-     |    ((V (VInteger (unwrap-integer Int))
-     |        (VReal    (unwrap-real    Real))
+     |    ((V (VInteger (unwrap-VInteger Int))
+     |        (VReal    (unwrap-VReal    Real))
      |        (VNil)
      |        (VBool    (unwrap-bool    Bool))
      |        (VString  (unwrap-string  String))
@@ -116,7 +116,8 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
      | 
      |  (define-fun any?/v ((n V)) V 
      |      (VBool true))
-     | 
+      | (declare-fun string-length (V) V) 
+      | 
       | (define-fun +/v ((a V) (b V)) V
       |   (ite (and (is-VInteger a) (is-VInteger b)) 
       |        (VInteger (+ (unwrap-VInteger a) (unwrap-VInteger b)))

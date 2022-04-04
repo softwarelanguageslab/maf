@@ -69,6 +69,7 @@ object Symbolic:
     object Hole:
         def unapply(v: SchemeExp): Option[(Identity)] = v match
             case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), idn) => Some(idn)
+            case _                                                             => None
 
         def apply(): SchemeExp =
             SchemeFuncall(SchemeVar(Identifier("fresh", Identity.none)), List(), Identity.none)

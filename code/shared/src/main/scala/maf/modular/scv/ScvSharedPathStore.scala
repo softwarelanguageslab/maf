@@ -59,7 +59,7 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
             val answers: Set[(PostValue, PathCondition)] = super.runIntraSemantics(initialState)
             answers.foreach { case (PostValue(sym, vlu), pc) =>
-                println(s"++ got value $vlu with $pc and $sym")
+                //println(s"++ got value $vlu with $pc and $sym")
                 writeMapAddr(cmp, Map(pc.formula -> (vlu, sym.toSet)))
             }
             answers
@@ -71,7 +71,7 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
                 case Some(k: KPathCondition[_]) =>
                     // Construct a successor state for all the paths originating from the callee
                     val paths = readMapAddr(targetCmp).map { case (formula, (vlu, syms)) =>
-                        println(s"== formula: $formula and vlu: $vlu with $syms")
+                        //println(s"== formula: $formula and vlu: $vlu with $syms")
                         val pc = PathCondition(formula)
                         val gcPc = pc.gc(k.symArgs.values.toSet)
                         val revertedPc = k.changes.reverse.foldLeft(gcPc)((pc, change) => pc.revert(change))
