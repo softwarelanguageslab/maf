@@ -72,45 +72,7 @@ jobs:
           IncrementalModFTypeRemainingConfigsWithCIWithoutWI,
           IncrementalModFCPRemainingConfigsWithCIWithoutWI,
           IncrementalModFTypeRemainingConfigsWithoutCIWI,
-          IncrementalModFCPRemainingConfigsWithoutCIWI
-        ]
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
-      # Compile the code.
-      - name: Setup Scala
-        uses: olafurpg/setup-scala@v10
-        with:
-          java-version: openjdk@1.15
-      - name: Run incremental tests
-        run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
-        env:
-          LOG_ENV: ci
-          LOG_LOCATION: log-${{ github.sha }}
-      # If failed, update the Slack notification.
-      - name: Notify slack fail
-        if: failure() || cancelled()
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          LOG_ENV: ci
-          LOG_LOCATION: log-${{ github.sha }}
-        uses: voxmedia/github-action-slack-notify-build@v1
-        with:
-          message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf-logs
-          status: FAILED
-          color: danger
-
-
-  test-modf-soundness-wi:
-    name: Execute incremental soundness tests (using ${{ matrix.test_class }})
-    runs-on: ubuntu-latest
-    needs: compile
-    timeout-minutes: 360 # 6 hours
-    strategy:
-      fail-fast: false
-      matrix:
-        test_class: [
+          IncrementalModFCPRemainingConfigsWithoutCIWI,
           IncrementalModFTypeRemainingConfigsWithWI,
           IncrementalModFCPRemainingConfigsWithWI
         ]
@@ -158,45 +120,7 @@ jobs:
           IncrementalSmallStepModConcTypeRemainingConfigsWithoutWI,
           IncrementalSmallStepModConcCPRemainingConfigsWithoutWI,
           IncrementalSmallStepModConcTypeRemainingConfigsWithCIWithoutWI,
-          IncrementalSmallStepModConcCPRemainingConfigsWithCIWithoutWI
-        ]
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
-      # Compile the code.
-      - name: Setup Scala
-        uses: olafurpg/setup-scala@v10
-        with:
-          java-version: openjdk@1.15
-      - name: Run incremental tests
-        run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
-        env:
-          LOG_ENV: ci
-          LOG_LOCATION: log-${{ github.sha }}
-      # If failed, update the Slack notification.
-      - name: Notify slack fail
-        if: failure() || cancelled()
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          LOG_ENV: ci
-          LOG_LOCATION: log-${{ github.sha }}
-        uses: voxmedia/github-action-slack-notify-build@v1
-        with:
-          message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf-logs
-          status: FAILED
-          color: danger
-
-
-  test-modconc-soundness-wi:
-    name: Execute incremental soundness tests (using ${{ matrix.test_class }})
-    runs-on: ubuntu-latest
-    needs: compile
-    timeout-minutes: 360 # 6 hours
-    strategy:
-      fail-fast: false
-      matrix:
-        test_class: [
+          IncrementalSmallStepModConcCPRemainingConfigsWithCIWithoutWI,
           IncrementalSmallStepModConcTypeRemainingConfigsWithWI,
           IncrementalSmallStepModConcCPRemainingConfigsWithWI
         ]
@@ -273,78 +197,43 @@ jobs:
 
   # These jobs test whether the analysis result is WL independent.
 
-  test-WL-independence:
-    name: Execute incremental tests (using ${{ matrix.test_class }})
-    runs-on: ubuntu-latest
-    needs: compile
-    timeout-minutes: 480 # 8 hours
-    strategy:
-      fail-fast: false
-      matrix:
-        test_class: [
-       #   IncrementalModFCPWLIndependenceTestsWithoutWI
-        ]
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
-      # Compile the code.
-      - name: Setup Scala
-        uses: olafurpg/setup-scala@v10
-        with:
-          java-version: openjdk@1.15
-      - name: Run incremental tests
-        run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
-        env:
-          LOG_ENV: ci
-          LOG_LOCATION: log-${{ github.sha }}
-      # If failed, update the Slack notification.
-      - name: Notify slack fail
-        if: failure() || cancelled()
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        uses: voxmedia/github-action-slack-notify-build@v1
-        with:
-          message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf-logs
-          status: FAILED
-          color: danger
+#  test-WL-independence:
+#    name: Execute incremental tests (using ${{ matrix.test_class }})
+#    runs-on: ubuntu-latest
+#    needs: compile
+#    timeout-minutes: 480 # 8 hours
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        test_class: [
+#          IncrementalModFCPWLIndependenceTestsWithoutWI,
+#          IncrementalModFCPWLIndependenceTestsWithWI
+#        ]
+#    steps:
+#      - name: Checkout the repository
+#        uses: actions/checkout@v2
+#      # Compile the code.
+#      - name: Setup Scala
+#        uses: olafurpg/setup-scala@v10
+#        with:
+#          java-version: openjdk@1.15
+#      - name: Run incremental tests
+#        run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
+#        env:
+#          LOG_ENV: ci
+#          LOG_LOCATION: log-${{ github.sha }}
+#      # If failed, update the Slack notification.
+#      - name: Notify slack fail
+#        if: failure() || cancelled()
+#        env:
+#          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+#        uses: voxmedia/github-action-slack-notify-build@v1
+#        with:
+#          message_id: ${{ steps.slack.outputs.message_id }}
+#          channel: maf-logs
+#          status: FAILED
+#          color: danger
 
-
-  test-WL-independence-wi:
-    name: Execute incremental tests (using ${{ matrix.test_class }})
-    runs-on: ubuntu-latest
-    needs: compile
-    timeout-minutes: 480 # 8 hours
-    strategy:
-      fail-fast: false
-      matrix:
-        test_class: [
-        #  IncrementalModFCPWLIndependenceTestsWithWI
-        ]
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v2
-      # Compile the code.
-      - name: Setup Scala
-        uses: olafurpg/setup-scala@v10
-        with:
-          java-version: openjdk@1.15
-      - name: Run incremental tests
-        run: sbt "maf/testOnly maf.test.modular.scheme.incremental.${{ matrix.test_class }}"
-        env:
-          LOG_ENV: ci
-          LOG_LOCATION: log-${{ github.sha }}
-      # If failed, update the Slack notification.
-      - name: Notify slack fail
-        if: failure() || cancelled()
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        uses: voxmedia/github-action-slack-notify-build@v1
-        with:
-          message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf-logs
-          status: FAILED
-          color: danger
 
 
   notify-success:
@@ -352,12 +241,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [
       test-modf-soundness,
-      test-modf-soundness-wi,
       test-modconc-soundness,
-      test-modconc-soundness-wi,
       test-incremental-properties,
-      test-WL-independence,
-      test-WL-independence-WI
+     # test-WL-independence,
     ]
     steps:
       # Send a notification to Slack.
