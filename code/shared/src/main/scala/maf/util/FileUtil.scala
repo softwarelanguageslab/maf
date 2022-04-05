@@ -30,7 +30,7 @@ object Writer:
 
     opaque type Writer = W
 
-    /** Avoids a file to be accidentally overwritten.*/
+    /** Avoids a file to be accidentally overwritten. */
     private def addSuffix(f: File): File =
         var file = f
         if !file.exists() then return file
@@ -223,17 +223,17 @@ object MAFLogger:
         val policy = currentConfig(level)
         val finalMsg = s"[$level]$msg"
         policy match
-            case Print => println(finalMsg)
-            case NoLog => ()
-            case FileLog(to) =>
-                val log = loggers(level)
-                log match
-                    case Some(log) => log.log(finalMsg)
-                    case None =>
-                        val logger = Logger.raw(to)
-                        logger.enable()
-                        loggers(level) = Some(logger)
-                        logger.log(finalMsg)
+            case Print       => println(finalMsg)
+            case NoLog       => ()
+            case FileLog(to) => () // disabled for the Javascript runtime for now
+//val log = loggers(level)
+//log match
+//    case Some(log) => log.log(finalMsg)
+//    case None =>
+//        val logger = Logger.raw(to)
+//        logger.enable()
+//        loggers(level) = Some(logger)
+//        logger.log(finalMsg)
 
 object FileOps:
 
