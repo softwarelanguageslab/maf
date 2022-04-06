@@ -2,6 +2,7 @@ package maf.modular.scv
 
 import maf.modular.{AbstractDomain, Dependency, ModAnalysis}
 import maf.lattice.interfaces.BoolLattice
+import maf.language.symbolic.lattices.SymbolicSchemeDomain
 import maf.core.{Expression, Lattice, LatticeTopUndefined}
 import maf.util.datastructures.ListOps.Crossable
 import maf.util.{Monoid, StringUtil}
@@ -97,7 +98,7 @@ object ScvPathSensitiveSymbolicStore:
     import maf.language.scheme._
     import maf.language.symbolic.*
 
-    trait GlobalPathSensitiveSymbolicStore extends GlobalMapStore[SchemeExp] with AbstractDomain[SchemeExp]:
+    trait GlobalPathSensitiveSymbolicStore extends GlobalMapStore[SchemeExp] with AbstractDomain[SchemeExp] with SymbolicSchemeDomain:
         type V = Map[Formula, Value]
         type A = Component
 
@@ -108,7 +109,7 @@ object ScvPathSensitiveSymbolicStore:
                 false
 
         def joinValue(x: Value, y: Value): Value =
-            lattice.join(x, y)
+            lattice.setRight(lattice.join(x, y), Set())
 
         given vMonoid: Monoid[V] with
             def zero: V = Map()
@@ -131,3 +132,13 @@ object ScvPathSensitiveSymbolicStore:
                             List((p1 -> joinValue(v1, lattice.bottom)), (p2 -> joinValue(v2, lattice.bottom)))
                     }
                     .toMap
+
+//x.keys.foreach { key =>
+//    if Some(x(key)) != result.get(key) then println(s"difference spotted at $key\n ==== x: ${x(key)}\n ==== y ${result.get(key)}")
+//}
+//println(s"${x.keys.size} and result size ${result.keys.size}")
+//println("====")
+//
+//(x.keys ++ y.keys).foldLeft(x)((result, key) =>
+//    result + (key -> lattice.join(x.get(key).getOrElse(lattice.bottom), y.get(key).getOrElse(lattice.bottom)))
+//)

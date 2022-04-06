@@ -98,6 +98,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             //println(s"analyzing $cmp")
             track(NumberOfComponents, cmp)
             count(NumberOfIntra)
+            //println(s"Component count ${trackMetrics(NumberOfComponents).size}")
 
             val initialState = State.empty.copy(env = fnEnv, store = initialStoreCache)
             val answers = runIntraSemantics(initialState)

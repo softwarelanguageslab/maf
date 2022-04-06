@@ -2,6 +2,7 @@ package maf.modular.scv
 
 import maf.core.*
 import maf.core.Position.*
+import maf.util.datastructures.ListOps.*
 import maf.language.scheme.*
 import maf.language.symbolic.*
 import maf.modular.scheme.modf.*
@@ -53,7 +54,7 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         symArgs: Map[String, SchemeExp],
         stoCache: Map[Addr, SchemeExp])
         extends ScvContext[L]:
-        override def toString: String = s"KPathCondition($rangeContract)"
+        override def toString: String = s"KPathCondition($pc, $rangeContract, $changes)"
     //s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
     case class NoContext[L]() extends ScvContext[L]
 
@@ -162,7 +163,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
                         }.toMap
                     )
                 //_ <- effectful { println(s"old: $pc, new: $newPc") }
-                yield KPathCondition(newPc, rangeContract, nextCallers, changes, newSymArgs, newCcache)
+                yield KPathCondition(newPc, rangeContract, nextCallers, changes.filterDuplicates, newSymArgs, newCcache)
 
 trait ScvOneContextSensitivity(protected val m: Int) extends ScvKContextSensitivity:
     protected val k: Int = 1

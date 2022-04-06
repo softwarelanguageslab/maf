@@ -20,7 +20,7 @@ trait ModReporter[E <: Expression] extends AnalysisEntry[E]:
     private var reportedMetrics: List[(ModMetric, Double)] = List()
 
     /** Keeps track of a unique count */
-    private var trackMetrics: Map[ModMetric, Set[Any]] = Map()
+    protected var trackMetrics: Map[ModMetric, Set[Any]] = Map()
 
     private var countMetrics: Map[ModMetric, Long] = Map()
 
