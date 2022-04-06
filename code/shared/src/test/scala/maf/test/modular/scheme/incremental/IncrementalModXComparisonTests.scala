@@ -27,7 +27,7 @@ import scala.concurrent.duration.*
  */
 // TODO: Require equality when all optimisations are enabled.
 trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
-    lazy val configurations: List[IncrementalConfiguration] = allConfigurations
+    val configurations: List[IncrementalConfiguration]
     def timeout(): Timeout.T = Timeout.start(Duration(150, SECONDS))
 
     def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag]
@@ -76,7 +76,14 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
                 //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
             }
 
-class ModFComparisonTests extends IncrementalModXComparisonTests:
+trait withWI extends IncrementalModXComparisonTests:
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.filter(_.writeInvalidation)
+trait withoutWIWithCI extends IncrementalModXComparisonTests:
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.writeInvalidation).filter(_.componentInvalidation)
+trait withoutCIWI extends IncrementalModXComparisonTests:
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.writeInvalidation).filterNot(_.componentInvalidation)
+
+trait ModFComparisonTests extends IncrementalModXComparisonTests:
 
     override def benchmarks: Set[Benchmark] = super.benchmarks ++ IncrementalSchemeBenchmarkPrograms.sequential
 
@@ -143,9 +150,11 @@ class ModFComparisonTests extends IncrementalModXComparisonTests:
             assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
         }
 
-class ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks:
+class ModFComparisonTestsWI extends ModFComparisonTests with withWI
+class ModFComparisonTestsCI extends ModFComparisonTests with withoutWIWithCI
+class ModFComparisonTestsNoCIWI extends ModFComparisonTests with withoutCIWI
 
-    override lazy val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
+trait ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks:
 
     abstract class BaseModConcAnalysis(prg: SchemeExp)
         extends ModAnalysis[SchemeExp](prg)
@@ -216,3 +225,7 @@ class ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
             val iv = i.store.getOrElse(addr, i.lattice.bottom)
             assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
         }
+
+class ModConcComparisonTestsWI extends ModConcComparisonTests with withWI
+class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWIWithCI
+class ModConcComparisonTestsNoCIWI extends ModConcComparisonTests with withoutCIWI
