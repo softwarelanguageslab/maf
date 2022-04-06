@@ -143,31 +143,21 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
 
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ IncrementalTest
 
+// Note: this also includes ci_di_wi which is already handled by IncrementalSmallStepModConcType and IncrementalSmallStepModConcCP
 trait RemainingConfigurationsWithWI extends IncrementalModXSoundnessTests:
-    override val configurations: List[IncrementalConfiguration] =
-        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filter(_.writeInvalidation).toList
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.toSet.filter(_.writeInvalidation).toList
     override def isSlow(b: Benchmark) = true
 
 trait RemainingConfigurationsWithCIWithoutWI extends IncrementalModXSoundnessTests:
-    override val configurations: List[IncrementalConfiguration] =
-        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filterNot(_.writeInvalidation).filter(_.componentInvalidation).toList
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.toSet.filterNot(_.writeInvalidation).filter(_.componentInvalidation).toList
     override def isSlow(b: Benchmark) = true
 
 trait RemainingConfigurationsWithoutCIWI extends IncrementalModXSoundnessTests:
-    override val configurations: List[IncrementalConfiguration] =
-        (IncrementalConfiguration.allConfigurations.toSet - IncrementalConfiguration.allOptimisations).filterNot(_.writeInvalidation).filterNot(_.componentInvalidation).toList
+    override val configurations: List[IncrementalConfiguration] = allConfigurations.toSet.filterNot(_.writeInvalidation).filterNot(_.componentInvalidation).toList
     override def isSlow(b: Benchmark) = true
 
-trait noCY extends IncrementalModXSoundnessTests:
-    override protected def runAnalysisWithConfiguration(
-        program: SchemeExp,
-        benchmark: Benchmark,
-        config: IncrementalConfiguration
-      ): IncrementalAnalysis =
-        super.runAnalysisWithConfiguration(program, benchmark, config.copy(cyclicValueInvalidation = false))
-
 /** Implements soundness tests for an incremental ModConc analysis. */
-class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks with noCY:
+class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks:
     override val configurations: List[IncrementalConfiguration] = List(ci_di_wi)
     def name = "Incremental ModConc Type"
 
@@ -183,7 +173,7 @@ class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with
         )(b)
 
 /** Implements soundness tests for an incremental ModConc analysis. */
-class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with noCY:
+class IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with IncrementalModXSoundnessTests:
     override def name = "Incremental ModConc CP"
     override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, ci_di_wi) // allOptimisations)
     override def isSlow(b: Benchmark): Boolean = true

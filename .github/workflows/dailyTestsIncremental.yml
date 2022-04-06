@@ -164,8 +164,12 @@ jobs:
       matrix:
         test_class: [
           IncrementalModXMachineryTests,
-          ModFComparisonTests,
-          ModConcComparisonTests,
+          ModFComparisonTestsWI,
+          ModFComparisonTestsCI,
+          ModFComparisonTestsNoCIWI,
+          ModConcComparisonTestsWI,
+          ModConcComparisonTestsCI,
+          ModConcComparisonTestsNoCIWI,
           IncrementalModFTypeRestartTests,
           IncrementalModFCPRestartTests,
         ]
