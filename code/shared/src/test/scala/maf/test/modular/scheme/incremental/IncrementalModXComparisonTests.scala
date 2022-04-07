@@ -27,7 +27,7 @@ import scala.concurrent.duration.*
  */
 // TODO: Require equality when all optimisations are enabled.
 trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
-    val configurations: List[IncrementalConfiguration]
+    def configurations: List[IncrementalConfiguration]
     def timeout(): Timeout.T = Timeout.start(Duration(150, SECONDS))
 
     def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag]
@@ -77,11 +77,11 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
             }
 
 trait withWI extends IncrementalModXComparisonTests:
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filter(_.writeInvalidation)
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(_.writeInvalidation)
 trait withoutWIWithCI extends IncrementalModXComparisonTests:
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.writeInvalidation).filter(_.componentInvalidation)
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.writeInvalidation).filter(_.componentInvalidation)
 trait withoutCIWI extends IncrementalModXComparisonTests:
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.writeInvalidation).filterNot(_.componentInvalidation)
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.writeInvalidation).filterNot(_.componentInvalidation)
 
 trait ModFComparisonTests extends IncrementalModXComparisonTests:
 
