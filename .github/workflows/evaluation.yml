@@ -74,6 +74,10 @@ jobs:
         with:
           name: Performance evaluation results
           path: artifact/*.json
+      - name: Setup python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.x'
       - name: Install python dependencies
         uses: BSFishy/pip-action@v1
         with:
