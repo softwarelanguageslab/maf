@@ -125,7 +125,7 @@ object SchemeBenchmarkPrograms:
     lazy val scvNguyenBenchmarks: Set[String] = Set(
       "test/scv/NguyenGTH18/safe/games/tetris.rkt",
       "test/scv/NguyenGTH18/safe/games/snake.rkt",
-      "test/scv/NguyenGTH18/safe/games/zombie.rkt",
+      //"test/scv/NguyenGTH18/safe/games/zombie.rkt",
       //"test/scv/NguyenGTH18/safe/real/slatex-expanded.rkt",
       //"test/scv/NguyenGTH18/safe/real/fector.rkt", TODO: support struct properties, and s-expression comments
       //"test/scv/NguyenGTH18/safe/real/nucleic2-modular-fixed-expanded.rkt", // nuclei2-modular* from paper, TODO: support for vectors
@@ -139,6 +139,7 @@ object SchemeBenchmarkPrograms:
 
     lazy val horsScvBenchmarkSuite: Set[String] = SchemeBenchmarkPrograms.fromFolderR("test/scv/NguyenGTH18/safe/mochi")(
       ".DS_Store",
+      "ack.rkt", // TODO: does not terminate in path sensitive analysis
       // TODO: transform contract to supported ContractScheme contract
       "fhnhn.rkt",
       "fold-fun-list.rkt",

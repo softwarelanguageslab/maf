@@ -79,7 +79,7 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
         case Value.Boolean(b) if b => s"(VBool true)"
         case Value.Boolean(b)      => s"(VBool false)"
         case Value.Character(c)    => throw new Exception(s"Not supported character ($c)") // TODO
-        case Value.Nil             => s"(VNil)"
+        case Value.Nil             => s"VNil"
 
     private def translateIdentifier(idn: Identifier): String =
         primMap.get(idn.name).getOrElse(idn.name)

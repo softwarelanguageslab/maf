@@ -113,7 +113,13 @@ case class PathCondition(formula: Formula):
     def gc(roots: Set[SchemeExp]): PathCondition =
         PathCondition(
           formula
-              .mapOption(expr => if expr.allSubexpressions.collect { case e: SchemeExp => e }.exists(roots.contains) then Some(expr) else None)
+              .mapOption(expr =>
+                  if expr.allSubexpressions
+                          .collect { case e: SchemeExp => e }
+                          .exists(e => roots.flatMap(_.allSubexpressions).contains(e) || roots.contains(e))
+                  then Some(expr)
+                  else None
+              )
               .getOrElse(EmptyFormula)
         )
 
@@ -156,11 +162,16 @@ case class PathCondition(formula: Formula):
             case SchemeValue(_, _) if allowed(exp, level)  => MonadOptionT.optionInstance.unit(exp)
             // If none of the above is true, we will allocate a fresh variable
             case _ =>
-                for
-                    nww <- rewrites.get(exp).map(MonadOptionT.optionInstance.unit).getOrElse(MonadOptionT.lift(fresh))
-                    _ = { rewrites = rewrites + (exp -> nww) }
-                    _ = { changes = SymReplace(exp, nww) :: changes }
-                yield nww
+                if exp.allSubexpressions.collect { case e: SchemeExp => e } exists (e =>
+                        roots.flatMap(_.allSubexpressions).contains(e) || roots.contains(e)
+                    )
+                then
+                    for
+                        nww <- rewrites.get(exp).map(MonadOptionT.optionInstance.unit).getOrElse(MonadOptionT.lift(fresh))
+                        _ = { rewrites = rewrites + (exp -> nww) }
+                        _ = { changes = SymReplace(exp, nww) :: changes }
+                    yield nww
+                else OptionT(Monad[M].unit(None))
 
         for
             // rewrite the formula such that only allowed roots are represented by their original expression
@@ -168,8 +179,15 @@ case class PathCondition(formula: Formula):
                 .mapOptionM(expr => visit(expr, 0).inner)
                 .map(formula => PathCondition(formula.getOrElse(EmptyFormula)))
 
+            // re-compute the roots using the performed rewrites
+            newRoots = changes.reverse
+                .foldLeft(roots.toList)((roots, change) => roots.map(r => change.apply(Assertion(r))).map(_.asInstanceOf[Assertion].contents))
+                .toSet
+
+            rewrittenGcFormula = rewrittenFormula.gc(newRoots)
+
             // then re-index
-            (reindexPathCondition, additionalChanges) = rewrittenFormula.reindex(rewrittenFormula.lowest)
+            (reindexPathCondition, additionalChanges) = rewrittenGcFormula.reindex(rewrittenGcFormula.lowest)
         yield (PathCondition(DNF.dnf(reindexPathCondition.formula)), changes ++ additionalChanges)
 
     /** Extend the path condition with the given assertion */

@@ -60,7 +60,7 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
             val answers: Set[(PostValue, PathCondition)] = super.runIntraSemantics(initialState)
             answers.foreach { case (PostValue(sym, vlu), pc) =>
                 //println(s"++ got value $vlu with $pc and $sym")
-                writeMapAddr(cmp, Map(pc.formula -> vlu))
+                writeMapAddr(cmp, Map(pc.formula -> lattice.setRight(vlu, Set())))
             }
             answers
 
