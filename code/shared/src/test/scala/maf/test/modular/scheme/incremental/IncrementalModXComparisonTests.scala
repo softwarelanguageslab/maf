@@ -27,7 +27,7 @@ import scala.concurrent.duration.*
  */
 // TODO: Require equality when all optimisations are enabled.
 trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
-    val configurations: List[IncrementalConfiguration]
+    def configurations: List[IncrementalConfiguration]
     def timeout(): Timeout.T = Timeout.start(Duration(150, SECONDS))
 
     def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag]
@@ -76,12 +76,14 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
                 //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
             }
 
-trait withWI extends IncrementalModXComparisonTests:
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filter(_.writeInvalidation)
+trait withoutCIwithWI extends IncrementalModXComparisonTests:
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation)
+trait withCIWI extends IncrementalModXComparisonTests:
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation)
 trait withoutWIWithCI extends IncrementalModXComparisonTests:
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.writeInvalidation).filter(_.componentInvalidation)
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => !c.writeInvalidation && c.componentInvalidation)
 trait withoutCIWI extends IncrementalModXComparisonTests:
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.writeInvalidation).filterNot(_.componentInvalidation)
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => !c.writeInvalidation && !c.componentInvalidation)
 
 trait ModFComparisonTests extends IncrementalModXComparisonTests:
 
@@ -150,7 +152,8 @@ trait ModFComparisonTests extends IncrementalModXComparisonTests:
             assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
         }
 
-class ModFComparisonTestsWI extends ModFComparisonTests with withWI
+class ModFComparisonTestsWI extends ModFComparisonTests with withoutCIwithWI
+class ModFComparisonTestsCIWI extends ModFComparisonTests with withCIWI
 class ModFComparisonTestsCI extends ModFComparisonTests with withoutWIWithCI
 class ModFComparisonTestsNoCIWI extends ModFComparisonTests with withoutCIWI
 
@@ -226,6 +229,7 @@ trait ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
             assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
         }
 
-class ModConcComparisonTestsWI extends ModConcComparisonTests with withWI
+class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCIwithWI
+class ModConcComparisonTestsCIWI extends ModConcComparisonTests with withCIWI
 class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWIWithCI
 class ModConcComparisonTestsNoCIWI extends ModConcComparisonTests with withoutCIWI

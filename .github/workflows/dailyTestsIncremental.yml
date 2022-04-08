@@ -165,9 +165,11 @@ jobs:
         test_class: [
           IncrementalModXMachineryTests,
           ModFComparisonTestsWI,
+          ModFComparisonTestsCIWI,
           ModFComparisonTestsCI,
           ModFComparisonTestsNoCIWI,
           ModConcComparisonTestsWI,
+          ModConcComparisonTestsCIWI,
           ModConcComparisonTestsCI,
           ModConcComparisonTestsNoCIWI,
           IncrementalModFTypeRestartTests,

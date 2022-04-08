@@ -37,6 +37,14 @@ The following instances are available for ModConc (non-exhaustive):
 For ModF, versions of the given instances that can perform an assertion analysis are also provided. The full details of
 all instances is provided in JavaDoc.
 
+## Tests
+
+Several unit tests have been written for the incremental analysis. A part of these tests are run upon every commit to the code base.
+All tests are run every night.
+
+[![Daily Incremental MAF tests](https://github.com/softwarelanguageslab/maf/actions/workflows/dailyTestsIncremental.yml/badge.svg)](https://github.com/softwarelanguageslab/maf/actions/workflows/dailyTestsIncremental.yml)
+[![Incremental MAF tests on action](https://github.com/softwarelanguageslab/maf/actions/workflows/testsOnActionIncremental.yml/badge.svg)](https://github.com/softwarelanguageslab/maf/actions/workflows/testsOnActionIncremental.yml)
+
 ## Benchmarks
 
 The incremental analyses can be run on a specific suit of benchmarks, which are programs that have been annotated with
