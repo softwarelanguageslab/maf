@@ -42,8 +42,21 @@ all instances is provided in JavaDoc.
 Several unit tests have been written for the incremental analysis. A part of these tests are run upon every commit to the code base.
 All tests are run every night.
 
+Overview of the incremental test suite:
+* `IncrementalModXComparisonTests` compare the result of the incremental analysis/update to the result of a full reanalysis of the program by a non-incremental analysis.
+* `IncrementalModXMachineryTests` test whether some small functionalities of the incremental analysis work correctly using small example programs.
+* `IncrementalModXRestartTests` verify whether restarting an analysis after completion does not alter the result.
+* `IncrementalModXSoundnessTests` verify whether the analysis result is sound when compared to the result of a concrete interpreter (or potentially multiple runs of this interpreter in case of concurrent programs).
+* `IncrementalModXWLIndependenceTests` test whether the result of the analysis is independent of the work list order. **These tests are currently disabled.**
+
+Tests normally verify (1) the initial analysis result, (2) the incremental update, and (3) the full reanalysis result.
+Note that tests may be split into multiple classes, to allow the CI system to execute them within the given time bound.
+
+Current status:
+
 [![Daily Incremental MAF tests](https://github.com/softwarelanguageslab/maf/actions/workflows/dailyTestsIncremental.yml/badge.svg)](https://github.com/softwarelanguageslab/maf/actions/workflows/dailyTestsIncremental.yml)
 [![Incremental MAF tests on action](https://github.com/softwarelanguageslab/maf/actions/workflows/testsOnActionIncremental.yml/badge.svg)](https://github.com/softwarelanguageslab/maf/actions/workflows/testsOnActionIncremental.yml)
+
 
 ## Benchmarks
 
