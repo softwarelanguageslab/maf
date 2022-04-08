@@ -25,6 +25,8 @@ object BigStepTest extends Tag("BigStepTest")
 
 // Tags by analysis variation.
 object IncrementalTest extends Tag("IncrementalTest")
+object ScvTest extends Tag("ScvTest")
+object SymbolicTest extends Tag("SymbolicTest")
 
 // Other tags
 object UtilityTest extends Tag("UtilityTest")

@@ -1,5 +1,6 @@
 package maf.test.language.symbolic
 
+import maf.test.*
 import maf.language.scheme.*
 import maf.language.symbolic.*
 import maf.core.{IdentityMonad, Monad, MonadStateT, StateOps}
@@ -37,7 +38,7 @@ class PathConditionTests extends AnyFlatSpec with Matchers:
      *   a set of expressions that whose items need to be kept in the path condition
      */
     def shouldGarbageCollectTo(initial: Formula, expected: Formula, roots: Set[Symbolic], vars: Int): Unit =
-        s"$initial" should s"garbage collect to $expected" in {
+        s"$initial" should s"garbage collect to $expected" taggedAs (ScvTest, SymbolicTest) in {
             val initialState = FreshState(n = vars)
             val simplified = PathCondition(initial).simplify(roots, PathCondition.onlyVarsAllowed, FreshState.fresh)
             simplified.runValue(initialState)._1.formula shouldEqual expected

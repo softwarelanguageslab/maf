@@ -1,5 +1,6 @@
 package maf.test.language.symbolic
 
+import maf.test.*
 import maf.language.symbolic.*
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -9,7 +10,7 @@ class DNFTests extends AnyFlatSpec:
     """(real? x0) /\\ (
    ((real? x0) /\\  (>= x0 0)) \\/
    ((= x0 0))
-  )""" should "convert to ((real? x0) /\\ (>= x0 0)) \\/ ((real? x0) /\\ (= x0 0))" in {
+  )""" should "convert to ((real? x0) /\\ (>= x0 0)) \\/ ((real? x0) /\\ (= x0 0))" taggedAs (ScvTest, SymbolicTest) in {
         import FormulaAux.*
         val formulaD = conj(
           conj(
