@@ -30,9 +30,9 @@ jobs:
         uses: olafurpg/setup-scala@v10
         with:
           java-version: openjdk@1.15
-      - name: Setup Z3 
+      - name: Setup Z3
         uses: pavpanchekha/setup-z3@0.2.0
-        with: 
+        with:
           version: 4.8.12
           distribution: glibc-2.31
       # Compile the code.
@@ -40,14 +40,14 @@ jobs:
         run: sbt compile
       # Perform the actual tests.
       - name: Run the tests
-        run: sbt "maf/testOnly -- -l IncrementalTest -l SlowTest"
-        env: 
+        run: sbt "maf/testOnly -- -n IncrementalTest -l SlowTest"
+        env:
           LOG_ENV: ci
           LOG_LOCATION: log-${{ github.sha }}
       - name: Upload log
-        uses: actions/upload-artifact@v2 
-        with: 
-          name: Test logging output 
+        uses: actions/upload-artifact@v2
+        with:
+          name: Test logging output
           path: logs/log-${{ github.sha }}.txt
       # If successful, update the Slack notification.
       - name: Notify slack success
