@@ -43,12 +43,12 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
     def checkSubsumption(a: Analysis, i: IncrementalAnalysis): Unit
 
     def onBenchmark(benchmark: Benchmark): Unit =
-        val text = Reader.loadFile(benchmark)
-        val program = CSchemeParser.parseProgram(text)
         for c <- configurations do
             property(s"Analysis results for $benchmark using $c are equal (initial analysis) or subsuming (incremental update).",
                      testTags(benchmark, c): _*
             ) {
+                val text = Reader.loadFile(benchmark)
+                val program = CSchemeParser.parseProgram(text)
                 try
                     val a = analysis(program, Old)
                     a.analyzeWithTimeout(timeout())
@@ -233,3 +233,4 @@ class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCIwith
 class ModConcComparisonTestsCIWI extends ModConcComparisonTests with withCIWI
 class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWIWithCI
 class ModConcComparisonTestsNoCIWI extends ModConcComparisonTests with withoutCIWI
+
