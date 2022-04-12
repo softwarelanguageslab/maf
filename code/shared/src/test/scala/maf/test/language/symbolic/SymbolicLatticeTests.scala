@@ -1,5 +1,6 @@
 package maf.test.language.symbolic
 
+import maf.test.*
 import maf.language.symbolic.lattices.*
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -7,7 +8,7 @@ class SymbolicLatticeTests extends AnyFlatSpec:
     import maf.language.symbolic.Symbolic.*
 
     def shouldWidenTo(a: String, b: String, rest: Set[String], policy: SymbolicWidenPolicy): Unit =
-        a should s"widen to $b given {${rest.mkString(",")}} using policy $policy" in {
+        a should s"widen to $b given {${rest.mkString(",")}} using policy $policy" taggedAs (ScvTest, SymbolicTest) in {
             val aExp = Parser.parse(a).head
             val bExp = Parser.parse(b).head
             val restExps = rest.map(Parser.parse(_).head)
