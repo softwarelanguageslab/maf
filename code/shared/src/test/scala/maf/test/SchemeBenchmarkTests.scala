@@ -11,4 +11,6 @@ trait SchemeBenchmarkTests extends AnyPropSpec:
     // Needs to be implemented to specify the testing behaviour per benchmark.
     protected def onBenchmark(b: Benchmark): Unit
     // Run the benchmarks.
-    benchmarks.foreach(onBenchmark)
+    if benchmarks.isEmpty
+    then throw new Exception("No benchmarks to run.")
+    else benchmarks.foreach(onBenchmark)
