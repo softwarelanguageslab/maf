@@ -74,7 +74,8 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
                         val syms = lattice.getRight(vlu)
                         //println(s"== formula: $formula and vlu: $vlu with $syms")
                         val pc = PathCondition(formula)
-                        val gcPc = pc.gc(k.symArgs.values.toSet)
+                        val gcPc = pc.gc(k.args)
+                        //println(s"== formula_gc: pc $gcPc")
                         val revertedPc = k.changes.reverse.foldLeft(gcPc)((pc, change) => pc.revert(change))
 
                         for

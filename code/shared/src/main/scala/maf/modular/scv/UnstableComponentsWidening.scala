@@ -9,14 +9,6 @@ import maf.language.scheme.*
 import maf.language.symbolic.*
 
 trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContextSensitivity:
-    /**
-     * An address to represent the nth argument of a function call in the store cache.
-     *
-     * To be replaced with the actual address when inserting the store cache in the context of the callee
-     */
-    case class ArgAddr(n: Int) extends Address:
-        override def printable: Boolean = false
-        override def idn: Identity = Identity.none
 
     type SimilarityContent
 
@@ -131,6 +123,8 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                     pc <- getPc
                     // we will already clean up the path condition to only include information in the current stoCache
                     gcPc = pc.gc(stoCache.values.toSet)
+                    //debug: _ = { println(s"before clean $pc, after clean $gcPc") }
+                    //debug: _ = { println(s"sto cache $stoCache") }
                     // create a non-widened version of context
                     ctx = KPathCondition(gcPc,
                                          rangeContract,
@@ -171,7 +165,9 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
     trait IntraWidening extends BaseIntraScvSemantics:
         /** We override injectCtx such that we can change how the store cache is inserted */
         override def injectCtx: EvalM[Unit] =
+            //debug: println(s"injectCtx: unstable widening with n=${minUnstableLength}")
             val context = fromContext(cmp)
+            //println(s"injectCtx: $cmp")
             // compute the addresses of the arguments
             val args = fnArgs
             //
@@ -183,6 +179,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                     case (ArgAddr(i), sym) => args(i) -> sym
                     case (addr, sym)       => (addr -> sym)
                 }.toMap
+                //debug: _ = println(s"injectCtx rewritten stoCache $stoCacheArgs")
                 // put the lexical store cache in the context of this evaluation
                 _ <- putStoreCache(cache ++ stoCacheArgs)
                 _ <- putVars(context.vars)
@@ -193,4 +190,6 @@ trait ComponentContentSimilarity extends UnstableComponentsWidening:
     type SimilarityContent = ComponentContent
     protected def similarityContent(cmp: Component): SimilarityContent = content(cmp)
     protected def getSimilarComponents(clo: (SchemeLambdaExp, Environment[Address])): Set[Component] =
-        similarComponents(Some(clo))
+        similarComponents.get(Some(clo)).getOrElse(Set())
+
+trait UnstableWideningWithMinimum(val minUnstableLength: Int) extends ComponentContentSimilarity

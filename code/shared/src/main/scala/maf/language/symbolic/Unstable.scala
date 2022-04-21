@@ -22,9 +22,12 @@ object Unstable:
     /** Return the root of the given tree */
     private def root(tree: Tree): Node = tree
 
-    /** Returns true if the givne tree is a subtree of the other tree */
+    /** Returns true if the givne tree is a strict subtree of the other tree */
     private def isSubTree(sub: Tree, parent: Tree): Boolean =
-        sub.isomorphic(parent) || children(parent).exists(isSubTree(sub, _))
+        def rec(sub: Tree, parent: Tree): Boolean =
+            sub.isomorphic(parent) || children(parent).exists(rec(sub, _))
+
+        children(parent).exists(rec(sub, _))
 
     /** Compute the number of nodes in the tree */
     def size(tree: Tree): Int =
@@ -52,6 +55,8 @@ object Unstable:
     /** Returns true if the given sequence of expressions is unstable, it should be sorted according to tree size. */
     def isUnstable(sequence: List[Tree]): Boolean =
         sequence.size >= 2 && /* the sequence must have at least two elements */
+            /** Each tree must have more than 1 node */
+            sequence.forall(size(_) > 1) &&
             isSubTree(sequence.head, sequence.last) /* the first and last element should be subtrees of each other */ && {
                 val path = findPath(sequence.head, sequence.last)
                 path.zip(sequence).forall { case (root, expr) =>

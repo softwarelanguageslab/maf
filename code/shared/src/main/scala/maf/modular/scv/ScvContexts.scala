@@ -31,6 +31,15 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
     type ComponentContext = ScvContext[Value]
 
     /**
+     * An address to represent the nth argument of a function call in the store cache.
+     *
+     * To be replaced with the actual address when inserting the store cache in the context of the callee
+     */
+    case class ArgAddr(n: Int) extends Address:
+        override def printable: Boolean = false
+        override def idn: Identity = Identity.none
+
+    /**
      * Keeps track of the path conditions from the last k components
      *
      * @param pc
@@ -60,7 +69,12 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         symArgs: Map[String, SchemeExp],
         stoCache: Map[Addr, SchemeExp])
         extends ScvContext[L]:
-        override def toString: String = s"KPathCondition($pc, $rangeContract, $changes)"
+        override def toString: String = s"KPathCondition($pc, $rangeContract, $stoCache, $changes)"
+
+        /** Computes the set of symbolic arguments of the function call */
+        def args: Set[SchemeExp] =
+            stoCache.collect { case (ArgAddr(_), sym) => sym }.toSet ++ symArgs.values.toSet
+
     //s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
     case class NoContext[L]() extends ScvContext[L]
 
@@ -100,11 +114,11 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
         case _                                                     => f(None)
 
     override def fromContext(cmp: Component): FromContext = context(cmp) match
-        case Some(KPathCondition(pc, _, _, _, symArgs, lcache)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
+        case Some(k @ KPathCondition(pc, _, _, _, symArgs, lcache)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
             new FromContext:
                 def pathCondition: PathCondition = pc
                 def vars: List[String] =
-                    symArgs.values
+                    k.args
                         .flatMap(PathCondition.visit[IdentityMonad.Id, List[String]](_) {
                             case SchemeVar(name)       => Some(List(name.name))
                             case SchemeVarLex(name, _) => Some(List(name.name))
