@@ -1,5 +1,6 @@
 package maf.cli.runnables
 
+import maf.util.benchmarks.Table
 import maf.cli.experiments.SchemeAnalyses
 import scala.io.StdIn.readLine
 import maf.language.ContractScheme._
@@ -16,6 +17,7 @@ object ScvRepl extends App:
         val analysis = SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore(exp)
         analysis.analyze()
         println(analysis.summary.blames.values.flatten.toSet.size)
+        println(analysis.summary.blames.values.flatten.toSet)
         //println(analysis.mapStoreString())
         analysis.returnValue(analysis.initialComponent)
 

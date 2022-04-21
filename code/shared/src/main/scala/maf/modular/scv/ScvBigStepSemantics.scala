@@ -545,22 +545,33 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                     }
                     pc <- getPc
                     // apply the range maker function
-                    rangeContract <- applyFunPost(
-                      SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
-                      arr.contract.rangeMaker,
-                      fc.args.zip(argsV),
-                      arr.contract.rangeMakerExpr.idn.pos,
+                    rangeContract <- extract(
+                      applyFunPost(
+                        SchemeFuncall(arr.contract.rangeMakerExpr, fc.args, Identity.none),
+                        arr.contract.rangeMaker,
+                        fc.args.zip(argsV),
+                        arr.contract.rangeMakerExpr.idn.pos,
+                      )
                     )
-                    ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract))
-                    result <- applyFunPost(
-                      fc, // syntactic function node
-                      arr.e, // the function to apply
-                      fc.args.zip(argsV), // the arguments
-                      fc.idn.pos, // the position of the function in the source code
-                      ctx
-                      //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
-                    )
-                yield result
+                    ctx = buildCtx(argsV.map(_.symbolic), Some(rangeContract.value))
+                    retV <- extract(
+                      applyFunPost(
+                        fc, // syntactic function node
+                        arr.e, // the function to apply
+                        fc.args.zip(argsV), // the arguments
+                        fc.idn.pos, // the position of the function in the source code
+                        ctx
+                        //Some(() => ContractCallContext(arr.contract.domain, rangeContract, fc.args, fc.idn))
+                      )
+                    ).flatMap {
+                        case PostValue(None, value) =>
+                            // if we did not get a symbolic value as a return, we simply tag it with a fresh variable
+                            fresh.flatMap(e => extract(tag(Some(e))(value)))
+                        case v => scvMonadInstance.unit(v)
+                    }
+                    // we assume the range contract to hold
+                    _ <- applyMon(rangeContract, retV, fc, fc.idn, true)
+                yield retV.value
             }
         }
 

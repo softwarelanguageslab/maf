@@ -256,7 +256,8 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
     def isSat(script: Script)(using interpreter: Interpreter, ec: ExecutionContext): IsSat[V] =
 
         script.commands.foreach { cmd =>
-            interpreter.eval(cmd)
+            val ans = interpreter.eval(cmd)
+        // debugging: println(s"interpreter $cmd => $ans")
         }
 
         interpreter.eval(CheckSat()) match
@@ -284,5 +285,6 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
             reset()
             val script: Script = Script(parseStringToScript(program).commands)
             val answer = reporter.time(reporter.Z3InterpreterTime) { isSat(script) }
+            // debugging: println(s"got query $e with answer $answer")
             storeCache(e, vars, answer)
             answer
