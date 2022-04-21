@@ -44,6 +44,12 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
      * @param symArgs
      *   a list of (symbolic) arguments of the called function (TODO: this might not be a great place to add this)
      */
+
+    object CPathCondition:
+        def unapply(a: Component): Option[(KPathCondition[Value], Component)] = context(a) match
+            case Some(k: KPathCondition[Value]) => Some((k, a))
+            case _                              => None
+
     // TODO: factor out rangeContract, because it is required for a sound implementation of scv, and cannot be disabled/enabled
     // for certain experiments.As such it is not part of a variable context.
     case class KPathCondition[L](

@@ -115,7 +115,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             }
 
         /** Injects information from the components context in the current analysis */
-        private def injectCtx: EvalM[Unit] =
+        protected def injectCtx: EvalM[Unit] =
             val context = fromContext(cmp)
             for
                 // TODO: there is still something wrong here, if I disable this, things should start to fail but they don't...

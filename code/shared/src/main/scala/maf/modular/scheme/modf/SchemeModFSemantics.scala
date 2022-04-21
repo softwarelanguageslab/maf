@@ -127,6 +127,17 @@ trait BaseSchemeModFSemanticsM
     trait SchemeModFSemanticsIntra extends super.IntraAnalysis with GlobalStoreIntra with ReturnResultIntra { modf =>
         // components
         protected def fnBody: SchemeExp = body(view(component))
+        protected def fnArgs: Array[Address] = (view(component) match
+            case Main => List()
+            case c: Call[_] =>
+                c.lambda.args.map { id =>
+                    allocVar(id, component)
+                } ++ (c.lambda.varArgId match
+                    case None         => List()
+                    case Some(varArg) => List(allocVar(varArg, component))
+                )
+        ).toArray
+
         protected def fnEnv: Env = view(component) match
             case Main => baseEnv
             case c: Call[_] =>

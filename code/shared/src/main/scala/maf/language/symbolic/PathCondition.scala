@@ -38,6 +38,10 @@ object PathCondition:
 case class PathCondition(formula: Formula):
     import PathCondition.*
 
+    /** Alpha renaming of the path condition */
+    def reindexed: (PathCondition, List[SymChange]) =
+        this.reindex(this.lowest)
+
     /**
      * Rename/reset the names of the identifiers based on the first available variable number.
      *
@@ -109,7 +113,7 @@ case class PathCondition(formula: Formula):
     def revert(changeset: List[SymChange]): PathCondition =
         PathCondition(changeset.foldLeft(formula)((formula, change) => change.revert(formula)))
 
-    /** Garbage collect the path condition */
+    /** Garbage collect the path condition. This notion is defined as "simplification" in the paper. */
     def gc(roots: Set[SchemeExp]): PathCondition =
         PathCondition(
           formula
@@ -194,6 +198,9 @@ case class PathCondition(formula: Formula):
     def extend(assertion: SchemeExp): PathCondition =
         import FormulaAux.*
         this.copy(formula = DNF.dnf(conj(ass(assertion), formula)))
+
+    def applyChanges(changes: List[SymChange]): PathCondition =
+        this.copy(formula = changes.foldLeft(formula)((formula, change) => change.apply(formula)))
 
     def revert(change: SymChange): PathCondition =
         this.copy(formula = change.apply(formula))

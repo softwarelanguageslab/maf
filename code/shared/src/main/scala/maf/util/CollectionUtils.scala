@@ -9,3 +9,20 @@ object CollectionUtils:
             if seq.isEmpty && seqA.isEmpty && seqB.isEmpty then List()
             else if seq.isEmpty || seqA.isEmpty || seqB.isEmpty then throw new Exception("Zip2 requires three collections of the same length")
             else (seq.tail).zip2(seqA.tail, seqB.tail).prepended((seq.head, seqA.head, seqB.head))
+
+    extension [A, B](ms: List[Map[A, B]])
+        /**
+         * Given a list of maps combines them into a single map as follows: List[Map[A, B]] => Map[A, List[B]]
+         *
+         * @param prj
+         *   an optional projection function that is used to determine which keys need to be merged together
+         */
+        def pointwise[C](prj: (A => C)): Map[C, List[B]] =
+            ms.foldRight(Map[C, List[B]]()) { (curr, m) =>
+                curr.foldLeft(m) { case (m, (k, v)) =>
+                    m + (prj(k) -> (v :: m.get(prj(k)).getOrElse(List())))
+                }
+            }
+
+        def pointwise(): Map[A, List[B]] =
+            pointwise(x => x)
