@@ -52,6 +52,12 @@ object Unstable:
         case (Var(Identifier(idA, _)), Var(Identifier(idB, _))) => idA == idB
         case _                                                  => false
 
+    def allSubExpressions(a: Symbolic): Set[Symbolic] = a match
+        case Funcall(fa, args, _) =>
+            allSubExpressions(fa) ++ args ++ args.flatMap(allSubExpressions) + fa
+        case v @ Value(_, _) => Set(v)
+        case v @ Var(_)      => Set(v)
+
     /** Returns true if the given sequence of expressions is unstable, it should be sorted according to tree size. */
     def isUnstable(sequence: List[Tree]): Boolean =
         sequence.size >= 2 && /* the sequence must have at least two elements */

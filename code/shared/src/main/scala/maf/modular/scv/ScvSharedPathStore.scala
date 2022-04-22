@@ -57,6 +57,7 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
         import scvMonadInstance.*
 
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
+            //println(s"number of components ${trackMetrics(NumberOfComponents).size}")
             val answers: Set[(PostValue, PathCondition)] = super.runIntraSemantics(initialState)
             answers.foreach { case (PostValue(sym, vlu), pc) =>
                 //println(s"++ got value $vlu with $pc and $sym")

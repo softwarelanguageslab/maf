@@ -65,7 +65,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
 
         if (candidates.size >= minUnstableLength) then
             // first we need to compute the set of subsequences
-            val subsequences = (minUnstableLength to candidates.size).flatMap(candidates.combinations(_)).map(_ ++ List(nww))
+            val subsequences = candidates.combinations(minUnstableLength).map(_ ++ List(nww))
             // a sequence of components is unstable if and only if there exists a subsequence that has an unstable
             // sequence of stores
             subsequences.find(subsequence => subsequence.map(_.stoCache).pointwise().values.exists(Unstable.isUnstable))
@@ -110,16 +110,18 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                 call: Position,
                 caller: Component
               ): EvalM[ComponentContext] =
+
                 // construct the contents of the store cache based on the arguments of the called function
-                val stoCacheArgs = symArgs.zip(0 until symArgs.size).foldLeft(Map[Addr, SchemeExp]()) {
+                val stoCacheArgs = symArgs.take(clo._1.args.size).zip(0 until symArgs.size).foldLeft(Map[Addr, SchemeExp]()) {
                     case (cache, (Some(v), i)) => cache + (ArgAddr(i) -> v)
                     case (cache, _)            => cache
                 }
 
                 // also add the free variables to the store cache, except for those that have been updated
-                val stoCache = stoCacheArgs ++ lexicalStoCaches(clo).filterKeys(!isUpdated(_)).toMap
+                val stoCache = stoCacheArgs ++ lexicalStoCaches(clo).filterKeys(k => !isUpdated(k) && !k.isInstanceOf[ArgAddr]).toMap
                 // A temporary (non-wided) version of the context, this must be in the monad to retrieve the path condition
                 for
+                    //_ <- effectful { println("computing the context") }
                     pc <- getPc
                     // we will already clean up the path condition to only include information in the current stoCache
                     gcPc = pc.gc(stoCache.values.toSet)
@@ -147,17 +149,26 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                         k -> changes.foldLeft(v)((e, change) => change.apply(Assertion(e)).asInstanceOf[Assertion].contents)
                     }.toMap
 
-                    (finalPc, reindexChanges) = cpc.gc(cStoCache.values.toSet).reindexed
+                    cStoCacheArgs = cStoCache.collect { case (ArgAddr(_), v) =>
+                        v
+                    }
+                    // We might remove too much, but this means that it is less constrained
+                    (finalPc, reindexChanges) = cpc.gc(cStoCacheArgs.toSet).reindexed
+                    //_ = { println(s"before gc $cpc, after gc $finalPc") }
+                    cStoCacheReindexed = cStoCache
+                        .mapValues(vlu => reindexChanges.foldLeft(vlu)((vlu, change) => change.apply(Assertion(vlu)).asInstanceOf[Assertion].contents))
+                        .toMap
 
                     // the final context consists of an optionally widened store cache
                     finalCtx = KPathCondition(
                       finalPc,
                       rangeContract,
                       List(), /* 0-cfa */
-                      changes ++ reindexChanges, /* potential widening */
+                      (changes ++ reindexChanges).distinct, /* potential widening */
                       Map(), /* sym-args in sto cache */
-                      cStoCache
+                      cStoCacheReindexed
                     )
+                //_ <- effectful { println("done computing the context") }
                 yield finalCtx
 
     override def intraAnalysis(component: Component): IntraWidening
@@ -179,6 +190,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                     case (ArgAddr(i), sym) => args(i) -> sym
                     case (addr, sym)       => (addr -> sym)
                 }.toMap
+                //_ <- effectful { println(s"cache ${stoCacheArgs}") }
                 //debug: _ = println(s"injectCtx rewritten stoCache $stoCacheArgs")
                 // put the lexical store cache in the context of this evaluation
                 _ <- putStoreCache(cache ++ stoCacheArgs)

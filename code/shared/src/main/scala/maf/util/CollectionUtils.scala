@@ -10,6 +10,15 @@ object CollectionUtils:
             else if seq.isEmpty || seqA.isEmpty || seqB.isEmpty then throw new Exception("Zip2 requires three collections of the same length")
             else (seq.tail).zip2(seqA.tail, seqB.tail).prepended((seq.head, seqA.head, seqB.head))
 
+        /** Removes duplicates from a list, but keeps the order of the list */
+        def distinct: List[T] =
+            def rec(curr: List[T], seen: Set[T]): List[T] = curr match
+                case x :: xs if !seen.contains(x) => x :: rec(xs, seen + x)
+                case _ :: xs                      => rec(xs, seen)
+                case List()                       => List()
+
+            rec(seq, Set())
+
     extension [A, B](ms: List[Map[A, B]])
         /**
          * Given a list of maps combines them into a single map as follows: List[Map[A, B]] => Map[A, List[B]]

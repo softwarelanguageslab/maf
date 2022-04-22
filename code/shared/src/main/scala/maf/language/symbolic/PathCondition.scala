@@ -1,6 +1,8 @@
 package maf.language.symbolic
 
 import maf.language.scheme.*
+import maf.language.symbolic.Symbolic.*
+import maf.language.symbolic.Symbolic
 import maf.core.Monad.{MonadIterableOps, MonadSyntaxOps}
 import maf.core.{Identifier, Identity, IdentityMonad, Monad}
 import maf.core.MonadOptionT.given
@@ -62,7 +64,7 @@ case class PathCondition(formula: Formula):
                           // identifiers other than xYY do not introduce a change
                           (if name.startsWith("x") then
                                val newName = s"x${name.split('x')(1).toInt - lowest}"
-                               changes = SymReplace(vr, SchemeVar(Identifier(newName, idn))) :: changes
+                               changes = if newName != name then SymReplace(vr, SchemeVar(Identifier(newName, idn))) :: changes else changes
                                newName
                            else name)
                           ,
@@ -115,17 +117,26 @@ case class PathCondition(formula: Formula):
 
     /** Garbage collect the path condition. This notion is defined as "simplification" in the paper. */
     def gc(roots: Set[SchemeExp]): PathCondition =
-        PathCondition(
-          formula
-              .mapOption(expr =>
-                  if expr.allSubexpressions
-                          .collect { case e: SchemeExp => e }
-                          .exists(e => roots.flatMap(_.allSubexpressions).contains(e) || roots.contains(e))
-                  then Some(expr)
-                  else None
-              )
-              .getOrElse(EmptyFormula)
-        )
+        import FormulaAux.*
+        val candidates = roots
+        def isRequired(exp: Symbolic): Boolean =
+            candidates.exists(e => Unstable.isomorphic(exp, e)) || (exp match
+                case Funcall(fexp, fargs, _) =>
+                    isRequired(fexp) || fargs.exists(isRequired)
+                case _ => false
+            )
+
+        def visitFormula(formula: Formula): Formula = formula match
+            case Conjunction(cs) =>
+                conj(cs.toList.map(visitFormula): _*)
+            case Disjunction(cs) =>
+                disj(cs.toList.map(visitFormula): _*)
+            case Assertion(exp) if isRequired(exp) =>
+                Assertion(exp)
+            case Assertion(_) => EmptyFormula
+            case EmptyFormula => EmptyFormula
+
+        PathCondition(visitFormula(this.formula))
 
     /**
      * Simplify the current path expression, replacing assertions with simplified versions if required
