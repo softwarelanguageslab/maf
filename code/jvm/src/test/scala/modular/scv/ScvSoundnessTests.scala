@@ -151,7 +151,7 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
         )
 
     def analysis(program: SchemeExp): Analysis =
-        SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore(program)
+        SchemeAnalyses.scvModAnalysisWithRacketFeatures(program) //WithSharedPathStore(program)
 
 /** Automated soundness tests  on the set of benchmarks from the Nguyen paper */
 class ScvNguyenSoundnessTests extends ScvSoundnessTests:

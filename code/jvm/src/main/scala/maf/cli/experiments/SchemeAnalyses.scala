@@ -194,17 +194,13 @@ object SchemeAnalyses:
             with ScvOneContextSensitivity(0)
             with ScvBigStepWithProvides
             with ScvWithStructs
-            with ScvIgnoreFreshBlame
-            with UnstableWideningWithMinimum(2):
+            with ScvIgnoreFreshBlame:
+            //with UnstableWideningWithMinimum(2):
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
             override def intraAnalysis(
                 cmp: Component
-              ) = new IntraScvSemantics(cmp)
-                with IntraScvSemanticsWithProvides
-                with IntraScvSemanticsWithStructs
-                with IntraScvIgnoreFreshBlames
-                with IntraWidening
+              ) = new IntraScvSemantics(cmp) with IntraScvSemanticsWithProvides with IntraScvSemanticsWithStructs with IntraScvIgnoreFreshBlames
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver(this)

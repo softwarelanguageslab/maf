@@ -67,7 +67,8 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
       ">" -> ">/v",
       "<" -> "</v",
       "<=" -> "<=/v",
-      ">=" -> ">=/v"
+      ">=" -> ">=/v",
+      "=" -> "=/v",
     )
 
     /** Translates a symbolic Scheme value to an instance of the `V` sort */
@@ -115,7 +116,8 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
      |    (VBool (or (is-VReal n) (is-VInteger n))))
      |
      |  (define-fun real?/v ((n V)) V
-     |     (VBool (is-VReal n)))
+     |     ; where we expect a real, we also accept an integer
+     |     (VBool (or (is-VInteger n) (is-VReal n))))
      | 
      |  (define-fun any?/v ((n V)) V 
      |      (VBool true))
@@ -285,6 +287,15 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
             reset()
             val script: Script = Script(parseStringToScript(program).commands)
             val answer = reporter.time(reporter.Z3InterpreterTime) { isSat(script) }
-            // debugging: println(s"got query $e with answer $answer")
+            answer match
+                case Unsat =>
+                //println(s"query $e is unsat")
+                //println(s"==================")
+                //println(program)
+                //println("====================")
+
+                case Unknown => println(s"query $e is unknown")
+                case _       => ()
+            //println(s"got query $e with answer $answer")
             storeCache(e, vars, answer)
             answer

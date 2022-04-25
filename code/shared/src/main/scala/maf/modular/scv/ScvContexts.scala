@@ -137,53 +137,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
                 call: Position,
                 caller: Component
               ): EvalM[ComponentContext] =
-                val symbolic = clo._1 match
-                    case SchemeLambda(_, prs, _, _, _)          => prs.map(_.name).zip(symArgs)
-                    case SchemeVarArgLambda(_, prs, _, _, _, _) => prs.map(_.name).zip(symArgs.take(prs.length))
-
-                // Lexical symbolic store cache
-                val lcache = lexicalStoCaches(clo)
-
-                // Compute the store cache that will be shared with the next component:
-                // remove all addresses that have been updated more than once, as the stored cache will not be valid anymore
-                val ccache = lcache.filterKeys(!isUpdated(_)).toMap
-
-                // roots are the free variables of the function (if not changed) and the function arguments themselves
-                val roots: Set[SchemeExp] = symArgs.flatten.toSet ++ ccache.values.toSet
-
-                // m-cfa
-                val nextCallers = (context(caller) match
-                    case Some(k: KPathCondition[_]) =>
-                        (call :: k.callers)
-                    case _ => List(call)
-                ).take(m)
-
-                val symArgsMap = symbolic.collect { case (k, Some(v)) => (k, v) }.toMap
-
-                for
-                    pc <- getPc
-                    // simplify the path condition such that it only contains expressions in the root set
-                    result <- withFresh {
-                        pc.simplify(roots, PathCondition.onlyVarsAllowed, fresh)
-                    }
-                    // get the new path condition and the changes performed to obtain the new path condition
-                    (newPc, changes) = result
-                    // apply the changes on the lexical store cache
-                    newCcache = changes.foldLeft(ccache) { case (ccache, change) =>
-                        ccache.map { case (k, v) =>
-                            change.apply(Assertion(v)) match
-                                case Assertion(v) => (k, v)
-                        }.toMap
-                    }
-                    // apply the changes on the symbolic arguments as well
-                    newSymArgs = changes.foldLeft(symArgsMap)((symArgs, change) =>
-                        symArgs.map { case (k, v) =>
-                            change.apply(Assertion(v)) match
-                                case Assertion(v) => (k, v)
-                        }.toMap
-                    )
-                //_ <- effectful { println(s"old: $pc, new: $newPc") }
-                yield KPathCondition(newPc, rangeContract, nextCallers, changes.filterDuplicates, newSymArgs, newCcache)
+                unit(KPathCondition(PathCondition.empty, rangeContract, List(), List(), Map(), Map()))
 
 trait ScvOneContextSensitivity(protected val m: Int) extends ScvKContextSensitivity:
     protected val k: Int = 1

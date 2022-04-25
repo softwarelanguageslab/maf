@@ -1,5 +1,6 @@
 package maf.modular.scv
 
+import maf.modular.scheme.PrmAddr
 import maf.core.Position.*
 import maf.core.*
 import maf.core.Monad.MonadIterableOps
@@ -149,9 +150,13 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                         k -> changes.foldLeft(v)((e, change) => change.apply(Assertion(e)).asInstanceOf[Assertion].contents)
                     }.toMap
 
-                    cStoCacheArgs = cStoCache.collect { case (ArgAddr(_), v) =>
-                        v
-                    }
+                    cStoCacheArgs = cStoCache
+                        .filterKeys {
+                            case PrmAddr(_) => false
+                            case _          => true
+                        }
+                        .toMap
+                        .values
                     // We might remove too much, but this means that it is less constrained
                     (finalPc, reindexChanges) = cpc.gc(cStoCacheArgs.toSet).reindexed
                     //_ = { println(s"before gc $cpc, after gc $finalPc") }
@@ -178,7 +183,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
         override def injectCtx: EvalM[Unit] =
             //debug: println(s"injectCtx: unstable widening with n=${minUnstableLength}")
             val context = fromContext(cmp)
-            //println(s"injectCtx: $cmp")
+            println(s"injectCtx: $cmp")
             // compute the addresses of the arguments
             val args = fnArgs
             //
