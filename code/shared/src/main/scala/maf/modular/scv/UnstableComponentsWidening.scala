@@ -183,7 +183,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
         override def injectCtx: EvalM[Unit] =
             //debug: println(s"injectCtx: unstable widening with n=${minUnstableLength}")
             val context = fromContext(cmp)
-            println(s"injectCtx: $cmp")
+            //println(s"injectCtx: $cmp")
             // compute the addresses of the arguments
             val args = fnArgs
             //
