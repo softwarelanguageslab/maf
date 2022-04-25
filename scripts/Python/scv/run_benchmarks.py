@@ -15,7 +15,7 @@ visualisation_scripts = [
 def run_benchmarks(): 
     for cls in benchmark_classes:
         print(f"running {cls}")
-        subprocess.run(f"sbt maf/runMain {cls}")
+        subprocess.run(f"sbt \"maf/runMain {cls}\"", shell = True)
         print(f"finished {cls}")
 
 def visualize_results(): 
