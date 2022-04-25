@@ -19,6 +19,7 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
         import scvMonadInstance.*
 
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
+            //println(s"analyzing $cmp")
             //println(s"number of components ${trackMetrics(NumberOfComponents).size}")
             val answers: Set[(PostValue, PathCondition)] = super.runIntraSemantics(initialState)
             answers.foreach { case (PostValue(sym, vlu), pc) =>
@@ -31,11 +32,11 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
             import FormulaAux.*
 
             context(targetCmp) match
-                case Some(k: KPathCondition[_]) =>
+                case Some(k: KPathCondition[_]) if readMapAddr(targetCmp).size > 0 =>
                     // Construct a successor state for all the paths originating from the callee
                     val paths = readMapAddr(targetCmp).map { case (formula, (vlu)) =>
                         val syms = lattice.getRight(vlu)
-                        //println(s"== formula: $formula and vlu: $vlu with $syms")
+                        //println(s"== formula: $formula and vlu: $vlu with $syms, ${k.changes}")
                         val pc = PathCondition(formula)
                         val gcPc = pc.gc(k.args)
                         //println(s"== formula_gc: pc $gcPc")

@@ -51,8 +51,8 @@ object AAMModFPerformanceComparison extends AAMPerformanceComparison:
         run(timeoutFast = false)
 
 object ScvPerformanceComparison extends AAMPerformanceComparison:
-    override def maxWarmupRuns = 3
-    override def analysisRuns = 2
+    override def maxWarmupRuns = 5
+    override def analysisRuns = 20
 
     override def parseProgram(txt: String): SchemeExp =
         val result = SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)

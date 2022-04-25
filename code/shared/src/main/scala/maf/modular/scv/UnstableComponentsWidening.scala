@@ -158,7 +158,8 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                         .toMap
                         .values
                     // We might remove too much, but this means that it is less constrained
-                    (finalPc, reindexChanges) = cpc.gc(cStoCacheArgs.toSet).reindexed
+                    (finalPc, reindexChanges) = (cpc.gc(cStoCacheArgs.toSet), List[SymChange]())
+                    //(finalPc, reindexChanges) = cpc.gc(cStoCacheArgs.toSet).reindexed
                     //_ = { println(s"before gc $cpc, after gc $finalPc") }
                     cStoCacheReindexed = cStoCache
                         .mapValues(vlu => reindexChanges.foldLeft(vlu)((vlu, change) => change.apply(Assertion(vlu)).asInstanceOf[Assertion].contents))

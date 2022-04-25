@@ -294,7 +294,7 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
                 //println(program)
                 //println("====================")
 
-                case Unknown => println(s"query $e is unknown")
+                case Unknown => //println(s"query $e is unknown")
                 case _       => ()
             //println(s"got query $e with answer $answer")
             storeCache(e, vars, answer)

@@ -169,11 +169,17 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain {
     protected def getStoreCache: EvalM[StoreCache] =
         scvMonadInstance.get.map(_.store)
 
+    /** Find the highest variable number in the list of symbolic variables names */
+    private def nextFreeVar(vars: List[String]): Int =
+        val symVars = vars.filter(_.startsWith("x")).map(_.split('x')(1).toInt)
+        if symVars.size > 0 then symVars.min + 1
+        else 0
+
     /** Replaces the current set of variables that are in the path condition with the given list */
     protected def putVars(vars: List[String]): EvalM[Unit] =
         for
             st <- scvMonadInstance.get
-            _ <- scvMonadInstance.put(st.copy(vars = vars, freshVar = vars.size))
+            _ <- scvMonadInstance.put(st.copy(vars = vars, freshVar = nextFreeVar(vars)))
         yield ()
 
     protected def withFresh[X](m: EvalM[X]): EvalM[X] =

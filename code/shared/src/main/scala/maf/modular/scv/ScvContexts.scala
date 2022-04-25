@@ -75,6 +75,29 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         def args: Set[SchemeExp] =
             stoCache.collect { case (ArgAddr(_), sym) => sym }.toSet ++ symArgs.values.toSet
 
+        /** KPath condition contexts are equal modulo alpha renaming */
+        override def equals(other: Any): Boolean = other match
+            case other: KPathCondition[_] if this.callers == other.callers && this.changes == other.changes && this.symArgs == other.symArgs =>
+                val (thisPcReindex, thisChanges) = this.pc.reindexed
+                val thisStoCacheReindex = this.stoCache
+                    .mapValues(vlu => thisChanges.foldLeft(vlu)((vlu, change) => change.apply(Assertion(vlu)).asInstanceOf[Assertion].contents))
+                    .toMap
+
+                val (otherPcReindex, otherChanges) = other.pc.reindexed
+                val otherStoCacheReindex = other.stoCache
+                    .mapValues(vlu => otherChanges.foldLeft(vlu)((vlu, change) => change.apply(Assertion(vlu)).asInstanceOf[Assertion].contents))
+                    .toMap
+
+                (thisPcReindex == otherPcReindex) && (thisStoCacheReindex == otherStoCacheReindex)
+            case _ => false
+        override def hashCode: Int =
+            val (thisPcReindex, thisChanges) = this.pc.reindexed
+            val thisStoCacheReindex = this.stoCache
+                .mapValues(vlu => thisChanges.foldLeft(vlu)((vlu, change) => change.apply(Assertion(vlu)).asInstanceOf[Assertion].contents))
+                .toMap
+
+            (thisPcReindex, rangeContract, callers, changes, symArgs, thisStoCacheReindex).##
+
     //s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
     case class NoContext[L]() extends ScvContext[L]
 

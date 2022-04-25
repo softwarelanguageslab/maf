@@ -214,4 +214,4 @@ case class PathCondition(formula: Formula):
         this.copy(formula = changes.foldLeft(formula)((formula, change) => change.apply(formula)))
 
     def revert(change: SymChange): PathCondition =
-        this.copy(formula = change.apply(formula))
+        this.copy(formula = change.revert(formula))

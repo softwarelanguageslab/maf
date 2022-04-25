@@ -7,7 +7,7 @@ import maf.language.CScheme._
 class BaseSchemePrelude:
 
     def primDefs = Map(
-      "<=" -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y)))",
+      "<=" -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y) #f))",
       ">" -> "(define (> x y) @sensitivity:FA (assert (number? x)) (not (<= x y)))",
       ">=" -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
       "abs" -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
