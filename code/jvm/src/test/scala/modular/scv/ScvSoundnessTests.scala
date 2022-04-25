@@ -1,5 +1,6 @@
 package maf.test.modular.scv
 
+import org.scalatest.Tag
 import maf.cli.modular.scv.*
 import maf.core.Identity
 import maf.test.*
@@ -150,10 +151,20 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
                 super.checkSubsumption(analysis)(v, abs)
         )
 
-    def analysis(program: SchemeExp): Analysis =
-        SchemeAnalyses.scvModAnalysisWithRacketFeatures(program) //WithSharedPathStore(program)
+    override def testTags(b: Benchmark): Seq[Tag] =
+        super.testTags(b) ++ Seq(ScvTest)
 
 /** Automated soundness tests  on the set of benchmarks from the Nguyen paper */
 class ScvNguyenSoundnessTests extends ScvSoundnessTests:
-    def name: String = "scv-soundness-tests"
+    def analysis(program: SchemeExp): Analysis =
+        SchemeAnalyses.scvModAnalysisWithRacketFeatures(program) //WithSharedPathStore(program)
+
+    def name: String = "scv-soundness-tests-no-sharing"
+    override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
+
+class ScvNguyenSoundnessTestsFullPathSensitivity extends ScvSoundnessTests:
+    def analysis(program: SchemeExp): Analysis =
+        SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore(program) //WithSharedPathStore(program)
+
+    def name: String = "scv-soundness-tests-full-sensitivity"
     override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
