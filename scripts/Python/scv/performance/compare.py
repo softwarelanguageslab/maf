@@ -5,6 +5,7 @@ multiple configurations of scv
 
 import seaborn  as sb
 import pandas  as pd 
+import numpy as np
 import matplotlib.pyplot as plt 
 from matplotlib.lines import Line2D
 import sys
@@ -22,7 +23,8 @@ def load_dataframe(filename):
     df = df.stack(0).reset_index()
     # Make the name shorter
     df["name"] = df["name"].map(lambda x: "/".join(x.split("/")[-2:]))
-
+    df["time"] = df["time"].replace("_", np.nan)
+    print(df)
     return df 
 
 
@@ -36,5 +38,7 @@ ax = sb.barplot(data = df, x = "name", y = "time", hue = "configuration")
 ax.set_xlabel("Benchmark")
 ax.set_ylabel("Time (ms)")
 # Make sure that the rotated xticks fit in the figure
+
+df.to_csv("output.csv")
 plt.tight_layout()
 plt.show()

@@ -69,9 +69,8 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
         List(
           //(wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
           (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf"),
-          //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures1cfa), "scvModf-1cfa"),
-          //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithSharedPathStore), "scvModf-sharedPs"),
-          (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore), "scvModF-sensitive")
+          (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore), "scvModF-sensitive"),
+          (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithIncomingFlow), "scvModF-incoming-flow")
         )
 
     def main(args: Array[String]): Unit =
