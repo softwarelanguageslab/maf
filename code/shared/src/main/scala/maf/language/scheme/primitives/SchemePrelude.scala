@@ -7,9 +7,14 @@ import maf.language.CScheme._
 class BaseSchemePrelude:
 
     def primDefs = Map(
+      // debugging features
+      "$pc" -> "(define $pc '())",
+      "$cmp" -> "(define $cmp '())",
+      "debug" -> "(define (debug e) '())",
+      "halt" -> "(define (halt) '())",
       "<=" -> "(define (<= x y) @sensitivity:FA (assert (number? x)) (or (< x y) (= x y) #f))",
       ">" -> "(define (> x y) @sensitivity:FA (assert (number? x)) (not (<= x y)))",
-      ">=" -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y)))",
+      ">=" -> "(define (>= x y) @sensitivity:FA (assert (number? x)) (or (> x y) (= x y) #f))",
       "abs" -> "(define (abs x) @sensitivity:FA (assert (number? x)) (if (< x 0) (- 0 x) x))",
       "append" ->
           """(define (append . lsts)
