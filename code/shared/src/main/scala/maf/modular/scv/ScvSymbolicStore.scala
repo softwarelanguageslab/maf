@@ -118,7 +118,7 @@ object ScvPathSensitiveSymbolicStore:
                     .cartesian(y.toList)
                     .flatMap { case ((p1, (v1)), (p2, (v2))) =>
                         // path conditions are equal
-                        if subsumes(p2, p1) && subsumes(p1, p2) then
+                        if p1 == p2 then
                             // we keep p1 (p2 would be equivalent) and join the value
                             List((p1 -> (joinValue(v1, v2))))
                         else if subsumes(p2, p1) && !subsumes(p1, p2) then

@@ -1,6 +1,7 @@
 package maf.modular.scv
 
 import maf.language.scheme._
+import maf.language.ContractScheme.ContractValues.*
 import maf.language.symbolic.*
 import maf.language.ContractScheme._
 import maf.language.sexp.Value
@@ -95,7 +96,6 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             resultsM.runValue(initialState).vs.map(_._2)
 
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            //println(s"analyzing $cmp")
             track(NumberOfComponents, cmp)
             count(NumberOfIntra)
             //println(s"Component count ${trackMetrics(NumberOfComponents).size}")
@@ -302,8 +302,29 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 case SchemeVar(nam)             => evalVariable(nam)
                 case SchemeIf(prd, csq, alt, _) => evalIf(prd, csq, alt)
 
+                // only enabled for testing
+                //
+                //
+                //
+                case e @ SchemeFuncall(SchemeVar(Identifier("halt", _)), List(), _) if DEBUG =>
+                    throw new Exception(s"halting occcured at ${e.idn.pos}")
+
+                case e @ SchemeFuncall(SchemeVar(Identifier("debug", _)), List(SchemeVar(Identifier("$cmp", _))), _) if DEBUG =>
+                    for _ <- effectful { println(s"debug/cmp: ${e.idn.pos}: $cmp") } yield lattice.nil
+
+                case e @ SchemeFuncall(SchemeVar(Identifier("debug", _)), List(SchemeVar(Identifier("$pc", _))), _) if DEBUG =>
+                    for
+                        pc <- getPc
+                        _ <- effectful { println(s"debug/pc: ${e.idn.pos}: $pc") }
+                    yield lattice.nil
+                case SchemeFuncall(SchemeVar(Identifier("debug", _)), List(e), _) if DEBUG =>
+                    for
+                        v <- eval(e)
+                        _ <- effectful { println(s"debug: ${e.idn.pos}: $v") }
+                    yield lattice.nil
+
                 // only enabled for testing, results in a nil value associated with a fresh symbol
-                case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) if DEBUG =>
+                case SchemeFuncall(SchemeVar(Identifier("fresh", _)), List(), _) =>
                     for
                         symbolic <- fresh
                         value <- tag(symbolic)(lattice.opq(ContractValues.Opq()))
@@ -596,21 +617,48 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             val _ = applyContinuations(fval, simpleArgs)
             baseEvalM.mjoin(List(fromClosures, fromPrimitives)) >>= inject
 
+        private def applyOpq(fv: PostValue, args: List[PostValue]): EvalM[Value] =
+            // Applying an opaque function value results in a new opaque value with a fresh identifier
+            if lattice.isOpq(fv.value) then
+                for
+                    f <- fresh
+                    result <- tag(f)(lattice.opq(Opq()))
+                yield result
+            else void
+
         private def callFun(f: SchemeFuncall): EvalM[Value] =
             for
                 fv <- extract(eval(f.f))
                 argsV <- f.args.mapM(eval andThen extract)
                 ctx = buildCtx(argsV.map(_.symbolic), None)
 
-                result <-
-                    if argsV.map(_.value).exists(lattice.isBottom(_)) then void
-                    else
-                        nondets(
-                          applyArr(f, fv, Some(argsV)),
-                          callFun(fv, argsV),
-                          applyFunPost(f, fv.value, f.args.zip(argsV), f.idn.pos, ctx)
-                        ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))
-            yield result
+                result <- extract(
+                  if argsV.map(_.value).exists(lattice.isBottom(_)) then void
+                  else
+                      nondets(
+                        applyArr(f, fv, Some(argsV)),
+                        callFun(fv, argsV),
+                        applyFunPost(f, fv.value, f.args.zip(argsV), f.idn.pos, ctx),
+                        applyOpq(fv, argsV)
+                      ).flatMap(symCall(fv.symbolic, argsV.map(_.symbolic)).map(tag).getOrElse(unit))
+                )
+
+                // we then refine booleans, such that they satisfy the path condition
+                refinedResult <- refineValue(result)
+            yield refinedResult.value
+
+        private def refineValue(result: PostValue): EvalM[PostValue] =
+            if lattice.isBoolean(result.value) && result.symbolic.isDefined then
+                extract(
+                  nondets(
+                    ifFeasible(`true?`, result) { tag(result.symbolic)(lattice.bool(true)) },
+                    ifFeasible(`false?`, result) { tag(result.symbolic)(lattice.bool(false)) }, {
+                        val otherValues = lattice.retractBool(result.value)
+                        if lattice.isBottom(otherValues) then void else tag(result.symbolic)(otherValues)
+                    }
+                  )
+                )
+            else unit(result)
 
         override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
             // the if expression is evaluated in a different way, because we use symbolic information to extend the path condition and rule out unfeasible paths
