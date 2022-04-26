@@ -42,6 +42,8 @@ class Product2ModularSchemeLattice[
         def refs(x: PL): Set[Address] = schemeLattice.refs(x.left)
         def isTrue(x: PL): Boolean = schemeLattice.isTrue(x.left)
         def isFalse(x: PL): Boolean = schemeLattice.isFalse(x.left)
+        def isBoolean(x: PL): Boolean = schemeLattice.isBoolean(x.left)
+        def retractBool(x: PL): PL = PL(schemeLattice.retractBool(x.left), x.right)
         def isOpq(x: PL): Boolean = schemeLattice.isOpq(x.left)
         def op(op: SchemeOp)(args: List[PL]): MayFail[PL, Error] =
             schemeLattice.op(op)(args.map(_.left)).map(PL(_, Lattice[O].bottom))

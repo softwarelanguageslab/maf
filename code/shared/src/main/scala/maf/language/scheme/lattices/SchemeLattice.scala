@@ -21,6 +21,12 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
     /* Can this value be considered an opaque value */
     def isOpq(x: L): Boolean
 
+    /** Is this value a boolean */
+    def isBoolean(x: L): Boolean
+
+    /** Retract the fact that the given value is a boolean */
+    def retractBool(x: L): L
+
     /** Performs an SchemeOp on the abstract values */
     def op(op: SchemeOp)(args: List[L]): MayFail[L, Error]
 

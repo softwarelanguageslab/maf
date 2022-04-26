@@ -67,6 +67,10 @@ class IncrementalModularSchemeLattice[
         def refs(x: AL): Set[Address] = x.foldMapL(Value.refs(_))(setMonoid)
         def isTrue(x: AL): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
         def isFalse(x: AL): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
+        def isBoolean(x: AL): Boolean = x.foldMapL(Value.isBoolean(_))(boolOrMonoid)
+        def retractBool(x: AL): AL =
+            annotate(schemeLattice.retractBool(x.toL()), x.sources)
+
         def isOpq(x: AL): Boolean = x.foldMapL(Value.isOpq(_))(boolOrMonoid)
 
         /** Apply an operation: apply the operation on the values and join the annotations. */

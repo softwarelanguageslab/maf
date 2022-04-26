@@ -266,6 +266,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case Bool(b) => BoolLattice[B].isFalse(b)
             case Opqs(_) => true
             case _       => false
+        def isBoolean(x: Value): Boolean = x match
+            case Bool(_) => true
+            case _       => false
         def isOpq(x: Value): Boolean = x match
             case Opqs(_) => true
             case _       => false
@@ -843,6 +846,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def show(x: L): String = x.toString /* TODO[easy]: implement better */
         def isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
         def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
+        def isBoolean(x: L): Boolean = x.foldMapL(Value.isBoolean(_))(boolOrMonoid)
+        def retractBool(x: L): L = Elements(x.vs.filter {
+            case Bool(_) => false
+            case _       => true
+        })
+
         def isOpq(x: L): Boolean = x.foldMapL(Value.isOpq(_))(boolOrMonoid)
 
         def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] =
