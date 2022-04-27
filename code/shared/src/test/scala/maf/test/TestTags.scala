@@ -10,6 +10,7 @@ object ParserTest extends Tag("ParserTest")
 object LatticeTest extends Tag("LatticeTest")
 object PrimitiveTest extends Tag("PrimitiveTest")
 object SoundnessTest extends Tag("SoundnessTest")
+object ScvSoundnessTest extends Tag("ScvSoundnessTest")
 
 object InterpreterTest extends Tag("InterpreterTest")
 

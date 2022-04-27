@@ -19,10 +19,11 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
         import scvMonadInstance.*
 
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
-            //println(s"analyzing $cmp")
-            //println(s"number of components ${trackMetrics(NumberOfComponents).size}")
-            //println("==========================================================================")
-            //println(s"cmp $cmp")
+            println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            println(s"analyzing $cmp")
+            println(s"number of components ${trackMetrics(NumberOfComponents).size}")
+            println("==========================================================================")
+            println(s"cmp $cmp")
             val answers: Set[(PostValue, PathCondition)] = super.runIntraSemantics(initialState)
             answers.foreach { case (PostValue(sym, vlu), pc) =>
                 //println(s"++ got value $vlu with $pc and $sym")
@@ -48,7 +49,9 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
 
                         for
                             oldPc <- getPc
-                            _ <- putPc(PathCondition(conj(oldPc.formula, revertedPc.formula)))
+                            newPc = PathCondition(conj(oldPc.formula, revertedPc.formula))
+                            _ <- putPc(newPc)
+                            _ <- putFresh(newPc.highest)
                             resVlu <- if syms.size > 0 then nondets(syms.map(tag(_)(vlu))) else unit(vlu)
                         yield resVlu
                     }

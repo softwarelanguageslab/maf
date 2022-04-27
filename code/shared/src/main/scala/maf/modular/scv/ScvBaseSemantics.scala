@@ -172,7 +172,7 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain {
     /** Find the highest variable number in the list of symbolic variables names */
     private def nextFreeVar(vars: List[String]): Int =
         val symVars = vars.filter(_.startsWith("x")).map(_.split('x')(1).toInt)
-        if symVars.size > 0 then symVars.min + 1
+        if symVars.size > 0 then (symVars.max + 1)
         else 0
 
     /** Replaces the current set of variables that are in the path condition with the given list */
@@ -180,6 +180,16 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain {
         for
             st <- scvMonadInstance.get
             _ <- scvMonadInstance.put(st.copy(vars = vars, freshVar = nextFreeVar(vars)))
+        yield ()
+
+    /**
+     * Update the counter of fresh variables. If a counter is given that is higher than the current counter, that counter is taken and increment by 1,
+     * otherwise the old counter is kept. This is to prevent counters with lower values than the ones we already got being used.
+     */
+    protected def putFresh(i: Int): EvalM[Unit] =
+        for
+            oldSt <- scvMonadInstance.get
+            _ <- scvMonadInstance.put(oldSt.copy(freshVar = if i >= oldSt.freshVar then i + 1 else oldSt.freshVar))
         yield ()
 
     protected def withFresh[X](m: EvalM[X]): EvalM[X] =

@@ -37,15 +37,14 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
      * A component C is smaller than another component C' if the number of smaller expressions according to maf.language.symbolic.Unstable.size is
      * smaller than the number of smaller expressions in C'.
      */
-    private def isSmaller(c1: Component, c2: Component): Boolean =
-        (context(c1), context(c2)) match
-            case (Some(k1: KPathCondition[_]), Some(k2: KPathCondition[_])) =>
-                val s1 = k1.stoCache.values.map(Unstable.size)
-                val s2 = k2.stoCache.values.map(Unstable.size)
-                s1.zip(s2).count(_ < _) < s1.zip(s2).count(_ >= _)
-
-            // if both do not contain a path condition then they are not smaller
-            case _ => false
+    private def isSmaller: Ordering[KPathCondition[Value]] =
+        new scala.math.Ordering[KPathCondition[Value]]:
+            def compare(k1: KPathCondition[Value], k2: KPathCondition[Value]): Int =
+                if k1 == k2 then 0
+                else
+                    val s1 = k1.stoCache.values.map(Unstable.size)
+                    val s2 = k2.stoCache.values.map(Unstable.size)
+                    s1.zip(s2).count(_ < _).compare(s1.zip(s2).count(_ >= _))
 
     /**
      * Determines whether the given set of components needs widening
@@ -56,13 +55,11 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
      *   a new component
      */
     def shouldWiden(cs: Set[Component], nww: KPathCondition[Value]): Option[List[KPathCondition[Value]]] =
-        val candidates = cs
-            .collect { case CPathCondition(k, c) =>
-                (k, c)
-            }
-            .toList
-            .sortWith { case ((_, c1), (_, c2)) => isSmaller(c1, c2) }
-            .map(_._1)
+        val init = cs.collect { case CPathCondition(k, c) =>
+            (k, c)
+        }.toList
+
+        val candidates = init.sortBy(_._1)(isSmaller).map(_._1)
 
         if (candidates.size >= minUnstableLength) then
             // first we need to compute the set of subsequences
@@ -141,8 +138,14 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                     similarComponents = getSimilarComponents(clo)
                     // compute the (potentially) widened context
                     changes <- shouldWiden(similarComponents, ctx) match
-                        case Some(unstableSequence) => widen[EvalM](unstableSequence, fresh)
-                        case _                      => scvMonadInstance.unit(List())
+                        case Some(unstableSequence) =>
+                            for
+                                st <- scvMonadInstance.get
+                                _ <- effectful { println(s"fresh start ${st.freshVar} and pc ${st.pc}, ${st.pc.highest}") }
+                                _ <- putFresh(st.pc.highest)
+                                w <- widen[EvalM](unstableSequence, fresh)
+                            yield w
+                        case _ => scvMonadInstance.unit(List())
 
                     // apply the changes on the store and path condition
                     cpc = gcPc.applyChanges(changes)
@@ -200,7 +203,9 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                 //debug: _ = println(s"injectCtx rewritten stoCache $stoCacheArgs")
                 // put the lexical store cache in the context of this evaluation
                 _ <- putStoreCache(cache ++ stoCacheArgs)
-                _ <- putVars(context.vars)
+                _ <- putVars(SymbolicStore.variables(stoCacheArgs) ++ context.vars)
+                st <- scvMonadInstance.get
+                _ <- effectful { println(s"putting vars ${context.vars}, vars ${st.freshVar}") }
                 _ <- putPc(context.pathCondition)
             yield ()
 

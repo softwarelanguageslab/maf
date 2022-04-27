@@ -95,21 +95,35 @@ case class PathCondition(formula: Formula):
         case vrr @ SchemeVarLex(_, _) => f(vrr).map(_.getOrElse(vrr))
         case vll @ SchemeValue(_, _)  => f(vll).map(_.getOrElse(vll))
 
-    /** Find the "lowest" identifier */
-    def lowest: Int =
-        var currentLowest = Int.MaxValue
-        formula.map { expr =>
-            given minMonoid: Monoid[Int] = MonoidInstances.intMinMonoid
-            val foundLowest = visit[IdentityMonad.Id, Int](expr) {
-                case SchemeVar(Identifier(name, _)) =>
-                    if name.startsWith("x") then Some(name.split('x')(1).toInt) else None
-                case _ => None
-            }
-            if currentLowest > foundLowest then currentLowest = foundLowest
-            expr
-        }
+    private def variables(f: Formula): List[Int] = f match
+        case Conjunction(cs) => cs.flatMap(variables).toList
+        case Disjunction(ds) => ds.flatMap(variables).toList
+        case Assertion(f)    => SymbolicStore.variables(f).map(_.split('x')(1).toInt)
+        case EmptyFormula    => List()
 
-        if currentLowest == Int.MaxValue then 0 else currentLowest
+    def highest: Int = variables(this.formula) match
+        case xs @ (_ :: _) => xs.max
+        case _             => 0
+
+    /** Find the "lowest" identifier */
+    def lowestOpt: Option[Int] = this.formula match
+        case EmptyFormula => None
+        case _ =>
+            var currentLowest = Int.MaxValue
+            formula.map { expr =>
+                given minMonoid: Monoid[Int] = MonoidInstances.intMinMonoid
+                val foundLowest = visit[IdentityMonad.Id, Int](expr) {
+                    case SchemeVar(Identifier(name, _)) =>
+                        if name.startsWith("x") then Some(name.split('x')(1).toInt) else None
+                    case _ => None
+                }
+                if currentLowest > foundLowest then currentLowest = foundLowest
+                expr
+            }
+
+            if currentLowest == Int.MaxValue then None else Some(currentLowest)
+
+    def lowest: Int = lowestOpt.getOrElse(0)
 
     /** Apply the given list of changes (for example renames of symbols) */
     def revert(changeset: List[SymChange]): PathCondition =
@@ -215,3 +229,11 @@ case class PathCondition(formula: Formula):
 
     def revert(change: SymChange): PathCondition =
         this.copy(formula = change.revert(formula))
+
+    def vars(f: Formula): List[String] = f match
+        case Conjunction(cs) => cs.flatMap(vars).toList
+        case Disjunction(ds) => ds.flatMap(vars).toList
+        case Assertion(ass)  => Symbolic.variables(ass)
+        case EmptyFormula    => List()
+
+    def vars: List[String] = vars(this.formula)

@@ -51,8 +51,20 @@ object Symbolic:
 
     export maf.language.scheme.{SchemeFuncall => Funcall, SchemeValue => Value, SchemeVar => Var}
 
+    /** Returns a set of symbolic variables (eg. identifiers starting with x) in the given symbolic expression. */
+    def variables(sym: Symbolic): List[String] = sym match
+        case Funcall(fexp, fargs, _) =>
+            variables(fexp) ++ fargs.flatMap(variables)
+        case VarId(s) if s.startsWith("x") => List(s)
+        case _                             => List()
+
     object VarId:
         def apply(id: String): SchemeVar = SchemeVar(Identifier(id, Identity.none))
+        def unapply(other: Any): Option[String] =
+            other match
+                case SchemeVar(Identifier(name, _))       => Some(name)
+                case SchemeVarLex(Identifier(name, _), _) => Some(name)
+                case _                                    => None
 
     object SymbolicCompiler extends BaseSchemeCompiler:
         override def _compile(exp: SExp): TailRec[SchemeExp] = exp match

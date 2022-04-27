@@ -152,7 +152,7 @@ trait ScvSoundnessTests extends SchemeSoundnessTests:
         )
 
     override def testTags(b: Benchmark): Seq[Tag] =
-        super.testTags(b) ++ Seq(ScvTest)
+        super.testTags(b) ++ Seq(ScvTest, ScvSoundnessTest)
 
 /** Automated soundness tests  on the set of benchmarks from the Nguyen paper */
 class ScvNguyenSoundnessTests extends ScvSoundnessTests:
