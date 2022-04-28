@@ -244,6 +244,39 @@ object SchemeAnalyses:
             with ScvWithStructs
             with ScvFullPathSensitivity
             with ScvIgnoreFreshBlame
+            with UnstableWideningWithMinimum(2):
+            protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
+
+            override def intraAnalysis(
+                cmp: Component
+              ) = new IntraScvSemantics(cmp)
+                with IntraScvSemanticsWithProvides
+                with IntraScvSemanticsWithStructs
+                with ScvFullPathSensitivityIntra
+                with IntraScvIgnoreFreshBlames
+                with IntraWidening
+
+            override val sat: ScvSatSolver[Value] =
+                given SchemeLattice[Value, Address] = lattice
+                new JVMSatSolver(this)
+
+    /**
+     * An analysis with full path sensitivity, with widen of the path condition and symbolic store, but by replacing the path condition and symbolic
+     * store with a lexical version
+     */
+    def scvModAnalysisRktFsR(prg: SchemeExp) =
+        import maf.modular.scv.ScvSymbolicStore.given
+        new ModAnalysis(prg)
+            with ScvBigStepSemantics
+            with SymbolicSchemeConstantPropagationDomain
+            with StandardSchemeModFComponents
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFSemanticsM
+            with ScvOneContextSensitivity(0)
+            with ScvBigStepWithProvides
+            with ScvWithStructs
+            with ScvFullPathSensitivity
+            with ScvIgnoreFreshBlame
             with UnstableWideningWithMinimum(2)
             with maf.modular.scv.RemovePathCondition:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
