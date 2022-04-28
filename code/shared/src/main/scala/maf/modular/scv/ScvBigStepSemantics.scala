@@ -235,9 +235,14 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 //_ = { println(s"fullcache $fullCache") }
                 // remove the other addresses from the store cache
                 cache = fullCache.filterKeys(freeAddresses.contains(_)).toMap
-                //_ = { println(s"got a cache $cache") }
                 // keep track of the lexical store cache
                 _ <- effectful { lexicalStoCaches = lexicalStoCaches + ((exp, lenv) -> cache) }
+                // retrieve the lexical path condition
+                pc <- getPc
+                // clean it up such that it only contains information about the lexical variables
+                cleanedPc = pc.gc(cache.values.toSet)
+                // keep track of the lexical pc in the global map
+                _ <- effectful { lexicalPathConditions = lexicalPathConditions + ((exp, lenv) -> cleanedPc) }
                 // then we use the evaluation semantics of the parent to obtain the closure itself
                 result <- super.evalClosure(exp)
             yield result
@@ -303,9 +308,6 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 case SchemeIf(prd, csq, alt, _) => evalIf(prd, csq, alt)
 
                 // only enabled for testing
-                //
-                //
-                //
                 case e @ SchemeFuncall(SchemeVar(Identifier("halt", _)), List(), _) if DEBUG =>
                     throw new Exception(s"halting occcured at ${e.idn.pos}")
 

@@ -10,17 +10,17 @@ object Reindexer:
     type Delta = List[SymChange]
 
     /** Compute a delta where all of the variables in the given parts are tagged with the given tag */
-    def tag(pc: PathCondition, m: SymStore, d: Delta, tag: Position.PTag, except: Set[Var] = Set()): Delta =
-        // we get all the variables
-        val variables = (pc.varsExp ++ SymbolicStore.variableExpressions(m) ++ d.flatMap(_.varsExp)).distinct
-        // we replace them with identitical variables that have different tags
-        variables.map(vrr => SymReplace(vrr, Var(Identifier(vrr.id.name, Identity.tagged(tag)))))
+    //def tag(pc: PathCondition, m: SymStore, d: Delta, tag: Position.PTag, except: Set[Var] = Set()): Delta =
+    //    // we get all the variables
+    //    val variables = (pc.varsExp ++ SymbolicStore.variableExpressions(m) ++ d.flatMap(_.varsExp)).distinct
+    //    // we replace them with identitical variables that have different tags
+    //    variables.map(vrr => SymReplace(vrr, Var(Identifier(vrr.id.name, Identity.tagged(tag)))))
 
-    def stripTags(pc: PathCondition, m: SymStore, d: Delta): Delta =
-        // we get all the variables
-        val variables = (pc.varsExp ++ SymbolicStore.variableExpressions(m) ++ d.flatMap(_.varsExp)).distinct
-        // we replace them with identical variables that have no tags at all
-        variables.map(vrr => SymReplace(vrr, Var(Identifier(vrr.id.name, Identity.none)))).distinct
+    //def stripTags(pc: PathCondition, m: SymStore, d: Delta): Delta =
+    //    // we get all the variables
+    //    val variables = (pc.varsExp ++ SymbolicStore.variableExpressions(m) ++ d.flatMap(_.varsExp)).distinct
+    //    // we replace them with identical variables that have no tags at all
+    //    variables.map(vrr => SymReplace(vrr, Var(Identifier(vrr.id.name, Identity.none)))).distinct
 
     /**
      * We compute which variables need to be renamed by computing a set of changes.

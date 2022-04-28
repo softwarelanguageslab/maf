@@ -55,6 +55,9 @@ trait ScvModAnalysis
     /* Instead of keeping track of each lexical store cache in the closure itself, we keep a map from closures to store caches */
     protected var lexicalStoCaches: Map[(SchemeLambdaExp, Env), StoreCache] = Map()
 
+    /** Idem for the lexical path condition */
+    protected var lexicalPathConditions: Map[(SchemeLambdaExp, Env), PathCondition] = Map()
+
     trait FromContext:
         def pathCondition: PathCondition
         def vars: List[String]

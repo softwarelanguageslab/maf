@@ -14,7 +14,7 @@ object SymbolicStore:
         case _                             => List()
 
     def variables(s: Map[Address, Symbolic]): List[String] = s.values.flatMap(variables).toList
-    def variableExpressions(s: Map[Address, Symbolic]): List[Var] = s.values.flatMap(Symbolic.variableExpressions).toList
+    //def variableExpressions(s: Map[Address, Symbolic]): List[Var] = s.values.flatMap(Symbolic.variableExpressions).toList
 
     def lowest(variables: List[String]): Int =
         lowestOpt(variables).getOrElse(0)

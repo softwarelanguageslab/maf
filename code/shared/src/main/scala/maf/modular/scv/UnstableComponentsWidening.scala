@@ -77,7 +77,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
      * @return
      *   a list of symbolic changes that needs to be applied on the symbolic store and path condition
      */
-    def widen[M[_]: Monad](cmps: List[KPathCondition[Value]], fresh: M[SchemeExp]): M[List[SymChange]] =
+    private def wideningChanges[M[_]: Monad](cmps: List[KPathCondition[Value]], fresh: M[SchemeExp]): M[List[SymChange]] =
         // the last component is the component of which we will change the symbolic representations in the store
         val last: Map[Addr, SchemeExp] = cmps.last.stoCache
 
@@ -93,6 +93,15 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                     case _       => Monad[M].unit(List()) // no key in the last store, so we don't care
             )
             .map(_.flatten)
+
+    def widen[M[_]: Monad](cmps: List[KPathCondition[Value]], fresh: M[SchemeExp], clo: (SchemeLambdaExp, Env)): M[KPathCondition[Value]] = for
+        changes <- wideningChanges(cmps, fresh)
+        // the current context is always the last context in the sequence (by definition)
+        currCtx = cmps.last
+        // apply the changes on the path condition
+        cPc = currCtx.pc.applyChanges(changes)
+        cStoCache = currCtx.stoCache.mapValues(SymChange.applyAll(changes, _)).toMap
+    yield currCtx.copy(pc = cPc, stoCache = cStoCache, changes = changes)
 
     /**
      * This implementation of the build context function optionally widens a context such that termination is obtained.
@@ -137,23 +146,12 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                     // For this, fetch the set of similar components first.
                     similarComponents = getSimilarComponents(clo)
                     // compute the (potentially) widened context
-                    changes <- shouldWiden(similarComponents, ctx) match
+                    widenedCtx <- shouldWiden(similarComponents, ctx) match
                         case Some(unstableSequence) =>
-                            for
-                                st <- scvMonadInstance.get
-                                _ <- effectful { println(s"fresh start ${st.freshVar} and pc ${st.pc}, ${st.pc.highest}") }
-                                _ <- putFresh(st.pc.highest)
-                                w <- widen[EvalM](unstableSequence, fresh)
-                            yield w
-                        case _ => scvMonadInstance.unit(List())
+                            widen[EvalM](unstableSequence, fresh, clo)
+                        case _ => scvMonadInstance.unit(ctx)
 
-                    // apply the changes on the store and path condition
-                    cpc = gcPc.applyChanges(changes)
-                    cStoCache = stoCache.map { case (k, v) =>
-                        k -> changes.foldLeft(v)((e, change) => change.apply(Assertion(e)).asInstanceOf[Assertion].contents)
-                    }.toMap
-
-                    cStoCacheArgs = cStoCache
+                    cStoCacheArgs = widenedCtx.stoCache
                         .filterKeys {
                             case PrmAddr(_) => false
                             case _          => true
@@ -161,10 +159,10 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                         .toMap
                         .values
                     // We might remove too much, but this means that it is less constrained
-                    (finalPc, reindexChanges) = (cpc.gc(cStoCacheArgs.toSet), List[SymChange]())
+                    (finalPc, reindexChanges) = (widenedCtx.pc.gc(cStoCacheArgs.toSet), List[SymChange]())
                     //(finalPc, reindexChanges) = cpc.gc(cStoCacheArgs.toSet).reindexed
                     //_ = { println(s"before gc $cpc, after gc $finalPc") }
-                    cStoCacheReindexed = cStoCache
+                    cStoCacheReindexed = widenedCtx.stoCache
                         .mapValues(vlu => reindexChanges.foldLeft(vlu)((vlu, change) => change.apply(Assertion(vlu)).asInstanceOf[Assertion].contents))
                         .toMap
 
@@ -173,7 +171,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                       finalPc,
                       rangeContract,
                       List(), /* 0-cfa */
-                      (changes ++ reindexChanges).distinct, /* potential widening */
+                      (widenedCtx.changes ++ reindexChanges).distinct, /* potential widening */
                       Map(), /* sym-args in sto cache */
                       cStoCacheReindexed
                     )
@@ -199,7 +197,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                     case (ArgAddr(i), sym) => args(i) -> sym
                     case (addr, sym)       => (addr -> sym)
                 }.toMap
-                //_ <- effectful { println(s"cache ${stoCacheArgs}") }
+                _ <- effectful { println(s"cache ${stoCacheArgs}") }
                 //debug: _ = println(s"injectCtx rewritten stoCache $stoCacheArgs")
                 // put the lexical store cache in the context of this evaluation
                 _ <- putStoreCache(cache ++ stoCacheArgs)
@@ -214,5 +212,33 @@ trait ComponentContentSimilarity extends UnstableComponentsWidening:
     protected def similarityContent(cmp: Component): SimilarityContent = content(cmp)
     protected def getSimilarComponents(clo: (SchemeLambdaExp, Environment[Address])): Set[Component] =
         similarComponents.get(Some(clo)).getOrElse(Set())
+
+/** Upon encountering a component that should be widened, does not widen it at all */
+trait UnstableComponentWideningNoWidening extends UnstableComponentsWidening:
+    override def shouldWiden(cs: Set[Component], nww: KPathCondition[Value]): Option[List[KPathCondition[Value]]] =
+        // since we don't do any widening, we won't singal the need for widening
+        None
+
+/**
+ * Widens by removing the path condition entirely (expect for expressions that **only** contain free variables), and by only keeping non-arguments in
+ * the symbolic store.
+ *
+ * This is equivalent to the Nguyen approach from their 2018 AAM based implementation.
+ */
+trait RemovePathCondition extends UnstableComponentsWidening:
+    override def widen[M[_]: Monad](cmps: List[KPathCondition[Value]], fresh: M[SchemeExp], clo: (SchemeLambdaExp, Env)): M[KPathCondition[Value]] =
+        val currentCtx = cmps.last
+        // we don't care about the pc and stoCache of the current context, we simply fetch pc and cache from lexical scope of called closure
+        val lexPc = lexicalPathConditions(clo)
+        val lexStoCache = lexicalStoCaches(clo)
+        // we must filter the store cache such that it substitutes fresh variables for updated ones
+        for
+            updatedStoCache <- lexStoCache
+                .mapM {
+                    case (k, v) if isUpdated(k) => fresh.map(k -> _)
+                    case (k, v)                 => Monad[M].unit((k -> v))
+                }
+                .map(_.toMap)
+        yield KPathCondition(lexPc, currentCtx.rangeContract, currentCtx.callers, currentCtx.changes, currentCtx.symArgs, updatedStoCache)
 
 trait UnstableWideningWithMinimum(val minUnstableLength: Int) extends ComponentContentSimilarity
