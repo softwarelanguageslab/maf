@@ -5,8 +5,5 @@
 		    (subst* new old (cdr t))))
    (else t)))
 
-(provide/contract 
-  (subst* (-> any? any? any? any?)))
-
-(@unchecked subst* OPQ OPQ OPQ)
-(safe)
+(provide (contract-out
+  (subst* (-> any? any? any? any?))))

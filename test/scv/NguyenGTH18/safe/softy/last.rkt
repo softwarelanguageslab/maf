@@ -1,5 +1,4 @@
 #lang racket
-(require soft-contract/fake-contract)
 
 (define (Y f)
   (λ (y)
@@ -14,5 +13,5 @@
    l))
 
 
-(provide/contract
- [last ((cons/c any/c (listof any/c)) . -> . any/c)])
+(provide (contract-out
+ [last (-> (cons/c any/c (listof any/c)) any/c)]))

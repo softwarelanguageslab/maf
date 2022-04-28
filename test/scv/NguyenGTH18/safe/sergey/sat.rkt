@@ -1,7 +1,5 @@
-; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/sat.sch
 #lang racket
-
-(require soft-contract/fake-contract)
+; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/sat.sch
 
 (define phi
   (λ (x1)

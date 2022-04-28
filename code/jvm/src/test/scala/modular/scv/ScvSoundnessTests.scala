@@ -162,9 +162,9 @@ class ScvNguyenSoundnessTests extends ScvSoundnessTests:
     def name: String = "scv-soundness-tests-no-sharing"
     override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
 
-class ScvNguyenSoundnessTestsFullPathSensitivity extends ScvSoundnessTests:
-    def analysis(program: SchemeExp): Analysis =
-        SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore(program) //WithSharedPathStore(program)
-
-    def name: String = "scv-soundness-tests-full-sensitivity"
-    override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
+//class ScvNguyenSoundnessTestsFullPathSensitivity extends ScvSoundnessTests:
+//    def analysis(program: SchemeExp): Analysis =
+//        SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore(program) //WithSharedPathStore(program)
+//
+//    def name: String = "scv-soundness-tests-full-sensitivity"
+//    override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks

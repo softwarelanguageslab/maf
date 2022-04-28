@@ -1,7 +1,6 @@
-; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/kcfa3.sch
 #lang racket
+; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/kcfa3.sch
 
-(require soft-contract/fake-contract)
 
 ((λ (f1)
    (let ((a (f1 #t)))

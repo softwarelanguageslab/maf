@@ -27,7 +27,11 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
             val answers: Set[(PostValue, PathCondition)] = super.runIntraSemantics(initialState)
             answers.foreach { case (PostValue(sym, vlu), pc) =>
                 //println(s"++ got value $vlu with $pc and $sym")
-                writeMapAddr(cmp, Map(pc.formula -> lattice.setRight(vlu, Set())))
+                val shouldWrite = context(cmp) match
+                    case Some(k: KPathCondition[Value]) => !k.widened
+                    case _                              => true
+                if shouldWrite then writeMapAddr(cmp, Map(pc.formula -> lattice.setRight(vlu, Set())))
+                else println("!!!!!!!!!!!!!!!!!!!!!!!! not writing")
             }
 
             //println("--------------------------------------------------------------------------")
@@ -37,7 +41,7 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
             import FormulaAux.*
 
             context(targetCmp) match
-                case Some(k: KPathCondition[_]) if readMapAddr(targetCmp).size > 0 =>
+                case Some(k: KPathCondition[_]) if readMapAddr(targetCmp).size > 0 && !k.widened =>
                     // Construct a successor state for all the paths originating from the callee
                     val paths = readMapAddr(targetCmp).map { case (formula, (vlu)) =>
                         val syms = lattice.getRight(vlu)

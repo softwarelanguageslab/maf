@@ -246,11 +246,12 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
         case EmptyFormula          => ""
 
     def translateAssertion(e: SchemeExp): String = e match
-        case SchemeVar(identifier)     => translateIdentifier(identifier)
-        case SchemeValue(value, _)     => injectValue(value)
-        case Symbolic.Hole(_)          => s"fresh"
-        case SchemeFuncall(f, args, _) => s"(${translateAssertion(f)} ${args.map(translateAssertion).mkString(" ")})"
-        case _                         => throw new Exception("Unsupported constraint")
+        case SchemeVar(identifier)       => translateIdentifier(identifier)
+        case SchemeValue(value, _)       => injectValue(value)
+        case Symbolic.Hole(_)            => s"fresh"
+        case SchemeFuncall(f, List(), _) => s"${translateAssertion(f)}"
+        case SchemeFuncall(f, args, _)   => s"(${translateAssertion(f)} ${args.map(translateAssertion).mkString(" ")})"
+        case _                           => throw new Exception("Unsupported constraint")
 
     def parseStringToScript(s: String): Script =
         Parser.fromString(s).parseScript

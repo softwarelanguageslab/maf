@@ -244,7 +244,8 @@ object SchemeAnalyses:
             with ScvWithStructs
             with ScvFullPathSensitivity
             with ScvIgnoreFreshBlame
-            with UnstableWideningWithMinimum(2):
+            with UnstableWideningWithMinimum(2)
+            with maf.modular.scv.RemovePathCondition:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
             override def intraAnalysis(

@@ -1,7 +1,5 @@
-; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/loop2.sch
 #lang racket
-
-(require soft-contract/fake-contract)
+; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/loop2.sch
 
 (let ([lp1 2000])
   (let ([a

@@ -7,6 +7,7 @@ import maf.core.Position
 object ContractSchemePrelude extends BaseSchemePrelude:
     override def primDefs = super.primDefs ++ List(
       "any/c" -> "(define any/c (flat (lambda (_) #t)))",
+      "any?" -> "(define (any? v) #t)",
       "fprintf" -> "(define (fprintf . args) '())",
       "empty?" -> "(define empty? null?)",
       "cons/c" -> "(define (cons/c a b) (flat (lambda (v) (and (pair? v) (check a (car v)) (check b (cdr v))))))",

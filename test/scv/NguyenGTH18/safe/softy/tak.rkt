@@ -7,8 +7,6 @@
 	   (tak (- z 1) x y))
       z))
 
-(provide/contract
- (tak (-> number? number? number? number?)))
+(provide (contract-out
+ (tak (-> number? number? number? number?))))
 
-(@unchecked tak OPQ OPQ OPQ)
-(safe)

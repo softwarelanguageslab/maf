@@ -5,7 +5,7 @@
       (cons (car l) (recursive-div2 (cdr (cdr l))))))
 
 (define even-list/c
-  (or/c null? (cons/c any/c (cons/c any/c (recursive-contract even-list/c #:flat)))))
+  (or/c null? (cons/c any/c (cons/c any/c even-list/c))))
 
-(provide/contract
- [recursive-div2 (even-list/c . -> . (listof any/c))])
+(provide (contract-out
+ [recursive-div2 (-> even-list/c (listof any/c))]))

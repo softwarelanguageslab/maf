@@ -1,6 +1,5 @@
-; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/eta.sch
 #lang racket
-(require soft-contract/fake-contract)
+; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/eta.sch
 
 (define (do-something)
   10)

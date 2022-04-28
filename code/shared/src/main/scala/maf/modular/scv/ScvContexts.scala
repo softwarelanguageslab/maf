@@ -67,7 +67,8 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         callers: List[Position],
         changes: List[SymChange],
         symArgs: Map[String, SchemeExp],
-        stoCache: Map[Addr, SchemeExp])
+        stoCache: Map[Addr, SchemeExp],
+        widened: Boolean)
         extends ScvContext[L]:
         override def toString: String = s"KPathCondition($pc, $rangeContract, $stoCache, $changes)"
 
@@ -84,7 +85,7 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
 
         /** KPath condition contexts are equal modulo alpha renaming */
         override def equals(other: Any): Boolean = other match
-            case other: KPathCondition[_] if this.callers == other.callers && this.symArgs == other.symArgs =>
+            case other: KPathCondition[_] if this.callers == other.callers && this.symArgs == other.symArgs && this.widened == other.widened =>
                 val thisR = this.reindexed
                 val otherR = other.reindexed
 
@@ -93,7 +94,7 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
 
         override def hashCode: Int =
             val r = this.reindexed
-            (r.pc, rangeContract, callers, r.changes, symArgs, r.stoCache).##
+            (r.pc, rangeContract, callers, r.changes, symArgs, r.stoCache, widened).##
 
     //s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
     case class NoContext[L]() extends ScvContext[L]
@@ -130,11 +131,11 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
         case _             => f(None)
 
     protected def usingRangeContract[X](cmp: Component)(f: Option[Value] => X): X = context(cmp) match
-        case Some(KPathCondition(_, rangeContractOpt, _, _, _, _)) => f(rangeContractOpt)
-        case _                                                     => f(None)
+        case Some(KPathCondition(_, rangeContractOpt, _, _, _, _, _)) => f(rangeContractOpt)
+        case _                                                        => f(None)
 
     override def fromContext(cmp: Component): FromContext = context(cmp) match
-        case Some(k @ KPathCondition(pc, _, _, _, symArgs, lcache)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
+        case Some(k @ KPathCondition(pc, _, _, _, symArgs, lcache, _)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
             new FromContext:
                 def pathCondition: PathCondition = pc
                 def vars: List[String] =
@@ -157,7 +158,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
                 call: Position,
                 caller: Component
               ): EvalM[ComponentContext] =
-                unit(KPathCondition(PathCondition.empty, rangeContract, List(), List(), Map(), Map()))
+                unit(KPathCondition(PathCondition.empty, rangeContract, List(), List(), Map(), Map(), false))
 
 trait ScvOneContextSensitivity(protected val m: Int) extends ScvKContextSensitivity:
     protected val k: Int = 1

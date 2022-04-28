@@ -1,7 +1,5 @@
-; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/blur.sch
 #lang racket
-
-(require soft-contract/fake-contract)
+; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/blur.sch
 
 (define id (λ (x) x))
 (define blur (λ (y) y))

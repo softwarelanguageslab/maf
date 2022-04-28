@@ -1,5 +1,4 @@
 #lang racket
-(require soft-contract/fake-contract)
 
 (define (tak x y z k)
   (if (not (< y x))
@@ -21,5 +20,5 @@
 (define (tak-main x y z)
   (tak x y z (λ (x) x)))
 
-(provide/contract
- [tak-main (integer? integer? integer? . -> . integer?)])
+(provide (contract-out
+ [tak-main (-> integer? integer? integer? integer?)]))

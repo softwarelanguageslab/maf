@@ -1,7 +1,5 @@
-; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/mj09.sch
 #lang racket
-
-(require soft-contract/fake-contract)
+; https://github.com/dvanhorn/oaam/blob/master/benchmarks/sergey/mj09.sch
 
 (let ([h (λ (b)
 	   (let ([g (λ (z) z)])

@@ -37,7 +37,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
      * A component C is smaller than another component C' if the number of smaller expressions according to maf.language.symbolic.Unstable.size is
      * smaller than the number of smaller expressions in C'.
      */
-    private def isSmaller: Ordering[KPathCondition[Value]] =
+    protected def isSmaller: Ordering[KPathCondition[Value]] =
         new scala.math.Ordering[KPathCondition[Value]]:
             def compare(k1: KPathCondition[Value], k2: KPathCondition[Value]): Int =
                 if k1 == k2 then 0
@@ -101,7 +101,7 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
         // apply the changes on the path condition
         cPc = currCtx.pc.applyChanges(changes)
         cStoCache = currCtx.stoCache.mapValues(SymChange.applyAll(changes, _)).toMap
-    yield currCtx.copy(pc = cPc, stoCache = cStoCache, changes = changes)
+    yield currCtx.copy(pc = cPc, stoCache = cStoCache, changes = changes, widened = true)
 
     /**
      * This implementation of the build context function optionally widens a context such that termination is obtained.
@@ -140,7 +140,8 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                                          List() /* 0-cfa */,
                                          List() /* no widening, so no changes */,
                                          Map() /* sym-args in stoCache */,
-                                         stoCache
+                                         stoCache,
+                                         false
                     )
                     // See if the addition of the new context merits widening.
                     // For this, fetch the set of similar components first.
@@ -173,7 +174,8 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                       List(), /* 0-cfa */
                       (widenedCtx.changes ++ reindexChanges).distinct, /* potential widening */
                       Map(), /* sym-args in sto cache */
-                      cStoCacheReindexed
+                      cStoCacheReindexed,
+                      widenedCtx.widened
                     )
                 //_ <- effectful { println("done computing the context") }
                 yield finalCtx
@@ -239,6 +241,19 @@ trait RemovePathCondition extends UnstableComponentsWidening:
                     case (k, v)                 => Monad[M].unit((k -> v))
                 }
                 .map(_.toMap)
-        yield KPathCondition(lexPc, currentCtx.rangeContract, currentCtx.callers, currentCtx.changes, currentCtx.symArgs, updatedStoCache)
+        yield KPathCondition(lexPc, currentCtx.rangeContract, currentCtx.callers, currentCtx.changes, currentCtx.symArgs, updatedStoCache, true)
+
+/** Computes the longest unstable sequence in similar components (with the restriction that the new component must be the last in the sequence) */
+trait LongestUnstableSequence extends maf.modular.scv.UnstableComponentsWidening:
+    override def shouldWiden(cs: Set[Component], nww: KPathCondition[Value]): Option[List[KPathCondition[Value]]] =
+        val init = cs.collect { case CPathCondition(k, c) =>
+            (k, c)
+        }.toList
+
+        val candidates = init.sortBy(_._1)(isSmaller).map(_._1)
+        ???
+
+    override def widen[M[_]: Monad](cmps: List[KPathCondition[Value]], fresh: M[SchemeExp], clo: (SchemeLambdaExp, Env)): M[KPathCondition[Value]] =
+        ???
 
 trait UnstableWideningWithMinimum(val minUnstableLength: Int) extends ComponentContentSimilarity
