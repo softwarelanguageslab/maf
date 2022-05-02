@@ -161,22 +161,6 @@ object SchemeAnalyses:
             with SchemeModFLocalAnalysisResults:
             override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
 
-    def scvModAnalysis(prg: SchemeExp) =
-        import maf.modular.scv.ScvSymbolicStore.given
-        new ModAnalysis(prg)
-            with ScvBigStepSemantics
-            with SymbolicSchemeConstantPropagationDomain
-            with StandardSchemeModFComponents
-            with LIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFSemanticsM
-            with ScvOneContextSensitivity(0)
-            with ScvIgnoreFreshBlame
-            with UnstableWideningWithMinimum(2):
-            override def intraAnalysis(cmp: Component) = new IntraScvSemantics(cmp) with IntraScvIgnoreFreshBlames with IntraWidening
-            override val sat: ScvSatSolver[Value] =
-                given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver(this)
-
     /**
      * SCV analysis with Racket features:
      *
@@ -205,60 +189,34 @@ object SchemeAnalyses:
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver(this)
 
-    def scvModAnalysisWithRacketFeatures1cfa(prg: SchemeExp) =
-        import maf.modular.scv.ScvSymbolicStore.given
-        new ModAnalysis(prg)
-            with ScvBigStepSemantics
-            with SymbolicSchemeConstantPropagationDomain
-            with StandardSchemeModFComponents
-            with LIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFSemanticsM
-            with ScvOneContextSensitivity(1)
-            with ScvBigStepWithProvides
-            with ScvWithStructs
-            with ScvIgnoreFreshBlame
-            with UnstableWideningWithMinimum(2):
-            protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
+    //def scvModAnalysisWithRacketFeaturesWithPathSensitiveStore(prg: SchemeExp) =
+    //    import maf.modular.scv.ScvSymbolicStore.given
+    //    new ModAnalysis(prg)
+    //        with ScvBigStepSemantics
+    //        with SymbolicSchemeConstantPropagationDomain
+    //        with StandardSchemeModFComponents
+    //        with LIFOWorklistAlgorithm[SchemeExp]
+    //        with SchemeModFSemanticsM
+    //        with ScvOneContextSensitivity(0)
+    //        with ScvBigStepWithProvides
+    //        with ScvWithStructs
+    //        with ScvFullPathSensitivity
+    //        with ScvIgnoreFreshBlame
+    //        with UnstableWideningWithMinimum(2):
+    //        protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
-            override def intraAnalysis(
-                cmp: Component
-              ) = new IntraScvSemantics(cmp)
-                with IntraScvSemanticsWithProvides
-                with IntraScvSemanticsWithStructs
-                with IntraScvIgnoreFreshBlames
-                with IntraWidening
-            override val sat: ScvSatSolver[Value] =
-                given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver(this)
+    //        override def intraAnalysis(
+    //            cmp: Component
+    //          ) = new IntraScvSemantics(cmp)
+    //            with IntraScvSemanticsWithProvides
+    //            with IntraScvSemanticsWithStructs
+    //            with ScvFullPathSensitivityIntra
+    //            with IntraScvIgnoreFreshBlames
+    //            with IntraWidening
 
-    def scvModAnalysisWithRacketFeaturesWithPathSensitiveStore(prg: SchemeExp) =
-        import maf.modular.scv.ScvSymbolicStore.given
-        new ModAnalysis(prg)
-            with ScvBigStepSemantics
-            with SymbolicSchemeConstantPropagationDomain
-            with StandardSchemeModFComponents
-            with LIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFSemanticsM
-            with ScvOneContextSensitivity(0)
-            with ScvBigStepWithProvides
-            with ScvWithStructs
-            with ScvFullPathSensitivity
-            with ScvIgnoreFreshBlame
-            with UnstableWideningWithMinimum(2):
-            protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
-
-            override def intraAnalysis(
-                cmp: Component
-              ) = new IntraScvSemantics(cmp)
-                with IntraScvSemanticsWithProvides
-                with IntraScvSemanticsWithStructs
-                with ScvFullPathSensitivityIntra
-                with IntraScvIgnoreFreshBlames
-                with IntraWidening
-
-            override val sat: ScvSatSolver[Value] =
-                given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver(this)
+    //        override val sat: ScvSatSolver[Value] =
+    //            given SchemeLattice[Value, Address] = lattice
+    //            new JVMSatSolver(this)
 
     /**
      * An analysis with full path sensitivity, with widen of the path condition and symbolic store, but by replacing the path condition and symbolic
@@ -278,7 +236,7 @@ object SchemeAnalyses:
             with ScvFullPathSensitivity
             with ScvIgnoreFreshBlame
             with UnstableWideningWithMinimum(2)
-            with maf.modular.scv.RemovePathCondition:
+            with RemovePathCondition:
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
             override def intraAnalysis(
@@ -294,29 +252,29 @@ object SchemeAnalyses:
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver(this)
 
-    def scvModAnalysisWithRacketFeaturesWithIncomingFlow(prg: SchemeExp) =
-        import maf.modular.scv.ScvSymbolicStore.given
-        new ModAnalysis(prg)
-            with ScvBigStepSemantics
-            with SymbolicSchemeConstantPropagationDomain
-            with StandardSchemeModFComponents
-            with LIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFSemanticsM
-            with ScvOneContextSensitivity(0)
-            with ScvBigStepWithProvides
-            with ScvWithStructs
-            with ScvIgnoreFreshBlame
-            with UnstableWideningWithMinimum(2):
-            protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
+//def scvModAnalysisWithRacketFeaturesWithIncomingFlow(prg: SchemeExp) =
+//    import maf.modular.scv.ScvSymbolicStore.given
+//    new ModAnalysis(prg)
+//        with ScvBigStepSemantics
+//        with SymbolicSchemeConstantPropagationDomain
+//        with StandardSchemeModFComponents
+//        with LIFOWorklistAlgorithm[SchemeExp]
+//        with SchemeModFSemanticsM
+//        with ScvOneContextSensitivity(0)
+//        with ScvBigStepWithProvides
+//        with ScvWithStructs
+//        with ScvIgnoreFreshBlame
+//        with UnstableWideningWithMinimum(2):
+//        protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
-            override def intraAnalysis(
-                cmp: Component
-              ) = new IntraScvSemantics(cmp)
-                with IntraScvSemanticsWithProvides
-                with IntraScvSemanticsWithStructs
-                with IntraScvIgnoreFreshBlames
-                with IntraWidening
+//        override def intraAnalysis(
+//            cmp: Component
+//          ) = new IntraScvSemantics(cmp)
+//            with IntraScvSemanticsWithProvides
+//            with IntraScvSemanticsWithStructs
+//            with IntraScvIgnoreFreshBlames
+//            with IntraWidening
 
-            override val sat: ScvSatSolver[Value] =
-                given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver(this)
+//        override val sat: ScvSatSolver[Value] =
+//            given SchemeLattice[Value, Address] = lattice
+//            new JVMSatSolver(this)

@@ -39,6 +39,11 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         override def printable: Boolean = false
         override def idn: Identity = Identity.none
 
+    /** A SymAddr is used to store a symbolic represnetation of a particular value on a particular address */
+    case class SymAddr(cmp: Component, addr: Address) extends Address:
+        override def printable: Boolean = true
+        override def idn: Identity = Identity.none
+
     /**
      * Keeps track of the path conditions from the last k components
      *
@@ -67,34 +72,15 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         callers: List[Position],
         changes: List[SymChange],
         symArgs: Map[String, SchemeExp],
-        stoCache: Map[Addr, SchemeExp],
         widened: Boolean)
         extends ScvContext[L]:
-        override def toString: String = s"KPathCondition($pc, $rangeContract, $stoCache, $changes)"
-
-        /** Computes the set of symbolic arguments of the function call */
-        def args: Set[SchemeExp] =
-            stoCache.collect { case (ArgAddr(_), sym) => sym }.toSet ++ symArgs.values.toSet
+        override def toString: String = s"KPathCondition($pc, $rangeContract, $changes)"
 
         def reindexed: KPathCondition[L] =
-            val thisChanges = Reindexer.computeRenaming(this.pc, this.stoCache, this.changes)
+            val thisChanges = Reindexer.computeRenaming(this.pc, Map(), this.changes)
             val thisReindexedPc = this.pc.applyChanges(thisChanges)
-            val thisStoCacheReindex = this.stoCache.mapValues(SymChange.applyAll(thisChanges, _)).toMap
             val thisChangesReindex = this.changes.map(_.applyChanges(thisChanges))
-            this.copy(pc = thisReindexedPc, stoCache = thisStoCacheReindex, changes = thisChangesReindex)
-
-        /** KPath condition contexts are equal modulo alpha renaming */
-        override def equals(other: Any): Boolean = other match
-            case other: KPathCondition[_] if this.callers == other.callers && this.symArgs == other.symArgs && this.widened == other.widened =>
-                val thisR = this.reindexed
-                val otherR = other.reindexed
-
-                (thisR.pc == otherR.pc) && (thisR.stoCache == otherR.stoCache) && (thisR.changes == otherR.changes)
-            case _ => false
-
-        override def hashCode: Int =
-            val r = this.reindexed
-            (r.pc, rangeContract, callers, r.changes, symArgs, r.stoCache, widened).##
+            this.copy(pc = thisReindexedPc, changes = thisChangesReindex)
 
     //s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
     case class NoContext[L]() extends ScvContext[L]
@@ -119,6 +105,56 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         caller: Component
       ): ComponentContext = NoContext() // contexts will be created by overriding them in the semantics
 
+trait StoreAllocateSymbolicValues extends ScvContextSensitivity, ScvModAnalysis, ScvUpdateCount:
+    /**
+     * Trait that can be mixed in when we want to allocate the symbolic representation of function arguments, and the free variables of a function
+     *
+     * @param symArgs
+     *   the list of arguments corresponding to the arguments of the function (in-order)
+     */
+    trait StoreAllocateContextBuilder(symArgs: List[Option[SchemeExp]]) extends ContextBuilder:
+        override def beforeCall(cmp: Component, prs: List[Identifier], clo: (SchemeLambdaExp, Environment[Address])): EvalM[Unit] =
+            effectful {
+                // store allocate the symbolic arguments of the function
+                prs.zip(0 until prs.size).zip(symArgs).foreach {
+                    case ((par, i), Some(sym)) =>
+                        writeAddr(
+                          SymAddr(cmp, ArgAddr(i)),
+                          lattice.setRight(lattice.nil, Set(sym))
+                        )
+                    case (_, _) => ()
+                }
+                // store allocate the free variables of the function
+                val freeVarsStoCache = lexicalStoCaches(clo).filterKeys(k => !isUpdated(k))
+                freeVarsStoCache.foreach { case (addr, sym) => writeAddr(SymAddr(cmp, addr), lattice.setRight(lattice.nil, Set(sym))) }
+            }
+
+    /** Retrieve the store cache for a particular component */
+    def lookupStoCache(cmp: Component): Map[Address, Symbolic] =
+        // TODO: make this less expensive, by having a hierarchical map instead of going over all addresses in the global store
+        store
+            .collect { case (SymAddr(`cmp`, addr), vlu) =>
+                val sym = lattice.getRight(vlu).toList
+                // assertion must be true otherwise we should have a different path
+                assert(sym.size <= 1)
+                (addr -> sym.headOption)
+            }
+            .collect { case (a, Some(sym)) =>
+                (a -> sym)
+            }
+            .toMap
+
+    override def fromContext(cmp: Component): FromContext = context(cmp) match
+        case Some(k @ KPathCondition(pc, _, _, _, symArgs, _)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
+            new FromContext:
+                def pathCondition: PathCondition = pc
+                def vars: List[String] =
+                    SymbolicStore.variables(lexStoCache)
+
+                def symbolic: Map[String, Option[SchemeExp]] = symArgs.mapValues(Some(_)).toMap
+                val lexStoCache: Map[Address, SchemeExp] = lookupStoCache(cmp)
+        case _ => EmptyContext
+
 trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis with ScvUpdateCount:
     import evalM.*
     import maf.core.Monad.MonadSyntaxOps
@@ -126,29 +162,23 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
     protected def k: Int
     protected def m: Int
 
+    override def fromContext(cmp: Component): FromContext = context(cmp) match
+        case Some(k @ KPathCondition(pc, _, _, _, symArgs, _)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
+            new FromContext:
+                def pathCondition: PathCondition = PathCondition.empty
+                def vars: List[String] = List()
+
+                def symbolic: Map[String, Option[SchemeExp]] = Map()
+                val lexStoCache: Map[Address, SchemeExp] = Map()
+        case _ => EmptyContext
+
     protected def usingContract[X](cmp: Component)(f: Option[(List[Value], Value, List[SchemeExp], Identity)] => X): X = contractContext(cmp) match
         case Some(context) => f(Some(context.domains, context.rangeContract, context.args, context.idn))
         case _             => f(None)
 
     protected def usingRangeContract[X](cmp: Component)(f: Option[Value] => X): X = context(cmp) match
-        case Some(KPathCondition(_, rangeContractOpt, _, _, _, _, _)) => f(rangeContractOpt)
-        case _                                                        => f(None)
-
-    override def fromContext(cmp: Component): FromContext = context(cmp) match
-        case Some(k @ KPathCondition(pc, _, _, _, symArgs, lcache, _)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
-            new FromContext:
-                def pathCondition: PathCondition = pc
-                def vars: List[String] =
-                    k.args
-                        .flatMap(PathCondition.visit[IdentityMonad.Id, List[String]](_) {
-                            case SchemeVar(name)       => Some(List(name.name))
-                            case SchemeVarLex(name, _) => Some(List(name.name))
-                            case _                     => None
-                        })
-                        .toList ++ k.pc.vars
-                def symbolic: Map[String, Option[SchemeExp]] = symArgs.mapValues(Some(_)).toMap
-                def lexStoCache: Map[Address, SchemeExp] = lcache
-        case _ => EmptyContext
+        case Some(KPathCondition(_, rangeContractOpt, _, _, _, _)) => f(rangeContractOpt)
+        case _                                                     => f(None)
 
     override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None): ContextBuilder =
         new ContextBuilder:
@@ -158,7 +188,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
                 call: Position,
                 caller: Component
               ): EvalM[ComponentContext] =
-                unit(KPathCondition(PathCondition.empty, rangeContract, List(), List(), Map(), Map(), false))
+                unit(KPathCondition(PathCondition.empty, rangeContract, List(), List(), Map(), false))
 
 trait ScvOneContextSensitivity(protected val m: Int) extends ScvKContextSensitivity:
     protected val k: Int = 1

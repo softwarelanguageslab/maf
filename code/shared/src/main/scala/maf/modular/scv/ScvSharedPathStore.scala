@@ -12,7 +12,10 @@ case class PcAddr(pc: PathCondition) extends Address:
     override def toString: String = s"pc($pc)"
 
 /** A full path sensitive analysis that shares path conditions from callees with callers */
-trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensitiveSymbolicStore.GlobalPathSensitiveSymbolicStore:
+trait ScvFullPathSensitivity
+    extends BaseScvBigStepSemantics
+    with ScvPathSensitiveSymbolicStore.GlobalPathSensitiveSymbolicStore
+    with StoreAllocateSymbolicValues:
     override def intraAnalysis(component: Component): ScvFullPathSensitivityIntra
 
     trait ScvFullPathSensitivityIntra extends BaseIntraScvSemantics with GlobalMapStoreIntra:
@@ -40,6 +43,8 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
         override protected def afterCall(vlu: Value, targetCmp: Component): EvalM[Value] =
             import FormulaAux.*
 
+            val targetStoCache = lookupStoCache(targetCmp)
+
             context(targetCmp) match
                 case Some(k: KPathCondition[_]) if readMapAddr(targetCmp).size > 0 && !k.widened =>
                     // Construct a successor state for all the paths originating from the callee
@@ -47,7 +52,7 @@ trait ScvFullPathSensitivity extends BaseScvBigStepSemantics with ScvPathSensiti
                         val syms = lattice.getRight(vlu)
                         //println(s"== formula: $formula and vlu: $vlu with $syms, ${k.changes}")
                         val pc = PathCondition(formula)
-                        val gcPc = pc.gc(k.args)
+                        val gcPc = pc.gc(targetStoCache.values.toSet)
                         //println(s"== formula_gc: pc $gcPc")
                         val revertedPc = k.changes.reverse.foldLeft(gcPc)((pc, change) => pc.revert(change))
 

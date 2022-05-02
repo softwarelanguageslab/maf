@@ -19,12 +19,18 @@ import maf.modular.scv.RemovePathCondition
 /** Keeps track of the components that where widened using the Nguyen widening strategy */
 object TrackWidenedComponents:
     trait TrackComponentWidening extends RemovePathCondition with ComponentContentSimilarity:
-        var widenedComponents: List[KPathCondition[Value]] = List()
+        var widenedComponents: List[(KPathCondition[Value], Map[Address, Symbolic])] = List()
 
-        override def widen[M[_]: Monad](cmps: List[KPathCondition[Value]], fresh: M[SchemeExp], clo: (SchemeLambdaExp, Env)): M[KPathCondition[Value]] =
-            val currentCtx = cmps.last
-            widenedComponents = currentCtx :: widenedComponents
-            super.widen(cmps, fresh, clo)
+        override def widen[M[_]: Monad](
+            cmps: List[Component],
+            fresh: M[SchemeExp],
+            ctx: KPathCondition[Value],
+            clo: (SchemeLambdaExp, Env),
+            stoCache: Map[Address, Symbolic]
+          ): M[KPathCondition[Value]] =
+            val currentCtx = ctx
+            widenedComponents = (currentCtx, stoCache) :: widenedComponents
+            super.widen(cmps, fresh, ctx, clo, stoCache)
 
     def analysis(prg: SchemeExp) =
         import maf.modular.scv.ScvSymbolicStore.given
@@ -74,7 +80,7 @@ object TrackWidenedComponents:
                 val anl = analysis(program)
                 try
                     anl.analyze()
-                    (benchmark -> anl.widenedComponents.map(_.stoCache.values.toSet))
+                    (benchmark -> anl.widenedComponents.map { case (k, cache) => cache.values.toSet })
                 catch case _ => (benchmark -> List())
             )
             .toMap

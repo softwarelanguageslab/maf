@@ -28,8 +28,8 @@ object CountFalsePositives:
 
     def analyses: List[((SchemeExp => ScvBigStepSemantics), String)] = List(
       (SchemeAnalyses.scvModAnalysisWithRacketFeatures, "scvModf"),
-      (SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore, "scvModF-sensitive"),
-      (SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithIncomingFlow, "scvModF-incoming-flow"),
+      //(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore, "scvModF-sensitive"),
+      //(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithIncomingFlow, "scvModF-incoming-flow"),
       (SchemeAnalyses.scvModAnalysisRktFsR, "scvModF-rkt-fs-r")
     )
 

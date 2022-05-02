@@ -58,6 +58,9 @@ trait BaseSchemeModFSemanticsM
             caller: Component
           ): M[ComponentContext]
 
+        /** Hook that gets executed after the context has been allocated, but before the function is (semantically) being called */
+        def beforeCall(cmp: Component, prs: List[Identifier], clo: (SchemeLambdaExp, Environment[Address])): M[Unit] = Monad[M].unit(())
+
     protected object DefaultContextBuilder extends ContextBuilder:
         def allocM(
             clo: (SchemeLambdaExp, Environment[Address]),
@@ -225,6 +228,7 @@ trait BaseSchemeModFSemanticsM
                                 targetCall = Call(clo, context)
                                 targetCmp = newComponent(targetCall)
                                 _ = bindArgs(targetCmp, prs, argVals)
+                                _ <- ctx.beforeCall(targetCmp, prs, clo)
                                 result = call(targetCmp)
                                 updatedResult <- afterCall(result, targetCmp)
                             yield updatedResult
@@ -241,6 +245,7 @@ trait BaseSchemeModFSemanticsM
                                 targetCmp = newComponent(targetCall)
                                 _ = bindArgs(targetCmp, prs, fixedArgVals)
                                 _ = bindArg(targetCmp, vararg, varArgVal)
+                                _ <- ctx.beforeCall(targetCmp, prs, clo)
                                 result = call(targetCmp)
                                 updatedResult <- afterCall(result, targetCmp)
                             yield updatedResult
