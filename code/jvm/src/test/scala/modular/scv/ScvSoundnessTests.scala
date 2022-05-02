@@ -160,7 +160,10 @@ class ScvNguyenSoundnessTests extends ScvSoundnessTests:
         SchemeAnalyses.scvModAnalysisWithRacketFeatures(program) //WithSharedPathStore(program)
 
     def name: String = "scv-soundness-tests-no-sharing"
-    override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
+    override def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks -- /* unable to generate inputs --> */ Set(
+      "test/scv/NguyenGTH18/safe/softy/subst.rkt",
+      "test/scv/NguyenGTH18/safe/softy/recursive-div2.rkt",
+    )
 
 //class ScvNguyenSoundnessTestsFullPathSensitivity extends ScvSoundnessTests:
 //    def analysis(program: SchemeExp): Analysis =
