@@ -195,7 +195,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                                 unit(())
                             },
                             symIfFeasible(call, `false?`) { /* contract is invalid */
-                                impure { writeBlame(ContractValues.Blame(exp.idn, fexp.idn)) }.flatMap(_ => void)
+                                debugBlame >>> impure { writeBlame(ContractValues.Blame(exp.idn, fexp.idn)) }.flatMap(_ => void)
                             }
                           )
                       }) >>> unit(())
@@ -531,7 +531,6 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             monIdn: Identity,
             assumed: Boolean = false
           ): EvalM[Value] =
-            track(AppFlat, (contract, value))
             val call = SchemeFuncall(contract.fexp, List(expr), monIdn)
             val resultSymbolic = symCall(contract.sym, List(value.symbolic))
             val ctx = buildCtx(List(value.symbolic), None)
@@ -546,11 +545,19 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 fls =
                     if (!assumed) then
                         ifFeasible(`false?`, pv) {
-                            impure { writeBlame(ContractValues.Blame(expr.idn, monIdn)) }.flatMap(_ => void[Value])
+                            debugBlame >>> impure { writeBlame(ContractValues.Blame(expr.idn, monIdn)) }.flatMap(_ => void[Value])
                         }
                     else void
                 result <- nondet(tru, fls)
             yield result
+
+        protected def debugBlame: EvalM[Unit] =
+            if DEBUG then
+                for
+                    pc <- getPc
+                    m <- getStoreCache
+                yield ()
+            else unit(())
 
         protected def monArr(contract: ContractValues.Grd[Value], value: PostValue, expression: SchemeExp, monIdn: Identity): EvalM[Value] =
             // TODO: check that the value is indeed a function value, otherwise this should result in a blame (also check which blame)
