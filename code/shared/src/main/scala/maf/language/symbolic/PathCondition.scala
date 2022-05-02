@@ -236,4 +236,6 @@ case class PathCondition(formula: Formula):
         case Assertion(ass)  => Symbolic.variables(ass)
         case EmptyFormula    => List()
 
+    def stripIdn: PathCondition = this.copy(formula = Symbolic.stripIdn(formula))
+
     def vars: List[String] = vars(this.formula)

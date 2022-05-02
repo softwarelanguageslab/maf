@@ -44,9 +44,11 @@ trait ScvFullPathSensitivity
             import FormulaAux.*
 
             val targetStoCache = lookupStoCache(targetCmp)
+            val pcs = readMapAddr(targetCmp)
 
+            // TODO: add the maximum number of shared path conditions as a parameter of the analysis (currently hard coded as 10)
             context(targetCmp) match
-                case Some(k: KPathCondition[_]) if readMapAddr(targetCmp).size > 0 && !k.widened =>
+                case Some(k: KPathCondition[_]) if readMapAddr(targetCmp).size > 0 && readMapAddr(targetCmp).size < 10 && !k.widened =>
                     // Construct a successor state for all the paths originating from the callee
                     val paths = readMapAddr(targetCmp).map { case (formula, (vlu)) =>
                         val syms = lattice.getRight(vlu)

@@ -100,6 +100,22 @@ object Symbolic:
         // Anything else is not a valid assertion
         case _ => false
 
+    /** Strips any identity information from the given symbolic expression */
+    def stripIdn(sym: Symbolic): Symbolic = sym match
+        case SchemeFuncall(f, args, _)            => SchemeFuncall(f, args, Identity.none)
+        case SchemeVar(Identifier(name, _))       => SchemeVar(Identifier(name, Identity.none))
+        case SchemeVarLex(Identifier(name, _), _) => SchemeVar(Identifier(name, Identity.none))
+        case SchemeValue(value, _)                => SchemeValue(value, Identity.none)
+
+    /** Strips any identity information from the assertions in the formula */
+    def stripIdn(formula: Formula): Formula =
+        import FormulaAux.*
+        formula match
+            case Conjunction(cs) => conj(cs.map(stripIdn).toList: _*)
+            case Disjunction(ds) => disj(ds.map(stripIdn).toList: _*)
+            case Assertion(ass)  => Assertion(stripIdn(ass))
+            case EmptyFormula    => EmptyFormula
+
 /** An assertion formed by constructing a scheme expression that can be interpreted as a boolean assertion */
 case class Assertion(contents: SchemeExp) extends Formula:
     val elements: Set[Formula] = Set(this)

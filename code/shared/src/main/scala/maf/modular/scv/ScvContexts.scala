@@ -7,6 +7,7 @@ import maf.language.scheme.*
 import maf.language.symbolic.*
 import maf.modular.scheme.modf.*
 import maf.core.IdentityMonad
+import scala.runtime.ScalaRunTime
 
 /*
  * Soft contract verification uses the following forms of
@@ -82,6 +83,14 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
             val thisChangesReindex = this.changes.map(_.applyChanges(thisChanges))
             this.copy(pc = thisReindexedPc, changes = thisChangesReindex)
 
+        override def equals(other: Any): Boolean = other match
+            case (k: KPathCondition[_]) =>
+                k.pc.stripIdn == pc.stripIdn && k.rangeContract == rangeContract && k.callers == callers && k.changes == changes && k.symArgs == symArgs && k.widened == widened
+            case _ => false
+
+        lazy val cached = ScalaRunTime._hashCode((pc.stripIdn, rangeContract, callers, changes, symArgs, widened))
+        override def hashCode: Int = cached
+
     //s"KPathCondition(rangeContract = $rangeContract, pc = ${pc}, sstore = ${stoCache}, changes = ${changes}, symARgs = ${symArgs})"
     case class NoContext[L]() extends ScvContext[L]
 
@@ -136,8 +145,11 @@ trait StoreAllocateSymbolicValues extends ScvContextSensitivity, ScvModAnalysis,
             .collect { case (SymAddr(`cmp`, addr), vlu) =>
                 val sym = lattice.getRight(vlu).toList
                 // assertion must be true otherwise we should have a different path
-                assert(sym.size <= 1)
-                (addr -> sym.headOption)
+                if sym.size > 1 then
+                    // this is an imprecise approximation for when an address contains the two symbolic representations
+                    (addr -> None
+                )
+                else (addr -> sym.headOption)
             }
             .collect { case (a, Some(sym)) =>
                 (a -> sym)
