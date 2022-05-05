@@ -54,7 +54,7 @@ class WidenNesting(maxDeep: Int, maxWide: Int) extends SymbolicWidenPolicy:
                 Funcall(replacedFexp, replacedFargs._1, idn)
 
             case Var(_) | Value(_, _) => v
-            case _                    => Hole()
+    //case _                    => Hole()
 
     def widen(v: Symbolic, rest: Set[Symbolic]): Symbolic = visit(v, 0, 0)
 

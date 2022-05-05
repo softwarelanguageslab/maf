@@ -68,23 +68,35 @@ object Symbolic:
 
     object SymbolicCompiler extends BaseSchemeCompiler:
         override def _compile(exp: SExp): TailRec[SchemeExp] = exp match
-            case SExpId(Identifier("□", _)) => done(Hole())
+            case SExpId(Identifier("□", _)) => done(□)
             case _                          => super._compile(exp)
 
     object Parser:
         def parse(s: String, tag: PTag = noTag): List[SchemeExp] = SExpParser.parse(s, tag).map(SymbolicCompiler.compile)
 
     /** An alias for a Hole. */
-    def `□` : Symbolic = Hole()
+    def `□` : Symbolic = Hole(SchemeVar(Identifier("fresh", Identity.none)))
+    def `□`(v: Symbolic): Symbolic = Hole(v)
 
-    /** A hole is a symbolic representation that must be later filled in with an actual fresh symbolic variable */
+    /**
+     * A hole is a symbolic representation that must be later filled in with an actual fresh symbolic variable.
+     *
+     * Holes can have a rank, that can be used to identify multiple occurances of the same hole
+     */
     object Hole:
-        def unapply(v: SchemeExp): Option[(Identity)] = v match
-            case SchemeFuncall(SchemeVar(Identifier("fresh", _)), _, idn) => Some(idn)
-            case _                                                        => None
+        def unapply(v: SchemeExp): Option[(Symbolic)] = v match
+            case SymbolicHole(v) => Some(v)
+            case _               => None
 
-        def apply(): SchemeExp =
-            SchemeFuncall(SchemeVar(Identifier("fresh", Identity.none)), List(), Identity.none)
+        def apply(v: SchemeExp): SchemeExp =
+            SymbolicHole(v)
+
+    /**
+     * The semantics of a hole is that it is "absorbing", which means that if it is joined with a particular symbolic expression (or assertion) it can
+     * absorb matching parts of that expression (i.e. replace it with a hole).
+     *
+     * Example: □(+ x0 1) matches (+ (+ (+ x0 1) 1) 1) such that □ absorbs everything and (+ (+ x0 1) □) is returned.
+     */
 
     /** Checks whether the given assertion has a valid form */
     def isValid(ass: SchemeExp): Boolean = ass match

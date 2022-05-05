@@ -1,7 +1,8 @@
 package maf.modular.scv
 
 import maf.language.symbolic.Symbolic.*
-import maf.language.scheme.SchemeExp
+import maf.language.scheme.*
+import maf.core.Identifier
 import maf.core.Identity
 import maf.language.ContractScheme.ContractValues.*
 
@@ -13,7 +14,7 @@ trait ScvIgnoreFreshBlame extends BaseScvBigStepSemantics:
 
     trait IntraScvIgnoreFreshBlames extends BaseIntraScvSemantics:
         override def eval(e: SchemeExp): EvalM[Value] = e match
-            case Hole(idn) =>
+            case SchemeFuncall(SchemeVar(Identifier("fresh", _)), _, idn) =>
                 ignoreIdns = ignoreIdns + idn
                 super.eval(e)
 

@@ -701,3 +701,29 @@ case class MatchExpr(value: SchemeExp, clauses: List[MatchExprClause], idn: Iden
     def fv: Set[String] = value.fv ++ clauses.flatMap(_.fv)
     def subexpressions: List[Expression] = value :: clauses.flatMap(_.subexpressions)
     def label = MEX
+
+/**
+ * A "hole" that is used in symbolic expression to absorb symbolic expressions corresponding to that hole
+ *
+ * @param s
+ *   the expression that must be a subexpression of this hole
+ */
+case class SymbolicHole(s: SchemeExp) extends SchemeExp:
+    def idn: Identity = Identity.none
+    def fv: Set[String] = Set()
+    def subexpressions: List[Expression] = List()
+    def label = HOL
+
+/**
+ * A symbolic variable is like a regular SchemeVar, but also keeps track of its corresponding value using an address in the global store
+ *
+ * @param nam
+ *   the name of the variable
+ * @param adr
+ *   the address of the value in the global store the symbolic representation corresponds to
+ */
+case class SymbolicVar(nam: String, adr: maf.core.Address) extends SchemeExp:
+    def idn: Identity = Identity.none
+    def fv: Set[String] = Set()
+    def subexpressions: List[Expression] = List()
+    def label = SVR

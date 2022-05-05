@@ -49,3 +49,7 @@ enum Label:
 
     // Match expressions
     case MEX // match expression
+
+    // Symbolic language
+    case HOL // a symbolic hole
+    case SVR // a symbolic variable

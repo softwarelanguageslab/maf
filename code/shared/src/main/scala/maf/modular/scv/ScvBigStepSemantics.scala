@@ -195,12 +195,15 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                                 unit(())
                             },
                             symIfFeasible(call, `false?`) { /* contract is invalid */
-                                debugBlame >>> impure { writeBlame(ContractValues.Blame(exp.idn, fexp.idn)) }.flatMap(_ => void)
+                                doBlame(ContractValues.Blame(exp.idn, fexp.idn))
                             }
                           )
                       }) >>> unit(())
                   )
             )
+
+        protected def doBlame[T](blame: Blame): EvalM[T] =
+            impure { writeBlame(blame) }.flatMap(_ => void)
 
         /** Adds support for opaque values in primitives */
         private def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, PostValue)]): M[Value] =
@@ -545,7 +548,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 fls =
                     if (!assumed) then
                         ifFeasible(`false?`, pv) {
-                            debugBlame >>> impure { writeBlame(ContractValues.Blame(expr.idn, monIdn)) }.flatMap(_ => void[Value])
+                            doBlame(ContractValues.Blame(expr.idn, monIdn))
                         }
                     else void
                 result <- nondet(tru, fls)
