@@ -96,7 +96,7 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
 object SingleDotGraph extends DotGraph()
 
 object DotGraph:
-    def empty[N <: GraphElement, E <: GraphElement] = new DotGraph().G.typeclass.empty
+    def empty[N <: GraphElement, E <: GraphElement] = new DotGraph[N, E]().G.typeclass.empty
 
     // Returns a boolean indicating whether the conversion was successful.
     def createPNG(dotFile: String, removeSource: Boolean = false): Boolean =

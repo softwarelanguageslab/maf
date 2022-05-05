@@ -34,7 +34,6 @@ trait ScvFullPathSensitivity
                     case Some(k: KPathCondition[Value]) => !k.widened
                     case _                              => true
                 if shouldWrite then writeMapAddr(cmp, Map(pc.formula -> lattice.setRight(vlu, Set())))
-                else println("!!!!!!!!!!!!!!!!!!!!!!!! not writing")
             }
 
             //println("--------------------------------------------------------------------------")

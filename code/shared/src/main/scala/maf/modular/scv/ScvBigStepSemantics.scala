@@ -556,6 +556,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 for
                     pc <- getPc
                     m <- getStoreCache
+                    _ <- effectful { println(s"writing blame with $pc and $m") }
                 yield ()
             else unit(())
 

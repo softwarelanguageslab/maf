@@ -160,7 +160,6 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                     case (ArgAddr(i), sym) => args(i) -> sym
                     case (addr, sym)       => (addr -> sym)
                 }.toMap
-                _ <- effectful { println(s"cache ${stoCacheArgs}") }
                 //debug: _ = println(s"injectCtx rewritten stoCache $stoCacheArgs")
                 // put the lexical store cache in the context of this evaluation
                 _ <- putStoreCache(cache ++ stoCacheArgs)
