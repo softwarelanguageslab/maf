@@ -8,7 +8,7 @@ import maf.language.ContractScheme.ContractValues.*
 
 /** When mixed in ignores all the blame on locations of a "fresh" expression */
 trait ScvIgnoreFreshBlame extends BaseScvBigStepSemantics:
-    private var ignoreIdns: Set[Identity] = Set()
+    protected var ignoreIdns: Set[Identity] = Set()
 
     override def intraAnalysis(e: Component): IntraScvIgnoreFreshBlames
 

@@ -34,6 +34,9 @@ sealed trait Formula:
     /** The number of assertions in the path condition */
     def size: Int
 
+    /** Replace a particular symbolic expression with another one */
+    def replace(from: SchemeExp, to: SchemeExp): Formula
+
 /** An empty formula */
 case object EmptyFormula extends Formula:
     def elements: Set[Formula] = Set(this)
@@ -42,6 +45,7 @@ case object EmptyFormula extends Formula:
     def splitConj: List[Formula] = List()
     def splitDisj: List[Formula] = List()
     def size: Int = 0
+    def replace(from: SchemeExp, to: SchemeExp): Formula = EmptyFormula
 
 object Symbolic:
     type Symbolic = SchemeExp
@@ -144,6 +148,14 @@ case class Assertion(contents: SchemeExp) extends Formula:
 
     def size: Int = 1
 
+    def replace(from: SchemeExp, to: SchemeExp) =
+        def replaceContents(contents: SchemeExp): SchemeExp = contents match
+            case e if e == from              => to
+            case SchemeFuncall(f, args, idn) => SchemeFuncall(replaceContents(f), args.map(replaceContents), idn)
+            case e                           => e
+
+        if from == to then this else Assertion(replaceContents(contents))
+
 /**
  * A conjunction of two (or more) formulas
  *
@@ -165,6 +177,8 @@ case class Conjunction(val elements: Set[Formula]) extends Formula:
     def splitDisj: List[Formula] = List(this)
 
     def size: Int = elements.map(_.size).sum
+
+    def replace(from: SchemeExp, to: SchemeExp): Formula = Conjunction(elements.map(_.replace(from, to)))
 
 /**
  * A disjunction of two (or more) formulas
@@ -188,6 +202,8 @@ case class Disjunction(val elements: Set[Formula]) extends Formula:
     def splitDisj: List[Formula] = elements.toList
 
     def size: Int = elements.map(_.size).sum
+
+    def replace(from: SchemeExp, to: SchemeExp): Formula = Disjunction(elements.map(_.replace(from, to)))
 
 /** Auxiliary functions */
 object FormulaAux:

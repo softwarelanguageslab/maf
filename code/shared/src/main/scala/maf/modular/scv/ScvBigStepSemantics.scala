@@ -548,7 +548,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                 fls =
                     if (!assumed) then
                         ifFeasible(`false?`, pv) {
-                            doBlame(ContractValues.Blame(expr.idn, monIdn))
+                            doBlame[Value](ContractValues.Blame(expr.idn, monIdn))
                         }
                     else void
                 result <- nondet(tru, fls)

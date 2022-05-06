@@ -67,6 +67,13 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain {
 
     final lazy val scvMonadInstance: StateOps[State, ScvEvalM] = MonadStateT.stateInstance[State, SymbolicSet]
 
+    def scoped[T](m: EvalM[T]): EvalM[T] =
+        for
+            st <- scvMonadInstance.get
+            result <- m
+            _ <- scvMonadInstance.put(st)
+        yield result
+
     def withEnvM[X](f: Environment[Address] => EvalM[Environment[Address]])(ev: EvalM[X]): EvalM[X] =
         import scvMonadInstance.{get, impure, put, withState}
 
@@ -200,13 +207,6 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain {
             _ <- scvMonadInstance.put(newSt.copy(freshVar = oldSt.freshVar, vars = oldSt.vars))
         yield result
 
-    /** Generates a fresh symbolic variable */
-    protected def fresh: EvalM[SchemeExp] =
-        for
-            st <- scvMonadInstance.get
-            _ <- scvMonadInstance.put(st.copy(freshVar = st.freshVar + 1, vars = s"x${st.freshVar}" :: st.vars))
-        yield SchemeVar(Identifier(s"x${st.freshVar}", Identity.none))
-
     /** Executes both computations non-determinstically */
     protected def nondet[X](tru: EvalM[X], fls: EvalM[X]): EvalM[X] =
         nondets(Set(tru, fls))
@@ -253,21 +253,23 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain {
             case Some(sym) => tag(sym)(v)
             case _         => scvMonadInstance.unit(v)
 
-    /** Write a symbolic representation to the store cache */
-    protected def writeSymbolic(addr: Addr)(e: Symbolic): EvalM[Symbolic] =
-        for
-            st <- scvMonadInstance.get
-            cache <- scvMonadInstance.unit(st.store)
-            _ <- scvMonadInstance.put(st.copy(store = cache.updated(addr, e)))
-        yield e
-
     protected def optional[X](m: Option[EvalM[X]]): EvalM[Unit] = m match
         case Some(am) => am.flatMap(_ => scvMonadInstance.unit(()))
         case None     => scvMonadInstance.unit(())
 
     override def intraAnalysis(cmp: Component): BaseIntraAnalysis
 
+    protected def fresh: EvalM[SchemeExp] =
+        for
+            st <- scvMonadInstance.get
+            _ <- scvMonadInstance.put(st.copy(freshVar = st.freshVar + 1, vars = s"x${st.freshVar}" :: st.vars))
+        yield SchemeVar(Identifier(s"x${st.freshVar}", Identity.none))
+
     trait BaseIntraAnalysis extends BigStepModFIntraT:
+
+        /** Generates a fresh symbolic variable */
+        protected def fresh: EvalM[SchemeExp] = outer.fresh
+
         /** We override `writeAddr` so that symbolic information is not leaked in the global store (except for return values, if desired) */
         override def writeAddr(addr: Addr, value: Value): Boolean =
             super.writeAddr(addr, lattice.setRight(value, Set()))
@@ -281,6 +283,14 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain {
                 )
                 _ <- effectful { writeAddr(a, v.value) }
             yield ()
+
+        /** Write a symbolic representation to the store cache */
+        protected def writeSymbolic(addr: Addr)(e: Symbolic): EvalM[Symbolic] =
+            for
+                st <- scvMonadInstance.get
+                cache <- scvMonadInstance.unit(st.store)
+                _ <- scvMonadInstance.put(st.copy(store = cache.updated(addr, e)))
+            yield e
 
         given SchemePrimM[EvalM, Address, Value] with
             export scvMonadInstance._
