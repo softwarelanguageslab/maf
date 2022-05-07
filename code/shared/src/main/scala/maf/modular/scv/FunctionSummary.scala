@@ -69,7 +69,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
          * @param vars
          *   a list of variables used in the current component. Any clashing variables in `pc` (not included the ones in `to`) will be alpha renamed.
          */
-        protected def clean(pc: Formula, mapping: List[(Symbolic, Symbolic)], vars: List[Symbolic]): Formula = ???
+        protected def clean(pc: Formula, mapping: List[(Symbolic, Symbolic)], vars: Set[Symbolic]): Formula = ???
 
         /**
          * Compose the current function summary with the received function summary
@@ -86,7 +86,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             val mapping = args.flatMap((adr) => addressesRev.get(adr).flatMap(s => summary.addressRev.get(adr).map(s2 => s2 -> s))).toList
             summary.blames
                 .mapM { case (blame, (pc, _)) =>
-                    val cleaned = clean(pc, mapping)
+                    val cleaned = clean(pc, mapping, vars)
                     for
                         originalPc <- getPc
                         isFeasible <- scvMonadInstance.unit(sat.feasible(conj(originalPc.formula, cleaned)))
