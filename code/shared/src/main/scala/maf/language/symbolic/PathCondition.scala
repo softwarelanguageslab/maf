@@ -130,13 +130,13 @@ case class PathCondition(formula: Formula):
         PathCondition(changeset.foldLeft(formula)((formula, change) => change.revert(formula)))
 
     /** Garbage collect the path condition. This notion is defined as "simplification" in the paper. */
-    def gc(roots: Set[SchemeExp]): PathCondition =
+    def gc(roots: Set[SchemeExp], maxLevel: Int = 5): PathCondition =
         import FormulaAux.*
         val candidates = roots
-        def isRequired(exp: Symbolic): Boolean =
-            candidates.exists(e => Unstable.isomorphic(exp, e)) || (exp match
+        def isRequired(exp: Symbolic, level: Int): Boolean =
+            candidates.exists(e => Unstable.isomorphic(exp, e) && level < maxLevel) || (exp match
                 case Funcall(fexp, fargs, _) =>
-                    isRequired(fexp) || fargs.exists(isRequired)
+                    isRequired(fexp, level + 1) || fargs.exists(isRequired(_, level + 1))
                 case _ => false
             )
 
@@ -145,7 +145,7 @@ case class PathCondition(formula: Formula):
                 conj(cs.toList.map(visitFormula): _*)
             case Disjunction(cs) =>
                 disj(cs.toList.map(visitFormula): _*)
-            case Assertion(exp) if isRequired(exp) =>
+            case Assertion(exp) if isRequired(exp, 0) =>
                 Assertion(exp)
             case Assertion(_) => EmptyFormula
             case EmptyFormula => EmptyFormula

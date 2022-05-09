@@ -201,7 +201,8 @@ object SchemeAnalyses:
             with ScvBigStepWithProvides
             with ScvWithStructs
             with ScvIgnoreFreshBlame
-            with FunctionSummaryAnalysis:
+            with FunctionSummaryAnalysis
+            with FunctionSummaryAnalysisWithMainBoundary:
             //with UnstableWideningWithMinimum(2):
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 

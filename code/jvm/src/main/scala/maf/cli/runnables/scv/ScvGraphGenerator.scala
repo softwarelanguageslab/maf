@@ -67,7 +67,8 @@ object ScvGraphGenerator:
             with ScvIgnoreFreshBlame
             //with maf.modular.scv.ScvFullPathSensitivity
             with TrackTriggeredDependencies
-            with maf.modular.scv.FunctionSummaryAnalysis:
+            with maf.modular.scv.FunctionSummaryAnalysis
+            with maf.modular.scv.FunctionSummaryAnalysisWithMainBoundary:
             // with UnstableWideningWithMinimum(2)
             // with RemovePathCondition:
             //with UnstableWideningWithMinimum(2):

@@ -93,6 +93,7 @@ trait ScvModAnalysis
 
     def getReturnValue(component: Component): Option[Value] =
         summary.getReturnValue(component)
+
 }
 
 /** This class summerizes the results of the analysis of a whole program annotated with contracts */

@@ -6,6 +6,11 @@ import maf.language.symbolic.Symbolic.*
 import maf.core.{Address, Monad}
 import maf.core.Monad.MonadSyntaxOps
 import maf.core.Monad.MonadIterableOps
+import maf.util.benchmarks.Timeout
+import maf.modular.scheme.modf.SchemeModFComponent.Main
+import maf.modular.scheme.modf.SchemeModFComponent
+import maf.modular.scheme.modf.StandardSchemeModFComponents
+import maf.modular.Dependency
 
 /** A dataclass that holds all the information needed for a function summary */
 case class FunctionSummary[V](
@@ -22,14 +27,24 @@ case class FunctionSummary[V](
     /** A collection that keeps track of the symbolic variables owned by this component */
     vars: Set[Symbolic])
 
+/**
+ * A dependency on the summary of another component
+ *
+ * @param cmp
+ *   the component the function summary is about
+ */
+case class SummaryReadDependency[Component](cmp: Component) extends Dependency
+
 /** An analysis that generates function summaries for each function. */
 trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFreshBlame:
+    inter =>
+
     var functionSummaries: Map[Component, Option[FunctionSummary[Value]]] = Map().withDefaultValue(None)
 
     override def intraAnalysis(component: Component): FunctionSummaryIntra
 
     trait FunctionSummaryIntra extends BaseIntraScvSemantics with IntraScvIgnoreFreshBlames:
-        private var blames: List[(Blame, PathCondition)] = List()
+        private var blames: Set[(Blame, PathCondition)] = Set()
         private var addresses: Map[Symbolic, Set[Address]] = Map().withDefaultValue(Set())
         private var addressesRev: Map[Address, Symbolic] = Map()
         private var vars: Set[Symbolic] = Set()
@@ -43,11 +58,13 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
         /** Stores the summary in a global store such that it is accessible from the otuer intra analyses */
         private def storeSummary(summary: FunctionSummary[Value]): Unit =
             println(s"$component -- storing summary:\nblames: ${summary.blames}\npaths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
+            // we trigger interested components (for example callers) when the summary has changed
+            if !functionSummaries(component).map(_ == summary).getOrElse(false) then trigger(SummaryReadDependency(component))
             functionSummaries = functionSummaries + (component -> Some(summary))
 
         /** Registers the blame such that it can be collected in the function summary */
         private def collectBlame(pc: PathCondition, blame: Blame): Unit =
-            if !ignoreIdns.contains(blame.blamedPosition) then blames = (blame -> pc) :: blames
+            if !ignoreIdns.contains(blame.blamedPosition) then blames = blames + (blame -> pc)
 
         private def trackAddresses(addr: Addr, sym: Symbolic, ignoreSelf: Boolean = true): Unit =
             // A symbolic write to our own arguments is always done at the beginning of the function.
@@ -74,7 +91,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             val pcVars = pc.variables
             val varNames = vars.flatMap(Symbolic.variables)
             val toRename = pcVars.toSet.intersect(varNames -- mapping.map(_._1).flatMap(Symbolic.variables)).toList
-            val highest = varNames.map(_.split('x')(1).toInt).max
+            val highest = varNames.map(_.split('x')(1).toInt).maxOption.getOrElse(0)
             val changes = toRename.sortBy(_.split('x')(1).toInt).zip(0 to toRename.size).map { case (old, nww) => VarId(old) -> VarId(s"x$nww") }
             val alphaRenamedPc = pc.replace(changes.toMap)
 
@@ -86,33 +103,76 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
         /**
          * Compose the current function summary with the received function summary
          *
+         * @param vlu
+         *   the value returned by the target component
          * @param targetCmp
          *   the component the summary originated from
          * @param summary
          *   the function summary itself
          */
-        protected def composeWith(targetCmp: Component, summary: FunctionSummary[Value]): EvalM[Unit] =
+        protected def composeWith(vlu: Value, targetCmp: Component, summary: FunctionSummary[Value]): EvalM[Value] =
             import FormulaAux.*
             // find a mapping between the arguments of the called function and our symbolic variables
             val args = fnArgs(targetCmp)
             val mapping = args.flatMap((adr) => addressesRev.get(adr).flatMap(s => summary.addressRev.get(adr).map(s2 => s2 -> s))).toList
-            summary.blames
-                .mapM { case (blame, (pc, _)) =>
-                    val cleaned = clean(pc, mapping, vars)
-                    for
-                        originalPc <- getPc
-                        isFeasible <- scvMonadInstance.unit(sat.feasible(conj(originalPc.formula, cleaned)))
-                        // if the blame is still feasiable, we must propagate it.
-                        result <-
-                            if isFeasible then effectful { collectBlame(PathCondition(conj(originalPc.formula, cleaned)), blame) }
-                            else scvMonadInstance.unit(())
-                    yield result
-                }
-                .map(_ => ())
+            for
+                // propagate blames (if necessary)
+                _ <- summary.blames
+                    .mapM { case (blame, (pc, _)) =>
+                        val cleaned = clean(pc, mapping, vars)
+                        for
+                            originalPc <- getPc
+                            formula = conj(originalPc.formula, cleaned)
+                            vars = formula.variables
+                            isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
+                            // if the blame is still feasiable, we must propagate it.
+                            result <-
+                                if isFeasible then effectful { collectBlame(PathCondition(cleaned), blame) }
+                                else scvMonadInstance.unit(())
+                        yield result
+                    }
+
+                // propagate (cleaned) paths, but not if we called ourselves because the paths will be the same
+                value <-
+                    if (summary.paths.size == 0 || targetCmp == component) then scvMonadInstance.unit(vlu)
+                    else
+                        nondets(
+                          summary.paths
+                              .map { case (vlu, pc) =>
+                                  val cleaned = clean(pc.formula, mapping, vars)
+                                  for
+                                      pc <- getPc
+                                      formula = conj(pc.formula, cleaned)
+                                      vars = formula.variables
+                                      // check if the updated PC is still feasible, if not we can already rule it out
+                                      isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
+                                      // update if feasible
+                                      _ <-
+                                          if isFeasible then putPc(PathCondition(conj(pc.formula, cleaned)))
+                                          else void
+                                  yield vlu
+                              }
+                        )
+            yield value
+
+        /** Implements an action for the given dependency */
+        override def doWrite(dep: Dependency): Boolean = dep match
+            case SummaryReadDependency(_) => true
+            case _                        => super.doWrite(dep)
 
         /** Stores a function summary in a global map after analyzing the current component */
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
+            // before running the intra semantics, already collect results in the temporary summary from a potential previous summary
+            functionSummaries(component) match
+                case Some(previousSummary) =>
+                    blames = previousSummary.blames.map { case (k, (v, _)) => (k, PathCondition(v)) }.toSet
+                    addresses = previousSummary.addresses
+                    addressesRev = previousSummary.addressRev
+                    vars = previousSummary.vars
+                case _ => () // no previous summary, nothing needs to happen
+
             val results = super.runIntraSemantics(initialState)
+            //println(s"results $results")
             val summary = buildSummary(results)
             storeSummary(summary)
             results
@@ -121,6 +181,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
         override def injectCtx: EvalM[Unit] =
             for
                 // ASSUMPTION: the counter of fresh variables is 0
+                // required for termination.
                 st <- scvMonadInstance.get
                 _ = { assert(st.freshVar == 0) }
                 // Map all function arguments to fresh variables
@@ -153,6 +214,18 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** AFter calling a function we need to get its function summary and compose it with our current summary */
         override def afterCall(vlu: Value, targetCmp: Component): EvalM[Value] =
-            if functionSummaries(targetCmp).isDefined then
-                composeWith(targetCmp, functionSummaries(targetCmp).get) >>> super.afterCall(vlu, targetCmp)
+            // we are interested in a change to the summary of the target component
+            register(SummaryReadDependency(targetCmp))
+            if functionSummaries(targetCmp).isDefined then composeWith(vlu, targetCmp, functionSummaries(targetCmp).get)
             else super.afterCall(vlu, targetCmp)
+
+trait FunctionSummaryAnalysisWithMainBoundary extends FunctionSummaryAnalysis with StandardSchemeModFComponents:
+
+    abstract override def run(timeout: Timeout.T): Unit =
+        // run the analysis until completion
+        super.run(timeout)
+        // if there are still blames at the main component, then register them as actual blames
+        val mainSummary = functionSummaries(Main)
+        mainSummary.map(_.blames.foreach { (blame, _) =>
+            writeAddr(ScvExceptionAddr(Main, program.idn), lattice.blame(blame))
+        })
