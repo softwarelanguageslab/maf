@@ -119,6 +119,46 @@ object ScvGraphGenerator:
         val graphFilename = filename.replace("/", "_").nn + ".dot"
         g.toFile(s"out/$graphFilename")
 
+    def buildSCC(filename: String, anl: TrackTriggeredDependencies with FunctionSummaryAnalysis): Unit =
+        // maintain a set of edges between components based on read-and write relations of the summary and component
+        val writeDep = anl.triggeredDeps.foldLeft(Map[String, Set[String]]()) { case (m, (cmp, deps)) =>
+            deps.foldLeft(m) {
+                case (m, d @ SummaryReadDependency(_)) =>
+                    m + (cmp.toString -> (m.get(cmp.toString).getOrElse(Set()) + d.toString))
+                case (m, _) =>
+                    m
+            }
+        }
+
+        val readDep = anl.deps.foldLeft(Map[String, Set[String]]()) {
+            case (m, (d @ SummaryReadDependency(_), cmps)) =>
+                cmps.foldLeft(m)({ case (m, cmp) =>
+                    m + (d.toString -> (m.get(d.toString).getOrElse(Set()) + cmp.toString))
+                })
+            case (m, _) => m
+        }
+
+        val nodes = writeDep.keySet ++ readDep.keySet
+        val edges = writeDep.foldLeft(readDep) { case ((deps), (from, toS)) =>
+            deps + (from -> (deps.get(from).getOrElse(Set()) ++ toS))
+        }
+        val sccs = Tarjan.scc(nodes, edges)
+
+        // visualize the scc's
+        implicit val graph = new DotGraph[Node, Edge].G.typeclass
+        var g = graph.empty
+
+        sccs.zip(0 to sccs.size).foreach { case (cluster, i) =>
+            cluster.foreach(node => g = g.addEdge(Node(i.toString, Colors.Grey), SymDep, Node(node, Colors.Blue)))
+        }
+
+        (edges).foreach { case (from, toS) =>
+            toS.foreach(to => g = g.addEdge(Node(from, Colors.Blue), SymDep, Node(to, Colors.Blue)))
+        }
+
+        val graphFilename = filename.replace("/", "_").nn + ".scc.dot"
+        g.toFile(s"out/$graphFilename")
+
     def main(args: Array[String]): Unit =
         if (args.size < 1) then println(s"Invalid number of arguments, got ${args.size} but expected 1")
         else
@@ -128,3 +168,4 @@ object ScvGraphGenerator:
             val anl = analysis(program)
             anl.analyzeWithTimeoutInSeconds(30)
             buildGraph(filename, anl)
+            buildSCC(filename, anl)
