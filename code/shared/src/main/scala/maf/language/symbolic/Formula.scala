@@ -35,7 +35,10 @@ sealed trait Formula:
     def size: Int
 
     /** Replace a particular symbolic expression with another one */
-    def replace(from: SchemeExp, to: SchemeExp): Formula
+    def replace(changes: Map[SchemeExp, SchemeExp]): Formula
+
+    /** Get a list of variables in the formula */
+    def variables: List[String]
 
 /** An empty formula */
 case object EmptyFormula extends Formula:
@@ -45,7 +48,8 @@ case object EmptyFormula extends Formula:
     def splitConj: List[Formula] = List()
     def splitDisj: List[Formula] = List()
     def size: Int = 0
-    def replace(from: SchemeExp, to: SchemeExp): Formula = EmptyFormula
+    def replace(changes: Map[SchemeExp, SchemeExp]): Formula = EmptyFormula
+    def variables: List[String] = List()
 
 object Symbolic:
     type Symbolic = SchemeExp
@@ -148,13 +152,17 @@ case class Assertion(contents: SchemeExp) extends Formula:
 
     def size: Int = 1
 
-    def replace(from: SchemeExp, to: SchemeExp) =
+    def replace(changes: Map[SchemeExp, SchemeExp]) =
         def replaceContents(contents: SchemeExp): SchemeExp = contents match
-            case e if e == from              => to
             case SchemeFuncall(f, args, idn) => SchemeFuncall(replaceContents(f), args.map(replaceContents), idn)
-            case e                           => e
+            case e =>
+                changes.get(e) match
+                    case Some(to) => to
+                    case _        => e
 
-        if from == to then this else Assertion(replaceContents(contents))
+        Assertion(replaceContents(contents))
+
+    def variables: List[String] = Symbolic.variables(contents)
 
 /**
  * A conjunction of two (or more) formulas
@@ -178,7 +186,10 @@ case class Conjunction(val elements: Set[Formula]) extends Formula:
 
     def size: Int = elements.map(_.size).sum
 
-    def replace(from: SchemeExp, to: SchemeExp): Formula = Conjunction(elements.map(_.replace(from, to)))
+    def replace(changes: Map[SchemeExp, SchemeExp]): Formula =
+        Conjunction(elements.map(_.replace(changes)))
+
+    def variables: List[String] = elements.flatMap(_.variables).toList
 
 /**
  * A disjunction of two (or more) formulas
@@ -203,7 +214,9 @@ case class Disjunction(val elements: Set[Formula]) extends Formula:
 
     def size: Int = elements.map(_.size).sum
 
-    def replace(from: SchemeExp, to: SchemeExp): Formula = Disjunction(elements.map(_.replace(from, to)))
+    def replace(changes: Map[SchemeExp, SchemeExp]): Formula = Disjunction(elements.map(_.replace(changes)))
+
+    def variables: List[String] = elements.flatMap(_.variables).toList
 
 /** Auxiliary functions */
 object FormulaAux:

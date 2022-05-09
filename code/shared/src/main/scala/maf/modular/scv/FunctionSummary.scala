@@ -69,7 +69,19 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
          * @param vars
          *   a list of variables used in the current component. Any clashing variables in `pc` (not included the ones in `to`) will be alpha renamed.
          */
-        protected def clean(pc: Formula, mapping: List[(Symbolic, Symbolic)], vars: Set[Symbolic]): Formula = ???
+        protected def clean(pc: Formula, mapping: List[(Symbolic, Symbolic)], vars: Set[Symbolic]): Formula =
+            // alpha-rename the variables that are in `vars` but are not in the `from` set of mappings, and are also in pc
+            val pcVars = pc.variables
+            val varNames = vars.flatMap(Symbolic.variables)
+            val toRename = pcVars.toSet.intersect(varNames -- mapping.map(_._1).flatMap(Symbolic.variables)).toList
+            val highest = varNames.map(_.split('x')(1).toInt).max
+            val changes = toRename.sortBy(_.split('x')(1).toInt).zip(0 to toRename.size).map { case (old, nww) => VarId(old) -> VarId(s"x$nww") }
+            val alphaRenamedPc = pc.replace(changes.toMap)
+
+            // first we rename the expressions in the path condition such that they correspond to `mapping`
+            val mappedPc = alphaRenamedPc.replace(mapping.toMap)
+            // then only keep those constraints in the path condition that contain the `vars`
+            PathCondition(mappedPc).gc(vars).formula
 
         /**
          * Compose the current function summary with the received function summary

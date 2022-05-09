@@ -33,6 +33,8 @@ trait TrackTriggeredDependencies extends ModAnalysis[SchemeExp]:
             super.spawn(calledCmp)
 
 object ScvGraphGenerator:
+    protected val INCLUDE_PRIMITIVES = false
+
     case class Node(label: String, color: Color) extends maf.util.graph.GraphElement:
         def metadata: GraphMetadata = GraphMetadataNone
 
@@ -45,11 +47,13 @@ object ScvGraphGenerator:
         val label: String = "r"
     case object CallDep extends Edge:
         val label: String = "c"
+    case object SymDep extends Edge:
+        val label: String = ""
 
     def parseProgram(txt: String): SchemeExp =
         SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
 
-    def analysis(prg: SchemeExp): ScvModAnalysis with TrackTriggeredDependencies =
+    def analysis(prg: SchemeExp): ScvModAnalysis with TrackTriggeredDependencies with FunctionSummaryAnalysis =
         import maf.modular.scv.ScvSymbolicStore.given
         new ModAnalysis(prg)
             with ScvBigStepSemantics
@@ -61,10 +65,11 @@ object ScvGraphGenerator:
             with ScvBigStepWithProvides
             with ScvWithStructs
             with ScvIgnoreFreshBlame
-            with maf.modular.scv.ScvFullPathSensitivity
+            //with maf.modular.scv.ScvFullPathSensitivity
             with TrackTriggeredDependencies
-            with UnstableWideningWithMinimum(2)
-            with RemovePathCondition:
+            with maf.modular.scv.FunctionSummaryAnalysis:
+            // with UnstableWideningWithMinimum(2)
+            // with RemovePathCondition:
             //with UnstableWideningWithMinimum(2):
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 
@@ -75,13 +80,12 @@ object ScvGraphGenerator:
                 with IntraScvSemanticsWithStructs
                 with IntraScvIgnoreFreshBlames
                 with IntraTrackAnalysis
-                with IntraWidening
-                with ScvFullPathSensitivityIntra
+                with FunctionSummaryIntra
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver(this)
 
-    def buildGraph(filename: String, anl: TrackTriggeredDependencies): Unit =
+    def buildGraph(filename: String, anl: TrackTriggeredDependencies with FunctionSummaryAnalysis): Unit =
         implicit val graph = new DotGraph[Node, Edge].G.typeclass
         var g = graph.empty
         // add all the nodes once to the graph
@@ -97,6 +101,18 @@ object ScvGraphGenerator:
         // add all call dependencies to the graph
         g = anl.calledDeps.foldLeft(g) { case (g, (cmp, calledCmps)) =>
             calledCmps.foldLeft(g)((g, calledCmp) => g.addEdge(Node(cmp.toString, Colors.Red), CallDep, Node(calledCmp.toString, Colors.Red)))
+        }
+        // add all dependencies of symbolic representations to addresses in the graph
+        g = anl.functionSummaries.foldLeft(g) {
+            case (g, (cmp, Some(summary))) =>
+                val g1 = summary.addresses.foldLeft(g) { case (g, (sym, addrs)) =>
+                    addrs.foldLeft(g)((g, addr) => g.addEdge(Node(s"$cmp:$sym", Colors.Green), SymDep, Node(AddrDependency(addr).toString, Colors.Blue)))
+                }
+                // also add the owned symbols
+                summary.vars.foldLeft(g1) { case (g, sym) =>
+                    g.addEdge(Node(s"$cmp:$sym", Colors.Green), SymDep, Node(cmp.toString, Colors.Blue))
+                }
+            case _ => g
         }
         // now write it out to a file
         val graphFilename = filename.replace("/", "_").nn + ".dot"

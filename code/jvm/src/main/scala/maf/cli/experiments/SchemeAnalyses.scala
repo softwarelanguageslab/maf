@@ -189,6 +189,33 @@ object SchemeAnalyses:
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver(this)
 
+    def scvModAnalysisFunctionSummary(prg: SchemeExp) =
+        import maf.modular.scv.ScvSymbolicStore.given
+        new ModAnalysis(prg)
+            with ScvBigStepSemantics
+            with SymbolicSchemeConstantPropagationDomain
+            with StandardSchemeModFComponents
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFSemanticsM
+            with ScvOneContextSensitivity(0)
+            with ScvBigStepWithProvides
+            with ScvWithStructs
+            with ScvIgnoreFreshBlame
+            with FunctionSummaryAnalysis:
+            //with UnstableWideningWithMinimum(2):
+            protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
+
+            override def intraAnalysis(
+                cmp: Component
+              ) = new IntraScvSemantics(cmp)
+                with IntraScvSemanticsWithProvides
+                with IntraScvSemanticsWithStructs
+                with IntraScvIgnoreFreshBlames
+                with FunctionSummaryIntra
+            override val sat: ScvSatSolver[Value] =
+                given SchemeLattice[Value, Address] = lattice
+                new JVMSatSolver(this)
+
     //def scvModAnalysisWithRacketFeaturesWithPathSensitiveStore(prg: SchemeExp) =
     //    import maf.modular.scv.ScvSymbolicStore.given
     //    new ModAnalysis(prg)
