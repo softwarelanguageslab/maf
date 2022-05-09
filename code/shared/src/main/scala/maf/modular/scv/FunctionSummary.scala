@@ -5,12 +5,14 @@ import maf.language.symbolic.*
 import maf.language.symbolic.Symbolic.*
 import maf.core.{Address, Monad}
 import maf.core.Monad.MonadSyntaxOps
+import maf.language.scheme.SchemeExp
 import maf.core.Monad.MonadIterableOps
 import maf.util.benchmarks.Timeout
+import maf.util.graph.Tarjan
 import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.StandardSchemeModFComponents
-import maf.modular.Dependency
+import maf.modular.{Dependency, ModGraph}
 
 /** A dataclass that holds all the information needed for a function summary */
 case class FunctionSummary[V](
@@ -101,6 +103,18 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             PathCondition(mappedPc).gc(vars).formula
 
         /**
+         * Computes whether the sourceComponent should be composed with the targetComponent
+         *
+         * @param sourceComponent
+         *   the component in which the targetCompopnent's paths and blames should be composed in
+         * @param targetComponent
+         *   the target component from which the blames and paths should be injected
+         * @return
+         *   true if the summary of the source should be composed with the summary of the target
+         */
+        protected def shouldCompose(sourceComponent: Component, targetComponent: Component): Boolean = true
+
+        /**
          * Compose the current function summary with the received function summary
          *
          * @param vlu
@@ -115,45 +129,47 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             // find a mapping between the arguments of the called function and our symbolic variables
             val args = fnArgs(targetCmp)
             val mapping = args.flatMap((adr) => addressesRev.get(adr).flatMap(s => summary.addressRev.get(adr).map(s2 => s2 -> s))).toList
-            for
-                // propagate blames (if necessary)
-                _ <- summary.blames
-                    .mapM { case (blame, (pc, _)) =>
-                        val cleaned = clean(pc, mapping, vars)
-                        for
-                            originalPc <- getPc
-                            formula = conj(originalPc.formula, cleaned)
-                            vars = formula.variables
-                            isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
-                            // if the blame is still feasiable, we must propagate it.
-                            result <-
-                                if isFeasible then effectful { collectBlame(PathCondition(cleaned), blame) }
-                                else scvMonadInstance.unit(())
-                        yield result
-                    }
+            if shouldCompose(component, targetCmp) then
+                for
+                    // propagate blames (if necessary)
+                    _ <- summary.blames
+                        .mapM { case (blame, (pc, _)) =>
+                            val cleaned = clean(pc, mapping, vars)
+                            for
+                                originalPc <- getPc
+                                formula = conj(originalPc.formula, cleaned)
+                                vars = formula.variables
+                                isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
+                                // if the blame is still feasiable, we must propagate it.
+                                result <-
+                                    if isFeasible then effectful { collectBlame(PathCondition(cleaned), blame) }
+                                    else scvMonadInstance.unit(())
+                            yield result
+                        }
 
-                // propagate (cleaned) paths, but not if we called ourselves because the paths will be the same
-                value <-
-                    if (summary.paths.size == 0 || targetCmp == component) then scvMonadInstance.unit(vlu)
-                    else
-                        nondets(
-                          summary.paths
-                              .map { case (vlu, pc) =>
-                                  val cleaned = clean(pc.formula, mapping, vars)
-                                  for
-                                      pc <- getPc
-                                      formula = conj(pc.formula, cleaned)
-                                      vars = formula.variables
-                                      // check if the updated PC is still feasible, if not we can already rule it out
-                                      isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
-                                      // update if feasible
-                                      _ <-
-                                          if isFeasible then putPc(PathCondition(conj(pc.formula, cleaned)))
-                                          else void
-                                  yield vlu
-                              }
-                        )
-            yield value
+                    // propagate (cleaned) paths, but not if we called ourselves because the paths will be the same
+                    value <-
+                        if (summary.paths.size == 0 || targetCmp == component) then scvMonadInstance.unit(vlu)
+                        else
+                            nondets(
+                              summary.paths
+                                  .map { case (vlu, pc) =>
+                                      val cleaned = clean(pc.formula, mapping, vars)
+                                      for
+                                          pc <- getPc
+                                          formula = conj(pc.formula, cleaned)
+                                          vars = formula.variables
+                                          // check if the updated PC is still feasible, if not we can already rule it out
+                                          isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
+                                          // update if feasible
+                                          _ <-
+                                              if isFeasible then putPc(PathCondition(conj(pc.formula, cleaned)))
+                                              else void
+                                      yield vlu
+                                  }
+                            )
+                yield value
+            else scvMonadInstance.unit(vlu)
 
         /** Implements an action for the given dependency */
         override def doWrite(dep: Dependency): Boolean = dep match
@@ -229,3 +245,31 @@ trait FunctionSummaryAnalysisWithMainBoundary extends FunctionSummaryAnalysis wi
         mainSummary.map(_.blames.foreach { (blame, _) =>
             writeAddr(ScvExceptionAddr(Main, program.idn), lattice.blame(blame))
         })
+
+trait NoCompositionIfCycle extends FunctionSummaryAnalysis with ModGraph[SchemeExp]:
+    sealed trait Node
+    object Node:
+        def from(source: Component | Dependency): Option[Node] = source match
+            case c: Component                => Some(ComponentNode(c))
+            case d: SummaryReadDependency[_] => Some(DepNode(d))
+            case _                           => None
+
+    case class ComponentNode(c: Component) extends Node
+    case class DepNode(dep: Dependency) extends Node
+
+    override def intraAnalysis(component: Component): NoCompositionIfCycleIntra
+    trait NoCompositionIfCycleIntra extends FunctionSummaryIntra with IntraTrackAnalysis:
+        override protected def shouldCompose(sourceComponent: Component, targetComponent: Component): Boolean =
+            val transformedRead = deps.flatMap { case (dep, cmps) =>
+                Node.from(dep).map(n => (n -> cmps.flatMap(Node.from)))
+            }
+            val transformedWrite = triggeredDeps.flatMap { case (cmp, deps) =>
+                Node.from(cmp).map(n => (n -> deps.flatMap(Node.from)))
+            }
+            val completeGraph = transformedRead.foldLeft(transformedWrite) { case (deps, (from, toS)) =>
+                deps + (from -> (deps.get(from).getOrElse(Set()) ++ toS))
+            }
+            val nodes = completeGraph.keySet
+
+            val scc = Tarjan.scc(nodes, completeGraph)
+            !scc.exists(cluster => cluster.contains(ComponentNode(sourceComponent)) && cluster.contains(ComponentNode(targetComponent)))

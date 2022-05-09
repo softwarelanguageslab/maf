@@ -17,21 +17,6 @@ import maf.util.graph.*
 import maf.util.graph.Graph.GraphOps
 import maf.util.Reader
 
-trait TrackTriggeredDependencies extends ModAnalysis[SchemeExp]:
-    var triggeredDeps: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set())
-    var calledDeps: Map[Component, Set[Component]] = Map().withDefaultValue(Set())
-
-    override def intraAnalysis(component: Component): IntraTrackAnalysis
-
-    trait IntraTrackAnalysis extends IntraAnalysis:
-        override def trigger(dep: Dependency): Unit =
-            triggeredDeps = triggeredDeps + (component -> (triggeredDeps(component) + dep))
-            super.trigger(dep)
-
-        override def spawn(calledCmp: Component): Unit =
-            calledDeps = calledDeps + (component -> (calledDeps(component) + calledCmp))
-            super.spawn(calledCmp)
-
 object ScvGraphGenerator:
     protected val INCLUDE_PRIMITIVES = false
 
@@ -52,6 +37,8 @@ object ScvGraphGenerator:
 
     def parseProgram(txt: String): SchemeExp =
         SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
+
+    trait TrackTriggeredDependencies extends maf.modular.ModGraph[SchemeExp]
 
     def analysis(prg: SchemeExp): ScvModAnalysis with TrackTriggeredDependencies with FunctionSummaryAnalysis =
         import maf.modular.scv.ScvSymbolicStore.given
