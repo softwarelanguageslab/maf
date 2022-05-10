@@ -100,7 +100,7 @@ object ScvGraphGenerator:
                 }
                 // also add the owned symbols
                 summary.vars.foldLeft(g1) { case (g, sym) =>
-                    g.addEdge(Node(s"$cmp:$sym", Colors.Green), SymDep, Node(cmp.toString, Colors.Blue))
+                    g.addEdge(Node(s"$cmp:$sym", Colors.Green), SymDep, Node(cmp.toString, Colors.Red))
                 }
             case _ => g
         }

@@ -60,7 +60,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** Stores the summary in a global store such that it is accessible from the otuer intra analyses */
         private def storeSummary(summary: FunctionSummary[Value]): Unit =
-            println(s"$component -- storing summary:\nblames: ${summary.blames}\npaths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
+            //println(s"$component -- storing summary:\nblames: ${summary.blames}\npaths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
             // we trigger interested components (for example callers) when the summary has changed
             if !functionSummaries(component).map(_ == summary).getOrElse(false) then trigger(SummaryReadDependency(component))
             functionSummaries = functionSummaries + (component -> Some(summary))

@@ -486,34 +486,35 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             // 1. `contract` is a flat contract, or a function (or primitive) that can be treated as such, the result of mon is the value of `expression`
             // 2. `contract` is a dependent contract, in which case `expression` must be a function, the result of `mon` is a guarded function
             // 3. `contract` does not satisfy any of the above conditions, resutling in an error
-            val extraFlats =
-                (if contractExpr.isDefined then
-                     // closures
-                     lattice
-                         .getClosures(contract.value)
-                         .map(f => ContractValues.Flat(lattice.closure(f), contractExpr.get, None, contractExpr.get.idn))
-                 else Set()) ++ (/* primitives */ lattice
-                    .getPrimitives(contract.value)
-                    .map(p =>
-                        ContractValues
-                            .Flat(lattice.primitive(p),
-                                  SchemeVar(Identifier(p, Identity.none)),
-                                  Some(SchemeVar(Identifier(p, Identity.none))),
-                                  Identity.none
-                            )
-                    ) ++
-                    /** struct predicates */
-                    lattice
-                        .getStructPredicates(contract.value)
-                        .map(p =>
-                            ContractValues.Flat(
-                              lattice.structPredicate(p), /* synthetic, struct predicates do not need fexp */ SchemeValue(maf.language.sexp.Value.Nil,
-                                                                                                                          Identity.none
-                              ),
-                              None,
+            val extraFlats = ( // closures
+              lattice
+                  .getClosures(contract.value)
+                  .map(f =>
+                      val expr = contractExpr.getOrElse(f._1)
+                      ContractValues.Flat(lattice.closure(f), expr, None, expr.idn)
+                  )
+            ) ++ (/* primitives */ lattice
+                .getPrimitives(contract.value)
+                .map(p =>
+                    ContractValues
+                        .Flat(lattice.primitive(p),
+                              SchemeVar(Identifier(p, Identity.none)),
+                              Some(SchemeVar(Identifier(p, Identity.none))),
                               Identity.none
-                            )
-                        ))
+                        )
+                ) ++
+                /** struct predicates */
+                lattice
+                    .getStructPredicates(contract.value)
+                    .map(p =>
+                        ContractValues.Flat(
+                          lattice.structPredicate(p), /* synthetic, struct predicates do not need fexp */ SchemeValue(maf.language.sexp.Value.Nil,
+                                                                                                                      Identity.none
+                          ),
+                          None,
+                          Identity.none
+                        )
+                    ))
 
             val flats = (lattice.getFlats(contract.value) ++ extraFlats).map(c => monFlat(c, expression, expr, monIdn, assumed))
             val guards = lattice.getGrds(contract.value).map(c => monArr(c, expression, expr, monIdn))
