@@ -239,11 +239,12 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
     private var isInitiliazed = false
 
     /** Translate the given SchemeExp to a series of constraints */
-    def translate(e: Formula): String = e match
-        case Assertion(assertion)  => translateAssertion(assertion)
-        case Conjunction(formulas) => s"(and ${formulas.map(translate).mkString(" ")})"
-        case Disjunction(formulas) => s"(or ${formulas.map(translate).mkString(" ")})"
-        case EmptyFormula          => ""
+    def translate(vars: List[String])(e: Formula): String = e match
+        case Assertion(assertion) if Symbolic.isValid(vars)(assertion) =>
+            translateAssertion(assertion)
+        case Conjunction(formulas)       => s"(and ${formulas.map(translate(vars)).mkString(" ")})"
+        case Disjunction(formulas)       => s"(or ${formulas.map(translate(vars)).mkString(" ")})"
+        case Assertion(_) | EmptyFormula => "true"
 
     def translateAssertion(e: SchemeExp): String = e match
         case SchemeVar(identifier)       => translateIdentifier(identifier)
@@ -281,7 +282,7 @@ class JVMSatSolver[V](reporter: ScvReporter)(using SchemeLattice[V, Address]) ex
         else
             import scala.language.unsafeNulls
 
-            val translated = e.splitConj.filterNot { _ == EmptyFormula }.map(translate).map(assertion => s"(assert $assertion)").mkString("\n")
+            val translated = e.splitConj.filterNot { _ == EmptyFormula }.map(translate(vars)).map(assertion => s"(assert $assertion)").mkString("\n")
             val varsDeclarations = vars.map(v => s"(declare-const $v V)").mkString("\n")
             val program = varsDeclarations ++ translated
 

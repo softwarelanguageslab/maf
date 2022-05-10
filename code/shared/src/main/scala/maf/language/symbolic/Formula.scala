@@ -106,11 +106,20 @@ object Symbolic:
      * Example: □(+ x0 1) matches (+ (+ (+ x0 1) 1) 1) such that □ absorbs everything and (+ (+ x0 1) □) is returned.
      */
 
-    /** Checks whether the given assertion has a valid form */
-    def isValid(ass: SchemeExp): Boolean = ass match
-        // Any assertion of the form (x e e) is valid
-        case SchemeFuncall(SchemeVar(_), fargs, _) =>
-            fargs.foldLeft(true)((acc, farg) => acc && isValid(farg))
+    /**
+     * Checks whether the given assertion has a valid form
+     *
+     * @param vars
+     *   a list of symbolic variables
+     * @param ass
+     *   the assertion to check
+     * @return
+     *   true if it is a valid assertion, false otherwise
+     */
+    def isValid(vars: List[String])(ass: SchemeExp): Boolean = ass match
+        // Any assertion of the form (x e e) is valid, where x is not a symbolic variable
+        case SchemeFuncall(SchemeVar(Identifier(id, _)), fargs, _) if !vars.contains(id) =>
+            fargs.foldLeft(true)((acc, farg) => acc && isValid(vars)(farg))
         // Any identifier is a valid assertion
         case SchemeVar(_) => true
         // Any literal value is a valid assertion
