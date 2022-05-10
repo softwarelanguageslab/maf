@@ -9,6 +9,7 @@ import maf.language.scheme.SchemeExp
 import maf.core.Monad.MonadIterableOps
 import maf.util.benchmarks.Timeout
 import maf.util.graph.Tarjan
+import maf.util.MAFLogger
 import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.StandardSchemeModFComponents

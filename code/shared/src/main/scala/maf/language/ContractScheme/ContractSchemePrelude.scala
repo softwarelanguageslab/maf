@@ -9,9 +9,13 @@ object ContractSchemePrelude extends BaseSchemePrelude:
       "any/c" -> "(define any/c (flat (lambda (_) #t)))",
       "any?" -> "(define (any? v) #t)",
       "fprintf" -> "(define (fprintf . args) '())",
-      "empty?" -> "(define empty? null?)",
       "cons/c" -> "(define (cons/c a b) (flat (lambda (v) (and (pair? v) (check a (car v)) (check b (cdr v))))))",
       "and/c" -> "(define (and/c a b) (flat (lambda (v) (and (check a v) (check b v)))))",
+      "or/c" -> """
+      | (define (or/c contract1 contract2)
+      |  (flat (lambda (v)
+      |   (or (check contract1 v) (check contract2 v)))))
+      """.stripMargin,
       "cons?" -> "(define (cons? v) (pair? v))",
       "null" -> "(define null '())",
       "empty" -> "(define empty '())",
