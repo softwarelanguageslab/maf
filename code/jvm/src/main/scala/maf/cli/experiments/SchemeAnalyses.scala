@@ -202,6 +202,7 @@ object SchemeAnalyses:
             with ScvWithStructs
             with ScvIgnoreFreshBlame
             with FunctionSummaryAnalysis
+            with NoCompositionIfCycle
             with FunctionSummaryAnalysisWithMainBoundary:
             //with UnstableWideningWithMinimum(2):
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
@@ -212,6 +213,7 @@ object SchemeAnalyses:
                 with IntraScvSemanticsWithProvides
                 with IntraScvSemanticsWithStructs
                 with IntraScvIgnoreFreshBlames
+                with NoCompositionIfCycleIntra
                 with FunctionSummaryIntra
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice

@@ -76,6 +76,16 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
                 addressesRev = addressesRev + (addr -> sym)
 
         /**
+         * The maximal depth of an expression before it is removed from the path condition
+         *
+         * @see
+         *   PathCondition.gc
+         * @see
+         *   clean
+         */
+        protected val maxDepth: Int = 5
+
+        /**
          * Clean replaces the expressions from the mapping in the given formula, and (if necessary) alpha renames any collisions as given by the list
          * of variables in `vars`.
          *
@@ -100,7 +110,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             // first we rename the expressions in the path condition such that they correspond to `mapping`
             val mappedPc = alphaRenamedPc.replace(mapping.toMap)
             // then only keep those constraints in the path condition that contain the `vars`
-            PathCondition(mappedPc).gc(vars).formula
+            PathCondition(mappedPc).gc(vars, maxDepth).formula
 
         /**
          * Computes whether the sourceComponent should be composed with the targetComponent
@@ -129,47 +139,46 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             // find a mapping between the arguments of the called function and our symbolic variables
             val args = fnArgs(targetCmp)
             val mapping = args.flatMap((adr) => addressesRev.get(adr).flatMap(s => summary.addressRev.get(adr).map(s2 => s2 -> s))).toList
-            if shouldCompose(component, targetCmp) then
-                for
-                    // propagate blames (if necessary)
-                    _ <- summary.blames
-                        .mapM { case (blame, (pc, _)) =>
-                            val cleaned = clean(pc, mapping, vars)
-                            for
-                                originalPc <- getPc
-                                formula = conj(originalPc.formula, cleaned)
-                                vars = formula.variables
-                                isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
-                                // if the blame is still feasiable, we must propagate it.
-                                result <-
-                                    if isFeasible then effectful { collectBlame(PathCondition(cleaned), blame) }
-                                    else scvMonadInstance.unit(())
-                            yield result
-                        }
+            val doesCompose = shouldCompose(component, targetCmp)
+            for
+                // propagate blames (if necessary)
+                _ <- summary.blames
+                    .mapM { case (blame, (pc, _)) =>
+                        val cleaned = clean(pc, mapping, vars)
+                        for
+                            originalPc <- getPc
+                            formula = conj(originalPc.formula, cleaned)
+                            vars = formula.variables
+                            isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
+                            // if the blame is still feasiable, we must propagate it.
+                            result <-
+                                if isFeasible && doesCompose then effectful { collectBlame(PathCondition(cleaned), blame) }
+                                else scvMonadInstance.unit(())
+                        yield result
+                    }
 
-                    // propagate (cleaned) paths, but not if we called ourselves because the paths will be the same
-                    value <-
-                        if (summary.paths.size == 0 || targetCmp == component) then scvMonadInstance.unit(vlu)
-                        else
-                            nondets(
-                              summary.paths
-                                  .map { case (vlu, pc) =>
-                                      val cleaned = clean(pc.formula, mapping, vars)
-                                      for
-                                          pc <- getPc
-                                          formula = conj(pc.formula, cleaned)
-                                          vars = formula.variables
-                                          // check if the updated PC is still feasible, if not we can already rule it out
-                                          isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
-                                          // update if feasible
-                                          _ <-
-                                              if isFeasible then putPc(PathCondition(conj(pc.formula, cleaned)))
-                                              else void
-                                      yield vlu
-                                  }
-                            )
-                yield value
-            else scvMonadInstance.unit(vlu)
+                // propagate (cleaned) paths, but not if we called ourselves because the paths will be the same
+                value <-
+                    if !doesCompose || (summary.paths.size == 0 || targetCmp == component) then scvMonadInstance.unit(vlu)
+                    else
+                        nondets(
+                          summary.paths
+                              .map { case (vlu, pc) =>
+                                  val cleaned = clean(pc.formula, mapping, vars)
+                                  for
+                                      pc <- getPc
+                                      formula = conj(pc.formula, cleaned)
+                                      vars = formula.variables
+                                      // check if the updated PC is still feasible, if not we can already rule it out
+                                      isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
+                                      // update if feasible
+                                      _ <-
+                                          if isFeasible then putPc(PathCondition(conj(pc.formula, cleaned)))
+                                          else void
+                                  yield vlu
+                              }
+                        )
+            yield value
 
         /** Implements an action for the given dependency */
         override def doWrite(dep: Dependency): Boolean = dep match
@@ -249,22 +258,25 @@ trait FunctionSummaryAnalysisWithMainBoundary extends FunctionSummaryAnalysis wi
 trait NoCompositionIfCycle extends FunctionSummaryAnalysis with ModGraph[SchemeExp]:
     sealed trait Node
     object Node:
-        def from(source: Component | Dependency): Option[Node] = source match
-            case c: Component                => Some(ComponentNode(c))
+        def fromDep(source: Dependency): Option[Node] = source match
             case d: SummaryReadDependency[_] => Some(DepNode(d))
             case _                           => None
+
+        def fromCmp(source: Component): Option[Node] = Some(ComponentNode(source))
 
     case class ComponentNode(c: Component) extends Node
     case class DepNode(dep: Dependency) extends Node
 
     override def intraAnalysis(component: Component): NoCompositionIfCycleIntra
     trait NoCompositionIfCycleIntra extends FunctionSummaryIntra with IntraTrackAnalysis:
+        override protected val maxDepth: Int = Int.MaxValue
+
         override protected def shouldCompose(sourceComponent: Component, targetComponent: Component): Boolean =
             val transformedRead = deps.flatMap { case (dep, cmps) =>
-                Node.from(dep).map(n => (n -> cmps.flatMap(Node.from)))
+                Node.fromDep(dep).map(n => (n -> cmps.flatMap(Node.fromCmp)))
             }
             val transformedWrite = triggeredDeps.flatMap { case (cmp, deps) =>
-                Node.from(cmp).map(n => (n -> deps.flatMap(Node.from)))
+                Node.fromCmp(cmp).map(n => (n -> deps.flatMap(Node.fromDep)))
             }
             val completeGraph = transformedRead.foldLeft(transformedWrite) { case (deps, (from, toS)) =>
                 deps + (from -> (deps.get(from).getOrElse(Set()) ++ toS))
