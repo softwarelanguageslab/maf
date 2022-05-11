@@ -203,7 +203,8 @@ object SchemeAnalyses:
             with ScvIgnoreFreshBlame
             with FunctionSummaryAnalysis
             with NoCompositionIfCycle
-            with FunctionSummaryAnalysisWithMainBoundary:
+            with FunctionSummaryAnalysisWithMainBoundary
+            with ScvArgumentSensitivity:
             //with UnstableWideningWithMinimum(2):
             protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
 

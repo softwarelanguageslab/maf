@@ -56,7 +56,8 @@ object ScvGraphGenerator:
             with TrackTriggeredDependencies
             with maf.modular.scv.FunctionSummaryAnalysis
             with maf.modular.scv.FunctionSummaryAnalysisWithMainBoundary
-            with NoCompositionIfCycle:
+            with NoCompositionIfCycle
+            with ScvArgumentSensitivity:
             // with UnstableWideningWithMinimum(2)
             // with RemovePathCondition:
             //with UnstableWideningWithMinimum(2):

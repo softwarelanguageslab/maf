@@ -376,6 +376,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
         private def ifFeasible[X](prim: Prim, cnd: PostValue)(m: EvalM[X]): EvalM[X] =
             for
                 primResult <- applyPrimitive(prim, List(cnd.value))
+                oldPc <- getPc
                 _ <- cnd.symbolic match
                     case None => unit(())
                     case Some(symbolic) =>
@@ -387,6 +388,10 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                     cnd.symbolic match
                         case _ if !lattice.isTrue(primResult) =>
                             void // if it is not possible according to the lattice, we do not execute "m"
+                        //case _ if !lattice.isFalse(primResult) =>
+                        //    // it is impossible that primResult is false, this means that introduced constraint
+                        //    // is a tautology and does not give any information in the path condition.
+                        //    putPc(oldPc) >>> m
                         case _ if ! { count(SATExec); time(Z3Time) { sat.feasible(pc.formula, vars) } } =>
                             void // if the path condition is unfeasible we also do not execute "m"
                         case _ => m // if we do not have a path condition or neither of the two conditions above is fulfilled we execute "m"
@@ -537,11 +542,11 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
           ): EvalM[Value] =
             val call = SchemeFuncall(contract.fexp, List(expr), monIdn)
             val resultSymbolic = symCall(contract.sym, List(value.symbolic))
-            val ctx = buildCtx(List(value.symbolic), None)
+            val ctx = buildCtx(List(value.symbolic), None, contractCall = true)
             for
                 // TODO: find better position information
                 result <- nondets(
-                  applyFunPost(call, contract.contract, List((expr, value)), Position(-1, 0), ctx),
+                  applyFunPost(call, contract.contract, List((expr, value)), expr.idn.pos, ctx),
                   callFun(PostValue.noSymbolic(contract.contract), List(value))
                 )
                 pv = PostValue(resultSymbolic, result)

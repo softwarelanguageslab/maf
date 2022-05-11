@@ -73,9 +73,10 @@ trait ScvContextSensitivity extends SchemeModFSensitivity:
         callers: List[Position],
         changes: List[SymChange],
         symArgs: Map[String, SchemeExp],
-        widened: Boolean)
+        widened: Boolean,
+        arguments: List[Value] = List())
         extends ScvContext[L]:
-        override def toString: String = s"KPathCondition($pc, $rangeContract, $changes)"
+        override def toString: String = s"KPathCondition($rangeContract, $callers, $arguments)"
 
         def reindexed: KPathCondition[L] =
             val thisChanges = Reindexer.computeRenaming(this.pc, Map(), this.changes)
@@ -157,7 +158,7 @@ trait StoreAllocateSymbolicValues extends ScvContextSensitivity, ScvModAnalysis,
             .toMap
 
     override def fromContext(cmp: Component): FromContext = context(cmp) match
-        case Some(k @ KPathCondition(pc, _, _, _, symArgs, _)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
+        case Some(k @ KPathCondition(pc, _, _, _, symArgs, _, _)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
             new FromContext:
                 def pathCondition: PathCondition = pc
                 def vars: List[String] =
@@ -175,7 +176,7 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
     protected def m: Int
 
     override def fromContext(cmp: Component): FromContext = context(cmp) match
-        case Some(k @ KPathCondition(pc, _, _, _, symArgs, _)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
+        case Some(k @ KPathCondition(pc, _, _, _, symArgs, _, _)) => // KPathCondition(ps, sstore, _, cmps, _, _, lcache)
             new FromContext:
                 def pathCondition: PathCondition = PathCondition.empty
                 def vars: List[String] = List()
@@ -189,10 +190,10 @@ trait ScvKContextSensitivity extends ScvContextSensitivity with ScvModAnalysis w
         case _             => f(None)
 
     protected def usingRangeContract[X](cmp: Component)(f: Option[Value] => X): X = context(cmp) match
-        case Some(KPathCondition(_, rangeContractOpt, _, _, _, _)) => f(rangeContractOpt)
-        case _                                                     => f(None)
+        case Some(KPathCondition(_, rangeContractOpt, _, _, _, _, _)) => f(rangeContractOpt)
+        case _                                                        => f(None)
 
-    override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None): ContextBuilder =
+    override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None, contractCall: Boolean = false): ContextBuilder =
         new ContextBuilder:
             def allocM(
                 clo: (SchemeLambdaExp, Environment[Address]),

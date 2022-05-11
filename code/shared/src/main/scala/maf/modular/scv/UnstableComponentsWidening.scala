@@ -196,7 +196,7 @@ trait UnstableComponentWideningNoWidening extends UnstableComponentsWidening:
  * This is equivalent to the Nguyen approach from their 2018 AAM based implementation.
  */
 trait RemovePathCondition extends UnstableComponentsWidening:
-    override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None): ContextBuilder =
+    override def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value] = None, contractCall: Boolean): ContextBuilder =
         new ContextBuilderWithWidening(symArgs, rangeContract) {
             override def beforeCall(cmp: Component, prs: List[Identifier], clo: (SchemeLambdaExp, Environment[Address])): EvalM[Unit] = context(
               cmp

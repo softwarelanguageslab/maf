@@ -44,6 +44,23 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
     var functionSummaries: Map[Component, Option[FunctionSummary[Value]]] = Map().withDefaultValue(None)
 
+    /**
+     * The analysis runs in two phases: one where all components are discovered and analyzed using ModF, and another where the collected function
+     * summaries are propagated.
+     */
+    private var propagationPhase: Boolean = false
+    private var propagationTriggers: Set[Dependency] = Set()
+
+    abstract override def run(timeout: Timeout.T): Unit =
+        // run the first phase
+        super.run(timeout)
+        // set the flag to propagate the summaries
+        propagationPhase = true
+        // trigger a re-analysis of all impacted components
+        propagationTriggers.foreach(trigger)
+        // re-run the analysis
+        super.run(timeout)
+
     override def intraAnalysis(component: Component): FunctionSummaryIntra
 
     trait FunctionSummaryIntra extends BaseIntraScvSemantics with IntraScvIgnoreFreshBlames:
@@ -60,9 +77,11 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** Stores the summary in a global store such that it is accessible from the otuer intra analyses */
         private def storeSummary(summary: FunctionSummary[Value]): Unit =
-            //println(s"$component -- storing summary:\nblames: ${summary.blames}\npaths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
+            println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths.size}\naddresses: ${summary.addresses}\n\n")
             // we trigger interested components (for example callers) when the summary has changed
-            if !functionSummaries(component).map(_ == summary).getOrElse(false) then trigger(SummaryReadDependency(component))
+            if !functionSummaries(component).map(_ == summary).getOrElse(false) then
+                val dependency = SummaryReadDependency(component)
+                if !propagationPhase then propagationTriggers = propagationTriggers + dependency else trigger(dependency)
             functionSummaries = functionSummaries + (component -> Some(summary))
 
         /** Registers the blame such that it can be collected in the function summary */
@@ -125,6 +144,8 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
          */
         protected def shouldCompose(sourceComponent: Component, targetComponent: Component): Boolean = true
 
+        protected var totalPaths: Int = 0
+
         /**
          * Compose the current function summary with the received function summary
          *
@@ -141,6 +162,8 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             val args = fnArgs(targetCmp)
             val mapping = args.flatMap((adr) => addressesRev.get(adr).flatMap(s => summary.addressRev.get(adr).map(s2 => s2 -> s))).toList
             val doesCompose = shouldCompose(component, targetCmp)
+            if summary.paths.size >= 1 then
+                println(s"integrating ${summary.paths.size} # paths from ${targetCmp}, accumulated $totalPaths paths in total")
             for
                 // propagate blames (if necessary)
                 _ <- summary.blames
@@ -179,6 +202,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
                                   yield vlu
                               }
                         )
+                _ <- effectful { totalPaths = totalPaths + 1 }
             yield value
 
         /** Implements an action for the given dependency */
@@ -188,6 +212,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** Stores a function summary in a global map after analyzing the current component */
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
+            println(s"start $component")
             // before running the intra semantics, already collect results in the temporary summary from a potential previous summary
             functionSummaries(component) match
                 case Some(previousSummary) =>
@@ -242,7 +267,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
         override def afterCall(vlu: Value, targetCmp: Component): EvalM[Value] =
             // we are interested in a change to the summary of the target component
             register(SummaryReadDependency(targetCmp))
-            if functionSummaries(targetCmp).isDefined then composeWith(vlu, targetCmp, functionSummaries(targetCmp).get)
+            if functionSummaries(targetCmp).isDefined && propagationPhase then composeWith(vlu, targetCmp, functionSummaries(targetCmp).get)
             else super.afterCall(vlu, targetCmp)
 
 trait FunctionSummaryAnalysisWithMainBoundary extends FunctionSummaryAnalysis with StandardSchemeModFComponents:

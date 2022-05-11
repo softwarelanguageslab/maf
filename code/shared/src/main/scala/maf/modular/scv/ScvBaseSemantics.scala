@@ -57,8 +57,10 @@ trait ScvBaseSemantics extends BigStepModFSemanticsT with SymbolicSchemeDomain {
      *   a list of arguments of the function call corresponding to the context of the component we are building
      * @param rangeContract
      *   an optional range contract
+     * @param contractCall
+     *   true if the function that is being called is a function to check a particular contract
      */
-    protected def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value]): ContextBuilder =
+    protected def buildCtx(symArgs: List[Option[SchemeExp]], rangeContract: Option[Value], contractCall: Boolean = false): ContextBuilder =
         DefaultContextBuilder
 
     /////////////////////////////////////////////////////
