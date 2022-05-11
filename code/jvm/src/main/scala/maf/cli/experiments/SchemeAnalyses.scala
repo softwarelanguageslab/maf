@@ -203,6 +203,7 @@ object SchemeAnalyses:
             with ScvIgnoreFreshBlame
             with FunctionSummaryAnalysis
             with NoCompositionIfCycle
+            with maf.modular.scv.CompositionForContracts
             with FunctionSummaryAnalysisWithMainBoundary
             with ScvArgumentSensitivity:
             //with UnstableWideningWithMinimum(2):
@@ -216,6 +217,7 @@ object SchemeAnalyses:
                 with IntraScvIgnoreFreshBlames
                 with NoCompositionIfCycleIntra
                 with FunctionSummaryIntra
+                with CompositionForContractsIntra
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver(this)

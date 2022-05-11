@@ -78,6 +78,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
         /** Stores the summary in a global store such that it is accessible from the otuer intra analyses */
         private def storeSummary(summary: FunctionSummary[Value]): Unit =
             println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths.size}\naddresses: ${summary.addresses}\n\n")
+            println(s"${functionSummaries(component).map(_.blames)}, ${summary.blames}")
             // we trigger interested components (for example callers) when the summary has changed
             if !functionSummaries(component).map(_ == summary).getOrElse(false) then
                 val dependency = SummaryReadDependency(component)
@@ -86,7 +87,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** Registers the blame such that it can be collected in the function summary */
         private def collectBlame(pc: PathCondition, blame: Blame): Unit =
-            if !ignoreIdns.contains(blame.blamedPosition) then blames = blames + (blame -> pc)
+            if !ignoreIdns.contains(blame.blamedPosition) && !blames.map(_._1).contains(blame) then blames = blames + (blame -> pc)
 
         private def trackAddresses(addr: Addr, sym: Symbolic, ignoreSelf: Boolean = true): Unit =
             // A symbolic write to our own arguments is always done at the beginning of the function.
@@ -162,8 +163,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             val args = fnArgs(targetCmp)
             val mapping = args.flatMap((adr) => addressesRev.get(adr).flatMap(s => summary.addressRev.get(adr).map(s2 => s2 -> s))).toList
             val doesCompose = shouldCompose(component, targetCmp)
-            if summary.paths.size >= 1 then
-                println(s"integrating ${summary.paths.size} # paths from ${targetCmp}, accumulated $totalPaths paths in total")
+            if summary.paths.size >= 1 then println(s"integrating ${summary.paths} paths from ${targetCmp}, accumulated $totalPaths paths in total")
             for
                 // propagate blames (if necessary)
                 _ <- summary.blames
@@ -176,11 +176,12 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
                             isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
                             // if the blame is still feasiable, we must propagate it.
                             result <-
-                                if isFeasible && doesCompose then effectful { collectBlame(PathCondition(cleaned), blame) }
+                                if isFeasible then effectful { collectBlame(PathCondition(cleaned), blame) }
                                 else scvMonadInstance.unit(())
                         yield result
                     }
 
+                originalPc <- getPc
                 // propagate (cleaned) paths, but not if we called ourselves because the paths will be the same
                 value <-
                     if !doesCompose || (summary.paths.size == 0 || targetCmp == component) then scvMonadInstance.unit(vlu)
@@ -311,3 +312,13 @@ trait NoCompositionIfCycle extends FunctionSummaryAnalysis with ModGraph[SchemeE
 
             val scc = Tarjan.scc(nodes, completeGraph)
             !scc.exists(cluster => cluster.contains(ComponentNode(sourceComponent)) && cluster.contains(ComponentNode(targetComponent)))
+
+trait CompositionForContracts extends FunctionSummaryAnalysis:
+    override def intraAnalysis(cmp: Component): CompositionForContractsIntra
+
+    trait CompositionForContractsIntra extends FunctionSummaryIntra:
+        override protected def shouldCompose(sourceComponent: Component, targetComponent: Component): Boolean =
+            (context(sourceComponent) match
+                case Some(k: KPathCondition[_]) if k.callers.nonEmpty => true
+                case _                                                => false
+            ) && super.shouldCompose(sourceComponent, targetComponent)

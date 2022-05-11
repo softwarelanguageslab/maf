@@ -57,6 +57,7 @@ object ScvGraphGenerator:
             with maf.modular.scv.FunctionSummaryAnalysis
             with maf.modular.scv.FunctionSummaryAnalysisWithMainBoundary
             with NoCompositionIfCycle
+            with CompositionForContracts
             with ScvArgumentSensitivity:
             // with UnstableWideningWithMinimum(2)
             // with RemovePathCondition:
@@ -72,6 +73,7 @@ object ScvGraphGenerator:
                 with IntraTrackAnalysis
                 with FunctionSummaryIntra
                 with NoCompositionIfCycleIntra
+                with CompositionForContractsIntra
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver(this)
