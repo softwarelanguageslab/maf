@@ -77,7 +77,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** Stores the summary in a global store such that it is accessible from the otuer intra analyses */
         private def storeSummary(summary: FunctionSummary[Value]): Unit =
-            println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths.size}\naddresses: ${summary.addresses}\n\n")
+            println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
             println(s"${functionSummaries(component).map(_.blames)}, ${summary.blames}")
             // we trigger interested components (for example callers) when the summary has changed
             if !functionSummaries(component).map(_ == summary).getOrElse(false) then
@@ -163,7 +163,8 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             val args = fnArgs(targetCmp)
             val mapping = args.flatMap((adr) => addressesRev.get(adr).flatMap(s => summary.addressRev.get(adr).map(s2 => s2 -> s))).toList
             val doesCompose = shouldCompose(component, targetCmp)
-            if summary.paths.size >= 1 then println(s"integrating ${summary.paths} paths from ${targetCmp}, accumulated $totalPaths paths in total")
+            if summary.paths.size >= 1 && false then
+                println(s"integrating ${summary.paths.size} # paths from ${targetCmp}, accumulated $totalPaths paths in total")
             for
                 // propagate blames (if necessary)
                 _ <- summary.blames
@@ -318,7 +319,7 @@ trait CompositionForContracts extends FunctionSummaryAnalysis:
 
     trait CompositionForContractsIntra extends FunctionSummaryIntra:
         override protected def shouldCompose(sourceComponent: Component, targetComponent: Component): Boolean =
-            (context(sourceComponent) match
+            (context(targetComponent) match
                 case Some(k: KPathCondition[_]) if k.callers.nonEmpty => true
                 case _                                                => false
             ) && super.shouldCompose(sourceComponent, targetComponent)
