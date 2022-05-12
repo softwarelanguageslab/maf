@@ -165,7 +165,6 @@ trait UnstableComponentsWidening extends BaseScvBigStepSemantics with ScvContext
                 _ <- putStoreCache(cache ++ stoCacheArgs)
                 _ <- putVars(SymbolicStore.variables(stoCacheArgs) ++ context.vars)
                 st <- scvMonadInstance.get
-                _ <- effectful { println(s"putting vars ${context.vars}, vars ${st.freshVar}") }
                 _ <- putPc(context.pathCondition)
             yield ()
 
