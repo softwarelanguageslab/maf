@@ -30,7 +30,8 @@ object CountFalsePositives:
       (SchemeAnalyses.scvModAnalysisWithRacketFeatures, "scvModf"),
       //(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore, "scvModF-sensitive"),
       //(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithIncomingFlow, "scvModF-incoming-flow"),
-      (SchemeAnalyses.scvModAnalysisRktFsR, "scvModF-rkt-fs-r")
+      (SchemeAnalyses.scvModAnalysisRktFsR, "scvModF-rkt-fs-r"),
+      (SchemeAnalyses.scvModAnalysisFunctionSummary, "scvModF-FunctionSummary")
     )
 
     def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks
