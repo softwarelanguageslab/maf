@@ -77,8 +77,8 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** Stores the summary in a global store such that it is accessible from the otuer intra analyses */
         private def storeSummary(summary: FunctionSummary[Value]): Unit =
-            println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
-            println(s"${functionSummaries(component).map(_.blames)}, ${summary.blames}")
+            //println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
+            //println(s"${functionSummaries(component).map(_.blames)}, ${summary.blames}")
             // we trigger interested components (for example callers) when the summary has changed
             if !functionSummaries(component).map(_ == summary).getOrElse(false) then
                 val dependency = SummaryReadDependency(component)
@@ -214,7 +214,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** Stores a function summary in a global map after analyzing the current component */
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
-            println(s"start $component")
+            //println(s"start $component")
             // before running the intra semantics, already collect results in the temporary summary from a potential previous summary
             functionSummaries(component) match
                 case Some(previousSummary) =>
