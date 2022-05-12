@@ -42,7 +42,7 @@ trait ScvModAnalysis
     with SymbolicSchemeDomain
     with ScvBaseSemantics {
     outer =>
-    protected val DEBUG: Boolean = true
+    protected val DEBUG: Boolean = false
 
     protected val sat: ScvSatSolver[Value]
 

@@ -22,11 +22,11 @@ trait ScvFullPathSensitivity
         import scvMonadInstance.*
 
         override protected def runIntraSemantics(initialState: State): Set[(PostValue, PathCondition)] =
-            println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-            println(s"analyzing $cmp")
-            println(s"number of components ${trackMetrics(NumberOfComponents).size}")
-            println("==========================================================================")
-            println(s"cmp $cmp")
+            //println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            //println(s"analyzing $cmp")
+            //println(s"number of components ${trackMetrics(NumberOfComponents).size}")
+            //println("==========================================================================")
+            //println(s"cmp $cmp")
             val answers: Set[(PostValue, PathCondition)] = super.runIntraSemantics(initialState)
             answers.foreach { case (PostValue(sym, vlu), pc) =>
                 //println(s"++ got value $vlu with $pc and $sym")
