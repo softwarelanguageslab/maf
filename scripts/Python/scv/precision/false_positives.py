@@ -17,11 +17,13 @@ def preprocess(data):
     df = data.copy().set_index("benchmark")
     # the configuration name and the actual metric is seperated by an "_"
     df.columns = df.columns.str.split('_', expand=True).rename("configuration", level=0)
+    print(df)
     # we need to stack them such that the configuration forms a seperate column
     df1 = df.stack(0).reset_index()
     df1 = df1.replace("ERROR", np.NaN)
     df1 = df1.replace("-", np.NaN)
-    return df1.dropna()
+    return df1
+    #return df1.dropna()
 
 
 def visualize_false_positive_count(df):
@@ -32,7 +34,7 @@ def visualize_false_positive_count(df):
     """
 
     df1 = df.assign(benchmark = df["benchmark"].map(lambda x: '/'.join(x.split("/")[-2:])))
-    df1 = df1.assign(blames = df1["blames"].astype(int))
+    df1 = df1.assign(blames = df1["blames"].astype(float))
 
     ax = sb.barplot(data = df1, x = "benchmark", y = "blames", hue = "configuration") 
     ax.set_ylabel("# False Positives")
@@ -40,6 +42,14 @@ def visualize_false_positive_count(df):
     plt.tight_layout()
     plt.show()
 
-df1 = preprocess(df)
-visualize_false_positive_count(df1)
+def summarize_into_table(df):
+    df1 = df.assign(benchmark = df["benchmark"].map(lambda x: '/'.join(x.split("/")[-2:])))
+    df1 = df1.assign(blames = df1["blames"].astype(float))
+    df1 = df1[["benchmark", "blames", "configuration"]]
+    df2 = df1.set_index(["benchmark", "configuration"])
+    return df2.unstack()
 
+df1 = preprocess(df)
+summary = summarize_into_table(df1)
+summary.to_csv(INPUT_FILE+".csv")
+visualize_false_positive_count(df1)
