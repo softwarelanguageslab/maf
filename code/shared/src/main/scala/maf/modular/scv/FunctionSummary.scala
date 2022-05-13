@@ -125,7 +125,10 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             val varNames = vars.flatMap(Symbolic.variables)
             val toRename = pcVars.toSet.intersect(varNames -- mapping.map(_._1).flatMap(Symbolic.variables)).toList
             val highest = varNames.map(_.split('x')(1).toInt).maxOption.getOrElse(0)
-            val changes = toRename.sortBy(_.split('x')(1).toInt).zip(0 to toRename.size).map { case (old, nww) => VarId(old) -> VarId(s"x$nww") }
+            val changes =
+                toRename.sortBy(_.split('x')(1).toInt).zip(highest to toRename.size + highest).map { case (old, nww) =>
+                    VarId(old) -> VarId(s"x$nww")
+                }
             val alphaRenamedPc = pc.replace(changes.toMap)
 
             // first we rename the expressions in the path condition such that they correspond to `mapping`
