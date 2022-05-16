@@ -55,12 +55,14 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
     def runPropagationPhase(timeout: Timeout.T): Unit =
         // trigger a re-analysis of all impacted components
         propagationTriggers.flatMap(_._2).foreach(trigger)
+        println(s"Propagation Phase")
         // re-run the analysis
         super.run(timeout)
 
     abstract override def run(timeout: Timeout.T): Unit =
         // run the first phase
         super.run(timeout)
+        propagationPhase = true
         runPropagationPhase(timeout)
 
     override def intraAnalysis(component: Component): FunctionSummaryIntra
@@ -82,7 +84,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** Stores the summary in a global store such that it is accessible from the otuer intra analyses */
         private def storeSummary(summary: FunctionSummary[Value]): Unit =
-            //println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
+            println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
             //println(s"${functionSummaries(component).map(_.blames)}, ${summary.blames}")
             // we trigger interested components (for example callers) when the summary has changed
             if !functionSummaries(component).map(_ == summary).getOrElse(false) then
@@ -354,9 +356,6 @@ trait TopSortPropagationPhase extends SccGraph with FunctionSummaryAnalysis:
 
         // add the unanalyzed components to the worklist such that anl.isfinished returns false
         unanalyzed.flatten.foreach(addToWorkList)
-
-    abstract override def run(timeout: Timeout.T): Unit =
-        super[FunctionSummaryAnalysis].run(timeout)
 
 trait NoCompositionIfCycle extends FunctionSummaryAnalysis with SccGraph:
     override def intraAnalysis(component: Component): NoCompositionIfCycleIntra
