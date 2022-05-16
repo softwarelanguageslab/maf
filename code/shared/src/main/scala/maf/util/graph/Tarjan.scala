@@ -5,11 +5,34 @@ import scala.annotation.tailrec
 object Tarjan:
 
     /**
+     * Collapses a graph into its strongly connected components.
+     *
+     * @param nodes
+     *   The set of nodes in the graph.
+     * @param edges
+     *   A map, mapping each node `from` to a set of nodes `to` for which the graph contains an edge `from -> to`.
+     * @see
+     *   scc for the algorithm
+     */
+    def collapse[N](nodes: Set[N], originalEdges: Map[N, Set[N]]): (Set[Set[N]], Map[Set[N], Set[Set[N]]]) =
+        val cmpsWithoutSelf = scc(nodes, originalEdges)
+        // create singleton sets of nodes that are not in an scc
+        val cmps = cmpsWithoutSelf ++ nodes.filterNot(n => cmpsWithoutSelf.exists(_.contains(n))).map(Set(_))
+        val edges = cmps.foldLeft(Map[Set[N], Set[Set[N]]]().withDefaultValue(Set()))((edges, cmp) =>
+            cmp.foldLeft(edges)((edges, n) =>
+                cmps.filter(toCmp => originalEdges.get(n).getOrElse(Set()).intersect(toCmp).nonEmpty)
+                    .foldLeft(edges)((edges, toCmp) => if cmp != toCmp then edges + (cmp -> (edges(cmp) + toCmp)) else edges)
+            )
+        )
+
+        (cmps, edges)
+
+    /**
      * Implementation of Tarjan's algorithm for finding SCCs in a graph. Implementation loosely based on https://youtu.be/TyWtx7q2D7Y.<br> Example
      * use: scc(Set(1, 2, 3, 4), Map((2, Set(3)), (3, Set(2, 4)))) returns Set(Set(2, 3)).
      *
      * @param nodes
-     *   The set of edges in the graph.
+     *   The set of nodes in the graph.
      * @param edges
      *   A map, mapping each node `from` to a set of nodes `to` for which the graph contains an edge `from -> to`.
      * @tparam Node

@@ -178,7 +178,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
                             formula = conj(originalPc.formula, cleaned)
                             vars = formula.variables
                             isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
-                            // if the blame is still feasiable, we must propagate it.
+                            // if the blame is still feasible, we must propagate it.
                             result <-
                                 if isFeasible then effectful { collectBlame(PathCondition(cleaned), blame) }
                                 else scvMonadInstance.unit(())
