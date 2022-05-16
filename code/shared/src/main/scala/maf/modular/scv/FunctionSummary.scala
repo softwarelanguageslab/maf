@@ -326,7 +326,7 @@ trait SccGraph extends FunctionSummaryAnalysis with ModGraph[SchemeExp]:
  * Instead of relying on an arbitrary method of scheduling the to be analyzed components, we can also topologically sort them based on the call graph
  * of the function summaries
  */
-trait TopSortPropagationPhase extends SccGraph with FIFOWorklistAlgorithm[SchemeExp] with FunctionSummaryAnalysis:
+trait TopSortPropagationPhase extends SccGraph with FunctionSummaryAnalysis:
     private def runAnalysis(timeout: Timeout.T)(cmp: Component): Boolean =
         if timeout.reached then false
         else
