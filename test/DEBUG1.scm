@@ -1,11 +1,6 @@
-(letrec ((sign (lambda (number)
-                 (if (zero? number)
-                    (<change> 0 (if (<= 0 number) 1 -1))
-                    (<change> (if (<= 0 number) 1 -1) 0))))
-         (divides? (lambda (deler deeltal) (= 0 (modulo deeltal deler))))
-         (leap-year? (lambda (year)
-                       (<change>
-                          (divides? 400 year)
-                          ((lambda (x) x) (divides? 400 year))))))
-   (leap-year? 1989)
-   (if (= 1 (sign 1.728000e+01)) (= 0 (sign 0))))
+; The incremental update will create a new cyclic flow in which immediately the outdated value of `v` is introduced.
+(define v #t)
+(define (f x) (set! v x))
+(define (g) (set! v #f))
+(<change> (g) #t)
+(f v)

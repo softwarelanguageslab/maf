@@ -93,10 +93,10 @@ object IncrementalRun extends App:
             with IncrementalGlobalStore[SchemeExp]
             with IncrementalLogging[SchemeExp]
             {
-         override def focus(a: Addr): Boolean = a.toString.contains("ret (zero? [ε])")
-        override def warn(msg: String): Unit = ()
-        override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
+                override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(x@") || a.toString.contains("VarAddr(v@")
+                override def warn(msg: String): Unit = ()
+                override def intraAnalysis(cmp: Component) =
+                    new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
     }
 
     def lifoAnalysis(b: SchemeExp) = new BaseModFAnalysisIncremental(b, ci_di_wi) with LIFOWorklistAlgorithm[SchemeExp]
@@ -118,19 +118,40 @@ object IncrementalRun extends App:
         println("Done interpreting.")
 
     def checkEqState(a: BaseModFAnalysisIncremental, b: BaseModFAnalysisIncremental, message: String): Unit =
-        assert(a.store == b.store, message + " (store mismatch)")
+        (a.store.keySet ++ b.store.keySet).foreach { addr =>
+            val valA = a.store.getOrElse(addr, a.lattice.bottom)
+            val valB = b.store.getOrElse(addr, b.lattice.bottom)
+            if valA != valB
+            then
+                 System.err.nn.println(addr.toString + "\n" + a.lattice.compare(valA, valB))
+        }
+        assert(a.store.filterNot(_._2 == a.lattice.bottom) == b.store.filterNot(_._2 == b.lattice.bottom), message + " (store mismatch)")
         assert(a.visited == b.visited, message + " (visited set mismatch)")
-        assert(a.deps == b.deps, message + " (dependency mismatch)")
+        (a.deps.keySet ++ b.deps.keySet).foreach { dep =>
+           val dA = a.deps.getOrElse(dep, Set())
+           val dB = b.deps.getOrElse(dep, Set())
+           if dA != dB
+           then System.err.nn.println(dep.toString + "\n" + dA.mkString(" ") + "\n" + dB.mkString(" "))
+        }
+       // println(a.deps.toList.map(_.toString).sorted)
+       // println(b.deps.toList.map(_.toString).sorted)
+       /* assert(a.deps == b.deps, message + " (dependency mismatch)")
         assert(a.mapping == b.mapping, message + " (mapping mismatch)")
         assert(a.cachedReadDeps == b.cachedReadDeps, message + " (read deps mismatch)")
         assert(a.cachedSpawns == b.cachedSpawns, message + " (spawns mismatch)")
         assert(a.provenance == b.provenance, message + " (provenance mismatch)")
         assert(a.cachedWrites == b.cachedWrites, message + " (write cache mismatch)")
         //assert(a.implicitFlows == b.implicitFlows, message + " (flow mismatch)") // TODO Readd?
-        assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)")
+        assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)") */
 
     val modFbenchmarks: List[String] = List(
-      "test/DEBUG1.scm"
+     // "test/DEBUG1.scm"
+       // "test/changes/scheme/satCoarse.scm",
+       // "test/changes/scheme/satMiddle.scm",
+       // "test/changes/scheme/satFine.scm",
+       // "test/changes/scheme/reinforcingcycles/implicit-paths.scm",
+        "test/DEBUG1.scm",
+        "test/changes/scheme/reinforcingcycles/cycleCreation.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
@@ -141,23 +162,19 @@ object IncrementalRun extends App:
             println(s"***** $bench *****")
             //interpretProgram(bench)
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            println(text.prettyString())
+           // println(text.prettyString())
 
             val l = lifoAnalysis(text)
-            l.configuration = ci_di_wi
-            val f = fifoAnalysis(text)
-            f.configuration = ci_di_wi
-            //a.logger.logU("***** INIT *****")
+            l.configuration = allOptimisations
             l.analyzeWithTimeout(newTimeout())
-            f.analyzeWithTimeout(newTimeout())
             assert(l.finished)
-            assert(f.finished)
-
-            l.configuration = wi
-            f.configuration = wi
-
             l.updateAnalysis(newTimeout())
-            f.updateAnalysis(newTimeout())
+
+            val f = lifoAnalysis(text)
+            f.version = New
+            f.configuration = allOptimisations
+            f.analyzeWithTimeout(newTimeout())
+            assert(f.finished)
 
             checkEqState(f, l,"")
 
@@ -206,7 +223,7 @@ object JVMMemorySize extends App:
 
 object IncrementalExtraction extends App:
 
-    val text: String = "test/changes/scheme/slip-1-to-2.scm"
+    val text: String = "test/changes/scheme/satCoarse.scm"
     val version: Version = New
 
     val program = CSchemeParser.parseProgram(Reader.loadFile(text))
