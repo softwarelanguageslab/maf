@@ -70,6 +70,7 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
           //(wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
           (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf"),
           (wrapModF(SchemeAnalyses.scvModAnalysisFunctionSummary), "scvFunctionSummaries"),
+          (wrapModF(SchemeAnalyses.scvModAnalysisFunctionSummaryTopSort), "scvFunctionSummariesTopSort"),
           (wrapModF(SchemeAnalyses.scvModAnalysisRktFsR), "scvRktFsR")
           //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore), "scvModF-sensitive"),
           //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithIncomingFlow), "scvModF-incoming-flow")

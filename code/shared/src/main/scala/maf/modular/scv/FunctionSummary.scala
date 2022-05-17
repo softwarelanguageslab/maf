@@ -8,12 +8,13 @@ import maf.core.Monad.MonadSyntaxOps
 import maf.language.scheme.SchemeExp
 import maf.core.Monad.MonadIterableOps
 import maf.util.benchmarks.Timeout
-import maf.util.graph.Tarjan
+import maf.util.graph.{Tarjan, TopSort}
 import maf.util.MAFLogger
 import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.StandardSchemeModFComponents
 import maf.modular.{Dependency, ModGraph}
+import maf.modular.worklist.FIFOWorklistAlgorithm
 
 /** A dataclass that holds all the information needed for a function summary */
 case class FunctionSummary[V](
@@ -49,17 +50,20 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
      * summaries are propagated.
      */
     private var propagationPhase: Boolean = false
-    private var propagationTriggers: Set[Dependency] = Set()
+    protected var propagationTriggers: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set())
+
+    def runPropagationPhase(timeout: Timeout.T): Unit =
+        // trigger a re-analysis of all impacted components
+        propagationTriggers.flatMap(_._2).foreach(trigger)
+        println(s"Propagation Phase")
+        // re-run the analysis
+        super.run(timeout)
 
     abstract override def run(timeout: Timeout.T): Unit =
         // run the first phase
         super.run(timeout)
-        // set the flag to propagate the summaries
         propagationPhase = true
-        // trigger a re-analysis of all impacted components
-        propagationTriggers.foreach(trigger)
-        // re-run the analysis
-        super.run(timeout)
+        runPropagationPhase(timeout)
 
     override def intraAnalysis(component: Component): FunctionSummaryIntra
 
@@ -75,14 +79,17 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             val summaryResults = results.map { case (pv, pc) => (pv.value, pc) }
             FunctionSummary(blames = summaryBlames, paths = summaryResults, addresses = addresses, vars = vars, addressRev = addressesRev)
 
+        private def scheduleTrigger(dep: Dependency): Unit =
+            propagationTriggers = propagationTriggers + (component -> (propagationTriggers(component) + dep))
+
         /** Stores the summary in a global store such that it is accessible from the otuer intra analyses */
         private def storeSummary(summary: FunctionSummary[Value]): Unit =
-            //println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
+            println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
             //println(s"${functionSummaries(component).map(_.blames)}, ${summary.blames}")
             // we trigger interested components (for example callers) when the summary has changed
             if !functionSummaries(component).map(_ == summary).getOrElse(false) then
                 val dependency = SummaryReadDependency(component)
-                if !propagationPhase then propagationTriggers = propagationTriggers + dependency else trigger(dependency)
+                if !propagationPhase then scheduleTrigger(dependency) else trigger(dependency)
             functionSummaries = functionSummaries + (component -> Some(summary))
 
         /** Registers the blame such that it can be collected in the function summary */
@@ -178,7 +185,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
                             formula = conj(originalPc.formula, cleaned)
                             vars = formula.variables
                             isFeasible <- scvMonadInstance.unit(sat.feasible(formula, vars))
-                            // if the blame is still feasiable, we must propagate it.
+                            // if the blame is still feasible, we must propagate it.
                             result <-
                                 if isFeasible then effectful { collectBlame(PathCondition(cleaned), blame) }
                                 else scvMonadInstance.unit(())
@@ -286,7 +293,8 @@ trait FunctionSummaryAnalysisWithMainBoundary extends FunctionSummaryAnalysis wi
             writeAddr(ScvExceptionAddr(Main, program.idn), lattice.blame(blame))
         })
 
-trait NoCompositionIfCycle extends FunctionSummaryAnalysis with ModGraph[SchemeExp]:
+/** This trait provides a `buildCollapsedGraph` method that collapses the function summary graph into a graph that does not contain any cycles */
+trait SccGraph extends FunctionSummaryAnalysis with ModGraph[SchemeExp]:
     sealed trait Node
     object Node:
         def fromDep(source: Dependency): Option[Node] = source match
@@ -298,23 +306,65 @@ trait NoCompositionIfCycle extends FunctionSummaryAnalysis with ModGraph[SchemeE
     case class ComponentNode(c: Component) extends Node
     case class DepNode(dep: Dependency) extends Node
 
+    def buildCollapsedGraph: (Set[Set[Node]], Map[Set[Node], Set[Set[Node]]]) =
+        val transformedRead = deps.flatMap { case (dep, cmps) =>
+            Node.fromDep(dep).map(n => (n -> cmps.flatMap(Node.fromCmp)))
+        }
+        val transformedWrite = triggeredDeps.flatMap { case (cmp, deps) =>
+            Node.fromCmp(cmp).map(n => (n -> deps.flatMap(Node.fromDep)))
+        }
+        val completeGraph = transformedRead.foldLeft(transformedWrite) { case (deps, (from, toS)) =>
+            deps + (from -> (deps.get(from).getOrElse(Set()) ++ toS))
+        }
+        val nodes = completeGraph.keySet
+
+        Tarjan.collapse(nodes, completeGraph)
+
+    override def intraAnalysis(component: Component): SccGraphIntra
+
+    trait SccGraphIntra extends FunctionSummaryIntra with IntraTrackAnalysis
+
+/**
+ * Instead of relying on an arbitrary method of scheduling the to be analyzed components, we can also topologically sort them based on the call graph
+ * of the function summaries
+ */
+trait TopSortPropagationPhase extends SccGraph with FunctionSummaryAnalysis:
+    private def runAnalysis(timeout: Timeout.T)(cmp: Component): Boolean =
+        if timeout.reached then false
+        else
+            val intra = intraAnalysis(cmp)
+            intra.analyzeWithTimeout(timeout)
+            intra.commit()
+            true
+
+    override def runPropagationPhase(timeout: Timeout.T): Unit =
+        // add the scheduled triggers to the actual triggers
+        triggeredDeps = propagationTriggers.foldLeft(triggeredDeps) { case (triggeredDeps, (cmp, dep)) =>
+            triggeredDeps + (cmp -> (triggeredDeps.get(cmp).getOrElse(Set()) ++ dep))
+        }
+
+        // collapse the cycles in the graph
+        val (nodes, edges) = buildCollapsedGraph
+        val schedule = TopSort
+            .topsort(nodes.toList, edges)
+            .map(_.collect { case ComponentNode(cmp) =>
+                cmp
+            })
+
+        // run the analysis on all the clusters (in order)
+        val unanalyzed = schedule.filter(cluster => cluster.forall(runAnalysis(timeout)))
+
+        // add the unanalyzed components to the worklist such that anl.isfinished returns false
+        unanalyzed.flatten.foreach(addToWorkList)
+
+trait NoCompositionIfCycle extends FunctionSummaryAnalysis with SccGraph:
     override def intraAnalysis(component: Component): NoCompositionIfCycleIntra
-    trait NoCompositionIfCycleIntra extends FunctionSummaryIntra with IntraTrackAnalysis:
+
+    trait NoCompositionIfCycleIntra extends FunctionSummaryIntra with SccGraphIntra:
         override protected val maxDepth: Int = Int.MaxValue
 
         override protected def shouldCompose(sourceComponent: Component, targetComponent: Component): Boolean =
-            val transformedRead = deps.flatMap { case (dep, cmps) =>
-                Node.fromDep(dep).map(n => (n -> cmps.flatMap(Node.fromCmp)))
-            }
-            val transformedWrite = triggeredDeps.flatMap { case (cmp, deps) =>
-                Node.fromCmp(cmp).map(n => (n -> deps.flatMap(Node.fromDep)))
-            }
-            val completeGraph = transformedRead.foldLeft(transformedWrite) { case (deps, (from, toS)) =>
-                deps + (from -> (deps.get(from).getOrElse(Set()) ++ toS))
-            }
-            val nodes = completeGraph.keySet
-
-            val scc = Tarjan.scc(nodes, completeGraph)
+            val (scc, _) = buildCollapsedGraph
             !scc.exists(cluster => cluster.contains(ComponentNode(sourceComponent)) && cluster.contains(ComponentNode(targetComponent)))
 
 trait CompositionForContracts extends FunctionSummaryAnalysis:
