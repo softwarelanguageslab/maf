@@ -151,7 +151,7 @@ object IncrementalRun extends App:
        // "test/changes/scheme/satFine.scm",
        // "test/changes/scheme/reinforcingcycles/implicit-paths.scm",
         "test/DEBUG1.scm",
-        "test/changes/scheme/reinforcingcycles/cycleCreation.scm"
+        // "test/changes/scheme/reinforcingcycles/cycleCreation.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))

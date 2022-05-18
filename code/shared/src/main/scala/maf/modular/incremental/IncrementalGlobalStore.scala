@@ -93,7 +93,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
       }
 
     /** Updates the value of all addresses in a SCA to a given value and triggers all reading and writing components. */
-    def setSCAValue(sca: SCA, value: Value) =
+    def setSCAValue(sca: SCA, value: Value): Unit =
         sca.flatMap(provenance).map(_._1).foreach(addToWorkList) // Add all components that wrote to the SCA to the WL.
         sca.foreach { addr =>
             store += (addr -> value)
@@ -115,7 +115,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             val newIncoming = newSCAValues(nw)
             old.foreach { sca =>
                 val oldIncoming = SCAs(sca)
-                println(s"oldSca: $old -- newSca: $nw // oldI: $oldIncoming -- newI: $newIncoming")
                 if oldIncoming != newIncoming && lattice.subsumes(oldIncoming, newIncoming)
                 then setSCAValue(nw, newIncoming)
             }
@@ -218,23 +217,12 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     /* ************************************************************************* */
 
     override def updateAnalysis(timeout: Timeout.T): Unit =
-        // TODO???
-        /*
-        if configuration.cyclicValueInvalidation then
-            // Old method (use a local variable SCAs now since the global one is a Map now).
-            val SCAs = computeSCAs()
-            //incomingValues = incomingValues + SCAs.map(s => (s, incomingSCAValue(s)))
-            val addrs = SCAs.flatten
-            addrs.flatMap(provenance).map(_._1).foreach(addToWorkList)
-            addrs.foreach { addr =>
-                store = store + (addr -> lattice.bottom)
-                provenance -= addr
-            }
-            cachedWrites = cachedWrites.map({ case (k, v) => (k, v -- addrs) }).withDefaultValue(Set())
-        //SCAs = Set() // Clear the data as it is no longer needed. (This is not really required but reduces the memory footprint of the result.)
-        // New method (start)
-        //val scas = computeSCAs()
-        //SCAs = scas.map(sca => (sca, incomingSCAValue(sca))).toMap */
+        if configuration.cyclicValueInvalidation
+        then
+            val scas = computeSCAs()
+            scas.foreach(println)
+            scas.foreach(setSCAValue(_, lattice.bottom))
+            SCAs = scas.map(sca => (sca, incomingSCAValue(sca))).toMap
         super.updateAnalysis(timeout)
 
     /* ************************************ */
@@ -363,7 +351,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 doWriteIncremental()
                 if configuration.cyclicValueInvalidation then
                     dataFlowR += (component -> dataFlow)
-                    updateSCAs()
+                    //updateSCAs()
 
     end IncrementalGlobalStoreIntraAnalysis
 
