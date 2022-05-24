@@ -55,7 +55,6 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
     def runPropagationPhase(timeout: Timeout.T): Unit =
         // trigger a re-analysis of all impacted components
         propagationTriggers.flatMap(_._2).foreach(trigger)
-        println(s"Propagation Phase")
         // re-run the analysis
         super.run(timeout)
 
@@ -84,7 +83,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
 
         /** Stores the summary in a global store such that it is accessible from the otuer intra analyses */
         private def storeSummary(summary: FunctionSummary[Value]): Unit =
-            println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
+            //println(s"$component -- storing summary:\nblames: ${summary.blames}\n# paths: ${summary.paths}\naddresses: ${summary.addresses}\n\n")
             //println(s"${functionSummaries(component).map(_.blames)}, ${summary.blames}")
             // we trigger interested components (for example callers) when the summary has changed
             if !functionSummaries(component).map(_ == summary).getOrElse(false) then
@@ -338,7 +337,7 @@ trait TopSortPropagationPhase extends SccGraph with FunctionSummaryAnalysis:
             true
 
     override def runPropagationPhase(timeout: Timeout.T): Unit =
-        println("running propagation phase")
+        //println("running propagation phase")
         // add the scheduled triggers to the actual triggers
         triggeredDeps = propagationTriggers.foldLeft(triggeredDeps) { case (triggeredDeps, (cmp, dep)) =>
             triggeredDeps + (cmp -> (triggeredDeps.get(cmp).getOrElse(Set()) ++ dep))
@@ -354,8 +353,6 @@ trait TopSortPropagationPhase extends SccGraph with FunctionSummaryAnalysis:
 
         // run the analysis on all the clusters (in order)
         val unanalyzed = schedule.filterNot(cluster => cluster.forall(runAnalysis(timeout)))
-
-        println(s"size of unanalyzed ${unanalyzed.size}")
 
         // add the unanalyzed components to the worklist such that anl.isfinished returns false
         unanalyzed.flatten.foreach(addToWorkList)
