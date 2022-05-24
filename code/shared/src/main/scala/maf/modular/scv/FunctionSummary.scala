@@ -338,6 +338,7 @@ trait TopSortPropagationPhase extends SccGraph with FunctionSummaryAnalysis:
             true
 
     override def runPropagationPhase(timeout: Timeout.T): Unit =
+        println("running propagation phase")
         // add the scheduled triggers to the actual triggers
         triggeredDeps = propagationTriggers.foldLeft(triggeredDeps) { case (triggeredDeps, (cmp, dep)) =>
             triggeredDeps + (cmp -> (triggeredDeps.get(cmp).getOrElse(Set()) ++ dep))
@@ -352,7 +353,9 @@ trait TopSortPropagationPhase extends SccGraph with FunctionSummaryAnalysis:
             })
 
         // run the analysis on all the clusters (in order)
-        val unanalyzed = schedule.filter(cluster => cluster.forall(runAnalysis(timeout)))
+        val unanalyzed = schedule.filterNot(cluster => cluster.forall(runAnalysis(timeout)))
+
+        println(s"size of unanalyzed ${unanalyzed.size}")
 
         // add the unanalyzed components to the worklist such that anl.isfinished returns false
         unanalyzed.flatten.foreach(addToWorkList)
