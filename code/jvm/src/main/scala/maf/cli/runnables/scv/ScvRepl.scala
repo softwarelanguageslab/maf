@@ -20,6 +20,7 @@ object ScvRepl extends App:
         analysis.analyze()
         println(analysis.summary.blames.values.flatten.toSet.size)
         println(analysis.summary.blames.values.flatten.toSet)
+        println(s"is finished ${analysis.finished}")
         //println(analysis.mapStoreString())
         analysis.returnValue(analysis.initialComponent)
 

@@ -49,7 +49,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
      * The analysis runs in two phases: one where all components are discovered and analyzed using ModF, and another where the collected function
      * summaries are propagated.
      */
-    private var propagationPhase: Boolean = false
+    protected var propagationPhase: Boolean = false
     protected var propagationTriggers: Map[Component, Set[Dependency]] = Map().withDefaultValue(Set())
 
     def runPropagationPhase(timeout: Timeout.T): Unit =
@@ -328,6 +328,11 @@ trait SccGraph extends FunctionSummaryAnalysis with ModGraph[SchemeExp]:
  * of the function summaries
  */
 trait TopSortPropagationPhase extends SccGraph with FunctionSummaryAnalysis:
+    private var isFinished: Boolean = false
+
+    abstract override def finished: Boolean =
+        if propagationPhase then isFinished else super.finished
+
     private def runAnalysis(timeout: Timeout.T)(cmp: Component): Boolean =
         if timeout.reached then false
         else
@@ -353,6 +358,7 @@ trait TopSortPropagationPhase extends SccGraph with FunctionSummaryAnalysis:
 
         // run the analysis on all the clusters (in order)
         val unanalyzed = schedule.filterNot(cluster => cluster.forall(runAnalysis(timeout)))
+        isFinished = unanalyzed.size == 0
 
         // add the unanalyzed components to the worklist such that anl.isfinished returns false
         unanalyzed.flatten.foreach(addToWorkList)
