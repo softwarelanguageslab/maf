@@ -204,8 +204,12 @@ trait RemovePathCondition extends UnstableComponentsWidening:
                 case _                                        => scvMonadInstance.unit(())
         }
 
+    override def shouldWiden(cs: Set[Component], stoCache: Map[Address, Symbolic]): Option[List[Component]] =
+        // if we have more than 2 similar components, we say that we should widen.
+        if cs.size > 2 then Some(List()) else None
+
     def widen[M[_]: Monad](
-        cmps: List[Component],
+        _cmps: List[Component],
         fresh: M[SchemeExp],
         ctx: KPathCondition[Value],
         clo: (SchemeLambdaExp, Env),
