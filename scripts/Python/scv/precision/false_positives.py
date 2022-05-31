@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env ython
 
 import pandas  as pd 
 import seaborn as sb
@@ -42,14 +42,49 @@ def visualize_false_positive_count(df):
     plt.tight_layout()
     plt.show()
 
+def name_of_group(composite):
+    name, configuration = composite
+    for groupName in GROUPS:
+        if name.startswith(groupName): 
+            return (groupName, configuration)
+    return (name, configuration)
+
 def summarize_into_table(df):
+    """
+    Summarize the false positives into a table 
+
+    :param df the dataframe to use as a source 
+    :param groups of benchmarks that must be groups together
+    """
+    # Convert the name to something shorter
     df1 = df.assign(benchmark = df["benchmark"].map(lambda x: '/'.join(x.split("/")[-2:])))
+    # Convert the number of blames to a float
     df1 = df1.assign(blames = df1["blames"].astype(float))
-    df1 = df1[["benchmark", "blames", "configuration"]]
-    df2 = df1.set_index(["benchmark", "configuration"])
-    return df2.unstack()
+    # Convert the number of contract checks to a float
+    df1["# check expressions"] = df1["# check expressions"].replace("-", 0).astype(float)
+    # Only keep the information about configuration, benchjmark and number of blames
+    df1 = df1[["benchmark", "blames", "configuration", "# check expressions"]]
+    print(df1)
+    # Use benchmark and configuration as an index
+    df1 = df1.set_index(["benchmark", "configuration"])
+    # Collapse groups together
+    collapsed = df1.groupby(name_of_group)
+    print(collapsed.mean())
+    # Compute some summarizing metrics
+    df1 = pd.DataFrame().assign(count = collapsed.count(), median_blames = collapsed.median()["blames"], min = collapsed.min()["blames"], max = collapsed.max()["blames"])
+    # Convert the tuple to a multi index
+    df1.index = pd.MultiIndex.from_tuples(df1.index)
+    # Unstack again
+    return df1.unstack()
+
+# A statically defined set of groups
+GROUPS = [
+        "softy",
+        "sergey", 
+        "mochi"
+]
 
 df1 = preprocess(df)
 summary = summarize_into_table(df1)
-summary.to_csv(INPUT_FILE+".csv")
-visualize_false_positive_count(df1)
+summary.to_csv(INPUT_FILE+"-summary.csv")
+# visualize_false_positive_count(df1)
