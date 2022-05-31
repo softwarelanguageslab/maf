@@ -21,3 +21,5 @@ trait ScvReporter extends ModReporter[SchemeExp]:
         def name: String = "# check expressions"
     case object ImplicitContract extends ModMetric:
         def name: String = "# implicit contracts"
+    case object ContractCheck extends ModMetric:
+        def name: String = "# explicit contracts"

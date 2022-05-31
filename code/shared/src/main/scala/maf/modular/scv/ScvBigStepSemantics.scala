@@ -487,6 +487,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
             assumed: Boolean = false,
             contractExpr: Option[SchemeExp] = None
           ): EvalM[Value] =
+            track(ContractCheck, (expr, monIdn))
             // We have three distinct possibilities for a "mon" expression:
             // 1. `contract` is a flat contract, or a function (or primitive) that can be treated as such, the result of mon is the value of `expression`
             // 2. `contract` is a dependent contract, in which case `expression` must be a function, the result of `mon` is a guarded function
