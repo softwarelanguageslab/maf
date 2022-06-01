@@ -59,10 +59,14 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
         super.run(timeout)
 
     abstract override def run(timeout: Timeout.T): Unit =
-        // run the first phase
-        super.run(timeout)
+        time(CollectionPhase) {
+            // run the first phase
+            super.run(timeout)
+        }
         propagationPhase = true
-        runPropagationPhase(timeout)
+        time(PropagationPhase) {
+            runPropagationPhase(timeout)
+        }
 
     override def intraAnalysis(component: Component): FunctionSummaryIntra
 
